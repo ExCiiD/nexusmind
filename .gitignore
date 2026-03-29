@@ -1,0 +1,12 @@
+node_modules/
+out/
+dist/
+release/
+.env
+*.db
+*.db-journal
+.DS_Store
+Thumbs.db
+prisma-client/
+.cursor/
+test-results/

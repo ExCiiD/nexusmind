@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    border-color: theme('colors.hextech.border-dim');
+  }
+
+  body {
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #0a0f16;
+    background-image:
+      linear-gradient(rgba(10, 15, 22, 0.86), rgba(10, 15, 22, 0.86)),
+      url("file:///C:/Users/ariso/.cursor/projects/d-Projects-NexusMind/assets/c__Users_ariso_AppData_Roaming_Cursor_User_workspaceStorage_2c12ba262d11c095a78ebcc7d33a4cd3_images_1b7118a31c71e9f31ec5d86e32819e30a5e64b0a-1fa850af-4418-49dd-9f27-bddb77a142d3.png");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: fixed;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: theme('colors.hextech.black');
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: theme('colors.hextech.border-dim');
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: theme('colors.hextech.gold');
+  }
+}
+
+@layer utilities {
+  .hextech-border {
+    border: 1px solid theme('colors.hextech.border');
+    box-shadow: 0 0 6px rgba(120, 90, 40, 0.15);
+  }
+
+  .hextech-glow {
+    box-shadow:
+      0 0 8px rgba(10, 200, 185, 0.2),
+      0 0 20px rgba(10, 200, 185, 0.1);
+  }
+
+  .gold-glow {
+    box-shadow:
+      0 0 8px rgba(200, 170, 110, 0.3),
+      0 0 20px rgba(200, 170, 110, 0.15);
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #c8aa6e 0%, #f0e6d2 50%, #c8aa6e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}

@@ -1,0 +1,619 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "session": "Session",
+    "review": "Review",
+    "history": "History",
+    "detailedStats": "Detailed Stats",
+    "analytics": "Analytics",
+    "settings": "Settings"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your accounts and preferences",
+    "accounts": {
+      "title": "Linked accounts",
+      "desc": "Add multiple League of Legends accounts to track games across all of them.",
+      "main": "Main account",
+      "secondary": "Secondary account",
+      "add": "Link a new account",
+      "addDesc": "Enter the Riot ID and region of the account to add.",
+      "gameName": "Game name",
+      "tagLine": "Tagline (e.g. EUW)",
+      "region": "Region",
+      "addButton": "Link account",
+      "addingButton": "Linking…",
+      "remove": "Remove",
+      "removeConfirm": "Remove this account?",
+      "removeCancel": "Cancel",
+      "empty": "No secondary accounts linked yet.",
+      "addedToast": "Account linked successfully.",
+      "removedToast": "Account removed.",
+      "errorDuplicate": "This account is already linked.",
+      "errorMain": "This account is already your main account."
+    }
+  },
+  "sidebar": {
+    "level": "Level",
+    "xp": "XP",
+    "dayStreak": "day streak",
+    "dayStreaks": "day streak",
+    "disconnectTitle": "Disconnect account",
+    "disconnectError": "Failed to disconnect"
+  },
+  "onboarding": {
+    "tagline": "Set up your self-coaching environment",
+    "steps": {
+      "profile": "Your profile",
+      "connect": "Connect Account",
+      "assessment": "Initial Assessment"
+    }
+  },
+  "profileStep": {
+    "title": "How do you want to be called?",
+    "subtitle": "Choose a name to display throughout the app. This can be a nickname, your main alias — anything you like.",
+    "label": "Display name",
+    "placeholder": "e.g. Carry, BigJungle…",
+    "nextButton": "Continue",
+    "error": "Please enter a name."
+  },
+  "riotConnect": {
+    "title": "Connect Your Riot Account",
+    "subtitle": "Enter your Riot Games ID to link your account and fetch your match history.",
+    "gameName": "Game Name",
+    "gameNamePlaceholder": "Faker",
+    "tag": "Tag",
+    "tagPlaceholder": "KR1",
+    "region": "Region",
+    "regionPlaceholder": "Select your region",
+    "connectButton": "Connect Account",
+    "toast": {
+      "successTitle": "Account connected!",
+      "successDesc": "Welcome, {{name}}",
+      "errorTitle": "Connection failed"
+    }
+  },
+  "assessment": {
+    "toast": {
+      "successTitle": "Assessment complete!",
+      "successDesc": "Welcome to NexusMind. Let's start improving.",
+      "errorTitle": "Failed to save assessment"
+    },
+    "saving": "Saving your assessment...",
+    "backToDashboard": "Back to Dashboard",
+    "title": "Reassessment",
+    "subtitle": "Rate your current skill level across all fundamentals. This updates your progress charts and objective suggestions.",
+    "rankNote": "This does not reflect your level the way a rank does — it is precisely meant to position you relative to your current rank, and identify which fundamental concepts are your strengths and weaknesses at this point in your development."
+  },
+  "dashboard": {
+    "welcome": "Welcome back,",
+    "subtitle": "Ready to improve?",
+    "lastGame": {
+      "title": "Last game",
+      "vs": "vs",
+      "noOpponent": "?",
+      "viewDetails": "View details"
+    },
+    "reassessmentBanner": {
+      "title": "Time for your periodic assessment",
+      "desc": "Update your skill ratings to keep your coaching data accurate.",
+      "cta": "Start Assessment"
+    },
+    "fullAssessmentButton": "Full skill assessment",
+    "activeSession": {
+      "title": "Active Session",
+      "objective": "Current Objective",
+      "game_one": "{{count}} game played this session",
+      "game_other": "{{count}} games played this session",
+      "continueButton": "Continue Session"
+    },
+    "noSession": {
+      "title": "Start a Session",
+      "desc": "Set an objective and start tracking your improvement.",
+      "button": "New Session"
+    },
+    "stats": {
+      "games": "Games",
+      "winRate": "Win Rate",
+      "avgKda": "Avg KDA",
+      "objSuccess": "Obj. Success"
+    },
+    "progress": "Progress",
+    "viewProgress": "View Progress",
+    "sessionProgress": {
+      "title": "Session objective progress",
+      "noData": "Play games and complete reviews to see your objective progression"
+    },
+    "statDiffs": {
+      "title": "Biggest stat changes",
+      "noData": "Need at least 2 snapshots — compute averages to track progression",
+      "vsSnap": "vs previous snapshot"
+    }
+  },
+  "session": {
+    "activeTitle": "Active Session",
+    "activeLock": "Your session is locked. Focus on your objective.",
+    "objectiveLabel": "Session Objective",
+    "gamesPlayed": "Games played:",
+    "reviewsCompleted": "Reviews completed:",
+    "reviewLatest": "Review Latest Game",
+    "endSession": "End Session",
+    "newSession": "New Session",
+    "chooseTitle": "Choose Your Objectives",
+    "chooseDesc": "Choose 1 to 3 objectives to focus on. The review form will show KPIs for all selected objectives.",
+    "chooseFull": "Pick 1 to 3 fundamentals to work on during this session. The post-game review will display KPIs for each selected objective.",
+    "fundamental": "Fundamental",
+    "fundamentalPlaceholder": "Select a fundamental to work on",
+    "maxReached": "max 3 reached",
+    "subcategory": "Subcategory (optional)",
+    "subcategoryAll": "All subcategories",
+    "note": "Personal Note (optional)",
+    "notePlaceholder": "Concrete explanation of the objective;\ne.g: die less to ganks and be more aggressive in lane.",
+    "sessionType": {
+      "title": "Session type",
+      "live": "Live session",
+      "liveDesc": "Games you're about to play — session stays active until you end it.",
+      "retroactive": "Late review",
+      "retroactiveDesc": "You already played these games — add them from your history to review them.",
+      "dateLabel": "Session date",
+      "datePlaceholder": "Select date"
+    },
+    "startButton": "Lock Objective & Start Session",
+    "startRetroButton": "Create review session",
+    "toast": {
+      "startedTitle": "Session started!",
+      "startedDesc": "Focus: {{label}}. Go play!",
+      "startError": "Failed to create session",
+      "endedTitle": "Session completed!",
+      "endedDesc": "Check Analytics to see your progress.",
+      "endError": "Failed to end session"
+    },
+    "endDialog": {
+      "title": "Session Analysis",
+      "subtitle": "How did it go? Reflect on your objectives, identify patterns.",
+      "placeholder": "Concrete feeling and analysis of the session relative to your objectives; identify recurring patterns if any — e.g.: I died less to ganks but I was too passive when ahead.",
+      "cancel": "Cancel",
+      "skip": "Skip",
+      "confirm": "End & Save"
+    },
+    "kpiSelection": {
+      "title": "KPIs to track",
+      "desc": "Select which KPIs you want to rate during each review. All are selected by default.",
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all",
+      "selected": "{{count}} KPI(s) selected"
+    },
+    "queueFilter": {
+      "title": "Queue filter",
+      "desc": "Only import and show games from the selected queue(s).",
+      "soloq": "Solo/Duo (Ranked)",
+      "flex": "Flex (Ranked)",
+      "both": "Both queues"
+    },
+    "gamesList": {
+      "title": "Games in this session",
+      "noGames": "No games yet. Import from your match history below.",
+      "delete": "Remove",
+      "deleteConfirm": "Confirm",
+      "deleteCancel": "Cancel"
+    }
+  },
+  "review": {
+    "noSession": {
+      "title": "No Active Session",
+      "desc": "Start a session first to review games.",
+      "button": "Start Session"
+    },
+    "waiting": {
+      "title": "Waiting for your next game to end...",
+      "desc": "The review page will open automatically when your game ends.",
+      "orImport": "Or import games you already played from your Riot match history:"
+    },
+    "sessionObjective": "Session objective:",
+    "gamePlayed_one": "{{count}} game played",
+    "gamePlayed_other": "{{count}} games played",
+    "gameReviewed_one": "{{count}} reviewed",
+    "gameReviewed_other": "{{count}} reviewed",
+    "title": "Post-Game Review",
+    "objective": "Objective:",
+    "victory": "Victory",
+    "defeat": "Defeat",
+    "stats": {
+      "kda": "KDA",
+      "cs": "CS",
+      "vision": "Vision",
+      "duration": "Duration",
+      "champion": "Champion"
+    },
+    "freeText": {
+      "label": "Thoughts & Feelings",
+      "placeholder": "How did the game feel overall? Any insights?",
+      "hint": "Free-form notes about the game (optional)"
+    },
+    "objectiveQuestion": "Did you respect your session objective this game?",
+    "autoScoring": {
+      "title": "Automatic KPI scoring",
+      "desc": "Enable automatic scoring for KPIs that can be inferred reliably from match stats and timeline rules. KPIs without a measurable correlation stay manual.",
+      "toggle": "Auto",
+      "loading": "Computing automatic scores...",
+      "coverage": "{{auto}} auto-filled KPI(s), {{manual}} manual KPI(s) still to rate",
+      "error": "Auto-scoring failed — match data may not be cached yet. Scores are manual."
+    },
+    "yes": "Yes",
+    "no": "No",
+    "reviewLater": "Review Later",
+    "saveButton": "Save Review",
+    "savedTitle": "Review Saved",
+    "playAnother": "Play Another Game",
+    "endSession": "End Session",
+    "bias": {
+      "toastTitle": "Potential scoring inconsistency detected",
+      "bannerTitle": "Self-rating check",
+      "bannerDesc": "Some high KPI scores look inconsistent with what happened in this match. Review the highlighted objective sections before saving.",
+      "generic": "One of your ratings looks optimistic compared with the match data.",
+      "rules": {
+        "earlyJungleGankDeaths": "You rated this objective highly, but you died {{count}} time(s) to enemy-jungler-involved lane ganks before 15 minutes.",
+        "lowVisionActivity": "You rated this objective highly, but this game had only {{wards}} wards placed and {{control}} control wards bought.",
+        "lowCsPerMin": "You rated this objective highly, but your CS/min was {{actual}} while the expected benchmark was about {{expected}}.",
+        "losingLaningState": "You rated this objective highly, but your lane state was poor at 15 minutes (gold diff {{goldDiff}}, CS diff {{csDiff}}).",
+        "lowVisionControl": "You rated this objective highly, but your vision control was weak this game ({{vsPerMin}} vision score/min, {{wardsDestroyed}} wards cleared).",
+        "lowSupportVision": "You rated this objective highly, but your support-style vision impact was low this game ({{vsPerMin}} vision score/min, {{control}} control wards bought).",
+        "lowSkillshotDodging": "You rated this objective highly, but you dodged few skillshots ({{dodged}} tracked) while dying {{deaths}} times.",
+        "highDeathsLowValue": "You rated this objective highly, but you died {{deaths}} times with only {{soloKills}} solo kill(s), suggesting poor fight selection or limit judgment.",
+        "lowRoamPresence": "You rated this objective highly, but your roam influence looked limited this game (kill participation {{kp}}%).",
+        "lowJungleInfluence": "You rated this objective highly, but your jungle impact looked low this game (kill participation {{kp}}%, objective damage share {{epic}}%).",
+        "lowObjectiveImpact": "You rated this objective highly, but your macro impact on objectives and structures was low (objective damage {{objectives}}, building damage {{buildings}}).",
+        "lowStructurePressure": "You rated this objective highly, but your structure pressure was low this game (building damage {{buildings}}).",
+        "lowCarryOutput": "You rated this objective highly, but your carry output was low relative to the game state (team damage share {{dmg}}%, deaths {{deaths}}).",
+        "lowTeamfightPresence": "You rated this objective highly, but your teamfight presence looked low this game (kill participation {{kp}}%).",
+        "lowTempoEfficiency": "You rated this objective highly, but your tempo conversion looked weak (CS/min {{cs}}, objective damage {{objective}}, building damage {{building}}).",
+        "highDangerZoneTime": "You rated this objective highly, but you spent {{pct}}% of your laning phase in the danger zone and died {{deaths}} time(s) before 15 minutes.",
+        "deathsInDangerZone": "You rated this objective highly, but {{danger}} of your {{total}} early deaths happened in the danger zone (near enemy tower).",
+        "missedTradeWindows": "You rated this objective highly, but you only traded in {{taken}} out of {{taken}}+{{missed}} windows when your opponent was CSing near you ({{ratio}}% conversion).",
+        "highDangerZoneTrading": "You rated this objective highly, but {{pct}}% of your laning damage came from the danger zone and you died {{deaths}} time(s) there — suggesting overaggressive positioning.",
+        "jungleDangerQuadrantDeaths": "You rated this objective highly, but you died {{deaths}} time(s) in enemy-priority jungle quadrants before 15 minutes."
+      }
+    },
+    "toast": {
+      "validationError": "Please answer the objective question",
+      "successTitle": "Review saved!",
+      "successXp": "+50 XP",
+      "reviewLaterTitle": "Game moved to To Be Reviewed",
+      "errorTitle": "Failed to save review"
+    }
+  },
+  "analytics": {
+    "title": "Analytics",
+    "subtitle": "Track your improvement over time",
+    "objectiveFilter": {
+      "label": "Filter objectives",
+      "all": "All"
+    },
+    "tabs": {
+      "progress": "Progress",
+      "gameHistory": "Game History",
+      "achievements": "Achievements",
+      "stats": "Stats"
+    },
+    "charts": {
+      "skillProgress": "Skill Progress Over Time",
+      "currentVsPrevious": "Current vs Previous Assessment",
+      "noAssessment": "No assessment data available",
+      "noGames": "No games recorded yet. Start a session and play!",
+      "noStats": "No statistics available yet. Play some games and review them!"
+    },
+    "game": {
+      "cs": "CS:",
+      "vision": "Vision:",
+      "objective": "Objective:",
+      "objSuccess": "Obj. ✓",
+      "objFail": "Obj. ✗"
+    },
+    "achievementsTitle": "Achievements",
+    "xp": "Experience",
+    "streak": "Streak",
+    "statsLabels": {
+      "totalGames": "Total Games",
+      "avgKda": "Avg KDA",
+      "avgCsMin": "Avg CS/min",
+      "avgVision": "Avg Vision",
+      "objSuccess": "Obj. Success",
+      "sessions": "Sessions",
+      "winRate": "Win Rate"
+    }
+  },
+  "history": {
+    "title": "History",
+    "subtitle": "Browse your match history and coaching sessions",
+    "loading": "Loading…",
+    "empty": "No sessions yet. Create your first session to start tracking.",
+    "tabs": {
+      "games": "Game History",
+      "sessions": "Sessions"
+    },
+    "gamesTab": {
+      "empty": "No recent games found. Play some games to see your history.",
+      "reviewed": "Reviewed",
+      "unreviewed": "Unreviewed",
+      "toBeReviewed": "To Be Reviewed",
+      "notImported": "Not imported",
+      "details": "Stats"
+    },
+    "status": {
+      "active": "Active",
+      "completed": "Completed"
+    },
+    "stats": {
+      "games": "Games",
+      "winRate": "Win Rate",
+      "objPct": "Obj. %",
+      "kda": "KDA",
+      "csMin": "CS/min"
+    },
+    "noGames": "No games recorded in this session yet.",
+    "win": "W",
+    "loss": "L",
+    "reviewButton": "Review",
+    "noReview": "No review",
+    "deleteSession": "Delete session",
+    "deleteGame": "Remove game from session",
+    "loadMore": "Load more games",
+    "page": "Page {{current}} / {{total}}",
+    "prevPage": "Previous",
+    "nextPage": "Next",
+    "matchup": "vs {{champion}}",
+    "confirmDelete": "Delete",
+    "cancelDelete": "Cancel",
+    "picker": {
+      "button": "Import from history",
+      "title": "Import games from Riot history",
+      "subtitle": "Select games to add to the current session",
+      "empty": "No recent games found.",
+      "alreadyImported": "Already imported",
+      "selectAll": "Select all",
+      "selectNone": "Clear",
+      "import": "Import {{count}} game(s)",
+      "importedTitle": "Games imported",
+      "importedDesc": "{{count}} game(s) added to the session.",
+      "importErrorTitle": "Import failed",
+      "errorTitle": "Could not fetch history"
+    }
+  },
+  "statsAvg": {
+    "title": "20-Game Averages",
+    "subtitle": "Average performance across your last 20 games — save a snapshot to track progression over time",
+    "navButton": "20-Game Averages",
+    "compute": "Compute & Save",
+    "empty": "No snapshots yet. Click \"Compute & Save\" to generate your first 20-game average.",
+    "progression": "Progression Over Time",
+    "winRate": "Win Rate",
+    "csMin": "CS/min",
+    "gpm": "Gold/min",
+    "dpm": "DMG/min",
+    "kp": "Kill Part.",
+    "vsMin": "VS/min",
+    "tabs": {
+      "averages": "20-Game Averages",
+      "progression": "Progression"
+    },
+    "progTable": {
+      "stat": "Stat",
+      "snapshot": "Snapshot {{n}}",
+      "diff": "Change",
+      "compareFrom": "Compare from",
+      "compareTo": "To",
+      "loadMore": "Load older snapshots"
+    },
+    "autoSnapshotDone_one": "{{count}} new snapshot computed automatically",
+    "autoSnapshotDone_other": "{{count}} new snapshots computed automatically",
+    "noProgressionData": "Need at least 2 snapshots to compare progression. Play 20+ games then come back here."
+  },
+  "detailedStats": {
+    "pageTitle": "Detailed Stats",
+    "pageSubtitle": "Select a game to view in-depth performance breakdown",
+    "loading": "Fetching detailed stats…",
+    "back": "Back",
+    "noData": "No stats available for this game.",
+    "noGames": "No recent games found. Play some games to see stats.",
+    "victory": "Victory",
+    "defeat": "Defeat",
+    "yes": "Yes",
+    "no": "No",
+    "diffLegend": {
+      "title": "Color legend",
+      "positive": "Green (+) = positive difference vs opponent",
+      "negative": "Red (−) = negative difference vs opponent",
+      "note": "Laning diffs compare your stats to your direct lane opponent at 15 minutes."
+    },
+    "laning": {
+      "title": "Laning Phase (@15 min)",
+      "shortGame": "Game ended before 15 minutes — laning stats unavailable.",
+      "gold15": "Gold @ 15",
+      "xp15": "XP @ 15",
+      "xpPerMin15": "XP / min @ 15",
+      "cs15": "CS @ 15",
+      "dmg15": "Damage @ 15",
+      "dpm15": "Damage / min @ 15",
+      "turretPlates15": "Turret Plates @ 15",
+      "firstBlood": "First Blood"
+    },
+    "economy": {
+      "title": "Economy & Resources",
+      "xp": "XP",
+      "xpPerMin": "XP / min",
+      "gpm": "Gold / min",
+      "cspm": "CS / min",
+      "teamGold": "% of Team Gold",
+      "csSplit": "CS Split",
+      "laneJungle": "lane / jungle",
+      "maxCsAdv": "Max CS Advantage"
+    },
+    "combat": {
+      "title": "Combat & Aggression",
+      "totalDamage": "Total Damage",
+      "kp": "Kill Participation",
+      "dpm": "Damage / min",
+      "teamDmg": "% of Team Damage",
+      "dmgPerGold": "Damage / Gold",
+      "soloKills": "Solo Kills",
+      "dmgTaken": "Damage Taken",
+      "dmgMitigated": "Damage Mitigated"
+    },
+    "objectives": {
+      "title": "Objectives & Macro",
+      "dmgEpic": "Epic Monster Damage",
+      "epicDmgPercent": "Epic Monster Damage Participation %",
+      "dmgBuild": "Damage to Buildings",
+      "ofTeam": "of team",
+      "stolen": "Objectives Stolen",
+      "firstTower": "First Tower",
+      "turretPlates": "Turret Plates Destroyed (Total)",
+      "inhibitors": "Inhibitor Takedowns"
+    },
+    "vision": {
+      "title": "Vision & Map Control",
+      "vsPerMin": "Vision Score / min",
+      "controlWards": "Control Wards Bought",
+      "wardsPlaced": "Wards Placed",
+      "wardsDestroyed": "Wards Destroyed",
+      "stealthWards": "Stealth Wards Placed",
+      "vsAdvantage": "Vision Score Advantage"
+    },
+    "behavioral": {
+      "title": "Behavioral Stats",
+      "skillshots": "Skillshots Dodged",
+      "killsNearTurret": "Kills Near Enemy Turret",
+      "outnumbered": "Outnumbered Kills",
+      "enemyJungle": "Takedowns in Enemy Jungle"
+    }
+  },
+  "gamification": {
+    "badges": {
+      "first_review": "First Steps",
+      "first_review_desc": "Complete your first game review",
+      "streak_3": "Warm Up",
+      "streak_3_desc": "Maintain a 3-day review streak",
+      "streak_7": "On Fire",
+      "streak_7_desc": "Maintain a 7-day review streak",
+      "streak_30": "Unstoppable",
+      "streak_30_desc": "Maintain a 30-day review streak",
+      "objective_5": "Focused",
+      "objective_5_desc": "Respect your session objective 5 times",
+      "objective_25": "Disciplined",
+      "objective_25_desc": "Respect your session objective 25 times",
+      "improvement_1": "Leveling Up",
+      "improvement_1_desc": "Improve a fundamental score by 1+ point",
+      "sessions_10": "Committed",
+      "sessions_10_desc": "Complete 10 sessions",
+      "sessions_50": "Veteran",
+      "sessions_50_desc": "Complete 50 sessions",
+      "rank_up": "Climber",
+      "rank_up_desc": "Rank up while using NexusMind",
+      "locked": "Locked"
+    },
+    "streak": {
+      "noStreak": "Start a streak by reviewing games daily",
+      "day_one": "{{count}} day",
+      "day_other": "{{count}} days",
+      "label30": "Incredible dedication!",
+      "label14": "Amazing consistency!",
+      "label7": "One week strong!",
+      "label3": "Building momentum!",
+      "label1": "Keep it going!"
+    },
+    "rankMilestone": {
+      "positive": "Congratulations on ranking up! Your hard work is paying off.",
+      "negative": "Don't worry — focus on your fundamentals. The rank will follow."
+    }
+  },
+  "ai": {
+    "reviewSummary": "AI Review Summary",
+    "sessionAnalysis": "AI Session Analysis",
+    "generateSummary": "Generate Summary",
+    "generateAnalysis": "Generate Analysis",
+    "summarizing": "Summarizing your review...",
+    "analyzing": "Analyzing session patterns...",
+    "retry": "Retry",
+    "regenerate": "Regenerate",
+    "summaryError": "Failed to generate summary",
+    "suggestion": {
+      "title": "AI Coach Suggestion",
+      "hint": "Not sure what to focus on? Let the AI analyze your assessment scores.",
+      "button": "Suggest Objective",
+      "loading": "Analyzing your scores...",
+      "tryAgain": "Try Again",
+      "getAnother": "Get Another",
+      "error": "Failed to get AI suggestion. Check your OpenAI API key."
+    }
+  },
+  "reviewForm": {
+    "kpi": {
+      "title": "KPI Scores",
+      "subtitle": "Rate your performance on each aspect of your objective this game",
+      "noKpis": "No KPIs defined for this objective.",
+      "autoBadge": "Auto",
+      "manualBadge": "Manual"
+    },
+    "timeline": {
+      "title": "Timeline Notes",
+      "subtitle": "Note key moments related to your objective — use the game timestamp",
+      "showGuide": "Show Guide",
+      "hideGuide": "Hide Guide",
+      "guideTitle": "How to write good timeline notes:",
+      "guideText": "Focus on decisions you made related to your session objective. What went right? What went wrong?",
+      "timePlaceholder": "M:SS",
+      "notePlaceholder": "What happened at this moment? What decision did you make?",
+      "addButton": "Add Timeline Note"
+    }
+  },
+  "fundamentalsGrid": {
+    "title": "Skills Assessment",
+    "subtitle": "Rate yourself honestly on each fundamental (1-10). This helps track your progress.",
+    "rated": "rated",
+    "prev": "Previous",
+    "next": "Next",
+    "complete": "Complete Assessment"
+  },
+  "skillSlider": {
+    "notRated": "Not rated",
+    "labels": {
+      "1": "Beginner",
+      "2": "Novice",
+      "3": "Intermediate",
+      "4": "Competent",
+      "5": "Advanced",
+      "6": "Expert"
+    }
+  },
+  "charts": {
+    "previous": "Previous",
+    "current": "Current",
+    "wins": "Wins",
+    "losses": "Losses",
+    "games": "games",
+    "noProgress": "Complete assessments to see your progress over time",
+    "noWinrate": "No games played yet",
+    "noAssessment": "No assessment data available"
+  },
+  "update": {
+    "availableTitle": "Update available",
+    "availableDesc": "A new version is being downloaded in the background.",
+    "readyTitle": "Update ready",
+    "readyDesc": "Restart the app to apply the update.",
+    "restart": "Restart now"
+  },
+  "dev": {
+    "badge": "DEV",
+    "title": "Dev Mode",
+    "quickNav": "Quick Nav",
+    "actions": "Actions",
+    "simulateGame": "Simulate Game End",
+    "refreshSession": "Refresh Session",
+    "toast": {
+      "simTitle": "Game simulated!",
+      "simDesc": "A fake game was added to your session. Review page will open.",
+      "simError": "Simulation failed",
+      "refreshed": "Session refreshed"
+    }
+  }
+}

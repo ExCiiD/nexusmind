@@ -1,0 +1,301 @@
+import { ipcMain } from 'electron'
+import { getPrisma } from '../database'
+import { tryUnlockBadge } from '../badgeUnlock'
+import { getMatchIds, getMatch, getMatchTimeline, extractPlayerStats } from '../riotClient'
+
+export function registerSessionHandlers() {
+  ipcMain.handle('session:create', async (_event, data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst()
+    if (!user) throw new Error('No user found')
+
+    // Only block active session creation for live sessions; retroactive can always be created
+    if (!data.isRetroactive) {
+      const existing = await prisma.session.findFirst({
+        where: { userId: user.id, status: 'active' },
+      })
+      if (existing) throw new Error('An active session already exists')
+    }
+
+    const ids = data.objectiveIds ?? [data.objectiveId]
+    const sessionDate = data.date ? new Date(data.date) : new Date()
+
+    const session = await prisma.session.create({
+      data: {
+        userId: user.id,
+        objectiveId: ids[0],
+        objectiveIds: JSON.stringify(ids),
+        selectedKpiIds: JSON.stringify(data.selectedKpiIds ?? []),
+        subObjective: data.subObjective,
+        customNote: data.customNote,
+        date: sessionDate,
+        // Retroactive sessions are immediately completed
+        status: data.isRetroactive ? 'completed' : 'active',
+      },
+      include: { games: { include: { review: true } } },
+    })
+
+    // Update streak
+    const now = new Date()
+    const lastActive = user.lastActiveDate
+    const dayDiff = lastActive
+      ? Math.floor((now.getTime() - lastActive.getTime()) / 86400000)
+      : 0
+
+    const newStreak = dayDiff <= 1 ? user.streakDays + (dayDiff === 1 ? 1 : 0) : 1
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { streakDays: newStreak, lastActiveDate: now },
+    })
+
+    if (newStreak >= 3) await tryUnlockBadge(user.id, 'streak_3')
+    if (newStreak >= 7) await tryUnlockBadge(user.id, 'streak_7')
+    if (newStreak >= 30) await tryUnlockBadge(user.id, 'streak_30')
+
+    return session
+  })
+
+  ipcMain.handle('session:get-active', async () => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst()
+    if (!user) return null
+
+    return prisma.session.findFirst({
+      where: { userId: user.id, status: 'active' },
+      include: {
+        games: {
+          include: { review: true },
+          orderBy: { gameEndAt: 'desc' },
+        },
+      },
+    })
+  })
+
+  ipcMain.handle('riot:fetch-match-history', async (_event, count = 10) => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst()
+    if (!user) throw new Error('No user found')
+
+    const accounts = await prisma.account.findMany({ where: { userId: user.id } })
+    const queueFilter = (user.queueFilter ?? 'both') as 'soloq' | 'flex' | 'both'
+
+    const allAccountPuuids = [
+      { puuid: user.puuid, region: user.region },
+      ...accounts.map((a) => ({ puuid: a.puuid, region: a.region })),
+    ]
+    const allPuuids = allAccountPuuids.map((a) => a.puuid)
+
+    const perAccount = await Promise.all(
+      allAccountPuuids.map(({ puuid, region }) =>
+        getMatchIds(puuid, region, Math.min(count, 20), 0, queueFilter).catch(() => [] as string[]),
+      ),
+    )
+    const merged = [...new Set(perAccount.flat())]
+    merged.sort((a, b) => {
+      const tsA = parseInt(a.split('_')[1] ?? '0', 10)
+      const tsB = parseInt(b.split('_')[1] ?? '0', 10)
+      return tsB - tsA
+    })
+    const matchIds = merged.slice(0, Math.min(count, 20))
+    if (matchIds.length === 0) return []
+
+    // Fetch each match in parallel (respect rate limit via built-in token bucket)
+    const results = await Promise.allSettled(
+      matchIds.map(async (id) => {
+        const existing = await prisma.game.findUnique({ where: { matchId: id } })
+        const matchData = await getMatch(id, user.region)
+        const puuid = allPuuids.find((p) =>
+          matchData.info?.participants?.some((pp: any) => pp.puuid === p),
+        ) ?? user.puuid
+        const stats = extractPlayerStats(matchData, puuid)
+        if (!stats) return null
+        return { ...stats, alreadyImported: !!existing }
+      }),
+    )
+
+    return results
+      .filter((r) => r.status === 'fulfilled' && r.value !== null)
+      .map((r) => (r as PromiseFulfilledResult<any>).value)
+  })
+
+  ipcMain.handle('session:import-games', async (_event, matchIds: string[]) => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst()
+    if (!user) throw new Error('No user found')
+
+    const activeSession = await prisma.session.findFirst({
+      where: { userId: user.id, status: 'active' },
+    })
+    if (!activeSession) throw new Error('No active session. Start a session first.')
+
+    // Gather all linked account puuids for multi-account support
+    const linkedAccounts = await prisma.account.findMany({ where: { userId: user.id } })
+    const allPuuids = [user.puuid, ...linkedAccounts.map((a) => a.puuid)]
+
+    const imported: any[] = []
+    for (const matchId of matchIds) {
+      const existing = await prisma.game.findUnique({ where: { matchId } })
+      if (existing) continue
+
+      try {
+        // Check cache first — avoids redundant API calls and cross-region issues
+        let matchData: any = null
+        const cached = await prisma.matchCache.findUnique({ where: { matchId } })
+        if (cached) {
+          matchData = JSON.parse(cached.matchJson)
+        } else {
+          // getMatch now derives the correct routing from the matchId prefix (EUW1_, NA1_, etc.)
+          matchData = await getMatch(matchId, user.region)
+          await prisma.matchCache.upsert({
+            where: { matchId },
+            create: { matchId, matchJson: JSON.stringify(matchData) },
+            update: { matchJson: JSON.stringify(matchData) },
+          })
+        }
+
+        // Resolve which account played this match across all linked puuids
+        const participants: any[] = matchData.info?.participants ?? []
+        const resolvedPuuid =
+          allPuuids.find((puuid) => participants.some((pp: any) => pp.puuid === puuid)) ?? null
+
+        if (!resolvedPuuid) {
+          console.warn(`[import] No matching puuid found for ${matchId}`)
+          continue
+        }
+        const stats = extractPlayerStats(matchData, resolvedPuuid)
+        if (!stats) {
+          console.warn(`[import] Could not extract stats for ${matchId} — player not found among known puuids`)
+          continue
+        }
+
+        let timelineData: any = cached?.timelineJson ? JSON.parse(cached.timelineJson) : null
+        if (!timelineData) {
+          try {
+            timelineData = await getMatchTimeline(matchId, user.region)
+            if (timelineData) {
+              await prisma.matchCache.upsert({
+                where: { matchId },
+                create: {
+                  matchId,
+                  matchJson: JSON.stringify(matchData),
+                  timelineJson: JSON.stringify(timelineData),
+                },
+                update: { timelineJson: JSON.stringify(timelineData) },
+              })
+            }
+          } catch {
+            // Timeline is optional
+          }
+        }
+
+        const game = await prisma.game.create({
+          data: {
+            sessionId: activeSession.id,
+            matchId: stats.matchId,
+            champion: stats.champion,
+            opponentChampion: stats.opponentChampion ?? null,
+            reviewStatus: 'pending',
+            role: stats.role,
+            kills: stats.kills,
+            deaths: stats.deaths,
+            assists: stats.assists,
+            cs: stats.cs,
+            visionScore: stats.visionScore,
+            duration: stats.duration,
+            win: stats.win,
+            gameEndAt: stats.gameEndAt,
+          },
+        })
+        imported.push(game)
+      } catch (err: any) {
+        console.error(`[import] Failed to import match ${matchId}:`, err)
+      }
+    }
+
+    return imported
+  })
+
+  ipcMain.handle('session:set-review-status', async (_event, gameId: string, reviewStatus: string) => {
+    const prisma = getPrisma()
+
+    if (!['pending', 'to_be_reviewed'].includes(reviewStatus)) {
+      throw new Error('Invalid review status')
+    }
+
+    const game = await prisma.game.findUnique({
+      where: { id: gameId },
+      include: { review: true },
+    })
+
+    if (!game) throw new Error('Game not found')
+    if (game.review) throw new Error('Reviewed games cannot be postponed')
+
+    return prisma.game.update({
+      where: { id: gameId },
+      data: { reviewStatus },
+      include: { review: true },
+    })
+  })
+
+  ipcMain.handle('session:end', async (_event, id: string, manualSummary?: string) => {
+    const prisma = getPrisma()
+
+    const session = await prisma.session.update({
+      where: { id },
+      data: {
+        status: 'completed',
+        ...(manualSummary ? { aiSummary: manualSummary } : {}),
+      },
+      include: {
+        games: { include: { review: true } },
+      },
+    })
+
+    const user = await prisma.user.findFirst()
+    if (user) {
+      const gamesPlayed = session.games.length
+      const reviewsCompleted = session.games.filter((g) => g.review).length
+      const xpGained = gamesPlayed * 25 + reviewsCompleted * 50
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { xp: user.xp + xpGained },
+      })
+
+      // Badges: sessions_10, sessions_50
+      const completedCount = await prisma.session.count({
+        where: { userId: user.id, status: 'completed' },
+      })
+      if (completedCount >= 10) await tryUnlockBadge(user.id, 'sessions_10')
+      if (completedCount >= 50) await tryUnlockBadge(user.id, 'sessions_50')
+    }
+
+    return session
+  })
+
+  ipcMain.handle('session:delete', async (_event, id: string) => {
+    const prisma = getPrisma()
+
+    const games = await prisma.game.findMany({
+      where: { sessionId: id },
+      select: { id: true },
+    })
+    const gameIds = games.map((g) => g.id)
+
+    if (gameIds.length > 0) {
+      await prisma.gameDetailedStats.deleteMany({ where: { gameId: { in: gameIds } } })
+      await prisma.review.deleteMany({ where: { gameId: { in: gameIds } } })
+      await prisma.game.deleteMany({ where: { sessionId: id } })
+    }
+
+    await prisma.session.delete({ where: { id } })
+    return { success: true }
+  })
+
+  ipcMain.handle('game:delete', async (_event, gameId: string) => {
+    const prisma = getPrisma()
+    await prisma.gameDetailedStats.deleteMany({ where: { gameId } })
+    await prisma.review.deleteMany({ where: { gameId } })
+    await prisma.game.delete({ where: { id: gameId } })
+    return { success: true }
+  })
+}

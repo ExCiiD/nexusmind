@@ -1,0 +1,619 @@
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "session": "Session",
+    "review": "Revue",
+    "history": "Historique",
+    "detailedStats": "Stats détaillées",
+    "analytics": "Statistiques",
+    "settings": "Paramètres"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "subtitle": "Gérer vos comptes et préférences",
+    "accounts": {
+      "title": "Comptes liés",
+      "desc": "Ajoutez plusieurs comptes League of Legends pour suivre vos parties sur tous vos comptes.",
+      "main": "Compte principal",
+      "secondary": "Compte secondaire",
+      "add": "Lier un nouveau compte",
+      "addDesc": "Entrez le Riot ID et la région du compte à ajouter.",
+      "gameName": "Nom de jeu",
+      "tagLine": "Tagline (ex. EUW)",
+      "region": "Région",
+      "addButton": "Lier le compte",
+      "addingButton": "Liaison…",
+      "remove": "Supprimer",
+      "removeConfirm": "Supprimer ce compte ?",
+      "removeCancel": "Annuler",
+      "empty": "Aucun compte secondaire lié.",
+      "addedToast": "Compte lié avec succès.",
+      "removedToast": "Compte supprimé.",
+      "errorDuplicate": "Ce compte est déjà lié.",
+      "errorMain": "Ce compte est votre compte principal."
+    }
+  },
+  "sidebar": {
+    "level": "Niveau",
+    "xp": "XP",
+    "dayStreak": "jour de série",
+    "dayStreaks": "jours de série",
+    "disconnectTitle": "Déconnecter le compte",
+    "disconnectError": "Échec de la déconnexion"
+  },
+  "onboarding": {
+    "tagline": "Configurez votre environnement de coaching",
+    "steps": {
+      "profile": "Votre profil",
+      "connect": "Connecter le compte",
+      "assessment": "Évaluation initiale"
+    }
+  },
+  "profileStep": {
+    "title": "Comment voulez-vous être appelé ?",
+    "subtitle": "Choisissez un nom à afficher dans l'application. Ça peut être un surnom, votre pseudo principal — comme vous voulez.",
+    "label": "Nom d'affichage",
+    "placeholder": "ex. Carry, BigJungle…",
+    "nextButton": "Continuer",
+    "error": "Veuillez entrer un nom."
+  },
+  "riotConnect": {
+    "title": "Connectez votre compte Riot",
+    "subtitle": "Entrez votre identifiant Riot Games pour lier votre compte et accéder à votre historique.",
+    "gameName": "Nom de joueur",
+    "gameNamePlaceholder": "Faker",
+    "tag": "Tag",
+    "tagPlaceholder": "KR1",
+    "region": "Région",
+    "regionPlaceholder": "Sélectionnez votre région",
+    "connectButton": "Connecter le compte",
+    "toast": {
+      "successTitle": "Compte connecté !",
+      "successDesc": "Bienvenue, {{name}}",
+      "errorTitle": "Échec de la connexion"
+    }
+  },
+  "assessment": {
+    "toast": {
+      "successTitle": "Évaluation terminée !",
+      "successDesc": "Bienvenue sur NexusMind. Commençons à progresser.",
+      "errorTitle": "Échec de l'enregistrement"
+    },
+    "saving": "Enregistrement de votre évaluation...",
+    "backToDashboard": "Retour au tableau de bord",
+    "title": "Réévaluation",
+    "subtitle": "Évaluez votre niveau actuel sur tous les fondamentaux. Cela met à jour vos graphiques de progression et vos suggestions d'objectifs.",
+    "rankNote": "Cela ne reflète pas votre niveau comme le ferait un rank — cela sert justement à vous positionner par rapport à votre rank actuel, et à définir les concepts fondamentaux qui font vos forces et vos faiblesses au moment de l'évaluation."
+  },
+  "dashboard": {
+    "welcome": "Bon retour,",
+    "subtitle": "Prêt à progresser ?",
+    "lastGame": {
+      "title": "Dernière partie",
+      "vs": "vs",
+      "noOpponent": "?",
+      "viewDetails": "Voir les stats"
+    },
+    "reassessmentBanner": {
+      "title": "C'est l'heure de votre évaluation périodique",
+      "desc": "Mettez à jour vos niveaux pour garder vos données de coaching précises.",
+      "cta": "Commencer l'évaluation"
+    },
+    "fullAssessmentButton": "Bilan complet des fondamentaux",
+    "activeSession": {
+      "title": "Session active",
+      "objective": "Objectif actuel",
+      "game_one": "{{count}} partie jouée cette session",
+      "game_other": "{{count}} parties jouées cette session",
+      "continueButton": "Continuer la session"
+    },
+    "noSession": {
+      "title": "Démarrer une session",
+      "desc": "Fixez un objectif et commencez à suivre votre progression.",
+      "button": "Nouvelle session"
+    },
+    "stats": {
+      "games": "Parties",
+      "winRate": "Taux de victoire",
+      "avgKda": "KDA moyen",
+      "objSuccess": "Obj. réussis"
+    },
+    "progress": "Progression",
+    "viewProgress": "Voir la progression",
+    "sessionProgress": {
+      "title": "Progression des objectifs de session",
+      "noData": "Jouez des parties et complétez des reviews pour voir la progression de vos objectifs"
+    },
+    "statDiffs": {
+      "title": "Plus grandes évolutions de stats",
+      "noData": "Il faut au moins 2 snapshots — calculez des moyennes pour suivre la progression",
+      "vsSnap": "vs snapshot précédent"
+    }
+  },
+  "session": {
+    "activeTitle": "Session active",
+    "activeLock": "Votre session est verrouillée. Concentrez-vous sur votre objectif.",
+    "objectiveLabel": "Objectif de session",
+    "gamesPlayed": "Parties jouées :",
+    "reviewsCompleted": "Revues complétées :",
+    "reviewLatest": "Revoir la dernière partie",
+    "endSession": "Terminer la session",
+    "newSession": "Nouvelle session",
+    "chooseTitle": "Choisir vos objectifs",
+    "chooseDesc": "Choisissez de 1 à 3 objectifs. Le formulaire de revue affichera les KPI de tous les objectifs sélectionnés.",
+    "chooseFull": "Sélectionnez 1 à 3 fondamentaux sur lesquels travailler. La revue post-partie affichera les KPI de chaque objectif sélectionné.",
+    "fundamental": "Fondamental",
+    "fundamentalPlaceholder": "Sélectionnez un fondamental",
+    "maxReached": "max 3 atteint",
+    "subcategory": "Sous-catégorie (optionnel)",
+    "subcategoryAll": "Toutes les sous-catégories",
+    "note": "Note personnelle (optionnel)",
+    "notePlaceholder": "Explication concrète de l'objectif ;\nex : moins mourir de gank et être plus agressif en lane.",
+    "sessionType": {
+      "title": "Type de session",
+      "live": "Session en direct",
+      "liveDesc": "Des parties que vous allez jouer — la session reste active jusqu'à ce que vous la terminiez.",
+      "retroactive": "Revue tardive",
+      "retroactiveDesc": "Vous avez déjà joué ces parties — importez-les depuis votre historique pour les analyser.",
+      "dateLabel": "Date de la session",
+      "datePlaceholder": "Sélectionnez une date"
+    },
+    "startButton": "Verrouiller l'objectif et démarrer",
+    "startRetroButton": "Créer la session de revue",
+    "toast": {
+      "startedTitle": "Session démarrée !",
+      "startedDesc": "Focus : {{label}}. À vous de jouer !",
+      "startError": "Échec du démarrage de la session",
+      "endedTitle": "Session terminée !",
+      "endedDesc": "Consultez les statistiques pour voir votre progression.",
+      "endError": "Échec de la fin de session"
+    },
+    "endDialog": {
+      "title": "Analyse de session",
+      "subtitle": "Comment ça s'est passé ? Réfléchissez à vos objectifs, identifiez les patterns.",
+      "placeholder": "Ressenti et analyse concrète de la session par rapport aux objectifs ; identification des patterns si il y'en a — ex : j'ai moins mourut de gank mais j'étais trop passif quand j'avais l'avantage.",
+      "cancel": "Annuler",
+      "skip": "Passer",
+      "confirm": "Terminer & sauvegarder"
+    },
+    "kpiSelection": {
+      "title": "KPIs à évaluer",
+      "desc": "Choisissez les KPIs que vous souhaitez noter lors de chaque revue. Tous sont sélectionnés par défaut.",
+      "selectAll": "Tout sélectionner",
+      "deselectAll": "Tout désélectionner",
+      "selected": "{{count}} KPI(s) sélectionné(s)"
+    },
+    "queueFilter": {
+      "title": "Filtre de file",
+      "desc": "N'importer et afficher que les parties de la file sélectionnée.",
+      "soloq": "Solo/Duo (Classé)",
+      "flex": "Flex (Classé)",
+      "both": "Les deux files"
+    },
+    "gamesList": {
+      "title": "Parties de cette session",
+      "noGames": "Aucune partie pour l'instant. Importez depuis votre historique ci-dessous.",
+      "delete": "Supprimer",
+      "deleteConfirm": "Confirmer",
+      "deleteCancel": "Annuler"
+    }
+  },
+  "review": {
+    "noSession": {
+      "title": "Aucune session active",
+      "desc": "Démarrez une session avant de revoir des parties.",
+      "button": "Démarrer une session"
+    },
+    "waiting": {
+      "title": "En attente de la fin de votre prochaine partie...",
+      "desc": "La page de revue s'ouvrira automatiquement à la fin de votre partie.",
+      "orImport": "Ou importez des parties déjà jouées depuis votre historique Riot :"
+    },
+    "sessionObjective": "Objectif de session :",
+    "gamePlayed_one": "{{count}} partie jouée",
+    "gamePlayed_other": "{{count}} parties jouées",
+    "gameReviewed_one": "{{count}} revue",
+    "gameReviewed_other": "{{count}} revues",
+    "title": "Revue post-partie",
+    "objective": "Objectif :",
+    "victory": "Victoire",
+    "defeat": "Défaite",
+    "stats": {
+      "kda": "KDA",
+      "cs": "CS",
+      "vision": "Vision",
+      "duration": "Durée",
+      "champion": "Champion"
+    },
+    "freeText": {
+      "label": "Impressions",
+      "placeholder": "Comment s'est passée la partie ? Des insights ?",
+      "hint": "Notes libres sur la partie (optionnel)"
+    },
+    "objectiveQuestion": "Avez-vous respecté votre objectif de session cette partie ?",
+    "autoScoring": {
+      "title": "Notation KPI automatique",
+      "desc": "Active la notation automatique pour les KPI qu'on peut déduire de façon fiable via les stats de partie et les règles de timeline. Les KPI sans corrélation mesurable restent manuels.",
+      "toggle": "Auto",
+      "loading": "Calcul des notes automatiques...",
+      "coverage": "{{auto}} KPI auto-rempli(s), {{manual}} KPI manuel(s) restant(s)",
+      "error": "Notation auto échouée — les données de match ne sont peut-être pas encore en cache. Notes en mode manuel."
+    },
+    "yes": "Oui",
+    "no": "Non",
+    "reviewLater": "Revoir plus tard",
+    "saveButton": "Enregistrer la revue",
+    "savedTitle": "Revue enregistrée",
+    "playAnother": "Jouer une autre partie",
+    "endSession": "Terminer la session",
+    "bias": {
+      "toastTitle": "Incohérence potentielle détectée",
+      "bannerTitle": "Vérification de l'auto-évaluation",
+      "bannerDesc": "Certaines notes élevées semblent incohérentes avec ce qui s'est passé dans la partie. Vérifiez les objectifs surlignés avant d'enregistrer.",
+      "generic": "L'une de vos notes semble optimiste par rapport aux données de la partie.",
+      "rules": {
+        "earlyJungleGankDeaths": "Vous avez bien noté cet objectif, mais vous êtes mort {{count}} fois sur des ganks de lane impliquant le jungler ennemi avant 15 minutes.",
+        "lowVisionActivity": "Vous avez bien noté cet objectif, mais cette partie ne montre que {{wards}} wards placées et {{control}} ward(s) de contrôle achetée(s).",
+        "lowCsPerMin": "Vous avez bien noté cet objectif, mais votre CS/min était de {{actual}} alors que le repère attendu est autour de {{expected}}.",
+        "losingLaningState": "Vous avez bien noté cet objectif, mais votre état de lane à 15 minutes était mauvais (écart d'or {{goldDiff}}, écart de CS {{csDiff}}).",
+        "lowVisionControl": "Vous avez bien noté cet objectif, mais votre contrôle de vision a été faible sur cette partie ({{vsPerMin}} score de vision/min, {{wardsDestroyed}} wards nettoyées).",
+        "lowSupportVision": "Vous avez bien noté cet objectif, mais votre impact vision de type support a été faible sur cette partie ({{vsPerMin}} score de vision/min, {{control}} ward(s) de contrôle achetée(s)).",
+        "lowSkillshotDodging": "Vous avez bien noté cet objectif, mais vous avez peu esquivé de skillshots ({{dodged}} suivis) tout en mourant {{deaths}} fois.",
+        "highDeathsLowValue": "Vous avez bien noté cet objectif, mais vous êtes mort {{deaths}} fois avec seulement {{soloKills}} solo kill(s), ce qui suggère une mauvaise sélection des fights ou une mauvaise lecture des limites.",
+        "lowRoamPresence": "Vous avez bien noté cet objectif, mais votre impact en roam semble faible sur cette partie (participation aux kills {{kp}}%).",
+        "lowJungleInfluence": "Vous avez bien noté cet objectif, mais votre impact jungle semble faible sur cette partie (participation aux kills {{kp}}%, part des dégâts objectifs {{epic}}%).",
+        "lowObjectiveImpact": "Vous avez bien noté cet objectif, mais votre impact macro sur les objectifs et structures a été faible (dégâts aux objectifs {{objectives}}, dégâts aux structures {{buildings}}).",
+        "lowStructurePressure": "Vous avez bien noté cet objectif, mais votre pression sur les structures a été faible sur cette partie (dégâts aux structures {{buildings}}).",
+        "lowCarryOutput": "Vous avez bien noté cet objectif, mais votre production de carry a été faible au vu de la partie (part des dégâts d'équipe {{dmg}}%, morts {{deaths}}).",
+        "lowTeamfightPresence": "Vous avez bien noté cet objectif, mais votre présence en teamfight semble faible sur cette partie (participation aux kills {{kp}}%).",
+        "lowTempoEfficiency": "Vous avez bien noté cet objectif, mais votre conversion du tempo semble faible (CS/min {{cs}}, dégâts aux objectifs {{objective}}, dégâts aux structures {{building}}).",
+        "highDangerZoneTime": "Vous avez bien noté cet objectif, mais vous avez passé {{pct}}% de votre phase de lane dans la zone de danger et êtes mort {{deaths}} fois avant 15 minutes.",
+        "deathsInDangerZone": "Vous avez bien noté cet objectif, mais {{danger}} de vos {{total}} morts early ont eu lieu dans la zone de danger (près de la tour ennemie).",
+        "missedTradeWindows": "Vous avez bien noté cet objectif, mais vous n'avez échangé que dans {{taken}} fenêtres sur {{taken}}+{{missed}} quand votre adversaire last-hit à côté de vous ({{ratio}}% de conversion).",
+        "highDangerZoneTrading": "Vous avez bien noté cet objectif, mais {{pct}}% de vos dégâts en lane venaient de la zone de danger et vous y êtes mort {{deaths}} fois — ce qui suggère un positionnement trop agressif.",
+        "jungleDangerQuadrantDeaths": "Vous avez bien noté cet objectif, mais vous êtes mort {{deaths}} fois dans des quadrants jungle sans priorité de lane avant 15 minutes."
+      }
+    },
+    "toast": {
+      "validationError": "Veuillez répondre à la question sur l'objectif",
+      "successTitle": "Revue enregistrée !",
+      "successXp": "+50 XP",
+      "reviewLaterTitle": "Partie déplacée en À revoir",
+      "errorTitle": "Échec de l'enregistrement"
+    }
+  },
+  "analytics": {
+    "title": "Statistiques",
+    "subtitle": "Suivez votre progression au fil du temps",
+    "objectiveFilter": {
+      "label": "Filtrer les objectifs",
+      "all": "Tous"
+    },
+    "tabs": {
+      "progress": "Progression",
+      "gameHistory": "Historique des parties",
+      "achievements": "Succès",
+      "stats": "Stats"
+    },
+    "charts": {
+      "skillProgress": "Progression des compétences",
+      "currentVsPrevious": "Actuel vs Évaluation précédente",
+      "noAssessment": "Aucune donnée d'évaluation disponible",
+      "noGames": "Aucune partie enregistrée. Démarrez une session et jouez !",
+      "noStats": "Aucune statistique disponible. Jouez des parties et révisez-les !"
+    },
+    "game": {
+      "cs": "CS :",
+      "vision": "Vision :",
+      "objective": "Objectif :",
+      "objSuccess": "Obj. ✓",
+      "objFail": "Obj. ✗"
+    },
+    "achievementsTitle": "Succès",
+    "xp": "Expérience",
+    "streak": "Série",
+    "statsLabels": {
+      "totalGames": "Total parties",
+      "avgKda": "KDA moyen",
+      "avgCsMin": "CS/min moyen",
+      "avgVision": "Vision moyenne",
+      "objSuccess": "Obj. réussis",
+      "sessions": "Sessions",
+      "winRate": "Taux de victoire"
+    }
+  },
+  "history": {
+    "title": "Historique",
+    "subtitle": "Parcourez votre historique de parties et sessions de coaching",
+    "loading": "Chargement…",
+    "empty": "Aucune session. Créez votre première session pour commencer.",
+    "tabs": {
+      "games": "Historique des parties",
+      "sessions": "Sessions"
+    },
+    "gamesTab": {
+      "empty": "Aucune partie récente. Jouez quelques parties pour voir votre historique.",
+      "reviewed": "Révisée",
+      "unreviewed": "Non révisée",
+      "toBeReviewed": "À revoir",
+      "notImported": "Non importée",
+      "details": "Stats"
+    },
+    "status": {
+      "active": "Active",
+      "completed": "Terminée"
+    },
+    "stats": {
+      "games": "Parties",
+      "winRate": "Victoires",
+      "objPct": "Obj. %",
+      "kda": "KDA",
+      "csMin": "CS/min"
+    },
+    "noGames": "Aucune partie enregistrée dans cette session.",
+    "win": "V",
+    "loss": "D",
+    "reviewButton": "Revue",
+    "noReview": "Sans revue",
+    "deleteSession": "Supprimer la session",
+    "deleteGame": "Retirer la partie de la session",
+    "loadMore": "Charger plus de parties",
+    "page": "Page {{current}} / {{total}}",
+    "prevPage": "Précédent",
+    "nextPage": "Suivant",
+    "matchup": "vs {{champion}}",
+    "confirmDelete": "Supprimer",
+    "cancelDelete": "Annuler",
+    "picker": {
+      "button": "Importer depuis l'historique",
+      "title": "Importer des parties depuis Riot",
+      "subtitle": "Sélectionnez des parties à ajouter à la session en cours",
+      "empty": "Aucune partie récente trouvée.",
+      "alreadyImported": "Déjà importée",
+      "selectAll": "Tout sélectionner",
+      "selectNone": "Effacer",
+      "import": "Importer {{count}} partie(s)",
+      "importedTitle": "Parties importées",
+      "importedDesc": "{{count}} partie(s) ajoutée(s) à la session.",
+      "importErrorTitle": "Échec de l'importation",
+      "errorTitle": "Impossible de récupérer l'historique"
+    }
+  },
+  "statsAvg": {
+    "title": "Moyennes sur 20 parties",
+    "subtitle": "Performance moyenne sur vos 20 dernières parties — sauvegardez un snapshot pour suivre la progression",
+    "navButton": "Moyennes 20 parties",
+    "compute": "Calculer & Sauvegarder",
+    "empty": "Aucun snapshot. Cliquez sur « Calculer & Sauvegarder » pour générer votre première moyenne.",
+    "progression": "Progression au fil du temps",
+    "winRate": "Taux de victoire",
+    "csMin": "CS/min",
+    "gpm": "Or/min",
+    "dpm": "DPM",
+    "kp": "Part. aux kills",
+    "vsMin": "VS/min",
+    "tabs": {
+      "averages": "Moyennes 20 parties",
+      "progression": "Progression"
+    },
+    "progTable": {
+      "stat": "Statistique",
+      "snapshot": "Snapshot {{n}}",
+      "diff": "Évolution",
+      "compareFrom": "Comparer depuis",
+      "compareTo": "Vers",
+      "loadMore": "Charger des snapshots plus anciens"
+    },
+    "autoSnapshotDone_one": "{{count}} snapshot calculé automatiquement",
+    "autoSnapshotDone_other": "{{count}} snapshots calculés automatiquement",
+    "noProgressionData": "Il faut au moins 2 snapshots pour comparer. Jouez 20+ parties et revenez ici."
+  },
+  "detailedStats": {
+    "pageTitle": "Stats détaillées",
+    "pageSubtitle": "Sélectionnez une partie pour voir l'analyse de performance",
+    "loading": "Récupération des stats détaillées…",
+    "back": "Retour",
+    "noData": "Aucune stat disponible pour cette partie.",
+    "noGames": "Aucune partie récente. Jouez quelques parties pour voir vos stats.",
+    "victory": "Victoire",
+    "defeat": "Défaite",
+    "yes": "Oui",
+    "no": "Non",
+    "diffLegend": {
+      "title": "Légende des couleurs",
+      "positive": "Vert (+) = différence positive par rapport à votre adversaire",
+      "negative": "Rouge (−) = différence négative par rapport à votre adversaire",
+      "note": "Les différences de lane comparent vos stats à celles de votre adversaire direct à 15 minutes."
+    },
+    "laning": {
+      "title": "Phase de lane (@15 min)",
+      "shortGame": "La partie s'est terminée avant 15 minutes — stats de lane indisponibles.",
+      "gold15": "Or @ 15",
+      "xp15": "XP @ 15",
+      "xpPerMin15": "XP / min @ 15",
+      "cs15": "CS @ 15",
+      "dmg15": "Dégâts @ 15",
+      "dpm15": "Dégâts / min @ 15",
+      "turretPlates15": "Plaques de tourelle @ 15",
+      "firstBlood": "Premier sang"
+    },
+    "economy": {
+      "title": "Économie & Ressources",
+      "xp": "XP",
+      "xpPerMin": "XP / min",
+      "gpm": "Or / min",
+      "cspm": "CS / min",
+      "teamGold": "% de l'or de l'équipe",
+      "csSplit": "Répartition CS",
+      "laneJungle": "lane / jungle",
+      "maxCsAdv": "Avantage CS max"
+    },
+    "combat": {
+      "title": "Combat & Agressivité",
+      "totalDamage": "Dégâts totaux",
+      "kp": "Participation aux kills",
+      "dpm": "Dégâts / min",
+      "teamDmg": "% des dégâts de l'équipe",
+      "dmgPerGold": "Dégâts / Or",
+      "soloKills": "Kills en solo",
+      "dmgTaken": "Dégâts subis",
+      "dmgMitigated": "Dégâts atténués"
+    },
+    "objectives": {
+      "title": "Objectifs & Macro",
+      "dmgEpic": "Dégâts aux monstres épiques",
+      "epicDmgPercent": "Participation dégâts monstres épiques %",
+      "dmgBuild": "Dégâts aux structures",
+      "ofTeam": "de l'équipe",
+      "stolen": "Objectifs volés",
+      "firstTower": "Première tourelle",
+      "turretPlates": "Plaques de tourelle détruites (total)",
+      "inhibitors": "Inhibiteurs détruits"
+    },
+    "vision": {
+      "title": "Vision & Contrôle de carte",
+      "vsPerMin": "Score de vision / min",
+      "controlWards": "Balises de contrôle achetées",
+      "wardsPlaced": "Balises posées",
+      "wardsDestroyed": "Balises détruites",
+      "stealthWards": "Balises furtives posées",
+      "vsAdvantage": "Avantage de score de vision"
+    },
+    "behavioral": {
+      "title": "Stats comportementales",
+      "skillshots": "Skillshots esquivés",
+      "killsNearTurret": "Kills près d'une tourelle ennemie",
+      "outnumbered": "Kills en infériorité numérique",
+      "enemyJungle": "Éliminations en jungle ennemie"
+    }
+  },
+  "gamification": {
+    "badges": {
+      "first_review": "Premiers pas",
+      "first_review_desc": "Compléter votre première revue de partie",
+      "streak_3": "Échauffement",
+      "streak_3_desc": "Maintenir une série de 3 jours",
+      "streak_7": "En feu",
+      "streak_7_desc": "Maintenir une série de 7 jours",
+      "streak_30": "Inarrêtable",
+      "streak_30_desc": "Maintenir une série de 30 jours",
+      "objective_5": "Concentré",
+      "objective_5_desc": "Respecter votre objectif de session 5 fois",
+      "objective_25": "Discipliné",
+      "objective_25_desc": "Respecter votre objectif de session 25 fois",
+      "improvement_1": "En progression",
+      "improvement_1_desc": "Améliorer un score fondamental de 1+ point",
+      "sessions_10": "Engagé",
+      "sessions_10_desc": "Compléter 10 sessions",
+      "sessions_50": "Vétéran",
+      "sessions_50_desc": "Compléter 50 sessions",
+      "rank_up": "Grimpeur",
+      "rank_up_desc": "Monter en rang avec NexusMind",
+      "locked": "Verrouillé"
+    },
+    "streak": {
+      "noStreak": "Commencez une série en faisant des revues quotidiennes",
+      "day_one": "{{count}} jour",
+      "day_other": "{{count}} jours",
+      "label30": "Dévouement incroyable !",
+      "label14": "Régularité impressionnante !",
+      "label7": "Une semaine de suite !",
+      "label3": "On prend de l'élan !",
+      "label1": "Continuez ainsi !"
+    },
+    "rankMilestone": {
+      "positive": "Félicitations pour votre montée en rang ! Votre travail porte ses fruits.",
+      "negative": "Ne vous inquiétez pas — concentrez-vous sur vos fondamentaux. Le rang suivra."
+    }
+  },
+  "ai": {
+    "reviewSummary": "Résumé IA de la revue",
+    "sessionAnalysis": "Analyse IA de la session",
+    "generateSummary": "Générer un résumé",
+    "generateAnalysis": "Générer une analyse",
+    "summarizing": "Résumé de votre revue en cours...",
+    "analyzing": "Analyse des tendances de session...",
+    "retry": "Réessayer",
+    "regenerate": "Régénérer",
+    "summaryError": "Échec de la génération du résumé",
+    "suggestion": {
+      "title": "Suggestion de l'IA Coach",
+      "hint": "Pas sûr de ce sur quoi vous concentrer ? Laissez l'IA analyser vos scores.",
+      "button": "Suggérer un objectif",
+      "loading": "Analyse de vos scores...",
+      "tryAgain": "Réessayer",
+      "getAnother": "Autre suggestion",
+      "error": "Échec de la suggestion IA. Vérifiez votre clé OpenAI."
+    }
+  },
+  "reviewForm": {
+    "kpi": {
+      "title": "Scores KPI",
+      "subtitle": "Évaluez votre performance sur chaque aspect de votre objectif cette partie",
+      "noKpis": "Aucun KPI défini pour cet objectif.",
+      "autoBadge": "Auto",
+      "manualBadge": "Manuel"
+    },
+    "timeline": {
+      "title": "Notes de timeline",
+      "subtitle": "Notez les moments clés liés à votre objectif — utilisez l'horodatage de la partie",
+      "showGuide": "Afficher le guide",
+      "hideGuide": "Masquer le guide",
+      "guideTitle": "Comment rédiger de bonnes notes de timeline :",
+      "guideText": "Concentrez-vous sur les décisions prises en rapport avec votre objectif. Qu'est-ce qui a bien fonctionné ? Qu'est-ce qui a mal tourné ?",
+      "timePlaceholder": "M:SS",
+      "notePlaceholder": "Que s'est-il passé à ce moment ? Quelle décision avez-vous prise ?",
+      "addButton": "Ajouter une note"
+    }
+  },
+  "fundamentalsGrid": {
+    "title": "Évaluation des compétences",
+    "subtitle": "Évaluez-vous honnêtement sur chaque fondamental (1-10). Cela permet de suivre votre progression.",
+    "rated": "évalués",
+    "prev": "Précédent",
+    "next": "Suivant",
+    "complete": "Terminer l'évaluation"
+  },
+  "skillSlider": {
+    "notRated": "Non évalué",
+    "labels": {
+      "1": "Débutant",
+      "2": "Novice",
+      "3": "Intermédiaire",
+      "4": "Compétent",
+      "5": "Avancé",
+      "6": "Expert"
+    }
+  },
+  "charts": {
+    "previous": "Précédent",
+    "current": "Actuel",
+    "wins": "Victoires",
+    "losses": "Défaites",
+    "games": "parties",
+    "noProgress": "Complétez des évaluations pour voir votre progression",
+    "noWinrate": "Aucune partie jouée",
+    "noAssessment": "Aucune donnée d'évaluation disponible"
+  },
+  "update": {
+    "availableTitle": "Mise à jour disponible",
+    "availableDesc": "Une nouvelle version est en cours de téléchargement.",
+    "readyTitle": "Mise à jour prête",
+    "readyDesc": "Redémarre l'application pour appliquer la mise à jour.",
+    "restart": "Redémarrer"
+  },
+  "dev": {
+    "badge": "DEV",
+    "title": "Mode Dev",
+    "quickNav": "Navigation rapide",
+    "actions": "Actions",
+    "simulateGame": "Simuler fin de partie",
+    "refreshSession": "Rafraîchir la session",
+    "toast": {
+      "simTitle": "Partie simulée !",
+      "simDesc": "Une fausse partie a été ajoutée. La page de revue va s'ouvrir.",
+      "simError": "Échec de la simulation",
+      "refreshed": "Session rafraîchie"
+    }
+  }
+}

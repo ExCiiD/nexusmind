@@ -1,0 +1,42 @@
+appId: com.nexusmind.app
+productName: NexusMind
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - node_modules/**/*
+  - prisma-client/**/*
+  - prisma/schema.prisma
+  - prisma/migrations/**/*
+
+asarUnpack:
+  - prisma-client/**/*
+  - node_modules/@prisma/engines/**/*
+  - node_modules/prisma/**/*
+
+publish:
+  provider: github
+  releaseType: release
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  sign: false
+  signingHashAlgorithms: []
+  forceCodeSigning: false
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: NexusMind

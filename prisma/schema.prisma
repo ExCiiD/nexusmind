@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../prisma-client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String       @id @default(cuid())
+  displayName        String       @default("")
+  summonerName       String
+  puuid              String       @unique
+  tagLine            String       @default("")
+  region             String
+  assessmentFreqDays Int          @default(14)
+  nextAssessmentAt   DateTime
+  xp                 Int          @default(0)
+  streakDays         Int          @default(0)
+  lastActiveDate     DateTime?
+  queueFilter        String       @default("both")
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  sessions           Session[]
+  assessments        Assessment[]
+  badges             Badge[]
+  accounts           Account[]
+}
+
+model Account {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  puuid       String   @unique
+  gameName    String
+  tagLine     String
+  region      String
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Assessment {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime          @default(now())
+  scores    AssessmentScore[]
+}
+
+model AssessmentScore {
+  id            String     @id @default(cuid())
+  assessmentId  String
+  assessment    Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  fundamentalId String
+  subcategoryId String?
+  score         Int
+
+  @@unique([assessmentId, fundamentalId, subcategoryId])
+}
+
+model Session {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date            DateTime @default(now())
+  objectiveId     String
+  objectiveIds    String   @default("[]")
+  selectedKpiIds  String   @default("[]")
+  subObjective    String?
+  customNote      String?
+  status          String   @default("active")
+  aiSummary       String?
+  games           Game[]
+
+  @@index([userId, status])
+}
+
+model Game {
+  id               String   @id @default(cuid())
+  sessionId        String
+  session          Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  matchId          String   @unique
+  champion         String
+  opponentChampion String?
+  reviewStatus     String   @default("pending")
+  role             String
+  kills            Int
+  deaths           Int
+  assists          Int
+  cs               Int
+  visionScore      Int
+  duration         Int
+  win              Boolean
+  rank             String?
+  lp               Int?
+  gameEndAt        DateTime
+  review           Review?
+  detailedStats    GameDetailedStats?
+
+  @@index([sessionId])
+}
+
+model GameDetailedStats {
+  id        String   @id @default(cuid())
+  gameId    String   @unique
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  stats     String
+  createdAt DateTime @default(now())
+}
+
+model MatchCache {
+  id           String   @id @default(cuid())
+  matchId      String   @unique
+  matchJson    String
+  timelineJson String?
+  createdAt    DateTime @default(now())
+}
+
+model Review {
+  id                 String   @id @default(cuid())
+  gameId             String   @unique
+  game               Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  timelineNotes      String
+  kpiScores          String
+  freeText           String?
+  aiSummary          String?
+  objectiveRespected Boolean
+  createdAt          DateTime @default(now())
+}
+
+model StatsSnapshot {
+  id           String   @id @default(cuid())
+  userId       String
+  stats        String
+  gameCount    Int
+  firstGameAt  DateTime
+  lastGameAt   DateTime
+  createdAt    DateTime @default(now())
+}
+
+model Badge {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId    String
+  unlockedAt DateTime @default(now())
+
+  @@unique([userId, badgeId])
+}
