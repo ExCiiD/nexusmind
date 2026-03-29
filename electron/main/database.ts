@@ -53,7 +53,16 @@ async function runMigrations(client: PrismaClient): Promise<void> {
       .filter((s) => s.length > 0)
 
     for (const stmt of statements) {
-      await client.$executeRawUnsafe(stmt)
+      try {
+        await client.$executeRawUnsafe(stmt)
+      } catch (err: any) {
+        const msg: string = err?.message ?? ''
+        if (msg.includes('duplicate column name') || msg.includes('already exists')) {
+          console.warn(`[db] Skipping already-applied statement in ${folder}:`, msg)
+        } else {
+          throw err
+        }
+      }
     }
 
     await client.$executeRawUnsafe(
