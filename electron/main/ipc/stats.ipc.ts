@@ -95,30 +95,71 @@ export function registerStatsHandlers() {
     const user = await prisma.user.findFirst({ include: { accounts: true } })
     if (!user) return { error: 'No user found in local database' }
 
-    const results: Record<string, any> = {
-      puuid: user.puuid,
+    const out: Record<string, any> = {
+      puuid: user.puuid.slice(0, 12) + '…',
       region: user.region,
       queueFilter: user.queueFilter ?? 'both',
-      accounts: user.accounts.map((a) => ({ puuid: a.puuid, region: a.region, gameName: a.gameName })),
     }
 
-    // Test each account against soloQ (420), flex (440), and no queue filter (any)
-    for (const acct of [{ puuid: user.puuid, region: user.region, label: 'main' }, ...user.accounts.map((a) => ({ ...a, label: a.gameName }))]) {
-      try {
-        const soloQ = await getMatchIds(acct.puuid, acct.region, 5, 0, 'soloq')
-        results[`${acct.label}_soloQ`] = soloQ.length
-      } catch (e: any) {
-        results[`${acct.label}_soloQ_error`] = e.message
-      }
-      try {
-        const flex = await getMatchIds(acct.puuid, acct.region, 5, 0, 'flex')
-        results[`${acct.label}_flex`] = flex.length
-      } catch (e: any) {
-        results[`${acct.label}_flex_error`] = e.message
+    // Step 1: get match IDs
+    let matchIds: string[] = []
+    try {
+      matchIds = await getMatchIds(user.puuid, user.region, 5, 0, 'soloq')
+      out['step1_soloQ_ids'] = matchIds.length
+    } catch (e: any) {
+      out['step1_soloQ_error'] = e.message
+    }
+    try {
+      const flex = await getMatchIds(user.puuid, user.region, 5, 0, 'flex')
+      out['step1_flex_ids'] = flex.length
+      if (matchIds.length === 0) matchIds = flex
+    } catch (e: any) {
+      out['step1_flex_error'] = e.message
+    }
+
+    if (matchIds.length === 0) {
+      out['step2_skip'] = 'no match IDs to test'
+      return out
+    }
+
+    const testId = matchIds[0]
+    out['step2_testing_matchId'] = testId
+
+    // Step 2: fetch full match data
+    let matchData: any
+    try {
+      matchData = await getMatch(testId, user.region)
+      out['step2_getMatch'] = 'OK'
+      out['step2_participantCount'] = matchData?.info?.participants?.length ?? 'missing info'
+      out['step2_gameDuration'] = matchData?.info?.gameDuration ?? 'missing'
+      out['step2_queueId'] = matchData?.info?.queueId ?? 'missing'
+    } catch (e: any) {
+      out['step2_getMatch_error'] = e.message
+      return out
+    }
+
+    // Step 3: resolve puuid
+    const participants: any[] = matchData?.info?.participants ?? []
+    const puuidFound = participants.some((p: any) => p.puuid === user.puuid)
+    out['step3_puuid_in_match'] = puuidFound ? 'YES' : 'NO'
+    if (!puuidFound) {
+      out['step3_participant_puuids_sample'] = participants.slice(0, 3).map((p: any) => p.puuid?.slice(0, 12) + '…')
+      out['step3_stored_puuid'] = user.puuid.slice(0, 12) + '…'
+    }
+
+    // Step 4: extract stats
+    if (puuidFound) {
+      const stats = extractPlayerStats(matchData, user.puuid)
+      out['step4_extractStats'] = stats ? 'OK' : 'NULL (extraction failed)'
+      if (stats) {
+        out['step4_duration_seconds'] = stats.duration
+        out['step4_passes_300s_filter'] = (stats.duration ?? 0) >= 300 ? 'YES' : `NO (${stats.duration}s)`
+        out['step4_champion'] = stats.champion
+        out['step4_role'] = stats.role
       }
     }
 
-    return results
+    return out
   })
 
   ipcMain.handle(
@@ -140,7 +181,6 @@ export function registerStatsHandlers() {
           if (cached) {
             matchData = JSON.parse(cached.matchJson)
           } else {
-            // Determine region: try user's region first, then account regions
             const regionToTry = user.region
             matchData = await getMatch(id, regionToTry)
             await prisma.matchCache.upsert({
