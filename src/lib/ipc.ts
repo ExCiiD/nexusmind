@@ -50,7 +50,6 @@ export type NexusMindAPI = {
   }>>
   importGamesToSession: (matchIds: string[]) => Promise<any[]>
 
-  diagnoseStats: () => Promise<Record<string, any>>
   getMatchHistoryWithStatus: (count?: number) => Promise<Array<{
     gameId: string | null
     matchId: string

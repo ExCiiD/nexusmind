@@ -8,9 +8,6 @@ import {
   extractDetailedStats,
 } from '../riotClient'
 
-// Debug: capture last stats:match-history execution details
-let lastMatchHistoryDebug: Record<string, any> = { status: 'never_called' }
-
 /** Fetch match IDs from the main user + all linked accounts, merged and sorted. */
 async function getAggregatedMatchIds(
   user: { puuid: string; region: string; queueFilter?: string | null },
@@ -93,234 +90,59 @@ function hasCurrentSnapshotSchema(parsed: any): boolean {
 }
 
 export function registerStatsHandlers() {
-  ipcMain.handle('stats:diagnose', async () => {
-    const prisma = getPrisma()
-    const user = await prisma.user.findFirst({ include: { accounts: true } })
-    if (!user) return { error: 'No user found in local database' }
+  ipcMain.handle(
+    'stats:match-history',
+    async (_event, count = 20) => {
+      const prisma = getPrisma()
+      const user = await prisma.user.findFirst()
+      if (!user) throw new Error('No user found')
 
-    const out: Record<string, any> = {
-      puuid: user.puuid.slice(0, 12) + '…',
-      region: user.region,
-      queueFilter: user.queueFilter ?? 'both',
-    }
-
-    // Step 1: get match IDs
-    let matchIds: string[] = []
-    try {
-      matchIds = await getMatchIds(user.puuid, user.region, 5, 0, 'soloq')
-      out['step1_soloQ_ids'] = matchIds.length
-    } catch (e: any) {
-      out['step1_soloQ_error'] = e.message
-    }
-    try {
-      const flex = await getMatchIds(user.puuid, user.region, 5, 0, 'flex')
-      out['step1_flex_ids'] = flex.length
-      if (matchIds.length === 0) matchIds = flex
-    } catch (e: any) {
-      out['step1_flex_error'] = e.message
-    }
-
-    if (matchIds.length === 0) {
-      out['step2_skip'] = 'no match IDs to test'
-      return out
-    }
-
-    const testId = matchIds[0]
-    out['step2_testing_matchId'] = testId
-
-    // Step 2: fetch full match data
-    let matchData: any
-    try {
-      matchData = await getMatch(testId, user.region)
-      out['step2_getMatch'] = 'OK'
-      out['step2_participantCount'] = matchData?.info?.participants?.length ?? 'missing info'
-      out['step2_gameDuration'] = matchData?.info?.gameDuration ?? 'missing'
-      out['step2_queueId'] = matchData?.info?.queueId ?? 'missing'
-    } catch (e: any) {
-      out['step2_getMatch_error'] = e.message
-      return out
-    }
-
-    // Step 3: resolve puuid
-    const participants: any[] = matchData?.info?.participants ?? []
-    const puuidFound = participants.some((p: any) => p.puuid === user.puuid)
-    out['step3_puuid_in_match'] = puuidFound ? 'YES' : 'NO'
-    if (!puuidFound) {
-      out['step3_participant_puuids_sample'] = participants.slice(0, 3).map((p: any) => p.puuid?.slice(0, 12) + '…')
-      out['step3_stored_puuid'] = user.puuid.slice(0, 12) + '…'
-    }
-
-    // Step 4: extract stats
-    if (puuidFound) {
-      const stats = extractPlayerStats(matchData, user.puuid)
-      out['step4_extractStats'] = stats ? 'OK' : 'NULL (extraction failed)'
-      if (stats) {
-        out['step4_duration_seconds'] = stats.duration
-        out['step4_passes_300s_filter'] = (stats.duration ?? 0) >= 300 ? 'YES' : `NO (${stats.duration}s)`
-        out['step4_champion'] = stats.champion
-        out['step4_role'] = stats.role
-      }
-    }
-
-    // Step 5: run THE EXACT stats:match-history logic
-    try {
       const accounts = await prisma.account.findMany({ where: { userId: user.id } })
-      out['step5_accounts'] = accounts.length
+      const { matchIds, allPuuids } = await getAggregatedMatchIds(user, accounts, Math.min(count, 50))
+      if (matchIds.length === 0) return []
 
-      const { matchIds: realIds, allPuuids: realPuuids } = await getAggregatedMatchIds(user, accounts, 50)
-      out['step5_aggregated_ids'] = realIds.length
-      out['step5_sample_ids'] = realIds.slice(0, 2).join(', ')
-
-      if (realIds.length === 0) {
-        out['step5_result'] = 'EMPTY: getAggregatedMatchIds returned 0'
-        return out
-      }
-
-      const testBatch = realIds.slice(0, 3)
       const results = await Promise.allSettled(
-        testBatch.map(async (id: string) => {
+        matchIds.map(async (id: string) => {
           let matchData: any
+
           const cached = await prisma.matchCache.findUnique({ where: { matchId: id } })
           if (cached) {
             matchData = JSON.parse(cached.matchJson)
           } else {
-            matchData = await getMatch(id, user.region)
+            const regionToTry = user.region
+            matchData = await getMatch(id, regionToTry)
             await prisma.matchCache.upsert({
               where: { matchId: id },
               create: { matchId: id, matchJson: JSON.stringify(matchData) },
               update: {},
             })
           }
-          const rp = resolvePuuid(matchData, realPuuids)
-          if (!rp) return null
-          const stats = extractPlayerStats(matchData, rp)
+
+          const puuid = resolvePuuid(matchData, allPuuids)
+          if (!puuid) return null
+          const stats = extractPlayerStats(matchData, puuid)
           if (!stats) return null
+
+          const dbGame = await prisma.game.findUnique({
+            where: { matchId: id },
+            include: { review: true },
+          })
+
           return {
-            gameId: null,
+            gameId: dbGame?.id ?? null,
             ...stats,
-            imported: false,
-            reviewed: false,
-            reviewStatus: 'pending' as const,
-            accountName: user.summonerName,
+            imported: !!dbGame,
+            reviewed: !!dbGame?.review,
+            reviewStatus: dbGame?.reviewStatus ?? (dbGame?.review ? 'reviewed' : 'pending'),
+            accountName: resolveAccountName(puuid, user, accounts),
           }
-        })
+        }),
       )
 
-      const fulfilled = results.filter((r) => r.status === 'fulfilled' && r.value !== null)
-      const rejected = results.filter((r) => r.status === 'rejected')
-      out['step5_fulfilled'] = fulfilled.length
-      out['step5_rejected'] = rejected.length
-      if (rejected.length > 0) {
-        out['step5_reject_reason'] = (rejected[0] as PromiseRejectedResult).reason?.message ?? String((rejected[0] as PromiseRejectedResult).reason)
-      }
-
-      const mapped = fulfilled.map((r) => (r as PromiseFulfilledResult<any>).value)
-      const passDuration = mapped.filter((g: any) => (g.duration ?? 0) >= 300)
-      out['step5_pass_duration'] = passDuration.length
-
-      // Test IPC serialization: gameEndAt is a Date object — check if it survives
-      if (passDuration.length > 0) {
-        const sample = passDuration[0]
-        out['step5_gameEndAt_type'] = typeof sample.gameEndAt
-        out['step5_gameEndAt_isDate'] = sample.gameEndAt instanceof Date
-        out['step5_gameEndAt_val'] = String(sample.gameEndAt).slice(0, 30)
-        try {
-          const serialized = JSON.parse(JSON.stringify(passDuration[0]))
-          out['step5_serializes'] = 'YES'
-          out['step5_serialized_keys'] = Object.keys(serialized).length
-        } catch (e: any) {
-          out['step5_serializes'] = `NO: ${e.message}`
-        }
-      }
-    } catch (e: any) {
-      out['step5_error'] = e.message
-    }
-
-    // Step 6: show what the ACTUAL stats:match-history call did
-    for (const [k, v] of Object.entries(lastMatchHistoryDebug)) {
-      out[`real_${k}`] = String(v)
-    }
-
-    return out
-  })
-
-  ipcMain.handle(
-    'stats:match-history',
-    async (_event, count = 20) => {
-      lastMatchHistoryDebug = { status: 'running', calledAt: new Date().toISOString(), count }
-      try {
-        const prisma = getPrisma()
-        const user = await prisma.user.findFirst()
-        if (!user) throw new Error('No user found')
-
-        const accounts = await prisma.account.findMany({ where: { userId: user.id } })
-        const { matchIds, allPuuids } = await getAggregatedMatchIds(user, accounts, Math.min(count, 50))
-        lastMatchHistoryDebug.matchIdsCount = matchIds.length
-        if (matchIds.length === 0) {
-          lastMatchHistoryDebug.status = 'done_empty_ids'
-          return []
-        }
-
-        const results = await Promise.allSettled(
-          matchIds.map(async (id: string) => {
-            let matchData: any
-
-            const cached = await prisma.matchCache.findUnique({ where: { matchId: id } })
-            if (cached) {
-              matchData = JSON.parse(cached.matchJson)
-            } else {
-              const regionToTry = user.region
-              matchData = await getMatch(id, regionToTry)
-              await prisma.matchCache.upsert({
-                where: { matchId: id },
-                create: { matchId: id, matchJson: JSON.stringify(matchData) },
-                update: {},
-              })
-            }
-
-            const puuid = resolvePuuid(matchData, allPuuids)
-            if (!puuid) return null
-            const stats = extractPlayerStats(matchData, puuid)
-            if (!stats) return null
-
-            const dbGame = await prisma.game.findUnique({
-              where: { matchId: id },
-              include: { review: true },
-            })
-
-            return {
-              gameId: dbGame?.id ?? null,
-              ...stats,
-              imported: !!dbGame,
-              reviewed: !!dbGame?.review,
-              reviewStatus: dbGame?.reviewStatus ?? (dbGame?.review ? 'reviewed' : 'pending'),
-              accountName: resolveAccountName(puuid, user, accounts),
-            }
-          }),
-        )
-
-        const fulfilled = results.filter((r) => r.status === 'fulfilled' && r.value !== null)
-        const rejected = results.filter((r) => r.status === 'rejected')
-        lastMatchHistoryDebug.totalSettled = results.length
-        lastMatchHistoryDebug.fulfilled = fulfilled.length
-        lastMatchHistoryDebug.rejected = rejected.length
-        if (rejected.length > 0) {
-          lastMatchHistoryDebug.firstRejectReason = (rejected[0] as PromiseRejectedResult).reason?.message ?? String((rejected[0] as PromiseRejectedResult).reason)
-        }
-
-        const final = fulfilled
-          .map((r) => (r as PromiseFulfilledResult<any>).value)
-          .filter((g: any) => (g.duration ?? 0) >= 300)
-
-        lastMatchHistoryDebug.afterDurationFilter = final.length
-        lastMatchHistoryDebug.status = 'done'
-        lastMatchHistoryDebug.finishedAt = new Date().toISOString()
-        return final
-      } catch (err: any) {
-        lastMatchHistoryDebug.status = 'error'
-        lastMatchHistoryDebug.error = err?.message ?? String(err)
-        throw err
-      }
+      return results
+        .filter((r) => r.status === 'fulfilled' && r.value !== null)
+        .map((r) => (r as PromiseFulfilledResult<any>).value)
+        .filter((g: any) => (g.duration ?? 0) >= 300)
     },
   )
 
