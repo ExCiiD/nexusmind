@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
 import { tryUnlockBadge } from '../badgeUnlock'
 import { getMatchIds, getMatch, getMatchTimeline, extractPlayerStats } from '../riotClient'
+import { syncStudentData } from './sync.ipc'
 
 export function registerSessionHandlers() {
   ipcMain.handle('session:create', async (_event, data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) => {
@@ -268,6 +269,9 @@ export function registerSessionHandlers() {
       if (completedCount >= 10) await tryUnlockBadge(user.id, 'sessions_10')
       if (completedCount >= 50) await tryUnlockBadge(user.id, 'sessions_50')
     }
+
+    // Background sync to Supabase
+    syncStudentData().catch(() => {})
 
     return session
   })

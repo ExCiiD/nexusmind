@@ -29,6 +29,8 @@ import {
 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { formatGameTime, formatKDA, formatCSPerMin } from '@/lib/utils'
+import { GameRecordingPanel } from '@/components/Recording/GameRecordingPanel'
+import { CoachComments } from '@/components/Coach/CoachComments'
 
 export function ReviewPage() {
   const { t } = useTranslation()
@@ -36,6 +38,7 @@ export function ReviewPage() {
   const refreshSession = useSessionStore((s) => s.refreshSession)
   const loadActiveSession = useSessionStore((s) => s.loadActiveSession)
   const clearGameEndData = useUserStore((s) => s.clearGameEndData)
+  const user = useUserStore((s) => s.user)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const requestedGameId = searchParams.get('gameId')
@@ -342,6 +345,9 @@ export function ReviewPage() {
         <StatPill icon={Clock} label={t('review.stats.duration')} value={formatGameTime(latestGame.duration)} />
       </div>
 
+      {/* Recording panel */}
+      <GameRecordingPanel gameId={latestGame.id} />
+
       {Object.keys(biasWarningsByObjective).length > 0 && (
         <Card className="border-orange-500/40 bg-orange-500/5">
           <CardContent className="flex items-start gap-3 p-4">
@@ -408,6 +414,15 @@ export function ReviewPage() {
           {t('review.saveButton')}
         </Button>
       </div>
+
+      {/* Coach comments on this game's review */}
+      {latestGame.review && user?.supabaseUid && (
+        <CoachComments
+          targetType="review"
+          targetId={latestGame.review.id}
+          studentSupabaseId={user.supabaseUid}
+        />
+      )}
     </div>
   )
 }

@@ -13,6 +13,9 @@ interface User {
   streakDays: number
   lastActiveDate: string | null
   createdAt: string
+  role: string
+  supabaseUid: string | null
+  supabaseEmail: string | null
 }
 
 interface UserStore {

@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
 import { tryUnlockBadge } from '../badgeUnlock'
 import { extractDetailedStats, getMatch, getMatchTimeline } from '../riotClient'
+import { syncStudentData } from './sync.ipc'
 
 export function registerReviewHandlers() {
   ipcMain.handle(
@@ -63,6 +64,9 @@ export function registerReviewHandlers() {
         if (respectedCount >= 5) await tryUnlockBadge(user.id, 'objective_5')
         if (respectedCount >= 25) await tryUnlockBadge(user.id, 'objective_25')
       }
+
+      // Background sync to Supabase
+      syncStudentData().catch(() => {})
 
       return review
     },

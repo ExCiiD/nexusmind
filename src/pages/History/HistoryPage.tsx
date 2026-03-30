@@ -22,6 +22,7 @@ import {
   FileSearch,
   Trash2,
   User,
+  Video,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -524,7 +525,12 @@ function GameRow({ game, index, onDelete }: { game: GameEntry; index: number; on
   const [reviewExpanded, setReviewExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [hasRecording, setHasRecording] = useState(false)
   const csPerMin = game.duration > 0 ? (game.cs / (game.duration / 60)).toFixed(1) : '0'
+
+  useEffect(() => {
+    window.api.getRecording(game.id).then((r) => setHasRecording(!!r)).catch(() => {})
+  }, [game.id])
 
   const handleDelete = async () => {
     setDeleting(true)
@@ -602,6 +608,12 @@ function GameRow({ game, index, onDelete }: { game: GameEntry; index: number; on
               <FileSearch className="h-3 w-3" />
               {t('history.gamesTab.unreviewed')}
             </button>
+          )}
+
+          {hasRecording && (
+            <span title="Has recording" className="flex items-center text-hextech-cyan">
+              <Video className="h-3.5 w-3.5" />
+            </span>
           )}
 
           {game.review && (

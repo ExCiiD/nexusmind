@@ -95,6 +95,40 @@ export type NexusMindAPI = {
   onUpdateAvailable: (cb: () => void) => void
   onUpdateDownloaded: (cb: () => void) => void
   installUpdate: () => Promise<void>
+
+  // Coach / Supabase auth
+  supabaseSignIn: (email: string, password: string) => Promise<{ uid: string; email?: string }>
+  supabaseSignUp: (email: string, password: string) => Promise<{ uid: string; email?: string; needsConfirmation: boolean }>
+  supabaseSignOut: () => Promise<{ success: boolean }>
+  getSupabaseSession: () => Promise<{ uid: string; email?: string } | null>
+  setRole: (role: string) => Promise<any>
+
+  // Invite system
+  generateInvite: () => Promise<{ code: string; link: string }>
+  redeemInvite: (code: string) => Promise<{ coachName: string }>
+  listCoaches: () => Promise<Array<{ relationId: string; displayName: string; puuid: string }>>
+  listStudents: () => Promise<Array<{ relationId: string; supabaseId: string; displayName: string; puuid: string }>>
+
+  // Student data for coach
+  getStudentSessions: (studentSupabaseId: string) => Promise<any[]>
+  getStudentAssessments: (studentSupabaseId: string) => Promise<any[]>
+
+  // Coach comments
+  addCoachComment: (data: { studentSupabaseId: string; targetType: 'session' | 'game' | 'review'; targetId: string; content: string }) => Promise<any>
+  updateCoachComment: (commentId: string, content: string) => Promise<any>
+  deleteCoachComment: (commentId: string) => Promise<{ success: boolean }>
+  getCoachComments: (targetType: string, targetId: string) => Promise<any[]>
+
+  // Sync
+  syncToSupabase: () => Promise<{ success: boolean }>
+
+  // Recording
+  scanRecordings: () => Promise<{ scanned: number; matched: number; paths: Array<{ source: string; dir: string; exists: boolean }> }>
+  getRecording: (gameId: string) => Promise<{ id: string; gameId: string; filePath: string | null; youtubeUrl: string | null; source: string } | null>
+  linkRecordingFile: (gameId: string) => Promise<any>
+  setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => Promise<any>
+  deleteRecording: (gameId: string) => Promise<{ success: boolean }>
+  getRecordingScanPaths: () => Promise<Array<{ source: string; dir: string; exists: boolean }>>
 }
 
 export interface DetailedGameStats {

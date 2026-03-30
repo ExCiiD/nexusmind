@@ -12,6 +12,9 @@ import { registerAIHandlers } from './ipc/ai.ipc'
 import { registerStatsHandlers } from './ipc/stats.ipc'
 import { registerAccountHandlers } from './ipc/account.ipc'
 import { registerDevHandlers } from './ipc/dev.ipc'
+import { registerCoachHandlers } from './ipc/coach.ipc'
+import { registerSyncHandlers } from './ipc/sync.ipc'
+import { registerRecordingHandlers } from './ipc/recording.ipc'
 
 let mainWindow: BrowserWindow | null = null
 let gameDetector: GameDetector | null = null
@@ -70,6 +73,9 @@ async function bootstrap() {
   registerAIHandlers()
   registerStatsHandlers()
   registerAccountHandlers()
+  registerCoachHandlers()
+  registerSyncHandlers()
+  registerRecordingHandlers()
 
   createWindow()
   registerDevHandlers(mainWindow!)

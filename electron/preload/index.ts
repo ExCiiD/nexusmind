@@ -85,6 +85,41 @@ const api = {
   onUpdateAvailable: (cb: () => void) => ipcRenderer.on('updater:update-available', cb),
   onUpdateDownloaded: (cb: () => void) => ipcRenderer.on('updater:update-downloaded', cb),
   installUpdate: () => ipcRenderer.invoke('updater:install-now'),
+
+  // Coach / Supabase auth
+  supabaseSignIn: (email: string, password: string) => ipcRenderer.invoke('coach:supabase-signin', email, password),
+  supabaseSignUp: (email: string, password: string) => ipcRenderer.invoke('coach:supabase-signup', email, password),
+  supabaseSignOut: () => ipcRenderer.invoke('coach:supabase-signout'),
+  getSupabaseSession: () => ipcRenderer.invoke('coach:get-session'),
+  setRole: (role: string) => ipcRenderer.invoke('coach:set-role', role),
+
+  // Invite system
+  generateInvite: () => ipcRenderer.invoke('coach:generate-invite'),
+  redeemInvite: (code: string) => ipcRenderer.invoke('coach:redeem-invite', code),
+  listCoaches: () => ipcRenderer.invoke('coach:list-coaches'),
+  listStudents: () => ipcRenderer.invoke('coach:list-students'),
+
+  // Student data for coach
+  getStudentSessions: (studentSupabaseId: string) => ipcRenderer.invoke('coach:get-student-sessions', studentSupabaseId),
+  getStudentAssessments: (studentSupabaseId: string) => ipcRenderer.invoke('coach:get-student-assessments', studentSupabaseId),
+
+  // Coach comments
+  addCoachComment: (data: { studentSupabaseId: string; targetType: 'session' | 'game' | 'review'; targetId: string; content: string }) =>
+    ipcRenderer.invoke('coach:add-comment', data),
+  updateCoachComment: (commentId: string, content: string) => ipcRenderer.invoke('coach:update-comment', commentId, content),
+  deleteCoachComment: (commentId: string) => ipcRenderer.invoke('coach:delete-comment', commentId),
+  getCoachComments: (targetType: string, targetId: string) => ipcRenderer.invoke('coach:get-comments', targetType, targetId),
+
+  // Sync
+  syncToSupabase: () => ipcRenderer.invoke('sync:push'),
+
+  // Recording
+  scanRecordings: () => ipcRenderer.invoke('recording:scan'),
+  getRecording: (gameId: string) => ipcRenderer.invoke('recording:get', gameId),
+  linkRecordingFile: (gameId: string) => ipcRenderer.invoke('recording:link-file', gameId),
+  setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => ipcRenderer.invoke('recording:set-youtube', gameId, youtubeUrl),
+  deleteRecording: (gameId: string) => ipcRenderer.invoke('recording:delete', gameId),
+  getRecordingScanPaths: () => ipcRenderer.invoke('recording:get-scan-paths'),
 }
 
 contextBridge.exposeInMainWorld('api', api)

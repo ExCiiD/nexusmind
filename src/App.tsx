@@ -12,9 +12,11 @@ import { DetailedStatsPage } from '@/pages/DetailedStats/DetailedStatsPage'
 import { StatsLandingPage } from '@/pages/DetailedStats/StatsLandingPage'
 import { StatsAveragesPage } from '@/pages/DetailedStats/StatsAveragesPage'
 import { SettingsPage } from '@/pages/Settings/SettingsPage'
+import { StudentsPage } from '@/pages/Students/StudentsPage'
 import { DevToolbar } from '@/components/Dev/DevToolbar'
 import { UpdateBanner } from '@/components/UpdateBanner'
 import { Toaster } from '@/components/ui/toaster'
+import { CoachProvider } from '@/context/CoachContext'
 import { useEffect } from 'react'
 
 export function App() {
@@ -34,7 +36,7 @@ export function App() {
   }, [])
 
   return (
-    <>
+    <CoachProvider>
       <Routes>
         {!user ? (
           <>
@@ -53,6 +55,7 @@ export function App() {
             <Route path="/stats/:matchId" element={<DetailedStatsPage />} />
             <Route path="/assessment" element={<ReassessmentPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/students" element={<StudentsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         )}
@@ -60,6 +63,6 @@ export function App() {
       {user && <DevToolbar />}
       <UpdateBanner />
       <Toaster />
-    </>
+    </CoachProvider>
   )
 }

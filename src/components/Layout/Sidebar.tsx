@@ -9,6 +9,7 @@ import {
   History,
   ChartNoAxesCombined,
   Settings,
+  Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/useUserStore'
@@ -30,6 +31,8 @@ export function Sidebar() {
   const [disconnecting, setDisconnecting] = useState(false)
   const { toast } = useToast()
 
+  const isCoach = user?.role === 'coach' || user?.role === 'both'
+
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/session', icon: Target, label: t('nav.session') },
@@ -37,6 +40,7 @@ export function Sidebar() {
     { to: '/history', icon: History, label: t('nav.history') },
     { to: '/stats', icon: ChartNoAxesCombined, label: t('nav.detailedStats') },
     { to: '/analytics', icon: BarChart3, label: t('nav.analytics') },
+    ...(isCoach ? [{ to: '/students', icon: Users, label: 'Students' }] : []),
     { to: '/settings', icon: Settings, label: t('nav.settings') },
   ]
 
