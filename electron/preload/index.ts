@@ -64,6 +64,7 @@ const api = {
   importGamesToSession: (matchIds: string[]) => ipcRenderer.invoke('session:import-games', matchIds),
 
   getMatchHistoryWithStatus: (count?: number) => ipcRenderer.invoke('stats:match-history', count),
+  diagnoseStats: () => ipcRenderer.invoke('stats:diagnose'),
   getDetailedStats: (matchId: string) => ipcRenderer.invoke('stats:get-detailed', matchId),
   computeStatsAverages: () => ipcRenderer.invoke('stats:compute-averages'),
   getStatsSnapshots: () => ipcRenderer.invoke('stats:get-snapshots'),

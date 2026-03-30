@@ -23,6 +23,7 @@ import {
   Trash2,
   User,
   Video,
+  Bug,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -144,6 +145,55 @@ function PageHeader() {
   )
 }
 
+/* ─── Diagnostic empty state ─── */
+
+function EmptyGamesState() {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const [diag, setDiag] = useState<Record<string, any> | null>(null)
+  const [diagLoading, setDiagLoading] = useState(false)
+
+  const runDiag = async () => {
+    setDiagLoading(true)
+    try {
+      const result = await window.api.diagnoseStats()
+      setDiag(result)
+    } catch (e: any) {
+      setDiag({ error: e.message })
+    } finally {
+      setDiagLoading(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent className="py-12 text-center space-y-4">
+        <p className="text-hextech-text-dim">{t('history.gamesTab.empty')}</p>
+        <button
+          onClick={() => { setOpen((v) => !v); if (!open && !diag) runDiag() }}
+          className="inline-flex items-center gap-1.5 text-xs text-hextech-text-dim/60 hover:text-hextech-text-dim transition-colors"
+        >
+          <Bug className="h-3.5 w-3.5" />
+          {open ? 'Hide diagnostics' : 'Show diagnostics'}
+        </button>
+        {open && (
+          <div className="text-left rounded-md bg-hextech-dark border border-hextech-border p-3 text-xs font-mono space-y-1 max-w-lg mx-auto">
+            {diagLoading && <p className="text-hextech-text-dim">Running…</p>}
+            {diag && Object.entries(diag).map(([key, val]) => (
+              <div key={key} className="flex gap-2">
+                <span className="text-hextech-gold-bright shrink-0">{key}:</span>
+                <span className={String(val).includes('error') || key.includes('error') ? 'text-[#FF4655]' : 'text-hextech-text'}>
+                  {String(val)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 /* ─── Games Tab: Riot API match history with reviewed/unreviewed tags ─── */
 
 function GamesTab() {
@@ -187,13 +237,7 @@ function GamesTab() {
   }
 
   if (games.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-16 text-center text-hextech-text-dim">
-          {t('history.gamesTab.empty')}
-        </CardContent>
-      </Card>
-    )
+    return <EmptyGamesState />
   }
 
   return (

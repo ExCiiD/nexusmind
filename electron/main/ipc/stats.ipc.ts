@@ -90,6 +90,37 @@ function hasCurrentSnapshotSchema(parsed: any): boolean {
 }
 
 export function registerStatsHandlers() {
+  ipcMain.handle('stats:diagnose', async () => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst({ include: { accounts: true } })
+    if (!user) return { error: 'No user found in local database' }
+
+    const results: Record<string, any> = {
+      puuid: user.puuid,
+      region: user.region,
+      queueFilter: user.queueFilter ?? 'both',
+      accounts: user.accounts.map((a) => ({ puuid: a.puuid, region: a.region, gameName: a.gameName })),
+    }
+
+    // Test each account against soloQ (420), flex (440), and no queue filter (any)
+    for (const acct of [{ puuid: user.puuid, region: user.region, label: 'main' }, ...user.accounts.map((a) => ({ ...a, label: a.gameName }))]) {
+      try {
+        const soloQ = await getMatchIds(acct.puuid, acct.region, 5, 0, 'soloq')
+        results[`${acct.label}_soloQ`] = soloQ.length
+      } catch (e: any) {
+        results[`${acct.label}_soloQ_error`] = e.message
+      }
+      try {
+        const flex = await getMatchIds(acct.puuid, acct.region, 5, 0, 'flex')
+        results[`${acct.label}_flex`] = flex.length
+      } catch (e: any) {
+        results[`${acct.label}_flex_error`] = e.message
+      }
+    }
+
+    return results
+  })
+
   ipcMain.handle(
     'stats:match-history',
     async (_event, count = 20) => {
