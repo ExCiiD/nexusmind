@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
-import { getAccountByRiotId } from '../riotClient'
+import { getAccountByRiotId, getSummonerByPuuid } from '../riotClient'
 
 export function registerAccountHandlers() {
   ipcMain.handle('account:list', async () => {
@@ -30,6 +30,12 @@ export function registerAccountHandlers() {
     const existing = await prisma.account.findUnique({ where: { puuid: riotAccount.puuid } })
     if (existing) throw new Error('This account is already linked')
 
+    let profileIconId = 0
+    try {
+      const summoner = await getSummonerByPuuid(riotAccount.puuid, region)
+      profileIconId = summoner.profileIconId
+    } catch { /* non-fatal */ }
+
     return prisma.account.create({
       data: {
         userId: user.id,
@@ -37,6 +43,7 @@ export function registerAccountHandlers() {
         gameName: riotAccount.gameName,
         tagLine: riotAccount.tagLine,
         region,
+        profileIconId,
       },
     })
   })

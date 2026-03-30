@@ -111,9 +111,11 @@ export function registerCoachHandlers() {
     const supa = getSupabase()
     const code = randomBytes(8).toString('hex')
 
+    // student_id = this user (the student generating the invite)
+    // coach_id = same placeholder (student's own uid) — will be replaced by the coach on redemption
     const { error } = await supa.from('coach_students').insert({
-      coach_id: user.supabaseUid,
       student_id: user.supabaseUid,
+      coach_id: user.supabaseUid,
       invite_code: code,
       status: 'pending',
     })
@@ -129,6 +131,7 @@ export function registerCoachHandlers() {
 
     const supa = getSupabase()
 
+    // Read the pending invite (student_id = the student who generated it)
     const { data: invite, error: fetchErr } = await supa
       .from('coach_students')
       .select('*')
@@ -137,21 +140,25 @@ export function registerCoachHandlers() {
       .single()
 
     if (fetchErr || !invite) throw new Error('Invite code not found or already used')
+    if (invite.student_id === user.supabaseUid) throw new Error('You cannot redeem your own invite link')
 
+    // Set coach_id = this user (the coach redeeming), status = active
     const { error: updateErr } = await supa
       .from('coach_students')
-      .update({ student_id: user.supabaseUid, status: 'active' })
+      .update({ coach_id: user.supabaseUid, status: 'active' })
       .eq('invite_code', code)
+      .eq('status', 'pending')
 
     if (updateErr) throw new Error(updateErr.message)
 
-    const { data: coachProfile } = await supa
+    // Return the student's display name so the coach knows who they connected with
+    const { data: studentProfile } = await supa
       .from('profiles')
       .select('display_name, local_puuid')
-      .eq('id', invite.coach_id)
+      .eq('id', invite.student_id)
       .single()
 
-    return { coachName: coachProfile?.display_name ?? 'Unknown Coach' }
+    return { studentName: studentProfile?.display_name ?? 'Unknown Student' }
   })
 
   ipcMain.handle('coach:list-coaches', async () => {

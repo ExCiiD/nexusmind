@@ -11,7 +11,6 @@ import {
   Loader2,
   Swords,
   Coins,
-  Shield,
   Eye,
   Target,
   Zap,
@@ -21,6 +20,7 @@ import {
   Crown,
   HelpCircle,
   User,
+  GitCompare,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 
@@ -36,6 +36,7 @@ export function DetailedStatsPage() {
   const [stats, setStats] = useState<DetailedGameStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [compareOpponent, setCompareOpponent] = useState(false)
 
   useEffect(() => {
     if (!matchId) return
@@ -79,6 +80,7 @@ export function DetailedStatsPage() {
   }
 
   const m = stats.meta
+  const hasOpponent = stats.opponent !== null
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -87,6 +89,25 @@ export function DetailedStatsPage() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           {t('detailedStats.back')}
         </Button>
+        {hasOpponent && (
+          <Button
+            variant={compareOpponent ? 'default' : 'outline'}
+            size="sm"
+            className={cn(
+              'ml-auto gap-2 transition-colors',
+              compareOpponent
+                ? 'bg-hextech-gold/20 border-hextech-gold/50 text-hextech-gold hover:bg-hextech-gold/30'
+                : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-gold/40 hover:text-hextech-gold',
+            )}
+            onClick={() => setCompareOpponent((v) => !v)}
+          >
+            <GitCompare className="h-4 w-4" />
+            Compare to opponent
+            {compareOpponent && m.opponentChampion && (
+              <span className="font-normal opacity-80">({m.opponentChampion})</span>
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Game header */}
@@ -94,7 +115,7 @@ export function DetailedStatsPage() {
         'rounded-lg border p-4',
         m.win ? 'border-hextech-green/30 bg-hextech-green/5' : 'border-[#FF4655]/30 bg-[#FF4655]/5',
       )}>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <Badge variant={m.win ? 'success' : 'destructive'} className="text-sm px-3 py-1">
             {m.win ? t('detailedStats.victory') : t('detailedStats.defeat')}
           </Badge>
@@ -124,44 +145,54 @@ export function DetailedStatsPage() {
       </div>
 
       {/* Color legend for diffs */}
-      <DiffLegendBanner />
+      <DiffLegendBanner compareActive={compareOpponent} opponentChampion={m.opponentChampion} />
 
       {/* Stat categories in a 2-column grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <LaningCard stats={stats} />
-        <EconomyCard stats={stats} />
-        <CombatCard stats={stats} />
-        <ObjectivesCard stats={stats} />
-        <VisionCard stats={stats} />
-        <BehavioralCard stats={stats} />
+        <LaningCard stats={stats} compareOpponent={compareOpponent} />
+        <EconomyCard stats={stats} compareOpponent={compareOpponent} />
+        <CombatCard stats={stats} compareOpponent={compareOpponent} />
+        <ObjectivesCard stats={stats} compareOpponent={compareOpponent} />
+        <VisionCard stats={stats} compareOpponent={compareOpponent} />
+        <BehavioralCard stats={stats} compareOpponent={compareOpponent} />
       </div>
     </div>
   )
 }
 
-function DiffLegendBanner() {
+function DiffLegendBanner({ compareActive, opponentChampion }: { compareActive: boolean; opponentChampion: string | null }) {
   const { t } = useTranslation()
   return (
     <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex items-center gap-2 text-xs text-hextech-text-dim cursor-help w-fit">
-            <HelpCircle className="h-3.5 w-3.5" />
-            <span className="flex items-center gap-2">
-              <span className="text-hextech-green font-semibold">+</span>
-              <span>/</span>
-              <span className="text-[#FF4655] font-semibold">−</span>
-              {t('detailedStats.diffLegend.title')}
-            </span>
+      <div className="flex items-center gap-4 flex-wrap">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-2 text-xs text-hextech-text-dim cursor-help w-fit">
+              <HelpCircle className="h-3.5 w-3.5" />
+              <span className="flex items-center gap-2">
+                <span className="text-hextech-green font-semibold">+</span>
+                <span>/</span>
+                <span className="text-[#FF4655] font-semibold">−</span>
+                {t('detailedStats.diffLegend.title')}
+              </span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs space-y-1.5 p-3">
+            <p className="font-semibold text-xs text-hextech-text-bright">{t('detailedStats.diffLegend.title')}</p>
+            <p className="text-xs text-hextech-green">{t('detailedStats.diffLegend.positive')}</p>
+            <p className="text-xs text-[#FF4655]">{t('detailedStats.diffLegend.negative')}</p>
+            <p className="text-xs text-hextech-text-dim">{t('detailedStats.diffLegend.note')}</p>
+          </TooltipContent>
+        </Tooltip>
+        {compareActive && opponentChampion && (
+          <div className="flex items-center gap-1.5 text-xs text-hextech-gold">
+            <GitCompare className="h-3.5 w-3.5" />
+            <span>You</span>
+            <span className="text-hextech-text-dim">vs</span>
+            <span>{opponentChampion}</span>
           </div>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs space-y-1.5 p-3">
-          <p className="font-semibold text-xs text-hextech-text-bright">{t('detailedStats.diffLegend.title')}</p>
-          <p className="text-xs text-hextech-green">{t('detailedStats.diffLegend.positive')}</p>
-          <p className="text-xs text-[#FF4655]">{t('detailedStats.diffLegend.negative')}</p>
-          <p className="text-xs text-hextech-text-dim">{t('detailedStats.diffLegend.note')}</p>
-        </TooltipContent>
-      </Tooltip>
+        )}
+      </div>
     </TooltipProvider>
   )
 }
@@ -202,11 +233,68 @@ function NullableStatRow({ label, value, suffix = '' }: { label: string; value: 
   )
 }
 
+/** Row that shows player value and optionally opponent value with a diff indicator. */
+function CompareRow({
+  label,
+  playerValue,
+  opponentValue,
+  showCompare,
+  higherIsBetter = true,
+  suffix = '',
+  digits = 0,
+}: {
+  label: string
+  playerValue: number | null
+  opponentValue: number | null | undefined
+  showCompare: boolean
+  higherIsBetter?: boolean
+  suffix?: string
+  digits?: number
+}) {
+  const fmt = (v: number | null) =>
+    v === null || v === undefined
+      ? '—'
+      : digits > 0
+        ? `${v.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}${suffix}`
+        : `${Math.round(v).toLocaleString()}${suffix}`
+
+  if (!showCompare || opponentValue === null || opponentValue === undefined) {
+    return (
+      <StatRow
+        label={label}
+        value={fmt(playerValue)}
+      />
+    )
+  }
+
+  const diff = playerValue !== null ? playerValue - opponentValue : null
+  const isAhead = diff !== null && diff !== 0 ? (higherIsBetter ? diff > 0 : diff < 0) : null
+  const diffColor = isAhead === true ? 'text-hextech-green' : isAhead === false ? 'text-[#FF4655]' : 'text-hextech-text-dim'
+
+  return (
+    <div className="flex items-center justify-between py-1.5 gap-2">
+      <span className="text-xs text-hextech-text shrink-0">{label}</span>
+      <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
+        <span className="text-hextech-text-bright">{fmt(playerValue)}</span>
+        <span className="text-hextech-text-dim text-xs font-normal">vs</span>
+        <span className="text-hextech-text-dim">{fmt(opponentValue)}</span>
+        {diff !== null && diff !== 0 && (
+          <span className={cn('text-xs font-medium', diffColor)}>
+            ({diff > 0 ? '+' : ''}{digits > 0 ? diff.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }) : Math.round(diff).toLocaleString()}{suffix})
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ─── Category Cards ─── */
 
-function LaningCard({ stats }: { stats: DetailedGameStats }) {
+function LaningCard({ stats, compareOpponent }: { stats: DetailedGameStats; compareOpponent: boolean }) {
   const { t } = useTranslation()
   const l = stats.laning
+  const opp = stats.opponent
+  const show = compareOpponent
   const gameWasShort = stats.meta.duration < 900
 
   return (
@@ -222,56 +310,41 @@ function LaningCard({ stats }: { stats: DetailedGameStats }) {
           <p className="text-xs text-hextech-text-dim py-3 text-center">{t('detailedStats.laning.shortGame')}</p>
         ) : (
           <>
-            <StatRow
-              label={t('detailedStats.laning.gold15')}
-              value={formatStatNumber(l.gold15)}
-              sub={<><DiffIndicator value={l.goldDiff15} /> <DiffValue value={l.goldDiff15} /></>}
-            />
-            <StatRow
-              label={t('detailedStats.laning.xp15')}
-              value={formatStatNumber(l.xp15)}
-              sub={<><DiffIndicator value={l.xpDiff15} /> <DiffValue value={l.xpDiff15} /></>}
-            />
-            <NullableStatRow
-              label={t('detailedStats.laning.xpPerMin15')}
-              value={l.xpPerMin15}
-            />
-            <StatRow
-              label={t('detailedStats.laning.cs15')}
-              value={formatStatNumber(l.cs15)}
-              sub={<><DiffIndicator value={l.csDiff15} /> <DiffValue value={l.csDiff15} /></>}
-            />
-            <StatRow
-              label={t('detailedStats.laning.dmg15')}
-              value={formatStatNumber(l.damage15)}
-              sub={<><DiffIndicator value={l.damageDiff15} /> <DiffValue value={l.damageDiff15} /></>}
-            />
-            <NullableStatRow
-              label={t('detailedStats.laning.dpm15')}
-              value={l.damagePerMin15}
-            />
-            <NullableStatRow
-              label={t('detailedStats.laning.turretPlates15')}
-              value={l.turretPlates15}
-            />
+            <CompareRow label={t('detailedStats.laning.gold15')} playerValue={l.gold15} opponentValue={opp?.gold15 ?? null} showCompare={show} />
+            <CompareRow label={t('detailedStats.laning.xp15')} playerValue={l.xp15} opponentValue={opp?.xp15 ?? null} showCompare={show} />
+            <CompareRow label={t('detailedStats.laning.cs15')} playerValue={l.cs15} opponentValue={opp?.cs15 ?? null} showCompare={show} />
+            <CompareRow label={t('detailedStats.laning.dmg15')} playerValue={l.damage15} opponentValue={opp?.damage15 ?? null} showCompare={show} />
+            <CompareRow label={t('detailedStats.laning.xpPerMin15')} playerValue={l.xpPerMin15} opponentValue={opp?.xpPerMin15 ?? null} showCompare={show} digits={1} />
+            <CompareRow label={t('detailedStats.laning.dpm15')} playerValue={l.damagePerMin15} opponentValue={opp?.damagePerMin15 ?? null} showCompare={show} digits={1} />
+            <CompareRow label={t('detailedStats.laning.turretPlates15')} playerValue={l.turretPlates15} opponentValue={opp?.turretPlates15 ?? null} showCompare={show} />
           </>
         )}
-        <StatRow
-          label={t('detailedStats.laning.firstBlood')}
-          value={
+        {show && opp ? (
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-xs text-hextech-text">{t('detailedStats.laning.firstBlood')}</span>
+            <div className="flex items-center gap-3 text-xs font-semibold">
+              <Badge variant={l.firstBloodParticipation ? 'success' : 'outline'} className="text-[10px] h-5">{l.firstBloodParticipation ? t('detailedStats.yes') : t('detailedStats.no')}</Badge>
+              <span className="text-hextech-text-dim">vs</span>
+              <Badge variant={opp.firstBloodParticipation ? 'success' : 'outline'} className="text-[10px] h-5 text-hextech-text-dim">{opp.firstBloodParticipation ? t('detailedStats.yes') : t('detailedStats.no')}</Badge>
+            </div>
+          </div>
+        ) : (
+          <StatRow label={t('detailedStats.laning.firstBlood')} value={
             l.firstBloodParticipation
               ? <Badge variant="success" className="text-[10px] h-5">{t('detailedStats.yes')}</Badge>
               : <Badge variant="outline" className="text-[10px] h-5 text-hextech-text-dim">{t('detailedStats.no')}</Badge>
-          }
-        />
+          } />
+        )}
       </CardContent>
     </Card>
   )
 }
 
-function EconomyCard({ stats }: { stats: DetailedGameStats }) {
+function EconomyCard({ stats, compareOpponent }: { stats: DetailedGameStats; compareOpponent: boolean }) {
   const { t } = useTranslation()
   const e = stats.economy
+  const opp = stats.opponent
+  const show = compareOpponent
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -281,25 +354,38 @@ function EconomyCard({ stats }: { stats: DetailedGameStats }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-0 divide-y divide-hextech-border-dim/50">
-        <NullableStatRow label={t('detailedStats.economy.xp')} value={e.xp} />
-        <NullableStatRow label={t('detailedStats.economy.xpPerMin')} value={e.xpPerMin} />
-        <StatRow label={t('detailedStats.economy.gpm')} value={formatStatNumber(e.goldPerMin)} />
-        <StatRow label={t('detailedStats.economy.cspm')} value={e.csPerMin ?? '—'} />
+        <CompareRow label={t('detailedStats.economy.gpm')} playerValue={e.goldPerMin} opponentValue={opp?.goldPerMin ?? null} showCompare={show} />
+        <CompareRow label={t('detailedStats.economy.cspm')} playerValue={e.csPerMin !== null ? Number(e.csPerMin) : null} opponentValue={opp?.csPerMin ?? null} showCompare={show} digits={1} />
+        <CompareRow label="Total CS" playerValue={e.laneCS + e.jungleCS} opponentValue={opp?.cs ?? null} showCompare={show} />
+        <CompareRow label={t('detailedStats.economy.xp')} playerValue={e.xp} opponentValue={null} showCompare={false} />
+        <CompareRow label={t('detailedStats.economy.xpPerMin')} playerValue={e.xpPerMin} opponentValue={null} showCompare={false} digits={1} />
         <StatRow label={t('detailedStats.economy.teamGold')} value={e.teamGoldPercent != null ? `${e.teamGoldPercent}%` : '—'} />
-        <StatRow
-          label={t('detailedStats.economy.csSplit')}
-          value={`${e.laneCS} / ${e.jungleCS}`}
-          sub={t('detailedStats.economy.laneJungle')}
-        />
+        {show && opp ? (
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-xs text-hextech-text">{t('detailedStats.economy.csSplit')}</span>
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <span className="text-hextech-text-bright">{e.laneCS}/{e.jungleCS}</span>
+              <span className="text-hextech-text-dim text-xs">vs</span>
+              <span className="text-hextech-text-dim">{opp.laneCS}/{opp.jungleCS}</span>
+            </div>
+          </div>
+        ) : (
+          <StatRow label={t('detailedStats.economy.csSplit')} value={`${e.laneCS} / ${e.jungleCS}`} sub={t('detailedStats.economy.laneJungle')} />
+        )}
         <NullableStatRow label={t('detailedStats.economy.maxCsAdv')} value={e.maxCsAdvantage} />
       </CardContent>
     </Card>
   )
 }
 
-function CombatCard({ stats }: { stats: DetailedGameStats }) {
+function CombatCard({ stats, compareOpponent }: { stats: DetailedGameStats; compareOpponent: boolean }) {
   const { t } = useTranslation()
   const c = stats.combat
+  const opp = stats.opponent
+  const show = compareOpponent
+  const gameDurationMin = stats.meta.duration / 60
+  const playerTotalDamage = c.damagePerMin != null ? Math.round(c.damagePerMin * gameDurationMin) : null
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -309,22 +395,24 @@ function CombatCard({ stats }: { stats: DetailedGameStats }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-0 divide-y divide-hextech-border-dim/50">
-        <StatRow label={t('detailedStats.combat.totalDamage')} value={formatStatNumber(c.damagePerMin != null ? c.damagePerMin * (stats.meta.duration / 60) : null)} />
-        <StatRow label={t('detailedStats.combat.kp')} value={c.killParticipation != null ? `${c.killParticipation}%` : '—'} />
-        <StatRow label={t('detailedStats.combat.dpm')} value={formatStatNumber(c.damagePerMin)} />
+        <CompareRow label={t('detailedStats.combat.totalDamage')} playerValue={playerTotalDamage} opponentValue={opp?.totalDamage ?? null} showCompare={show} />
+        <CompareRow label={t('detailedStats.combat.kp')} playerValue={c.killParticipation} opponentValue={opp?.killParticipation ?? null} showCompare={show} digits={1} suffix="%" />
+        <CompareRow label={t('detailedStats.combat.dpm')} playerValue={c.damagePerMin} opponentValue={opp?.damagePerMin ?? null} showCompare={show} />
         <StatRow label={t('detailedStats.combat.teamDmg')} value={c.teamDamagePercent != null ? `${c.teamDamagePercent}%` : '—'} />
-        <StatRow label={t('detailedStats.combat.dmgPerGold')} value={c.damagePerGold ?? '—'} />
-        <NullableStatRow label={t('detailedStats.combat.soloKills')} value={c.soloKills} />
-        <StatRow label={t('detailedStats.combat.dmgTaken')} value={formatStatNumber(c.damageTaken)} sub={c.damageTakenPercent != null ? `${c.damageTakenPercent}%` : undefined} />
-        <StatRow label={t('detailedStats.combat.dmgMitigated')} value={formatStatNumber(c.damageMitigated)} />
+        <CompareRow label={t('detailedStats.combat.dmgPerGold')} playerValue={c.damagePerGold} opponentValue={opp?.damagePerGold ?? null} showCompare={show} digits={2} />
+        <CompareRow label={t('detailedStats.combat.soloKills')} playerValue={c.soloKills} opponentValue={opp?.soloKills ?? null} showCompare={show} />
+        <CompareRow label={t('detailedStats.combat.dmgTaken')} playerValue={c.damageTaken} opponentValue={opp?.damageTaken ?? null} showCompare={show} higherIsBetter={false} />
+        <CompareRow label={t('detailedStats.combat.dmgMitigated')} playerValue={c.damageMitigated} opponentValue={opp?.damageMitigated ?? null} showCompare={show} />
       </CardContent>
     </Card>
   )
 }
 
-function ObjectivesCard({ stats }: { stats: DetailedGameStats }) {
+function ObjectivesCard({ stats, compareOpponent }: { stats: DetailedGameStats; compareOpponent: boolean }) {
   const { t } = useTranslation()
   const o = stats.objectives
+  const opp = stats.opponent
+  const show = compareOpponent
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -334,40 +422,38 @@ function ObjectivesCard({ stats }: { stats: DetailedGameStats }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-0 divide-y divide-hextech-border-dim/50">
-        <StatRow
-          label={t('detailedStats.objectives.dmgEpic')}
-          value={formatStatNumber(o.damageToEpicMonsters)}
-        />
-        <StatRow
-          label={t('detailedStats.objectives.epicDmgPercent')}
-          value={o.teamEpicMonsterDmgPercent != null ? `${o.teamEpicMonsterDmgPercent}%` : '—'}
-        />
-        <StatRow
-          label={t('detailedStats.objectives.dmgBuild')}
-          value={formatStatNumber(o.damageToBuildings)}
-          sub={(o.teamBuildingDamagePercent != null && o.teamBuildingDamagePercent !== undefined)
-            ? `${o.teamBuildingDamagePercent}% ${t('detailedStats.objectives.ofTeam')}`
-            : undefined}
-        />
-        <StatRow label={t('detailedStats.objectives.turretPlates')} value={o.turretPlates ?? 0} />
-        <StatRow label={t('detailedStats.objectives.inhibitors')} value={o.inhibitorTakedowns ?? 0} />
-        <StatRow label={t('detailedStats.objectives.stolen')} value={o.objectivesStolen} />
-        <StatRow
-          label={t('detailedStats.objectives.firstTower')}
-          value={
+        <CompareRow label={t('detailedStats.objectives.dmgEpic')} playerValue={o.damageToEpicMonsters} opponentValue={opp?.epicMonsterDamage ?? null} showCompare={show} />
+        <StatRow label={t('detailedStats.objectives.epicDmgPercent')} value={o.teamEpicMonsterDmgPercent != null ? `${o.teamEpicMonsterDmgPercent}%` : '—'} />
+        <CompareRow label={t('detailedStats.objectives.dmgBuild')} playerValue={o.damageToBuildings} opponentValue={opp?.damageToBuildings ?? null} showCompare={show} />
+        <CompareRow label={t('detailedStats.objectives.turretPlates')} playerValue={o.turretPlates} opponentValue={opp?.turretPlates ?? null} showCompare={show} />
+        <CompareRow label={t('detailedStats.objectives.inhibitors')} playerValue={o.inhibitorTakedowns} opponentValue={opp?.inhibitorTakedowns ?? null} showCompare={show} />
+        <CompareRow label={t('detailedStats.objectives.stolen')} playerValue={o.objectivesStolen} opponentValue={opp?.objectivesStolen ?? null} showCompare={show} />
+        {show && opp ? (
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-xs text-hextech-text">{t('detailedStats.objectives.firstTower')}</span>
+            <div className="flex items-center gap-3 text-xs font-semibold">
+              <Badge variant={o.firstTowerParticipation ? 'success' : 'outline'} className="text-[10px] h-5">{o.firstTowerParticipation ? t('detailedStats.yes') : t('detailedStats.no')}</Badge>
+              <span className="text-hextech-text-dim">vs</span>
+              <Badge variant={opp.firstTowerParticipation ? 'success' : 'outline'} className="text-[10px] h-5 text-hextech-text-dim">{opp.firstTowerParticipation ? t('detailedStats.yes') : t('detailedStats.no')}</Badge>
+            </div>
+          </div>
+        ) : (
+          <StatRow label={t('detailedStats.objectives.firstTower')} value={
             o.firstTowerParticipation
               ? <Badge variant="success" className="text-[10px] h-5">{t('detailedStats.yes')}</Badge>
               : <Badge variant="outline" className="text-[10px] h-5 text-hextech-text-dim">{t('detailedStats.no')}</Badge>
-          }
-        />
+          } />
+        )}
       </CardContent>
     </Card>
   )
 }
 
-function VisionCard({ stats }: { stats: DetailedGameStats }) {
+function VisionCard({ stats, compareOpponent }: { stats: DetailedGameStats; compareOpponent: boolean }) {
   const { t } = useTranslation()
   const v = stats.vision
+  const opp = stats.opponent
+  const show = compareOpponent
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -377,11 +463,11 @@ function VisionCard({ stats }: { stats: DetailedGameStats }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-0 divide-y divide-hextech-border-dim/50">
-        <StatRow label={t('detailedStats.vision.vsPerMin')} value={v.visionScorePerMin} />
-        <StatRow label={t('detailedStats.vision.controlWards')} value={v.controlWardsPurchased} />
-        <StatRow label={t('detailedStats.vision.wardsPlaced')} value={v.wardsPlaced} />
-        <StatRow label={t('detailedStats.vision.wardsDestroyed')} value={v.wardsDestroyed} />
-        <NullableStatRow label={t('detailedStats.vision.stealthWards')} value={v.stealthWardsPlaced} />
+        <CompareRow label={t('detailedStats.vision.vsPerMin')} playerValue={v.visionScorePerMin} opponentValue={opp?.visionScorePerMin ?? null} showCompare={show} digits={2} />
+        <CompareRow label={t('detailedStats.vision.controlWards')} playerValue={v.controlWardsPurchased} opponentValue={opp?.controlWardsPurchased ?? null} showCompare={show} />
+        <CompareRow label={t('detailedStats.vision.wardsPlaced')} playerValue={v.wardsPlaced} opponentValue={opp?.wardsPlaced ?? null} showCompare={show} />
+        <CompareRow label={t('detailedStats.vision.wardsDestroyed')} playerValue={v.wardsDestroyed} opponentValue={opp?.wardsDestroyed ?? null} showCompare={show} />
+        <CompareRow label={t('detailedStats.vision.stealthWards')} playerValue={v.stealthWardsPlaced} opponentValue={opp?.stealthWardsPlaced ?? null} showCompare={show} />
         <StatRow
           label={t('detailedStats.vision.vsAdvantage')}
           value={
@@ -395,9 +481,11 @@ function VisionCard({ stats }: { stats: DetailedGameStats }) {
   )
 }
 
-function BehavioralCard({ stats }: { stats: DetailedGameStats }) {
+function BehavioralCard({ stats, compareOpponent }: { stats: DetailedGameStats; compareOpponent: boolean }) {
   const { t } = useTranslation()
   const b = stats.behavioral
+  const opp = stats.opponent
+  const show = compareOpponent
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -407,10 +495,10 @@ function BehavioralCard({ stats }: { stats: DetailedGameStats }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-0 divide-y divide-hextech-border-dim/50">
-        <NullableStatRow label={t('detailedStats.behavioral.skillshots')} value={b.skillshotsDodged} />
-        <NullableStatRow label={t('detailedStats.behavioral.killsNearTurret')} value={b.killsNearEnemyTurret} />
-        <NullableStatRow label={t('detailedStats.behavioral.outnumbered')} value={b.outnumberedKills} />
-        <NullableStatRow label={t('detailedStats.behavioral.enemyJungle')} value={b.takedownsInEnemyJungle} />
+        <CompareRow label={t('detailedStats.behavioral.skillshots')} playerValue={b.skillshotsDodged} opponentValue={opp?.skillshotsDodged ?? null} showCompare={show} />
+        <CompareRow label={t('detailedStats.behavioral.killsNearTurret')} playerValue={b.killsNearEnemyTurret} opponentValue={opp?.killsNearEnemyTurret ?? null} showCompare={show} />
+        <CompareRow label={t('detailedStats.behavioral.outnumbered')} playerValue={b.outnumberedKills} opponentValue={opp?.outnumberedKills ?? null} showCompare={show} />
+        <CompareRow label={t('detailedStats.behavioral.enemyJungle')} playerValue={b.takedownsInEnemyJungle} opponentValue={opp?.takedownsInEnemyJungle ?? null} showCompare={show} />
       </CardContent>
     </Card>
   )

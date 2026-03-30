@@ -353,6 +353,15 @@ export function extractDetailedStats(matchData: any, timelineData: any | null, p
   let xpTotal: number | null = null
   let xpPerMin: number | null = null
 
+  // Opponent @15 stats
+  let oppGold15: number | null = null
+  let oppXp15: number | null = null
+  let oppXpPerMin15: number | null = null
+  let oppCs15: number | null = null
+  let oppDamage15: number | null = null
+  let oppDamagePerMin15: number | null = null
+  let oppTurretPlates15: number | null = null
+
   if (timelineData && matchData.info.gameDuration >= 900) {
     const frame = getTimelineFrameAt(timelineData, participantId, 900_000)
     if (frame) {
@@ -367,10 +376,18 @@ export function extractDetailedStats(matchData: any, timelineData: any | null, p
       if (opponentParticipantId) {
         const oppFrame = getTimelineFrameAt(timelineData, opponentParticipantId, 900_000)
         if (oppFrame) {
-          goldDiff15 = (gold15 ?? 0) - (oppFrame.totalGold ?? 0)
-          xpDiff15 = (xp15 ?? 0) - (oppFrame.xp ?? 0)
-          csDiff15 = cs15! - ((oppFrame.minionsKilled ?? 0) + (oppFrame.jungleMinionsKilled ?? 0))
-          damageDiff15 = (damage15 ?? 0) - (oppFrame.damageStats?.totalDamageDoneToChampions ?? 0)
+          oppGold15 = oppFrame.totalGold ?? null
+          oppXp15 = oppFrame.xp ?? null
+          oppXpPerMin15 = oppXp15 !== null ? Number((oppXp15 / 15).toFixed(1)) : null
+          oppCs15 = (oppFrame.minionsKilled ?? 0) + (oppFrame.jungleMinionsKilled ?? 0)
+          oppDamage15 = oppFrame.damageStats?.totalDamageDoneToChampions ?? null
+          oppDamagePerMin15 = oppDamage15 !== null ? Number((oppDamage15 / 15).toFixed(1)) : null
+          oppTurretPlates15 = countTurretPlatesByParticipantUntil(timelineData, opponentParticipantId, 900_000)
+
+          goldDiff15 = (gold15 ?? 0) - (oppGold15 ?? 0)
+          xpDiff15 = (xp15 ?? 0) - (oppXp15 ?? 0)
+          csDiff15 = cs15! - oppCs15
+          damageDiff15 = (damage15 ?? 0) - (oppDamage15 ?? 0)
         }
       }
     }
@@ -389,6 +406,11 @@ export function extractDetailedStats(matchData: any, timelineData: any | null, p
   const visionScoreAdv = opponent
     ? p.visionScore - (opponent.visionScore ?? 0)
     : null
+
+  const oppTeamParticipants = opponent
+    ? matchData.info.participants.filter((pp: any) => pp.teamId !== p.teamId)
+    : []
+  const oppTeamKills = oppTeamParticipants.reduce((s: number, pp: any) => s + pp.kills, 0)
 
   return {
     laning: {
@@ -469,5 +491,55 @@ export function extractDetailedStats(matchData: any, timelineData: any | null, p
       matchId: matchData.metadata.matchId,
       opponentChampion: opponent?.championName ?? null,
     },
+    opponent: opponent ? (() => {
+      const oppCh = opponent.challenges ?? {}
+      const oppCs = (opponent.totalMinionsKilled ?? 0) + (opponent.neutralMinionsKilled ?? 0)
+      const oppTotalDamage = opponent.totalDamageDealtToChampions ?? 0
+      const oppGold = opponent.goldEarned ?? 0
+      const oppEpicMonsterDmg = Math.max(0, (opponent.damageDealtToObjectives ?? 0) - (opponent.damageDealtToBuildings ?? 0))
+      return {
+        champion: opponent.championName,
+        kills: opponent.kills,
+        deaths: opponent.deaths,
+        assists: opponent.assists,
+        cs: oppCs,
+        laneCS: opponent.totalMinionsKilled ?? 0,
+        jungleCS: opponent.neutralMinionsKilled ?? 0,
+        visionScore: opponent.visionScore ?? 0,
+        totalDamage: oppTotalDamage,
+        damagePerMin: gameDurationMin > 0 ? Math.round(oppTotalDamage / gameDurationMin) : 0,
+        goldEarned: oppGold,
+        goldPerMin: gameDurationMin > 0 ? Math.round(oppGold / gameDurationMin) : 0,
+        csPerMin: gameDurationMin > 0 ? Number((oppCs / gameDurationMin).toFixed(1)) : 0,
+        visionScorePerMin: gameDurationMin > 0 ? Number(((opponent.visionScore ?? 0) / gameDurationMin).toFixed(2)) : 0,
+        wardsPlaced: opponent.wardsPlaced ?? 0,
+        wardsDestroyed: opponent.wardsKilled ?? 0,
+        controlWardsPurchased: opponent.visionWardsBoughtInGame ?? 0,
+        stealthWardsPlaced: oppCh.stealthWardsPlaced ?? null,
+        damageTaken: opponent.totalDamageTaken ?? 0,
+        damageMitigated: opponent.damageSelfMitigated ?? 0,
+        damagePerGold: oppGold > 0 ? Number((oppTotalDamage / oppGold).toFixed(2)) : 0,
+        killParticipation: oppTeamKills > 0 ? Number((((opponent.kills + opponent.assists) / oppTeamKills) * 100).toFixed(1)) : 0,
+        epicMonsterDamage: oppEpicMonsterDmg,
+        damageToBuildings: opponent.damageDealtToBuildings ?? 0,
+        objectivesStolen: opponent.objectivesStolen ?? 0,
+        inhibitorTakedowns: opponent.inhibitorTakedowns ?? opponent.inhibitorKills ?? 0,
+        turretPlates: oppCh.turretPlatesTaken ?? 0,
+        firstTowerParticipation: opponent.firstTowerKill || opponent.firstTowerAssist || false,
+        firstBloodParticipation: opponent.firstBloodKill || opponent.firstBloodAssist || false,
+        soloKills: oppCh.soloKills ?? null,
+        skillshotsDodged: oppCh.skillshotsDodged ?? null,
+        killsNearEnemyTurret: oppCh.killsNearEnemyTurret ?? null,
+        outnumberedKills: oppCh.outnumberedKills ?? null,
+        takedownsInEnemyJungle: oppCh.takedownsInEnemyJungle ?? null,
+        gold15: oppGold15,
+        xp15: oppXp15,
+        xpPerMin15: oppXpPerMin15,
+        cs15: oppCs15,
+        damage15: oppDamage15,
+        damagePerMin15: oppDamagePerMin15,
+        turretPlates15: oppTurretPlates15,
+      }
+    })() : null,
   }
 }

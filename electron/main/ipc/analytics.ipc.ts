@@ -69,6 +69,8 @@ export function registerAnalyticsHandlers() {
     const user = await prisma.user.findFirst()
     if (!user) return []
 
+    const accounts = await prisma.account.findMany({ where: { userId: user.id } })
+
     const sessions = await prisma.session.findMany({
       where: { userId: user.id },
       orderBy: { date: 'desc' },
@@ -79,6 +81,37 @@ export function registerAnalyticsHandlers() {
         },
       },
     })
+
+    // Batch-load match caches to resolve account names without N+1 queries
+    const allMatchIds = sessions.flatMap((s) => s.games.map((g) => g.matchId)).filter(Boolean)
+    const caches = await prisma.matchCache.findMany({
+      where: { matchId: { in: allMatchIds } },
+      select: { matchId: true, matchJson: true },
+    })
+    const cacheByMatchId = new Map(caches.map((c) => [c.matchId, c.matchJson]))
+
+    const allPuuids = [user.puuid, ...accounts.map((a) => a.puuid)]
+
+    const resolveGameAccountInfo = (matchId: string | null): { accountName: string; accountProfileIconId: number } => {
+      const defaultName = user.displayName || user.summonerName
+      const defaultIconId = (user as any).profileIconId ?? 0
+      if (!matchId) return { accountName: defaultName, accountProfileIconId: defaultIconId }
+      const raw = cacheByMatchId.get(matchId)
+      if (!raw) return { accountName: defaultName, accountProfileIconId: defaultIconId }
+      try {
+        const matchData = JSON.parse(raw)
+        const participants: any[] = matchData.info?.participants ?? []
+        const matchedPuuid = allPuuids.find((p) => participants.some((pp: any) => pp.puuid === p))
+        if (!matchedPuuid || matchedPuuid === user.puuid) return { accountName: defaultName, accountProfileIconId: defaultIconId }
+        const acc = accounts.find((a) => a.puuid === matchedPuuid)
+        return {
+          accountName: acc?.gameName ?? defaultName,
+          accountProfileIconId: (acc as any)?.profileIconId ?? 0,
+        }
+      } catch {
+        return { accountName: defaultName, accountProfileIconId: defaultIconId }
+      }
+    }
 
     return sessions.map((s) => {
       const games = s.games
@@ -126,6 +159,7 @@ export function registerAnalyticsHandlers() {
           duration: g.duration,
           win: g.win,
           gameEndAt: g.gameEndAt.toISOString(),
+          ...resolveGameAccountInfo(g.matchId),
           review: g.review ? {
             id: g.review.id,
             timelineNotes: g.review.timelineNotes,

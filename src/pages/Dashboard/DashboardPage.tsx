@@ -201,7 +201,7 @@ export function DashboardPage() {
 
           {/* Top stat changes */}
           {statDiffs.length >= 2 && (
-            <StatDiffsCard diffs={statDiffs} onViewAll={() => navigate('/stats/averages')} />
+            <StatDiffsCard diffs={statDiffs} onViewAll={() => navigate('/stats')} />
           )}
         </div>
 

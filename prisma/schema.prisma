@@ -21,6 +21,8 @@ model User {
   streakDays         Int          @default(0)
   lastActiveDate     DateTime?
   queueFilter        String       @default("both")
+  mainRole           String?
+  profileIconId      Int          @default(0)
   role               String       @default("student")
   supabaseUid        String?
   supabaseEmail      String?
@@ -33,14 +35,15 @@ model User {
 }
 
 model Account {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  puuid       String   @unique
-  gameName    String
-  tagLine     String
-  region      String
-  createdAt   DateTime @default(now())
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  puuid         String   @unique
+  gameName      String
+  tagLine       String
+  region        String
+  profileIconId Int      @default(0)
+  createdAt     DateTime @default(now())
 
   @@index([userId])
 }
@@ -149,6 +152,7 @@ model Recording {
 model StatsSnapshot {
   id           String   @id @default(cuid())
   userId       String
+  mainRole     String?
   stats        String
   gameCount    Int
   firstGameAt  DateTime

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ChampionMatchup } from '@/components/ChampionMatchup'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -11,6 +11,7 @@ import { TimelineNoteInput, type TimelineNote } from '@/components/ReviewForm/Ti
 import { DynamicKPIForm } from '@/components/ReviewForm/DynamicKPIForm'
 import { AISummaryPanel } from '@/components/AIPanel/AISummaryPanel'
 import { MatchHistoryPicker } from '@/components/Session/MatchHistoryPicker'
+import { AccountBadge } from '@/components/ui/AccountBadge'
 import { useLocalizedFundamental, useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { getKPIsForObjective } from '@/lib/constants/fundamentals'
 import type { ReviewBiasSignal } from '@/lib/ipc'
@@ -71,6 +72,7 @@ export function ReviewPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [biasSignals, setBiasSignals] = useState<ReviewBiasSignal[]>([])
+  const [draftAutoSaved, setDraftAutoSaved] = useState(false)
   const warnedBiasKeysRef = useRef<Set<string>>(new Set())
 
   // If a specific gameId is requested, use it directly; otherwise pick first unreviewed game
@@ -85,6 +87,24 @@ export function ReviewPage() {
       null
     )
   }, [activeSession, requestedGameId])
+
+  // Draft persistence — must come after latestGame
+  const draftKey = latestGame ? `review-draft-${latestGame.id}` : null
+
+  const saveDraft = useCallback(() => {
+    if (!draftKey || saved) return
+    sessionStorage.setItem(draftKey, JSON.stringify({ timelineNotes, kpiScores, freeText, objectiveRespected }))
+  }, [draftKey, timelineNotes, kpiScores, freeText, objectiveRespected, saved])
+
+  const clearDraft = useCallback(() => {
+    if (draftKey) sessionStorage.removeItem(draftKey)
+  }, [draftKey])
+
+  const hasDraft = draftAutoSaved
+
+  const isDirty = useMemo(() => {
+    return timelineNotes.length > 0 || Object.keys(kpiScores).length > 0 || freeText.trim().length > 0 || objectiveRespected !== null
+  }, [timelineNotes, kpiScores, freeText, objectiveRespected])
 
   useEffect(() => {
     loadActiveSession()
@@ -109,35 +129,69 @@ export function ReviewPage() {
 
   useEffect(() => {
     const review = latestGame?.review
+    const key = latestGame ? `review-draft-${latestGame.id}` : null
 
     setSaved(false)
+    setDraftAutoSaved(false)
     setBiasSignals([])
 
-    if (!review) {
-      setTimelineNotes([])
-      setKpiScores({})
-      setFreeText('')
-      setObjectiveRespected(null)
+    if (review) {
+      try {
+        const parsedTimelineNotes = JSON.parse(review.timelineNotes ?? '[]')
+        setTimelineNotes(Array.isArray(parsedTimelineNotes) ? parsedTimelineNotes : [])
+      } catch {
+        setTimelineNotes([])
+      }
+      try {
+        const parsedKpiScores = JSON.parse(review.kpiScores ?? '{}')
+        setKpiScores(parsedKpiScores && typeof parsedKpiScores === 'object' ? parsedKpiScores : {})
+      } catch {
+        setKpiScores({})
+      }
+      setFreeText(review.freeText ?? '')
+      setObjectiveRespected(review.objectiveRespected ?? null)
       return
     }
 
-    try {
-      const parsedTimelineNotes = JSON.parse(review.timelineNotes ?? '[]')
-      setTimelineNotes(Array.isArray(parsedTimelineNotes) ? parsedTimelineNotes : [])
-    } catch {
-      setTimelineNotes([])
+    // No saved review — try to restore draft from sessionStorage
+    if (key) {
+      const raw = sessionStorage.getItem(key)
+      if (raw) {
+        try {
+          const draft = JSON.parse(raw)
+          setTimelineNotes(Array.isArray(draft.timelineNotes) ? draft.timelineNotes : [])
+          setKpiScores(draft.kpiScores && typeof draft.kpiScores === 'object' ? draft.kpiScores : {})
+          setFreeText(draft.freeText ?? '')
+          setObjectiveRespected(draft.objectiveRespected ?? null)
+          return
+        } catch { /* ignore bad draft */ }
+      }
     }
 
-    try {
-      const parsedKpiScores = JSON.parse(review.kpiScores ?? '{}')
-      setKpiScores(parsedKpiScores && typeof parsedKpiScores === 'object' ? parsedKpiScores : {})
-    } catch {
-      setKpiScores({})
-    }
-
-    setFreeText(review.freeText ?? '')
-    setObjectiveRespected(review.objectiveRespected ?? null)
+    setTimelineNotes([])
+    setKpiScores({})
+    setFreeText('')
+    setObjectiveRespected(null)
   }, [activeSession?.id, latestGame?.id])
+
+  // Auto-save draft on every change (debounced)
+  useEffect(() => {
+    if (!draftKey || saved) return
+    const timer = setTimeout(() => {
+      saveDraft()
+      setDraftAutoSaved(true)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [draftKey, saveDraft, saved])
+
+  // Warn on window close when dirty
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty && !saved) e.preventDefault()
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isDirty, saved])
 
   const objectiveLabel = objectiveLabelsStr || objectiveFundamental?.label || activeSession?.objectiveId || ''
 
@@ -280,6 +334,7 @@ export function ReviewPage() {
       })
 
       setSaved(true)
+      clearDraft()
       clearGameEndData()
       await refreshSession()
 
@@ -331,11 +386,16 @@ export function ReviewPage() {
           opponentChampion={latestGame.opponentChampion}
           size="lg"
         />
-        {latestGame.opponentChampion && (
-          <span className="text-xs text-hextech-text-dim">
-            {latestGame.champion} <span className="text-hextech-text-dim">vs</span> {latestGame.opponentChampion}
-          </span>
-        )}
+        <div className="flex flex-col gap-1">
+          {latestGame.opponentChampion && (
+            <span className="text-xs text-hextech-text-dim">
+              {latestGame.champion} <span className="text-hextech-text-dim">vs</span> {latestGame.opponentChampion}
+            </span>
+          )}
+          {latestGame.accountName && (
+            <AccountBadge name={latestGame.accountName} profileIconId={latestGame.accountProfileIconId} />
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -401,6 +461,12 @@ export function ReviewPage() {
           </div>
         </CardContent>
       </Card>
+
+      {hasDraft && !saved && (
+        <p className="text-[10px] text-hextech-text-dim text-right -mb-2">
+          Draft auto-saved
+        </p>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2">
         {!latestGame.review && latestGame.reviewStatus !== 'to_be_reviewed' && (

@@ -21,9 +21,9 @@ import {
   BarChart3,
   FileSearch,
   Trash2,
-  User,
   Video,
 } from 'lucide-react'
+import { AccountBadge } from '@/components/ui/AccountBadge'
 import { cn } from '@/lib/utils'
 
 const GAMES_PAGE_SIZE = 20
@@ -61,6 +61,8 @@ interface GameEntry {
   duration: number
   win: boolean
   gameEndAt: string
+  accountName?: string
+  accountProfileIconId?: number
   review: ReviewEntry | null
 }
 
@@ -88,6 +90,7 @@ interface RiotGameEntry {
   win: boolean
   gameEndAt: string
   accountName: string
+  accountProfileIconId?: number
   imported: boolean
   reviewed: boolean
   reviewStatus: 'pending' | 'to_be_reviewed' | 'reviewed'
@@ -271,12 +274,8 @@ function GamesTab() {
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                {/* Account tag */}
                 {game.accountName && (
-                  <Badge variant="outline" className="border-hextech-border-dim text-hextech-text-dim text-[10px] gap-1 hidden sm:flex">
-                    <User className="h-2.5 w-2.5" />
-                    {game.accountName}
-                  </Badge>
+                  <AccountBadge name={game.accountName} profileIconId={game.accountProfileIconId} />
                 )}
 
                 {game.reviewed ? (
@@ -587,6 +586,10 @@ function GameRow({ game, index, onDelete }: { game: GameEntry; index: number; on
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {game.accountName && (
+            <AccountBadge name={game.accountName} profileIconId={game.accountProfileIconId} />
+          )}
+
           {game.review ? (
             <Badge variant="outline" className="border-hextech-green/50 text-hextech-green text-[10px] gap-1">
               <CheckCircle className="h-3 w-3" />

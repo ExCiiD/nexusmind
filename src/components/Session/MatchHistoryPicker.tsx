@@ -1,10 +1,16 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, History, Download, Swords, Check, AlertTriangle } from 'lucide-react'
+import { Loader2, History, Download, Swords, Check, AlertTriangle, Filter } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { formatGameTime, formatKDA } from '@/lib/utils'
 import { useTranslation } from 'react-i18next'
+import { useUserStore } from '@/store/useUserStore'
+import { AccountBadge } from '@/components/ui/AccountBadge'
+
+const ROLE_LABELS: Record<string, string> = {
+  TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Support',
+}
 
 interface MatchEntry {
   matchId: string
@@ -18,6 +24,8 @@ interface MatchEntry {
   win: boolean
   gameEndAt: string
   alreadyImported: boolean
+  accountName?: string
+  accountProfileIconId?: number
 }
 
 interface MatchHistoryPickerProps {
@@ -27,6 +35,7 @@ interface MatchHistoryPickerProps {
 export function MatchHistoryPicker({ onImported }: MatchHistoryPickerProps) {
   const { t } = useTranslation()
   const { toast } = useToast()
+  const mainRole = useUserStore((s) => s.user?.mainRole ?? null)
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -91,7 +100,8 @@ export function MatchHistoryPicker({ onImported }: MatchHistoryPickerProps) {
     )
   }
 
-  const importable = matches.filter((m) => !m.alreadyImported)
+  const visibleMatches = mainRole ? matches.filter((m) => m.role === mainRole) : matches
+  const importable = visibleMatches.filter((m) => !m.alreadyImported)
 
   return (
     <div className="space-y-4 rounded-xl border border-hextech-border bg-hextech-panel p-4">
@@ -100,6 +110,12 @@ export function MatchHistoryPicker({ onImported }: MatchHistoryPickerProps) {
           <h3 className="font-display font-semibold text-hextech-gold-bright flex items-center gap-2">
             <History className="h-4 w-4" />
             {t('history.picker.title')}
+            {mainRole && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-hextech-cyan/40 bg-hextech-cyan/10 px-2 py-0.5 text-[10px] font-medium text-hextech-cyan">
+                <Filter className="h-2.5 w-2.5" />
+                {ROLE_LABELS[mainRole] ?? mainRole} only
+              </span>
+            )}
           </h3>
           <p className="text-xs text-hextech-text mt-0.5">{t('history.picker.subtitle')}</p>
         </div>
@@ -108,14 +124,14 @@ export function MatchHistoryPicker({ onImported }: MatchHistoryPickerProps) {
         </Button>
       </div>
 
-      {matches.length === 0 ? (
+      {visibleMatches.length === 0 ? (
         <div className="flex items-center gap-2 text-hextech-text py-4 justify-center">
           <AlertTriangle className="h-4 w-4" />
           <span className="text-sm">{t('history.picker.empty')}</span>
         </div>
       ) : (
         <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-          {matches.map((m) => {
+          {visibleMatches.map((m) => {
             const isSelected = selected.has(m.matchId)
             const disabled = m.alreadyImported
             return (
@@ -163,10 +179,15 @@ export function MatchHistoryPicker({ onImported }: MatchHistoryPickerProps) {
                     </div>
                   </div>
 
-                  <div className="text-right flex-shrink-0">
+                  <div className="text-right flex-shrink-0 space-y-1">
                     <div className="text-xs text-hextech-text-dim">{formatDate(m.gameEndAt)}</div>
+                    {m.accountName && (
+                      <div className="flex justify-end">
+                        <AccountBadge name={m.accountName} profileIconId={m.accountProfileIconId} />
+                      </div>
+                    )}
                     {disabled && (
-                      <div className="text-xs text-hextech-text-dim mt-0.5">{t('history.picker.alreadyImported')}</div>
+                      <div className="text-xs text-hextech-text-dim">{t('history.picker.alreadyImported')}</div>
                     )}
                   </div>
                 </div>

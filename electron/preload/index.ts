@@ -68,6 +68,7 @@ const api = {
   computeStatsAverages: () => ipcRenderer.invoke('stats:compute-averages'),
   getStatsSnapshots: () => ipcRenderer.invoke('stats:get-snapshots'),
   autoSnapshot: () => ipcRenderer.invoke('stats:auto-snapshot'),
+  clearStatsSnapshots: () => ipcRenderer.invoke('stats:clear-snapshots'),
 
   getBadges: () => ipcRenderer.invoke('badges:get'),
 

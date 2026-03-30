@@ -8,6 +8,8 @@ import {
   extractDetailedStats,
 } from '../riotClient'
 
+let autoSnapshotRunning = false
+
 /** Fetch match IDs from the main user + all linked accounts, merged and sorted. */
 async function getAggregatedMatchIds(
   user: { puuid: string; region: string; queueFilter?: string | null },
@@ -46,11 +48,17 @@ function resolvePuuid(matchData: any, puuids: string[]): string | null {
   return null
 }
 
-/** Resolve the display name for an account by puuid. */
+/** Resolve display name + profile icon for an account by puuid. */
 function resolveAccountName(puuid: string, user: any, accounts: any[]): string {
   if (puuid === user.puuid) return user.displayName || user.summonerName
   const account = accounts.find((a: any) => a.puuid === puuid)
   return account?.gameName ?? (user.displayName || user.summonerName)
+}
+
+function resolveAccountIconId(puuid: string, user: any, accounts: any[]): number {
+  if (puuid === user.puuid) return user.profileIconId ?? 0
+  const account = accounts.find((a: any) => a.puuid === puuid)
+  return account?.profileIconId ?? 0
 }
 
 function hasCurrentDetailedStatsSchema(parsed: any): boolean {
@@ -67,7 +75,11 @@ function hasCurrentDetailedStatsSchema(parsed: any): boolean {
     Object.prototype.hasOwnProperty.call(parsed.economy, 'xpPerMin') &&
     parsed.objectives &&
     Object.prototype.hasOwnProperty.call(parsed.objectives, 'teamEpicMonsterDmgPercent') &&
-    Object.prototype.hasOwnProperty.call(parsed.objectives, 'turretPlates'),
+    Object.prototype.hasOwnProperty.call(parsed.objectives, 'turretPlates') &&
+    // Require expanded opponent field with @15 timeline data
+    Object.prototype.hasOwnProperty.call(parsed, 'opponent') &&
+    (parsed.opponent === null ||
+      Object.prototype.hasOwnProperty.call(parsed.opponent, 'gold15')),
   )
 }
 
@@ -135,6 +147,7 @@ export function registerStatsHandlers() {
             reviewed: !!dbGame?.review,
             reviewStatus: dbGame?.reviewStatus ?? (dbGame?.review ? 'reviewed' : 'pending'),
             accountName: resolveAccountName(puuid, user, accounts),
+            accountProfileIconId: resolveAccountIconId(puuid, user, accounts),
           }
         }),
       )
@@ -238,6 +251,7 @@ export function registerStatsHandlers() {
         meta: {
           ...detailed.meta,
           accountName: resolveAccountName(puuid, user, accounts),
+          accountProfileIconId: resolveAccountIconId(puuid, user, accounts),
         },
       }
     },
@@ -248,8 +262,11 @@ export function registerStatsHandlers() {
     const user = await prisma.user.findFirst()
     if (!user) throw new Error('No user found')
 
-    const matchIds = await getMatchIds(user.puuid, user.region, 20)
+    const accounts = await prisma.account.findMany({ where: { userId: user.id } })
+    const { matchIds, allPuuids } = await getAggregatedMatchIds(user, accounts, 40)
     if (matchIds.length === 0) return null
+
+    const mainRole = (user as any).mainRole as string | null
 
     const allStats: any[] = []
     for (const matchId of matchIds) {
@@ -282,8 +299,14 @@ export function registerStatsHandlers() {
         },
       })
 
-      const detailed = extractDetailedStats(matchData, timelineData, user.puuid)
-      if (detailed) allStats.push(detailed)
+      const puuid = resolvePuuid(matchData, allPuuids) ?? user.puuid
+      const detailed = extractDetailedStats(matchData, timelineData, puuid)
+      if (!detailed) continue
+
+      if (mainRole && detailed.meta.role !== mainRole) continue
+
+      allStats.push(detailed)
+      if (allStats.length >= 20) break
     }
 
     if (allStats.length === 0) return null
@@ -295,6 +318,7 @@ export function registerStatsHandlers() {
     await prisma.statsSnapshot.create({
       data: {
         userId: user.id,
+        mainRole: mainRole ?? null,
         stats: JSON.stringify(avg),
         gameCount: allStats.length,
         firstGameAt,
@@ -315,8 +339,29 @@ export function registerStatsHandlers() {
     const user = await prisma.user.findFirst()
     if (!user) return []
 
+    const mainRole = (user as any).mainRole as string | null
+
+    // Deduplicate: keep only the earliest-created snapshot per firstGameAt (batch identity)
+    const allForRole = await prisma.statsSnapshot.findMany({
+      where: { userId: user.id, mainRole: mainRole ?? null },
+      orderBy: { createdAt: 'asc' },
+    })
+    const seen = new Map<string, string>() // firstGameAt ISO → id to keep (first created wins)
+    for (const s of allForRole) {
+      const key = s.firstGameAt.toISOString()
+      if (seen.has(key)) {
+        // Duplicate batch — delete the later one
+        await prisma.statsSnapshot.delete({ where: { id: s.id } }).catch(() => {})
+      } else {
+        seen.set(key, s.id)
+      }
+    }
+
     const snapshots = await prisma.statsSnapshot.findMany({
-      where: { userId: user.id },
+      where: {
+        userId: user.id,
+        mainRole: mainRole ?? null,
+      },
       orderBy: { createdAt: 'asc' },
     })
 
@@ -349,7 +394,18 @@ export function registerStatsHandlers() {
   })
 
   /** Auto-create snapshots for every new batch of 20 games since the last snapshot. */
+  ipcMain.handle('stats:clear-snapshots', async () => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst()
+    if (!user) return { deleted: 0 }
+    const result = await prisma.statsSnapshot.deleteMany({ where: { userId: user.id } })
+    return { deleted: result.count }
+  })
+
   ipcMain.handle('stats:auto-snapshot', async () => {
+    if (autoSnapshotRunning) return { created: 0 }
+    autoSnapshotRunning = true
+    try {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst()
     if (!user) return { created: 0 }
@@ -358,20 +414,20 @@ export function registerStatsHandlers() {
     const { matchIds, allPuuids } = await getAggregatedMatchIds(user, accounts, 100)
     if (matchIds.length === 0) return { created: 0 }
 
+    const mainRole = (user as any).mainRole as string | null
+
+    // Find the last snapshot for this specific role configuration to avoid duplicates
     const lastSnapshot = await prisma.statsSnapshot.findFirst({
-      where: { userId: user.id },
+      where: { userId: user.id, mainRole: mainRole ?? null },
       orderBy: { lastGameAt: 'desc' },
     })
     const lastGameAtMs = lastSnapshot?.lastGameAt.getTime() ?? 0
 
-    // matchIds are sorted newest-first; filter to those potentially after last snapshot
-    // Add 1h buffer to account for match ID timestamp vs gameEnd timestamp gap
     const candidateIds = matchIds.filter((id) => {
       const ts = parseInt(id.split('_')[1] ?? '0', 10)
       return ts > lastGameAtMs - 3_600_000
     })
 
-    // Oldest first for ordered batch processing
     const orderedIds = [...candidateIds].reverse()
 
     const gamesWithStats: { stats: any; ts: number }[] = []
@@ -415,7 +471,8 @@ export function registerStatsHandlers() {
       const detailed = extractDetailedStats(matchData, timelineData, puuid)
       if (!detailed) continue
 
-      // Only include games genuinely after the last snapshot
+      if (mainRole && detailed.meta.role !== mainRole) continue
+
       if (detailed.meta.gameEndAt > lastGameAtMs) {
         gamesWithStats.push({ stats: detailed, ts: detailed.meta.gameEndAt })
       }
@@ -433,20 +490,30 @@ export function registerStatsHandlers() {
       const firstGameAt = new Date(Math.min(...allStats.map((s) => s.meta.gameEndAt)))
       const lastGameAtNew = new Date(Math.max(...allStats.map((s) => s.meta.gameEndAt)))
 
-      await prisma.statsSnapshot.create({
-        data: {
-          userId: user.id,
-          stats: JSON.stringify(avg),
-          gameCount: allStats.length,
-          firstGameAt,
-          lastGameAt: lastGameAtNew,
-        },
+      // Skip if a snapshot already covers this batch (keyed by firstGameAt — unique per batch)
+      const existing = await prisma.statsSnapshot.findFirst({
+        where: { userId: user.id, mainRole: mainRole ?? null, firstGameAt },
       })
-      created++
+      if (!existing) {
+        await prisma.statsSnapshot.create({
+          data: {
+            userId: user.id,
+            mainRole: mainRole ?? null,
+            stats: JSON.stringify(avg),
+            gameCount: allStats.length,
+            firstGameAt,
+            lastGameAt: lastGameAtNew,
+          },
+        })
+        created++
+      }
       startIdx += 20
     }
 
     return { created }
+    } finally {
+      autoSnapshotRunning = false
+    }
   })
 }
 

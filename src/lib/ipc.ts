@@ -73,6 +73,7 @@ export type NexusMindAPI = {
   computeStatsAverages: () => Promise<any>
   getStatsSnapshots: () => Promise<any[]>
   autoSnapshot: () => Promise<{ created: number }>
+  clearStatsSnapshots: () => Promise<{ deleted: number }>
 
   getBadges: () => Promise<string[]>
 
@@ -205,6 +206,49 @@ export interface DetailedGameStats {
     opponentChampion: string | null
     accountName?: string
   }
+  opponent: {
+    champion: string
+    kills: number
+    deaths: number
+    assists: number
+    cs: number
+    laneCS: number
+    jungleCS: number
+    visionScore: number
+    totalDamage: number
+    damagePerMin: number
+    goldEarned: number
+    goldPerMin: number
+    csPerMin: number
+    visionScorePerMin: number
+    wardsPlaced: number
+    wardsDestroyed: number
+    controlWardsPurchased: number
+    stealthWardsPlaced: number | null
+    damageTaken: number
+    damageMitigated: number
+    damagePerGold: number
+    killParticipation: number
+    epicMonsterDamage: number
+    damageToBuildings: number
+    objectivesStolen: number
+    inhibitorTakedowns: number
+    turretPlates: number
+    firstTowerParticipation: boolean
+    firstBloodParticipation: boolean
+    soloKills: number | null
+    skillshotsDodged: number | null
+    killsNearEnemyTurret: number | null
+    outnumberedKills: number | null
+    takedownsInEnemyJungle: number | null
+    gold15: number | null
+    xp15: number | null
+    xpPerMin15: number | null
+    cs15: number | null
+    damage15: number | null
+    damagePerMin15: number | null
+    turretPlates15: number | null
+  } | null
 }
 
 export interface ReviewBiasSignal {

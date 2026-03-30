@@ -13,6 +13,7 @@ interface User {
   streakDays: number
   lastActiveDate: string | null
   createdAt: string
+  mainRole: string | null
   role: string
   supabaseUid: string | null
   supabaseEmail: string | null

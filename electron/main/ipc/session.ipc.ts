@@ -61,7 +61,7 @@ export function registerSessionHandlers() {
     const user = await prisma.user.findFirst()
     if (!user) return null
 
-    return prisma.session.findFirst({
+    const session = await prisma.session.findFirst({
       where: { userId: user.id, status: 'active' },
       include: {
         games: {
@@ -70,6 +70,46 @@ export function registerSessionHandlers() {
         },
       },
     })
+
+    if (!session) return null
+
+    const accounts = await prisma.account.findMany({ where: { userId: user.id } })
+    const matchIds = session.games.map((g) => g.matchId).filter(Boolean)
+    const caches = await prisma.matchCache.findMany({
+      where: { matchId: { in: matchIds } },
+      select: { matchId: true, matchJson: true },
+    })
+    const cacheByMatchId = new Map(caches.map((c) => [c.matchId, c.matchJson]))
+    const allPuuids = [user.puuid, ...accounts.map((a) => a.puuid)]
+
+    const resolveAccountInfo = (matchId: string | null): { accountName: string; accountProfileIconId: number } => {
+      const defaultName = user.displayName || user.summonerName
+      const defaultIconId = (user as any).profileIconId ?? 0
+      if (!matchId) return { accountName: defaultName, accountProfileIconId: defaultIconId }
+      const raw = cacheByMatchId.get(matchId)
+      if (!raw) return { accountName: defaultName, accountProfileIconId: defaultIconId }
+      try {
+        const matchData = JSON.parse(raw)
+        const participants: any[] = matchData.info?.participants ?? []
+        const matchedPuuid = allPuuids.find((p) => participants.some((pp: any) => pp.puuid === p))
+        if (!matchedPuuid || matchedPuuid === user.puuid) return { accountName: defaultName, accountProfileIconId: defaultIconId }
+        const acc = accounts.find((a) => a.puuid === matchedPuuid)
+        return {
+          accountName: acc?.gameName ?? defaultName,
+          accountProfileIconId: (acc as any)?.profileIconId ?? 0,
+        }
+      } catch {
+        return { accountName: defaultName, accountProfileIconId: defaultIconId }
+      }
+    }
+
+    return {
+      ...session,
+      games: session.games.map((g) => ({
+        ...g,
+        ...resolveAccountInfo(g.matchId),
+      })),
+    }
   })
 
   ipcMain.handle('riot:fetch-match-history', async (_event, count = 10) => {
@@ -105,12 +145,19 @@ export function registerSessionHandlers() {
       matchIds.map(async (id) => {
         const existing = await prisma.game.findUnique({ where: { matchId: id } })
         const matchData = await getMatch(id, user.region)
-        const puuid = allPuuids.find((p) =>
+        const resolvedPuuid = allPuuids.find((p) =>
           matchData.info?.participants?.some((pp: any) => pp.puuid === p),
         ) ?? user.puuid
-        const stats = extractPlayerStats(matchData, puuid)
+        const stats = extractPlayerStats(matchData, resolvedPuuid)
         if (!stats) return null
-        return { ...stats, alreadyImported: !!existing }
+
+        let accountName = user.displayName || user.summonerName
+        if (resolvedPuuid !== user.puuid) {
+          const acc = accounts.find((a) => a.puuid === resolvedPuuid)
+          if (acc) accountName = acc.gameName ?? accountName
+        }
+
+        return { ...stats, alreadyImported: !!existing, accountName }
       }),
     )
 

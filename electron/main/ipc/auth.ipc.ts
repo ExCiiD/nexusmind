@@ -8,10 +8,10 @@ export function registerAuthHandlers() {
   ipcMain.handle('auth:connect-riot', async (_event, gameName: string, tagLine: string, region: string, displayName?: string) => {
     const account = await getAccountByRiotId(gameName, tagLine, region)
 
-    // Garena-operated servers (VN2, SG2, TH2, TW2, PH2) may not support the
-    // summoner endpoint with a standard Riot developer key — treat as non-fatal
+    let profileIconId = 0
     try {
-      await getSummonerByPuuid(account.puuid, region)
+      const summoner = await getSummonerByPuuid(account.puuid, region)
+      profileIconId = summoner.profileIconId
     } catch (err) {
       if (!GARENA_REGIONS.has(region)) throw err
       console.warn(`[auth] Summoner endpoint unavailable for ${region} (Garena server) — continuing`)
@@ -28,6 +28,7 @@ export function registerAuthHandlers() {
           puuid: account.puuid,
           tagLine: account.tagLine,
           region,
+          profileIconId,
           nextAssessmentAt: new Date(),
         },
       })
@@ -39,6 +40,7 @@ export function registerAuthHandlers() {
           summonerName: account.gameName,
           tagLine: account.tagLine,
           region,
+          profileIconId,
         },
       })
     }

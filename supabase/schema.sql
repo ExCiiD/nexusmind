@@ -52,9 +52,14 @@ create policy "coach_students_student" on public.coach_students
 create policy "coach_students_invite_read" on public.coach_students
   for select using (status = 'pending');
 
--- Student can update (accept) an invite directed at them
+-- Student can update rows where they are the student (e.g. cancel invite)
 create policy "coach_students_student_update" on public.coach_students
   for update using (student_id = auth.uid());
+
+-- Any authenticated user can claim a pending invite (become the coach)
+-- The app code validates the invite code and prevents self-redemption
+create policy "coach_students_invite_claim" on public.coach_students
+  for update using (status = 'pending' and coach_id = student_id);
 
 -- Coaches can read their students' profiles (requires coach_students to exist)
 create policy "profiles_select_coach" on public.profiles

@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "profileIconId" INTEGER NOT NULL DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE "Account" ADD COLUMN "profileIconId" INTEGER NOT NULL DEFAULT 0;

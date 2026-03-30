@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { useUserStore } from '@/store/useUserStore'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
-import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Users, GraduationCap, Copy, Check, LogIn, LogOut } from 'lucide-react'
+import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Users, GraduationCap, Copy, Check, LogIn, LogOut, Target } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const REGIONS = [
@@ -94,6 +94,31 @@ export function SettingsPage() {
     }
   }
 
+  const GAME_ROLES = [
+    { value: 'TOP', label: 'Top' },
+    { value: 'JUNGLE', label: 'Jungle' },
+    { value: 'MIDDLE', label: 'Mid' },
+    { value: 'BOTTOM', label: 'ADC' },
+    { value: 'UTILITY', label: 'Support' },
+  ] as const
+
+  const handleSetMainRole = async (role: string) => {
+    try {
+      const newValue = user?.mainRole === role ? null : role
+      await window.api.updateUser({ mainRole: newValue })
+      await window.api.clearStatsSnapshots()
+      await loadUser()
+      toast({
+        title: newValue
+          ? `Main role set to ${GAME_ROLES.find(r => r.value === newValue)?.label ?? role} — stats will refresh automatically`
+          : 'Main role filter cleared — stats will refresh automatically',
+        variant: 'success',
+      })
+    } catch (err: any) {
+      toast({ title: err.message ?? 'Error', variant: 'destructive' })
+    }
+  }
+
   const handleGenerateInvite = async () => {
     setGeneratingInvite(true)
     try {
@@ -117,7 +142,8 @@ export function SettingsPage() {
     setRedeeming(true)
     try {
       const result = await window.api.redeemInvite(redeemCode.trim())
-      toast({ title: `Connected to coach: ${result.coachName}`, variant: 'success' })
+      const name = result.studentName ?? result.coachName ?? 'Unknown'
+      toast({ title: `Connected! You are now coaching ${name}`, variant: 'success' })
       setRedeemCode('')
     } catch (err: any) {
       toast({ title: err.message ?? 'Invalid invite code', variant: 'destructive' })
@@ -306,6 +332,35 @@ export function SettingsPage() {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Main role for stats */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-hextech-cyan" />
+            Main Role
+          </CardTitle>
+          <CardDescription>Stats averages and progression will only include games played on your main role. Click again to deselect.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            {GAME_ROLES.map((r) => (
+              <button
+                key={r.value}
+                onClick={() => handleSetMainRole(r.value)}
+                className={cn(
+                  'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
+                  user?.mainRole === r.value
+                    ? 'border-hextech-cyan bg-hextech-cyan/10 text-hextech-cyan'
+                    : 'border-hextech-border-dim text-hextech-text hover:border-hextech-cyan/40',
+                )}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

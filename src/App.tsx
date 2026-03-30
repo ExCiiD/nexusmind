@@ -10,7 +10,6 @@ import { ReassessmentPage } from '@/pages/Assessment/ReassessmentPage'
 import { HistoryPage } from '@/pages/History/HistoryPage'
 import { DetailedStatsPage } from '@/pages/DetailedStats/DetailedStatsPage'
 import { StatsLandingPage } from '@/pages/DetailedStats/StatsLandingPage'
-import { StatsAveragesPage } from '@/pages/DetailedStats/StatsAveragesPage'
 import { SettingsPage } from '@/pages/Settings/SettingsPage'
 import { StudentsPage } from '@/pages/Students/StudentsPage'
 import { DevToolbar } from '@/components/Dev/DevToolbar'
@@ -51,7 +50,7 @@ export function App() {
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/stats" element={<StatsLandingPage />} />
-            <Route path="/stats/averages" element={<StatsAveragesPage />} />
+            <Route path="/stats/averages" element={<Navigate to="/stats" replace />} />
             <Route path="/stats/:matchId" element={<DetailedStatsPage />} />
             <Route path="/assessment" element={<ReassessmentPage />} />
             <Route path="/settings" element={<SettingsPage />} />

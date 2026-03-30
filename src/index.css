@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+.app-drag-region {
+  -webkit-app-region: drag;
+}
+.app-drag-region button,
+.app-drag-region a,
+.app-drag-region input,
+.app-drag-region select,
+.app-drag-region textarea,
+.app-drag-region [role="button"] {
+  -webkit-app-region: no-drag;
+}
+
 @layer base {
   * {
     border-color: theme('colors.hextech.border-dim');

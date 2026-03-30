@@ -30,6 +30,8 @@ interface Game {
   rank: string | null
   lp: number | null
   gameEndAt: string
+  accountName?: string
+  accountProfileIconId?: number
   review: Review | null
 }
 
