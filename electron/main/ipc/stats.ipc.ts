@@ -159,6 +159,38 @@ export function registerStatsHandlers() {
       }
     }
 
+    // Step 5: test the EXACT batch pipeline (matchCache + Promise.allSettled) on first 3 IDs
+    const batchIds = matchIds.slice(0, 3)
+    const allPuuids = [user.puuid]
+    const batchResults = await Promise.allSettled(
+      batchIds.map(async (id: string) => {
+        const cached = await prisma.matchCache.findUnique({ where: { matchId: id } })
+        let md: any
+        if (cached) {
+          md = JSON.parse(cached.matchJson)
+        } else {
+          md = await getMatch(id, user.region)
+          await prisma.matchCache.upsert({
+            where: { matchId: id },
+            create: { matchId: id, matchJson: JSON.stringify(md) },
+            update: {},
+          })
+        }
+        const puuid = resolvePuuid(md, allPuuids)
+        if (!puuid) return { id, outcome: 'null:puuid_not_found' }
+        const stats = extractPlayerStats(md, puuid)
+        if (!stats) return { id, outcome: 'null:extractStats_null' }
+        return { id, outcome: 'ok', duration: stats.duration, passes: (stats.duration ?? 0) >= 300 }
+      })
+    )
+    batchResults.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        out[`step5_match${i}`] = `REJECTED: ${r.reason?.message ?? r.reason}`
+      } else {
+        out[`step5_match${i}`] = JSON.stringify(r.value)
+      }
+    })
+
     return out
   })
 
