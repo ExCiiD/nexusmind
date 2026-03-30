@@ -159,37 +159,79 @@ export function registerStatsHandlers() {
       }
     }
 
-    // Step 5: test the EXACT batch pipeline (matchCache + Promise.allSettled) on first 3 IDs
-    const batchIds = matchIds.slice(0, 3)
-    const allPuuids = [user.puuid]
-    const batchResults = await Promise.allSettled(
-      batchIds.map(async (id: string) => {
-        const cached = await prisma.matchCache.findUnique({ where: { matchId: id } })
-        let md: any
-        if (cached) {
-          md = JSON.parse(cached.matchJson)
-        } else {
-          md = await getMatch(id, user.region)
-          await prisma.matchCache.upsert({
-            where: { matchId: id },
-            create: { matchId: id, matchJson: JSON.stringify(md) },
-            update: {},
-          })
-        }
-        const puuid = resolvePuuid(md, allPuuids)
-        if (!puuid) return { id, outcome: 'null:puuid_not_found' }
-        const stats = extractPlayerStats(md, puuid)
-        if (!stats) return { id, outcome: 'null:extractStats_null' }
-        return { id, outcome: 'ok', duration: stats.duration, passes: (stats.duration ?? 0) >= 300 }
-      })
-    )
-    batchResults.forEach((r, i) => {
-      if (r.status === 'rejected') {
-        out[`step5_match${i}`] = `REJECTED: ${r.reason?.message ?? r.reason}`
-      } else {
-        out[`step5_match${i}`] = JSON.stringify(r.value)
+    // Step 5: run THE EXACT stats:match-history logic
+    try {
+      const accounts = await prisma.account.findMany({ where: { userId: user.id } })
+      out['step5_accounts'] = accounts.length
+
+      const { matchIds: realIds, allPuuids: realPuuids } = await getAggregatedMatchIds(user, accounts, 50)
+      out['step5_aggregated_ids'] = realIds.length
+      out['step5_sample_ids'] = realIds.slice(0, 2).join(', ')
+
+      if (realIds.length === 0) {
+        out['step5_result'] = 'EMPTY: getAggregatedMatchIds returned 0'
+        return out
       }
-    })
+
+      const testBatch = realIds.slice(0, 3)
+      const results = await Promise.allSettled(
+        testBatch.map(async (id: string) => {
+          let matchData: any
+          const cached = await prisma.matchCache.findUnique({ where: { matchId: id } })
+          if (cached) {
+            matchData = JSON.parse(cached.matchJson)
+          } else {
+            matchData = await getMatch(id, user.region)
+            await prisma.matchCache.upsert({
+              where: { matchId: id },
+              create: { matchId: id, matchJson: JSON.stringify(matchData) },
+              update: {},
+            })
+          }
+          const rp = resolvePuuid(matchData, realPuuids)
+          if (!rp) return null
+          const stats = extractPlayerStats(matchData, rp)
+          if (!stats) return null
+          return {
+            gameId: null,
+            ...stats,
+            imported: false,
+            reviewed: false,
+            reviewStatus: 'pending' as const,
+            accountName: user.summonerName,
+          }
+        })
+      )
+
+      const fulfilled = results.filter((r) => r.status === 'fulfilled' && r.value !== null)
+      const rejected = results.filter((r) => r.status === 'rejected')
+      out['step5_fulfilled'] = fulfilled.length
+      out['step5_rejected'] = rejected.length
+      if (rejected.length > 0) {
+        out['step5_reject_reason'] = (rejected[0] as PromiseRejectedResult).reason?.message ?? String((rejected[0] as PromiseRejectedResult).reason)
+      }
+
+      const mapped = fulfilled.map((r) => (r as PromiseFulfilledResult<any>).value)
+      const passDuration = mapped.filter((g: any) => (g.duration ?? 0) >= 300)
+      out['step5_pass_duration'] = passDuration.length
+
+      // Test IPC serialization: gameEndAt is a Date object — check if it survives
+      if (passDuration.length > 0) {
+        const sample = passDuration[0]
+        out['step5_gameEndAt_type'] = typeof sample.gameEndAt
+        out['step5_gameEndAt_isDate'] = sample.gameEndAt instanceof Date
+        out['step5_gameEndAt_val'] = String(sample.gameEndAt).slice(0, 30)
+        try {
+          const serialized = JSON.parse(JSON.stringify(passDuration[0]))
+          out['step5_serializes'] = 'YES'
+          out['step5_serialized_keys'] = Object.keys(serialized).length
+        } catch (e: any) {
+          out['step5_serializes'] = `NO: ${e.message}`
+        }
+      }
+    } catch (e: any) {
+      out['step5_error'] = e.message
+    }
 
     return out
   })
