@@ -23,10 +23,7 @@ async function getAggregatedMatchIds(
 
   const perAccountIds = await Promise.all(
     allAccounts.map(({ puuid, region }) =>
-      getMatchIds(puuid, region, count, 0, queueFilter).catch((err: any) => {
-        console.error(`[stats] getMatchIds failed for puuid=${puuid} region=${region}:`, err?.message ?? err)
-        throw err
-      }),
+      getMatchIds(puuid, region, count, 0, queueFilter),
     ),
   )
 

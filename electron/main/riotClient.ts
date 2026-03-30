@@ -187,11 +187,11 @@ export async function getMatchIds(
       riotFetchWithRoutingFallback(
         `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&start=0&count=${count}`,
         routing,
-      ).catch(() => [] as string[]),
+      ),
       riotFetchWithRoutingFallback(
         `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=440&start=0&count=${count}`,
         routing,
-      ).catch(() => [] as string[]),
+      ),
     ])
     // Merge, deduplicate, and take the most recent `count` entries
     const merged = [...new Set([...soloIds, ...flexIds])]
