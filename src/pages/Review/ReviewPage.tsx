@@ -27,14 +27,20 @@ import {
   Eye,
   Target as TargetIcon,
   AlertTriangle,
+  ExternalLink,
+  ShieldAlert,
 } from 'lucide-react'
+import { ExternalReviewWizard } from './ExternalReviewWizard'
+import { ExternalReviewsList } from './ExternalReviewsList'
+import { ShareButton } from '@/components/Share/ShareButton'
 import { useToast } from '@/hooks/useToast'
-import { formatGameTime, formatKDA, formatCSPerMin } from '@/lib/utils'
+import { formatGameTime, formatKDA, formatCSPerMin, cn } from '@/lib/utils'
 import { GameRecordingPanel } from '@/components/Recording/GameRecordingPanel'
-import { CoachComments } from '@/components/Coach/CoachComments'
 
 export function ReviewPage() {
   const { t } = useTranslation()
+  const [showExternalWizard, setShowExternalWizard] = useState(false)
+  const [activeTab, setActiveTab] = useState<'review' | 'external'>('review')
   const activeSession = useSessionStore((s) => s.activeSession)
   const refreshSession = useSessionStore((s) => s.refreshSession)
   const loadActiveSession = useSessionStore((s) => s.loadActiveSession)
@@ -45,25 +51,49 @@ export function ReviewPage() {
   const requestedGameId = searchParams.get('gameId')
   const { toast } = useToast()
   const allFundamentals = useLocalizedFundamentals().flatMap((c) => c.fundamentals)
-  const objectiveFundamental = useLocalizedFundamental(activeSession?.objectiveId ?? '')
+
+  // When a gameId is provided but there's no active session, load the game's session from DB
+  const [historicContext, setHistoricContext] = useState<{ game: any; session: any } | null>(null)
+  const [loadingHistoric, setLoadingHistoric] = useState(false)
+
+  useEffect(() => {
+    if (requestedGameId && !activeSession) {
+      setLoadingHistoric(true)
+      window.api.getGameContext(requestedGameId)
+        .then((ctx) => {
+          setHistoricContext(ctx)
+        })
+        .catch(() => {
+          setHistoricContext(null)
+        })
+        .finally(() => setLoadingHistoric(false))
+    } else {
+      setHistoricContext(null)
+    }
+  }, [requestedGameId, activeSession])
+
+  // Use the active session or fall back to the historic session for a past game
+  const session = activeSession ?? historicContext?.session ?? null
+
+  const objectiveFundamental = useLocalizedFundamental(session?.objectiveId ?? '')
 
   const objectiveIds: string[] = useMemo(() => {
-    if (!activeSession) return []
-    try { return JSON.parse(activeSession.objectiveIds) } catch { return [activeSession.objectiveId] }
-  }, [activeSession])
+    if (!session) return []
+    try { return JSON.parse(session.objectiveIds) } catch { return [session.objectiveId] }
+  }, [session])
 
   const selectedKpiIds: string[] = useMemo(() => {
-    if (!activeSession) return []
+    if (!session) return []
     try {
-      const ids = JSON.parse(activeSession.selectedKpiIds ?? '[]')
+      const ids = JSON.parse(session.selectedKpiIds ?? '[]')
       return Array.isArray(ids) ? ids : []
     } catch { return [] }
-  }, [activeSession])
+  }, [session])
 
   const objectiveLabelsStr = objectiveIds
     .map((id) => allFundamentals.find((f) => f.id === id)?.label ?? id)
     .join(', ')
-  const activeSubObjective = activeSession?.subObjective
+  const activeSubObjective = session?.subObjective
 
   const [timelineNotes, setTimelineNotes] = useState<TimelineNote[]>([])
   const [kpiScores, setKpiScores] = useState<Record<string, number>>({})
@@ -74,19 +104,25 @@ export function ReviewPage() {
   const [biasSignals, setBiasSignals] = useState<ReviewBiasSignal[]>([])
   const [draftAutoSaved, setDraftAutoSaved] = useState(false)
   const warnedBiasKeysRef = useRef<Set<string>>(new Set())
+  const [offRoleDismissed, setOffRoleDismissed] = useState(false)
+  const [removingGame, setRemovingGame] = useState(false)
 
   // If a specific gameId is requested, use it directly; otherwise pick first unreviewed game
   const latestGame = useMemo(() => {
-    if (!activeSession) return null
+    if (!session) return null
+    // Historic mode: the requested game is already loaded in historicContext
+    if (historicContext?.game && requestedGameId === historicContext.game.id) {
+      return historicContext.game
+    }
     if (requestedGameId) {
-      return activeSession.games.find((g) => g.id === requestedGameId) ?? null
+      return session.games?.find((g: any) => g.id === requestedGameId) ?? null
     }
     return (
-      activeSession.games.find((g) => !g.review && g.reviewStatus !== 'to_be_reviewed') ??
-      activeSession.games.find((g) => !g.review && g.reviewStatus === 'to_be_reviewed') ??
+      session.games?.find((g: any) => !g.review && g.reviewStatus !== 'to_be_reviewed') ??
+      session.games?.find((g: any) => !g.review && g.reviewStatus === 'to_be_reviewed') ??
       null
     )
-  }, [activeSession, requestedGameId])
+  }, [session, historicContext, requestedGameId])
 
   // Draft persistence — must come after latestGame
   const draftKey = latestGame ? `review-draft-${latestGame.id}` : null
@@ -243,16 +279,70 @@ export function ReviewPage() {
     })
   }, [biasWarningsByObjective, t, toast])
 
-  if (!activeSession) {
+  // Loading historic context
+  if (loadingHistoric) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-4">
-        <Swords className="h-12 w-12 text-hextech-text-dim" />
-        <h2 className="text-xl font-display font-bold text-hextech-text-bright">{t('review.noSession.title')}</h2>
-        <p className="text-sm text-hextech-text">{t('review.noSession.desc')}</p>
-        <Button onClick={() => navigate('/session')}>
-          <TargetIcon className="h-4 w-4 mr-2" /> {t('review.noSession.button')}
-        </Button>
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-hextech-gold" />
       </div>
+    )
+  }
+
+  // No session at all and no historic context being loaded
+  if (!session) {
+    return (
+      <>
+        {/* Tab bar */}
+        <div className="flex items-center gap-1 border-b border-hextech-border-dim mb-6">
+          <button
+            onClick={() => setActiveTab('review')}
+            className={cn(
+              'px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+              activeTab === 'review'
+                ? 'border-hextech-gold text-hextech-gold-bright'
+                : 'border-transparent text-hextech-text-dim hover:text-hextech-text',
+            )}
+          >
+            My Review
+          </button>
+          <button
+            onClick={() => setActiveTab('external')}
+            className={cn(
+              'px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+              activeTab === 'external'
+                ? 'border-hextech-gold text-hextech-gold-bright'
+                : 'border-transparent text-hextech-text-dim hover:text-hextech-text',
+            )}
+          >
+            External Reviews
+          </button>
+        </div>
+
+        {activeTab === 'review' ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-4">
+            <Swords className="h-12 w-12 text-hextech-text-dim" />
+            <h2 className="text-xl font-display font-bold text-hextech-text-bright">{t('review.noSession.title')}</h2>
+            <p className="text-sm text-hextech-text">{t('review.noSession.desc')}</p>
+            <div className="flex gap-3">
+              <Button onClick={() => navigate('/session')}>
+                <TargetIcon className="h-4 w-4 mr-2" /> {t('review.noSession.button')}
+              </Button>
+              <Button variant="outline" onClick={() => setShowExternalWizard(true)}>
+                <ExternalLink className="h-4 w-4 mr-2" /> External review
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <ExternalReviewsList
+            onCreateNew={() => setShowExternalWizard(true)}
+          />
+        )}
+
+        <ExternalReviewWizard
+          open={showExternalWizard}
+          onClose={() => setShowExternalWizard(false)}
+        />
+      </>
     )
   }
 
@@ -284,6 +374,7 @@ export function ReviewPage() {
 
   if (!latestGame) {
     return (
+      <>
       <div className="space-y-6 animate-fade-in">
         <div>
           <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('nav.review')}</h1>
@@ -302,8 +393,8 @@ export function ReviewPage() {
               </span>
             </p>
             <div className="text-sm text-hextech-text">
-              {t('review.gamePlayed', { count: activeSession.games.length })} |{' '}
-              {t('review.gameReviewed', { count: activeSession.games.filter((g) => g.review).length })}
+              {t('review.gamePlayed', { count: session?.games?.length ?? 0 })} |{' '}
+              {t('review.gameReviewed', { count: session?.games?.filter((g: any) => g.review).length ?? 0 })}
             </div>
           </CardContent>
         </Card>
@@ -312,7 +403,15 @@ export function ReviewPage() {
           <p className="text-sm text-hextech-text-dim text-center">{t('review.waiting.orImport')}</p>
           <MatchHistoryPicker onImported={() => refreshSession()} />
         </div>
+
+        <div className="flex justify-center">
+          <Button variant="outline" onClick={() => setShowExternalWizard(true)}>
+            <ExternalLink className="h-4 w-4 mr-2" /> External review
+          </Button>
+        </div>
       </div>
+      <ExternalReviewWizard open={showExternalWizard} onClose={() => setShowExternalWizard(false)} />
+      </>
     )
   }
 
@@ -336,7 +435,13 @@ export function ReviewPage() {
       setSaved(true)
       clearDraft()
       clearGameEndData()
-      await refreshSession()
+      // Refresh active session if it exists; otherwise reload the historic context
+      if (activeSession) {
+        await refreshSession()
+      } else if (requestedGameId) {
+        const ctx = await window.api.getGameContext(requestedGameId).catch(() => null)
+        setHistoricContext(ctx)
+      }
 
       toast({
         title: t('review.toast.successTitle'),
@@ -366,6 +471,32 @@ export function ReviewPage() {
     }
   }
 
+  /** Remove the current off-role game from the session and return to the session page. */
+  const handleRemoveOffRoleGame = async () => {
+    if (!latestGame?.id) return
+    setRemovingGame(true)
+    try {
+      await window.api.deleteGame(latestGame.id)
+      clearGameEndData()
+      await refreshSession()
+      toast({ title: 'Game removed from session', variant: 'gold' })
+      navigate('/session')
+    } catch (err: any) {
+      toast({ title: 'Failed to remove game', description: err.message, variant: 'destructive' })
+    } finally {
+      setRemovingGame(false)
+    }
+  }
+
+  /** Whether to show the off-role banner: active session, known main role, role mismatch, not dismissed. */
+  const showOffRoleBanner =
+    !offRoleDismissed &&
+    activeSession !== null &&
+    !historicContext &&
+    !!user?.mainRole &&
+    !!latestGame?.role &&
+    latestGame.role !== user.mainRole
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -375,10 +506,65 @@ export function ReviewPage() {
             {t('review.objective')} <span className="text-hextech-gold">{objectiveLabel}</span>
           </p>
         </div>
-        <Badge variant={latestGame.win ? 'success' : 'destructive'} className="text-base px-4 py-1">
-          {latestGame.win ? t('review.victory') : t('review.defeat')}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <ShareButton
+            data={{
+              title: latestGame.champion
+                ? `${latestGame.champion}${latestGame.opponentChampion ? ` vs ${latestGame.opponentChampion}` : ''}`
+                : t('review.title'),
+              gameEndAt: latestGame.gameEndAt,
+              win: latestGame.win,
+              champion: latestGame.champion,
+              opponentChampion: latestGame.opponentChampion ?? undefined,
+              kills: latestGame.kills,
+              deaths: latestGame.deaths,
+              assists: latestGame.assists,
+              cs: latestGame.cs,
+              visionScore: latestGame.visionScore,
+              duration: latestGame.duration,
+              objectiveIds,
+              selectedKpiIds,
+              kpiScores,
+              timelineNotes,
+              freeText,
+              aiSummary: latestGame.review?.aiSummary ?? undefined,
+            }}
+          />
+          <Badge variant={latestGame.win ? 'success' : 'destructive'} className="text-base px-4 py-1">
+            {latestGame.win ? t('review.victory') : t('review.defeat')}
+          </Badge>
+        </div>
       </div>
+
+      {/* Off-role banner — shown when game role doesn't match main role in a live session */}
+      {showOffRoleBanner && (
+        <div className="flex items-start gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
+          <ShieldAlert className="h-5 w-5 text-yellow-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-yellow-300">
+              Off-role game detected ({latestGame.role})
+            </p>
+            <p className="text-xs text-yellow-400/70 mt-0.5">
+              Your main role is {user?.mainRole}. Do you want to keep this game in the session or remove it?
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => setOffRoleDismissed(true)}
+              className="rounded border border-yellow-500/40 px-3 py-1 text-xs text-yellow-300 hover:bg-yellow-500/10 transition-colors"
+            >
+              Keep
+            </button>
+            <button
+              onClick={handleRemoveOffRoleGame}
+              disabled={removingGame}
+              className="rounded border border-[#FF4655]/50 bg-[#FF4655]/10 px-3 py-1 text-xs text-[#FF4655] hover:bg-[#FF4655]/20 transition-colors disabled:opacity-50"
+            >
+              {removingGame ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Remove from session'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-3 flex-wrap">
         <ChampionMatchup
@@ -405,8 +591,12 @@ export function ReviewPage() {
         <StatPill icon={Clock} label={t('review.stats.duration')} value={formatGameTime(latestGame.duration)} />
       </div>
 
-      {/* Recording panel */}
-      <GameRecordingPanel gameId={latestGame.id} />
+      {/* Recording panel — passes notes for video markers + receives new video-timestamped notes */}
+      <GameRecordingPanel
+        gameId={latestGame.id}
+        timelineNotes={timelineNotes}
+        onAddNote={(note) => setTimelineNotes((prev) => [...prev, note])}
+      />
 
       {Object.keys(biasWarningsByObjective).length > 0 && (
         <Card className="border-orange-500/40 bg-orange-500/5">
@@ -420,7 +610,7 @@ export function ReviewPage() {
         </Card>
       )}
 
-      <TimelineNoteInput notes={timelineNotes} onChange={setTimelineNotes} objectiveLabel={activeSession.objectiveId} />
+      <TimelineNoteInput notes={timelineNotes} onChange={setTimelineNotes} objectiveLabel={session?.objectiveId ?? ''} />
 
       <DynamicKPIForm
         objectiveIds={objectiveIds}
@@ -481,14 +671,6 @@ export function ReviewPage() {
         </Button>
       </div>
 
-      {/* Coach comments on this game's review */}
-      {latestGame.review && user?.supabaseUid && (
-        <CoachComments
-          targetType="review"
-          targetId={latestGame.review.id}
-          studentSupabaseId={user.supabaseUid}
-        />
-      )}
     </div>
   )
 }

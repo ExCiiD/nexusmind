@@ -10,7 +10,11 @@ import {
 
 let autoSnapshotRunning = false
 
-/** Fetch match IDs from the main user + all linked accounts, merged and sorted. */
+/**
+ * Fetch match IDs from the main user + all linked accounts, merged and deduplicated.
+ * Match IDs are NOT reliably sortable across regions (numeric portion is per-shard),
+ * so callers must sort by gameEndAt after resolving match data.
+ */
 async function getAggregatedMatchIds(
   user: { puuid: string; region: string; queueFilter?: string | null },
   accounts: Array<{ puuid: string; region: string }>,
@@ -25,18 +29,13 @@ async function getAggregatedMatchIds(
 
   const perAccountIds = await Promise.all(
     allAccounts.map(({ puuid, region }) =>
-      getMatchIds(puuid, region, count, 0, queueFilter),
+      getMatchIds(puuid, region, count, 0, queueFilter).catch(() => [] as string[]),
     ),
   )
 
   const merged = [...new Set(perAccountIds.flat())]
-  merged.sort((a, b) => {
-    const tsA = parseInt(a.split('_')[1] ?? '0', 10)
-    const tsB = parseInt(b.split('_')[1] ?? '0', 10)
-    return tsB - tsA
-  })
 
-  return { matchIds: merged.slice(0, count), allPuuids }
+  return { matchIds: merged, allPuuids }
 }
 
 /** Find which puuid from the list is present in a match. */
@@ -106,7 +105,7 @@ export function registerStatsHandlers() {
     'stats:match-history',
     async (_event, count = 20) => {
       const prisma = getPrisma()
-      const user = await prisma.user.findFirst()
+      const user = await prisma.user.findFirst({ where: { isActive: true } })
       if (!user) throw new Error('No user found')
 
       const accounts = await prisma.account.findMany({ where: { userId: user.id } })
@@ -156,6 +155,8 @@ export function registerStatsHandlers() {
         .filter((r) => r.status === 'fulfilled' && r.value !== null)
         .map((r) => (r as PromiseFulfilledResult<any>).value)
         .filter((g: any) => (g.duration ?? 0) >= 300)
+        .sort((a: any, b: any) => new Date(b.gameEndAt).getTime() - new Date(a.gameEndAt).getTime())
+        .slice(0, count)
     },
   )
 
@@ -163,7 +164,7 @@ export function registerStatsHandlers() {
     'stats:get-detailed',
     async (_event, matchId: string) => {
       const prisma = getPrisma()
-      const user = await prisma.user.findFirst()
+      const user = await prisma.user.findFirst({ where: { isActive: true } })
       if (!user) throw new Error('No user found')
 
       const accounts = await prisma.account.findMany({ where: { userId: user.id } })
@@ -259,7 +260,7 @@ export function registerStatsHandlers() {
 
   ipcMain.handle('stats:compute-averages', async () => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) throw new Error('No user found')
 
     const accounts = await prisma.account.findMany({ where: { userId: user.id } })
@@ -336,7 +337,7 @@ export function registerStatsHandlers() {
 
   ipcMain.handle('stats:get-snapshots', async () => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return []
 
     const mainRole = (user as any).mainRole as string | null
@@ -396,7 +397,7 @@ export function registerStatsHandlers() {
   /** Auto-create snapshots for every new batch of 20 games since the last snapshot. */
   ipcMain.handle('stats:clear-snapshots', async () => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return { deleted: 0 }
     const result = await prisma.statsSnapshot.deleteMany({ where: { userId: user.id } })
     return { deleted: result.count }
@@ -407,7 +408,7 @@ export function registerStatsHandlers() {
     autoSnapshotRunning = true
     try {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return { created: 0 }
 
     const accounts = await prisma.account.findMany({ where: { userId: user.id } })
@@ -608,3 +609,4 @@ function computeAverages(statsArray: any[]) {
     },
   }
 }
+

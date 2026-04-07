@@ -9,14 +9,15 @@ import {
   History,
   ChartNoAxesCombined,
   Settings,
-  Users,
+  Film,
+  Circle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/useUserStore'
 import { useSessionStore } from '@/store/useSessionStore'
 import { getLevelFromXp } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 import i18n from '../../i18n/config'
@@ -26,21 +27,35 @@ export function Sidebar() {
   const user = useUserStore((s) => s.user)
   const clearUser = useUserStore((s) => s.clearUser)
   const activeSession = useSessionStore((s) => s.activeSession)
+  const [isRecording, setIsRecording] = useState(false)
+
+  useEffect(() => {
+    window.api.getCaptureStatus().then((s) => setIsRecording(s.isRecording)).catch(() => {})
+    const offStarted = window.api.onRecordingStarted(() => setIsRecording(true))
+    const offStopped = window.api.onRecordingStopped(() => setIsRecording(false))
+    // Periodically sync status in case IPC events were missed (e.g. recording started before renderer loaded)
+    const poll = setInterval(() => {
+      window.api.getCaptureStatus().then((s) => setIsRecording(s.isRecording)).catch(() => {})
+    }, 10_000)
+    return () => {
+      offStarted()
+      offStopped()
+      clearInterval(poll)
+    }
+  }, [])
   const levelInfo = user ? getLevelFromXp(user.xp) : { level: 1, currentXp: 0, nextLevelXp: 100 }
   const xpPercent = (levelInfo.currentXp / levelInfo.nextLevelXp) * 100
   const [disconnecting, setDisconnecting] = useState(false)
   const { toast } = useToast()
 
-  const isCoach = user?.role === 'coach' || user?.role === 'both'
-
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/session', icon: Target, label: t('nav.session') },
+    { to: '/replays', icon: Film, label: 'Replays' },
     { to: '/review', icon: ClipboardCheck, label: t('nav.review') },
     { to: '/history', icon: History, label: t('nav.history') },
     { to: '/stats', icon: ChartNoAxesCombined, label: t('nav.detailedStats') },
     { to: '/analytics', icon: BarChart3, label: t('nav.analytics') },
-    ...(isCoach ? [{ to: '/students', icon: Users, label: 'Students' }] : []),
     { to: '/settings', icon: Settings, label: t('nav.settings') },
   ]
 
@@ -101,6 +116,20 @@ export function Sidebar() {
             <div className="flex items-center gap-2 text-xs text-hextech-gold">
               <Flame className="h-3.5 w-3.5" />
               <span>{user.streakDays} {user.streakDays === 1 ? t('sidebar.dayStreak') : t('sidebar.dayStreaks')}</span>
+            </div>
+          )}
+
+          {isRecording && (
+            <div className="flex items-center gap-1.5 text-xs text-[#FF4655]">
+              <Circle className="h-2 w-2 fill-current animate-pulse" />
+              <span className="font-medium">Recording</span>
+            </div>
+          )}
+
+          {user.autoRecord && !isRecording && (
+            <div className="flex items-center gap-1.5 text-xs text-hextech-text-dim">
+              <Circle className="h-2 w-2" />
+              <span>Auto-record on</span>
             </div>
           )}
 

@@ -5,6 +5,10 @@ const api = {
     ipcRenderer.invoke('auth:connect-riot', gameName, tagLine, region, displayName),
   disconnectRiot: () =>
     ipcRenderer.invoke('auth:disconnect'),
+  reactivateAccount: (userId: string) =>
+    ipcRenderer.invoke('auth:reactivate', userId),
+  listSavedAccounts: () =>
+    ipcRenderer.invoke('auth:list-saved-accounts'),
 
   createSession: (data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) =>
     ipcRenderer.invoke('session:create', data),
@@ -23,6 +27,7 @@ const api = {
     objectiveRespected: boolean
   }) => ipcRenderer.invoke('review:save', data),
   getReviews: (sessionId: string) => ipcRenderer.invoke('review:get-by-session', sessionId),
+  getGameContext: (gameId: string) => ipcRenderer.invoke('review:get-game-context', gameId),
   analyzeReviewBias: (gameId: string, objectiveIds: string[]) =>
     ipcRenderer.invoke('review:analyze-bias', { gameId, objectiveIds }),
 
@@ -36,6 +41,7 @@ const api = {
   getProgressData: () => ipcRenderer.invoke('analytics:get-progress'),
   getSessionStats: () => ipcRenderer.invoke('analytics:get-session-stats'),
   getGameHistory: (limit?: number) => ipcRenderer.invoke('analytics:get-game-history', limit),
+  getKpiTimeline: () => ipcRenderer.invoke('analytics:get-kpi-timeline'),
 
   getObjectiveSuggestion: (scores: Record<string, number>) =>
     ipcRenderer.invoke('ai:suggest-objective', scores),
@@ -87,40 +93,60 @@ const api = {
   onUpdateDownloaded: (cb: () => void) => ipcRenderer.on('updater:update-downloaded', cb),
   installUpdate: () => ipcRenderer.invoke('updater:install-now'),
 
-  // Coach / Supabase auth
-  supabaseSignIn: (email: string, password: string) => ipcRenderer.invoke('coach:supabase-signin', email, password),
-  supabaseSignUp: (email: string, password: string) => ipcRenderer.invoke('coach:supabase-signup', email, password),
-  supabaseSignOut: () => ipcRenderer.invoke('coach:supabase-signout'),
-  getSupabaseSession: () => ipcRenderer.invoke('coach:get-session'),
-  setRole: (role: string) => ipcRenderer.invoke('coach:set-role', role),
-
-  // Invite system
-  generateInvite: () => ipcRenderer.invoke('coach:generate-invite'),
-  redeemInvite: (code: string) => ipcRenderer.invoke('coach:redeem-invite', code),
-  listCoaches: () => ipcRenderer.invoke('coach:list-coaches'),
-  listStudents: () => ipcRenderer.invoke('coach:list-students'),
-
-  // Student data for coach
-  getStudentSessions: (studentSupabaseId: string) => ipcRenderer.invoke('coach:get-student-sessions', studentSupabaseId),
-  getStudentAssessments: (studentSupabaseId: string) => ipcRenderer.invoke('coach:get-student-assessments', studentSupabaseId),
-
-  // Coach comments
-  addCoachComment: (data: { studentSupabaseId: string; targetType: 'session' | 'game' | 'review'; targetId: string; content: string }) =>
-    ipcRenderer.invoke('coach:add-comment', data),
-  updateCoachComment: (commentId: string, content: string) => ipcRenderer.invoke('coach:update-comment', commentId, content),
-  deleteCoachComment: (commentId: string) => ipcRenderer.invoke('coach:delete-comment', commentId),
-  getCoachComments: (targetType: string, targetId: string) => ipcRenderer.invoke('coach:get-comments', targetType, targetId),
-
-  // Sync
-  syncToSupabase: () => ipcRenderer.invoke('sync:push'),
-
-  // Recording
+  // Recording — library (scan external folders)
   scanRecordings: () => ipcRenderer.invoke('recording:scan'),
   getRecording: (gameId: string) => ipcRenderer.invoke('recording:get', gameId),
   linkRecordingFile: (gameId: string) => ipcRenderer.invoke('recording:link-file', gameId),
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => ipcRenderer.invoke('recording:set-youtube', gameId, youtubeUrl),
   deleteRecording: (gameId: string) => ipcRenderer.invoke('recording:delete', gameId),
   getRecordingScanPaths: () => ipcRenderer.invoke('recording:get-scan-paths'),
+  listGamesWithRecordings: () => ipcRenderer.invoke('recording:list-with-games'),
+  // Recording — in-app capture
+  pickRecordingFolder: () => ipcRenderer.invoke('recording:pick-folder'),
+  getCaptureStatus: () => ipcRenderer.invoke('recording:get-capture-status'),
+  startCapture: () => ipcRenderer.invoke('recording:start-capture'),
+  stopCapture: (gameId?: string) => ipcRenderer.invoke('recording:stop-capture', gameId),
+  getRecordingsDir: () => ipcRenderer.invoke('recording:get-recordings-dir'),
+  onRecordingStarted: (cb: () => void) => {
+    const handler = () => cb()
+    ipcRenderer.on('recording:started', handler)
+    return () => ipcRenderer.removeListener('recording:started', handler)
+  },
+  onRecordingStopped: (cb: (data: { filePath: string }) => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, data: { filePath: string }) => cb(data)
+    ipcRenderer.on('recording:stopped', handler)
+    return () => ipcRenderer.removeListener('recording:stopped', handler)
+  },
+  onRecordingLinked: (cb: (data: { gameId: string; filePath: string }) => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, data: { gameId: string; filePath: string }) => cb(data)
+    ipcRenderer.on('recording:linked', handler)
+    return () => ipcRenderer.removeListener('recording:linked', handler)
+  },
+
+  // External reviews
+  fetchExternalPlayerHistory: (gameName: string, tagLine: string, region: string, count?: number) =>
+    ipcRenderer.invoke('external-review:fetch-player-history', gameName, tagLine, region, count),
+  createExternalReview: (data: {
+    title: string
+    objectiveId?: string
+    filePath?: string
+    playerName?: string
+    matchData?: string
+  }) => ipcRenderer.invoke('external-review:create', data),
+  getExternalReview: (id: string) => ipcRenderer.invoke('external-review:get', id),
+  saveExternalReview: (id: string, data: { timelineNotes?: string; freeText?: string; filePath?: string }) =>
+    ipcRenderer.invoke('external-review:save', id, data),
+  listExternalReviews: () => ipcRenderer.invoke('external-review:list'),
+  pickExternalReviewFile: () => ipcRenderer.invoke('external-review:pick-file'),
+  deleteExternalReview: (id: string) => ipcRenderer.invoke('external-review:delete', id),
+
+  // Sharing
+  sendToDiscord: (embeds: object[], webhookUrl: string) => ipcRenderer.invoke('share:send-to-discord', embeds, webhookUrl),
+  copyReviewText: (text: string) => ipcRenderer.invoke('share:copy-text', text),
+  listWebhooks: () => ipcRenderer.invoke('share:list-webhooks'),
+  addWebhook: (name: string, url: string) => ipcRenderer.invoke('share:add-webhook', name, url),
+  renameWebhook: (id: string, name: string) => ipcRenderer.invoke('share:rename-webhook', id, name),
+  deleteWebhook: (id: string) => ipcRenderer.invoke('share:delete-webhook', id),
 }
 
 contextBridge.exposeInMainWorld('api', api)

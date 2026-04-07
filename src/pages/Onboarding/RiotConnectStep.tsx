@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 
 interface RiotConnectStepProps {
-  onNext: () => void
+  onNext: (isReturningUser: boolean) => void
   displayName?: string
 }
 
@@ -28,10 +28,16 @@ export function RiotConnectStep({ onNext, displayName }: RiotConnectStepProps) {
     if (!gameName || !tagLine || !region) return
     setLoading(true)
     try {
-      const user = await window.api.connectRiot(gameName, tagLine, region, displayName)
+      const result = await window.api.connectRiot(gameName, tagLine, region, displayName)
+      // Strip the isNewUser flag before putting into store
+      const { isNewUser, ...user } = result
       setUser(user)
-      toast({ title: t('riotConnect.toast.successTitle'), description: t('riotConnect.toast.successDesc', { name: displayName || `${gameName}#${tagLine}` }), variant: 'gold' })
-      onNext()
+      toast({
+        title: t('riotConnect.toast.successTitle'),
+        description: t('riotConnect.toast.successDesc', { name: displayName || `${gameName}#${tagLine}` }),
+        variant: 'gold',
+      })
+      onNext(!isNewUser)
     } catch (err: any) {
       toast({ title: t('riotConnect.toast.errorTitle'), description: err.message, variant: 'destructive' })
     } finally {

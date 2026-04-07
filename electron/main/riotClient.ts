@@ -386,7 +386,7 @@ export function extractDetailedStats(matchData: any, timelineData: any | null, p
 
           goldDiff15 = (gold15 ?? 0) - (oppGold15 ?? 0)
           xpDiff15 = (xp15 ?? 0) - (oppXp15 ?? 0)
-          csDiff15 = cs15! - oppCs15
+          csDiff15 = (cs15 ?? 0) - (oppCs15 ?? 0)
           damageDiff15 = (damage15 ?? 0) - (oppDamage15 ?? 0)
         }
       }

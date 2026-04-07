@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
 import { useGameStore } from '@/store/useGameStore'
 import { useUserStore } from '@/store/useUserStore'
 import { ProgressChart } from '@/components/Charts/ProgressChart'
@@ -13,8 +15,15 @@ import { Badge } from '@/components/ui/badge'
 import { useLocalizedFundamental, useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { formatKDA, formatGameTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { TrendingUp, History, Award, BarChart3, Filter } from 'lucide-react'
+import { TrendingUp, History, Award, BarChart3, Filter, Calendar, ClipboardList, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+
+const LS_TAB_KEY = 'analytics_tab'
+const LS_FILTER_KEY = 'analytics_filter_fundamentals'
+const LS_PERIOD_KEY = 'analytics_time_period'
+const LS_TREND_FILTER_KEY = 'analytics_trend_filter_fundamentals'
+
+type TimePeriod = 'all' | '90d' | '30d'
 
 function GameObjectiveLabel({ objectiveId }: { objectiveId: string }) {
   const f = useLocalizedFundamental(objectiveId)
@@ -23,49 +32,224 @@ function GameObjectiveLabel({ objectiveId }: { objectiveId: string }) {
 
 export function AnalyticsPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const user = useUserStore((s) => s.user)
   const stats = useGameStore((s) => s.stats)
   const progressData = useGameStore((s) => s.progressData)
+  const kpiTimeline = useGameStore((s) => s.kpiTimeline)
   const gameHistory = useGameStore((s) => s.gameHistory)
   const loadStats = useGameStore((s) => s.loadStats)
   const loadProgressData = useGameStore((s) => s.loadProgressData)
+  const loadKpiTimeline = useGameStore((s) => s.loadKpiTimeline)
   const loadGameHistory = useGameStore((s) => s.loadGameHistory)
   const FUNDAMENTALS = useLocalizedFundamentals()
 
   const [userBadges, setUserBadges] = useState<string[]>([])
   const [showObjectiveFilter, setShowObjectiveFilter] = useState(false)
-  const [selectedFundamentalIds, setSelectedFundamentalIds] = useState<string[] | null>(null)
+  const [dataLoaded, setDataLoaded] = useState(false)
+  const [showTrendFilter, setShowTrendFilter] = useState(false)
+  /** When true the trend chart shows live session KPI data in addition to bilans */
+  const [trendShowLive, setTrendShowLive] = useState(false)
+
+  // --- Progress chart filter (chart 1) ---
+  const [selectedFundamentalIds, setSelectedFundamentalIdsRaw] = useState<string[] | null>(() => {
+    try {
+      const saved = localStorage.getItem(LS_FILTER_KEY)
+      if (!saved) return null
+      const parsed = JSON.parse(saved)
+      return Array.isArray(parsed) ? parsed : null
+    } catch { return null }
+  })
+
+  // --- Trend chart filter (chart 2) — independent state ---
+  const [trendSelectedIds, setTrendSelectedIdsRaw] = useState<string[] | null>(() => {
+    try {
+      const saved = localStorage.getItem(LS_TREND_FILTER_KEY)
+      if (!saved) return null
+      const parsed = JSON.parse(saved)
+      return Array.isArray(parsed) ? parsed : null
+    } catch { return null }
+  })
+
+  // Persisted tab — initialise from localStorage
+  const [activeTab, setActiveTabRaw] = useState<string>(() => {
+    return localStorage.getItem(LS_TAB_KEY) ?? 'progress'
+  })
+
+  // Persisted time period filter (applies to chart 1 only)
+  const [timePeriod, setTimePeriodRaw] = useState<TimePeriod>(() => {
+    return (localStorage.getItem(LS_PERIOD_KEY) as TimePeriod) ?? 'all'
+  })
+
+  const setSelectedFundamentalIds = (ids: string[] | null) => {
+    setSelectedFundamentalIdsRaw(ids)
+    if (ids === null) localStorage.removeItem(LS_FILTER_KEY)
+    else localStorage.setItem(LS_FILTER_KEY, JSON.stringify(ids))
+  }
+
+  const setTrendSelectedIds = (ids: string[] | null) => {
+    setTrendSelectedIdsRaw(ids)
+    if (ids === null) localStorage.removeItem(LS_TREND_FILTER_KEY)
+    else localStorage.setItem(LS_TREND_FILTER_KEY, JSON.stringify(ids))
+  }
+
+  const setActiveTab = (tab: string) => {
+    setActiveTabRaw(tab)
+    localStorage.setItem(LS_TAB_KEY, tab)
+  }
+
+  const setTimePeriod = (p: TimePeriod) => {
+    setTimePeriodRaw(p)
+    localStorage.setItem(LS_PERIOD_KEY, p)
+  }
 
   useEffect(() => {
-    loadStats()
-    loadProgressData()
-    loadGameHistory(20)
-    window.api.getBadges().then(setUserBadges).catch(() => {})
-  }, [loadStats, loadProgressData, loadGameHistory])
+    Promise.all([
+      loadStats(),
+      loadProgressData(),
+      loadKpiTimeline(),
+      loadGameHistory(20),
+      window.api.getBadges().then(setUserBadges).catch(() => {}),
+    ]).finally(() => setDataLoaded(true))
+  }, [loadStats, loadProgressData, loadKpiTimeline, loadGameHistory])
 
-  // All fundamentals that appear in progress data
-  const availableFundamentalIds = useMemo(
-    () => [...new Set(progressData.map((d) => d.fundamentalId))],
-    [progressData],
+  // KPI timeline mapped to the same shape as progressData points
+  const kpiPoints = useMemo(
+    () => kpiTimeline.map((p) => ({ date: p.date, fundamentalId: p.objectiveId, score: p.avgScore })),
+    [kpiTimeline],
   )
 
-  // Displayed IDs: selectedFundamentalIds (if set) or all available
-  const displayedFundamentalIds = selectedFundamentalIds ?? availableFundamentalIds
+  // Chart 1 (Skill Progress): assessment bilans + optional live KPI data, time-period filtered
+  const mergedProgressData = useMemo(() => [...progressData, ...kpiPoints], [progressData, kpiPoints])
+  const periodFilteredData = useMemo(() => {
+    if (timePeriod === 'all') return mergedProgressData
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - (timePeriod === '90d' ? 90 : 30))
+    return mergedProgressData.filter((p) => new Date(p.date) >= cutoff)
+  }, [mergedProgressData, timePeriod])
 
+  // Chart 2 (Current vs Previous): bilans only by default; live mode adds KPI points
+  const trendSourceData = useMemo(
+    () => (trendShowLive ? mergedProgressData : progressData),
+    [trendShowLive, mergedProgressData, progressData],
+  )
+
+  // All fundamental IDs across the full FUNDAMENTALS constant (not just those with data)
+  const allFundamentalIds = useMemo(
+    () => FUNDAMENTALS.flatMap((cat) => cat.fundamentals.map((f) => f.id)),
+    [FUNDAMENTALS],
+  )
+
+  // For chart 1: fundamentals that have data in the current period
+  const fundamentalsWithData = useMemo(
+    () => new Set(periodFilteredData.map((d) => d.fundamentalId)),
+    [periodFilteredData],
+  )
+
+  // For chart 2: fundamentals that have data in the trend source
+  const trendFundamentalsWithData = useMemo(
+    () => new Set(trendSourceData.map((d) => d.fundamentalId)),
+    [trendSourceData],
+  )
+
+  // Chart 1 displayed IDs
+  const displayedFundamentalIds = selectedFundamentalIds ?? allFundamentalIds
+  // Chart 2 displayed IDs (independent filter)
+  const trendDisplayedIds = trendSelectedIds ?? allFundamentalIds
+
+  /**
+   * Individual fundamental toggle:
+   * - First click when everything shown: ISOLATE to this one fundamental.
+   * - Subsequent clicks: add/remove normally.
+   */
   const toggleFundamental = (id: string) => {
-    const current = selectedFundamentalIds ?? availableFundamentalIds
-    if (current.includes(id)) {
-      const next = current.filter((x) => x !== id)
+    if (selectedFundamentalIds === null) {
+      setSelectedFundamentalIds([id])
+      return
+    }
+    const next = selectedFundamentalIds.includes(id)
+      ? selectedFundamentalIds.filter((x) => x !== id)
+      : [...selectedFundamentalIds, id]
+    setSelectedFundamentalIds(next.length === 0 ? null : next)
+  }
+
+  /**
+   * Category group toggle (chart 1):
+   * - First click when everything shown: ISOLATE to this category's fundamentals.
+   * - If category already isolated: add/remove the whole category.
+   */
+  const toggleCategory = (catFundIds: string[]) => {
+    if (selectedFundamentalIds === null) {
+      setSelectedFundamentalIds(catFundIds)
+      return
+    }
+    const allActive = catFundIds.every((id) => selectedFundamentalIds.includes(id))
+    if (allActive) {
+      const next = selectedFundamentalIds.filter((id) => !catFundIds.includes(id))
       setSelectedFundamentalIds(next.length === 0 ? null : next)
     } else {
-      setSelectedFundamentalIds([...current, id])
+      setSelectedFundamentalIds([...new Set([...selectedFundamentalIds, ...catFundIds])])
+    }
+  }
+
+  /** Individual fundamental toggle for chart 2 (same isolate-first logic) */
+  const toggleTrendFundamental = (id: string) => {
+    if (trendSelectedIds === null) { setTrendSelectedIds([id]); return }
+    const next = trendSelectedIds.includes(id)
+      ? trendSelectedIds.filter((x) => x !== id)
+      : [...trendSelectedIds, id]
+    setTrendSelectedIds(next.length === 0 ? null : next)
+  }
+
+  /** Category toggle for chart 2 */
+  const toggleTrendCategory = (catFundIds: string[]) => {
+    if (trendSelectedIds === null) { setTrendSelectedIds(catFundIds); return }
+    const allActive = catFundIds.every((id) => trendSelectedIds.includes(id))
+    if (allActive) {
+      const next = trendSelectedIds.filter((id) => !catFundIds.includes(id))
+      setTrendSelectedIds(next.length === 0 ? null : next)
+    } else {
+      setTrendSelectedIds([...new Set([...trendSelectedIds, ...catFundIds])])
     }
   }
 
   if (!user) return null
 
-  const latestScores = getLatestScores(progressData)
-  const previousScores = getPreviousScores(progressData)
+  // Show loading state while data is being fetched
+  if (!dataLoaded) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-hextech-gold" />
+      </div>
+    )
+  }
+
+  // Gate: no assessment means no data — block access and redirect to bilan
+  if (progressData.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-6 py-24 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-hextech-gold/30 bg-hextech-gold/10">
+          <ClipboardList className="h-8 w-8 text-hextech-gold" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="font-display text-xl font-bold text-hextech-gold-bright">
+            Bilan initial requis
+          </h2>
+          <p className="max-w-sm text-sm text-hextech-text-dim leading-relaxed">
+            Avant d'accéder aux statistiques, tu dois compléter ton premier bilan de compétences.
+            Cela permettra à NexusMind de suivre ta progression dans le temps.
+          </p>
+        </div>
+        <Button onClick={() => navigate('/assessment')} className="gap-2">
+          <ClipboardList className="h-4 w-4" />
+          Faire mon bilan maintenant
+        </Button>
+      </div>
+    )
+  }
+
+  const latestScores = getLatestScores(periodFilteredData)
+  const previousScores = getPreviousScores(periodFilteredData)
 
   const filteredLatestScores: Record<string, number> = {}
   const filteredPreviousScores: Record<string, number> = {}
@@ -74,11 +258,17 @@ export function AnalyticsPage() {
     if (previousScores[id] != null) filteredPreviousScores[id] = previousScores[id]
   }
 
-  const scoreTrendData = Object.entries(filteredLatestScores).map(([id, score]) => ({
-    label: id,
-    score,
-    previousScore: filteredPreviousScores[id],
-  }))
+  // Chart 2 — computed independently from trendSourceData + trendDisplayedIds
+  const trendLatestScores = getLatestScores(trendSourceData)
+  const trendPreviousScores = getPreviousScores(trendSourceData)
+
+  const scoreTrendData = trendDisplayedIds
+    .filter((id) => trendLatestScores[id] != null)
+    .map((id) => ({
+      label: id,
+      score: trendLatestScores[id],
+      previousScore: trendPreviousScores[id],
+    }))
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -87,7 +277,7 @@ export function AnalyticsPage() {
         <p className="text-sm text-hextech-text mt-1">{t('analytics.subtitle')}</p>
       </div>
 
-      <Tabs defaultValue="progress">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="progress">
             <TrendingUp className="h-4 w-4 mr-1" /> {t('analytics.tabs.progress')}
@@ -104,106 +294,227 @@ export function AnalyticsPage() {
         </TabsList>
 
         <TabsContent value="progress" className="space-y-6">
-          {/* Objective filter */}
-          {availableFundamentalIds.length > 0 && (
-            <Card>
-              <CardContent className="p-3">
-                <button
-                  className="flex items-center gap-2 text-sm text-hextech-text-dim hover:text-hextech-text transition-colors"
-                  onClick={() => setShowObjectiveFilter((v) => !v)}
-                >
-                  <Filter className="h-4 w-4" />
-                  <span>{t('analytics.objectiveFilter.label')}</span>
-                  {selectedFundamentalIds !== null && (
-                    <Badge variant="gold" className="text-[10px] h-5 px-2">
-                      {selectedFundamentalIds.length}/{availableFundamentalIds.length}
-                    </Badge>
-                  )}
-                </button>
+          {/* Filter bar: time period + objective filter */}
+          <Card>
+            <CardContent className="p-3 space-y-3">
+              {/* Time period row */}
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-hextech-text-dim shrink-0" />
+                <span className="text-xs text-hextech-text-dim mr-1">Period</span>
+                {(['all', '90d', '30d'] as TimePeriod[]).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setTimePeriod(p)}
+                    className={cn(
+                      'rounded-full border px-3 py-0.5 text-xs font-medium transition-colors',
+                      timePeriod === p
+                        ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
+                        : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
+                    )}
+                  >
+                    {p === 'all' ? 'All time' : p === '90d' ? 'Last 90 days' : 'Last 30 days'}
+                  </button>
+                ))}
+              </div>
 
-                {showObjectiveFilter && (
-                  <div className="mt-3 space-y-2">
-                    {/* Category + All toggles */}
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => setSelectedFundamentalIds(null)}
-                        className={cn(
-                          'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                          selectedFundamentalIds === null
-                            ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
-                            : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
-                        )}
-                      >
-                        {t('analytics.objectiveFilter.all')}
-                      </button>
-                      {FUNDAMENTALS.map((cat) => {
-                        const catFundIds = cat.fundamentals.map((f) => f.id).filter((fid) => availableFundamentalIds.includes(fid))
-                        if (catFundIds.length === 0) return null
-                        const allActive = catFundIds.every((fid) => displayedFundamentalIds.includes(fid))
-                        return (
-                          <button
-                            key={cat.id}
-                            onClick={() => {
-                              const current = selectedFundamentalIds ?? availableFundamentalIds
-                              if (allActive) {
-                                const next = current.filter((id) => !catFundIds.includes(id))
-                                setSelectedFundamentalIds(next.length === 0 ? null : next)
-                              } else {
-                                setSelectedFundamentalIds([...new Set([...current, ...catFundIds])])
-                              }
-                            }}
-                            className={cn(
-                              'rounded-full border px-3 py-1 text-xs font-semibold transition-colors',
-                              allActive
-                                ? 'border-hextech-cyan bg-hextech-cyan/10 text-hextech-cyan'
-                                : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
-                            )}
-                          >
-                            {cat.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    {/* Individual fundamentals */}
-                    <div className="flex flex-wrap gap-2">
-                      {availableFundamentalIds.map((id) => {
-                        const label = FUNDAMENTALS.flatMap((c) => c.fundamentals).find((f) => f.id === id)?.label
-                          ?? id.replace(/_/g, ' ')
-                        const isActive = displayedFundamentalIds.includes(id)
-                        return (
-                          <button
-                            key={id}
-                            onClick={() => toggleFundamental(id)}
-                            className={cn(
-                              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                              isActive
-                                ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
-                                : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
-                            )}
-                          >
-                            {label}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
+              {/* Objective filter toggle header */}
+              <button
+                className="flex items-center gap-2 text-sm text-hextech-text-dim hover:text-hextech-text transition-colors"
+                onClick={() => setShowObjectiveFilter((v) => !v)}
+              >
+                <Filter className="h-4 w-4" />
+                <span>{t('analytics.objectiveFilter.label')}</span>
+                {selectedFundamentalIds !== null && (
+                  <Badge variant="gold" className="text-[10px] h-5 px-2">
+                    {selectedFundamentalIds.filter((id) => fundamentalsWithData.has(id)).length} with data
+                    {selectedFundamentalIds.length > selectedFundamentalIds.filter((id) => fundamentalsWithData.has(id)).length
+                      ? ` + ${selectedFundamentalIds.length - selectedFundamentalIds.filter((id) => fundamentalsWithData.has(id)).length} empty`
+                      : ''}
+                  </Badge>
                 )}
-              </CardContent>
-            </Card>
-          )}
+              </button>
+
+              {showObjectiveFilter && (
+                <div className="space-y-3">
+                  {/* "All" reset button */}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setSelectedFundamentalIds(null)}
+                      className={cn(
+                        'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                        selectedFundamentalIds === null
+                          ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
+                          : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
+                      )}
+                    >
+                      {t('analytics.objectiveFilter.all')}
+                    </button>
+                  </div>
+
+                  {/* Categories with their fundamentals */}
+                  {FUNDAMENTALS.map((cat) => {
+                    const catFundIds = cat.fundamentals.map((f) => f.id)
+                    const catWithData = catFundIds.filter((id) => fundamentalsWithData.has(id))
+                    const allCatActive = catFundIds.every((id) => displayedFundamentalIds.includes(id))
+                    return (
+                      <div key={cat.id} className="space-y-1.5">
+                        {/* Category header — click isolates to this category */}
+                        <button
+                          onClick={() => toggleCategory(catFundIds)}
+                          className={cn(
+                            'rounded-full border px-3 py-0.5 text-[11px] font-semibold uppercase tracking-wide transition-colors',
+                            allCatActive && selectedFundamentalIds !== null
+                              ? 'border-hextech-cyan bg-hextech-cyan/10 text-hextech-cyan'
+                              : selectedFundamentalIds === null
+                                ? 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border'
+                                : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
+                          )}
+                        >
+                          {cat.label}
+                          {catWithData.length > 0 && (
+                            <span className="ml-1.5 text-hextech-gold opacity-70">●</span>
+                          )}
+                        </button>
+                        {/* Individual fundamentals in this category */}
+                        <div className="flex flex-wrap gap-1.5 pl-2">
+                          {cat.fundamentals.map((f) => {
+                            const isActive = displayedFundamentalIds.includes(f.id)
+                            const hasData = fundamentalsWithData.has(f.id)
+                            return (
+                              <button
+                                key={f.id}
+                                onClick={() => toggleFundamental(f.id)}
+                                className={cn(
+                                  'rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors',
+                                  isActive && hasData
+                                    ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
+                                    : isActive && !hasData
+                                      ? 'border-hextech-border text-hextech-text-dim'
+                                      : 'border-hextech-border-dim text-hextech-text-dim opacity-40 hover:opacity-70',
+                                )}
+                                title={hasData ? undefined : 'No data for this period'}
+                              >
+                                {f.label}
+                                {hasData && <span className="ml-1 text-hextech-gold/60">●</span>}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>{t('analytics.charts.skillProgress')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <ProgressChart data={progressData} fundamentalIds={displayedFundamentalIds} />
+              <ProgressChart data={periodFilteredData} fundamentalIds={displayedFundamentalIds} />
             </CardContent>
           </Card>
 
+          {/* Chart 2: Current vs Previous — bilans only by default, own filter */}
           <Card>
-            <CardHeader>
-              <CardTitle>{t('analytics.charts.currentVsPrevious')}</CardTitle>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle>{t('analytics.charts.currentVsPrevious')}</CardTitle>
+                <div className="flex items-center gap-2">
+                  {/* Live mode toggle */}
+                  <button
+                    onClick={() => setTrendShowLive((v) => !v)}
+                    className={cn(
+                      'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                      trendShowLive
+                        ? 'border-hextech-cyan bg-hextech-cyan/10 text-hextech-cyan'
+                        : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
+                    )}
+                  >
+                    {trendShowLive ? 'Sessions (live)' : 'Bilans seulement'}
+                  </button>
+                  {/* Filter toggle */}
+                  <button
+                    className="flex items-center gap-1.5 text-xs text-hextech-text-dim hover:text-hextech-text transition-colors"
+                    onClick={() => setShowTrendFilter((v) => !v)}
+                  >
+                    <Filter className="h-3.5 w-3.5" />
+                    <span>Filtre</span>
+                    {trendSelectedIds !== null && (
+                      <Badge variant="gold" className="text-[10px] h-5 px-2">
+                        {trendSelectedIds.filter((id) => trendFundamentalsWithData.has(id)).length}
+                      </Badge>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Inline filter panel for chart 2 */}
+              {showTrendFilter && (
+                <div className="mt-3 space-y-3 border-t border-hextech-border-dim pt-3">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setTrendSelectedIds(null)}
+                      className={cn(
+                        'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                        trendSelectedIds === null
+                          ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
+                          : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
+                      )}
+                    >
+                      Tous
+                    </button>
+                  </div>
+                  {FUNDAMENTALS.map((cat) => {
+                    const catFundIds = cat.fundamentals.map((f) => f.id)
+                    const allCatActive = catFundIds.every((id) => trendDisplayedIds.includes(id))
+                    return (
+                      <div key={cat.id} className="space-y-1.5">
+                        <button
+                          onClick={() => toggleTrendCategory(catFundIds)}
+                          className={cn(
+                            'rounded-full border px-3 py-0.5 text-[11px] font-semibold uppercase tracking-wide transition-colors',
+                            allCatActive && trendSelectedIds !== null
+                              ? 'border-hextech-cyan bg-hextech-cyan/10 text-hextech-cyan'
+                              : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
+                          )}
+                        >
+                          {cat.label}
+                          {catFundIds.some((id) => trendFundamentalsWithData.has(id)) && (
+                            <span className="ml-1.5 text-hextech-gold opacity-70">●</span>
+                          )}
+                        </button>
+                        <div className="flex flex-wrap gap-1.5 pl-2">
+                          {cat.fundamentals.map((f) => {
+                            const isActive = trendDisplayedIds.includes(f.id)
+                            const hasData = trendFundamentalsWithData.has(f.id)
+                            return (
+                              <button
+                                key={f.id}
+                                onClick={() => toggleTrendFundamental(f.id)}
+                                className={cn(
+                                  'rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors',
+                                  isActive && hasData
+                                    ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
+                                    : isActive && !hasData
+                                      ? 'border-hextech-border text-hextech-text-dim'
+                                      : 'border-hextech-border-dim text-hextech-text-dim opacity-40 hover:opacity-70',
+                                )}
+                                title={hasData ? undefined : 'Aucune donnée'}
+                              >
+                                {f.label}
+                                {hasData && <span className="ml-1 text-hextech-gold/60">●</span>}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <ScoreTrendChart data={scoreTrendData} />

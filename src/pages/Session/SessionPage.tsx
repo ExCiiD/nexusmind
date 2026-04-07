@@ -17,6 +17,7 @@ import {
   Target, Lock, Play, Square, Loader2, X, ChevronRight, ChevronLeft,
   Swords, Eye, Clock, CheckCircle, FileSearch, Trash2, Filter, Zap, History,
 } from 'lucide-react'
+import { ShareSessionButton } from '@/components/Share/ShareSessionButton'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 import { MatchHistoryPicker } from '@/components/Session/MatchHistoryPicker'
@@ -203,7 +204,7 @@ export function SessionPage() {
               {t('session.reviewsCompleted')} {activeSession.games.filter((g) => g.review).length}
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-2 flex-wrap items-center">
               <Button onClick={() => navigate('/review')}>
                 <Play className="h-4 w-4 mr-2" />
                 {t('session.reviewLatest')}
@@ -212,6 +213,45 @@ export function SessionPage() {
                 {ending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Square className="h-4 w-4 mr-2" />}
                 {t('session.endSession')}
               </Button>
+              {activeSession.games.length > 0 && (() => {
+                const wins = activeSession.games.filter((g) => g.win).length
+                const losses = activeSession.games.length - wins
+                let objectiveIds: string[] = []
+                try { objectiveIds = JSON.parse(activeSession.objectiveIds) } catch { objectiveIds = [activeSession.objectiveId] }
+                let selectedKpiIds: string[] = []
+                try { selectedKpiIds = JSON.parse(activeSession.selectedKpiIds) } catch { /* ignore */ }
+                return (
+                  <ShareSessionButton
+                    data={{
+                      objectiveId: activeSession.objectiveId,
+                      objectiveIds,
+                      selectedKpiIds,
+                      subObjective: activeSession.subObjective,
+                      customNote: activeSession.customNote,
+                      date: activeSession.date,
+                      wins,
+                      losses,
+                      gamesPlayed: activeSession.games.length,
+                      aiSummary: activeSession.aiSummary,
+                      games: activeSession.games.map((g) => ({
+                        champion: g.champion,
+                        opponentChampion: g.opponentChampion,
+                        win: g.win,
+                        kills: g.kills,
+                        deaths: g.deaths,
+                        assists: g.assists,
+                        cs: g.cs,
+                        visionScore: g.visionScore,
+                        duration: g.duration,
+                        gameEndAt: g.gameEndAt,
+                        review: g.review
+                          ? { kpiScores: g.review.kpiScores, freeText: g.review.freeText, aiSummary: g.review.aiSummary, timelineNotes: g.review.timelineNotes }
+                          : null,
+                      })),
+                    }}
+                  />
+                )
+              })()}
             </div>
 
             <div className="border-t border-hextech-border-dim pt-3 mt-1">

@@ -52,13 +52,20 @@ async function runMigrations(client: PrismaClient): Promise<void> {
       .map((s) => s.replace(/--[^\n]*/g, '').trim())
       .filter((s) => s.length > 0)
 
+    let appliedCount = 0
     for (const stmt of statements) {
       try {
         await client.$executeRawUnsafe(stmt)
+        appliedCount++
       } catch (err: any) {
         const msg: string = err?.message ?? ''
-        if (msg.includes('duplicate column name') || msg.includes('already exists')) {
-          console.warn(`[db] Skipping already-applied statement in ${folder}:`, msg)
+        if (
+          msg.includes('duplicate column name') ||
+          msg.includes('already exists') ||
+          msg.includes('no such column') ||
+          msg.includes('UNIQUE constraint failed')
+        ) {
+          // Idempotent — statement was already applied in a previous run
         } else {
           throw err
         }
@@ -71,7 +78,9 @@ async function runMigrations(client: PrismaClient): Promise<void> {
       `${folder}-auto`,
       folder
     )
-    console.log(`[db] Applied migration: ${folder}`)
+    if (appliedCount > 0) {
+      console.log(`[db] Applied migration: ${folder} (${appliedCount} statement${appliedCount > 1 ? 's' : ''})`)
+    }
   }
 }
 

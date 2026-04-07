@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, History, Download, Swords, Check, AlertTriangle, Filter } from 'lucide-react'
+import { Loader2, History, Download, Swords, Check, AlertTriangle, Filter, ChevronsDown } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { formatGameTime, formatKDA } from '@/lib/utils'
 import { useTranslation } from 'react-i18next'
@@ -38,13 +38,16 @@ export function MatchHistoryPicker({ onImported }: MatchHistoryPickerProps) {
   const mainRole = useUserStore((s) => s.user?.mainRole ?? null)
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [importing, setImporting] = useState(false)
   const [matches, setMatches] = useState<MatchEntry[]>([])
+  const [fetchedCount, setFetchedCount] = useState(15)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const fetchHistory = async () => {
     setLoading(true)
     setSelected(new Set())
+    setFetchedCount(15)
     try {
       const history = await window.api.fetchMatchHistory(15)
       setMatches(history)
@@ -53,6 +56,20 @@ export function MatchHistoryPicker({ onImported }: MatchHistoryPickerProps) {
       toast({ title: t('history.picker.errorTitle'), description: err.message, variant: 'destructive' })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchMore = async () => {
+    const nextCount = fetchedCount + 10
+    setLoadingMore(true)
+    try {
+      const history = await window.api.fetchMatchHistory(nextCount)
+      setMatches(history)
+      setFetchedCount(nextCount)
+    } catch (err: any) {
+      toast({ title: t('history.picker.errorTitle'), description: err.message, variant: 'destructive' })
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -194,6 +211,23 @@ export function MatchHistoryPicker({ onImported }: MatchHistoryPickerProps) {
               </button>
             )
           })}
+        </div>
+      )}
+
+      {visibleMatches.length > 0 && (
+        <div className="flex justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-xs text-hextech-text-dim hover:text-hextech-text"
+            onClick={fetchMore}
+            disabled={loadingMore}
+          >
+            {loadingMore
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : <ChevronsDown className="h-3 w-3" />}
+            {loadingMore ? 'Loading…' : 'Load 10 more'}
+          </Button>
         </div>
       )}
 

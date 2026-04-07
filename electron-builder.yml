@@ -16,6 +16,7 @@ asarUnpack:
   - prisma-client/**/*
   - node_modules/@prisma/engines/**/*
   - node_modules/prisma/**/*
+  - node_modules/ffmpeg-static/**/*
 
 publish:
   provider: github

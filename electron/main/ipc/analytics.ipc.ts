@@ -8,7 +8,7 @@ function includeInAnalytics(game: { reviewStatus?: string | null }) {
 export function registerAnalyticsHandlers() {
   ipcMain.handle('analytics:get-progress', async () => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return []
 
     const assessments = await prisma.assessment.findMany({
@@ -29,7 +29,7 @@ export function registerAnalyticsHandlers() {
 
   ipcMain.handle('analytics:get-session-stats', async () => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return null
 
     const sessions = await prisma.session.findMany({
@@ -66,7 +66,7 @@ export function registerAnalyticsHandlers() {
 
   ipcMain.handle('sessions:list', async () => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return []
 
     const accounts = await prisma.account.findMany({ where: { userId: user.id } })
@@ -175,7 +175,7 @@ export function registerAnalyticsHandlers() {
 
   ipcMain.handle('analytics:get-game-history', async (_event, limit = 20) => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return []
 
     const sessions = await prisma.session.findMany({
@@ -198,4 +198,53 @@ export function registerAnalyticsHandlers() {
       })),
     ).slice(0, limit)
   })
+
+  /**
+   * Returns session-based KPI score trends over time.
+   * For each completed session that has at least one reviewed game with KPI scores,
+   * computes the average KPI score across all reviews in that session.
+   * Scores are normalised from the 0-10 KPI scale to the 0-5 Assessment scale.
+   */
+  ipcMain.handle('analytics:get-kpi-timeline', async () => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    if (!user) return []
+
+    const sessions = await prisma.session.findMany({
+      where: { userId: user.id, status: 'completed' },
+      orderBy: { date: 'asc' },
+      include: {
+        games: { include: { review: true } },
+      },
+    })
+
+    const points: Array<{ date: string; objectiveId: string; avgScore: number; gamesReviewed: number }> = []
+
+    for (const session of sessions) {
+      if (!session.objectiveId) continue
+
+      const allScores: number[] = []
+      for (const game of session.games) {
+        if (!game.review?.kpiScores) continue
+        try {
+          const kpiMap: Record<string, number> = JSON.parse(game.review.kpiScores)
+          const vals = Object.values(kpiMap).filter((v) => typeof v === 'number' && v >= 0)
+          allScores.push(...vals)
+        } catch { /* ignore malformed JSON */ }
+      }
+
+      if (allScores.length === 0) continue
+
+      const avg = allScores.reduce((a, b) => a + b, 0) / allScores.length
+      points.push({
+        date: session.date.toISOString(),
+        objectiveId: session.objectiveId,
+        avgScore: Number(avg.toFixed(2)), // 0-10 scale, same as assessments
+        gamesReviewed: session.games.filter((g) => g.review !== null).length,
+      })
+    }
+
+    return points
+  })
 }
+

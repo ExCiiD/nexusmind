@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Video, Youtube, Link2, Trash2, Loader2, ExternalLink } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Video, Youtube, Link2, Trash2, Loader2, ExternalLink, RefreshCw } from 'lucide-react'
+import { VideoReviewPlayer } from './VideoReviewPlayer'
+import type { TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
 
 interface Recording {
   id: string
@@ -14,6 +15,20 @@ interface Recording {
 interface GameRecordingPanelProps {
   gameId: string
   readonly?: boolean
+  /** Timeline notes that have videoTime — displayed as markers in the video player */
+  timelineNotes?: TimelineNote[]
+  /** Called when user marks a moment in the video player */
+  onAddNote?: (note: TimelineNote) => void
+}
+
+/** Convert an OS file path to a nxm:// URL for video playback in the renderer. */
+function filePathToNxmUrl(filePath: string): string {
+  // Normalise Windows backslashes → forward slashes
+  const normalised = filePath.replace(/\\/g, '/')
+  // Windows: C:/path → nxm:///C:/path  |  Unix: /path → nxm:///path
+  return normalised.startsWith('/')
+    ? `nxm://${normalised}`      // nxm:// + /home/user/... = nxm:///home/user/...
+    : `nxm:///${normalised}`     // nxm:/// + C:/... = nxm:///C:/...
 }
 
 function extractYoutubeId(url: string): string | null {
@@ -25,19 +40,23 @@ function extractYoutubeId(url: string): string | null {
   return null
 }
 
-export function GameRecordingPanel({ gameId, readonly }: GameRecordingPanelProps) {
+export function GameRecordingPanel({ gameId, readonly, timelineNotes = [], onAddNote }: GameRecordingPanelProps) {
   const [recording, setRecording] = useState<Recording | null>(null)
   const [loading, setLoading] = useState(true)
+  const [scanning, setScanning] = useState(false)
   const [showYtInput, setShowYtInput] = useState(false)
   const [ytUrl, setYtUrl] = useState('')
   const [saving, setSaving] = useState(false)
   const [open, setOpen] = useState(false)
+  const [fileNotFound, setFileNotFound] = useState(false)
 
   const load = async () => {
     setLoading(true)
+    setFileNotFound(false)
     try {
       const r = await window.api.getRecording(gameId)
       setRecording(r)
+      if (r) setOpen(true)
     } finally {
       setLoading(false)
     }
@@ -45,9 +64,27 @@ export function GameRecordingPanel({ gameId, readonly }: GameRecordingPanelProps
 
   useEffect(() => { load() }, [gameId])
 
+  // Auto-refresh when main process links a new recording
+  useEffect(() => {
+    const off = window.api.onRecordingLinked((data) => {
+      if (data.gameId === gameId) load()
+    })
+    return off
+  }, [gameId])
+
+  const handleScan = async () => {
+    setScanning(true)
+    try {
+      await window.api.scanRecordings()
+      await load()
+    } finally {
+      setScanning(false)
+    }
+  }
+
   const handleLinkFile = async () => {
     const r = await window.api.linkRecordingFile(gameId)
-    if (r) setRecording(r)
+    if (r) { setRecording(r); setOpen(true) }
   }
 
   const handleSaveYoutube = async () => {
@@ -76,6 +113,7 @@ export function GameRecordingPanel({ gameId, readonly }: GameRecordingPanelProps
 
   return (
     <div className="rounded-lg border border-hextech-border-dim bg-hextech-dark overflow-hidden">
+      {/* Header toggle */}
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-hextech-text hover:text-hextech-gold-bright transition-colors text-left"
@@ -84,34 +122,57 @@ export function GameRecordingPanel({ gameId, readonly }: GameRecordingPanelProps
         {recording ? (
           <>
             <span>Recording</span>
-            <span className="ml-1 rounded px-1.5 py-0.5 text-[10px] bg-hextech-gold/20 text-hextech-gold">
-              {recording.source === 'youtube' ? 'YouTube' : recording.source}
+            <span className="ml-1 rounded px-1.5 py-0.5 text-[10px] bg-hextech-gold/20 text-hextech-gold capitalize">
+              {recording.source}
             </span>
+            {timelineNotes.filter((n) => n.videoTime !== undefined).length > 0 && (
+              <span className="ml-1 rounded px-1.5 py-0.5 text-[10px] bg-hextech-cyan/20 text-hextech-cyan">
+                {timelineNotes.filter((n) => n.videoTime !== undefined).length} moment{timelineNotes.filter((n) => n.videoTime !== undefined).length !== 1 ? 's' : ''}
+              </span>
+            )}
           </>
         ) : (
-          <span>Add Recording</span>
+          <span>Recording</span>
         )}
-        <span className="ml-auto text-hextech-text-dim">{open ? '▲' : '▼'}</span>
+        <span className="ml-auto text-hextech-text-dim text-xs">{open ? '▲' : '▼'}</span>
       </button>
 
       {open && (
         <div className="border-t border-hextech-border-dim">
-          {/* Local video player */}
+          {/* Local file → VideoReviewPlayer */}
           {recording?.filePath && (
             <div className="p-4 space-y-3">
-              <video
-                src={`file://${recording.filePath}`}
-                controls
-                className="w-full rounded-md bg-black max-h-96 object-contain"
+              <VideoReviewPlayer
+                src={filePathToNxmUrl(recording.filePath)}
+                notes={timelineNotes}
+                onAddNote={onAddNote}
+                onFileNotFound={() => setFileNotFound(true)}
+                readonly={readonly}
               />
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-hextech-text-dim truncate">{recording.filePath}</span>
-                {!readonly && (
-                  <Button variant="ghost" size="sm" onClick={handleDelete} className="text-[#FF4655] hover:text-[#FF4655] ml-2 shrink-0">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
+              {fileNotFound ? (
+                /* File is missing — offer re-link or delete */
+                !readonly && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={handleLinkFile} className="gap-1.5">
+                      <Link2 className="h-3.5 w-3.5" />
+                      Re-link file
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleDelete} className="text-[#FF4655] hover:text-[#FF4655] gap-1.5">
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Remove entry
+                    </Button>
+                  </div>
+                )
+              ) : (
+                !readonly && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-hextech-text-dim truncate max-w-[60%]">{recording.filePath}</span>
+                    <Button variant="ghost" size="sm" onClick={handleDelete} className="text-[#FF4655] hover:text-[#FF4655] ml-2 shrink-0">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )
+              )}
             </div>
           )}
 
@@ -148,14 +209,9 @@ export function GameRecordingPanel({ gameId, readonly }: GameRecordingPanelProps
           {/* YouTube URL only (no valid embed ID) */}
           {recording?.youtubeUrl && !youtubeId && (
             <div className="px-4 py-3 flex items-center justify-between">
-              <a
-                href={recording.youtubeUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 text-sm text-hextech-gold hover:underline"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Open YouTube link
+              <a href={recording.youtubeUrl} target="_blank" rel="noreferrer"
+                className="flex items-center gap-1 text-sm text-hextech-gold hover:underline">
+                <ExternalLink className="h-3.5 w-3.5" /> Open YouTube link
               </a>
               {!readonly && (
                 <Button variant="ghost" size="sm" onClick={handleDelete} className="text-[#FF4655] hover:text-[#FF4655]">
@@ -188,6 +244,10 @@ export function GameRecordingPanel({ gameId, readonly }: GameRecordingPanelProps
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={handleScan} disabled={scanning} className="gap-1.5">
+                    {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                    Scan for recording
+                  </Button>
                   <Button variant="outline" size="sm" onClick={handleLinkFile} className="gap-1.5">
                     <Link2 className="h-3.5 w-3.5" />
                     Link local file

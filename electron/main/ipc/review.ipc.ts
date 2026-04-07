@@ -2,8 +2,6 @@ import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
 import { tryUnlockBadge } from '../badgeUnlock'
 import { extractDetailedStats, getMatch, getMatchTimeline } from '../riotClient'
-import { syncStudentData } from './sync.ipc'
-
 export function registerReviewHandlers() {
   ipcMain.handle(
     'review:save',
@@ -44,7 +42,7 @@ export function registerReviewHandlers() {
         data: { reviewStatus: 'reviewed' },
       })
 
-      const user = await prisma.user.findFirst()
+      const user = await prisma.user.findFirst({ where: { isActive: true } })
       if (user && !existingReview) {
         await prisma.user.update({
           where: { id: user.id },
@@ -65,9 +63,6 @@ export function registerReviewHandlers() {
         if (respectedCount >= 25) await tryUnlockBadge(user.id, 'objective_25')
       }
 
-      // Background sync to Supabase
-      syncStudentData().catch(() => {})
-
       return review
     },
   )
@@ -87,6 +82,27 @@ export function registerReviewHandlers() {
 
     if (!session) return []
     return session.games.filter((g) => g.review).map((g) => g.review)
+  })
+
+  /** Returns a game and its parent session, even if the session is ended. Used for review from history. */
+  ipcMain.handle('review:get-game-context', async (_event, gameId: string) => {
+    const prisma = getPrisma()
+    const game = await prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        review: true,
+        session: {
+          include: {
+            games: {
+              include: { review: true },
+              orderBy: { gameEndAt: 'asc' },
+            },
+          },
+        },
+      },
+    })
+    if (!game) return null
+    return { game, session: game.session }
   })
 
   ipcMain.handle(
@@ -594,4 +610,5 @@ function analyzeLaningBehavior(
 
   return result
 }
+
 

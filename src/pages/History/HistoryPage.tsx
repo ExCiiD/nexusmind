@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChampionMatchup } from '@/components/ChampionMatchup'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { useLocalizedFundamental } from '@/lib/constants/useFundamentals'
+import { useLocalizedFundamental, useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { formatKDA, formatGameTime } from '@/lib/utils'
 import { useTranslation } from 'react-i18next'
 import {
@@ -24,6 +24,8 @@ import {
   Video,
 } from 'lucide-react'
 import { AccountBadge } from '@/components/ui/AccountBadge'
+import { ShareSessionButton } from '@/components/Share/ShareSessionButton'
+import { useUserStore } from '@/store/useUserStore'
 import { cn } from '@/lib/utils'
 
 const GAMES_PAGE_SIZE = 20
@@ -149,14 +151,32 @@ function PageHeader() {
 
 /* ─── Games Tab: Riot API match history with reviewed/unreviewed tags ─── */
 
+/** Map Riot teamPosition values to short display labels. */
+const ROLE_LABELS: Record<string, string> = {
+  TOP: 'TOP',
+  JUNGLE: 'JGL',
+  MIDDLE: 'MID',
+  BOTTOM: 'BOT',
+  UTILITY: 'SUP',
+}
+const ALL_ROLES = Object.keys(ROLE_LABELS)
+
 function GamesTab() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const navigateToReview = (gameId: string | null) => navigate(gameId ? `/review?gameId=${gameId}` : '/review')
+  const user = useUserStore((s) => s.user)
   const [games, setGames] = useState<RiotGameEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
+
+  // Role filter — defaults to main-role-only if user has a mainRole set
+  const [mainRoleOnly, setMainRoleOnly] = useState(() => !!user?.mainRole)
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(ALL_ROLES)
+
+  // Account filter — null means all accounts shown
+  const [selectedAccounts, setSelectedAccounts] = useState<string[] | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -167,8 +187,53 @@ function GamesTab() {
       .finally(() => setLoading(false))
   }, [])
 
-  const totalPages = Math.ceil(games.length / GAMES_PAGE_SIZE)
-  const visibleGames = games.slice(page * GAMES_PAGE_SIZE, (page + 1) * GAMES_PAGE_SIZE)
+  const toggleRole = (role: string) => {
+    setSelectedRoles((prev) =>
+      prev.includes(role)
+        ? prev.length === 1 ? prev : prev.filter((r) => r !== role)
+        : [...prev, role],
+    )
+    setPage(0)
+  }
+
+  /** All distinct account names present in the loaded games */
+  const availableAccounts = useMemo(
+    () => [...new Set(games.map((g) => g.accountName).filter((n): n is string => !!n))],
+    [games],
+  )
+
+  /**
+   * Account toggle — isolates on first click (when everything is shown),
+   * then adds/removes on subsequent clicks.
+   */
+  const toggleAccount = (name: string) => {
+    setPage(0)
+    if (selectedAccounts === null) {
+      setSelectedAccounts([name])
+      return
+    }
+    const next = selectedAccounts.includes(name)
+      ? selectedAccounts.filter((a) => a !== name)
+      : [...selectedAccounts, name]
+    setSelectedAccounts(next.length === 0 ? null : next)
+  }
+
+  /** Games after applying role + account filters */
+  const filteredGames = useMemo(() => {
+    let result = games
+    if (mainRoleOnly && user?.mainRole) {
+      result = result.filter((g) => g.role === user.mainRole)
+    } else if (selectedRoles.length < ALL_ROLES.length) {
+      result = result.filter((g) => selectedRoles.includes(g.role))
+    }
+    if (selectedAccounts !== null) {
+      result = result.filter((g) => g.accountName && selectedAccounts.includes(g.accountName))
+    }
+    return result
+  }, [games, mainRoleOnly, selectedRoles, selectedAccounts, user?.mainRole])
+
+  const totalPages = Math.ceil(filteredGames.length / GAMES_PAGE_SIZE)
+  const visibleGames = filteredGames.slice(page * GAMES_PAGE_SIZE, (page + 1) * GAMES_PAGE_SIZE)
   const handlePrev = () => setPage((p) => Math.max(0, p - 1))
   const handleNext = () => setPage((p) => Math.min(totalPages - 1, p + 1))
 
@@ -201,6 +266,90 @@ function GamesTab() {
 
   return (
     <div className="space-y-3">
+      {/* Filters row */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {/* Role filter */}
+        {user?.mainRole && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => { setMainRoleOnly(true); setPage(0) }}
+              className={cn(
+                'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                mainRoleOnly
+                  ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
+                  : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
+              )}
+            >
+              {ROLE_LABELS[user.mainRole] ?? user.mainRole} only
+            </button>
+            <button
+              onClick={() => { setMainRoleOnly(false); setPage(0) }}
+              className={cn(
+                'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                !mainRoleOnly
+                  ? 'border-hextech-cyan bg-hextech-cyan/10 text-hextech-cyan'
+                  : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
+              )}
+            >
+              All roles
+            </button>
+            {!mainRoleOnly && (
+              <div className="flex gap-1.5 ml-1">
+                {ALL_ROLES.map((role) => (
+                  <button
+                    key={role}
+                    onClick={() => toggleRole(role)}
+                    className={cn(
+                      'rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-colors',
+                      selectedRoles.includes(role)
+                        ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
+                        : 'border-hextech-border-dim text-hextech-text-dim opacity-50',
+                    )}
+                  >
+                    {ROLE_LABELS[role]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Account filter — only shown when multiple accounts exist */}
+        {availableAccounts.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-hextech-text-dim">Compte :</span>
+            <button
+              onClick={() => { setSelectedAccounts(null); setPage(0) }}
+              className={cn(
+                'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                selectedAccounts === null
+                  ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
+                  : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
+              )}
+            >
+              Tous
+            </button>
+            {availableAccounts.map((name) => {
+              const isActive = selectedAccounts === null || selectedAccounts.includes(name)
+              return (
+                <button
+                  key={name}
+                  onClick={() => toggleAccount(name)}
+                  className={cn(
+                    'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                    isActive
+                      ? 'border-hextech-cyan bg-hextech-cyan/10 text-hextech-cyan'
+                      : 'border-hextech-border-dim text-hextech-text-dim opacity-50',
+                  )}
+                >
+                  {name}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Pagination header */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
@@ -450,6 +599,38 @@ function SessionCard({ session, expanded, onToggle, onDelete, onGameDelete }: { 
             )}
             <Stat label={t('history.stats.kda')} value={session.avgKDA.toFixed(2)} />
             <Stat label={t('history.stats.csMin')} value={session.avgCSPerMin.toFixed(1)} />
+            <div onClick={(e) => e.stopPropagation()}>
+              <ShareSessionButton
+                data={{
+                  objectiveId: session.objectiveId,
+                  subObjective: session.subObjective,
+                  customNote: session.customNote,
+                  date: session.date,
+                  wins: session.wins,
+                  losses: session.losses,
+                  gamesPlayed: session.gamesPlayed,
+                  avgKDA: session.avgKDA,
+                  avgCSPerMin: session.avgCSPerMin,
+                  objectiveSuccessRate: session.objectiveSuccessRate,
+                  aiSummary: session.aiSummary,
+                  games: session.games.map((g) => ({
+                    champion: g.champion,
+                    opponentChampion: g.opponentChampion,
+                    win: g.win,
+                    kills: g.kills,
+                    deaths: g.deaths,
+                    assists: g.assists,
+                    cs: g.cs,
+                    visionScore: g.visionScore,
+                    duration: g.duration,
+                    gameEndAt: g.gameEndAt,
+                    review: g.review
+                      ? { kpiScores: g.review.kpiScores, freeText: g.review.freeText, aiSummary: g.review.aiSummary, timelineNotes: g.review.timelineNotes }
+                      : null,
+                  })),
+                }}
+              />
+            </div>
             {confirmDelete ? (
               <div className="flex items-center gap-1 ml-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                 <Button
@@ -521,6 +702,8 @@ function SessionCard({ session, expanded, onToggle, onDelete, onGameDelete }: { 
 function GameRow({ game, index, onDelete }: { game: GameEntry; index: number; onDelete?: (id: string) => void }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const kpiCategories = useLocalizedFundamentals()
+  const allKpis = kpiCategories.flatMap((c) => c.fundamentals).flatMap((f) => f.kpis ?? [])
   const [reviewExpanded, setReviewExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -700,6 +883,34 @@ function GameRow({ game, index, onDelete }: { game: GameEntry; index: number; on
                     <span className="text-hextech-text">{n.note}</span>
                   </div>
                 ))}
+              </div>
+            )
+          })()}
+
+          {(() => {
+            let kpiMap: Record<string, number> = {}
+            try { kpiMap = JSON.parse(game.review.kpiScores) } catch {}
+            const entries = Object.entries(kpiMap)
+            if (entries.length === 0) return null
+            return (
+              <div className="space-y-1.5 pt-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-hextech-text-dim">KPI Scores</p>
+                {entries.map(([id, score]) => {
+                  const label = allKpis.find((k) => k.id === id)?.label ?? id
+                  const pct = Math.round((score / 10) * 100)
+                  return (
+                    <div key={id} className="flex items-center gap-2 text-xs">
+                      <span className="text-hextech-text w-36 truncate shrink-0">{label}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-hextech-border-dim overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-hextech-gold transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="text-hextech-text-dim w-8 text-right shrink-0">{score}/10</span>
+                    </div>
+                  )
+                })}
               </div>
             )
           })()}

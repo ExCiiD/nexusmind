@@ -29,24 +29,33 @@ export function ProgressChart({ data, fundamentalIds }: ProgressChartProps) {
 
   const ids = fundamentalIds || [...new Set(data.map((d) => d.fundamentalId))]
 
-  const dateMap = new Map<string, Record<string, number>>()
+  // Group by the locale display label so "31/03/2026" only ever appears once,
+  // even when two ISO timestamps (e.g. 2026-03-30T23:00Z and 2026-03-31T00:00Z)
+  // land on the same local calendar day due to UTC offset.
+  // The earliest ISO timestamp in each group is kept for chronological sorting.
+  const dateMap = new Map<string, { minIso: string; scores: Record<string, number> }>()
   for (const point of data) {
     if (!ids.includes(point.fundamentalId)) continue
-    const dateKey = new Date(point.date).toLocaleDateString()
-    if (!dateMap.has(dateKey)) dateMap.set(dateKey, {})
-    dateMap.get(dateKey)![point.fundamentalId] = point.score
+    const display = new Date(point.date).toLocaleDateString()
+    if (!dateMap.has(display)) {
+      dateMap.set(display, { minIso: point.date, scores: {} })
+    } else {
+      const entry = dateMap.get(display)!
+      if (point.date < entry.minIso) entry.minIso = point.date
+    }
+    dateMap.get(display)!.scores[point.fundamentalId] = point.score
   }
 
   const chartData = [...dateMap.entries()]
-    .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
-    .map(([date, scores]) => ({ date, ...scores }))
+    .sort((a, b) => a[1].minIso.localeCompare(b[1].minIso))
+    .map(([date, { scores }]) => ({ date, ...scores }))
 
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#1E2328" />
         <XAxis dataKey="date" tick={{ fill: '#A09B8C', fontSize: 11 }} />
-        <YAxis domain={[0, 5]} tick={{ fill: '#A09B8C', fontSize: 11 }} />
+        <YAxis domain={[0, 10]} tick={{ fill: '#A09B8C', fontSize: 11 }} />
         <Tooltip
           contentStyle={{
             backgroundColor: '#0A1628',

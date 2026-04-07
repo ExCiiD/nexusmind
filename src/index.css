@@ -52,7 +52,17 @@
   }
 }
 
+@keyframes ping-once {
+  0%   { transform: scale(0.8); opacity: 1; }
+  60%  { transform: scale(1.4); opacity: 0.6; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
 @layer utilities {
+  .animate-ping-once {
+    animation: ping-once 0.5s ease-out forwards;
+  }
+
   .hextech-border {
     border: 1px solid theme('colors.hextech.border');
     box-shadow: 0 0 6px rgba(120, 90, 40, 0.15);

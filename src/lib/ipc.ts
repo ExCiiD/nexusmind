@@ -1,6 +1,22 @@
+export interface SavedAccount {
+  id: string
+  displayName: string
+  summonerName: string
+  tagLine: string
+  region: string
+  profileIconId: number
+  isActive: boolean
+  mainRole: string | null
+  createdAt: string
+  updatedAt: string
+  _count: { sessions: number }
+}
+
 export type NexusMindAPI = {
   connectRiot: (gameName: string, tagLine: string, region: string, displayName?: string) => Promise<any>
   disconnectRiot: () => Promise<void>
+  reactivateAccount: (userId: string) => Promise<any>
+  listSavedAccounts: () => Promise<SavedAccount[]>
 
   createSession: (data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) => Promise<any>
   getActiveSession: () => Promise<any>
@@ -17,6 +33,7 @@ export type NexusMindAPI = {
     objectiveRespected: boolean
   }) => Promise<any>
   getReviews: (sessionId: string) => Promise<any[]>
+  getGameContext: (gameId: string) => Promise<{ game: any; session: any } | null>
   analyzeReviewBias: (gameId: string, objectiveIds: string[]) => Promise<ReviewBiasSignal[]>
 
   saveAssessment: (scores: Array<{ fundamentalId: string; subcategoryId?: string; score: number }>) => Promise<any>
@@ -28,6 +45,7 @@ export type NexusMindAPI = {
   getProgressData: () => Promise<any>
   getSessionStats: () => Promise<any>
   getGameHistory: (limit?: number) => Promise<any[]>
+  getKpiTimeline: () => Promise<Array<{ date: string; objectiveId: string; avgScore: number; gamesReviewed: number }>>
 
   getObjectiveSuggestion: (scores: Record<string, number>) => Promise<string>
   synthesizeReview: (data: { timelineNotes: any[]; kpiScores: Record<string, number>; objective: string }) => Promise<string>
@@ -97,39 +115,65 @@ export type NexusMindAPI = {
   onUpdateDownloaded: (cb: () => void) => void
   installUpdate: () => Promise<void>
 
-  // Coach / Supabase auth
-  supabaseSignIn: (email: string, password: string) => Promise<{ uid: string; email?: string }>
-  supabaseSignUp: (email: string, password: string) => Promise<{ uid: string; email?: string; needsConfirmation: boolean }>
-  supabaseSignOut: () => Promise<{ success: boolean }>
-  getSupabaseSession: () => Promise<{ uid: string; email?: string } | null>
-  setRole: (role: string) => Promise<any>
-
-  // Invite system
-  generateInvite: () => Promise<{ code: string; link: string }>
-  redeemInvite: (code: string) => Promise<{ coachName: string }>
-  listCoaches: () => Promise<Array<{ relationId: string; displayName: string; puuid: string }>>
-  listStudents: () => Promise<Array<{ relationId: string; supabaseId: string; displayName: string; puuid: string }>>
-
-  // Student data for coach
-  getStudentSessions: (studentSupabaseId: string) => Promise<any[]>
-  getStudentAssessments: (studentSupabaseId: string) => Promise<any[]>
-
-  // Coach comments
-  addCoachComment: (data: { studentSupabaseId: string; targetType: 'session' | 'game' | 'review'; targetId: string; content: string }) => Promise<any>
-  updateCoachComment: (commentId: string, content: string) => Promise<any>
-  deleteCoachComment: (commentId: string) => Promise<{ success: boolean }>
-  getCoachComments: (targetType: string, targetId: string) => Promise<any[]>
-
-  // Sync
-  syncToSupabase: () => Promise<{ success: boolean }>
-
-  // Recording
+  // Recording — library
   scanRecordings: () => Promise<{ scanned: number; matched: number; paths: Array<{ source: string; dir: string; exists: boolean }> }>
   getRecording: (gameId: string) => Promise<{ id: string; gameId: string; filePath: string | null; youtubeUrl: string | null; source: string } | null>
   linkRecordingFile: (gameId: string) => Promise<any>
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => Promise<any>
   deleteRecording: (gameId: string) => Promise<{ success: boolean }>
   getRecordingScanPaths: () => Promise<Array<{ source: string; dir: string; exists: boolean }>>
+  listGamesWithRecordings: () => Promise<Array<{
+    recordingId: string
+    gameId: string
+    filePath: string | null
+    youtubeUrl: string | null
+    source: string
+    champion: string
+    opponentChampion: string | null
+    win: boolean
+    kills: number
+    deaths: number
+    assists: number
+    duration: number
+    gameEndAt: string
+    hasReview: boolean
+    reviewId: string | null
+    sessionObjectiveId: string
+  }>>
+  // Recording — in-app capture
+  pickRecordingFolder: () => Promise<string | null>
+  getCaptureStatus: () => Promise<{ isRecording: boolean; filePath: string | null; ffmpegAvailable: boolean }>
+  startCapture: () => Promise<{ started: boolean; filePath: string | null }>
+  stopCapture: (gameId?: string) => Promise<{ stopped: boolean; filePath?: string }>
+  getRecordingsDir: () => Promise<string>
+  onRecordingStarted: (cb: () => void) => () => void
+  onRecordingStopped: (cb: (data: { filePath: string }) => void) => () => void
+  onRecordingLinked: (cb: (data: { gameId: string; filePath: string }) => void) => () => void
+
+  // External reviews
+  fetchExternalPlayerHistory: (gameName: string, tagLine: string, region: string, count?: number) => Promise<any[]>
+  createExternalReview: (data: {
+    title: string
+    objectiveId?: string
+    objectiveIds?: string
+    selectedKpiIds?: string
+    filePath?: string
+    playerName?: string
+    matchData?: string
+  }) => Promise<any>
+  getExternalReview: (id: string) => Promise<any>
+  saveExternalReview: (id: string, data: { timelineNotes?: string; freeText?: string; filePath?: string; kpiScores?: string }) => Promise<any>
+  listExternalReviews: () => Promise<any[]>
+  pickExternalReviewFile: () => Promise<string | null>
+  deleteExternalReview: (id: string) => Promise<{ success: boolean }>
+
+  // Sharing
+  sendToDiscord: (embeds: object[], webhookUrl: string) => Promise<{ success: boolean }>
+  copyReviewText: (text: string) => Promise<void>
+  listWebhooks: () => Promise<DiscordWebhook[]>
+  addWebhook: (name: string, url: string) => Promise<DiscordWebhook>
+  renameWebhook: (id: string, name: string) => Promise<{ success: boolean }>
+  deleteWebhook: (id: string) => Promise<{ success: boolean }>
 }
 
 export interface DetailedGameStats {
@@ -249,6 +293,13 @@ export interface DetailedGameStats {
     damagePerMin15: number | null
     turretPlates15: number | null
   } | null
+}
+
+export interface DiscordWebhook {
+  id: string
+  name: string
+  url: string
+  createdAt: string
 }
 
 export interface ReviewBiasSignal {

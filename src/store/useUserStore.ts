@@ -14,9 +14,15 @@ interface User {
   lastActiveDate: string | null
   createdAt: string
   mainRole: string | null
-  role: string
-  supabaseUid: string | null
-  supabaseEmail: string | null
+  profileIconId: number
+  isActive: boolean
+  autoRecord: boolean
+  recordingPath: string | null
+  externalRecordingPath: string | null
+  discordWebhookUrl: string | null
+  recordQuality: string
+  recordFps: number
+  recordEncoder: string
 }
 
 interface UserStore {

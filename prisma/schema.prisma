@@ -23,15 +23,21 @@ model User {
   queueFilter        String       @default("both")
   mainRole           String?
   profileIconId      Int          @default(0)
-  role               String       @default("student")
-  supabaseUid        String?
-  supabaseEmail      String?
+  isActive           Boolean      @default(true)
+  autoRecord         Boolean      @default(false)
+  recordingPath          String?
+  externalRecordingPath  String?
+  discordWebhookUrl      String?
+  recordQuality          String       @default("source")
+  recordFps          Int          @default(30)
+  recordEncoder      String       @default("nvenc")
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
   sessions           Session[]
   assessments        Assessment[]
   badges             Badge[]
   accounts           Account[]
+  discordWebhooks    DiscordWebhook[]
 }
 
 model Account {
@@ -158,6 +164,36 @@ model StatsSnapshot {
   firstGameAt  DateTime
   lastGameAt   DateTime
   createdAt    DateTime @default(now())
+}
+
+model ExternalReview {
+  id              String   @id @default(cuid())
+  userId          String
+  title           String
+  objectiveId     String?
+  objectiveIds    String   @default("[]")
+  selectedKpiIds  String   @default("[]")
+  kpiScores       String   @default("{}")
+  timelineNotes   String   @default("[]")
+  freeText        String?
+  filePath        String?
+  playerName      String?
+  matchData       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model DiscordWebhook {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  url       String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Badge {

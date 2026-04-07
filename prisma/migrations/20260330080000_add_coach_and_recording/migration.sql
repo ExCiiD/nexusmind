@@ -1,8 +1,3 @@
--- Add coach/student role fields to User
-ALTER TABLE "User" ADD COLUMN "role" TEXT NOT NULL DEFAULT 'student';
-ALTER TABLE "User" ADD COLUMN "supabaseUid" TEXT;
-ALTER TABLE "User" ADD COLUMN "supabaseEmail" TEXT;
-
 -- Add Recording table
 CREATE TABLE "Recording" (
     "id" TEXT NOT NULL PRIMARY KEY,

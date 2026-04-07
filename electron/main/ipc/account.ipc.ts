@@ -5,7 +5,7 @@ import { getAccountByRiotId, getSummonerByPuuid } from '../riotClient'
 export function registerAccountHandlers() {
   ipcMain.handle('account:list', async () => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return []
     return prisma.account.findMany({
       where: { userId: user.id },
@@ -15,7 +15,7 @@ export function registerAccountHandlers() {
 
   ipcMain.handle('account:add', async (_event, gameName: string, tagLine: string, region: string) => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) throw new Error('No user found')
 
     // Prevent adding the main account as a secondary
@@ -54,3 +54,4 @@ export function registerAccountHandlers() {
     return { success: true }
   })
 }
+

@@ -33,7 +33,7 @@ export function ScoreTrendChart({ data }: ScoreTrendChartProps) {
           textAnchor="end"
           height={60}
         />
-        <YAxis domain={[0, 5]} tick={{ fill: '#A09B8C', fontSize: 11 }} />
+        <YAxis domain={[0, 10]} tick={{ fill: '#A09B8C', fontSize: 11 }} />
         <Tooltip
           contentStyle={{
             backgroundColor: '#0A1628',

@@ -20,7 +20,7 @@ export function registerDevHandlers(mainWindow: BrowserWindow) {
 
   ipcMain.handle('dev:simulate-game', async () => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) throw new Error('No user found — run seed first')
 
     const activeSession = await prisma.session.findFirst({
@@ -59,3 +59,4 @@ export function registerDevHandlers(mainWindow: BrowserWindow) {
 
   ipcMain.handle('dev:is-dev', () => !app.isPackaged)
 }
+

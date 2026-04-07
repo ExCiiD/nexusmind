@@ -10,6 +10,8 @@ import { useTranslation } from 'react-i18next'
 export interface TimelineNote {
   time: string
   note: string
+  /** Video timestamp in seconds — set when the note was marked from the video player */
+  videoTime?: number
 }
 
 interface TimelineNoteInputProps {
@@ -94,14 +96,23 @@ export function TimelineNoteInput({ notes, onChange, objectiveLabel }: TimelineN
         {notes.map((note, idx) => (
           <div key={idx} className="flex gap-2 items-start animate-fade-in">
             <div className="flex items-center gap-1 mt-1.5">
-              <Clock className="h-3.5 w-3.5 text-hextech-text-dim" />
+              {note.videoTime !== undefined
+                ? <span className="h-3.5 w-3.5 text-hextech-cyan text-[10px] font-bold">▶</span>
+                : <Clock className="h-3.5 w-3.5 text-hextech-text-dim" />}
             </div>
-            <Input
-              placeholder={t('reviewForm.timeline.timePlaceholder')}
-              value={note.time}
-              onChange={(e) => updateNote(idx, 'time', e.target.value)}
-              className="w-20 font-mono text-xs"
-            />
+            {note.videoTime !== undefined ? (
+              /* Video-marked note: time is read-only (from video timestamp) */
+              <div className="w-20 shrink-0 rounded-md border border-hextech-cyan/30 bg-hextech-cyan/5 px-2 py-1.5 font-mono text-xs text-hextech-cyan">
+                {note.time}
+              </div>
+            ) : (
+              <Input
+                placeholder={t('reviewForm.timeline.timePlaceholder')}
+                value={note.time}
+                onChange={(e) => updateNote(idx, 'time', e.target.value)}
+                className="w-20 font-mono text-xs"
+              />
+            )}
             <Textarea
               placeholder={t('reviewForm.timeline.notePlaceholder')}
               value={note.note}

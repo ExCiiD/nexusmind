@@ -7,7 +7,7 @@ export function registerAssessmentHandlers() {
     'assessment:save',
     async (_event, scores: Array<{ fundamentalId: string; subcategoryId?: string; score: number }>) => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) throw new Error('No user found')
 
     // Snapshot previous scores before saving (for improvement_1 badge)
@@ -59,7 +59,7 @@ export function registerAssessmentHandlers() {
 
   ipcMain.handle('assessment:get-latest', async () => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return null
 
     return prisma.assessment.findFirst({
@@ -71,7 +71,7 @@ export function registerAssessmentHandlers() {
 
   ipcMain.handle('assessment:get-history', async () => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return []
 
     return prisma.assessment.findMany({
@@ -81,3 +81,4 @@ export function registerAssessmentHandlers() {
     })
   })
 }
+

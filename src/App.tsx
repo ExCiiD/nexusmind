@@ -11,16 +11,18 @@ import { HistoryPage } from '@/pages/History/HistoryPage'
 import { DetailedStatsPage } from '@/pages/DetailedStats/DetailedStatsPage'
 import { StatsLandingPage } from '@/pages/DetailedStats/StatsLandingPage'
 import { SettingsPage } from '@/pages/Settings/SettingsPage'
-import { StudentsPage } from '@/pages/Students/StudentsPage'
+import { ReplaysPage } from '@/pages/Replays/ReplaysPage'
+import { ExternalReviewPage } from '@/pages/Review/ExternalReviewPage'
 import { DevToolbar } from '@/components/Dev/DevToolbar'
 import { UpdateBanner } from '@/components/UpdateBanner'
 import { Toaster } from '@/components/ui/toaster'
-import { CoachProvider } from '@/context/CoachContext'
 import { useEffect } from 'react'
+import { useToast } from '@/hooks/useToast'
 
 export function App() {
   const user = useUserStore((s) => s.user)
   const loadUser = useUserStore((s) => s.loadUser)
+  const { toast } = useToast()
 
   useEffect(() => {
     loadUser()
@@ -29,13 +31,30 @@ export function App() {
   useEffect(() => {
     const unsubscribe = window.api.onGameEnd((data) => {
       useUserStore.getState().setGameEndData(data)
-      window.location.hash = '#/review'
+      // Only open the review page when a game row was actually created in the session.
+      // If game is null (no active session or unresolved match), stay on the current page.
+      if (data?.game?.id) {
+        window.location.hash = '#/review'
+      }
     })
     return unsubscribe
   }, [])
 
+  useEffect(() => {
+    const offStarted = window.api.onRecordingStarted(() => {
+      toast({ title: '● Recording started', description: 'Your game is being recorded.', variant: 'default' })
+    })
+    const offStopped = window.api.onRecordingStopped(() => {
+      toast({ title: 'Recording saved', description: 'Recording stopped and will be linked to your game.', variant: 'default' })
+    })
+    return () => {
+      offStarted()
+      offStopped()
+    }
+  }, [])
+
   return (
-    <CoachProvider>
+    <>
       <Routes>
         {!user ? (
           <>
@@ -46,7 +65,9 @@ export function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/session" element={<SessionPage />} />
+            <Route path="/replays" element={<ReplaysPage />} />
             <Route path="/review" element={<ReviewPage />} />
+            <Route path="/external-review/:id" element={<ExternalReviewPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/stats" element={<StatsLandingPage />} />
@@ -54,7 +75,6 @@ export function App() {
             <Route path="/stats/:matchId" element={<DetailedStatsPage />} />
             <Route path="/assessment" element={<ReassessmentPage />} />
             <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/students" element={<StudentsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         )}
@@ -62,6 +82,6 @@ export function App() {
       {user && <DevToolbar />}
       <UpdateBanner />
       <Toaster />
-    </CoachProvider>
+    </>
   )
 }

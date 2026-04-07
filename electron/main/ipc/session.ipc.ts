@@ -2,12 +2,10 @@ import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
 import { tryUnlockBadge } from '../badgeUnlock'
 import { getMatchIds, getMatch, getMatchTimeline, extractPlayerStats } from '../riotClient'
-import { syncStudentData } from './sync.ipc'
-
 export function registerSessionHandlers() {
   ipcMain.handle('session:create', async (_event, data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) throw new Error('No user found')
 
     // Only block active session creation for live sessions; retroactive can always be created
@@ -58,7 +56,7 @@ export function registerSessionHandlers() {
 
   ipcMain.handle('session:get-active', async () => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return null
 
     const session = await prisma.session.findFirst({
@@ -114,7 +112,7 @@ export function registerSessionHandlers() {
 
   ipcMain.handle('riot:fetch-match-history', async (_event, count = 10) => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) throw new Error('No user found')
 
     const accounts = await prisma.account.findMany({ where: { userId: user.id } })
@@ -126,23 +124,19 @@ export function registerSessionHandlers() {
     ]
     const allPuuids = allAccountPuuids.map((a) => a.puuid)
 
+    const parsed = Number(count)
+    const clampedCount = Number.isFinite(parsed) ? Math.max(1, Math.min(parsed, 100)) : 10
+
     const perAccount = await Promise.all(
       allAccountPuuids.map(({ puuid, region }) =>
-        getMatchIds(puuid, region, Math.min(count, 20), 0, queueFilter).catch(() => [] as string[]),
+        getMatchIds(puuid, region, clampedCount, 0, queueFilter).catch(() => [] as string[]),
       ),
     )
     const merged = [...new Set(perAccount.flat())]
-    merged.sort((a, b) => {
-      const tsA = parseInt(a.split('_')[1] ?? '0', 10)
-      const tsB = parseInt(b.split('_')[1] ?? '0', 10)
-      return tsB - tsA
-    })
-    const matchIds = merged.slice(0, Math.min(count, 20))
-    if (matchIds.length === 0) return []
+    if (merged.length === 0) return []
 
-    // Fetch each match in parallel (respect rate limit via built-in token bucket)
     const results = await Promise.allSettled(
-      matchIds.map(async (id) => {
+      merged.map(async (id) => {
         const existing = await prisma.game.findUnique({ where: { matchId: id } })
         const matchData = await getMatch(id, user.region)
         const resolvedPuuid = allPuuids.find((p) =>
@@ -164,11 +158,13 @@ export function registerSessionHandlers() {
     return results
       .filter((r) => r.status === 'fulfilled' && r.value !== null)
       .map((r) => (r as PromiseFulfilledResult<any>).value)
+      .sort((a: any, b: any) => new Date(b.gameEndAt).getTime() - new Date(a.gameEndAt).getTime())
+      .slice(0, clampedCount)
   })
 
   ipcMain.handle('session:import-games', async (_event, matchIds: string[]) => {
     const prisma = getPrisma()
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) throw new Error('No user found')
 
     const activeSession = await prisma.session.findFirst({
@@ -299,7 +295,7 @@ export function registerSessionHandlers() {
       },
     })
 
-    const user = await prisma.user.findFirst()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (user) {
       const gamesPlayed = session.games.length
       const reviewsCompleted = session.games.filter((g) => g.review).length
@@ -316,9 +312,6 @@ export function registerSessionHandlers() {
       if (completedCount >= 10) await tryUnlockBadge(user.id, 'sessions_10')
       if (completedCount >= 50) await tryUnlockBadge(user.id, 'sessions_50')
     }
-
-    // Background sync to Supabase
-    syncStudentData().catch(() => {})
 
     return session
   })
@@ -350,3 +343,4 @@ export function registerSessionHandlers() {
     return { success: true }
   })
 }
+

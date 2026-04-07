@@ -16,20 +16,30 @@ interface ProgressPoint {
   score: number
 }
 
+export interface KpiTimelinePoint {
+  date: string
+  objectiveId: string
+  avgScore: number
+  gamesReviewed: number
+}
+
 interface GameStore {
   stats: GameStats | null
   progressData: ProgressPoint[]
+  kpiTimeline: KpiTimelinePoint[]
   gameHistory: any[]
   loading: boolean
 
   loadStats: () => Promise<void>
   loadProgressData: () => Promise<void>
+  loadKpiTimeline: () => Promise<void>
   loadGameHistory: (limit?: number) => Promise<void>
 }
 
 export const useGameStore = create<GameStore>((set) => ({
   stats: null,
   progressData: [],
+  kpiTimeline: [],
   gameHistory: [],
   loading: false,
 
@@ -47,6 +57,15 @@ export const useGameStore = create<GameStore>((set) => ({
     try {
       const data = await window.api.getProgressData()
       set({ progressData: data })
+    } catch {
+      /* empty */
+    }
+  },
+
+  loadKpiTimeline: async () => {
+    try {
+      const data = await window.api.getKpiTimeline()
+      set({ kpiTimeline: data })
     } catch {
       /* empty */
     }

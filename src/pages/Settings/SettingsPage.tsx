@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label'
 import { useUserStore } from '@/store/useUserStore'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
-import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Users, GraduationCap, Copy, Check, LogIn, LogOut, Target } from 'lucide-react'
+import { useDiscordWebhooks, type DiscordWebhook } from '@/hooks/useDiscordWebhooks'
+import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Target, Video, Circle, FolderOpen, X, Pencil, Check, FlaskConical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const REGIONS = [
@@ -31,6 +32,10 @@ export function SettingsPage() {
 
   const [accounts, setAccounts] = useState<AccountEntry[]>([])
   const [loadingAccounts, setLoadingAccounts] = useState(true)
+  const [ffmpegAvailable, setFfmpegAvailable] = useState<boolean | null>(null)
+  const [recordingsDir, setRecordingsDir] = useState('')
+  const [isRecording, setIsRecording] = useState(false)
+  const [togglingAutoRecord, setTogglingAutoRecord] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [gameName, setGameName] = useState('')
   const [tagLine, setTagLine] = useState('')
@@ -38,61 +43,6 @@ export function SettingsPage() {
   const [adding, setAdding] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
-
-  // Coach/Student state
-  const [supaEmail, setSupaEmail] = useState('')
-  const [supaPassword, setSupaPassword] = useState('')
-  const [supaLoading, setSupaLoading] = useState(false)
-  const [supaMode, setSupaMode] = useState<'signin' | 'signup'>('signin')
-  const [inviteLink, setInviteLink] = useState('')
-  const [copied, setCopied] = useState(false)
-  const [redeemCode, setRedeemCode] = useState('')
-  const [redeeming, setRedeeming] = useState(false)
-  const [generatingInvite, setGeneratingInvite] = useState(false)
-
-  const handleSupaAuth = async () => {
-    if (!supaEmail.trim() || !supaPassword.trim()) return
-    setSupaLoading(true)
-    try {
-      if (supaMode === 'signin') {
-        await window.api.supabaseSignIn(supaEmail.trim(), supaPassword)
-      } else {
-        const result = await window.api.supabaseSignUp(supaEmail.trim(), supaPassword)
-        if (result.needsConfirmation) {
-          toast({ title: 'Check your email to confirm your account', variant: 'default' })
-        }
-      }
-      await loadUser()
-      toast({ title: supaMode === 'signin' ? 'Signed in!' : 'Account created!', variant: 'success' })
-      setSupaEmail('')
-      setSupaPassword('')
-    } catch (err: any) {
-      toast({ title: err.message ?? 'Auth error', variant: 'destructive' })
-    } finally {
-      setSupaLoading(false)
-    }
-  }
-
-  const handleSupaSignOut = async () => {
-    setSupaLoading(true)
-    try {
-      await window.api.supabaseSignOut()
-      await loadUser()
-      toast({ title: 'Signed out', variant: 'default' })
-    } finally {
-      setSupaLoading(false)
-    }
-  }
-
-  const handleSetRole = async (role: string) => {
-    try {
-      await window.api.setRole(role)
-      await loadUser()
-      toast({ title: 'Role updated', variant: 'success' })
-    } catch (err: any) {
-      toast({ title: err.message ?? 'Error', variant: 'destructive' })
-    }
-  }
 
   const GAME_ROLES = [
     { value: 'TOP', label: 'Top' },
@@ -119,39 +69,6 @@ export function SettingsPage() {
     }
   }
 
-  const handleGenerateInvite = async () => {
-    setGeneratingInvite(true)
-    try {
-      const result = await window.api.generateInvite()
-      setInviteLink(result.code)
-    } catch (err: any) {
-      toast({ title: err.message ?? 'Error', variant: 'destructive' })
-    } finally {
-      setGeneratingInvite(false)
-    }
-  }
-
-  const handleCopyInvite = () => {
-    navigator.clipboard.writeText(inviteLink)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const handleRedeemInvite = async () => {
-    if (!redeemCode.trim()) return
-    setRedeeming(true)
-    try {
-      const result = await window.api.redeemInvite(redeemCode.trim())
-      const name = result.studentName ?? result.coachName ?? 'Unknown'
-      toast({ title: `Connected! You are now coaching ${name}`, variant: 'success' })
-      setRedeemCode('')
-    } catch (err: any) {
-      toast({ title: err.message ?? 'Invalid invite code', variant: 'destructive' })
-    } finally {
-      setRedeeming(false)
-    }
-  }
-
   const loadAccounts = async () => {
     try {
       const data = await window.api.listAccounts()
@@ -165,7 +82,44 @@ export function SettingsPage() {
 
   useEffect(() => {
     loadAccounts()
+    window.api.getCaptureStatus().then((s) => {
+      setFfmpegAvailable(s.ffmpegAvailable)
+      setIsRecording(s.isRecording)
+    }).catch(() => {})
+    window.api.getRecordingsDir().then(setRecordingsDir).catch(() => {})
+    const offStarted = window.api.onRecordingStarted(() => setIsRecording(true))
+    const offStopped = window.api.onRecordingStopped(() => setIsRecording(false))
+    return () => {
+      offStarted()
+      offStopped()
+    }
   }, [])
+
+  const handleToggleAutoRecord = async () => {
+    if (!user) return
+    setTogglingAutoRecord(true)
+    try {
+      const newValue = !user.autoRecord
+      await window.api.updateUser({ autoRecord: newValue })
+      await loadUser()
+      toast({
+        title: newValue ? 'Auto-record enabled — games will be captured automatically' : 'Auto-record disabled',
+        variant: newValue ? 'success' : 'default',
+      })
+    } catch (err: any) {
+      toast({ title: err.message ?? 'Error', variant: 'destructive' })
+    } finally {
+      setTogglingAutoRecord(false)
+    }
+  }
+
+  const handleManualRecord = async () => {
+    if (isRecording) {
+      await window.api.stopCapture()
+    } else {
+      await window.api.startCapture()
+    }
+  }
 
   const handleAdd = async () => {
     if (!gameName.trim() || !tagLine.trim()) return
@@ -205,136 +159,6 @@ export function SettingsPage() {
         <p className="text-sm text-hextech-text mt-1">{t('settings.subtitle')}</p>
       </div>
 
-      {/* Coach & Student */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-hextech-gold" />
-            Coach &amp; Student
-          </CardTitle>
-          <CardDescription>Connect with a coach or student to share your progress.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {/* Role selector */}
-          <div className="space-y-2">
-            <Label className="text-xs">Your role</Label>
-            <div className="flex gap-2">
-              {(['student', 'coach', 'both'] as const).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => handleSetRole(r)}
-                  className={cn(
-                    'flex-1 rounded-md border px-3 py-2 text-sm font-medium capitalize transition-colors',
-                    user?.role === r
-                      ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
-                      : 'border-hextech-border-dim text-hextech-text hover:border-hextech-gold/40',
-                  )}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* NexusMind Account */}
-          <div className="space-y-3">
-            <Label className="text-xs">NexusMind Account</Label>
-            {user?.supabaseUid ? (
-              <div className="flex items-center justify-between rounded-lg border border-hextech-gold/30 bg-hextech-gold/5 px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-hextech-text-bright">{user.supabaseEmail}</p>
-                  <p className="text-xs text-hextech-text-dim">Signed in</p>
-                </div>
-                <Button variant="ghost" size="sm" onClick={handleSupaSignOut} disabled={supaLoading} className="gap-1.5">
-                  {supaLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
-                  Sign out
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3 rounded-lg border border-hextech-border-dim p-4">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setSupaMode('signin')}
-                    className={cn('flex-1 rounded py-1.5 text-sm font-medium transition-colors', supaMode === 'signin' ? 'bg-hextech-gold/10 text-hextech-gold' : 'text-hextech-text-dim hover:text-hextech-text')}
-                  >Sign In</button>
-                  <button
-                    onClick={() => setSupaMode('signup')}
-                    className={cn('flex-1 rounded py-1.5 text-sm font-medium transition-colors', supaMode === 'signup' ? 'bg-hextech-gold/10 text-hextech-gold' : 'text-hextech-text-dim hover:text-hextech-text')}
-                  >Create Account</button>
-                </div>
-                <input
-                  type="email"
-                  value={supaEmail}
-                  onChange={(e) => setSupaEmail(e.target.value)}
-                  placeholder="Email"
-                  className="w-full rounded-md border border-hextech-border-dim bg-hextech-elevated px-3 py-2 text-sm text-hextech-text placeholder:text-hextech-text-dim/50 focus:outline-none focus:border-hextech-gold"
-                />
-                <input
-                  type="password"
-                  value={supaPassword}
-                  onChange={(e) => setSupaPassword(e.target.value)}
-                  placeholder="Password"
-                  onKeyDown={(e) => e.key === 'Enter' && handleSupaAuth()}
-                  className="w-full rounded-md border border-hextech-border-dim bg-hextech-elevated px-3 py-2 text-sm text-hextech-text placeholder:text-hextech-text-dim/50 focus:outline-none focus:border-hextech-gold"
-                />
-                <Button onClick={handleSupaAuth} disabled={supaLoading || !supaEmail.trim() || !supaPassword.trim()} className="w-full gap-2">
-                  {supaLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
-                  {supaMode === 'signin' ? 'Sign In' : 'Create Account'}
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* Student: share invite */}
-          {user?.supabaseUid && (user.role === 'student' || user.role === 'both') && (
-            <div className="space-y-2">
-              <Label className="text-xs flex items-center gap-1.5">
-                <GraduationCap className="h-3.5 w-3.5" />
-                Share with your coach
-              </Label>
-              {inviteLink ? (
-                <div className="flex gap-2">
-                  <code className="flex-1 rounded-md border border-hextech-border-dim bg-hextech-elevated px-3 py-2 text-sm text-hextech-gold font-mono truncate">
-                    {inviteLink}
-                  </code>
-                  <Button variant="outline" size="sm" onClick={handleCopyInvite} className="shrink-0">
-                    {copied ? <Check className="h-3.5 w-3.5 text-hextech-green" /> : <Copy className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-              ) : (
-                <Button variant="outline" onClick={handleGenerateInvite} disabled={generatingInvite} className="gap-2">
-                  {generatingInvite ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                  Generate invite code
-                </Button>
-              )}
-              <p className="text-xs text-hextech-text-dim">Share this code with your coach. They paste it in their settings to connect.</p>
-            </div>
-          )}
-
-          {/* Coach: redeem invite */}
-          {user?.supabaseUid && (user.role === 'coach' || user.role === 'both') && (
-            <div className="space-y-2">
-              <Label className="text-xs flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5" />
-                Connect a student
-              </Label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={redeemCode}
-                  onChange={(e) => setRedeemCode(e.target.value)}
-                  placeholder="Paste invite code from student"
-                  className="flex-1 rounded-md border border-hextech-border-dim bg-hextech-elevated px-3 py-2 text-sm text-hextech-text placeholder:text-hextech-text-dim/50 focus:outline-none focus:border-hextech-gold"
-                />
-                <Button onClick={handleRedeemInvite} disabled={redeeming || !redeemCode.trim()} className="shrink-0">
-                  {redeeming ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connect'}
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Main role for stats */}
       <Card>
         <CardHeader>
@@ -363,6 +187,256 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Game Recording */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Video className="h-5 w-5 text-hextech-teal" />
+            Game Recording
+          </CardTitle>
+          <CardDescription>
+            Automatically record your screen during every League of Legends game. Recordings are stored locally and linked to your review.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {ffmpegAvailable === false && (
+            <div className="rounded-md border border-orange-500/40 bg-orange-500/5 px-4 py-3 text-sm text-orange-300">
+              ffmpeg was not found on this system. Auto-record requires ffmpeg to be installed.
+            </div>
+          )}
+
+          {/* Auto-record toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-hextech-text-bright">Auto-record games</p>
+              <p className="text-xs text-hextech-text-dim mt-0.5">
+                Starts recording when LoL launches, stops and saves when the game ends.
+              </p>
+            </div>
+            <button
+              onClick={handleToggleAutoRecord}
+              disabled={togglingAutoRecord || ffmpegAvailable === false}
+              className={cn(
+                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50',
+                user?.autoRecord ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
+              )}
+            >
+              <span
+                className={cn(
+                  'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
+                  user?.autoRecord ? 'translate-x-6' : 'translate-x-1',
+                )}
+              />
+            </button>
+          </div>
+
+          {/* Live recording indicator */}
+          {isRecording && (
+            <div className="flex items-center gap-2 text-sm text-[#FF4655]">
+              <Circle className="h-2.5 w-2.5 fill-current animate-pulse" />
+              <span className="font-medium">Recording in progress</span>
+              <Button variant="outline" size="sm" onClick={handleManualRecord} className="ml-auto text-xs border-[#FF4655]/40 text-[#FF4655] hover:bg-[#FF4655]/10">
+                Stop now
+              </Button>
+            </div>
+          )}
+
+          {/* Manual record button (when auto-record is off) */}
+          {!user?.autoRecord && !isRecording && ffmpegAvailable && (
+            <Button variant="outline" size="sm" onClick={handleManualRecord} className="gap-2">
+              <Circle className="h-3 w-3 fill-[#FF4655] text-[#FF4655]" />
+              Start manual recording
+            </Button>
+          )}
+
+          {/* ── Recording options (only when auto-record is on) ───────── */}
+          {user?.autoRecord && <div className="space-y-4">
+
+          {/* ── Quality ──────────────────────────────────────────────── */}
+          <div className="space-y-2 pt-2 border-t border-hextech-border-dim/40">
+            <p className="text-sm font-medium text-hextech-text-bright">Recording quality</p>
+            <div className="grid grid-cols-4 gap-1.5">
+              {(['720p', '1080p', '1440p', 'source'] as const).map((q) => (
+                <button
+                  key={q}
+                  disabled={!ffmpegAvailable}
+                  onClick={async () => { await window.api.updateUser({ recordQuality: q }); await loadUser() }}
+                  className={cn(
+                    'rounded-md border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-40',
+                    user?.recordQuality === q
+                      ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
+                      : 'border-hextech-border-dim text-hextech-text hover:border-hextech-gold/40',
+                  )}
+                >
+                  {q === 'source' ? 'Source' : q}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-hextech-text-dim">
+              "Source" captures at your monitor's native resolution. Lower settings reduce file size and CPU load.
+            </p>
+          </div>
+
+          {/* ── FPS ──────────────────────────────────────────────────── */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-hextech-text-bright">Frame rate</p>
+            <div className="flex gap-2">
+              {([30, 60] as const).map((fps) => (
+                <button
+                  key={fps}
+                  disabled={!ffmpegAvailable}
+                  onClick={async () => { await window.api.updateUser({ recordFps: fps }); await loadUser() }}
+                  className={cn(
+                    'flex-1 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-40',
+                    user?.recordFps === fps
+                      ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
+                      : 'border-hextech-border-dim text-hextech-text hover:border-hextech-gold/40',
+                  )}
+                >
+                  {fps} FPS
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Encoder ──────────────────────────────────────────────── */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-hextech-text-bright">Encoder</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {([
+                { value: 'nvenc', label: 'NVIDIA GPU', sub: 'NVENC',  desc: 'GTX 950+', recommended: true },
+                { value: 'amf',   label: 'AMD GPU',    sub: 'AMF',    desc: 'RX 400+',  recommended: true },
+                { value: 'qsv',   label: 'Intel GPU',  sub: 'QSV',    desc: 'HD 4000+', recommended: true },
+                { value: 'cpu',   label: 'CPU',         sub: 'x264',   desc: 'Fallback — always works', recommended: false },
+              ]).map(({ value, label, sub, desc, recommended }) => (
+                <button
+                  key={value}
+                  disabled={!ffmpegAvailable}
+                  onClick={async () => { await window.api.updateUser({ recordEncoder: value }); await loadUser() }}
+                  className={cn(
+                    'rounded-md border px-3 py-2 text-left transition-colors disabled:opacity-40',
+                    user?.recordEncoder === value
+                      ? 'border-hextech-gold bg-hextech-gold/10'
+                      : 'border-hextech-border-dim hover:border-hextech-gold/40',
+                  )}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <p className={cn('text-xs font-medium', user?.recordEncoder === value ? 'text-hextech-gold-bright' : 'text-hextech-text')}>
+                      {label}
+                    </p>
+                    <span className="text-[9px] font-mono text-hextech-text-dim bg-white/5 rounded px-1">{sub}</span>
+                    {recommended && (
+                      <span className="ml-auto text-[9px] font-semibold text-hextech-teal bg-hextech-teal/10 rounded px-1 py-0.5">⚡ GPU</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-hextech-text-dim mt-0.5">{desc}</p>
+                </button>
+              ))}
+            </div>
+            <div className="rounded-md bg-hextech-teal/5 border border-hextech-teal/20 px-3 py-2 text-[11px] text-hextech-text-dim space-y-0.5">
+              <p className="font-medium text-hextech-teal text-xs">⚡ GPU encoders are strongly recommended</p>
+              <p>GPU encoders use dedicated hardware — recording has near-zero impact on game FPS. Pick the one matching your GPU brand. If recording fails, fall back to CPU.</p>
+            </div>
+          </div>
+
+          {/* ── Recordings folder ─────────────────────────────────────── */}
+          <div className="space-y-2 pt-2 border-t border-hextech-border-dim/40">
+            <p className="text-sm font-medium text-hextech-text-bright">Recordings folder</p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 rounded-md border border-hextech-border-dim bg-hextech-elevated px-3 py-2 text-xs text-hextech-text truncate min-w-0">
+                {user?.recordingPath || recordingsDir || 'Default (AppData)'}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1.5"
+                onClick={async () => {
+                  const picked = await window.api.pickRecordingFolder()
+                  if (picked) {
+                    await window.api.updateUser({ recordingPath: picked })
+                    await loadUser()
+                    // Refresh the displayed dir
+                    window.api.getRecordingsDir().then(setRecordingsDir).catch(() => {})
+                  }
+                }}
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                Browse
+              </Button>
+              {user?.recordingPath && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 text-hextech-text-dim hover:text-[#FF4655]"
+                  title="Reset to default"
+                  onClick={async () => {
+                    await window.api.updateUser({ recordingPath: null })
+                    await loadUser()
+                    window.api.getRecordingsDir().then(setRecordingsDir).catch(() => {})
+                  }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          </div>}
+        </CardContent>
+      </Card>
+
+      {/* ── External recordings folder ──────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FolderOpen className="h-5 w-5 text-hextech-gold" />
+            External recordings folder
+          </CardTitle>
+          <CardDescription>
+            When linking a replay recorded with another app (OBS, Outplayed…), the file picker will open directly in this folder.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 rounded-md border border-hextech-border-dim bg-hextech-elevated px-3 py-2 text-xs text-hextech-text truncate min-w-0">
+              {user?.externalRecordingPath || <span className="text-hextech-text-dim/60">Not set — file picker will start at the default location</span>}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1.5"
+              onClick={async () => {
+                const picked = await window.api.pickRecordingFolder()
+                if (picked) {
+                  await window.api.updateUser({ externalRecordingPath: picked })
+                  await loadUser()
+                }
+              }}
+            >
+              <FolderOpen className="h-3.5 w-3.5" />
+              Browse
+            </Button>
+            {user?.externalRecordingPath && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 text-hextech-text-dim hover:text-[#FF4655]"
+                title="Clear folder"
+                onClick={async () => {
+                  await window.api.updateUser({ externalRecordingPath: null })
+                  await loadUser()
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Discord sharing ──────────────────────────────────────────────────── */}
+      <DiscordWebhookCard />
 
       {/* Accounts management */}
       <Card>
@@ -518,5 +592,286 @@ export function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+// ── Discord webhook sub-component ────────────────────────────────────────────
+
+function DiscordWebhookCard() {
+  const { toast } = useToast()
+  const { webhooks, loading, reload } = useDiscordWebhooks()
+
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [addName, setAddName] = useState('')
+  const [addUrl, setAddUrl] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [renamingSaving, setRenamingSaving] = useState(false)
+
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [testingId, setTestingId] = useState<string | null>(null)
+
+  const handleAdd = async () => {
+    if (!addName.trim() || !addUrl.trim()) return
+    setAdding(true)
+    try {
+      await window.api.addWebhook(addName.trim(), addUrl.trim())
+      await reload()
+      setAddName('')
+      setAddUrl('')
+      setShowAddForm(false)
+      toast({ title: 'Webhook added', variant: 'gold' })
+    } catch (err: any) {
+      toast({ title: err.message ?? 'Failed to add webhook', variant: 'destructive' })
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  const handleRenameStart = (wh: DiscordWebhook) => {
+    setRenamingId(wh.id)
+    setRenameValue(wh.name)
+  }
+
+  const handleRenameSave = async (id: string) => {
+    if (!renameValue.trim()) return
+    setRenamingSaving(true)
+    try {
+      await window.api.renameWebhook(id, renameValue.trim())
+      await reload()
+      setRenamingId(null)
+    } catch (err: any) {
+      toast({ title: err.message ?? 'Rename failed', variant: 'destructive' })
+    } finally {
+      setRenamingSaving(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id)
+    try {
+      await window.api.deleteWebhook(id)
+      await reload()
+      setConfirmDeleteId(null)
+      toast({ title: 'Webhook removed', variant: 'gold' })
+    } catch (err: any) {
+      toast({ title: err.message ?? 'Delete failed', variant: 'destructive' })
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleTest = async (wh: DiscordWebhook) => {
+    setTestingId(wh.id)
+    try {
+      await window.api.sendToDiscord([{
+        title: '✅ NexusMind webhook test',
+        description: `**${wh.name}** is correctly configured. Reviews will be shared to this channel.`,
+        color: 0xc89b3c,
+        footer: { text: 'NexusMind' },
+        timestamp: new Date().toISOString(),
+      }], wh.url)
+      toast({ title: `Test sent to "${wh.name}"`, variant: 'gold' })
+    } catch (err: any) {
+      toast({ title: 'Webhook test failed', description: err.message, variant: 'destructive' })
+    } finally {
+      setTestingId(null)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <span className="text-[#5865F2] text-lg font-bold leading-none">ᴅ</span>
+          Discord sharing
+        </CardTitle>
+        <CardDescription>
+          Add Discord webhook URLs to share reviews as rich embeds directly to a channel.
+          You can configure multiple webhooks (e.g. one per team or server) and pick the destination when sharing.
+          {' '}<a href="https://support.discord.com/hc/en-us/articles/228383668" target="_blank" rel="noreferrer" className="underline hover:text-hextech-text transition-colors">How to create a webhook ↗</a>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Webhook list */}
+        {loading ? (
+          <div className="flex items-center gap-2 text-xs text-hextech-text-dim py-1">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Loading…
+          </div>
+        ) : webhooks.length === 0 ? (
+          <p className="text-xs text-hextech-text-dim/70 py-1">
+            No webhooks configured — reviews can still be copied as text.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {webhooks.map((wh) => (
+              <div
+                key={wh.id}
+                className="flex items-center gap-2 rounded-lg border border-hextech-border-dim bg-hextech-elevated px-3 py-2.5"
+              >
+                <span className="text-[#5865F2] text-sm font-bold leading-none shrink-0">ᴅ</span>
+
+                <div className="flex-1 min-w-0">
+                  {renamingId === wh.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        autoFocus
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleRenameSave(wh.id)
+                          if (e.key === 'Escape') setRenamingId(null)
+                        }}
+                        className="flex-1 min-w-0 rounded border border-[#5865F2]/60 bg-hextech-dark px-2 py-0.5 text-xs text-hextech-text focus:outline-none"
+                      />
+                      <button
+                        onClick={() => handleRenameSave(wh.id)}
+                        disabled={renamingSaving}
+                        className="text-hextech-teal hover:text-hextech-teal/80 disabled:opacity-50"
+                      >
+                        {renamingSaving
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Check className="h-3.5 w-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => setRenamingId(null)}
+                        className="text-hextech-text-dim hover:text-hextech-text"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xs font-semibold text-hextech-text-bright truncate">{wh.name}</p>
+                      <p className="text-[10px] text-hextech-text-dim truncate font-mono">
+                        {wh.url.replace(/\/[^/]+$/, '/••••••')}
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                {renamingId !== wh.id && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    {/* Test */}
+                    <button
+                      onClick={() => handleTest(wh)}
+                      disabled={testingId === wh.id}
+                      title="Send a test message"
+                      className="rounded p-1.5 text-hextech-text-dim hover:text-hextech-gold hover:bg-hextech-gold/10 transition-colors disabled:opacity-50"
+                    >
+                      {testingId === wh.id
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <FlaskConical className="h-3.5 w-3.5" />}
+                    </button>
+                    {/* Rename */}
+                    <button
+                      onClick={() => handleRenameStart(wh)}
+                      title="Rename webhook"
+                      className="rounded p-1.5 text-hextech-text-dim hover:text-hextech-text hover:bg-white/5 transition-colors"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    {/* Delete */}
+                    {confirmDeleteId === wh.id ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-hextech-text-dim">Remove?</span>
+                        <button
+                          onClick={() => handleDelete(wh.id)}
+                          disabled={deletingId === wh.id}
+                          className="rounded px-2 py-0.5 text-[10px] font-medium text-white bg-[#FF4655] hover:bg-[#FF4655]/80 disabled:opacity-50 transition-colors"
+                        >
+                          {deletingId === wh.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Yes'}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="text-hextech-text-dim hover:text-hextech-text text-[10px]"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteId(wh.id)}
+                        title="Remove webhook"
+                        className="rounded p-1.5 text-hextech-text-dim hover:text-[#FF4655] hover:bg-[#FF4655]/10 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add form */}
+        {showAddForm ? (
+          <div className="space-y-2 rounded-lg border border-[#5865F2]/20 bg-[#5865F2]/5 p-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-[10px] font-medium text-hextech-text-dim uppercase tracking-wide">Name</label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                  placeholder="e.g. #coaching, My Server…"
+                  className="w-full rounded-md border border-hextech-border-dim bg-hextech-elevated px-2.5 py-1.5 text-xs text-hextech-text placeholder:text-hextech-text-dim/40 focus:outline-none focus:border-[#5865F2]"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-medium text-hextech-text-dim uppercase tracking-wide">Webhook URL</label>
+                <input
+                  type="url"
+                  value={addUrl}
+                  onChange={(e) => setAddUrl(e.target.value)}
+                  placeholder="https://discord.com/api/webhooks/…"
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleAdd() }}
+                  className="w-full rounded-md border border-hextech-border-dim bg-hextech-elevated px-2.5 py-1.5 text-xs text-hextech-text placeholder:text-hextech-text-dim/40 focus:outline-none focus:border-[#5865F2]"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-0.5">
+              <Button
+                size="sm"
+                onClick={handleAdd}
+                disabled={adding || !addName.trim() || !addUrl.trim()}
+                className="gap-1.5 text-xs h-7"
+              >
+                {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                Add webhook
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7"
+                onClick={() => { setShowAddForm(false); setAddName(''); setAddUrl('') }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-xs"
+            onClick={() => setShowAddForm(true)}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add webhook
+          </Button>
+        )}
+
+        <p className="text-[11px] text-hextech-text-dim">
+          Webhook URLs are stored locally and only ever sent to Discord.
+        </p>
+      </CardContent>
+    </Card>
   )
 }
