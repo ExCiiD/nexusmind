@@ -181,7 +181,7 @@ export class GameDetector {
 
     if (!latestMatchId || !stats) {
       console.log('[detector] No valid match found after all retries — clearing pending recording')
-      this.onGameEnd({ game: null, stats: null, sessionId: null })
+      this.onGameEnd({ game: null, stats: null, sessionId: null, isOffRole: false })
       return
     }
 
@@ -190,7 +190,7 @@ export class GameDetector {
     const existing = await prisma.game.findUnique({ where: { matchId: latestMatchId } })
     if (existing) {
       console.log('[detector] Latest match already imported — linking recording to existing game', existing.id)
-      this.onGameEnd({ game: existing, stats, sessionId: existing.sessionId })
+      this.onGameEnd({ game: existing, stats, sessionId: existing.sessionId, isOffRole: false })
       return
     }
 
@@ -216,12 +216,24 @@ export class GameDetector {
         },
       })
 
-      this.onGameEnd({ game, stats, sessionId: activeSession.id })
+      // Compare the played role to the user's configured main role.
+      // Only flag as off-role when mainRole is set and the roles differ.
+      const isOffRole =
+        !!user.mainRole &&
+        !!stats.role &&
+        stats.role !== 'UNKNOWN' &&
+        user.mainRole.toUpperCase() !== stats.role.toUpperCase()
+
+      if (isOffRole) {
+        console.log(`[detector] Off-role detected: played ${stats.role}, main role is ${user.mainRole}`)
+      }
+
+      this.onGameEnd({ game, stats, sessionId: activeSession.id, isOffRole })
     } else {
       // No active session — still fire onGameEnd so the recording can be linked
       // and the window is focused. The renderer will show review without a session context.
       console.log('[detector] No active session — firing onGameEnd without game row (recording link only)')
-      this.onGameEnd({ game: null, stats, sessionId: null })
+      this.onGameEnd({ game: null, stats, sessionId: null, isOffRole: false })
     }
   }
 }

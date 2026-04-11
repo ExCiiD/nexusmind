@@ -1,16 +1,17 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
-  Target,
+  Swords,
   ClipboardCheck,
-  BarChart3,
+  TrendingUp,
   Flame,
   LogOut,
-  History,
-  ChartNoAxesCombined,
+  ClipboardList,
+  BarChart3,
   Settings,
   Film,
   Circle,
+  FileSearch,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/useUserStore'
@@ -50,12 +51,12 @@ export function Sidebar() {
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
-    { to: '/session', icon: Target, label: t('nav.session') },
+    { to: '/session', icon: Swords, label: t('nav.session') },
     { to: '/replays', icon: Film, label: 'Replays' },
-    { to: '/review', icon: ClipboardCheck, label: t('nav.review') },
-    { to: '/history', icon: History, label: t('nav.history') },
-    { to: '/stats', icon: ChartNoAxesCombined, label: t('nav.detailedStats') },
-    { to: '/analytics', icon: BarChart3, label: t('nav.analytics') },
+    { to: '/review', icon: FileSearch, label: t('nav.review') },
+    { to: '/history', icon: ClipboardList, label: t('nav.history') },
+    { to: '/stats', icon: BarChart3, label: t('nav.detailedStats') },
+    { to: '/analytics', icon: TrendingUp, label: t('nav.analytics') },
     { to: '/settings', icon: Settings, label: t('nav.settings') },
   ]
 

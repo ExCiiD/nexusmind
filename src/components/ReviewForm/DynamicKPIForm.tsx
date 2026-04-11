@@ -1,7 +1,7 @@
 import { SkillSlider } from '@/components/FundamentalsMatrix/SkillSlider'
 import { type KPI } from '@/lib/constants/fundamentals'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, MessageSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 interface DynamicKPIFormProps {
@@ -9,6 +9,9 @@ interface DynamicKPIFormProps {
   subObjectiveId?: string
   scores: Record<string, number>
   onChange: (kpiId: string, score: number) => void
+  /** Optional free-text note per KPI — key is kpiId */
+  kpiNotes?: Record<string, string>
+  onNoteChange?: (kpiId: string, note: string) => void
   biasWarningsByObjective?: Record<string, string[]>
   /** If provided, only these KPI IDs are displayed. If empty/undefined, all KPIs are shown. */
   selectedKpiIds?: string[]
@@ -19,6 +22,8 @@ export function DynamicKPIForm({
   subObjectiveId,
   scores,
   onChange,
+  kpiNotes = {},
+  onNoteChange,
   biasWarningsByObjective = {},
   selectedKpiIds,
 }: DynamicKPIFormProps) {
@@ -60,7 +65,7 @@ export function DynamicKPIForm({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h3 className="text-sm font-semibold text-hextech-text-bright">{t('reviewForm.kpi.title')}</h3>
         <p className="text-xs text-hextech-text mt-0.5">{t('reviewForm.kpi.subtitle')}</p>
@@ -85,14 +90,32 @@ export function DynamicKPIForm({
             </div>
           ))}
           {section.kpis.map((kpi: KPI) => (
-            <SkillSlider
-              key={kpi.id}
-              label={kpi.label}
-              description={kpi.description}
-              value={scores[kpi.id] || 0}
-              onChange={(v) => onChange(kpi.id, v)}
-              compact
-            />
+            <div key={kpi.id} className={kpi.priority ? 'rounded-md border border-hextech-gold/30 bg-hextech-gold/5 px-2 pt-1.5 pb-1' : ''}>
+              {kpi.priority && (
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-hextech-gold mb-1">
+                  ⚠ Priorité — à ne pas négliger
+                </p>
+              )}
+              <SkillSlider
+                label={kpi.label}
+                description={kpi.description}
+                value={scores[kpi.id] || 0}
+                onChange={(v) => onChange(kpi.id, v)}
+                compact
+              />
+              {onNoteChange && (scores[kpi.id] > 0 || kpiNotes[kpi.id]) && (
+                <div className="flex items-start gap-1.5 pl-1 mt-1 mb-2">
+                  <MessageSquare className="h-3 w-3 text-hextech-text-dim shrink-0 mt-1.5" />
+                  <input
+                    type="text"
+                    placeholder="Note (optionnel)…"
+                    value={kpiNotes[kpi.id] ?? ''}
+                    onChange={(e) => onNoteChange(kpi.id, e.target.value)}
+                    className="w-full bg-transparent text-xs text-hextech-text placeholder:text-hextech-text-dim border-b border-hextech-border-dim focus:border-hextech-gold/50 focus:outline-none py-0.5 transition-colors"
+                  />
+                </div>
+              )}
+            </div>
           ))}
         </div>
       ))}

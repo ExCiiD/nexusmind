@@ -38,6 +38,7 @@ interface SessionSummary {
   status: string
   date: string
   aiSummary: string | null
+  sessionConclusion: string | null
   gamesPlayed: number
   reviewsCompleted: number
   wins: number
@@ -105,7 +106,7 @@ export function HistoryPage() {
   const [tab, setTab] = useState<Tab>('games')
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       <PageHeader />
 
       <div className="flex gap-1 rounded-lg bg-hextech-elevated p-1">
@@ -171,12 +172,37 @@ function GamesTab() {
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
 
-  // Role filter — defaults to main-role-only if user has a mainRole set
-  const [mainRoleOnly, setMainRoleOnly] = useState(() => !!user?.mainRole)
-  const [selectedRoles, setSelectedRoles] = useState<string[]>(ALL_ROLES)
+  // Role filter — restore from localStorage, fallback to main-role-only if user has mainRole set
+  const [mainRoleOnly, setMainRoleOnly] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('history_filters')
+      if (saved) return JSON.parse(saved).mainRoleOnly ?? !!user?.mainRole
+    } catch { /* ignore */ }
+    return !!user?.mainRole
+  })
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('history_filters')
+      if (saved) return JSON.parse(saved).selectedRoles ?? ALL_ROLES
+    } catch { /* ignore */ }
+    return ALL_ROLES
+  })
 
   // Account filter — null means all accounts shown
-  const [selectedAccounts, setSelectedAccounts] = useState<string[] | null>(null)
+  const [selectedAccounts, setSelectedAccounts] = useState<string[] | null>(() => {
+    try {
+      const saved = localStorage.getItem('history_filters')
+      if (saved) return JSON.parse(saved).selectedAccounts ?? null
+    } catch { /* ignore */ }
+    return null
+  })
+
+  // Persist filter state across navigation
+  useEffect(() => {
+    try {
+      localStorage.setItem('history_filters', JSON.stringify({ mainRoleOnly, selectedRoles, selectedAccounts }))
+    } catch { /* ignore */ }
+  }, [mainRoleOnly, selectedRoles, selectedAccounts])
 
   useEffect(() => {
     setLoading(true)
@@ -613,6 +639,7 @@ function SessionCard({ session, expanded, onToggle, onDelete, onGameDelete }: { 
                   avgCSPerMin: session.avgCSPerMin,
                   objectiveSuccessRate: session.objectiveSuccessRate,
                   aiSummary: session.aiSummary,
+                  sessionConclusion: session.sessionConclusion,
                   games: session.games.map((g) => ({
                     champion: g.champion,
                     opponentChampion: g.opponentChampion,
@@ -672,10 +699,12 @@ function SessionCard({ session, expanded, onToggle, onDelete, onGameDelete }: { 
 
       {expanded && (
         <CardContent className="pt-0 space-y-4 border-t border-hextech-border-dim">
-          {session.aiSummary && (
+          {(session.sessionConclusion || session.aiSummary) && (
             <div className="flex gap-3 rounded-lg bg-hextech-elevated p-3 mt-4">
               <Brain className="h-4 w-4 text-hextech-cyan shrink-0 mt-0.5" />
-              <p className="text-sm text-hextech-text leading-relaxed">{session.aiSummary}</p>
+              <p className="text-sm text-hextech-text leading-relaxed">
+                {session.sessionConclusion || session.aiSummary}
+              </p>
             </div>
           )}
 

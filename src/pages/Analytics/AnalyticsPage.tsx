@@ -271,7 +271,7 @@ export function AnalyticsPage() {
     }))
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       <div>
         <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('analytics.title')}</h1>
         <p className="text-sm text-hextech-text mt-1">{t('analytics.subtitle')}</p>
@@ -293,7 +293,7 @@ export function AnalyticsPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="progress" className="space-y-6">
+        <TabsContent value="progress" className="space-y-4">
           {/* Filter bar: time period + objective filter */}
           <Card>
             <CardContent className="p-3 space-y-3">
@@ -566,17 +566,17 @@ export function AnalyticsPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="badges" className="space-y-6">
+        <TabsContent value="badges" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>{t('analytics.achievementsTitle')}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4">
               <BadgeDisplay unlockedBadgeIds={userBadges} />
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">{t('analytics.xp')}</CardTitle>
@@ -596,7 +596,7 @@ export function AnalyticsPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="stats" className="space-y-6">
+        <TabsContent value="stats" className="space-y-4">
           {stats && stats.totalGames > 0 ? (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

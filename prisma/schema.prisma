@@ -81,11 +81,12 @@ model Session {
   objectiveId     String
   objectiveIds    String   @default("[]")
   selectedKpiIds  String   @default("[]")
-  subObjective    String?
-  customNote      String?
-  status          String   @default("active")
-  aiSummary       String?
-  games           Game[]
+  subObjective       String?
+  customNote         String?
+  status             String   @default("active")
+  aiSummary          String?
+  sessionConclusion  String?
+  games              Game[]
 
   @@index([userId, status])
 }
@@ -138,6 +139,7 @@ model Review {
   game               Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
   timelineNotes      String
   kpiScores          String
+  kpiNotes           String?
   freeText           String?
   aiSummary          String?
   objectiveRespected Boolean

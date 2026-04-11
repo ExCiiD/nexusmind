@@ -20,6 +20,7 @@ export interface ShareReviewData {
   objectiveIds: string[]
   selectedKpiIds: string[]
   kpiScores: Record<string, number>
+  kpiNotes?: Record<string, string>
   timelineNotes: TimelineNote[]
   freeText?: string
   aiSummary?: string
@@ -80,12 +81,15 @@ export function useShareReview() {
 
       // KPI scores
       const scoredKpis = data.selectedKpiIds
-        .map((id) => ({ label: getKpiLabel(id), score: data.kpiScores[id] }))
+        .map((id) => ({ id, label: getKpiLabel(id), score: data.kpiScores[id] }))
         .filter((k) => k.score !== undefined)
 
       if (scoredKpis.length > 0) {
         const kpiText = scoredKpis
-          .map((k) => `**${k.label}**\n${scoreBar(k.score)}`)
+          .map((k) => {
+            const note = data.kpiNotes?.[k.id]
+            return `**${k.label}**\n${scoreBar(k.score)}${note ? `\n_${note}_` : ''}`
+          })
           .join('\n')
         fields.push({ name: '📊 KPI Scores', value: kpiText.slice(0, 1024) })
       }
@@ -155,12 +159,15 @@ export function useShareReview() {
       if (data.objectiveIds.length > 0) lines.push(`🎯 Objective: ${getObjectiveLabels(data.objectiveIds)}`)
 
       const scoredKpis = data.selectedKpiIds
-        .map((id) => ({ label: getKpiLabel(id), score: data.kpiScores[id] }))
+        .map((id) => ({ id, label: getKpiLabel(id), score: data.kpiScores[id] }))
         .filter((k) => k.score !== undefined)
 
       if (scoredKpis.length > 0) {
         lines.push('\n📊 KPI Scores')
-        scoredKpis.forEach((k) => lines.push(`  • ${k.label}: ${k.score}/10`))
+        scoredKpis.forEach((k) => {
+          const note = data.kpiNotes?.[k.id]
+          lines.push(`  • ${k.label}: ${k.score}/10${note ? ` — ${note}` : ''}`)
+        })
       }
 
       if (data.timelineNotes.length > 0) {

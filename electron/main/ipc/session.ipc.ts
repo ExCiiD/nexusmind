@@ -281,14 +281,51 @@ export function registerSessionHandlers() {
     })
   })
 
-  ipcMain.handle('session:end', async (_event, id: string, manualSummary?: string) => {
+  /**
+   * Returns all completed sessions (most recent first) with just the objective/KPI arrays.
+   * The frontend uses this to build a per-objective KPI memory map without needing
+   * to know the KPI→objective mapping on the backend side.
+   */
+  ipcMain.handle('session:get-kpi-history', async () => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    if (!user) return []
+    const sessions = await prisma.session.findMany({
+      where: { userId: user.id, status: 'completed' },
+      orderBy: { date: 'desc' },
+      select: { objectiveIds: true, selectedKpiIds: true },
+    })
+    return sessions.map((s) => ({
+      objectiveIds:   JSON.parse(s.objectiveIds  ?? '[]') as string[],
+      selectedKpiIds: JSON.parse(s.selectedKpiIds ?? '[]') as string[],
+    }))
+  })
+
+  ipcMain.handle('session:get-last-config', async () => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    if (!user) return null
+    const last = await prisma.session.findFirst({
+      where: { userId: user.id, status: 'completed' },
+      orderBy: { date: 'desc' },
+    })
+    if (!last) return null
+    return {
+      objectiveIds:   JSON.parse(last.objectiveIds  ?? '[]'),
+      selectedKpiIds: JSON.parse(last.selectedKpiIds ?? '[]'),
+      customNote:     last.customNote ?? '',
+      date:           last.date.toISOString(),
+    }
+  })
+
+  ipcMain.handle('session:end', async (_event, id: string, manualSummary?: string, sessionConclusion?: string) => {
     const prisma = getPrisma()
 
     const session = await prisma.session.update({
       where: { id },
       data: {
         status: 'completed',
-        ...(manualSummary ? { aiSummary: manualSummary } : {}),
+        ...(sessionConclusion !== undefined ? { sessionConclusion } : manualSummary ? { aiSummary: manualSummary } : {}),
       },
       include: {
         games: { include: { review: true } },

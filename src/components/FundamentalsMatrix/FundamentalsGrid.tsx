@@ -29,7 +29,7 @@ export function FundamentalsGrid({ scores, onScoreChange, onComplete, mode = 'fu
   const canComplete = ratedCount >= totalFundamentals * 0.8
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-display font-bold text-hextech-gold-bright">{t('fundamentalsGrid.title')}</h2>

@@ -9,7 +9,7 @@ export function AppLayout() {
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
         <div className="h-9" />
-        <div className="px-8 pb-8">
+        <div className="px-6 pb-4">
           <Outlet />
         </div>
       </main>

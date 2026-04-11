@@ -9,7 +9,7 @@ import { useSessionStore } from '@/store/useSessionStore'
 import { useUserStore } from '@/store/useUserStore'
 import { TimelineNoteInput, type TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
 import { DynamicKPIForm } from '@/components/ReviewForm/DynamicKPIForm'
-import { AISummaryPanel } from '@/components/AIPanel/AISummaryPanel'
+import { ReviewInsightPanel } from '@/components/Coaching/ReviewInsightPanel'
 import { MatchHistoryPicker } from '@/components/Session/MatchHistoryPicker'
 import { AccountBadge } from '@/components/ui/AccountBadge'
 import { useLocalizedFundamental, useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
@@ -97,6 +97,7 @@ export function ReviewPage() {
 
   const [timelineNotes, setTimelineNotes] = useState<TimelineNote[]>([])
   const [kpiScores, setKpiScores] = useState<Record<string, number>>({})
+  const [kpiNotes, setKpiNotes] = useState<Record<string, string>>({})
   const [freeText, setFreeText] = useState('')
   const [objectiveRespected, setObjectiveRespected] = useState<boolean | null>(null)
   const [saving, setSaving] = useState(false)
@@ -129,7 +130,7 @@ export function ReviewPage() {
 
   const saveDraft = useCallback(() => {
     if (!draftKey || saved) return
-    sessionStorage.setItem(draftKey, JSON.stringify({ timelineNotes, kpiScores, freeText, objectiveRespected }))
+    sessionStorage.setItem(draftKey, JSON.stringify({ timelineNotes, kpiScores, kpiNotes, freeText, objectiveRespected }))
   }, [draftKey, timelineNotes, kpiScores, freeText, objectiveRespected, saved])
 
   const clearDraft = useCallback(() => {
@@ -197,6 +198,7 @@ export function ReviewPage() {
           const draft = JSON.parse(raw)
           setTimelineNotes(Array.isArray(draft.timelineNotes) ? draft.timelineNotes : [])
           setKpiScores(draft.kpiScores && typeof draft.kpiScores === 'object' ? draft.kpiScores : {})
+          setKpiNotes(draft.kpiNotes && typeof draft.kpiNotes === 'object' ? draft.kpiNotes : {})
           setFreeText(draft.freeText ?? '')
           setObjectiveRespected(draft.objectiveRespected ?? null)
           return
@@ -348,14 +350,18 @@ export function ReviewPage() {
 
   if (saved) {
     return (
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 animate-fade-in">
         <div>
           <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('review.savedTitle')}</h1>
         </div>
 
-        <AISummaryPanel
-          type="review"
-          data={{ timelineNotes, kpiScores, objective: objectiveLabel }}
+        <ReviewInsightPanel
+          objectiveRespected={objectiveRespected}
+          kpiScores={kpiScores}
+          timelineNotes={timelineNotes}
+          freeText={freeText}
+          objectiveLabel={objectiveLabelsStr}
+          selectedKpiIds={selectedKpiIds}
         />
 
         <div className="flex gap-3">
@@ -375,7 +381,7 @@ export function ReviewPage() {
   if (!latestGame) {
     return (
       <>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 animate-fade-in">
         <div>
           <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('nav.review')}</h1>
           <p className="text-sm text-hextech-text mt-1">{t('review.waiting.title')}</p>
@@ -428,6 +434,7 @@ export function ReviewPage() {
         gameId: latestGame.id,
         timelineNotes,
         kpiScores,
+        kpiNotes: Object.keys(kpiNotes).length > 0 ? kpiNotes : undefined,
         freeText: freeText || undefined,
         objectiveRespected,
       })
@@ -498,7 +505,7 @@ export function ReviewPage() {
     latestGame.role !== user.mainRole
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('review.title')}</h1>
@@ -617,6 +624,8 @@ export function ReviewPage() {
         subObjectiveId={activeSubObjective ?? undefined}
         scores={kpiScores}
         onChange={(kpiId, score) => setKpiScores((prev) => ({ ...prev, [kpiId]: score }))}
+        kpiNotes={kpiNotes}
+        onNoteChange={(kpiId, note) => setKpiNotes((prev) => ({ ...prev, [kpiId]: note }))}
         biasWarningsByObjective={biasWarningsByObjective}
         selectedKpiIds={selectedKpiIds.length > 0 ? selectedKpiIds : undefined}
       />

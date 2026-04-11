@@ -88,7 +88,7 @@ export function ReplaysPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">Replays</h1>

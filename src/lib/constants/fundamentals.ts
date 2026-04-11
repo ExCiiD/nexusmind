@@ -2,6 +2,8 @@ export interface KPI {
   id: string
   label: string
   description: string
+  /** When true, this KPI is highlighted as top priority in the UI */
+  priority?: boolean
 }
 
 export interface Subcategory {
@@ -136,6 +138,7 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
         label: 'Tempo',
         description: 'Knowing when to accelerate the game (post-kill, post-objective) vs. slowing down to reset and farm.',
         kpis: [
+          { id: 'death_regulation', label: 'Death Regulation', description: 'Spend the maximum time possible alive — avoid any avoidable death. Every death is a tempo loss for you and your team.', priority: true },
           { id: 'accelerate_timing', label: 'Accelerate Timing', description: 'Pushing advantages after kills, objectives, or first blood' },
           { id: 'slow_down_judgment', label: 'Slow Down Judgment', description: 'Recognizing when to farm and wait instead of forcing plays' },
           { id: 'reset_timing', label: 'Reset Timing', description: 'Recalling and resetting at optimal moments without losing tempo' },

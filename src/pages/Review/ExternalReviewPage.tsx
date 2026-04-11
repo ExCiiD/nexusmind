@@ -116,7 +116,7 @@ export function ExternalReviewPage() {
   if (!review) return null
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <ExternalReviewHeader review={review} onDelete={handleDelete} />

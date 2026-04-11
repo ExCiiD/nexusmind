@@ -169,9 +169,9 @@
       "endError": "Failed to end session"
     },
     "endDialog": {
-      "title": "Session Analysis",
-      "subtitle": "How did it go? Reflect on your objectives, identify patterns.",
-      "placeholder": "Concrete feeling and analysis of the session relative to your objectives; identify recurring patterns if any — e.g.: I died less to ganks but I was too passive when ahead.",
+      "title": "Session Conclusion",
+      "subtitle": "How did it go? Write your takeaways, progress and any patterns you noticed.",
+      "placeholder": "E.g.: I died less to ganks but was too passive when ahead. Wave control objective was respected, trading still inconsistent.",
       "cancel": "Cancel",
       "skip": "Skip",
       "confirm": "End & Save"

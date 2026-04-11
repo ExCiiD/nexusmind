@@ -1,4 +1,9 @@
 import { app, BrowserWindow, ipcMain, protocol } from 'electron'
+
+// Suppress Chromium GPU shader disk-cache errors on Windows (access-denied / cache locked).
+// The GPU shader cache is unnecessary for a desktop Electron app and only produces noise.
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
+
 import { join } from 'path'
 import { createReadStream, statSync } from 'fs'
 import { autoUpdater } from 'electron-updater'
@@ -17,6 +22,7 @@ import { registerDevHandlers } from './ipc/dev.ipc'
 import { registerRecordingHandlers } from './ipc/recording.ipc'
 import { registerExternalReviewHandlers } from './ipc/externalReview.ipc'
 import { registerShareHandlers } from './ipc/share.ipc'
+import { registerCoachingHandlers } from './ipc/coaching.ipc'
 
 // Register before app is ready — allows the renderer to load local files via nxm:// URLs
 // This bypasses the cross-origin restriction that blocks file:// in dev mode
@@ -160,6 +166,7 @@ async function bootstrap() {
   registerRecordingHandlers()
   registerExternalReviewHandlers()
   registerShareHandlers()
+  registerCoachingHandlers()
 
   createWindow()
   registerDevHandlers(mainWindow!)

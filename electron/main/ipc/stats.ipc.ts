@@ -335,6 +335,93 @@ export function registerStatsHandlers() {
     }
   })
 
+  /**
+   * Compute live averages for a specific account (or all accounts when puuid is null).
+   * This does NOT create a new snapshot — it's a read-only on-demand calculation.
+   * Used by the account filter in the Detailed Stats page.
+   */
+  ipcMain.handle('stats:get-account-averages', async (_event, puuid: string | null) => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    if (!user) return null
+
+    const accounts = await prisma.account.findMany({ where: { userId: user.id } })
+    const mainRole = (user as any).mainRole as string | null
+
+    // Determine which account(s) to pull games from
+    const targetAccounts: Array<{ puuid: string; region: string }> =
+      puuid === null
+        ? [{ puuid: user.puuid, region: user.region }, ...accounts.map((a) => ({ puuid: a.puuid, region: a.region }))]
+        : puuid === user.puuid
+          ? [{ puuid: user.puuid, region: user.region }]
+          : (() => {
+              const acc = accounts.find((a) => a.puuid === puuid)
+              return acc ? [{ puuid: acc.puuid, region: acc.region }] : [{ puuid: user.puuid, region: user.region }]
+            })()
+
+    // Fetch match IDs only for the target account(s)
+    const queueFilter = ((user as any).queueFilter ?? 'both') as 'soloq' | 'flex' | 'both'
+    const perAccountIds = await Promise.all(
+      targetAccounts.map(({ puuid: p, region }) =>
+        getMatchIds(p, region, 40, 0, queueFilter).catch(() => [] as string[]),
+      ),
+    )
+    const matchIds = [...new Set(perAccountIds.flat())]
+    if (matchIds.length === 0) return null
+
+    const allPuuids = targetAccounts.map((a) => a.puuid)
+    const allStats: any[] = []
+
+    for (const matchId of matchIds) {
+      let matchData: any
+      let timelineData: any = null
+
+      const cached = await prisma.matchCache.findUnique({ where: { matchId } })
+      if (cached) {
+        matchData = JSON.parse(cached.matchJson)
+        timelineData = cached.timelineJson ? JSON.parse(cached.timelineJson) : null
+      } else {
+        try {
+          matchData = await getMatch(matchId, user.region)
+          await prisma.matchCache.upsert({
+            where: { matchId },
+            create: { matchId, matchJson: JSON.stringify(matchData) },
+            update: {},
+          })
+        } catch { continue }
+      }
+
+      if (!timelineData) {
+        try { timelineData = await getMatchTimeline(matchId, user.region) } catch { /* optional */ }
+        if (timelineData) {
+          await prisma.matchCache.update({
+            where: { matchId },
+            data: { timelineJson: JSON.stringify(timelineData) },
+          }).catch(() => {})
+        }
+      }
+
+      const resolvedPuuid = resolvePuuid(matchData, allPuuids)
+      if (!resolvedPuuid) continue
+
+      const detailed = extractDetailedStats(matchData, timelineData, resolvedPuuid)
+      if (!detailed) continue
+      if (mainRole && detailed.meta.role !== mainRole) continue
+
+      allStats.push(detailed)
+      if (allStats.length >= 20) break
+    }
+
+    if (allStats.length === 0) return null
+
+    return {
+      averages: computeAverages(allStats),
+      gameCount: allStats.length,
+      firstGameAt: new Date(Math.min(...allStats.map((s) => s.meta.gameEndAt))).toISOString(),
+      lastGameAt: new Date(Math.max(...allStats.map((s) => s.meta.gameEndAt))).toISOString(),
+    }
+  })
+
   ipcMain.handle('stats:get-snapshots', async () => {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })

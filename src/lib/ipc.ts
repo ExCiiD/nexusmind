@@ -20,7 +20,9 @@ export type NexusMindAPI = {
 
   createSession: (data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) => Promise<any>
   getActiveSession: () => Promise<any>
-  endSession: (id: string, manualSummary?: string) => Promise<any>
+  getLastSessionConfig: () => Promise<{ objectiveIds: string[]; selectedKpiIds: string[]; customNote: string; date: string } | null>
+  getKpiHistory: () => Promise<Array<{ objectiveIds: string[]; selectedKpiIds: string[] }>>
+  endSession: (id: string, manualSummary?: string, sessionConclusion?: string) => Promise<any>
   deleteSession: (id: string) => Promise<any>
   deleteGame: (gameId: string) => Promise<any>
   setGameReviewStatus: (gameId: string, reviewStatus: 'pending' | 'to_be_reviewed') => Promise<any>
@@ -29,6 +31,7 @@ export type NexusMindAPI = {
     gameId: string
     timelineNotes: Array<{ time: string; note: string }>
     kpiScores: Record<string, number>
+    kpiNotes?: Record<string, string>
     freeText?: string
     objectiveRespected: boolean
   }) => Promise<any>
@@ -91,11 +94,12 @@ export type NexusMindAPI = {
   computeStatsAverages: () => Promise<any>
   getStatsSnapshots: () => Promise<any[]>
   autoSnapshot: () => Promise<{ created: number }>
+  getAccountAverages: (puuid: string | null) => Promise<{ averages: any; gameCount: number; firstGameAt: string; lastGameAt: string } | null>
   clearStatsSnapshots: () => Promise<{ deleted: number }>
 
   getBadges: () => Promise<string[]>
 
-  listAccounts: () => Promise<Array<{ id: string; gameName: string; tagLine: string; region: string; createdAt: string }>>
+  listAccounts: () => Promise<Array<{ id: string; puuid: string; gameName: string; tagLine: string; region: string; createdAt: string }>>
   addAccount: (gameName: string, tagLine: string, region: string) => Promise<any>
   removeAccount: (accountId: string) => Promise<{ success: boolean }>
 
@@ -174,6 +178,7 @@ export type NexusMindAPI = {
   addWebhook: (name: string, url: string) => Promise<DiscordWebhook>
   renameWebhook: (id: string, name: string) => Promise<{ success: boolean }>
   deleteWebhook: (id: string) => Promise<{ success: boolean }>
+  getCoachingPatterns: () => Promise<CoachingPatterns | null>
 }
 
 export interface DetailedGameStats {
@@ -300,6 +305,23 @@ export interface DiscordWebhook {
   name: string
   url: string
   createdAt: string
+}
+
+export interface CoachingWeakKpi {
+  kpiId: string
+  avgScore: number
+  sessionCount: number
+  objectiveId: string
+}
+
+export interface CoachingPatterns {
+  weakKpis: CoachingWeakKpi[]
+  reviewCompletionRate: number
+  mostRepeatedObjective: { objectiveId: string; count: number } | null
+  recentObjectiveIds: string[]
+  totalSessionsAnalyzed: number
+  highDeathsWarning: boolean
+  avgDeathsRecent: number | null
 }
 
 export interface ReviewBiasSignal {

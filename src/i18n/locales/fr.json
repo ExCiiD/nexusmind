@@ -169,9 +169,9 @@
       "endError": "Échec de la fin de session"
     },
     "endDialog": {
-      "title": "Analyse de session",
-      "subtitle": "Comment ça s'est passé ? Réfléchissez à vos objectifs, identifiez les patterns.",
-      "placeholder": "Ressenti et analyse concrète de la session par rapport aux objectifs ; identification des patterns si il y'en a — ex : j'ai moins mourut de gank mais j'étais trop passif quand j'avais l'avantage.",
+      "title": "Conclusion de session",
+      "subtitle": "Comment ça s'est passé ? Notez votre ressenti, vos progrès et les patterns identifiés.",
+      "placeholder": "Ex : j'ai moins mourut de gank mais j'étais trop passif quand j'avais l'avantage. Mon objectif de wave control était respecté mais le trading encore inconsistant.",
       "cancel": "Annuler",
       "skip": "Passer",
       "confirm": "Terminer & sauvegarder"

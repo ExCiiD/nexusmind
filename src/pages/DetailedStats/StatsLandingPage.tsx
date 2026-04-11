@@ -58,6 +58,15 @@ const ROLE_LABELS: Record<string, string> = {
   UTILITY: 'Support',
 }
 
+interface LinkedAccount {
+  id: string
+  puuid: string
+  gameName: string
+  tagLine: string
+  region: string
+  createdAt: string
+}
+
 export function StatsLandingPage() {
   const { t } = useTranslation()
   const user = useUserStore((s) => s.user)
@@ -68,24 +77,50 @@ export function StatsLandingPage() {
   const [avgChartSeries, setAvgChartSeries] = useState<string[]>(DEFAULT_SERIES)
   const [autoSnapMsg, setAutoSnapMsg] = useState<string | null>(null)
 
+  // Account filter: null = all accounts, user.puuid = main (default), account.puuid = secondary
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([])
+  const [selectedAccountPuuid, setSelectedAccountPuuid] = useState<string | null | '__main__'>('__main__')
+  const [accountLoading, setAccountLoading] = useState(false)
+
   const mainRole = user?.mainRole ?? null
 
   const loadSnapshots = async () => {
     const data = await window.api.getStatsSnapshots()
     setSnapshots(data)
-    if (data.length > 0) setAverages(data[data.length - 1].stats)
     return data
+  }
+
+  /** Fetch and display averages for the given puuid filter. */
+  const loadAveragesForAccount = async (puuid: string | null) => {
+    setAccountLoading(true)
+    try {
+      const result = await window.api.getAccountAverages(puuid)
+      setAverages(result?.averages ?? null)
+    } catch { /* silent */ }
+    finally { setAccountLoading(false) }
   }
 
   useEffect(() => {
     const init = async () => {
       try {
-        await loadSnapshots()
+        const [accts, snaps] = await Promise.all([
+          window.api.listAccounts(),
+          loadSnapshots(),
+        ])
+        setLinkedAccounts(accts)
+
         const snapResult = await window.api.autoSnapshot()
         if (snapResult.created > 0) {
           setAutoSnapMsg(t('statsAvg.autoSnapshotDone', { count: snapResult.created }))
           setTimeout(() => setAutoSnapMsg(null), 5000)
           await loadSnapshots()
+        }
+
+        // Default: show averages for main account
+        if (user?.puuid) {
+          await loadAveragesForAccount(user.puuid)
+        } else if (snaps.length > 0) {
+          setAverages(snaps[snaps.length - 1].stats)
         }
       } catch { /* silent */ }
       finally { setLoading(false) }
@@ -94,6 +129,12 @@ export function StatsLandingPage() {
     init()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const handleAccountSelect = async (puuid: string | null | '__main__') => {
+    setSelectedAccountPuuid(puuid)
+    const resolvedPuuid = puuid === '__main__' ? (user?.puuid ?? null) : puuid
+    await loadAveragesForAccount(resolvedPuuid)
+  }
 
   if (loading) {
     return (
@@ -104,13 +145,16 @@ export function StatsLandingPage() {
     )
   }
 
+  // Only show account filter when there are secondary accounts
+  const showAccountFilter = linkedAccounts.length > 0
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       <div>
         <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">
           {t('statsAvg.title')}
         </h1>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
           <p className="text-sm text-hextech-text">{t('statsAvg.subtitle')}</p>
           {mainRole && (
             <span className="inline-flex items-center gap-1 rounded-full border border-hextech-cyan/40 bg-hextech-cyan/10 px-2.5 py-0.5 text-[11px] font-medium text-hextech-cyan">
@@ -120,6 +164,57 @@ export function StatsLandingPage() {
           )}
         </div>
       </div>
+
+      {/* Account filter — only shown when secondary accounts exist */}
+      {showAccountFilter && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-hextech-text-dim shrink-0">Compte :</span>
+
+          {/* Main account chip (default) */}
+          <button
+            onClick={() => handleAccountSelect('__main__')}
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+              selectedAccountPuuid === '__main__'
+                ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
+                : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
+            )}
+          >
+            {user?.displayName || user?.summonerName || 'Main'} (principal)
+          </button>
+
+          {/* Secondary accounts */}
+          {linkedAccounts.map((acc) => (
+            <button
+              key={acc.puuid}
+              onClick={() => handleAccountSelect(acc.puuid)}
+              className={cn(
+                'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                selectedAccountPuuid === acc.puuid
+                  ? 'border-hextech-cyan bg-hextech-cyan/10 text-hextech-cyan'
+                  : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
+              )}
+            >
+              {acc.gameName}
+            </button>
+          ))}
+
+          {/* All accounts */}
+          <button
+            onClick={() => handleAccountSelect(null)}
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+              selectedAccountPuuid === null
+                ? 'border-hextech-cyan bg-hextech-cyan/10 text-hextech-cyan'
+                : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
+            )}
+          >
+            Tous les comptes
+          </button>
+
+          {accountLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-hextech-text-dim" />}
+        </div>
+      )}
 
       {autoSnapMsg && (
         <div className="flex items-center gap-2 rounded-lg border border-hextech-cyan/30 bg-hextech-cyan/5 px-4 py-2 text-sm text-hextech-cyan">
@@ -148,15 +243,21 @@ export function StatsLandingPage() {
       {/* Averages Tab */}
       {activeTab === 'averages' && (
         <>
-          {!averages && (
+          {!averages && !accountLoading && (
             <Card>
               <CardContent className="py-16 text-center text-hextech-text-dim">
                 {t('statsAvg.empty')}
               </CardContent>
             </Card>
           )}
+          {accountLoading && (
+            <div className="flex items-center justify-center py-16 gap-3 text-hextech-text-dim">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Calcul des statistiques…
+            </div>
+          )}
 
-          {averages && (
+          {averages && !accountLoading && (
             <>
               {/* Summary banner */}
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
@@ -384,30 +485,99 @@ function SeriesFilterBar({ selected, onChange }: { selected: string[]; onChange:
   )
 }
 
+/**
+ * Custom tooltip that shows both the indexed value (for the chart scale)
+ * and the original raw value (for context), keyed by `${key}_raw`.
+ */
+function IndexedTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="rounded-lg border border-hextech-border bg-hextech-bg p-3 text-xs shadow-lg min-w-[160px]">
+      <p className="mb-2 font-medium text-hextech-gold-bright">{label}</p>
+      {payload.map((entry: any) => {
+        const rawKey = `${entry.dataKey}_raw`
+        const raw = entry.payload[rawKey]
+        const rawStr = raw !== null && raw !== undefined
+          ? (typeof raw === 'number' ? raw.toLocaleString(undefined, { maximumFractionDigits: 2 }) : raw)
+          : null
+        return (
+          <div key={entry.dataKey} className="flex items-center justify-between gap-4 py-0.5">
+            <span className="flex items-center gap-1.5" style={{ color: entry.color }}>
+              <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+              {entry.name}
+            </span>
+            <span className="text-hextech-text-bright font-medium">
+              {rawStr ?? '—'}
+              {entry.value !== null && <span className="ml-1 text-hextech-text-dim">({entry.value > 0 ? '+' : ''}{entry.value})</span>}
+            </span>
+          </div>
+        )
+      })}
+      <p className="mt-2 border-t border-hextech-border-dim pt-1.5 text-hextech-text-dim">
+        Valeur entre parenthèses = indice (base 0)
+      </p>
+    </div>
+  )
+}
+
 function ProgressionLineChart({ snapshots, selectedSeries }: { snapshots: any[]; selectedSeries: string[] }) {
   const activeSeries = LINE_SERIES.filter((s) => selectedSeries.includes(s.key))
+
+  // Collect the baseline (first snapshot) raw value for each series
+  const baseline: Record<string, number | null> = {}
+  for (const s of LINE_SERIES) {
+    baseline[s.key] = snapshots.length > 0 ? s.get(snapshots[0]) : null
+  }
+
+  /**
+   * Normalize each value to an index relative to the first snapshot:
+   *   index = round((value / baseline) * 100) - 100
+   * This gives 0 at the start and shows % change since then.
+   * Values where baseline is 0 or null are shown as-is (raw) to avoid divide-by-zero.
+   */
+  const normalize = (key: string, value: number | null): number | null => {
+    if (value === null) return null
+    const base = baseline[key]
+    if (base === null || base === 0) return null
+    return Math.round(((value - base) / Math.abs(base)) * 100)
+  }
+
   const data = snapshots.map((snap, i) => {
     const row: Record<string, any> = {
       name: `#${i + 1}`,
       date: new Date(snap.lastGameAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
     }
-    for (const s of LINE_SERIES) row[s.key] = s.get(snap)
+    for (const s of LINE_SERIES) {
+      const raw = s.get(snap)
+      row[s.key] = normalize(s.key, raw)
+      row[`${s.key}_raw`] = raw !== null && typeof raw === 'number'
+        ? parseFloat(raw.toFixed(2))
+        : raw
+    }
     return row
   })
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1E2328" />
-        <XAxis dataKey="date" tick={{ fill: '#A09B8C', fontSize: 11 }} />
-        <YAxis tick={{ fill: '#A09B8C', fontSize: 11 }} />
-        <RTooltip contentStyle={{ backgroundColor: '#1E2328', border: '1px solid #3C3C41', borderRadius: 8 }} labelStyle={{ color: '#F0E6D2' }} />
-        <Legend />
-        {activeSeries.map((s) => (
-          <Line key={s.key} type="monotone" dataKey={s.key} stroke={s.color} name={s.label} strokeWidth={2} dot={{ r: 3 }} />
-        ))}
-      </LineChart>
-    </ResponsiveContainer>
+    <div className="space-y-1">
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1E2328" />
+          <XAxis dataKey="date" tick={{ fill: '#A09B8C', fontSize: 11 }} />
+          <YAxis
+            tick={{ fill: '#A09B8C', fontSize: 11 }}
+            tickFormatter={(v) => `${v > 0 ? '+' : ''}${v}`}
+          />
+          <RTooltip content={<IndexedTooltip />} />
+          <Legend />
+          {activeSeries.map((s) => (
+            <Line key={s.key} type="monotone" dataKey={s.key} stroke={s.color} name={s.label} strokeWidth={2} dot={{ r: 3 }} connectNulls />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+      <p className="text-center text-[10px] text-hextech-text-dim">
+        Axe Y = évolution en % depuis le premier snapshot · valeurs brutes visibles dans le tooltip
+      </p>
+    </div>
   )
 }
 

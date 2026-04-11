@@ -13,7 +13,9 @@ const api = {
   createSession: (data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) =>
     ipcRenderer.invoke('session:create', data),
   getActiveSession: () => ipcRenderer.invoke('session:get-active'),
-  endSession: (id: string, manualSummary?: string) => ipcRenderer.invoke('session:end', id, manualSummary),
+  getLastSessionConfig: () => ipcRenderer.invoke('session:get-last-config'),
+  getKpiHistory: () => ipcRenderer.invoke('session:get-kpi-history'),
+  endSession: (id: string, manualSummary?: string, sessionConclusion?: string) => ipcRenderer.invoke('session:end', id, manualSummary, sessionConclusion),
   deleteSession: (id: string) => ipcRenderer.invoke('session:delete', id),
   deleteGame: (gameId: string) => ipcRenderer.invoke('game:delete', gameId),
   setGameReviewStatus: (gameId: string, reviewStatus: 'pending' | 'to_be_reviewed') =>
@@ -74,6 +76,7 @@ const api = {
   computeStatsAverages: () => ipcRenderer.invoke('stats:compute-averages'),
   getStatsSnapshots: () => ipcRenderer.invoke('stats:get-snapshots'),
   autoSnapshot: () => ipcRenderer.invoke('stats:auto-snapshot'),
+  getAccountAverages: (puuid: string | null) => ipcRenderer.invoke('stats:get-account-averages', puuid),
   clearStatsSnapshots: () => ipcRenderer.invoke('stats:clear-snapshots'),
 
   getBadges: () => ipcRenderer.invoke('badges:get'),
@@ -147,6 +150,9 @@ const api = {
   addWebhook: (name: string, url: string) => ipcRenderer.invoke('share:add-webhook', name, url),
   renameWebhook: (id: string, name: string) => ipcRenderer.invoke('share:rename-webhook', id, name),
   deleteWebhook: (id: string) => ipcRenderer.invoke('share:delete-webhook', id),
+
+  // Coaching (deterministic, rule-based)
+  getCoachingPatterns: () => ipcRenderer.invoke('coaching:get-patterns'),
 }
 
 contextBridge.exposeInMainWorld('api', api)

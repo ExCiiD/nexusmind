@@ -8,13 +8,16 @@ import { useSessionStore } from '@/store/useSessionStore'
 import { useGameStore } from '@/store/useGameStore'
 import { XPBar } from '@/components/Gamification/XPBar'
 import { StreakCounter } from '@/components/Gamification/StreakCounter'
-import { WinrateChart } from '@/components/Charts/WinrateChart'
+import { CoachingPatternCard } from '@/components/Coaching/CoachingPatternCard'
 import { ProgressChart } from '@/components/Charts/ProgressChart'
 import {
   Target,
   Play,
   BarChart3,
   Swords,
+  Gamepad2,
+  Crosshair,
+  ShieldCheck,
   Eye,
   Trophy,
   ClipboardList,
@@ -92,19 +95,26 @@ export function DashboardPage() {
   // Stat diffs: last two snapshots
   const statDiffs = computeStatDiffs(snapshots)
 
+  const winrate = stats && stats.totalGames > 0
+    ? Math.round((stats.wins / stats.totalGames) * 100)
+    : null
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">
-          {t('dashboard.welcome')} {user.displayName || user.summonerName}
-        </h1>
-        <p className="text-sm text-hextech-text mt-1">{t('dashboard.subtitle')}</p>
+    <div className="space-y-4 animate-fade-in">
+      {/* Page header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">
+            {t('dashboard.welcome')} {user.displayName || user.summonerName}
+          </h1>
+          <p className="text-sm text-hextech-text mt-0.5">{t('dashboard.subtitle')}</p>
+        </div>
       </div>
 
       {needsReassessment && (
-        <div className="flex items-center justify-between rounded-lg border border-hextech-gold/30 bg-hextech-gold/5 px-4 py-3">
+        <div className="flex items-center justify-between rounded-lg border border-hextech-gold/30 bg-hextech-gold/5 px-4 py-2.5">
           <div className="flex items-center gap-3">
-            <ClipboardList className="h-5 w-5 text-hextech-gold shrink-0" />
+            <ClipboardList className="h-4 w-4 text-hextech-gold shrink-0" />
             <div>
               <p className="text-sm font-medium text-hextech-gold-bright">{t('dashboard.reassessmentBanner.title')}</p>
               <p className="text-xs text-hextech-text">{t('dashboard.reassessmentBanner.desc')}</p>
@@ -116,35 +126,31 @@ export function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      {/* Main row: content (2/3) + sidebar (1/3) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Left column */}
+        <div className="lg:col-span-2 space-y-4">
           {/* Active session card */}
           {activeSession ? (
             <Card className="border-hextech-green/30 bg-hextech-green/5">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-hextech-green">
-                  <Target className="h-5 w-5" />
-                  {t('dashboard.activeSession.title')}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="text-sm text-hextech-text">{t('dashboard.activeSession.objective')}</div>
-                  <div className="text-lg font-semibold text-hextech-text-bright">{objectiveName}</div>
-                  {activeSession.subObjective && (
-                    <Badge variant="outline" className="mt-1">{activeSession.subObjective}</Badge>
-                  )}
+              <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Swords className="h-5 w-5 text-hextech-green shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-hextech-text-dim">{t('dashboard.activeSession.title')}</p>
+                    <p className="font-semibold text-hextech-text-bright truncate">{objectiveName}</p>
+                    <p className="text-xs text-hextech-text mt-0.5">
+                      {t('dashboard.activeSession.game', { count: activeSession.games.length })}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-sm text-hextech-text">
-                  {t('dashboard.activeSession.game', { count: activeSession.games.length })}
-                </div>
-                <div className="flex gap-3">
-                  <Button onClick={() => navigate('/review')}>
-                    <Play className="h-4 w-4 mr-2" />
+                <div className="flex gap-2 shrink-0">
+                  <Button size="sm" onClick={() => navigate('/review')}>
+                    <Play className="h-3.5 w-3.5 mr-1.5" />
                     {t('dashboard.activeSession.continueButton')}
                   </Button>
-                  <Button variant="outline" onClick={() => navigate('/analytics')}>
-                    <BarChart3 className="h-4 w-4 mr-2" />
+                  <Button size="sm" variant="outline" onClick={() => navigate('/analytics')}>
+                    <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
                     {t('dashboard.viewProgress')}
                   </Button>
                 </div>
@@ -152,33 +158,33 @@ export function DashboardPage() {
             </Card>
           ) : (
             <Card>
-              <CardHeader>
-                <CardTitle>{t('dashboard.noSession.title')}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-hextech-text">{t('dashboard.noSession.desc')}</p>
-                <Button onClick={() => navigate('/session')}>
-                  <Target className="h-4 w-4 mr-2" />
+              <CardContent className="flex items-center justify-between gap-4 p-4">
+                <div>
+                  <p className="font-medium text-hextech-text-bright">{t('dashboard.noSession.title')}</p>
+                  <p className="text-xs text-hextech-text mt-0.5">{t('dashboard.noSession.desc')}</p>
+                </div>
+                <Button size="sm" onClick={() => navigate('/session')} className="shrink-0">
+                  <Target className="h-3.5 w-3.5 mr-1.5" />
                   {t('dashboard.noSession.button')}
                 </Button>
               </CardContent>
             </Card>
           )}
 
-          {/* Session objective progress */}
+          {/* Session objective progress (only when active) */}
           {sessionObjectiveIds.length > 0 && (
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
                   <TrendingUp className="h-4 w-4 text-hextech-cyan" />
                   {t('dashboard.sessionProgress.title')}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-4 pb-4">
                 {sessionProgressData.length > 0 ? (
                   <ProgressChart data={sessionProgressData} fundamentalIds={sessionObjectiveIds} />
                 ) : (
-                  <p className="text-sm text-hextech-text-dim py-8 text-center">
+                  <p className="text-sm text-hextech-text-dim py-6 text-center">
                     {t('dashboard.sessionProgress.noData')}
                   </p>
                 )}
@@ -188,31 +194,46 @@ export function DashboardPage() {
 
           {/* Stats grid */}
           {stats && stats.totalGames > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <StatCard icon={Swords} label={t('dashboard.stats.games')} value={stats.totalGames.toString()} />
+            <div className="grid grid-cols-4 gap-3">
+              <StatCard icon={Gamepad2} label={t('dashboard.stats.games')} value={stats.totalGames.toString()} />
               <StatCard icon={Trophy} label={t('dashboard.stats.winRate')} value={`${Math.round((stats.wins / stats.totalGames) * 100)}%`} />
-              <StatCard icon={Target} label={t('dashboard.stats.avgKda')} value={stats.avgKDA.toFixed(2)} />
-              <StatCard icon={Eye} label={t('dashboard.stats.objSuccess')} value={`${stats.objectiveSuccessRate}%`} />
+              <StatCard icon={Crosshair} label={t('dashboard.stats.avgKda')} value={stats.avgKDA.toFixed(2)} />
+              <StatCard icon={ShieldCheck} label={t('dashboard.stats.objSuccess')} value={`${stats.objectiveSuccessRate}%`} />
             </div>
           )}
 
           {/* Last game */}
           {lastGame && <LastGameCard game={lastGame} onViewDetails={() => navigate(`/stats/${lastGame.matchId}`)} />}
-
-          {/* Top stat changes */}
-          {statDiffs.length >= 2 && (
-            <StatDiffsCard diffs={statDiffs} onViewAll={() => navigate('/stats')} />
-          )}
         </div>
 
-        <div className="space-y-6">
+        {/* Right sidebar */}
+        <div className="space-y-4">
+          {/* Progression + compact winrate merged */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t('dashboard.progress')}</CardTitle>
+            <CardHeader className="pb-2 pt-4 px-4">
+              <CardTitle className="text-sm">{t('dashboard.progress')}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 px-4 pb-4">
               <XPBar totalXp={user.xp} />
               <StreakCounter days={user.streakDays} />
+              {winrate !== null && stats && (
+                <div className="rounded-lg border border-hextech-border-dim bg-hextech-elevated px-3 py-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs text-hextech-text-dim">{t('dashboard.stats.winRate')}</span>
+                    <span className="text-sm font-bold text-hextech-gold-bright">{winrate}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-hextech-base overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-hextech-green transition-all"
+                      style={{ width: `${winrate}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-[10px] text-hextech-green">{stats.wins}W</span>
+                    <span className="text-[10px] text-[#FF4655]">{stats.losses}L</span>
+                  </div>
+                </div>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -224,17 +245,18 @@ export function DashboardPage() {
               </Button>
             </CardContent>
           </Card>
+        </div>
+      </div>
 
-          {stats && stats.totalGames > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">{t('dashboard.stats.winRate')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <WinrateChart wins={stats.wins} losses={stats.losses} />
-              </CardContent>
-            </Card>
+      {/* Bottom row: stat diffs (2/3) + coaching patterns (1/3) — same visual line */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          {statDiffs.length >= 2 && (
+            <StatDiffsCard diffs={statDiffs} onViewAll={() => navigate('/stats')} />
           )}
+        </div>
+        <div>
+          <CoachingPatternCard />
         </div>
       </div>
     </div>
@@ -295,7 +317,9 @@ function StatCard({ icon: Icon, label, value }: { icon: any; label: string; valu
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">
-        <Icon className="h-5 w-5 text-hextech-gold shrink-0" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-hextech-border-dim bg-hextech-elevated">
+          <Icon className="h-4 w-4 text-hextech-gold" />
+        </div>
         <div>
           <div className="text-lg font-bold text-hextech-text-bright">{value}</div>
           <div className="text-xs text-hextech-text">{label}</div>

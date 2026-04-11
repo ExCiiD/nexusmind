@@ -133,6 +133,7 @@ export function registerAnalyticsHandlers() {
         status: s.status,
         date: s.date.toISOString(),
         aiSummary: s.aiSummary,
+        sessionConclusion: s.sessionConclusion ?? null,
         gamesPlayed: countedGames.length,
         reviewsCompleted: reviews.length,
         wins,

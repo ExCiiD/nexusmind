@@ -111,6 +111,7 @@ export const FUNDAMENTALS_FR: FundamentalCategory[] = [
         label: 'Tempo',
         description: 'Savoir quand accélérer (post-kill, post-objectif) vs ralentir pour reset et farmer.',
         kpis: [
+          { id: 'death_regulation', label: 'Régulation des morts', description: 'Passer le maximum de temps en vie — éviter toute mort évitable. Chaque mort est une perte de tempo pour toi et ton équipe.', priority: true },
           { id: 'accelerate_timing', label: 'Accélération', description: 'Exploiter les avantages après kills, objectifs ou premier sang' },
           { id: 'slow_down_judgment', label: 'Jugement de ralentissement', description: 'Reconnaître quand farmer et attendre plutôt que forcer des plays' },
           { id: 'reset_timing', label: 'Timing du reset', description: 'Se rappeler et reset aux moments optimaux sans perdre le tempo' },

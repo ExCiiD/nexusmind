@@ -16,6 +16,7 @@ import { ExternalReviewPage } from '@/pages/Review/ExternalReviewPage'
 import { DevToolbar } from '@/components/Dev/DevToolbar'
 import { UpdateBanner } from '@/components/UpdateBanner'
 import { Toaster } from '@/components/ui/toaster'
+import { ToastAction } from '@/components/ui/toast'
 import { useEffect } from 'react'
 import { useToast } from '@/hooks/useToast'
 
@@ -31,14 +32,40 @@ export function App() {
   useEffect(() => {
     const unsubscribe = window.api.onGameEnd((data) => {
       useUserStore.getState().setGameEndData(data)
+
       // Only open the review page when a game row was actually created in the session.
-      // If game is null (no active session or unresolved match), stay on the current page.
       if (data?.game?.id) {
         window.location.hash = '#/review'
       }
+
+      // Off-role warning: game was auto-added to the session but the played role
+      // doesn't match the configured main role. Offer immediate removal.
+      if (data?.isOffRole && data?.game?.id) {
+        const gameId = data.game.id as string
+        const playedRole = (data.stats?.role as string | undefined) ?? 'inconnu'
+        toast({
+          title: '⚠️ Rôle secondaire détecté',
+          description: `Tu as joué ${playedRole} — pas ton main role. Retirer cette game de la session ?`,
+          variant: 'destructive',
+          duration: 12000,
+          action: (
+            <ToastAction
+              altText="Retirer de la session"
+              onClick={async () => {
+                await window.api.deleteGame(gameId)
+                // Clear the review nav since the game was removed
+                useUserStore.getState().setGameEndData(null)
+                window.location.hash = '#/session'
+              }}
+            >
+              Retirer
+            </ToastAction>
+          ),
+        })
+      }
     })
     return unsubscribe
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     const offStarted = window.api.onRecordingStarted(() => {

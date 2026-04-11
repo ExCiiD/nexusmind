@@ -11,6 +11,7 @@ export function registerReviewHandlers() {
         gameId: string
         timelineNotes: Array<{ time: string; note: string }>
         kpiScores: Record<string, number>
+        kpiNotes?: Record<string, string>
         freeText?: string
         objectiveRespected: boolean
       },
@@ -26,12 +27,14 @@ export function registerReviewHandlers() {
           gameId: data.gameId,
           timelineNotes: JSON.stringify(data.timelineNotes),
           kpiScores: JSON.stringify(data.kpiScores),
+          kpiNotes: data.kpiNotes ? JSON.stringify(data.kpiNotes) : undefined,
           freeText: data.freeText,
           objectiveRespected: data.objectiveRespected,
         },
         update: {
           timelineNotes: JSON.stringify(data.timelineNotes),
           kpiScores: JSON.stringify(data.kpiScores),
+          kpiNotes: data.kpiNotes ? JSON.stringify(data.kpiNotes) : undefined,
           freeText: data.freeText,
           objectiveRespected: data.objectiveRespected,
         },

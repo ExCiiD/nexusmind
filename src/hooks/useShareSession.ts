@@ -37,6 +37,7 @@ export interface ShareSessionData {
   avgCSPerMin?: number
   objectiveSuccessRate?: number | null
   aiSummary?: string | null
+  sessionConclusion?: string | null
   games: ShareSessionGame[]
 }
 
@@ -137,8 +138,9 @@ export function useShareSession() {
 
       overviewFields.push({ name: '🎯 Objective', value: objectiveLabel })
 
-      if (data.aiSummary?.trim()) {
-        overviewFields.push({ name: '🤖 Session Conclusion', value: data.aiSummary.trim().slice(0, 1024) })
+      const conclusionText = data.sessionConclusion?.trim() || data.aiSummary?.trim()
+      if (conclusionText) {
+        overviewFields.push({ name: '📝 Session Conclusion', value: conclusionText.slice(0, 1024) })
       }
 
       const embeds: object[] = [
@@ -225,8 +227,9 @@ export function useShareSession() {
         }
       })
 
-      if (data.aiSummary?.trim()) {
-        lines.push(`\n🤖 Session Conclusion\n${data.aiSummary.trim()}`)
+      const conclusionTxt = data.sessionConclusion?.trim() || data.aiSummary?.trim()
+      if (conclusionTxt) {
+        lines.push(`\n📝 Session Conclusion\n${conclusionTxt}`)
       }
 
       lines.push('\n*Shared via NexusMind*')

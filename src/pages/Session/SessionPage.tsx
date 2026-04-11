@@ -6,16 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useSessionStore } from '@/store/useSessionStore'
 import { useUserStore } from '@/store/useUserStore'
-import { AISuggestionPanel } from '@/components/AIPanel/AISuggestionPanel'
-import { AISummaryPanel } from '@/components/AIPanel/AISummaryPanel'
+import { ObjectiveSuggestionPanel } from '@/components/Coaching/ObjectiveSuggestionPanel'
+import { SessionInsightPanel } from '@/components/Coaching/SessionInsightPanel'
 import type { Fundamental, FundamentalCategory, KPI } from '@/lib/constants/fundamentals'
+import { FundamentalPickerDialog } from '@/components/Session/FundamentalPickerDialog'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import {
   Target, Lock, Play, Square, Loader2, X, ChevronRight, ChevronLeft,
-  Swords, Eye, Clock, CheckCircle, FileSearch, Trash2, Filter, Zap, History,
+  Swords, Eye, Clock, CheckCircle, FileSearch, Trash2, Filter, Zap, History, RotateCcw,
 } from 'lucide-react'
 import { ShareSessionButton } from '@/components/Share/ShareSessionButton'
 import { useToast } from '@/hooks/useToast'
@@ -50,6 +50,19 @@ export function SessionPage() {
   const [assessmentScores, setAssessmentScores] = useState<Record<string, number>>({})
   const [queueFilter, setQueueFilter] = useState<'soloq' | 'flex' | 'both'>('both')
   const [updatingQueue, setUpdatingQueue] = useState(false)
+  const [lastConfig, setLastConfig] = useState<{
+    objectiveIds: string[]
+    selectedKpiIds: string[]
+    customNote: string
+    date: string
+  } | null>(null)
+  /**
+   * Per-objective KPI memory: maps each objective ID to the KPI IDs that were
+   * checked the last time that objective was part of a session.
+   * Built from the full session history so it works even when an objective
+   * wasn't in the most recent session.
+   */
+  const [kpiMemory, setKpiMemory] = useState<Record<string, string[]>>({})
 
   useEffect(() => {
     loadActiveSession()
@@ -65,6 +78,19 @@ export function SessionPage() {
     window.api.getUser().then((u: any) => {
       if (u?.queueFilter) setQueueFilter(u.queueFilter as 'soloq' | 'flex' | 'both')
     })
+    window.api.getLastSessionConfig().then((cfg) => setLastConfig(cfg)).catch(() => {})
+    window.api.getKpiHistory().then((history) => {
+      // Build memory map: for each objective, store the KPIs from its most recent session.
+      // We iterate sessions newest-first, so the first entry wins per objective.
+      const memory: Record<string, string[]> = {}
+      for (const session of history) {
+        for (const objId of session.objectiveIds) {
+          if (memory[objId]) continue // already captured a more recent entry
+          memory[objId] = session.selectedKpiIds
+        }
+      }
+      setKpiMemory(memory)
+    }).catch(() => {})
   }, [loadActiveSession])
 
   const allFundamentals = FUNDAMENTALS.flatMap((c) => c.fundamentals)
@@ -96,8 +122,24 @@ export function SessionPage() {
   )
 
   const handleGoToKpis = () => {
-    // Default: all KPIs selected
-    setSelectedKpiIds(allKpiIdPool)
+    /**
+     * Determine which KPIs to check when entering step 2:
+     * 1. Already explicitly selected → keep (user already made a choice this round).
+     * 2. Objective has prior history in kpiMemory → restore the last-used KPI selection.
+     * 3. Objective has never been used before → check all (original default).
+     * Removed objectives are excluded because we iterate over allKpiIdPool (current pool only).
+     */
+    const newSelection = allKpiIdPool.filter((kpiId) => {
+      if (selectedKpiIds.includes(kpiId)) return true
+      const parentObj = allKpisForObjectives.find((o) => o.kpis.some((k) => k.id === kpiId))
+      if (!parentObj) return false
+      const remembered = kpiMemory[parentObj.objectiveId]
+      if (remembered) {
+        return remembered.includes(kpiId)
+      }
+      return true // never used before: check all by default
+    })
+    setSelectedKpiIds(newSelection)
     setStep('kpis')
   }
 
@@ -105,6 +147,28 @@ export function SessionPage() {
     setSelectedKpiIds((prev) =>
       prev.includes(kpiId) ? prev.filter((id) => id !== kpiId) : [...prev, kpiId],
     )
+  }
+
+  /**
+   * Pre-fill objectives, KPIs and comment from the last completed session,
+   * then jump straight to the KPI review step so the user can modify before starting.
+   */
+  const handlePrefill = () => {
+    if (!lastConfig) return
+    const validObjectives = lastConfig.objectiveIds.filter((id) =>
+      allFundamentals.some((f) => f.id === id),
+    ).slice(0, 3)
+    setSelectedObjectives(validObjectives)
+
+    // Compute the KPI pool for those objectives and keep only IDs that still exist
+    const kpiPool = allFundamentals
+      .filter((f) => validObjectives.includes(f.id))
+      .flatMap((f) => f.kpis.map((k) => k.id))
+    const validKpis = lastConfig.selectedKpiIds.filter((id) => kpiPool.includes(id))
+    setSelectedKpiIds(validKpis.length > 0 ? validKpis : kpiPool)
+
+    setCustomNote(lastConfig.customNote)
+    setStep('kpis')
   }
 
   const handleCreate = async () => {
@@ -133,20 +197,15 @@ export function SessionPage() {
   }
 
   const handleEnd = () => {
-    // If the session has no AI summary yet, prompt the user for a manual analysis
-    if (!activeSession?.aiSummary) {
-      setSessionAnalysis('')
-      setEndDialogOpen(true)
-    } else {
-      doEndSession()
-    }
+    setSessionAnalysis('')
+    setEndDialogOpen(true)
   }
 
-  const doEndSession = async (summary?: string) => {
+  const doEndSession = async (conclusion?: string) => {
     setEnding(true)
     setEndDialogOpen(false)
     try {
-      await endSession(summary || undefined)
+      await endSession(conclusion || undefined)
       toast({ title: t('session.toast.endedTitle'), description: t('session.toast.endedDesc'), variant: 'success' })
       navigate('/analytics')
     } catch (err: any) {
@@ -175,7 +234,7 @@ export function SessionPage() {
     const objLabels = objIds.map((id) => allFundamentals.find((f) => f.id === id)?.label ?? id)
 
     return (
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 animate-fade-in">
         <div>
           <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('session.activeTitle')}</h1>
           <p className="text-sm text-hextech-text mt-1">{t('session.activeLock')}</p>
@@ -233,6 +292,7 @@ export function SessionPage() {
                       losses,
                       gamesPlayed: activeSession.games.length,
                       aiSummary: activeSession.aiSummary,
+                      sessionConclusion: activeSession.sessionConclusion,
                       games: activeSession.games.map((g) => ({
                         champion: g.champion,
                         opponentChampion: g.opponentChampion,
@@ -264,7 +324,11 @@ export function SessionPage() {
         <ActiveSessionGameList sessionId={activeSession.id} games={activeSession.games} onRefresh={loadActiveSession} />
 
         {activeSession.games.length > 0 && (
-          <AISummaryPanel type="session" data={{ sessionId: activeSession.id }} />
+          <SessionInsightPanel
+            games={activeSession.games}
+            objectiveIds={activeSession.objectiveIds}
+            selectedKpiIds={activeSession.selectedKpiIds}
+          />
         )}
 
         {/* End session analysis dialog */}
@@ -303,7 +367,7 @@ export function SessionPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       <div>
         <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('session.newSession')}</h1>
         <p className="text-sm text-hextech-text mt-1">{t('session.chooseDesc')}</p>
@@ -337,7 +401,32 @@ export function SessionPage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* "Same as last session" prefill banner */}
+      {lastConfig && (
+        <Card className="border-hextech-gold/30 bg-hextech-gold/5">
+          <CardContent className="flex items-center justify-between gap-4 p-4">
+            <div className="flex items-start gap-3 min-w-0">
+              <RotateCcw className="mt-0.5 h-4 w-4 shrink-0 text-hextech-gold" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-hextech-gold-bright">
+                  Reprendre la dernière session
+                </p>
+                <p className="truncate text-xs text-hextech-text-dim mt-0.5">
+                  {lastConfig.objectiveIds
+                    .map((id) => allFundamentals.find((f) => f.id === id)?.label ?? id)
+                    .join(' · ')}
+                  {lastConfig.customNote ? ` — ${lastConfig.customNote}` : ''}
+                </p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" onClick={handlePrefill} className="shrink-0 border-hextech-gold/40 text-hextech-gold hover:bg-hextech-gold/10">
+              Utiliser
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
           {step === 'objectives' ? (
             <ObjectiveStep
@@ -371,7 +460,7 @@ export function SessionPage() {
         </div>
 
         <div>
-          <AISuggestionPanel scores={assessmentScores} />
+          <ObjectiveSuggestionPanel assessmentScores={assessmentScores} />
         </div>
       </div>
     </div>
@@ -486,40 +575,14 @@ function ObjectiveStep({
           </div>
         )}
 
-        <div className="space-y-2">
-          <Label>
-            {t('session.fundamental')}
-            {selectedObjectives.length >= 3 && (
-              <span className="ml-2 text-xs text-hextech-text-dim">({t('session.maxReached')})</span>
-            )}
-          </Label>
-          <Select value="" onValueChange={addObjective} disabled={selectedObjectives.length >= 3}>
-            <SelectTrigger>
-              <SelectValue placeholder={t('session.fundamentalPlaceholder')} />
-            </SelectTrigger>
-            <SelectContent>
-              {FUNDAMENTALS.map((cat: FundamentalCategory) => (
-                <div key={cat.id}>
-                  <div className="px-2 py-1.5 text-xs font-semibold text-hextech-gold">{cat.label}</div>
-                  {cat.fundamentals.map((f: Fundamental) => (
-                    <SelectItem
-                      key={f.id}
-                      value={f.id}
-                      disabled={selectedObjectives.includes(f.id)}
-                    >
-                      <span className={cn(selectedObjectives.includes(f.id) && 'opacity-50')}>
-                        {f.label}
-                        {assessmentScores[f.id] != null && (
-                          <span className="ml-2 text-hextech-text-dim">({assessmentScores[f.id]}/10)</span>
-                        )}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </div>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <FundamentalPickerDialog
+          FUNDAMENTALS={FUNDAMENTALS}
+          allFundamentals={allFundamentals}
+          selectedObjectives={selectedObjectives}
+          assessmentScores={assessmentScores}
+          onSelect={addObjective}
+          disabled={selectedObjectives.length >= 3}
+        />
 
         {selectedObjectives.length > 0 && (
           <div className="space-y-2">
@@ -633,8 +696,15 @@ function KpiSelectionStep({
                         )}>
                           {isSelected && <span className="text-black text-[10px] font-bold">✓</span>}
                         </div>
-                        <div>
-                          <div className="font-medium text-xs">{kpi.label}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-xs">{kpi.label}</span>
+                            {kpi.priority && (
+                              <span className="text-[9px] font-semibold uppercase tracking-wide text-hextech-gold border border-hextech-gold/40 rounded px-1 py-0 leading-4">
+                                priorité
+                              </span>
+                            )}
+                          </div>
                           <div className="text-[11px] text-hextech-text-dim leading-tight mt-0.5">{kpi.description}</div>
                         </div>
                       </div>

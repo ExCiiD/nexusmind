@@ -9,6 +9,7 @@ interface Session {
   customNote: string | null
   status: string
   aiSummary: string | null
+  sessionConclusion: string | null
   date: string
   games: Game[]
 }
@@ -50,7 +51,7 @@ interface SessionStore {
 
   loadActiveSession: () => Promise<void>
   createSession: (data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) => Promise<void>
-  endSession: (manualSummary?: string) => Promise<void>
+  endSession: (sessionConclusion?: string) => Promise<void>
   refreshSession: () => Promise<void>
 }
 
@@ -73,10 +74,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ activeSession: session })
   },
 
-  endSession: async (manualSummary?: string) => {
+  endSession: async (sessionConclusion?: string) => {
     const session = get().activeSession
     if (session) {
-      await window.api.endSession(session.id, manualSummary)
+      await window.api.endSession(session.id, undefined, sessionConclusion)
       set({ activeSession: null })
     }
   },

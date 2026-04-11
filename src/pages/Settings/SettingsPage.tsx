@@ -153,7 +153,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       <div>
         <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('settings.title')}</h1>
         <p className="text-sm text-hextech-text mt-1">{t('settings.subtitle')}</p>
