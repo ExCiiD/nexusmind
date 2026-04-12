@@ -1,5 +1,7 @@
 import { ipcMain, clipboard } from 'electron'
 import { getPrisma } from '../database'
+import { existsSync, createReadStream, statSync } from 'fs'
+import { basename } from 'path'
 
 const DISCORD_WEBHOOK_RE = /^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\//
 
@@ -158,5 +160,85 @@ export function registerShareHandlers() {
   ipcMain.handle('share:copy-text', (_event, text: string) => {
     clipboard.writeText(text)
     return { success: true }
+  })
+
+  /**
+   * Sends a video file directly to a Discord webhook via multipart/form-data.
+   * Discord free-tier limit is 8 MB. Throws 'FILE_TOO_LARGE' if exceeded.
+   */
+  ipcMain.handle('share:send-file-to-discord', async (_event, filePath: string, webhookUrl: string, caption?: string) => {
+    if (!DISCORD_WEBHOOK_RE.test(webhookUrl)) throw new Error('INVALID_WEBHOOK_URL')
+    if (!existsSync(filePath)) throw new Error('FILE_NOT_FOUND')
+
+    const fileSize = statSync(filePath).size
+    const MAX_DISCORD_BYTES = 8 * 1024 * 1024 // 8 MB (free tier)
+    if (fileSize > MAX_DISCORD_BYTES) throw new Error('FILE_TOO_LARGE')
+
+    // Build multipart form via native fetch (Node 18+)
+    const { FormData, Blob } = await import('buffer').then(() => require('undici')).catch(() => ({
+      FormData: globalThis.FormData,
+      Blob: globalThis.Blob,
+    }))
+
+    const fileBuffer = await require('fs').promises.readFile(filePath)
+    const form = new FormData()
+
+    if (caption?.trim()) {
+      form.append('payload_json', JSON.stringify({ content: caption.trim().slice(0, 2000) }))
+    }
+
+    form.append('files[0]', new Blob([fileBuffer], { type: 'video/mp4' }), basename(filePath))
+
+    const res = await fetch(webhookUrl, { method: 'POST', body: form })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`Discord API error ${res.status}: ${text.slice(0, 200)}`)
+    }
+    return { success: true, fileSize }
+  })
+
+  /**
+   * Uploads a file to litterbox.catbox.moe for temporary hosting and returns the URL.
+   * Supported expiry: 1h, 12h, 24h, 72h.
+   */
+  ipcMain.handle('share:upload-temp', async (_event, filePath: string, expiryHours: 1 | 12 | 24 | 72) => {
+    if (!existsSync(filePath)) throw new Error('FILE_NOT_FOUND')
+
+    const VALID_HOURS = [1, 12, 24, 72]
+    if (!VALID_HOURS.includes(expiryHours)) throw new Error('INVALID_EXPIRY')
+
+    const fileBuffer = await require('fs').promises.readFile(filePath)
+
+    // Use undici FormData if native FormData is not available in this Node version
+    let FormDataClass: typeof FormData
+    let BlobClass: typeof Blob
+    try {
+      const undici = require('undici')
+      FormDataClass = undici.FormData
+      BlobClass = undici.Blob
+    } catch {
+      FormDataClass = globalThis.FormData
+      BlobClass = globalThis.Blob
+    }
+
+    const form = new FormDataClass()
+    form.append('reqtype', 'fileupload')
+    form.append('time', `${expiryHours}h`)
+    form.append('fileToUpload', new BlobClass([fileBuffer], { type: 'video/mp4' }), basename(filePath))
+
+    const res = await fetch('https://litterbox.catbox.moe/resources/internals/api.php', {
+      method: 'POST',
+      body: form,
+    })
+
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`Litterbox error ${res.status}: ${text.slice(0, 200)}`)
+    }
+
+    const url = (await res.text()).trim()
+    if (!url.startsWith('https://')) throw new Error(`Unexpected litterbox response: ${url.slice(0, 100)}`)
+
+    return { url, expiryHours }
   })
 }

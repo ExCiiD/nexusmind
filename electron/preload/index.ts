@@ -102,6 +102,7 @@ const api = {
   linkRecordingFile: (gameId: string) => ipcRenderer.invoke('recording:link-file', gameId),
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => ipcRenderer.invoke('recording:set-youtube', gameId, youtubeUrl),
   deleteRecording: (gameId: string) => ipcRenderer.invoke('recording:delete', gameId),
+  deleteRecordingById: (recordingId: string) => ipcRenderer.invoke('recording:delete-by-id', recordingId),
   getRecordingScanPaths: () => ipcRenderer.invoke('recording:get-scan-paths'),
   listGamesWithRecordings: () => ipcRenderer.invoke('recording:list-with-games'),
   // Recording — in-app capture
@@ -153,6 +154,34 @@ const api = {
 
   // Coaching (deterministic, rule-based)
   getCoachingPatterns: () => ipcRenderer.invoke('coaching:get-patterns'),
+
+  // Clips
+  createClip: (opts: { recordingId: string; startMs: number; endMs: number; title?: string; linkedNoteText?: string }) =>
+    ipcRenderer.invoke('clip:create', opts),
+  listClips: (recordingId: string) => ipcRenderer.invoke('clip:list', recordingId),
+  deleteClip: (clipId: string) => ipcRenderer.invoke('clip:delete', clipId),
+  setClipYoutubeUrl: (clipId: string, url: string) => ipcRenderer.invoke('clip:set-youtube', clipId, url),
+  setClipTempShare: (clipId: string, url: string, expiryHours: number) =>
+    ipcRenderer.invoke('clip:set-temp-share', clipId, url, expiryHours),
+  generateThumbnail: (recordingId: string) => ipcRenderer.invoke('recording:generate-thumbnail', recordingId),
+
+  // Sharing (files + temp upload)
+  sendFileToDiscord: (filePath: string, webhookUrl: string, caption?: string) =>
+    ipcRenderer.invoke('share:send-file-to-discord', filePath, webhookUrl, caption),
+  uploadToTemp: (filePath: string, expiryHours: number) =>
+    ipcRenderer.invoke('share:upload-temp', filePath, expiryHours),
+
+  // YouTube OAuth + upload
+  youtubeAuthStart: () => ipcRenderer.invoke('youtube:auth-start'),
+  youtubeGetStatus: () => ipcRenderer.invoke('youtube:get-status'),
+  youtubeDisconnect: () => ipcRenderer.invoke('youtube:disconnect'),
+  youtubeUpload: (opts: { filePath: string; title: string; description?: string; visibility?: string }) =>
+    ipcRenderer.invoke('youtube:upload', opts),
+  onYoutubeUploadProgress: (cb: (data: { jobId: string; percent: number }) => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, data: any) => cb(data)
+    ipcRenderer.on('youtube:upload-progress', handler)
+    return () => ipcRenderer.removeListener('youtube:upload-progress', handler)
+  },
 }
 
 contextBridge.exposeInMainWorld('api', api)

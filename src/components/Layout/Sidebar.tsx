@@ -52,7 +52,7 @@ export function Sidebar() {
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/session', icon: Swords, label: t('nav.session') },
-    { to: '/replays', icon: Film, label: 'Replays' },
+    { to: '/record', icon: Film, label: 'Record' },
     { to: '/review', icon: FileSearch, label: t('nav.review') },
     { to: '/history', icon: ClipboardList, label: t('nav.history') },
     { to: '/stats', icon: BarChart3, label: t('nav.detailedStats') },

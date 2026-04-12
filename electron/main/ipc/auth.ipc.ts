@@ -155,6 +155,7 @@ export function registerAuthHandlers() {
       'queueFilter', 'mainRole', 'profileIconId',
       'autoRecord', 'recordingPath', 'externalRecordingPath',
       'recordQuality', 'recordFps', 'recordEncoder',
+      'recordScope', 'recordAllowCustom', 'allowDesktopFallback',
     ])
     const safeData: Record<string, unknown> = {}
     for (const key of Object.keys(data)) {

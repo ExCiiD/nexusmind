@@ -1,8 +1,16 @@
 import { ipcMain, dialog, app } from 'electron'
 import { getPrisma } from '../database'
-import { recordingManager, isFfmpegAvailable } from '../recorder'
-import { existsSync, readdirSync, statSync } from 'fs'
-import { join, extname } from 'path'
+import {
+  recordingManager,
+  isFfmpegAvailable,
+  generateThumbnail,
+  generateThumbnailForRecording,
+  createClip,
+  getFileSize,
+  type ClipOptions,
+} from '../recorder'
+import { existsSync, readdirSync, statSync, unlinkSync } from 'fs'
+import { join, extname, dirname, basename } from 'path'
 import { homedir } from 'os'
 
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv'])
@@ -52,6 +60,12 @@ export function registerRecordingHandlers() {
     if (!user) throw new Error('No user found')
 
     const paths = getKnownRecordingPaths()
+
+    // Include the user's external recording folder if configured
+    if (user.externalRecordingPath) {
+      paths['external'] = user.externalRecordingPath
+    }
+
     const allFiles: Array<{ path: string; createdAt: Date; source: string }> = []
 
     for (const [source, dir] of Object.entries(paths)) {
@@ -80,17 +94,59 @@ export function registerRecordingHandlers() {
       }
     }
 
+    const newlyMatchedIds: Array<{ id: string; filePath: string }> = []
     for (const match of matched) {
-      await prisma.recording.upsert({
+      const rec = await prisma.recording.upsert({
         where: { gameId: match.gameId },
         create: { gameId: match.gameId, filePath: match.filePath, source: match.source },
         update: { filePath: match.filePath, source: match.source },
       })
+      if (!rec.thumbnailPath) newlyMatchedIds.push({ id: rec.id, filePath: match.filePath })
+    }
+
+    // Save unmatched video files as orphaned recordings (gameId = null)
+    const matchedPaths = new Set(matched.map((m) => m.filePath))
+    const existingPaths = new Set(
+      (await prisma.recording.findMany({ select: { filePath: true } }))
+        .map((r) => r.filePath)
+        .filter(Boolean) as string[]
+    )
+    let orphanedCount = 0
+    const newlyOrphanedIds: Array<{ id: string; filePath: string }> = []
+    for (const file of allFiles) {
+      if (!matchedPaths.has(file.path) && !existingPaths.has(file.path)) {
+        const rec = await prisma.recording.create({
+          data: { filePath: file.path, source: file.source, createdAt: file.createdAt },
+        })
+        newlyOrphanedIds.push({ id: rec.id, filePath: file.path })
+        orphanedCount++
+      }
+    }
+
+    // Reset stale thumbnailPath values where the file no longer exists on disk
+    const allWithThumb = await prisma.recording.findMany({
+      where: { thumbnailPath: { not: null } },
+      select: { id: true, thumbnailPath: true },
+    })
+    for (const rec of allWithThumb) {
+      if (rec.thumbnailPath && !existsSync(rec.thumbnailPath)) {
+        await prisma.$executeRawUnsafe(`UPDATE "Recording" SET "thumbnailPath" = NULL WHERE "id" = ?`, rec.id)
+      }
+    }
+
+    // Generate thumbnails for all recordings that still have none
+    const allWithoutThumb = await prisma.recording.findMany({
+      where: { filePath: { not: null }, thumbnailPath: null },
+      select: { id: true, filePath: true },
+    })
+    for (const { id, filePath } of allWithoutThumb) {
+      generateThumbnailForRecording(id, filePath!).catch(() => {})
     }
 
     return {
       scanned: allFiles.length,
       matched: matched.length,
+      orphaned: orphanedCount,
       paths: Object.entries(paths).map(([source, dir]) => ({
         source,
         dir,
@@ -124,11 +180,16 @@ export function registerRecordingHandlers() {
     const result = await dialog.showOpenDialog(dialogOptions)
     if (result.canceled || !result.filePaths[0]) return null
 
-    return prisma.recording.upsert({
+    const rec = await prisma.recording.upsert({
       where: { gameId },
       create: { gameId, filePath: result.filePaths[0], source: 'manual' },
       update: { filePath: result.filePaths[0], source: 'manual' },
     })
+
+    // Generate thumbnail in background
+    generateThumbnailForRecording(rec.id, result.filePaths[0]).catch(() => {})
+
+    return rec
   })
 
   ipcMain.handle('recording:set-youtube', async (_event, gameId: string, youtubeUrl: string | null) => {
@@ -146,8 +207,19 @@ export function registerRecordingHandlers() {
     return { success: true }
   })
 
+  ipcMain.handle('recording:delete-by-id', async (_event, recordingId: string) => {
+    const prisma = getPrisma()
+    await prisma.recording.delete({ where: { id: recordingId } })
+    return { success: true }
+  })
+
   ipcMain.handle('recording:get-scan-paths', async () => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
     const paths = getKnownRecordingPaths()
+    if (user?.externalRecordingPath) {
+      paths['external'] = user.externalRecordingPath
+    }
     return Object.entries(paths).map(([source, dir]) => ({
       source,
       dir,
@@ -190,12 +262,14 @@ export function registerRecordingHandlers() {
     if (gameId) {
       try {
         const prisma = getPrisma()
-        await prisma.recording.upsert({
+        const rec = await prisma.recording.upsert({
           where: { gameId },
           create: { gameId, filePath: path, source: 'capture' },
           update: { filePath: path, source: 'capture' },
         })
         recordingManager.clearPendingRecording()
+        // Generate thumbnail in background
+        generateThumbnailForRecording(rec.id, path).catch(() => {})
       } catch (err) {
         console.error('[recording] Failed to link manual capture:', err)
       }
@@ -230,12 +304,15 @@ export function registerRecordingHandlers() {
         },
       },
       where: {
-        game: { session: { userId: user.id } },
+        OR: [
+          { game: { session: { userId: user.id } } },
+          { gameId: null },
+        ],
       },
       orderBy: { createdAt: 'desc' },
     })
 
-    const matchIds = recordings.map((r) => r.game.matchId).filter(Boolean) as string[]
+    const matchIds = recordings.map((r) => r.game?.matchId).filter(Boolean) as string[]
     const caches = await prisma.matchCache.findMany({
       where: { matchId: { in: matchIds } },
       select: { matchId: true, matchJson: true },
@@ -244,7 +321,48 @@ export function registerRecordingHandlers() {
 
     const defaultName = user.displayName || user.summonerName
 
+    // Fetch clip counts per recording
+    const recordingIds = recordings.map((r) => r.id)
+    const clipCounts: Array<{ recordingId: string; cnt: number }> = recordingIds.length > 0
+      ? await prisma.$queryRawUnsafe(
+          `SELECT "recordingId", COUNT(*) as cnt FROM "Clip" WHERE "recordingId" IN (${recordingIds.map(() => '?').join(',')}) GROUP BY "recordingId"`,
+          ...recordingIds,
+        )
+      : []
+    const clipCountMap = new Map(clipCounts.map((r) => [r.recordingId, Number(r.cnt)]))
+
     return recordings.map((rec) => {
+      // Orphaned recording: no linked game
+      if (!rec.game) {
+        const fileName = rec.filePath
+          ? rec.filePath.replace(/\\/g, '/').split('/').pop() ?? 'Recording'
+          : 'Recording'
+        return {
+          recordingId: rec.id,
+          gameId: null,
+          filePath: rec.filePath,
+          youtubeUrl: rec.youtubeUrl,
+          source: rec.source,
+          thumbnailPath: rec.thumbnailPath ?? null,
+          clipCount: clipCountMap.get(rec.id) ?? 0,
+          champion: fileName,
+          opponentChampion: null,
+          win: false,
+          kills: 0,
+          deaths: 0,
+          assists: 0,
+          duration: 0,
+          gameEndAt: rec.createdAt.toISOString(),
+          hasReview: false,
+          reviewId: null,
+          sessionObjectiveId: '',
+          queueType: 'unknown',
+          isSessionEligible: false,
+          accountName: undefined,
+          isOrphaned: true,
+        }
+      }
+
       let accountName = defaultName
       const raw = rec.game.matchId ? cacheByMatchId.get(rec.game.matchId) : null
       if (raw) {
@@ -265,6 +383,8 @@ export function registerRecordingHandlers() {
         filePath: rec.filePath,
         youtubeUrl: rec.youtubeUrl,
         source: rec.source,
+        thumbnailPath: rec.thumbnailPath ?? null,
+        clipCount: clipCountMap.get(rec.id) ?? 0,
         champion: rec.game.champion,
         opponentChampion: rec.game.opponentChampion,
         win: rec.game.win,
@@ -275,9 +395,131 @@ export function registerRecordingHandlers() {
         gameEndAt: rec.game.gameEndAt.toISOString(),
         hasReview: rec.game.review !== null,
         reviewId: rec.game.review?.id ?? null,
-        sessionObjectiveId: rec.game.session.objectiveId,
+        sessionObjectiveId: rec.game.session?.objectiveId ?? '',
+        queueType: rec.game.queueType,
+        isSessionEligible: rec.game.isSessionEligible,
         accountName,
+        isOrphaned: false,
       }
     })
+  })
+
+  // ── Thumbnail ────────────────────────────────────────────────────────────────
+
+  ipcMain.handle('recording:generate-thumbnail', async (_e, recordingId: string) => {
+    const prisma = getPrisma()
+    const rec = await prisma.recording.findUnique({ where: { id: recordingId } })
+    if (!rec?.filePath) return null
+    return generateThumbnailForRecording(recordingId, rec.filePath)
+  })
+
+  // ── Clip handlers ────────────────────────────────────────────────────────────
+
+  ipcMain.handle('clip:create', async (_e, opts: {
+    recordingId: string
+    startMs: number
+    endMs: number
+    title?: string
+    linkedNoteText?: string
+  }) => {
+    const prisma = getPrisma()
+    const rec = await prisma.recording.findUnique({ where: { id: opts.recordingId } })
+    if (!rec?.filePath || !existsSync(rec.filePath)) {
+      throw new Error('Source recording file not found')
+    }
+
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    const outputDir = recordingManager.getRecordingsDir(user?.recordingPath)
+
+    const clipOptions: ClipOptions = {
+      recordingId: opts.recordingId,
+      filePath: rec.filePath,
+      title: opts.title,
+      startMs: opts.startMs,
+      endMs: opts.endMs,
+      linkedNoteText: opts.linkedNoteText,
+      outputDir,
+    }
+
+    const clipPath = await createClip(clipOptions)
+    if (!clipPath) throw new Error('Clip creation failed')
+
+    // Generate thumbnail for the clip
+    const thumbPath = join(dirname(clipPath), `${basename(clipPath, '.mp4')}.thumb.jpg`)
+    const thumbOffset = Math.min(30, ((opts.endMs - opts.startMs) / 1000) * 0.12)
+    const thumbResult = await generateThumbnail(clipPath, thumbPath, thumbOffset)
+
+    const clip = await prisma.$executeRawUnsafe(
+      `INSERT INTO "Clip" ("id","recordingId","filePath","thumbnailPath","title","startMs","endMs","linkedNoteText","createdAt")
+       VALUES (?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)`,
+      `clip_${Date.now()}`,
+      opts.recordingId,
+      clipPath,
+      thumbResult ?? null,
+      opts.title ?? null,
+      opts.startMs,
+      opts.endMs,
+      opts.linkedNoteText ?? null,
+    )
+
+    return {
+      filePath: clipPath,
+      thumbnailPath: thumbResult ?? null,
+      title: opts.title ?? null,
+      startMs: opts.startMs,
+      endMs: opts.endMs,
+      fileSize: getFileSize(clipPath),
+    }
+  })
+
+  ipcMain.handle('clip:list', async (_e, recordingId: string) => {
+    const prisma = getPrisma()
+    const clips: any[] = await prisma.$queryRawUnsafe(
+      `SELECT * FROM "Clip" WHERE "recordingId" = ? ORDER BY "createdAt" ASC`,
+      recordingId,
+    )
+    return clips.map((c) => ({ ...c, fileSize: getFileSize(c.filePath) }))
+  })
+
+  ipcMain.handle('clip:delete', async (_e, clipId: string) => {
+    const prisma = getPrisma()
+    const rows: any[] = await prisma.$queryRawUnsafe(
+      `SELECT * FROM "Clip" WHERE "id" = ?`,
+      clipId,
+    )
+    const clip = rows[0]
+    if (!clip) return false
+
+    // Delete video file
+    if (clip.filePath && existsSync(clip.filePath)) {
+      try { unlinkSync(clip.filePath) } catch { /* ignore */ }
+    }
+    // Delete thumbnail
+    if (clip.thumbnailPath && existsSync(clip.thumbnailPath)) {
+      try { unlinkSync(clip.thumbnailPath) } catch { /* ignore */ }
+    }
+
+    await prisma.$executeRawUnsafe(`DELETE FROM "Clip" WHERE "id" = ?`, clipId)
+    return true
+  })
+
+  ipcMain.handle('clip:set-youtube', async (_e, clipId: string, youtubeUrl: string) => {
+    await getPrisma().$executeRawUnsafe(
+      `UPDATE "Clip" SET "youtubeUrl" = ? WHERE "id" = ?`,
+      youtubeUrl,
+      clipId,
+    )
+    return true
+  })
+
+  ipcMain.handle('clip:set-temp-share', async (_e, clipId: string, url: string, expiryHours: number) => {
+    const expiry = new Date(Date.now() + expiryHours * 3600 * 1000).toISOString()
+    await getPrisma().$executeRawUnsafe(
+      `UPDATE "Clip" SET "tempShareUrl" = ?, "tempShareExpiry" = ? WHERE "id" = ?`,
+      url,
+      expiry,
+      clipId,
+    )
+    return true
   })
 }

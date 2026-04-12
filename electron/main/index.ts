@@ -5,11 +5,11 @@ import { app, BrowserWindow, ipcMain, protocol } from 'electron'
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
 
 import { join } from 'path'
-import { createReadStream, statSync } from 'fs'
+import { createReadStream, statSync, readFileSync, existsSync } from 'fs'
 import { autoUpdater } from 'electron-updater'
 import { initDatabase, getPrisma } from './database'
 import { GameDetector } from './gameDetector'
-import { recordingManager, isFfmpegAvailable } from './recorder'
+import { recordingManager, isFfmpegAvailable, generateThumbnailForRecording } from './recorder'
 import { registerAuthHandlers } from './ipc/auth.ipc'
 import { registerSessionHandlers } from './ipc/session.ipc'
 import { registerReviewHandlers } from './ipc/review.ipc'
@@ -23,6 +23,7 @@ import { registerRecordingHandlers } from './ipc/recording.ipc'
 import { registerExternalReviewHandlers } from './ipc/externalReview.ipc'
 import { registerShareHandlers } from './ipc/share.ipc'
 import { registerCoachingHandlers } from './ipc/coaching.ipc'
+import { registerYoutubeHandlers } from './ipc/youtube.ipc'
 
 // Register before app is ready — allows the renderer to load local files via nxm:// URLs
 // This bypasses the cross-origin restriction that blocks file:// in dev mode
@@ -86,15 +87,28 @@ async function bootstrap() {
       .replace(/\//g, '\\')
       .replace(/^\\/,  '')
 
-    // Security: only serve video files — block directory traversal and non-media access
-    const ALLOWED_EXTS = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv']
+
+    // Security: only serve media files — block directory traversal and arbitrary access
+    const ALLOWED_EXTS = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv', '.jpg', '.jpeg', '.png', '.webp']
     const ext = filePath.slice(filePath.lastIndexOf('.')).toLowerCase()
     if (!ALLOWED_EXTS.includes(ext)) {
-      return new Response('Forbidden: not a video file', { status: 403 })
+      return new Response('Forbidden: not a media file', { status: 403 })
     }
     const normalized = filePath.replace(/\\/g, '/').toLowerCase()
     if (normalized.includes('..')) {
       return new Response('Forbidden: path traversal', { status: 403 })
+    }
+
+    // Serve images directly (no Range support needed)
+    const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp']
+    if (IMAGE_EXTS.includes(ext)) {
+      try {
+        const data = readFileSync(filePath)
+        const mime = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg'
+        return new Response(data, { status: 200, headers: { 'Content-Type': mime, 'Cache-Control': 'max-age=3600' } })
+      } catch {
+        return new Response('File not found', { status: 404 })
+      }
     }
 
     let size: number
@@ -167,6 +181,7 @@ async function bootstrap() {
   registerExternalReviewHandlers()
   registerShareHandlers()
   registerCoachingHandlers()
+  registerYoutubeHandlers()
 
   createWindow()
   registerDevHandlers(mainWindow!)
@@ -192,7 +207,7 @@ async function bootstrap() {
       if (pendingRecording && matchData.game?.id) {
         try {
           const prisma = getPrisma()
-          await prisma.recording.upsert({
+          const rec = await prisma.recording.upsert({
             where: { gameId: matchData.game.id },
             create: { gameId: matchData.game.id, filePath: pendingRecording, source: 'capture' },
             update: { filePath: pendingRecording, source: 'capture' },
@@ -204,9 +219,19 @@ async function bootstrap() {
             filePath: pendingRecording,
           })
           console.log(`[main] Auto-linked recording to game ${matchData.game.id}`)
+          // Generate thumbnail in the background (non-blocking)
+          generateThumbnailForRecording(rec.id, pendingRecording).catch((err) =>
+            console.warn('[main] Thumbnail generation failed:', err),
+          )
         } catch (err) {
           console.error('[main] Failed to link recording:', err)
         }
+      }
+
+      // Only send the game:ended event to the renderer if the queue is session-eligible.
+      // Non-eligible games (ARAM, Arena, etc.) are recorded but don't auto-open a review.
+      if (matchData.isSessionEligible === false) {
+        console.log('[main] Non-eligible queue — suppressing review auto-open')
       }
     },
 

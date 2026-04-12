@@ -1,5 +1,5 @@
 import https from 'https'
-import { getMatch, getMatchIds, extractPlayerStats } from './riotClient'
+import { getMatch, getMatchIds, extractPlayerStats, isQueueSessionEligible } from './riotClient'
 import { getPrisma } from './database'
 
 const LIVE_CLIENT_HOST = '127.0.0.1'
@@ -181,16 +181,20 @@ export class GameDetector {
 
     if (!latestMatchId || !stats) {
       console.log('[detector] No valid match found after all retries — clearing pending recording')
-      this.onGameEnd({ game: null, stats: null, sessionId: null, isOffRole: false })
+      this.onGameEnd({ game: null, stats: null, sessionId: null, isOffRole: false, isSessionEligible: false })
       return
     }
+
+    const queueType = stats.queueType ?? 'unknown'
+    const sessionEligible = isQueueSessionEligible(queueType)
+    console.log(`[detector] Queue type: ${queueType}, session eligible: ${sessionEligible}`)
 
     // If the game was already imported from history (e.g. retroactive session),
     // still link the pending recording to it instead of discarding it.
     const existing = await prisma.game.findUnique({ where: { matchId: latestMatchId } })
     if (existing) {
       console.log('[detector] Latest match already imported — linking recording to existing game', existing.id)
-      this.onGameEnd({ game: existing, stats, sessionId: existing.sessionId, isOffRole: false })
+      this.onGameEnd({ game: existing, stats, sessionId: existing.sessionId, isOffRole: false, isSessionEligible: sessionEligible })
       return
     }
 
@@ -198,7 +202,7 @@ export class GameDetector {
       where: { userId: user.id, status: 'active' },
     })
 
-    if (activeSession) {
+    if (activeSession && sessionEligible) {
       const game = await prisma.game.create({
         data: {
           sessionId: activeSession.id,
@@ -213,6 +217,8 @@ export class GameDetector {
           duration: stats.duration,
           win: stats.win,
           gameEndAt: stats.gameEndAt,
+          queueType,
+          isSessionEligible: true,
         },
       })
 
@@ -228,12 +234,16 @@ export class GameDetector {
         console.log(`[detector] Off-role detected: played ${stats.role}, main role is ${user.mainRole}`)
       }
 
-      this.onGameEnd({ game, stats, sessionId: activeSession.id, isOffRole })
+      this.onGameEnd({ game, stats, sessionId: activeSession.id, isOffRole, isSessionEligible: true })
     } else {
-      // No active session — still fire onGameEnd so the recording can be linked
-      // and the window is focused. The renderer will show review without a session context.
-      console.log('[detector] No active session — firing onGameEnd without game row (recording link only)')
-      this.onGameEnd({ game: null, stats, sessionId: null, isOffRole: false })
+      // Either no active session or non-eligible queue (ARAM, Arena, custom…).
+      // Still fire onGameEnd so the recording can be linked, but skip review auto-open.
+      if (!sessionEligible) {
+        console.log(`[detector] Non-eligible queue (${queueType}) — recording will be saved but review skipped`)
+      } else {
+        console.log('[detector] No active session — firing onGameEnd without game row (recording link only)')
+      }
+      this.onGameEnd({ game: null, stats, sessionId: null, isOffRole: false, isSessionEligible: sessionEligible })
     }
   }
 }

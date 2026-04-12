@@ -11,7 +11,8 @@ import { HistoryPage } from '@/pages/History/HistoryPage'
 import { DetailedStatsPage } from '@/pages/DetailedStats/DetailedStatsPage'
 import { StatsLandingPage } from '@/pages/DetailedStats/StatsLandingPage'
 import { SettingsPage } from '@/pages/Settings/SettingsPage'
-import { ReplaysPage } from '@/pages/Replays/ReplaysPage'
+import { RecordPage } from '@/pages/Record/RecordPage'
+import { RecordPlayerPage } from '@/pages/Record/RecordPlayerPage'
 import { ExternalReviewPage } from '@/pages/Review/ExternalReviewPage'
 import { DevToolbar } from '@/components/Dev/DevToolbar'
 import { UpdateBanner } from '@/components/UpdateBanner'
@@ -33,8 +34,10 @@ export function App() {
     const unsubscribe = window.api.onGameEnd((data) => {
       useUserStore.getState().setGameEndData(data)
 
-      // Only open the review page when a game row was actually created in the session.
-      if (data?.game?.id) {
+      // Only open the review page when a game row was created AND the queue is session-eligible
+      // (ranked SoloQ/Flex). Non-eligible queues (ARAM, Arena, Custom…) are recorded but do
+      // not trigger an auto-review navigation.
+      if (data?.game?.id && data?.isSessionEligible !== false) {
         window.location.hash = '#/review'
       }
 
@@ -92,7 +95,9 @@ export function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/session" element={<SessionPage />} />
-            <Route path="/replays" element={<ReplaysPage />} />
+            <Route path="/replays" element={<Navigate to="/record" replace />} />
+            <Route path="/record" element={<RecordPage />} />
+            <Route path="/record/:recordingId" element={<RecordPlayerPage />} />
             <Route path="/review" element={<ReviewPage />} />
             <Route path="/external-review/:id" element={<ExternalReviewPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />

@@ -125,6 +125,7 @@ export type NexusMindAPI = {
   linkRecordingFile: (gameId: string) => Promise<any>
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => Promise<any>
   deleteRecording: (gameId: string) => Promise<{ success: boolean }>
+  deleteRecordingById: (recordingId: string) => Promise<{ success: boolean }>
   getRecordingScanPaths: () => Promise<Array<{ source: string; dir: string; exists: boolean }>>
   listGamesWithRecordings: () => Promise<Array<{
     recordingId: string
@@ -171,13 +172,31 @@ export type NexusMindAPI = {
   pickExternalReviewFile: () => Promise<string | null>
   deleteExternalReview: (id: string) => Promise<{ success: boolean }>
 
-  // Sharing
+  // Clips
+  createClip: (opts: { recordingId: string; startMs: number; endMs: number; title?: string; linkedNoteText?: string }) => Promise<{ id: string }>
+  listClips: (recordingId: string) => Promise<Array<{ id: string; title: string | null; startMs: number; endMs: number; filePath: string | null; youtubeUrl: string | null; tempShareUrl: string | null; createdAt: string }>>
+  deleteClip: (clipId: string) => Promise<{ success: boolean }>
+  setClipYoutubeUrl: (clipId: string, url: string) => Promise<{ success: boolean }>
+  setClipTempShare: (clipId: string, url: string, expiryHours: number) => Promise<{ success: boolean }>
+  generateThumbnail: (recordingId: string) => Promise<{ success: boolean; path?: string }>
+
+  // Sharing (files + temp upload)
   sendToDiscord: (embeds: object[], webhookUrl: string) => Promise<{ success: boolean }>
+  sendFileToDiscord: (filePath: string, webhookUrl: string, caption?: string) => Promise<{ success: boolean }>
+  uploadToTemp: (filePath: string, expiryHours: number) => Promise<{ url: string; expiresAt: string }>
   copyReviewText: (text: string) => Promise<void>
   listWebhooks: () => Promise<DiscordWebhook[]>
   addWebhook: (name: string, url: string) => Promise<DiscordWebhook>
   renameWebhook: (id: string, name: string) => Promise<{ success: boolean }>
   deleteWebhook: (id: string) => Promise<{ success: boolean }>
+
+  // YouTube OAuth + upload
+  youtubeAuthStart: () => Promise<{ url: string }>
+  youtubeGetStatus: () => Promise<{ connected: boolean; channelName?: string; email?: string }>
+  youtubeDisconnect: () => Promise<{ success: boolean }>
+  youtubeUpload: (opts: { filePath: string; title: string; description?: string; visibility?: string }) => Promise<{ jobId: string }>
+  onYoutubeUploadProgress: (cb: (data: { jobId: string; percent: number }) => void) => () => void
+
   getCoachingPatterns: () => Promise<CoachingPatterns | null>
 }
 

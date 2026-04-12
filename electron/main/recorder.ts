@@ -1,7 +1,8 @@
 import { spawn, ChildProcess } from 'child_process'
 import { app, screen } from 'electron'
-import { join } from 'path'
-import { existsSync, mkdirSync } from 'fs'
+import { join, basename, dirname, extname } from 'path'
+import { existsSync, mkdirSync, statSync } from 'fs'
+import { getPrisma } from './database'
 
 let ffmpegBin: string | null = null
 try {
@@ -246,3 +247,137 @@ export class RecordingManager {
 }
 
 export const recordingManager = new RecordingManager()
+
+// ── Thumbnail generation ──────────────────────────────────────────────────────
+
+/**
+ * Extracts a single JPEG frame from a video file at the given offset (seconds).
+ * Returns the output path, or null if ffmpeg is unavailable / the file is missing.
+ */
+export async function generateThumbnail(
+  filePath: string,
+  outputPath: string,
+  offsetSecs: number,
+): Promise<string | null> {
+  if (!ffmpegBin || !existsSync(ffmpegBin)) return null
+  if (!existsSync(filePath)) return null
+
+  return new Promise((resolve) => {
+    const args = [
+      '-ss', String(Math.max(0, offsetSecs)),
+      '-i', filePath,
+      '-frames:v', '1',
+      '-q:v', '2',
+      '-y',
+      outputPath,
+    ]
+
+    const proc = spawn(ffmpegBin!, args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    proc.on('exit', (code) => {
+      if (code === 0 && existsSync(outputPath)) {
+        resolve(outputPath)
+      } else {
+        resolve(null)
+      }
+    })
+    proc.on('error', () => resolve(null))
+    // 15-second safety timeout
+    setTimeout(() => { try { proc.kill() } catch { /* ok */ } resolve(null) }, 15_000)
+  })
+}
+
+/**
+ * Convenience wrapper that generates a thumbnail for a DB Recording row,
+ * deriving the offset from 12% of the video duration (capped at 30s),
+ * and persists the resulting path in the Recording table.
+ */
+export async function generateThumbnailForRecording(
+  recordingId: string,
+  filePath: string,
+): Promise<string | null> {
+  if (!existsSync(filePath)) {
+    console.warn('[recorder] Thumbnail skipped — file not found:', filePath)
+    return null
+  }
+
+  // Store thumbnails in a dedicated app-data folder to ensure write permission,
+  // regardless of where the source video lives (Insight, OBS, external drive, etc.)
+  const thumbDir = join(app.getPath('userData'), 'thumbnails')
+  if (!existsSync(thumbDir)) mkdirSync(thumbDir, { recursive: true })
+  const thumbPath = join(thumbDir, `${recordingId}.thumb.jpg`)
+
+  const result = await generateThumbnail(filePath, thumbPath, 1)
+
+  if (result) {
+    try {
+      const prisma = getPrisma()
+      await prisma.$executeRawUnsafe(
+        `UPDATE "Recording" SET "thumbnailPath" = ? WHERE "id" = ?`,
+        result,
+        recordingId,
+      )
+    } catch (err) {
+      console.warn('[recorder] Failed to persist thumbnail path:', err)
+    }
+  }
+  return result
+}
+
+// ── Clip creation ─────────────────────────────────────────────────────────────
+
+export interface ClipOptions {
+  recordingId: string
+  filePath: string
+  title?: string
+  startMs: number
+  endMs: number
+  linkedNoteText?: string
+  outputDir: string
+}
+
+/**
+ * Cuts a lossless clip from an existing recording using ffmpeg stream copy.
+ * Returns the output file path, or null on failure.
+ */
+export async function createClip(options: ClipOptions): Promise<string | null> {
+  if (!ffmpegBin || !existsSync(ffmpegBin)) return null
+  if (!existsSync(options.filePath)) return null
+
+  const clipId = `clip_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  const clipsDir = join(options.outputDir, 'clips')
+  if (!existsSync(clipsDir)) mkdirSync(clipsDir, { recursive: true })
+
+  const outputPath = join(clipsDir, `${clipId}.mp4`)
+  const startSecs = options.startMs / 1000
+  const endSecs = options.endMs / 1000
+
+  return new Promise((resolve) => {
+    const args = [
+      '-ss', String(startSecs),
+      '-to', String(endSecs),
+      '-i', options.filePath,
+      '-c', 'copy',
+      '-movflags', '+faststart',
+      '-avoid_negative_ts', 'make_zero',
+      '-y',
+      outputPath,
+    ]
+
+    const proc = spawn(ffmpegBin!, args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    proc.on('exit', (code) => {
+      resolve(code === 0 && existsSync(outputPath) ? outputPath : null)
+    })
+    proc.on('error', () => resolve(null))
+    // 60-second safety timeout for large clips
+    setTimeout(() => { try { proc.kill() } catch { /* ok */ } resolve(null) }, 60_000)
+  })
+}
+
+/** Returns the size of a file in bytes, or 0 if it doesn't exist. */
+export function getFileSize(filePath: string): number {
+  try {
+    return statSync(filePath).size
+  } catch {
+    return 0
+  }
+}

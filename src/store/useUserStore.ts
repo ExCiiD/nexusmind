@@ -23,6 +23,9 @@ interface User {
   recordQuality: string
   recordFps: number
   recordEncoder: string
+  recordScope: string
+  recordAllowCustom: boolean
+  allowDesktopFallback: boolean
 }
 
 interface UserStore {

@@ -8,7 +8,7 @@ import { useUserStore } from '@/store/useUserStore'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 import { useDiscordWebhooks, type DiscordWebhook } from '@/hooks/useDiscordWebhooks'
-import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Target, Video, Circle, FolderOpen, X, Pencil, Check, FlaskConical } from 'lucide-react'
+import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Target, Video, Circle, FolderOpen, X, Pencil, Check, FlaskConical, Youtube } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const REGIONS = [
@@ -340,6 +340,88 @@ export function SettingsPage() {
             </div>
           </div>
 
+          {/* ── Record scope ─────────────────────────────────────────── */}
+          <div className="space-y-2 pt-2 border-t border-hextech-border-dim/40">
+            <p className="text-sm font-medium text-hextech-text-bright">Record queue types</p>
+            <div className="space-y-1.5">
+              {([
+                { value: 'ranked_only', label: 'Ranked only', desc: 'SoloQ + Flex (default)' },
+                { value: 'all', label: 'All game modes', desc: 'Includes ARAM, Arena, Normal…' },
+                { value: 'custom', label: 'Custom selection', desc: 'Choose which modes to record' },
+              ] as const).map(({ value, label, desc }) => (
+                <label key={value} className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="recordScope"
+                    value={value}
+                    checked={(user?.recordScope ?? 'ranked_only') === value}
+                    onChange={async () => {
+                      await window.api.updateUser({ recordScope: value })
+                      await loadUser()
+                    }}
+                    className="accent-hextech-gold"
+                  />
+                  <span className="text-sm text-hextech-text-bright">{label}</span>
+                  <span className="text-xs text-hextech-text-dim">{desc}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* Custom selection checkboxes */}
+            {(user?.recordScope ?? 'ranked_only') === 'custom' && (
+              <div className="ml-6 mt-2 grid grid-cols-2 gap-1.5">
+                {([
+                  { key: 'recordModeAram', label: 'ARAM' },
+                  { key: 'recordModeArena', label: 'Arena' },
+                  { key: 'recordModeNormal', label: 'Normal / Quickplay' },
+                  { key: 'recordAllowCustom', label: 'Custom games' },
+                ] as const).map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={key === 'recordAllowCustom' ? (user?.recordAllowCustom ?? false) : false}
+                      onChange={async (e) => {
+                        if (key === 'recordAllowCustom') {
+                          await window.api.updateUser({ recordAllowCustom: e.target.checked })
+                          await loadUser()
+                        }
+                      }}
+                      className="accent-hextech-gold rounded"
+                    />
+                    <span className="text-xs text-hextech-text">{label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {/* Desktop fallback toggle */}
+            <div className="flex items-center justify-between pt-1">
+              <div>
+                <p className="text-sm text-hextech-text-bright">Allow desktop fallback</p>
+                <p className="text-xs text-hextech-text-dim mt-0.5">
+                  Falls back to full-screen capture if the LoL window isn't detected.
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  await window.api.updateUser({ allowDesktopFallback: !(user?.allowDesktopFallback ?? true) })
+                  await loadUser()
+                }}
+                className={cn(
+                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                  (user?.allowDesktopFallback ?? true) ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
+                )}
+              >
+                <span
+                  className={cn(
+                    'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
+                    (user?.allowDesktopFallback ?? true) ? 'translate-x-6' : 'translate-x-1',
+                  )}
+                />
+              </button>
+            </div>
+          </div>
+
           {/* ── Recordings folder ─────────────────────────────────────── */}
           <div className="space-y-2 pt-2 border-t border-hextech-border-dim/40">
             <p className="text-sm font-medium text-hextech-text-bright">Recordings folder</p>
@@ -434,6 +516,9 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ── YouTube upload ──────────────────────────────────────────────────── */}
+      <YouTubeCard />
 
       {/* ── Discord sharing ──────────────────────────────────────────────────── */}
       <DiscordWebhookCard />
@@ -871,6 +956,99 @@ function DiscordWebhookCard() {
         <p className="text-[11px] text-hextech-text-dim">
           Webhook URLs are stored locally and only ever sent to Discord.
         </p>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ── YouTube Card ─────────────────────────────────────────────────────────────
+
+function YouTubeCard() {
+  const [status, setStatus] = useState<{ connected: boolean; channelName: string | null }>({
+    connected: false,
+    channelName: null,
+  })
+  const [connecting, setConnecting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    ;(window.api as any).youtubeGetStatus().then(setStatus).catch(() => {})
+  }, [])
+
+  const handleConnect = async () => {
+    setConnecting(true)
+    setError(null)
+    try {
+      const result = await (window.api as any).youtubeAuthStart()
+      setStatus({ connected: result.connected, channelName: result.channelName })
+    } catch (err: any) {
+      setError(err?.message ?? 'Connection failed')
+    } finally {
+      setConnecting(false)
+    }
+  }
+
+  const handleDisconnect = async () => {
+    await (window.api as any).youtubeDisconnect()
+    setStatus({ connected: false, channelName: null })
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Youtube className="h-5 w-5 text-red-500" />
+          YouTube Upload
+        </CardTitle>
+        <CardDescription>
+          Connect your YouTube account to upload recordings and clips directly from NexusMind.
+          Requires a Google Cloud project with YouTube Data API v3 enabled.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {status.connected ? (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-green-400" />
+              <div>
+                <p className="text-sm font-medium text-hextech-text-bright">Connected</p>
+                {status.channelName && (
+                  <p className="text-xs text-hextech-text-dim">{status.channelName}</p>
+                )}
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-[#FF4655] border-[#FF4655]/30 hover:bg-[#FF4655]/10 text-xs"
+              onClick={handleDisconnect}
+            >
+              Disconnect
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="rounded-md border border-orange-500/30 bg-orange-500/5 px-3 py-2 text-xs text-orange-400">
+              <p className="font-medium mb-1">Setup required</p>
+              <p>Add <code className="font-mono bg-white/5 px-1 rounded">MAIN_VITE_GOOGLE_CLIENT_ID</code> and <code className="font-mono bg-white/5 px-1 rounded">MAIN_VITE_GOOGLE_CLIENT_SECRET</code> to your <code className="font-mono bg-white/5 px-1 rounded">.env</code> file to enable YouTube uploads.</p>
+            </div>
+            {error && (
+              <p className="text-xs text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/30 rounded px-3 py-2">
+                {error}
+              </p>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 text-red-400 border-red-500/30 hover:bg-red-500/10"
+              onClick={handleConnect}
+              disabled={connecting}
+            >
+              {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Youtube className="h-4 w-4" />}
+              {connecting ? 'Connecting…' : 'Connect YouTube'}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

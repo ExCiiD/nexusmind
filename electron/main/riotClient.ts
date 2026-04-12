@@ -222,11 +222,35 @@ export async function getMatch(
   return riotFetchWithRoutingFallback(path, routing)
 }
 
+/**
+ * Maps a Riot queueId + gameMode string to a normalized NexusMind queue type.
+ * Queue IDs: 420=SoloQ, 440=Flex, 450=ARAM, 1700/1710=Arena, 0=Custom/Practice
+ */
+export function resolveQueueType(queueId: number, gameMode: string): string {
+  switch (queueId) {
+    case 420: return 'soloq'
+    case 440: return 'flex'
+    case 450: return 'aram'
+    case 1700:
+    case 1710: return 'arena'
+    case 0: return gameMode === 'CLASSIC' || gameMode === 'CUSTOM' ? 'custom' : 'normal'
+    default: return 'normal'
+  }
+}
+
+/** Returns true for ranked modes where session coaching is meaningful. */
+export function isQueueSessionEligible(queueType: string): boolean {
+  return queueType === 'soloq' || queueType === 'flex'
+}
+
 export function extractPlayerStats(matchData: any, puuid: string) {
   const participant = matchData.info.participants.find((p: any) => p.puuid === puuid)
   if (!participant) return null
 
   const opponent = findLaneOpponent(matchData, puuid)
+  const queueId: number = matchData.info.queueId ?? 0
+  const gameMode: string = matchData.info.gameMode ?? 'CLASSIC'
+  const queueType = resolveQueueType(queueId, gameMode)
 
   return {
     champion: participant.championName,
@@ -241,6 +265,9 @@ export function extractPlayerStats(matchData: any, puuid: string) {
     gameEndAt: new Date(matchData.info.gameEndTimestamp),
     matchId: matchData.metadata.matchId,
     opponentChampion: opponent?.championName ?? null,
+    queueId,
+    gameMode,
+    queueType,
   }
 }
 
