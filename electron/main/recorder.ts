@@ -3,6 +3,12 @@ import { app, screen } from 'electron'
 import { join, basename, dirname, extname } from 'path'
 import { existsSync, mkdirSync, statSync } from 'fs'
 import { getPrisma } from './database'
+import {
+  LOL_WINDOW_TITLES_ORDERED,
+  buildProbeGdigrabWindowArgs,
+  buildGdigrabWindowRecordingArgs,
+  buildGdigrabDesktopRecordingArgs,
+} from './recordingCaptureArgs'
 
 let ffmpegBin: string | null = null
 try {
@@ -39,31 +45,32 @@ const QUALITY_HEIGHT: Record<string, number> = {
   '720p': 720,
 }
 
-/** Window title used by League of Legends on Windows. */
-const LOL_WINDOW_TITLE = 'League of Legends (TM) Client'
-
 /**
- * Checks whether League of Legends is running as a foreground window by probing
- * ffmpeg for one frame. Returns true if the capture source is valid.
+ * Probes gdigrab for a single frame on the given window title.
  */
-async function isLolWindowAvailable(ffmpegPath: string): Promise<boolean> {
+function probeWindowTitle(ffmpegPath: string, windowTitle: string): Promise<boolean> {
   return new Promise((resolve) => {
-    const probe = spawn(
-      ffmpegPath,
-      [
-        '-f', 'gdigrab',
-        '-i', `title=${LOL_WINDOW_TITLE}`,
-        '-frames:v', '1',
-        '-f', 'null',
-        '-',
-      ],
-      { stdio: ['ignore', 'ignore', 'pipe'] },
-    )
+    const probe = spawn(ffmpegPath, buildProbeGdigrabWindowArgs(windowTitle), {
+      stdio: ['ignore', 'ignore', 'pipe'],
+    })
     probe.on('exit', (code) => resolve(code === 0))
     probe.on('error', () => resolve(false))
-    // Safety timeout — if ffmpeg hangs, fall back to desktop capture
     setTimeout(() => { try { probe.kill() } catch { /* ok */ } resolve(false) }, 5_000)
   })
+}
+
+/**
+ * Returns the window title string that ffmpeg can capture, or null for desktop fallback.
+ */
+async function resolveLolWindowTitle(ffmpegPath: string): Promise<string | null> {
+  for (const title of LOL_WINDOW_TITLES_ORDERED) {
+    const ok = await probeWindowTitle(ffmpegPath, title)
+    if (ok) {
+      console.log(`[recorder] LoL window title matched: "${title}"`)
+      return title
+    }
+  }
+  return null
 }
 
 /** Map encoder label to ffmpeg codec + preset args. Uses CBR for GPU encoders to
@@ -127,26 +134,22 @@ export class RecordingManager {
     const scaleFilter = targetH > 0 && evenH > targetH ? ['-vf', `scale=-2:${targetH}`] : []
 
     // Try window-only capture first — lower resource usage and no task bar / other windows.
+    // -draw_mouse 0 avoids gdigrab baking the cursor into every frame (visible flicker in-game).
     let inputArgs: string[]
-    const windowAvailable = await isLolWindowAvailable(ffmpegBin)
-    if (windowAvailable) {
+    const lolTitle = await resolveLolWindowTitle(ffmpegBin)
+    if (lolTitle) {
       console.log('[recorder] LoL window detected — using window capture')
-      inputArgs = [
-        '-f', 'gdigrab',
-        '-framerate', String(recordFps),
-        '-i', `title=${LOL_WINDOW_TITLE}`,
-      ]
+      inputArgs = buildGdigrabWindowRecordingArgs(lolTitle, recordFps)
     } else {
       console.log('[recorder] LoL window not found — falling back to primary display capture')
       console.log(`[recorder] Primary display: ${evenW}x${evenH} at (${x},${y}) scale=${scaleFactor}`)
-      inputArgs = [
-        '-f', 'gdigrab',
-        '-framerate', String(recordFps),
-        '-offset_x', String(x * scaleFactor),
-        '-offset_y', String(y * scaleFactor),
-        '-video_size', `${evenW}x${evenH}`,
-        '-i', 'desktop',
-      ]
+      inputArgs = buildGdigrabDesktopRecordingArgs({
+        offsetX: x * scaleFactor,
+        offsetY: y * scaleFactor,
+        videoWidth: evenW,
+        videoHeight: evenH,
+        recordFps,
+      })
     }
 
     console.log(`[recorder] Settings — quality: ${recordQuality}, fps: ${recordFps}, encoder: ${recordEncoder}`)

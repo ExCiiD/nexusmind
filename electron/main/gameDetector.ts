@@ -51,8 +51,8 @@ export class GameDetector {
   constructor(
     private onGameEnd: (matchData: any) => void,
     private onGameStart?: () => void,
-    /** Fires immediately when the live client stops responding (before Riot API fetch). Use to stop recording. */
-    private onGameRawEnd?: () => void,
+    /** Fires immediately when the live client stops responding (before Riot API fetch). Use to stop recording. May be async (e.g. persist Recording row before match lookup). */
+    private onGameRawEnd?: () => void | Promise<void>,
   ) {}
 
   start() {
@@ -85,15 +85,15 @@ export class GameDetector {
         }
         this.currentGameTime = res.data?.gameTime ?? 0
       } else {
-        this.handleGameNotActive()
+        void this.handleGameNotActive()
       }
     } catch (err: unknown) {
       console.error('[detector] Unexpected poll error:', (err as Error)?.message ?? err)
-      this.handleGameNotActive()
+      void this.handleGameNotActive()
     }
   }
 
-  private handleGameNotActive() {
+  private async handleGameNotActive() {
     if (!this.wasInGame) return
 
     this.wasInGame = false
@@ -101,8 +101,10 @@ export class GameDetector {
     const gameStartedAt = this.gameStartedAt ?? Date.now()
     this.gameStartedAt = null
 
-    // Fire immediately so the recorder can be stopped without waiting for Riot API
-    try { this.onGameRawEnd?.() } catch (err) {
+    // Stop recording and persist DB row first — must complete before Riot match lookup so onGameEnd can link by filePath
+    try {
+      await Promise.resolve(this.onGameRawEnd?.())
+    } catch (err) {
       console.error('[detector] onGameRawEnd error:', err)
     }
 

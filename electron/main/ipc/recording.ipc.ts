@@ -12,6 +12,7 @@ import {
 import { existsSync, readdirSync, statSync, unlinkSync } from 'fs'
 import { join, extname, dirname, basename } from 'path'
 import { homedir } from 'os'
+import { matchRecordingToGame } from '../recordingMatch'
 
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv'])
 
@@ -42,15 +43,6 @@ function findVideoFiles(dir: string): Array<{ path: string; createdAt: Date; siz
   } catch {
     return []
   }
-}
-
-function matchRecordingToGame(
-  recordingCreatedAt: Date,
-  gameEndAt: Date,
-  windowMs = 10 * 60 * 1000,
-): boolean {
-  const diff = recordingCreatedAt.getTime() - gameEndAt.getTime()
-  return diff >= -60_000 && diff <= windowMs
 }
 
 export function registerRecordingHandlers() {
@@ -87,7 +79,7 @@ export function registerRecordingHandlers() {
 
     for (const game of games) {
       for (const file of allFiles) {
-        if (matchRecordingToGame(file.createdAt, game.gameEndAt)) {
+        if (matchRecordingToGame(file.createdAt, game.gameEndAt, game.duration)) {
           matched.push({ gameId: game.id, filePath: file.path, source: file.source })
           break
         }

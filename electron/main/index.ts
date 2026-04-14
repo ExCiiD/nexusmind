@@ -207,11 +207,20 @@ async function bootstrap() {
       if (pendingRecording && matchData.game?.id) {
         try {
           const prisma = getPrisma()
-          const rec = await prisma.recording.upsert({
-            where: { gameId: matchData.game.id },
-            create: { gameId: matchData.game.id, filePath: pendingRecording, source: 'capture' },
-            update: { filePath: pendingRecording, source: 'capture' },
+          // Prefer row created in onGameRawEnd (filePath, gameId null) — avoids losing the link if match resolves late
+          const existing = await prisma.recording.findFirst({
+            where: { filePath: pendingRecording, gameId: null },
           })
+          const rec = existing
+            ? await prisma.recording.update({
+                where: { id: existing.id },
+                data: { gameId: matchData.game.id, source: 'capture' },
+              })
+            : await prisma.recording.upsert({
+                where: { gameId: matchData.game.id },
+                create: { gameId: matchData.game.id, filePath: pendingRecording, source: 'capture' },
+                update: { filePath: pendingRecording, source: 'capture' },
+              })
           recordingManager.clearPendingRecording()
           // Notify renderer so the panel refreshes
           mainWindow?.webContents.send('recording:linked', {
@@ -260,13 +269,22 @@ async function bootstrap() {
       }
     },
 
-    // onGameRawEnd: fires immediately when live client stops (before 10-sec Riot API wait)
-    () => {
+    // onGameRawEnd: fires immediately when live client stops (before Riot API match resolution)
+    async () => {
       const stoppedPath = recordingManager.stopRecording()
-      if (stoppedPath) {
-        console.log(`[main] Recording stopped → ${stoppedPath}`)
-        mainWindow?.webContents.send('recording:stopped', { filePath: stoppedPath })
+      if (!stoppedPath) return
+
+      console.log(`[main] Recording stopped → ${stoppedPath}`)
+      try {
+        const prisma = getPrisma()
+        const existing = await prisma.recording.findFirst({ where: { filePath: stoppedPath } })
+        if (!existing) {
+          await prisma.recording.create({ data: { filePath: stoppedPath, source: 'capture' } })
+        }
+      } catch (err) {
+        console.error('[main] Failed to pre-persist recording:', err)
       }
+      mainWindow?.webContents.send('recording:stopped', { filePath: stoppedPath })
     },
   )
 
