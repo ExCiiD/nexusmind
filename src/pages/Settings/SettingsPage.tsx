@@ -117,7 +117,8 @@ export function SettingsPage() {
     if (isRecording) {
       await window.api.stopCapture()
     } else {
-      await window.api.startCapture()
+      const r = await window.api.startCapture()
+      if (r?.started) await window.api.minimizeWindow()
     }
   }
 
@@ -211,7 +212,8 @@ export function SettingsPage() {
             <div>
               <p className="text-sm font-medium text-hextech-text-bright">Auto-record games</p>
               <p className="text-xs text-hextech-text-dim mt-0.5">
-                Starts recording when LoL launches, stops and saves when the game ends.
+                Starts recording when LoL launches, stops and saves when the game ends. For best results, use{' '}
+                <span className="text-hextech-text/90">borderless</span> or <span className="text-hextech-text/90">windowed</span> mode in League — exclusive fullscreen can produce a black capture with some setups. NexusMind minimizes while recording so it does not appear on your footage.
               </p>
             </div>
             <button

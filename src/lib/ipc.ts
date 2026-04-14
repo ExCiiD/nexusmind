@@ -24,6 +24,9 @@ export type NexusMindAPI = {
   getKpiHistory: () => Promise<Array<{ objectiveIds: string[]; selectedKpiIds: string[] }>>
   endSession: (id: string, manualSummary?: string, sessionConclusion?: string) => Promise<any>
   deleteSession: (id: string) => Promise<any>
+  bulkDeleteSessions: (ids: string[]) => Promise<{ success: boolean; deleted: number }>
+  cancelSession: (id: string) => Promise<{ success: boolean }>
+  updateSession: (id: string, data: { objectiveIds?: string[]; selectedKpiIds?: string[]; customNote?: string }) => Promise<any>
   deleteGame: (gameId: string) => Promise<any>
   setGameReviewStatus: (gameId: string, reviewStatus: 'pending' | 'to_be_reviewed') => Promise<any>
 
@@ -115,13 +118,14 @@ export type NexusMindAPI = {
   getUser: () => Promise<any>
   updateUser: (data: any) => Promise<any>
 
-  onUpdateAvailable: (cb: () => void) => void
-  onUpdateDownloaded: (cb: () => void) => void
+  onUpdateAvailable: (cb: () => void) => () => void
+  onUpdateDownloaded: (cb: () => void) => () => void
   installUpdate: () => Promise<void>
 
   // Recording — library
   scanRecordings: () => Promise<{ scanned: number; matched: number; paths: Array<{ source: string; dir: string; exists: boolean }> }>
   getRecording: (gameId: string) => Promise<{ id: string; gameId: string; filePath: string | null; youtubeUrl: string | null; source: string } | null>
+  getRecordingById: (recordingId: string) => Promise<{ id: string; gameId: string | null; filePath: string | null; youtubeUrl: string | null; source: string } | null>
   linkRecordingFile: (gameId: string) => Promise<any>
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => Promise<any>
   deleteRecording: (gameId: string) => Promise<{ success: boolean }>
@@ -155,6 +159,13 @@ export type NexusMindAPI = {
   onRecordingStopped: (cb: (data: { filePath: string }) => void) => () => void
   onRecordingLinked: (cb: (data: { gameId: string; filePath: string }) => void) => () => void
 
+  // WGC — renderer-side window capture
+  onWgcCaptureStart: (cb: (data: { sourceId: string; filePath: string; quality?: string; fps?: number }) => void) => () => void
+  onWgcCaptureStop: (cb: () => void) => () => void
+  wgcChunk: (chunk: ArrayBuffer) => Promise<void>
+  wgcDone: (meta: { mimeType: string }) => Promise<void>
+  wgcError: (message: string) => Promise<void>
+
   // External reviews
   fetchExternalPlayerHistory: (gameName: string, tagLine: string, region: string, count?: number) => Promise<any[]>
   createExternalReview: (data: {
@@ -175,6 +186,7 @@ export type NexusMindAPI = {
   // Clips
   createClip: (opts: { recordingId: string; startMs: number; endMs: number; title?: string; linkedNoteText?: string }) => Promise<{ id: string }>
   listClips: (recordingId: string) => Promise<Array<{ id: string; title: string | null; startMs: number; endMs: number; filePath: string | null; youtubeUrl: string | null; tempShareUrl: string | null; createdAt: string }>>
+  listAllClips: () => Promise<Array<{ clipId: string; recordingId: string; filePath: string | null; thumbnailPath: string | null; title: string | null; startMs: number; endMs: number; createdAt: string; fileSize: number; champion: string | null; opponentChampion: string | null; win: boolean; duration: number }>>
   deleteClip: (clipId: string) => Promise<{ success: boolean }>
   setClipYoutubeUrl: (clipId: string, url: string) => Promise<{ success: boolean }>
   setClipTempShare: (clipId: string, url: string, expiryHours: number) => Promise<{ success: boolean }>

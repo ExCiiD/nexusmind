@@ -16,12 +16,14 @@ import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import {
   Target, Lock, Play, Square, Loader2, X, ChevronRight, ChevronLeft,
   Swords, Eye, Clock, CheckCircle, FileSearch, Trash2, Filter, Zap, History, RotateCcw,
+  Ban, Pencil, BookOpen, Sparkles,
 } from 'lucide-react'
 import { ShareSessionButton } from '@/components/Share/ShareSessionButton'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 import { MatchHistoryPicker } from '@/components/Session/MatchHistoryPicker'
 import { cn, formatKDA, formatGameTime } from '@/lib/utils'
+import { SESSION_TEMPLATES, type SessionTemplate } from '@/lib/constants/sessionTemplates'
 
 type CreationStep = 'objectives' | 'kpis'
 type SessionType = 'live' | 'retroactive'
@@ -33,6 +35,8 @@ export function SessionPage() {
   const loadActiveSession = useSessionStore((s) => s.loadActiveSession)
   const createSession = useSessionStore((s) => s.createSession)
   const endSession = useSessionStore((s) => s.endSession)
+  const cancelSession = useSessionStore((s) => s.cancelSession)
+  const updateSessionStore = useSessionStore((s) => s.updateSession)
   const user = useUserStore((s) => s.user)
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -47,6 +51,13 @@ export function SessionPage() {
   const [ending, setEnding] = useState(false)
   const [endDialogOpen, setEndDialogOpen] = useState(false)
   const [sessionAnalysis, setSessionAnalysis] = useState('')
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [modifyDialogOpen, setModifyDialogOpen] = useState(false)
+  const [modifyObjectives, setModifyObjectives] = useState<string[]>([])
+  const [modifyNote, setModifyNote] = useState('')
+  const [modifyKpiIds, setModifyKpiIds] = useState<string[]>([])
+  const [savingModify, setSavingModify] = useState(false)
   const [assessmentScores, setAssessmentScores] = useState<Record<string, number>>({})
   const [queueFilter, setQueueFilter] = useState<'soloq' | 'flex' | 'both'>('both')
   const [updatingQueue, setUpdatingQueue] = useState(false)
@@ -171,6 +182,37 @@ export function SessionPage() {
     setStep('kpis')
   }
 
+  const handleApplyTemplate = (tpl: SessionTemplate) => {
+    const validObjectives = tpl.objectiveIds
+      .filter((id) => allFundamentals.some((f) => f.id === id))
+      .slice(0, 3)
+    setSelectedObjectives(validObjectives)
+
+    const kpiPool = allFundamentals
+      .filter((f) => validObjectives.includes(f.id))
+      .flatMap((f) => f.kpis.map((k) => k.id))
+    const validKpis = tpl.selectedKpiIds.filter((id) => kpiPool.includes(id))
+    setSelectedKpiIds(validKpis.length > 0 ? validKpis : kpiPool)
+
+    setCustomNote(tpl.customNote)
+    setStep('kpis')
+  }
+
+  const handleApplyTemplateToModify = (tpl: SessionTemplate) => {
+    const validObjectives = tpl.objectiveIds
+      .filter((id) => allFundamentals.some((f) => f.id === id))
+      .slice(0, 3)
+    setModifyObjectives(validObjectives)
+
+    const kpiPool = allFundamentals
+      .filter((f) => validObjectives.includes(f.id))
+      .flatMap((f) => f.kpis.map((k) => k.id))
+    const validKpis = tpl.selectedKpiIds.filter((id) => kpiPool.includes(id))
+    setModifyKpiIds(validKpis.length > 0 ? validKpis : kpiPool)
+
+    setModifyNote(tpl.customNote)
+  }
+
   const handleCreate = async () => {
     if (selectedObjectives.length === 0) return
     setCreating(true)
@@ -227,6 +269,78 @@ export function SessionPage() {
     }
   }
 
+  const handleCancelSession = async () => {
+    setCancelling(true)
+    setCancelDialogOpen(false)
+    try {
+      await cancelSession()
+      toast({ title: t('session.toast.cancelledTitle', { defaultValue: 'Session cancelled' }), description: t('session.toast.cancelledDesc', { defaultValue: 'Session and all linked games have been removed.' }), variant: 'success' })
+    } catch (err: any) {
+      toast({ title: t('session.toast.cancelError', { defaultValue: 'Error' }), description: err.message, variant: 'destructive' })
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  const openModifyDialog = () => {
+    if (!activeSession) return
+    let objIds: string[] = []
+    try { objIds = JSON.parse(activeSession.objectiveIds) } catch { objIds = [activeSession.objectiveId] }
+    let kpiIds: string[] = []
+    try { kpiIds = JSON.parse(activeSession.selectedKpiIds ?? '[]') } catch { /* ignore */ }
+    setModifyObjectives(objIds)
+    setModifyKpiIds(kpiIds)
+    setModifyNote(activeSession.customNote ?? '')
+    setModifyDialogOpen(true)
+  }
+
+  const modifyAddObjective = (id: string) => {
+    if (!id || modifyObjectives.includes(id) || modifyObjectives.length >= 3) return
+    setModifyObjectives((prev) => [...prev, id])
+  }
+
+  const modifyRemoveObjective = (id: string) => {
+    setModifyObjectives((prev) => prev.filter((o) => o !== id))
+    setModifyKpiIds((prev) => {
+      const kpisOfRemoved = allFundamentals.find((f) => f.id === id)?.kpis.map((k) => k.id) ?? []
+      return prev.filter((k) => !kpisOfRemoved.includes(k))
+    })
+  }
+
+  const modifyToggleKpi = (kpiId: string) => {
+    setModifyKpiIds((prev) =>
+      prev.includes(kpiId) ? prev.filter((id) => id !== kpiId) : [...prev, kpiId],
+    )
+  }
+
+  const modifyKpisForObjectives = useMemo(() => {
+    const result: Array<{ objectiveId: string; objectiveLabel: string; kpis: KPI[] }> = []
+    for (const objId of modifyObjectives) {
+      const f = allFundamentals.find((ff) => ff.id === objId)
+      if (!f) continue
+      result.push({ objectiveId: f.id, objectiveLabel: f.label, kpis: f.kpis })
+    }
+    return result
+  }, [modifyObjectives, allFundamentals])
+
+  const handleSaveModify = async () => {
+    if (modifyObjectives.length === 0) return
+    setSavingModify(true)
+    try {
+      await updateSessionStore({
+        objectiveIds: modifyObjectives,
+        selectedKpiIds: modifyKpiIds,
+        customNote: modifyNote,
+      })
+      setModifyDialogOpen(false)
+      toast({ title: t('session.toast.modifiedTitle', { defaultValue: 'Session updated' }), variant: 'gold' })
+    } catch (err: any) {
+      toast({ title: t('session.toast.modifyError', { defaultValue: 'Error' }), description: err.message, variant: 'destructive' })
+    } finally {
+      setSavingModify(false)
+    }
+  }
+
   if (activeSession) {
     const objIds: string[] = (() => {
       try { return JSON.parse(activeSession.objectiveIds) } catch { return [activeSession.objectiveId] }
@@ -271,6 +385,19 @@ export function SessionPage() {
               <Button variant="outline" onClick={handleEnd} disabled={ending}>
                 {ending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Square className="h-4 w-4 mr-2" />}
                 {t('session.endSession')}
+              </Button>
+              <Button variant="outline" onClick={openModifyDialog}>
+                <Pencil className="h-4 w-4 mr-2" />
+                {t('session.modifySession', { defaultValue: 'Modify' })}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setCancelDialogOpen(true)}
+                disabled={cancelling}
+                className="border-[#FF4655]/40 text-[#FF4655] hover:bg-[#FF4655]/10"
+              >
+                {cancelling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Ban className="h-4 w-4 mr-2" />}
+                {t('session.cancelSession', { defaultValue: 'Cancel Session' })}
               </Button>
               {activeSession.games.length > 0 && (() => {
                 const wins = activeSession.games.filter((g) => g.win).length
@@ -362,6 +489,155 @@ export function SessionPage() {
             </div>
           </div>
         )}
+
+        {/* Cancel session confirmation dialog */}
+        {cancelDialogOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="w-full max-w-md mx-4 rounded-xl border border-[#FF4655]/40 bg-hextech-dark shadow-2xl space-y-4 p-6">
+              <div>
+                <h2 className="font-display text-lg font-bold text-[#FF4655]">
+                  {t('session.cancelDialog.title', { defaultValue: 'Cancel Session?' })}
+                </h2>
+                <p className="text-sm text-hextech-text mt-2">
+                  {t('session.cancelDialog.description', {
+                    defaultValue: 'This will permanently delete this session and all linked games and reviews. This action cannot be undone.',
+                  })}
+                </p>
+                {activeSession.games.length > 0 && (
+                  <p className="text-sm text-[#FF4655] mt-2 font-medium">
+                    {t('session.cancelDialog.gamesWarning', {
+                      count: activeSession.games.length,
+                      defaultValue: `${activeSession.games.length} game(s) will be deleted.`,
+                    })}
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-3 justify-end">
+                <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+                  {t('session.cancelDialog.back', { defaultValue: 'Go Back' })}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleCancelSession}
+                  disabled={cancelling}
+                >
+                  {cancelling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Ban className="h-4 w-4 mr-2" />}
+                  {t('session.cancelDialog.confirm', { defaultValue: 'Cancel Session' })}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modify session dialog */}
+        {modifyDialogOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="w-full max-w-xl mx-4 rounded-xl border border-hextech-border bg-hextech-dark shadow-2xl space-y-4 p-6 max-h-[80vh] overflow-y-auto">
+              <div>
+                <h2 className="font-display text-lg font-bold text-hextech-gold-bright">
+                  {t('session.modifyDialog.title', { defaultValue: 'Modify Session' })}
+                </h2>
+                <p className="text-xs text-hextech-text-dim mt-1">
+                  {t('session.modifyDialog.subtitle', { defaultValue: 'Change objectives, KPIs, or your session note.' })}
+                </p>
+              </div>
+
+              {/* Apply template */}
+              <ModifyTemplateDropdown
+                allFundamentals={allFundamentals}
+                onApply={handleApplyTemplateToModify}
+              />
+
+              {/* Objectives */}
+              <div className="space-y-2">
+                <Label className="text-hextech-text-bright text-sm">
+                  {t('session.modifyDialog.objectives', { defaultValue: 'Objectives' })}
+                  <span className="text-hextech-text-dim ml-1">({modifyObjectives.length}/3)</span>
+                </Label>
+                <div className="flex flex-wrap gap-2">
+                  {modifyObjectives.map((id) => {
+                    const label = allFundamentals.find((f) => f.id === id)?.label ?? id
+                    return (
+                      <Badge key={id} variant="gold" className="text-sm px-3 py-1 gap-1.5">
+                        {label}
+                        <button
+                          onClick={() => modifyRemoveObjective(id)}
+                          className="hover:text-[#FF4655] transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    )
+                  })}
+                </div>
+                <FundamentalPickerDialog
+                  FUNDAMENTALS={FUNDAMENTALS}
+                  allFundamentals={allFundamentals}
+                  selectedObjectives={modifyObjectives}
+                  assessmentScores={assessmentScores}
+                  onSelect={modifyAddObjective}
+                  disabled={modifyObjectives.length >= 3}
+                />
+              </div>
+
+              {/* KPIs */}
+              {modifyKpisForObjectives.length > 0 && (
+                <div className="space-y-3">
+                  <Label className="text-hextech-text-bright text-sm">
+                    {t('session.modifyDialog.kpis', { defaultValue: 'KPIs' })}
+                  </Label>
+                  {modifyKpisForObjectives.map((group) => (
+                    <div key={group.objectiveId} className="space-y-1.5">
+                      <p className="text-xs font-semibold text-hextech-gold">{group.objectiveLabel}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {group.kpis.map((kpi) => {
+                          const isChecked = modifyKpiIds.includes(kpi.id)
+                          return (
+                            <button
+                              key={kpi.id}
+                              onClick={() => modifyToggleKpi(kpi.id)}
+                              className={cn(
+                                'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                                isChecked
+                                  ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
+                                  : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
+                              )}
+                            >
+                              {kpi.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Note */}
+              <div className="space-y-2">
+                <Label className="text-hextech-text-bright text-sm">
+                  {t('session.modifyDialog.note', { defaultValue: 'Note / Comment' })}
+                </Label>
+                <Textarea
+                  placeholder={t('session.modifyDialog.notePlaceholder', { defaultValue: 'What do you want to focus on?' })}
+                  value={modifyNote}
+                  onChange={(e) => setModifyNote(e.target.value)}
+                  className="min-h-[80px] resize-none bg-hextech-elevated border-hextech-border text-hextech-text placeholder:text-hextech-text-dim"
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end pt-2">
+                <Button variant="outline" onClick={() => setModifyDialogOpen(false)}>
+                  {t('session.modifyDialog.cancel', { defaultValue: 'Cancel' })}
+                </Button>
+                <Button onClick={handleSaveModify} disabled={savingModify || modifyObjectives.length === 0}>
+                  {savingModify ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Pencil className="h-4 w-4 mr-2" />}
+                  {t('session.modifyDialog.save', { defaultValue: 'Save Changes' })}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -424,6 +700,14 @@ export function SessionPage() {
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Templates */}
+      {step === 'objectives' && (
+        <TemplatePickerSection
+          allFundamentals={allFundamentals}
+          onApply={handleApplyTemplate}
+        />
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -746,6 +1030,131 @@ function KpiSelectionStep({
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+// ─── Template Picker (Creation Flow) ──────────────────────────────────────────
+
+function TemplatePickerSection({
+  allFundamentals,
+  onApply,
+}: {
+  allFundamentals: Fundamental[]
+  onApply: (tpl: SessionTemplate) => void
+}) {
+  const { t, i18n } = useTranslation()
+  const isFr = i18n.language.startsWith('fr')
+  const [expanded, setExpanded] = useState(false)
+
+  const visible = expanded ? SESSION_TEMPLATES : SESSION_TEMPLATES.slice(0, 4)
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <BookOpen className="h-4 w-4 text-hextech-gold" />
+          {t('session.templates.title', { defaultValue: 'Session Templates' })}
+        </CardTitle>
+        <CardDescription className="text-xs">
+          {t('session.templates.desc', { defaultValue: 'Start with a pre-built coaching template — objectives, KPIs and focus note are pre-filled.' })}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {visible.map((tpl) => {
+            const objectiveLabels = tpl.objectiveIds
+              .map((id) => allFundamentals.find((f) => f.id === id)?.label ?? id)
+              .slice(0, 3)
+            return (
+              <button
+                key={tpl.id}
+                onClick={() => onApply(tpl)}
+                className="flex flex-col items-start gap-1.5 rounded-lg border border-hextech-border-dim p-3 text-left transition-all hover:border-hextech-gold/50 hover:bg-hextech-gold/5 group"
+              >
+                <div className="flex items-center gap-2 w-full">
+                  <Sparkles className="h-3.5 w-3.5 text-hextech-gold shrink-0" />
+                  <span className="text-sm font-semibold text-hextech-text-bright truncate">
+                    {isFr ? tpl.nameFr : tpl.name}
+                  </span>
+                </div>
+                <p className="text-[11px] text-hextech-text-dim leading-tight line-clamp-2">
+                  {isFr ? tpl.descriptionFr : tpl.description}
+                </p>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  {objectiveLabels.map((label) => (
+                    <span
+                      key={label}
+                      className="rounded-full border border-hextech-gold/30 bg-hextech-gold/5 px-2 py-0 text-[10px] text-hextech-gold"
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        {SESSION_TEMPLATES.length > 4 && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="text-xs text-hextech-text-dim hover:text-hextech-gold transition-colors flex items-center gap-1 mx-auto"
+          >
+            {expanded
+              ? t('session.templates.showLess', { defaultValue: 'Show less' })
+              : t('session.templates.showAll', { defaultValue: `Show all ${SESSION_TEMPLATES.length} templates` })}
+            <ChevronRight className={cn('h-3 w-3 transition-transform', expanded && 'rotate-90')} />
+          </button>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Template Dropdown (Modify Dialog) ────────────────────────────────────────
+
+function ModifyTemplateDropdown({
+  allFundamentals,
+  onApply,
+}: {
+  allFundamentals: Fundamental[]
+  onApply: (tpl: SessionTemplate) => void
+}) {
+  const { i18n } = useTranslation()
+  const isFr = i18n.language.startsWith('fr')
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="space-y-2">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 text-xs text-hextech-text-dim hover:text-hextech-gold transition-colors"
+      >
+        <BookOpen className="h-3.5 w-3.5" />
+        {isFr ? 'Appliquer un template' : 'Apply a template'}
+        <ChevronRight className={cn('h-3 w-3 transition-transform', open && 'rotate-90')} />
+      </button>
+
+      {open && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto rounded-lg border border-hextech-border-dim p-2 bg-hextech-elevated/50">
+          {SESSION_TEMPLATES.map((tpl) => (
+            <button
+              key={tpl.id}
+              onClick={() => {
+                onApply(tpl)
+                setOpen(false)
+              }}
+              className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-hextech-gold/10 group"
+            >
+              <Sparkles className="h-3 w-3 text-hextech-gold shrink-0" />
+              <span className="text-hextech-text-bright group-hover:text-hextech-gold-bright truncate">
+                {isFr ? tpl.nameFr : tpl.name}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 

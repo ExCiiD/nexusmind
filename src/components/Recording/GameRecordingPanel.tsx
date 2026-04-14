@@ -79,7 +79,6 @@ export function GameRecordingPanel({ gameId, readonly, timelineNotes = [], onAdd
     try {
       const r = await window.api.getRecording(gameId)
       setRecording(r)
-      if (r) setOpen(true)
     } finally {
       setLoading(false)
     }

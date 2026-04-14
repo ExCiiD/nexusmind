@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { ChampionMatchup } from '@/components/ChampionMatchup'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -47,6 +47,7 @@ export function ReviewPage() {
   const clearGameEndData = useUserStore((s) => s.clearGameEndData)
   const user = useUserStore((s) => s.user)
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const requestedGameId = searchParams.get('gameId')
   const { toast } = useToast()
@@ -57,7 +58,7 @@ export function ReviewPage() {
   const [loadingHistoric, setLoadingHistoric] = useState(false)
 
   useEffect(() => {
-    if (requestedGameId && !activeSession) {
+    if (requestedGameId) {
       setLoadingHistoric(true)
       window.api.getGameContext(requestedGameId)
         .then((ctx) => {
@@ -70,10 +71,18 @@ export function ReviewPage() {
     } else {
       setHistoricContext(null)
     }
-  }, [requestedGameId, activeSession])
+  }, [requestedGameId])
 
-  // Use the active session or fall back to the historic session for a past game
-  const session = activeSession ?? historicContext?.session ?? null
+  const isGameInActiveSession = useMemo(() => {
+    if (!activeSession || !requestedGameId) return false
+    return activeSession.games?.some((g: any) => g.id === requestedGameId) ?? false
+  }, [activeSession, requestedGameId])
+
+  const session = useMemo(() => {
+    if (!requestedGameId) return activeSession ?? null
+    if (isGameInActiveSession) return activeSession
+    return historicContext?.session ?? activeSession ?? null
+  }, [requestedGameId, activeSession, isGameInActiveSession, historicContext])
 
   const objectiveFundamental = useLocalizedFundamental(session?.objectiveId ?? '')
 
@@ -108,16 +117,16 @@ export function ReviewPage() {
   const [offRoleDismissed, setOffRoleDismissed] = useState(false)
   const [removingGame, setRemovingGame] = useState(false)
 
-  // If a specific gameId is requested, use it directly; otherwise pick first unreviewed game
   const latestGame = useMemo(() => {
-    if (!session) return null
-    // Historic mode: the requested game is already loaded in historicContext
-    if (historicContext?.game && requestedGameId === historicContext.game.id) {
-      return historicContext.game
-    }
     if (requestedGameId) {
-      return session.games?.find((g: any) => g.id === requestedGameId) ?? null
+      if (historicContext?.game && requestedGameId === historicContext.game.id) {
+        return historicContext.game
+      }
+      const fromSession = session?.games?.find((g: any) => g.id === requestedGameId)
+      if (fromSession) return fromSession
+      return null
     }
+    if (!session) return null
     return (
       session.games?.find((g: any) => !g.review && g.reviewStatus !== 'to_be_reviewed') ??
       session.games?.find((g: any) => !g.review && g.reviewStatus === 'to_be_reviewed') ??
@@ -146,6 +155,26 @@ export function ReviewPage() {
   useEffect(() => {
     loadActiveSession()
   }, [loadActiveSession])
+
+  const postGameSetupHandledRef = useRef(false)
+
+  useEffect(() => {
+    const st = (location.state as { postGameSetup?: { title?: string } } | undefined)?.postGameSetup
+    if (!st) {
+      postGameSetupHandledRef.current = false
+      return
+    }
+    if (postGameSetupHandledRef.current) return
+    postGameSetupHandledRef.current = true
+    if (st.title) {
+      toast({
+        title: 'Après partie',
+        description: `« ${st.title} » — la VOD est liée ci-dessous.`,
+        variant: 'default',
+      })
+    }
+    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: {} })
+  }, [location.state, location.pathname, location.search, navigate, toast])
 
   useEffect(() => {
     if (!latestGame?.id || objectiveIds.length === 0) {

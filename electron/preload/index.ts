@@ -17,6 +17,10 @@ const api = {
   getKpiHistory: () => ipcRenderer.invoke('session:get-kpi-history'),
   endSession: (id: string, manualSummary?: string, sessionConclusion?: string) => ipcRenderer.invoke('session:end', id, manualSummary, sessionConclusion),
   deleteSession: (id: string) => ipcRenderer.invoke('session:delete', id),
+  bulkDeleteSessions: (ids: string[]) => ipcRenderer.invoke('session:bulk-delete', ids),
+  cancelSession: (id: string) => ipcRenderer.invoke('session:cancel', id),
+  updateSession: (id: string, data: { objectiveIds?: string[]; selectedKpiIds?: string[]; customNote?: string }) =>
+    ipcRenderer.invoke('session:update', id, data),
   deleteGame: (gameId: string) => ipcRenderer.invoke('game:delete', gameId),
   setGameReviewStatus: (gameId: string, reviewStatus: 'pending' | 'to_be_reviewed') =>
     ipcRenderer.invoke('session:set-review-status', gameId, reviewStatus),
@@ -92,13 +96,20 @@ const api = {
   getUser: () => ipcRenderer.invoke('user:get'),
   updateUser: (data: any) => ipcRenderer.invoke('user:update', data),
 
-  onUpdateAvailable: (cb: () => void) => ipcRenderer.on('updater:update-available', cb),
-  onUpdateDownloaded: (cb: () => void) => ipcRenderer.on('updater:update-downloaded', cb),
+  onUpdateAvailable: (cb: () => void) => {
+    ipcRenderer.on('updater:update-available', cb)
+    return () => { ipcRenderer.removeListener('updater:update-available', cb) }
+  },
+  onUpdateDownloaded: (cb: () => void) => {
+    ipcRenderer.on('updater:update-downloaded', cb)
+    return () => { ipcRenderer.removeListener('updater:update-downloaded', cb) }
+  },
   installUpdate: () => ipcRenderer.invoke('updater:install-now'),
 
   // Recording — library (scan external folders)
   scanRecordings: () => ipcRenderer.invoke('recording:scan'),
   getRecording: (gameId: string) => ipcRenderer.invoke('recording:get', gameId),
+  getRecordingById: (recordingId: string) => ipcRenderer.invoke('recording:get-by-id', recordingId),
   linkRecordingFile: (gameId: string) => ipcRenderer.invoke('recording:link-file', gameId),
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => ipcRenderer.invoke('recording:set-youtube', gameId, youtubeUrl),
   deleteRecording: (gameId: string) => ipcRenderer.invoke('recording:delete', gameId),
@@ -127,12 +138,29 @@ const api = {
     return () => ipcRenderer.removeListener('recording:linked', handler)
   },
 
+  // WGC (Windows Graphics Capture) — renderer-side window capture
+  onWgcCaptureStart: (cb: (data: { sourceId: string; filePath: string; quality?: string; fps?: number }) => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, data: { sourceId: string; filePath: string; quality?: string; fps?: number }) => cb(data)
+    ipcRenderer.on('wgc:capture-start', handler)
+    return () => ipcRenderer.removeListener('wgc:capture-start', handler)
+  },
+  onWgcCaptureStop: (cb: () => void) => {
+    const handler = () => cb()
+    ipcRenderer.on('wgc:capture-stop', handler)
+    return () => ipcRenderer.removeListener('wgc:capture-stop', handler)
+  },
+  wgcChunk: (chunk: ArrayBuffer) => ipcRenderer.invoke('wgc:chunk', chunk),
+  wgcDone: (meta: { mimeType: string }) => ipcRenderer.invoke('wgc:done', meta),
+  wgcError: (message: string) => ipcRenderer.invoke('wgc:error', message),
+
   // External reviews
   fetchExternalPlayerHistory: (gameName: string, tagLine: string, region: string, count?: number) =>
     ipcRenderer.invoke('external-review:fetch-player-history', gameName, tagLine, region, count),
   createExternalReview: (data: {
     title: string
     objectiveId?: string
+    objectiveIds?: string
+    selectedKpiIds?: string
     filePath?: string
     playerName?: string
     matchData?: string
@@ -159,6 +187,7 @@ const api = {
   createClip: (opts: { recordingId: string; startMs: number; endMs: number; title?: string; linkedNoteText?: string }) =>
     ipcRenderer.invoke('clip:create', opts),
   listClips: (recordingId: string) => ipcRenderer.invoke('clip:list', recordingId),
+  listAllClips: () => ipcRenderer.invoke('clip:list-all'),
   deleteClip: (clipId: string) => ipcRenderer.invoke('clip:delete', clipId),
   setClipYoutubeUrl: (clipId: string, url: string) => ipcRenderer.invoke('clip:set-youtube', clipId, url),
   setClipTempShare: (clipId: string, url: string, expiryHours: number) =>

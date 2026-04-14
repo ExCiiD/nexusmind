@@ -9,12 +9,62 @@ import {
   getFileSize,
   type ClipOptions,
 } from '../recorder'
-import { existsSync, readdirSync, statSync, unlinkSync } from 'fs'
+import { existsSync, readdirSync, statSync, unlinkSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { join, extname, dirname, basename } from 'path'
 import { homedir } from 'os'
 import { matchRecordingToGame } from '../recordingMatch'
 
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv'])
+
+// ── Dismissed paths: prevents re-import of user-deleted recordings on scan ──
+
+function getDismissedPathsFile(): string {
+  const dataDir = join(app.getPath('userData'), 'data')
+  if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true })
+  return join(dataDir, 'dismissed_recordings.json')
+}
+
+function loadDismissedPaths(): Set<string> {
+  try {
+    const raw = readFileSync(getDismissedPathsFile(), 'utf-8')
+    const arr = JSON.parse(raw)
+    return new Set(Array.isArray(arr) ? arr : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function saveDismissedPaths(paths: Set<string>): void {
+  try {
+    writeFileSync(getDismissedPathsFile(), JSON.stringify([...paths]), 'utf-8')
+  } catch { /* non-fatal */ }
+}
+
+function dismissPath(filePath: string): void {
+  const paths = loadDismissedPaths()
+  paths.add(filePath)
+  saveDismissedPaths(paths)
+}
+
+/** Deletes a recording's video file + thumbnail from disk. */
+function deleteRecordingFiles(rec: { filePath?: string | null; thumbnailPath?: string | null }) {
+  if (rec.filePath && existsSync(rec.filePath)) {
+    try { unlinkSync(rec.filePath) } catch { /* ignore */ }
+  }
+  if (rec.thumbnailPath && existsSync(rec.thumbnailPath)) {
+    try { unlinkSync(rec.thumbnailPath) } catch { /* ignore */ }
+  }
+}
+
+/** Deletes a clip's video file + thumbnail from disk. */
+function deleteClipFiles(clip: { filePath?: string | null; thumbnailPath?: string | null }) {
+  if (clip.filePath && existsSync(clip.filePath)) {
+    try { unlinkSync(clip.filePath) } catch { /* ignore */ }
+  }
+  if (clip.thumbnailPath && existsSync(clip.thumbnailPath)) {
+    try { unlinkSync(clip.thumbnailPath) } catch { /* ignore */ }
+  }
+}
 
 function getKnownRecordingPaths(): Record<string, string> {
   const local = process.env.LOCALAPPDATA ?? join(homedir(), 'AppData', 'Local')
@@ -33,7 +83,11 @@ function findVideoFiles(dir: string): Array<{ path: string; createdAt: Date; siz
   if (!existsSync(dir)) return []
   try {
     return readdirSync(dir)
-      .filter((f) => VIDEO_EXTENSIONS.has(extname(f).toLowerCase()))
+      .filter((f) => {
+        const full = join(dir, f)
+        try { return statSync(full).isFile() && VIDEO_EXTENSIONS.has(extname(f).toLowerCase()) }
+        catch { return false }
+      })
       .map((f) => {
         const fullPath = join(dir, f)
         const stat = statSync(fullPath)
@@ -43,6 +97,71 @@ function findVideoFiles(dir: string): Array<{ path: string; createdAt: Date; siz
   } catch {
     return []
   }
+}
+
+/**
+ * Discovers clip video files (filenames starting with `clip_`) in a recording
+ * directory and registers any that are missing from the Clip table.
+ * Matches each orphan to its most likely parent Recording by creation date.
+ */
+async function reconcileOrphanClips(baseDir: string): Promise<number> {
+  if (!existsSync(baseDir)) return 0
+
+  const prisma = getPrisma()
+  let reconciled = 0
+
+  // Also check legacy clips/ subfolder if it exists
+  const dirsToScan = [baseDir]
+  const legacyClipsDir = join(baseDir, 'clips')
+  if (existsSync(legacyClipsDir)) dirsToScan.push(legacyClipsDir)
+
+  const clipFiles: Array<{ path: string; createdAt: Date; size: number }> = []
+  for (const dir of dirsToScan) {
+    for (const f of findVideoFiles(dir)) {
+      if (basename(f.path).startsWith('clip_')) clipFiles.push(f)
+    }
+  }
+  if (clipFiles.length === 0) return 0
+
+  const existingClips: Array<{ filePath: string }> = await prisma.$queryRawUnsafe(
+    `SELECT "filePath" FROM "Clip"`,
+  )
+  const knownPaths = new Set(existingClips.map((c) => c.filePath))
+
+  const parentRecordings = await prisma.recording.findMany({
+    where: { filePath: { not: null } },
+    select: { id: true, filePath: true, createdAt: true },
+    orderBy: { createdAt: 'desc' },
+  })
+  const normalizeDir = (p: string) => p.replace(/\\/g, '/').toLowerCase()
+  const baseDirNorm = normalizeDir(baseDir)
+  const recordingsInDir = parentRecordings.filter(
+    (r) => r.filePath && normalizeDir(dirname(r.filePath)) === baseDirNorm,
+  )
+
+  for (const file of clipFiles) {
+    if (knownPaths.has(file.path)) continue
+
+    const parent = recordingsInDir.find((r) => r.createdAt <= file.createdAt)
+    if (!parent) continue
+
+    try {
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO "Clip" ("id","recordingId","filePath","title","startMs","endMs","createdAt")
+         VALUES (?,?,?,?,0,0,?)`,
+        `clip_reconciled_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        parent.id,
+        file.path,
+        basename(file.path, extname(file.path)),
+        file.createdAt.toISOString(),
+      )
+      reconciled++
+    } catch (err) {
+      console.warn('[recording:scan] Failed to reconcile clip:', file.path, err)
+    }
+  }
+
+  return reconciled
 }
 
 export function registerRecordingHandlers() {
@@ -103,10 +222,12 @@ export function registerRecordingHandlers() {
         .map((r) => r.filePath)
         .filter(Boolean) as string[]
     )
+    const dismissed = loadDismissedPaths()
     let orphanedCount = 0
     const newlyOrphanedIds: Array<{ id: string; filePath: string }> = []
     for (const file of allFiles) {
-      if (!matchedPaths.has(file.path) && !existingPaths.has(file.path)) {
+      if (basename(file.path).startsWith('clip_')) continue
+      if (!matchedPaths.has(file.path) && !existingPaths.has(file.path) && !dismissed.has(file.path)) {
         const rec = await prisma.recording.create({
           data: { filePath: file.path, source: file.source, createdAt: file.createdAt },
         })
@@ -115,30 +236,60 @@ export function registerRecordingHandlers() {
       }
     }
 
-    // Reset stale thumbnailPath values where the file no longer exists on disk
+    // Reset stale or low-quality thumbnails (missing files or tiny black frames)
     const allWithThumb = await prisma.recording.findMany({
       where: { thumbnailPath: { not: null } },
       select: { id: true, thumbnailPath: true },
     })
     for (const rec of allWithThumb) {
-      if (rec.thumbnailPath && !existsSync(rec.thumbnailPath)) {
+      if (!rec.thumbnailPath) continue
+      let shouldReset = false
+      if (!existsSync(rec.thumbnailPath)) {
+        shouldReset = true
+      } else {
+        try {
+          const thumbSize = statSync(rec.thumbnailPath).size
+          if (thumbSize < 3000) shouldReset = true
+        } catch { shouldReset = true }
+      }
+      if (shouldReset) {
         await prisma.$executeRawUnsafe(`UPDATE "Recording" SET "thumbnailPath" = NULL WHERE "id" = ?`, rec.id)
       }
     }
 
-    // Generate thumbnails for all recordings that still have none
     const allWithoutThumb = await prisma.recording.findMany({
       where: { filePath: { not: null }, thumbnailPath: null },
       select: { id: true, filePath: true },
     })
-    for (const { id, filePath } of allWithoutThumb) {
-      generateThumbnailForRecording(id, filePath!).catch(() => {})
+    const THUMB_CONCURRENCY = 3
+    for (let i = 0; i < allWithoutThumb.length; i += THUMB_CONCURRENCY) {
+      const batch = allWithoutThumb.slice(i, i + THUMB_CONCURRENCY)
+      await Promise.allSettled(
+        batch.map(({ id, filePath }) => generateThumbnailForRecording(id, filePath!)),
+      )
+    }
+
+    // Reconcile orphan clip files in each recording directory's clips/ subfolder
+    let clipsReconciled = 0
+    const uniqueDirs = new Set(Object.values(paths))
+    for (const dir of uniqueDirs) {
+      clipsReconciled += await reconcileOrphanClips(dir)
+    }
+
+    // Prune dismissed paths for files that no longer exist on disk
+    if (dismissed.size > 0) {
+      let pruned = false
+      for (const p of dismissed) {
+        if (!existsSync(p)) { dismissed.delete(p); pruned = true }
+      }
+      if (pruned) saveDismissedPaths(dismissed)
     }
 
     return {
       scanned: allFiles.length,
       matched: matched.length,
       orphaned: orphanedCount,
+      clipsReconciled,
       paths: Object.entries(paths).map(([source, dir]) => ({
         source,
         dir,
@@ -150,6 +301,11 @@ export function registerRecordingHandlers() {
   ipcMain.handle('recording:get', async (_event, gameId: string) => {
     const prisma = getPrisma()
     return prisma.recording.findUnique({ where: { gameId } })
+  })
+
+  ipcMain.handle('recording:get-by-id', async (_event, recordingId: string) => {
+    const prisma = getPrisma()
+    return prisma.recording.findUnique({ where: { id: recordingId } })
   })
 
   ipcMain.handle('recording:link-file', async (_event, gameId: string) => {
@@ -195,12 +351,31 @@ export function registerRecordingHandlers() {
 
   ipcMain.handle('recording:delete', async (_event, gameId: string) => {
     const prisma = getPrisma()
+    const recordings = await prisma.recording.findMany({ where: { gameId } })
+    for (const rec of recordings) {
+      if (rec.filePath) dismissPath(rec.filePath)
+      deleteRecordingFiles(rec)
+      const clips: any[] = await prisma.$queryRawUnsafe(
+        `SELECT * FROM "Clip" WHERE "recordingId" = ?`, rec.id,
+      )
+      for (const clip of clips) deleteClipFiles(clip)
+      await prisma.$executeRawUnsafe(`DELETE FROM "Clip" WHERE "recordingId" = ?`, rec.id)
+    }
     await prisma.recording.deleteMany({ where: { gameId } })
     return { success: true }
   })
 
   ipcMain.handle('recording:delete-by-id', async (_event, recordingId: string) => {
     const prisma = getPrisma()
+    const rec = await prisma.recording.findUnique({ where: { id: recordingId } })
+    if (!rec) return { success: false }
+    if (rec.filePath) dismissPath(rec.filePath)
+    deleteRecordingFiles(rec)
+    const clips: any[] = await prisma.$queryRawUnsafe(
+      `SELECT * FROM "Clip" WHERE "recordingId" = ?`, rec.id,
+    )
+    for (const clip of clips) deleteClipFiles(clip)
+    await prisma.$executeRawUnsafe(`DELETE FROM "Clip" WHERE "recordingId" = ?`, rec.id)
     await prisma.recording.delete({ where: { id: recordingId } })
     return { success: true }
   })
@@ -441,10 +616,11 @@ export function registerRecordingHandlers() {
     const thumbOffset = Math.min(30, ((opts.endMs - opts.startMs) / 1000) * 0.12)
     const thumbResult = await generateThumbnail(clipPath, thumbPath, thumbOffset)
 
-    const clip = await prisma.$executeRawUnsafe(
+    const clipId = `clip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+    await prisma.$executeRawUnsafe(
       `INSERT INTO "Clip" ("id","recordingId","filePath","thumbnailPath","title","startMs","endMs","linkedNoteText","createdAt")
        VALUES (?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)`,
-      `clip_${Date.now()}`,
+      clipId,
       opts.recordingId,
       clipPath,
       thumbResult ?? null,
@@ -453,8 +629,10 @@ export function registerRecordingHandlers() {
       opts.endMs,
       opts.linkedNoteText ?? null,
     )
+    console.log(`[clip:create] Clip saved to DB: ${clipId} → ${clipPath}`)
 
     return {
+      id: clipId,
       filePath: clipPath,
       thumbnailPath: thumbResult ?? null,
       title: opts.title ?? null,
@@ -471,6 +649,45 @@ export function registerRecordingHandlers() {
       recordingId,
     )
     return clips.map((c) => ({ ...c, fileSize: getFileSize(c.filePath) }))
+  })
+
+  /**
+   * Returns every clip across all recordings, enriched with parent recording +
+   * game metadata so the Record Hub can display them as standalone cards.
+   */
+  ipcMain.handle('clip:list-all', async () => {
+    const prisma = getPrisma()
+    const clips: any[] = await prisma.$queryRawUnsafe(
+      `SELECT c.*, r."gameId", r."filePath" as "parentFilePath", r."thumbnailPath" as "parentThumbnail"
+       FROM "Clip" c
+       LEFT JOIN "Recording" r ON r."id" = c."recordingId"
+       ORDER BY c."createdAt" DESC`,
+    )
+
+    const gameIds = clips.map((c) => c.gameId).filter(Boolean) as string[]
+    const games = gameIds.length > 0
+      ? await prisma.game.findMany({ where: { id: { in: gameIds } }, select: { id: true, champion: true, opponentChampion: true, win: true, duration: true } })
+      : []
+    const gameMap = new Map(games.map((g) => [g.id, g]))
+
+    return clips.map((c) => {
+      const game = c.gameId ? gameMap.get(c.gameId) : null
+      return {
+        clipId: c.id,
+        recordingId: c.recordingId,
+        filePath: c.filePath,
+        thumbnailPath: c.thumbnailPath ?? c.parentThumbnail ?? null,
+        title: c.title,
+        startMs: Number(c.startMs),
+        endMs: Number(c.endMs),
+        createdAt: c.createdAt,
+        fileSize: getFileSize(c.filePath),
+        champion: game?.champion ?? null,
+        opponentChampion: game?.opponentChampion ?? null,
+        win: game?.win ?? false,
+        duration: game ? Number(game.duration) : 0,
+      }
+    })
   })
 
   ipcMain.handle('clip:delete', async (_e, clipId: string) => {

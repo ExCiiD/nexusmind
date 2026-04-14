@@ -1,14 +1,13 @@
-import { spawn, ChildProcess } from 'child_process'
-import { app, screen } from 'electron'
+import { spawn, ChildProcess, SpawnOptions } from 'child_process'
+import { app, screen, desktopCapturer, BrowserWindow, ipcMain } from 'electron'
 import { join, basename, dirname, extname } from 'path'
-import { existsSync, mkdirSync, statSync } from 'fs'
+import { existsSync, mkdirSync, statSync, createWriteStream, renameSync, unlinkSync } from 'fs'
+import type { WriteStream } from 'fs'
 import { getPrisma } from './database'
-import {
-  LOL_WINDOW_TITLES_ORDERED,
-  buildProbeGdigrabWindowArgs,
-  buildGdigrabWindowRecordingArgs,
-  buildGdigrabDesktopRecordingArgs,
-} from './recordingCaptureArgs'
+import { agentLog } from './debugAgentLog'
+
+const winSpawnOpts = (): Pick<SpawnOptions, 'windowsHide'> =>
+  process.platform === 'win32' ? { windowsHide: true } : {}
 
 let ffmpegBin: string | null = null
 try {
@@ -27,69 +26,117 @@ export function isFfmpegAvailable(): boolean {
 }
 
 export interface RecordingSettings {
-  /** Custom output folder — null means default userData/recordings */
   recordingPath?: string | null
-  /** Target output resolution: 'source' | '1440p' | '1080p' | '720p' */
   recordQuality?: string
-  /** Frames per second: 30 | 60 */
   recordFps?: number
-  /** Encoder: 'cpu' | 'nvenc' | 'amf' | 'qsv' */
   recordEncoder?: string
 }
 
-/** Map quality label to max height (0 = no scaling / source) */
-const QUALITY_HEIGHT: Record<string, number> = {
-  source: 0,
-  '1440p': 1440,
-  '1080p': 1080,
-  '720p': 720,
-}
+// ── WGC source discovery ──────────────────────────────────────────────────────
+
+const LOL_TITLE_PATTERNS = [
+  /^League of Legends \(TM\) Client$/i,
+  /^League of Legends$/i,
+  /^League Of Legends$/i,
+]
 
 /**
- * Probes gdigrab for a single frame on the given window title.
+ * Finds the Chromium media source ID for the League of Legends window
+ * using Electron's desktopCapturer (backed by WGC on Windows 10 1903+).
  */
-function probeWindowTitle(ffmpegPath: string, windowTitle: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const probe = spawn(ffmpegPath, buildProbeGdigrabWindowArgs(windowTitle), {
-      stdio: ['ignore', 'ignore', 'pipe'],
-    })
-    probe.on('exit', (code) => resolve(code === 0))
-    probe.on('error', () => resolve(false))
-    setTimeout(() => { try { probe.kill() } catch { /* ok */ } resolve(false) }, 5_000)
+async function findLolWindowSource(): Promise<Electron.DesktopCapturerSource | null> {
+  const sources = await desktopCapturer.getSources({
+    types: ['window'],
+    thumbnailSize: { width: 1, height: 1 },
+    fetchWindowIcons: false,
   })
+  for (const pattern of LOL_TITLE_PATTERNS) {
+    const match = sources.find((s) => pattern.test(s.name))
+    if (match) return match
+  }
+  const loose = sources.find(
+    (s) => /League/i.test(s.name) && !/Riot\s*Client/i.test(s.name),
+  )
+  return loose ?? null
 }
 
-/**
- * Returns the window title string that ffmpeg can capture, or null for desktop fallback.
- */
-async function resolveLolWindowTitle(ffmpegPath: string): Promise<string | null> {
-  for (const title of LOL_WINDOW_TITLES_ORDERED) {
-    const ok = await probeWindowTitle(ffmpegPath, title)
-    if (ok) {
-      console.log(`[recorder] LoL window title matched: "${title}"`)
-      return title
+const SOURCE_PROBE_DELAYS_MS = [0, 1500, 2000, 2500, 3000, 4000, 5000, 5000, 5000, 5000]
+
+async function findLolWindowSourceWithRetries(): Promise<Electron.DesktopCapturerSource | null> {
+  for (let i = 0; i < SOURCE_PROBE_DELAYS_MS.length; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, SOURCE_PROBE_DELAYS_MS[i]))
+    const src = await findLolWindowSource()
+    if (src) {
+      console.log(`[recorder] WGC source found: "${src.name}" (id=${src.id})`)
+      return src
     }
+    console.log(
+      `[recorder] WGC source probe ${i + 1}/${SOURCE_PROBE_DELAYS_MS.length} — League window not yet visible`,
+    )
   }
   return null
 }
 
-/** Map encoder label to ffmpeg codec + preset args. Uses CBR for GPU encoders to
- *  keep encoding load predictable and prevent sudden CPU/GPU spikes during gameplay. */
-function encoderArgs(encoder: string): string[] {
-  switch (encoder) {
-    case 'nvenc': return ['-c:v', 'h264_nvenc', '-preset', 'p1', '-rc', 'cbr', '-b:v', '6000k', '-maxrate', '8000k', '-bufsize', '16000k']
-    case 'amf':   return ['-c:v', 'h264_amf', '-quality', 'speed', '-rc', 'cbr', '-b:v', '6000k']
-    case 'qsv':   return ['-c:v', 'h264_qsv', '-preset', 'veryfast', '-b:v', '6000k']
-    default:      return ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '30', '-threads', '4', '-tune', 'zerolatency']
-  }
+// ── Remux WebM → MP4 ─────────────────────────────────────────────────────────
+
+/**
+ * Converts WebM capture to a proper MP4 with seekable moov atom.
+ * H264 stream: fast stream-copy into MP4 container.
+ * VP9/VP8 stream: re-encode to H264 (slower but necessary for MP4).
+ * `-fflags +genpts` fixes duration/seek from MediaRecorder's variable-rate timestamps.
+ */
+function remuxToMp4(webmPath: string, mp4Path: string, mimeType?: string): Promise<boolean> {
+  if (!ffmpegBin || !existsSync(ffmpegBin)) return Promise.resolve(false)
+
+  const isH264 = mimeType?.includes('h264') ?? false
+  const codecArgs = isH264
+    ? ['-c', 'copy']
+    : ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23']
+
+  return new Promise((resolve) => {
+    const args = [
+      '-hide_banner',
+      '-fflags', '+genpts',
+      '-i', webmPath,
+      ...codecArgs,
+      '-movflags', '+faststart',
+      '-y',
+      mp4Path,
+    ]
+    console.log(`[recorder] remux command: ffmpeg ${args.join(' ')}`)
+    const proc = spawn(ffmpegBin!, args, {
+      stdio: ['ignore', 'ignore', 'pipe'],
+      ...winSpawnOpts(),
+    })
+    let stderr = ''
+    proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString() })
+    proc.on('exit', (code) => {
+      if (code === 0 && existsSync(mp4Path)) {
+        resolve(true)
+      } else {
+        console.warn('[recorder] remux stderr:', stderr.slice(-500))
+        resolve(false)
+      }
+    })
+    proc.on('error', () => resolve(false))
+    setTimeout(() => { try { proc.kill() } catch { /* ok */ } resolve(false) }, 300_000)
+  })
 }
 
+// ── Recording manager ─────────────────────────────────────────────────────────
+
 export class RecordingManager {
-  private process: ChildProcess | null = null
-  private currentFilePath: string | null = null
   private isRecording = false
-  /** Path of the last completed recording waiting to be linked to a DB game row */
+  private currentFilePath: string | null = null
   private pendingRecording: string | null = null
+  private lastOutputPath: string | null = null
+  private writeStream: WriteStream | null = null
+  private webmTempPath: string | null = null
+  /** Resolves once the renderer finishes recording and remux is done. */
+  private donePromise: Promise<void> | null = null
+  private doneResolve: (() => void) | null = null
+  private mainWindow: BrowserWindow | null = null
+  private ipcRegistered = false
 
   getRecordingsDir(customPath?: string | null): string {
     const dir = customPath && customPath.trim()
@@ -99,137 +146,140 @@ export class RecordingManager {
     return dir
   }
 
+  /** Must be called once after mainWindow is created. */
+  setMainWindow(win: BrowserWindow) {
+    this.mainWindow = win
+    if (!this.ipcRegistered) {
+      this.registerIpc()
+      this.ipcRegistered = true
+    }
+  }
+
+  private registerIpc() {
+    ipcMain.handle('wgc:chunk', (_e, chunk: ArrayBuffer) => {
+      if (this.writeStream && !this.writeStream.destroyed) {
+        this.writeStream.write(Buffer.from(chunk))
+      }
+    })
+
+    ipcMain.handle('wgc:done', async (_e, meta: { mimeType: string }) => {
+      console.log(`[recorder] WGC capture done — mime: ${meta.mimeType}`)
+
+      await new Promise<void>((resolve) => {
+        if (!this.writeStream || this.writeStream.destroyed) { resolve(); return }
+        this.writeStream.end(() => resolve())
+      })
+      this.writeStream = null
+
+      const webm = this.webmTempPath
+      const mp4 = this.currentFilePath
+
+      if (webm && mp4 && existsSync(webm)) {
+        console.log(`[recorder] Remuxing WebM → MP4…`)
+        const ok = await remuxToMp4(webm, mp4, meta.mimeType)
+        if (ok) {
+          try { unlinkSync(webm) } catch { /* ignore */ }
+          console.log('[recorder] Remux complete → ' + mp4)
+        } else {
+          console.warn('[recorder] Remux failed — renaming WebM as fallback')
+          try { renameSync(webm, mp4) } catch { /* keep as-is */ }
+        }
+      }
+
+      this.isRecording = false
+      if (mp4) {
+        this.pendingRecording = mp4
+        this.lastOutputPath = mp4
+      }
+      this.webmTempPath = null
+      this.doneResolve?.()
+    })
+
+    ipcMain.handle('wgc:error', (_e, message: string) => {
+      console.error('[recorder] WGC capture error:', message)
+      this.writeStream?.end()
+      this.writeStream = null
+      this.isRecording = false
+      this.doneResolve?.()
+    })
+  }
+
   /**
-   * Starts an ffmpeg recording session.
-   * First attempts to capture the League of Legends window directly via gdigrab title=.
-   * Falls back to primary-monitor desktop capture if the window is not detected.
+   * Starts a recording session using Windows Graphics Capture via the renderer.
+   *
+   * 1. desktopCapturer finds the League window source ID.
+   * 2. Sends the source ID to the renderer which calls getUserMedia + MediaRecorder.
+   * 3. Renderer streams WebM chunks back via IPC; main writes them to disk.
+   * 4. On stop, remuxes WebM → MP4 if needed.
    */
   async startRecording(settings: RecordingSettings = {}): Promise<string | null> {
     if (this.isRecording) return this.currentFilePath
-    if (!ffmpegBin || !existsSync(ffmpegBin)) {
-      console.warn('[recorder] ffmpeg binary not found, skipping auto-record')
+    if (!this.mainWindow) {
+      console.warn('[recorder] mainWindow not set — cannot start WGC capture')
       return null
     }
 
-    const {
-      recordingPath = null,
-      recordQuality = 'source',
-      recordFps = 30,
-      recordEncoder = 'cpu',
-    } = settings
+    const { recordingPath = null, recordQuality, recordFps } = settings
 
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-    const filePath = join(this.getRecordingsDir(recordingPath), `lol_${ts}.mp4`)
+    const mp4Path = join(this.getRecordingsDir(recordingPath), `lol_${ts}.mp4`)
+    const webmPath = mp4Path.replace(/\.mp4$/, '.webm')
 
-    // Build optional scale filter (used only for desktop capture; window capture auto-sizes)
-    const primary = screen.getPrimaryDisplay()
-    const { x, y, width, height } = primary.bounds
-    const scaleFactor = primary.scaleFactor ?? 1
-    const capW = Math.round(width * scaleFactor)
-    const capH = Math.round(height * scaleFactor)
-    const evenH = capH % 2 === 0 ? capH : capH - 1
-    const evenW = capW % 2 === 0 ? capW : capW - 1
-
-    const targetH = QUALITY_HEIGHT[recordQuality] ?? 0
-    const scaleFilter = targetH > 0 && evenH > targetH ? ['-vf', `scale=-2:${targetH}`] : []
-
-    // Try window-only capture first — lower resource usage and no task bar / other windows.
-    // -draw_mouse 0 avoids gdigrab baking the cursor into every frame (visible flicker in-game).
-    let inputArgs: string[]
-    const lolTitle = await resolveLolWindowTitle(ffmpegBin)
-    if (lolTitle) {
-      console.log('[recorder] LoL window detected — using window capture')
-      inputArgs = buildGdigrabWindowRecordingArgs(lolTitle, recordFps)
-    } else {
-      console.log('[recorder] LoL window not found — falling back to primary display capture')
-      console.log(`[recorder] Primary display: ${evenW}x${evenH} at (${x},${y}) scale=${scaleFactor}`)
-      inputArgs = buildGdigrabDesktopRecordingArgs({
-        offsetX: x * scaleFactor,
-        offsetY: y * scaleFactor,
-        videoWidth: evenW,
-        videoHeight: evenH,
-        recordFps,
-      })
+    const source = await findLolWindowSourceWithRetries()
+    if (!source) {
+      console.warn('[recorder] No League window found — cannot start WGC capture')
+      return null
     }
 
-    console.log(`[recorder] Settings — quality: ${recordQuality}, fps: ${recordFps}, encoder: ${recordEncoder}`)
+    agentLog(
+      'recorder.ts:startRecording',
+      'wgc-start',
+      { sourceId: source.id, sourceName: source.name, quality: recordQuality, fps: recordFps },
+      'WGC',
+    )
 
-    const args = [
-      ...inputArgs,
-      ...encoderArgs(recordEncoder),
-      '-pix_fmt', 'yuv420p',
-      ...scaleFilter,
-      // faststart moves the MP4 index (moov atom) to the beginning of the file,
-      // which is required for seekable playback in a video element
-      '-movflags', '+faststart',
-      '-y',
-      filePath,
-    ]
-
-    this.currentFilePath = filePath
+    this.currentFilePath = mp4Path
+    this.lastOutputPath = mp4Path
+    this.webmTempPath = webmPath
     this.isRecording = true
 
-    this.process = spawn(ffmpegBin, args, { stdio: ['pipe', 'pipe', 'pipe'], detached: false })
+    this.writeStream = createWriteStream(webmPath)
 
-    // Lower the ffmpeg process priority so it doesn't steal CPU cycles from the game
-    if (this.process.pid) {
-      spawn('cmd', ['/c', `wmic process where ProcessId=${this.process.pid} CALL setpriority "below normal"`], {
-        stdio: 'ignore',
-        detached: true,
-      }).unref()
-    }
+    this.donePromise = new Promise<void>((resolve) => { this.doneResolve = resolve })
 
-    this.process.stderr?.on('data', (data: Buffer) => {
-      if (!app.isPackaged) process.stdout.write('[recorder] ' + data.toString())
+    this.mainWindow.webContents.send('wgc:capture-start', {
+      sourceId: source.id,
+      filePath: mp4Path,
+      quality: recordQuality ?? '1080p',
+      fps: recordFps ?? 30,
     })
 
-    this.process.on('exit', (code) => {
-      console.log(`[recorder] ffmpeg exited (code ${code}), file: ${filePath}`)
-      this.isRecording = false
-      this.process = null
-    })
-
-    this.process.on('error', (err) => {
-      console.error('[recorder] spawn error:', err.message)
-      this.isRecording = false
-      this.process = null
-      this.currentFilePath = null
-    })
-
-    console.log(`[recorder] Started → ${filePath}`)
-    return filePath
+    console.log(`[recorder] WGC Started — source="${source.name}" quality=${recordQuality ?? '1080p'} fps=${recordFps ?? 30} → ${mp4Path}`)
+    return mp4Path
   }
 
   stopRecording(): string | null {
-    if (!this.process || !this.isRecording) return null
-
-    const path = this.currentFilePath
-    this.isRecording = false
-    this.currentFilePath = null
-    this.pendingRecording = path
-
-    const proc = this.process
-    this.process = null
-
-    try {
-      // 'q\n' signals ffmpeg to stop gracefully so it can write the MP4 moov atom
-      proc.stdin?.write('q\n')
-      proc.stdin?.end()
-    } catch {
-      proc.kill('SIGTERM')
+    if (!this.isRecording) {
+      const fallback = this.pendingRecording ?? this.lastOutputPath
+      if (fallback) this.pendingRecording = fallback
+      return fallback
     }
 
-    // Force-kill if ffmpeg hasn't exited after 8 seconds
-    const killTimer = setTimeout(() => {
-      if (!proc.killed) {
-        console.warn('[recorder] ffmpeg did not exit gracefully — force killing')
-        try { proc.kill('SIGTERM') } catch { /* ignore */ }
-      }
-    }, 8_000)
+    const path = this.currentFilePath
+    this.pendingRecording = path
 
-    proc.on('exit', () => clearTimeout(killTimer))
+    this.mainWindow?.webContents.send('wgc:capture-stop')
 
     return path
+  }
+
+  /** Waits until the renderer has finished writing + remux is done. */
+  async waitForDone(timeoutMs = 30_000): Promise<void> {
+    if (!this.donePromise) return
+    await Promise.race([
+      this.donePromise,
+      new Promise<void>((r) => setTimeout(r, timeoutMs)),
+    ])
   }
 
   getPendingRecording(): string | null {
@@ -238,6 +288,7 @@ export class RecordingManager {
 
   clearPendingRecording() {
     this.pendingRecording = null
+    this.lastOutputPath = null
   }
 
   getStatus(): { isRecording: boolean; filePath: string | null; ffmpegAvailable: boolean } {
@@ -253,10 +304,6 @@ export const recordingManager = new RecordingManager()
 
 // ── Thumbnail generation ──────────────────────────────────────────────────────
 
-/**
- * Extracts a single JPEG frame from a video file at the given offset (seconds).
- * Returns the output path, or null if ffmpeg is unavailable / the file is missing.
- */
 export async function generateThumbnail(
   filePath: string,
   outputPath: string,
@@ -274,26 +321,46 @@ export async function generateThumbnail(
       '-y',
       outputPath,
     ]
-
-    const proc = spawn(ffmpegBin!, args, { stdio: ['ignore', 'ignore', 'pipe'] })
-    proc.on('exit', (code) => {
-      if (code === 0 && existsSync(outputPath)) {
-        resolve(outputPath)
-      } else {
-        resolve(null)
-      }
-    })
+    const proc = spawn(ffmpegBin!, args, { stdio: ['ignore', 'ignore', 'pipe'], ...winSpawnOpts() })
+    proc.stderr?.resume()
+    proc.on('exit', (code) => resolve(code === 0 && existsSync(outputPath) ? outputPath : null))
     proc.on('error', () => resolve(null))
-    // 15-second safety timeout
     setTimeout(() => { try { proc.kill() } catch { /* ok */ } resolve(null) }, 15_000)
   })
 }
 
 /**
- * Convenience wrapper that generates a thumbnail for a DB Recording row,
- * deriving the offset from 12% of the video duration (capped at 30s),
- * and persists the resulting path in the Recording table.
+ * Probes video duration (seconds) via ffprobe-style ffmpeg.
+ * Returns 0 if probing fails.
  */
+function probeDuration(filePath: string): Promise<number> {
+  if (!ffmpegBin || !existsSync(filePath)) return Promise.resolve(0)
+  return new Promise((resolve) => {
+    let resolved = false
+    const done = (val: number) => { if (!resolved) { resolved = true; clearTimeout(timer); resolve(val) } }
+    const args = ['-i', filePath, '-hide_banner']
+    const proc = spawn(ffmpegBin!, args, { stdio: ['ignore', 'pipe', 'pipe'], ...winSpawnOpts() })
+    let output = ''
+    proc.stderr?.on('data', (d: Buffer) => { output += d.toString() })
+    proc.stdout?.on('data', (d: Buffer) => { output += d.toString() })
+    proc.on('exit', () => {
+      const match = output.match(/Duration:\s*(\d+):(\d+):(\d+)\.(\d+)/)
+      if (match) {
+        done(
+          parseInt(match[1]) * 3600 +
+          parseInt(match[2]) * 60 +
+          parseInt(match[3]) +
+          parseInt(match[4]) / 100,
+        )
+      } else {
+        done(0)
+      }
+    })
+    proc.on('error', () => done(0))
+    const timer = setTimeout(() => { try { proc.kill() } catch { /* ok */ } done(0) }, 10_000)
+  })
+}
+
 export async function generateThumbnailForRecording(
   recordingId: string,
   filePath: string,
@@ -302,15 +369,16 @@ export async function generateThumbnailForRecording(
     console.warn('[recorder] Thumbnail skipped — file not found:', filePath)
     return null
   }
-
-  // Store thumbnails in a dedicated app-data folder to ensure write permission,
-  // regardless of where the source video lives (Insight, OBS, external drive, etc.)
   const thumbDir = join(app.getPath('userData'), 'thumbnails')
   if (!existsSync(thumbDir)) mkdirSync(thumbDir, { recursive: true })
   const thumbPath = join(thumbDir, `${recordingId}.thumb.jpg`)
 
-  const result = await generateThumbnail(filePath, thumbPath, 1)
+  const duration = await probeDuration(filePath)
+  const offset = duration > 0
+    ? Math.min(120, Math.max(1, duration * 0.1))
+    : 5
 
+  const result = await generateThumbnail(filePath, thumbPath, offset)
   if (result) {
     try {
       const prisma = getPrisma()
@@ -338,19 +406,18 @@ export interface ClipOptions {
   outputDir: string
 }
 
-/**
- * Cuts a lossless clip from an existing recording using ffmpeg stream copy.
- * Returns the output file path, or null on failure.
- */
 export async function createClip(options: ClipOptions): Promise<string | null> {
   if (!ffmpegBin || !existsSync(ffmpegBin)) return null
   if (!existsSync(options.filePath)) return null
+  if (
+    !Number.isFinite(options.startMs) || !Number.isFinite(options.endMs) ||
+    options.startMs < 0 || options.endMs <= options.startMs
+  ) return null
 
   const clipId = `clip_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-  const clipsDir = join(options.outputDir, 'clips')
-  if (!existsSync(clipsDir)) mkdirSync(clipsDir, { recursive: true })
+  if (!existsSync(options.outputDir)) mkdirSync(options.outputDir, { recursive: true })
 
-  const outputPath = join(clipsDir, `${clipId}.mp4`)
+  const outputPath = join(options.outputDir, `${clipId}.mp4`)
   const startSecs = options.startMs / 1000
   const endSecs = options.endMs / 1000
 
@@ -365,18 +432,14 @@ export async function createClip(options: ClipOptions): Promise<string | null> {
       '-y',
       outputPath,
     ]
-
-    const proc = spawn(ffmpegBin!, args, { stdio: ['ignore', 'ignore', 'pipe'] })
-    proc.on('exit', (code) => {
-      resolve(code === 0 && existsSync(outputPath) ? outputPath : null)
-    })
+    const proc = spawn(ffmpegBin!, args, { stdio: ['ignore', 'ignore', 'pipe'], ...winSpawnOpts() })
+    proc.stderr?.resume()
+    proc.on('exit', (code) => resolve(code === 0 && existsSync(outputPath) ? outputPath : null))
     proc.on('error', () => resolve(null))
-    // 60-second safety timeout for large clips
     setTimeout(() => { try { proc.kill() } catch { /* ok */ } resolve(null) }, 60_000)
   })
 }
 
-/** Returns the size of a file in bytes, or 0 if it doesn't exist. */
 export function getFileSize(filePath: string): number {
   try {
     return statSync(filePath).size

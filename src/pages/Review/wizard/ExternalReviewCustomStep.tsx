@@ -9,9 +9,11 @@ interface Props {
   onChange: (partial: Partial<WizardState>) => void
   creating: boolean
   onCreate: () => void
+  /** Override primary button label (e.g. post-game flow) */
+  submitLabel?: string
 }
 
-export function ExternalReviewCustomStep({ state, onChange, creating, onCreate }: Props) {
+export function ExternalReviewCustomStep({ state, onChange, creating, onCreate, submitLabel }: Props) {
   const toggleObjective = (id: string) => {
     const ids = state.objectiveIds.includes(id)
       ? state.objectiveIds.filter((x) => x !== id)
@@ -79,7 +81,7 @@ export function ExternalReviewCustomStep({ state, onChange, creating, onCreate }
         size="lg"
       >
         {creating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
-        Create review
+        {submitLabel ?? 'Create review'}
       </Button>
     </div>
   )

@@ -372,6 +372,68 @@ export function registerSessionHandlers() {
     return { success: true }
   })
 
+  ipcMain.handle('session:bulk-delete', async (_event, ids: string[]) => {
+    const prisma = getPrisma()
+
+    const games = await prisma.game.findMany({
+      where: { sessionId: { in: ids } },
+      select: { id: true },
+    })
+    const gameIds = games.map((g) => g.id)
+
+    if (gameIds.length > 0) {
+      await prisma.gameDetailedStats.deleteMany({ where: { gameId: { in: gameIds } } })
+      await prisma.review.deleteMany({ where: { gameId: { in: gameIds } } })
+      await prisma.game.deleteMany({ where: { sessionId: { in: ids } } })
+    }
+
+    await prisma.session.deleteMany({ where: { id: { in: ids } } })
+    return { success: true, deleted: ids.length }
+  })
+
+  ipcMain.handle('session:cancel', async (_event, id: string) => {
+    const prisma = getPrisma()
+
+    const games = await prisma.game.findMany({
+      where: { sessionId: id },
+      select: { id: true },
+    })
+    const gameIds = games.map((g) => g.id)
+
+    if (gameIds.length > 0) {
+      await prisma.gameDetailedStats.deleteMany({ where: { gameId: { in: gameIds } } })
+      await prisma.review.deleteMany({ where: { gameId: { in: gameIds } } })
+      await prisma.game.deleteMany({ where: { sessionId: id } })
+    }
+
+    await prisma.session.delete({ where: { id } })
+    return { success: true }
+  })
+
+  ipcMain.handle('session:update', async (_event, id: string, data: { objectiveIds?: string[]; selectedKpiIds?: string[]; customNote?: string }) => {
+    const prisma = getPrisma()
+
+    const updateData: Record<string, unknown> = {}
+    if (data.objectiveIds !== undefined) {
+      updateData.objectiveId = data.objectiveIds[0]
+      updateData.objectiveIds = JSON.stringify(data.objectiveIds)
+    }
+    if (data.selectedKpiIds !== undefined) {
+      updateData.selectedKpiIds = JSON.stringify(data.selectedKpiIds)
+    }
+    if (data.customNote !== undefined) {
+      updateData.customNote = data.customNote || null
+    }
+
+    const session = await prisma.session.update({
+      where: { id },
+      data: updateData,
+      include: { games: { include: { review: true } } },
+    })
+
+    return session
+  })
+
   ipcMain.handle('game:delete', async (_event, gameId: string) => {
     const prisma = getPrisma()
     await prisma.gameDetailedStats.deleteMany({ where: { gameId } })

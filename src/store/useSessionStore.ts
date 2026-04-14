@@ -52,6 +52,8 @@ interface SessionStore {
   loadActiveSession: () => Promise<void>
   createSession: (data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) => Promise<void>
   endSession: (sessionConclusion?: string) => Promise<void>
+  cancelSession: () => Promise<void>
+  updateSession: (data: { objectiveIds?: string[]; selectedKpiIds?: string[]; customNote?: string }) => Promise<void>
   refreshSession: () => Promise<void>
 }
 
@@ -79,6 +81,22 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     if (session) {
       await window.api.endSession(session.id, undefined, sessionConclusion)
       set({ activeSession: null })
+    }
+  },
+
+  cancelSession: async () => {
+    const session = get().activeSession
+    if (session) {
+      await window.api.cancelSession(session.id)
+      set({ activeSession: null })
+    }
+  },
+
+  updateSession: async (data) => {
+    const session = get().activeSession
+    if (session) {
+      const updated = await window.api.updateSession(session.id, data)
+      set({ activeSession: updated })
     }
   },
 

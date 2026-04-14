@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChampionMatchup } from '@/components/ChampionMatchup'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,12 +16,14 @@ import {
   Eye,
   Brain,
   CheckCircle,
+  Check,
   Clock,
   Loader2,
   BarChart3,
   FileSearch,
   Trash2,
   Video,
+  X,
 } from 'lucide-react'
 import { AccountBadge } from '@/components/ui/AccountBadge'
 import { ShareSessionButton } from '@/components/Share/ShareSessionButton'
@@ -515,13 +517,58 @@ function GamesTab() {
   )
 }
 
-/* ─── Sessions Tab: existing session-level history ─── */
+/* ─── Sessions Tab: month-grouped, selectable, paginated ─── */
+
+const SESSIONS_PAGE_SIZE = 10
+
+function getMonthKey(dateStr: string): string {
+  const d = new Date(dateStr)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+function formatMonthLabel(monthKey: string): string {
+  const [y, m] = monthKey.split('-')
+  const d = new Date(Number(y), Number(m) - 1, 1)
+  return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+}
+
+function buildSessionPageNumbers(current: number, total: number): Array<number | '…'> {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const pages: Array<number | '…'> = [1]
+  if (current > 3) pages.push('…')
+  for (let p = Math.max(2, current - 1); p <= Math.min(total - 1, current + 1); p++) pages.push(p)
+  if (current < total - 2) pages.push('…')
+  pages.push(total)
+  return pages
+}
+
+function SessionCheckbox({ checked, indeterminate, onChange, className }: { checked: boolean; indeterminate?: boolean; onChange: () => void; className?: string }) {
+  return (
+    <div
+      onClick={(e) => { e.stopPropagation(); onChange() }}
+      className={cn(
+        'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer shrink-0',
+        checked || indeterminate
+          ? 'bg-hextech-gold border-hextech-gold'
+          : 'bg-black/40 border-white/30 hover:border-hextech-gold/60',
+        className,
+      )}
+    >
+      {indeterminate && !checked && <div className="w-2.5 h-0.5 bg-black rounded" />}
+      {checked && <Check className="h-3 w-3 text-black" />}
+    </div>
+  )
+}
 
 function SessionsTab() {
   const { t } = useTranslation()
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [collapsedMonths, setCollapsedMonths] = useState<Set<string>>(new Set())
+  const [currentPage, setCurrentPage] = useState(1)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   useEffect(() => {
     window.api
@@ -533,15 +580,89 @@ function SessionsTab() {
       .catch(() => setLoading(false))
   }, [])
 
-  const handleDelete = async (id: string) => {
+  const totalPages = Math.max(1, Math.ceil(sessions.length / SESSIONS_PAGE_SIZE))
+  const safePage = Math.min(currentPage, totalPages)
+
+  const pageSessions = useMemo(
+    () => sessions.slice((safePage - 1) * SESSIONS_PAGE_SIZE, safePage * SESSIONS_PAGE_SIZE),
+    [sessions, safePage],
+  )
+
+  const monthGroups = useMemo(() => {
+    const map = new Map<string, SessionSummary[]>()
+    for (const s of pageSessions) {
+      const key = getMonthKey(s.date)
+      const arr = map.get(key) ?? []
+      arr.push(s)
+      map.set(key, arr)
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => b.localeCompare(a))
+  }, [pageSessions])
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const toggleSelectMonth = useCallback((ids: string[]) => {
+    setSelectedIds((prev) => {
+      const allSelected = ids.every((id) => prev.has(id))
+      const next = new Set(prev)
+      if (allSelected) {
+        ids.forEach((id) => next.delete(id))
+      } else {
+        ids.forEach((id) => next.add(id))
+      }
+      return next
+    })
+  }, [])
+
+  const toggleMonthCollapse = useCallback((monthKey: string) => {
+    setCollapsedMonths((prev) => {
+      const next = new Set(prev)
+      if (next.has(monthKey)) next.delete(monthKey)
+      else next.add(monthKey)
+      return next
+    })
+  }, [])
+
+  const handleDelete = useCallback(async (id: string) => {
     try {
       await window.api.deleteSession(id)
       setSessions((prev) => prev.filter((s) => s.id !== id))
+      setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next })
       if (expandedId === id) setExpandedId(null)
     } catch (err) {
       console.error('[history] Failed to delete session:', err)
     }
-  }
+  }, [expandedId])
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return
+    setBulkDeleting(true)
+    try {
+      await window.api.bulkDeleteSessions(Array.from(selectedIds))
+      setSessions((prev) => prev.filter((s) => !selectedIds.has(s.id)))
+      if (expandedId && selectedIds.has(expandedId)) setExpandedId(null)
+      setSelectedIds(new Set())
+    } catch (err) {
+      console.error('[history] Failed to bulk delete sessions:', err)
+    } finally {
+      setBulkDeleting(false)
+    }
+  }, [selectedIds, expandedId])
+
+  const handleGameDelete = useCallback((sessionId: string, gameId: string) => {
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId ? { ...s, games: s.games.filter((g) => g.id !== gameId) } : s,
+      ),
+    )
+  }, [])
 
   if (loading) {
     return (
@@ -562,31 +683,193 @@ function SessionsTab() {
     )
   }
 
-  const handleGameDelete = (sessionId: string, gameId: string) => {
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === sessionId ? { ...s, games: s.games.filter((g) => g.id !== gameId) } : s,
-      ),
-    )
-  }
-
   return (
     <div className="space-y-3">
-      {sessions.map((session) => (
-        <SessionCard
-          key={session.id}
-          session={session}
-          expanded={expandedId === session.id}
-          onToggle={() => setExpandedId(expandedId === session.id ? null : session.id)}
-          onDelete={handleDelete}
-          onGameDelete={(gameId) => handleGameDelete(session.id, gameId)}
-        />
-      ))}
+      {/* Pagination top */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={safePage === 1}
+            className={cn(
+              'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+              safePage === 1
+                ? 'border-hextech-border-dim/40 text-hextech-text-dim/30 bg-hextech-dark/40 cursor-not-allowed'
+                : 'border-hextech-border-dim text-hextech-text-dim bg-hextech-elevated hover:border-hextech-gold/50 hover:text-hextech-text',
+            )}
+          >
+            <ChevronLeft className="h-4 w-4" />Prev
+          </button>
+
+          <div className="flex items-center gap-1">
+            {buildSessionPageNumbers(safePage, totalPages).map((entry, i) =>
+              entry === '…' ? (
+                <span key={`ellipsis-${i}`} className="w-8 text-center text-hextech-text-dim/40 text-sm select-none">…</span>
+              ) : (
+                <button
+                  key={entry}
+                  onClick={() => setCurrentPage(entry as number)}
+                  className={cn(
+                    'w-8 h-8 rounded-lg border text-sm font-medium transition-colors',
+                    entry === safePage
+                      ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
+                      : 'border-hextech-border-dim/60 text-hextech-text-dim bg-hextech-dark/60 hover:border-hextech-gold/40 hover:text-hextech-text',
+                  )}
+                >
+                  {entry}
+                </button>
+              ),
+            )}
+          </div>
+
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={safePage === totalPages}
+            className={cn(
+              'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+              safePage === totalPages
+                ? 'border-hextech-border-dim/40 text-hextech-text-dim/30 bg-hextech-dark/40 cursor-not-allowed'
+                : 'border-hextech-gold/60 text-hextech-gold bg-hextech-gold/10 hover:bg-hextech-gold/20',
+            )}
+          >
+            Next<ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Month groups */}
+      {monthGroups.map(([monthKey, monthSessions]) => {
+        const monthIds = monthSessions.map((s) => s.id)
+        const allMonthSelected = monthIds.length > 0 && monthIds.every((id) => selectedIds.has(id))
+        const someMonthSelected = monthIds.some((id) => selectedIds.has(id))
+        const isCollapsed = collapsedMonths.has(monthKey)
+
+        return (
+          <div key={monthKey} className="mb-4">
+            {/* Month header */}
+            <div className="flex items-center gap-3 mb-3">
+              <SessionCheckbox
+                checked={allMonthSelected}
+                indeterminate={someMonthSelected && !allMonthSelected}
+                onChange={() => toggleSelectMonth(monthIds)}
+              />
+              <button
+                onClick={() => toggleMonthCollapse(monthKey)}
+                className="flex items-center gap-2 flex-1 min-w-0 text-left"
+              >
+                <span className="text-sm font-semibold text-hextech-text-bright capitalize">
+                  {formatMonthLabel(monthKey)}
+                </span>
+                <span className="text-xs text-hextech-text-dim/60 shrink-0">{monthSessions.length}</span>
+                {isCollapsed
+                  ? <ChevronDown className="h-4 w-4 text-hextech-text-dim/60 shrink-0" />
+                  : <ChevronUp className="h-4 w-4 text-hextech-text-dim/60 shrink-0" />}
+              </button>
+            </div>
+
+            {/* Sessions */}
+            {!isCollapsed && (
+              <div className="space-y-3">
+                {monthSessions.map((session) => (
+                  <SessionCard
+                    key={session.id}
+                    session={session}
+                    isSelected={selectedIds.has(session.id)}
+                    onToggleSelect={() => toggleSelect(session.id)}
+                    expanded={expandedId === session.id}
+                    onToggle={() => setExpandedId(expandedId === session.id ? null : session.id)}
+                    onDelete={handleDelete}
+                    onGameDelete={(gameId) => handleGameDelete(session.id, gameId)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {/* Pagination bottom */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={safePage === 1}
+            className={cn(
+              'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+              safePage === 1
+                ? 'border-hextech-border-dim/40 text-hextech-text-dim/30 bg-hextech-dark/40 cursor-not-allowed'
+                : 'border-hextech-border-dim text-hextech-text-dim bg-hextech-elevated hover:border-hextech-gold/50 hover:text-hextech-text',
+            )}
+          >
+            <ChevronLeft className="h-4 w-4" />Prev
+          </button>
+
+          <div className="flex items-center gap-1">
+            {buildSessionPageNumbers(safePage, totalPages).map((entry, i) =>
+              entry === '…' ? (
+                <span key={`ellipsis-${i}`} className="w-8 text-center text-hextech-text-dim/40 text-sm select-none">…</span>
+              ) : (
+                <button
+                  key={entry}
+                  onClick={() => setCurrentPage(entry as number)}
+                  className={cn(
+                    'w-8 h-8 rounded-lg border text-sm font-medium transition-colors',
+                    entry === safePage
+                      ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
+                      : 'border-hextech-border-dim/60 text-hextech-text-dim bg-hextech-dark/60 hover:border-hextech-gold/40 hover:text-hextech-text',
+                  )}
+                >
+                  {entry}
+                </button>
+              ),
+            )}
+          </div>
+
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={safePage === totalPages}
+            className={cn(
+              'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+              safePage === totalPages
+                ? 'border-hextech-border-dim/40 text-hextech-text-dim/30 bg-hextech-dark/40 cursor-not-allowed'
+                : 'border-hextech-gold/60 text-hextech-gold bg-hextech-gold/10 hover:bg-hextech-gold/20',
+            )}
+          >
+            Next<ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl bg-hextech-dark/95 backdrop-blur border border-hextech-border-dim shadow-2xl px-4 py-2.5">
+          <span className="text-sm font-medium text-hextech-text-bright">
+            {selectedIds.size} {t('history.selected', { count: selectedIds.size, defaultValue: 'selected' })}
+          </span>
+          <div className="h-4 w-px bg-hextech-border-dim" />
+
+          <button
+            onClick={handleBulkDelete}
+            disabled={bulkDeleting}
+            className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs bg-[#FF4655]/10 border border-[#FF4655]/40 text-[#FF4655] hover:bg-[#FF4655]/20 transition-colors font-medium disabled:opacity-50"
+          >
+            {bulkDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            {t('history.deleteSelected', { defaultValue: 'Delete' })}
+          </button>
+
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-hextech-text-dim/60 hover:text-hextech-text-dim transition-colors ml-1"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }
 
-function SessionCard({ session, expanded, onToggle, onDelete, onGameDelete }: { session: SessionSummary; expanded: boolean; onToggle: () => void; onDelete: (id: string) => void; onGameDelete: (gameId: string) => void }) {
+function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, onDelete, onGameDelete }: { session: SessionSummary; isSelected: boolean; onToggleSelect: () => void; expanded: boolean; onToggle: () => void; onDelete: (id: string) => void; onGameDelete: (gameId: string) => void }) {
   const { t } = useTranslation()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const fundamental = useLocalizedFundamental(session.objectiveId)
@@ -594,10 +877,16 @@ function SessionCard({ session, expanded, onToggle, onDelete, onGameDelete }: { 
   const winRate = session.gamesPlayed > 0 ? Math.round((session.wins / session.gamesPlayed) * 100) : 0
 
   return (
-    <Card className={cn('transition-colors', session.status === 'active' && 'border-hextech-green/40')}>
+    <Card className={cn(
+      'transition-colors',
+      session.status === 'active' && 'border-hextech-green/40',
+      isSelected && 'border-hextech-gold/60 ring-1 ring-hextech-gold/30',
+    )}>
       <CardHeader className="cursor-pointer select-none" onClick={onToggle}>
         <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <SessionCheckbox checked={isSelected} onChange={onToggleSelect} className="mt-1" />
+            <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-hextech-text-bright truncate">
                 {fundamental?.label || session.objectiveId}
@@ -615,6 +904,7 @@ function SessionCard({ session, expanded, onToggle, onDelete, onGameDelete }: { 
               <Clock className="h-3 w-3" />
               {dateStr}
             </div>
+          </div>
           </div>
 
           <div className="flex items-center gap-6 shrink-0">

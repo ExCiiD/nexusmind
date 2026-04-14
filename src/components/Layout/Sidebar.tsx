@@ -120,19 +120,20 @@ export function Sidebar() {
             </div>
           )}
 
-          {isRecording && (
-            <div className="flex items-center gap-1.5 text-xs text-[#FF4655]">
-              <Circle className="h-2 w-2 fill-current animate-pulse" />
-              <span className="font-medium">Recording</span>
-            </div>
-          )}
-
-          {user.autoRecord && !isRecording && (
-            <div className="flex items-center gap-1.5 text-xs text-hextech-text-dim">
-              <Circle className="h-2 w-2" />
-              <span>Auto-record on</span>
-            </div>
-          )}
+          {/* Fixed height avoids layout jump / “popup” flash when recording starts */}
+          <div className="min-h-[22px] flex items-center">
+            {isRecording ? (
+              <div className="flex items-center gap-1.5 text-xs text-[#FF4655]">
+                <Circle className="h-2 w-2 fill-current animate-pulse" />
+                <span className="font-medium">Recording</span>
+              </div>
+            ) : user.autoRecord ? (
+              <div className="flex items-center gap-1.5 text-xs text-hextech-text-dim">
+                <Circle className="h-2 w-2" />
+                <span>Auto-record on</span>
+              </div>
+            ) : null}
+          </div>
 
           <div className="flex items-center justify-between">
             <div className="truncate min-w-0">

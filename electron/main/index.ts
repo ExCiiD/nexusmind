@@ -24,6 +24,37 @@ import { registerExternalReviewHandlers } from './ipc/externalReview.ipc'
 import { registerShareHandlers } from './ipc/share.ipc'
 import { registerCoachingHandlers } from './ipc/coaching.ipc'
 import { registerYoutubeHandlers } from './ipc/youtube.ipc'
+import { agentLog } from './debugAgentLog'
+
+/** Resolves DB recording id for post-game navigation (path normalization + latest-capture fallback). */
+async function resolveCaptureRecordingIdForGameEnd(
+  matchData: { game?: { id: string } | null },
+  pendingPath: string | null,
+): Promise<string | undefined> {
+  const prisma = getPrisma()
+  if (matchData.game?.id) {
+    const rec = await prisma.recording.findFirst({ where: { gameId: matchData.game.id } })
+    return rec?.id ?? undefined
+  }
+  const norm = (p: string) => p.replace(/\\/g, '/').toLowerCase()
+  if (pendingPath) {
+    const exact = await prisma.recording.findFirst({ where: { filePath: pendingPath } })
+    if (exact?.id) return exact.id
+    const n = norm(pendingPath)
+    const recent = await prisma.recording.findMany({
+      where: { gameId: null },
+      orderBy: { createdAt: 'desc' },
+      take: 32,
+    })
+    const hit = recent.find((r) => r.filePath && norm(r.filePath) === n)
+    if (hit?.id) return hit.id
+  }
+  const fallback = await prisma.recording.findFirst({
+    where: { gameId: null, source: 'capture' },
+    orderBy: { createdAt: 'desc' },
+  })
+  return fallback?.id ?? undefined
+}
 
 // Register before app is ready — allows the renderer to load local files via nxm:// URLs
 // This bypasses the cross-origin restriction that blocks file:// in dev mode
@@ -60,6 +91,8 @@ function createWindow() {
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
   })
+
+  recordingManager.setMainWindow(mainWindow)
 
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
@@ -190,57 +223,101 @@ async function bootstrap() {
   gameDetector = new GameDetector(
     // onGameEnd: called after Riot API confirms the match
     async (matchData) => {
-      mainWindow?.webContents.send('game:ended', matchData)
+      mainWindow?.restore()
       mainWindow?.show()
       mainWindow?.focus()
 
       // Link any pending recording to this game (game is null for practice tool / untracked games)
       const pendingRecording = recordingManager.getPendingRecording()
-      if (!matchData.game?.id) {
-        // No valid match — just discard the pending recording reference (file stays on disk)
-        if (pendingRecording) {
-          console.log('[main] No valid match for recording — file kept on disk, not auto-linked')
-          recordingManager.clearPendingRecording()
+      // #region agent log
+      agentLog(
+        'index.ts:onGameEnd',
+        'entry',
+        {
+          gameId: matchData.game?.id ?? null,
+          pendingTail: pendingRecording ? pendingRecording.slice(-120) : null,
+          isSessionEligible: matchData.isSessionEligible,
+        },
+        'L1',
+      )
+      // #endregion
+
+      if (matchData.game?.id) {
+        if (!pendingRecording) {
+          // #region agent log
+          agentLog('index.ts:onGameEnd', 'skip-link-no-pending', { gameId: matchData.game.id }, 'L2')
+          // #endregion
         }
-        return
-      }
-      if (pendingRecording && matchData.game?.id) {
-        try {
-          const prisma = getPrisma()
-          // Prefer row created in onGameRawEnd (filePath, gameId null) — avoids losing the link if match resolves late
-          const existing = await prisma.recording.findFirst({
-            where: { filePath: pendingRecording, gameId: null },
-          })
-          const rec = existing
-            ? await prisma.recording.update({
-                where: { id: existing.id },
-                data: { gameId: matchData.game.id, source: 'capture' },
-              })
-            : await prisma.recording.upsert({
-                where: { gameId: matchData.game.id },
-                create: { gameId: matchData.game.id, filePath: pendingRecording, source: 'capture' },
-                update: { filePath: pendingRecording, source: 'capture' },
-              })
-          recordingManager.clearPendingRecording()
-          // Notify renderer so the panel refreshes
-          mainWindow?.webContents.send('recording:linked', {
-            gameId: matchData.game.id,
-            filePath: pendingRecording,
-          })
-          console.log(`[main] Auto-linked recording to game ${matchData.game.id}`)
-          // Generate thumbnail in the background (non-blocking)
-          generateThumbnailForRecording(rec.id, pendingRecording).catch((err) =>
-            console.warn('[main] Thumbnail generation failed:', err),
-          )
-        } catch (err) {
-          console.error('[main] Failed to link recording:', err)
+        if (pendingRecording) {
+          try {
+            const prisma = getPrisma()
+            const existing = await prisma.recording.findFirst({
+              where: { filePath: pendingRecording, gameId: null },
+            })
+            // #region agent log
+            agentLog(
+              'index.ts:onGameEnd',
+              'after-findFirst',
+              {
+                existingRecordingId: existing?.id ?? null,
+                gameId: matchData.game.id,
+                pendingTail: pendingRecording.slice(-120),
+              },
+              'L3',
+            )
+            // #endregion
+            const rec = existing
+              ? await prisma.recording.update({
+                  where: { id: existing.id },
+                  data: { gameId: matchData.game.id, source: 'capture' },
+                })
+              : await prisma.recording.upsert({
+                  where: { gameId: matchData.game.id },
+                  create: { gameId: matchData.game.id, filePath: pendingRecording, source: 'capture' },
+                  update: { filePath: pendingRecording, source: 'capture' },
+                })
+            recordingManager.clearPendingRecording()
+            mainWindow?.webContents.send('recording:linked', {
+              gameId: matchData.game.id,
+              filePath: pendingRecording,
+            })
+            console.log(`[main] Auto-linked recording to game ${matchData.game.id}`)
+            generateThumbnailForRecording(rec.id, pendingRecording).catch((err) =>
+              console.warn('[main] Thumbnail generation failed:', err),
+            )
+          } catch (err) {
+            console.error('[main] Failed to link recording:', err)
+            // #region agent log
+            agentLog('index.ts:onGameEnd', 'link-prisma-error', { message: (err as Error)?.message ?? String(err) }, 'L3')
+            // #endregion
+          }
+        }
+      } else {
+        if (pendingRecording) {
+          console.log('[main] No game ID yet — recording kept pending for background enrich to link')
+          // #region agent log
+          agentLog('index.ts:onGameEnd', 'keep-pending-for-enrich', { pendingTail: pendingRecording.slice(-120), hasStats: matchData.stats != null }, 'L1')
+          // #endregion
         }
       }
 
-      // Only send the game:ended event to the renderer if the queue is session-eligible.
-      // Non-eligible games (ARAM, Arena, etc.) are recorded but don't auto-open a review.
+      let captureRecordingId: string | undefined
+      try {
+        captureRecordingId = await resolveCaptureRecordingIdForGameEnd(matchData, pendingRecording)
+      } catch {
+        /* ignore */
+      }
+
+      const payload = {
+        ...matchData,
+        captureRecordingId,
+        suggestExternalReview: !matchData.game?.id && Boolean(captureRecordingId),
+      }
+
+      mainWindow?.webContents.send('game:ended', payload)
+
       if (matchData.isSessionEligible === false) {
-        console.log('[main] Non-eligible queue — suppressing review auto-open')
+        console.log('[main] Non-eligible queue — session review prompts may be suppressed in UI')
       }
     },
 
@@ -258,7 +335,8 @@ async function bootstrap() {
             recordEncoder: user.recordEncoder,
           })
           if (path) {
-            mainWindow?.webContents.send('recording:started')
+            mainWindow?.minimize()
+            queueMicrotask(() => mainWindow?.webContents.send('recording:started'))
             console.log('[main] Recording started →', path)
           } else {
             console.warn('[main] startRecording() returned null — ffmpeg may be unavailable')
@@ -272,9 +350,20 @@ async function bootstrap() {
     // onGameRawEnd: fires immediately when live client stops (before Riot API match resolution)
     async () => {
       const stoppedPath = recordingManager.stopRecording()
+      // #region agent log
+      agentLog(
+        'index.ts:onGameRawEnd',
+        'after-stopRecording',
+        { stoppedTail: stoppedPath ? stoppedPath.slice(-120) : null, hadPath: !!stoppedPath },
+        'L2',
+      )
+      // #endregion
       if (!stoppedPath) return
 
-      console.log(`[main] Recording stopped → ${stoppedPath}`)
+      console.log(`[main] Recording stop signal sent → ${stoppedPath}`)
+      await recordingManager.waitForDone(30_000)
+      console.log(`[main] Recording finalized → ${stoppedPath}`)
+
       try {
         const prisma = getPrisma()
         const existing = await prisma.recording.findFirst({ where: { filePath: stoppedPath } })

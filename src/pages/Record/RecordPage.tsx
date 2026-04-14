@@ -8,7 +8,7 @@ import {
   Video, Youtube, RefreshCw, Loader2, ClipboardCheck,
   Swords, Clock, Film, Scissors, Filter, Trash2,
   FolderPlus, ChevronDown, ChevronUp, Check, FolderOpen,
-  Pencil, X, ChevronLeft, ChevronRight,
+  Pencil, X, ChevronLeft, ChevronRight, Play,
 } from 'lucide-react'
 import { AccountBadge } from '@/components/ui/AccountBadge'
 
@@ -43,6 +43,22 @@ interface Folder {
   id: string
   name: string
   recordingIds: string[]
+}
+
+interface ClipEntry {
+  clipId: string
+  recordingId: string
+  filePath: string | null
+  thumbnailPath: string | null
+  title: string | null
+  startMs: number
+  endMs: number
+  createdAt: string
+  fileSize: number
+  champion: string | null
+  opponentChampion: string | null
+  win: boolean
+  duration: number
 }
 
 type ContentFilter = 'all' | 'records' | 'clips'
@@ -109,6 +125,7 @@ export function RecordPage() {
   const { toast } = useToast()
 
   const [records, setRecords] = useState<RecordEntry[]>([])
+  const [allClips, setAllClips] = useState<ClipEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [scanning, setScanning] = useState(false)
   const [filters, setFilters] = useState<Filters>(loadFilters)
@@ -121,7 +138,10 @@ export function RecordPage() {
   const [editFolderName, setEditFolderName] = useState('')
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  /** Date sections: when key is in set, group is collapsed (default empty = all dates expanded). */
+  const [collapsedDateKeys, setCollapsedDateKeys] = useState<Set<string>>(() => new Set())
+  /** User folder sections: when id is in set, folder is expanded (default empty = all folders collapsed). */
+  const [expandedUserFolderIds, setExpandedUserFolderIds] = useState<Set<string>>(() => new Set())
   const [showMoveDropdown, setShowMoveDropdown] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
 
@@ -146,13 +166,19 @@ export function RecordPage() {
     try { setRecords((await window.api.listGamesWithRecordings()) as RecordEntry[]) }
     catch (err) { console.error('[RecordPage] load failed:', err) }
     finally { setLoading(false) }
+    // Clips load is non-blocking — never prevents recordings from showing
+    try { setAllClips((await window.api.listAllClips()) as ClipEntry[]) }
+    catch { /* clip listing not critical */ }
   }, [])
 
   useEffect(() => { loadRecords() }, [loadRecords])
 
   const handleScan = async () => {
     setScanning(true)
-    try { await window.api.scanRecordings(); await loadRecords() } catch {}
+    try {
+      await window.api.scanRecordings()
+      await loadRecords()
+    } catch {}
     finally { setScanning(false) }
   }
 
@@ -260,8 +286,22 @@ export function RecordPage() {
     })
   }, [])
 
-  const toggleCollapse = useCallback((key: string) => {
-    setCollapsedGroups(p => { const n = new Set(p); n.has(key) ? n.delete(key) : n.add(key); return n })
+  const toggleDateGroup = useCallback((dateKey: string) => {
+    setCollapsedDateKeys((p) => {
+      const n = new Set(p)
+      if (n.has(dateKey)) n.delete(dateKey)
+      else n.add(dateKey)
+      return n
+    })
+  }, [])
+
+  const toggleUserFolder = useCallback((folderId: string) => {
+    setExpandedUserFolderIds((p) => {
+      const n = new Set(p)
+      if (n.has(folderId)) n.delete(folderId)
+      else n.add(folderId)
+      return n
+    })
   }, [])
 
   // ── Folders ──────────────────────────────────────────────────────────────
@@ -300,8 +340,8 @@ export function RecordPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const isEmpty = !loading && records.length === 0
-  const noMatch = !loading && records.length > 0 && filtered.length === 0
+  const isEmpty = !loading && records.length === 0 && filters.content !== 'clips'
+  const noMatch = !loading && records.length > 0 && filtered.length === 0 && filters.content !== 'clips'
 
   return (
     <div className="animate-fade-in pb-20" style={{ minHeight: 'calc(100vh - 3.25rem)' }}>
@@ -310,7 +350,9 @@ export function RecordPage() {
       <div className="flex items-center gap-3 pb-4">
         <h1 className="font-display text-xl font-bold text-hextech-gold-bright shrink-0">Record Hub</h1>
         <span className="text-xs text-hextech-text-dim bg-hextech-elevated border border-hextech-border-dim rounded px-2 py-0.5 shrink-0">
-          {filtered.length}{filtered.length !== records.length ? ` / ${records.length}` : ''} recording{records.length !== 1 ? 's' : ''}
+          {filters.content === 'clips'
+            ? `${allClips.length} clip${allClips.length !== 1 ? 's' : ''}`
+            : `${filtered.length}${filtered.length !== records.length ? ` / ${records.length}` : ''} recording${records.length !== 1 ? 's' : ''}`}
         </span>
         <div className="flex-1" />
         <Button variant="outline" size="sm" onClick={() => setShowFilters(v => !v)}
@@ -394,8 +436,32 @@ export function RecordPage() {
         </CardContent></Card>
       )}
 
+      {/* ── Clips grid (when Clips filter is active) ── */}
+      {!loading && filters.content === 'clips' && (
+        allClips.length === 0 ? (
+          <Card><CardContent className="flex flex-col items-center gap-3 py-8 text-center">
+            <Scissors className="h-8 w-8 opacity-30 text-hextech-text-dim" />
+            <p className="text-sm font-medium text-hextech-text-bright">No clips found</p>
+            <p className="text-xs text-hextech-text-dim max-w-xs">Create clips from any recording by opening it and selecting a time range.</p>
+          </CardContent></Card>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {allClips.map((clip) => (
+              <ClipCard key={clip.clipId} clip={clip} onOpen={() => navigate(`/record/${clip.recordingId}`)} onDelete={async () => {
+                try {
+                  await window.api.deleteClip(clip.clipId)
+                  setAllClips((prev) => prev.filter((c) => c.clipId !== clip.clipId))
+                } catch (err: any) {
+                  toast({ title: 'Delete failed', description: err?.message ?? String(err), variant: 'destructive' })
+                }
+              }} />
+            ))}
+          </div>
+        )
+      )}
+
       {/* ── Folder groups ── */}
-      {!loading && folderGroups.map(({ folder, records: recs }) => (
+      {!loading && filters.content !== 'clips' && folderGroups.map(({ folder, records: recs }) => (
         <RecordGroupSection
           key={folder.id}
           groupKey={folder.id}
@@ -425,8 +491,8 @@ export function RecordPage() {
           }
           records={recs}
           selectedIds={selectedIds}
-          collapsed={collapsedGroups.has(folder.id)}
-          onToggleCollapse={() => toggleCollapse(folder.id)}
+          collapsed={!expandedUserFolderIds.has(folder.id)}
+          onToggleCollapse={() => toggleUserFolder(folder.id)}
           onToggleGroupSelect={() => toggleSelectGroup(recs.map(r => r.recordingId))}
           onToggleCard={toggleSelect}
           onOpen={handleOpen}
@@ -436,15 +502,15 @@ export function RecordPage() {
       ))}
 
       {/* ── Date groups ── */}
-      {!loading && dateGroups.map(([dateKey, recs]) => (
+      {!loading && filters.content !== 'clips' && dateGroups.map(([dateKey, recs]) => (
         <RecordGroupSection
           key={dateKey}
           groupKey={dateKey}
           label={<span className="capitalize">{formatDateLabel(dateKey)}</span>}
           records={recs}
           selectedIds={selectedIds}
-          collapsed={collapsedGroups.has(dateKey)}
-          onToggleCollapse={() => toggleCollapse(dateKey)}
+          collapsed={collapsedDateKeys.has(dateKey)}
+          onToggleCollapse={() => toggleDateGroup(dateKey)}
           onToggleGroupSelect={() => toggleSelectGroup(recs.map(r => r.recordingId))}
           onToggleCard={toggleSelect}
           onOpen={handleOpen}
@@ -453,7 +519,7 @@ export function RecordPage() {
       ))}
 
       {/* ── Pagination ── */}
-      {!loading && totalPages > 1 && (
+      {!loading && filters.content !== 'clips' && totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-4 pb-2">
           <button
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
@@ -759,6 +825,69 @@ function FilterRow({ label, options, value, onChange }: { label: string; options
             {opt.label}
           </button>
         ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Clip card ─────────────────────────────────────────────────────────────────
+
+function ClipCard({ clip, onOpen, onDelete }: { clip: ClipEntry; onOpen: () => void; onDelete: () => void }) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const durationSecs = (clip.endMs - clip.startMs) / 1000
+  const fileSizeMB = clip.fileSize > 0 ? `${(clip.fileSize / (1024 * 1024)).toFixed(1)} MB` : ''
+
+  return (
+    <div className="group relative rounded-lg border border-hextech-border-dim bg-hextech-dark overflow-hidden transition-all hover:border-hextech-gold/40 hover:shadow-lg hover:shadow-hextech-gold/5">
+      {/* Thumbnail */}
+      <div className="relative w-full cursor-pointer" style={{ paddingTop: '56.25%' }} onClick={onOpen}>
+        <div className="absolute inset-0 bg-hextech-background/80">
+          {clip.thumbnailPath
+            ? <img src={nxmUrl(clip.thumbnailPath)} alt={clip.title ?? 'Clip'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            : <div className="w-full h-full flex items-center justify-center"><Scissors className="h-8 w-8 text-hextech-text-dim/20" /></div>}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+        </div>
+
+        {/* Duration badge */}
+        {durationSecs > 0 && (
+          <span className="absolute bottom-1.5 right-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
+            {durationSecs >= 60 ? `${Math.floor(durationSecs / 60)}:${String(Math.floor(durationSecs % 60)).padStart(2, '0')}` : `${Math.floor(durationSecs)}s`}
+          </span>
+        )}
+
+        {/* Play overlay */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="rounded-full bg-hextech-gold/90 p-2"><Play className="h-4 w-4 text-black" /></div>
+        </div>
+      </div>
+
+      {/* Info */}
+      <div className="p-2 space-y-1">
+        <div className="flex items-center gap-1.5">
+          <Scissors className="h-3 w-3 text-hextech-gold shrink-0" />
+          <span className="text-xs font-medium text-hextech-text-bright truncate">
+            {clip.title || clip.champion || 'Clip'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-[10px] text-hextech-text-dim">
+          {clip.champion && <span>{clip.champion}</span>}
+          {fileSizeMB && <span>{fileSizeMB}</span>}
+          <span>{new Date(clip.createdAt).toLocaleDateString()}</span>
+        </div>
+      </div>
+
+      {/* Delete */}
+      <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        {confirmDelete ? (
+          <div className="flex gap-1">
+            <button onClick={onDelete} className="rounded bg-[#FF4655]/90 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-[#FF4655]">Delete</button>
+            <button onClick={() => setConfirmDelete(false)} className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white hover:bg-black/80">Cancel</button>
+          </div>
+        ) : (
+          <button onClick={() => setConfirmDelete(true)} className="rounded bg-black/50 p-1 text-hextech-text-dim hover:text-[#FF4655] hover:bg-black/70 transition-colors">
+            <Trash2 className="h-3 w-3" />
+          </button>
+        )}
       </div>
     </div>
   )

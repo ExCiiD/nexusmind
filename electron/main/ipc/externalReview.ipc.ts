@@ -4,6 +4,7 @@ import { getAccountByRiotId, getMatchIds, getMatch, extractPlayerStats } from '.
 import { randomUUID } from 'crypto'
 import { homedir } from 'os'
 import { join } from 'path'
+import { existsSync, unlinkSync } from 'fs'
 
 /** Fetch the last N ranked games for an external player by Riot ID. */
 async function fetchExternalPlayerGames(
@@ -175,6 +176,12 @@ export function registerExternalReviewHandlers() {
 
   ipcMain.handle('external-review:delete', async (_event, id: string) => {
     const prisma = getPrisma()
+    const rows: any[] = await prisma.$queryRawUnsafe(
+      `SELECT "filePath" FROM "ExternalReview" WHERE id = ?`, id,
+    )
+    if (rows[0]?.filePath && existsSync(rows[0].filePath)) {
+      try { unlinkSync(rows[0].filePath) } catch { /* ignore */ }
+    }
     await prisma.$executeRawUnsafe(`DELETE FROM "ExternalReview" WHERE id = ?`, id)
     return { success: true }
   })
