@@ -18,13 +18,7 @@ export function GameEndNav() {
     const off = window.api.onGameEnd((data) => {
       useUserStore.getState().setGameEndData(data)
 
-      const captureRecordingId = (data as { captureRecordingId?: string }).captureRecordingId
-
-      if (captureRecordingId) {
-        const qs = new URLSearchParams({ recordingId: captureRecordingId })
-        if (data?.game?.id) qs.set('gameId', data.game.id)
-        navigate(`/post-game-capture?${qs.toString()}`, { replace: true })
-      } else if (data?.game?.id && data.isSessionEligible !== false) {
+      if (data?.game?.id && data.isSessionEligible !== false) {
         navigate(`/review?gameId=${encodeURIComponent(data.game.id)}`, { replace: true })
       }
 

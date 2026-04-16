@@ -17,7 +17,6 @@ import { ExternalReviewPage } from '@/pages/Review/ExternalReviewPage'
 import { ExternalReviewNewPage } from '@/pages/Review/ExternalReviewNewPage'
 import { PostGameCapturePage } from '@/pages/Review/PostGameCapturePage'
 import { GameEndNav } from '@/components/GameEndNav'
-import { WgcCaptureHandler } from '@/components/Recording/WgcCaptureHandler'
 import { DevToolbar } from '@/components/Dev/DevToolbar'
 import { UpdateBanner } from '@/components/UpdateBanner'
 import { Toaster } from '@/components/ui/toaster'
@@ -34,7 +33,6 @@ export function App() {
   return (
     <>
       <GameEndNav />
-      <WgcCaptureHandler />
       <Routes>
         {!user ? (
           <>

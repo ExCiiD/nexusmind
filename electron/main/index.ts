@@ -24,7 +24,7 @@ import { registerExternalReviewHandlers } from './ipc/externalReview.ipc'
 import { registerShareHandlers } from './ipc/share.ipc'
 import { registerCoachingHandlers } from './ipc/coaching.ipc'
 import { registerYoutubeHandlers } from './ipc/youtube.ipc'
-import { agentLog } from './debugAgentLog'
+// debugAgentLog removed — no longer used
 
 /** Resolves DB recording id for post-game navigation (path normalization + latest-capture fallback). */
 async function resolveCaptureRecordingIdForGameEnd(
@@ -91,8 +91,6 @@ function createWindow() {
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
   })
-
-  recordingManager.setMainWindow(mainWindow)
 
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
@@ -223,49 +221,28 @@ async function bootstrap() {
   gameDetector = new GameDetector(
     // onGameEnd: called after Riot API confirms the match
     async (matchData) => {
-      mainWindow?.restore()
       mainWindow?.show()
       mainWindow?.focus()
 
-      // Link any pending recording to this game (game is null for practice tool / untracked games)
       const pendingRecording = recordingManager.getPendingRecording()
-      // #region agent log
-      agentLog(
-        'index.ts:onGameEnd',
-        'entry',
-        {
-          gameId: matchData.game?.id ?? null,
-          pendingTail: pendingRecording ? pendingRecording.slice(-120) : null,
-          isSessionEligible: matchData.isSessionEligible,
-        },
-        'L1',
-      )
-      // #endregion
+
+      const pendingFileValid = pendingRecording
+        ? (() => { try { return existsSync(pendingRecording) && statSync(pendingRecording).size > 0 } catch { return false } })()
+        : false
 
       if (matchData.game?.id) {
-        if (!pendingRecording) {
-          // #region agent log
-          agentLog('index.ts:onGameEnd', 'skip-link-no-pending', { gameId: matchData.game.id }, 'L2')
-          // #endregion
+        if (!pendingRecording || !pendingFileValid) {
+          if (pendingRecording && !pendingFileValid) {
+            console.warn(`[main] Pending recording empty/missing — not linking: ${pendingRecording}`)
+            recordingManager.clearPendingRecording()
+          }
         }
-        if (pendingRecording) {
+        if (pendingRecording && pendingFileValid) {
           try {
             const prisma = getPrisma()
             const existing = await prisma.recording.findFirst({
               where: { filePath: pendingRecording, gameId: null },
             })
-            // #region agent log
-            agentLog(
-              'index.ts:onGameEnd',
-              'after-findFirst',
-              {
-                existingRecordingId: existing?.id ?? null,
-                gameId: matchData.game.id,
-                pendingTail: pendingRecording.slice(-120),
-              },
-              'L3',
-            )
-            // #endregion
             const rec = existing
               ? await prisma.recording.update({
                   where: { id: existing.id },
@@ -287,17 +264,11 @@ async function bootstrap() {
             )
           } catch (err) {
             console.error('[main] Failed to link recording:', err)
-            // #region agent log
-            agentLog('index.ts:onGameEnd', 'link-prisma-error', { message: (err as Error)?.message ?? String(err) }, 'L3')
-            // #endregion
           }
         }
       } else {
-        if (pendingRecording) {
+        if (pendingRecording && pendingFileValid) {
           console.log('[main] No game ID yet — recording kept pending for background enrich to link')
-          // #region agent log
-          agentLog('index.ts:onGameEnd', 'keep-pending-for-enrich', { pendingTail: pendingRecording.slice(-120), hasStats: matchData.stats != null }, 'L1')
-          // #endregion
         }
       }
 
@@ -335,8 +306,7 @@ async function bootstrap() {
             recordEncoder: user.recordEncoder,
           })
           if (path) {
-            mainWindow?.minimize()
-            queueMicrotask(() => mainWindow?.webContents.send('recording:started'))
+            mainWindow?.webContents.send('recording:started')
             console.log('[main] Recording started →', path)
           } else {
             console.warn('[main] startRecording() returned null — ffmpeg may be unavailable')
@@ -350,19 +320,21 @@ async function bootstrap() {
     // onGameRawEnd: fires immediately when live client stops (before Riot API match resolution)
     async () => {
       const stoppedPath = recordingManager.stopRecording()
-      // #region agent log
-      agentLog(
-        'index.ts:onGameRawEnd',
-        'after-stopRecording',
-        { stoppedTail: stoppedPath ? stoppedPath.slice(-120) : null, hadPath: !!stoppedPath },
-        'L2',
-      )
-      // #endregion
       if (!stoppedPath) return
 
       console.log(`[main] Recording stop signal sent → ${stoppedPath}`)
       await recordingManager.waitForDone(30_000)
       console.log(`[main] Recording finalized → ${stoppedPath}`)
+
+      const fileSize = existsSync(stoppedPath)
+        ? (() => { try { return statSync(stoppedPath).size } catch { return 0 } })()
+        : 0
+
+      if (fileSize === 0) {
+        console.warn(`[main] Recording file empty or missing — skipping DB persist: ${stoppedPath}`)
+        recordingManager.clearPendingRecording()
+        return
+      }
 
       try {
         const prisma = getPrisma()
@@ -410,6 +382,16 @@ function setupAutoUpdater() {
 
   ipcMain.handle('updater:install-now', () => {
     autoUpdater.quitAndInstall()
+  })
+
+  ipcMain.handle('updater:check', async () => {
+    try {
+      const result = await autoUpdater.checkForUpdates()
+      return { updateAvailable: !!result?.updateInfo }
+    } catch (err) {
+      console.error('[updater] manual check failed:', err)
+      return { updateAvailable: false }
+    }
   })
 
   autoUpdater.checkForUpdatesAndNotify().catch(() => {})

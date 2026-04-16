@@ -12,6 +12,7 @@ import {
   Film,
   Circle,
   FileSearch,
+  RefreshCw,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/useUserStore'
@@ -47,7 +48,23 @@ export function Sidebar() {
   const levelInfo = user ? getLevelFromXp(user.xp) : { level: 1, currentXp: 0, nextLevelXp: 100 }
   const xpPercent = (levelInfo.currentXp / levelInfo.nextLevelXp) * 100
   const [disconnecting, setDisconnecting] = useState(false)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
   const { toast } = useToast()
+
+  const handleCheckUpdates = async () => {
+    if (checkingUpdate) return
+    setCheckingUpdate(true)
+    try {
+      const result = await window.api.checkForUpdates()
+      if (!result.updateAvailable) {
+        toast({ title: t('update.upToDate', 'You are up to date!') })
+      }
+    } catch {
+      toast({ title: t('update.checkFailed', 'Could not check for updates'), variant: 'destructive' })
+    } finally {
+      setCheckingUpdate(false)
+    }
+  }
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
@@ -77,7 +94,15 @@ export function Sidebar() {
         <div className="h-8 w-8 rounded bg-gradient-to-br from-hextech-cyan to-hextech-teal flex items-center justify-center">
           <span className="text-sm font-bold text-hextech-black">N</span>
         </div>
-        <span className="font-display text-lg font-bold text-hextech-gold-bright">NexusMind</span>
+        <span className="font-display text-lg font-bold text-hextech-gold-bright flex-1">NexusMind</span>
+        <button
+          onClick={handleCheckUpdates}
+          disabled={checkingUpdate}
+          title={t('update.checkButton', 'Check for updates')}
+          className="app-no-drag rounded-md p-1.5 text-hextech-text-dim transition-colors hover:bg-hextech-elevated hover:text-hextech-gold disabled:opacity-50"
+        >
+          <RefreshCw className={cn('h-3.5 w-3.5', checkingUpdate && 'animate-spin')} />
+        </button>
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">

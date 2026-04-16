@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Video, Youtube, Link2, Trash2, Loader2, ExternalLink, RefreshCw } from 'lucide-react'
 import { VideoReviewPlayer } from './VideoReviewPlayer'
 import { RecordingMediaPanel } from './RecordingMediaPanel'
+import { useToast } from '@/hooks/useToast'
 import type { TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
 
 // ── Types & helpers ───────────────────────────────────────────────────────────
@@ -55,6 +56,7 @@ interface GameRecordingPanelProps {
 }
 
 export function GameRecordingPanel({ gameId, readonly, timelineNotes = [], onAddNote }: GameRecordingPanelProps) {
+  const { toast } = useToast()
   const [recording, setRecording] = useState<Recording | null>(null)
   const [loading, setLoading] = useState(true)
   const [scanning, setScanning] = useState(false)
@@ -102,8 +104,30 @@ export function GameRecordingPanel({ gameId, readonly, timelineNotes = [], onAdd
   }
 
   const handleLinkFile = async () => {
-    const r = await window.api.linkRecordingFile(gameId)
-    if (r) { setRecording(r); setOpen(true) }
+    try {
+      const r = await window.api.linkRecordingFile(gameId)
+      if (!r) return
+
+      if (r.error) {
+        console.error('[GameRecordingPanel] Link failed:', r.message)
+        toast({
+          title: 'Failed to link recording',
+          description: r.message ?? 'An unknown error occurred.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      setRecording(r)
+      setOpen(true)
+    } catch (err) {
+      console.error('[GameRecordingPanel] linkRecordingFile error:', err)
+      toast({
+        title: 'Failed to link recording',
+        description: (err as Error)?.message ?? 'An unexpected error occurred.',
+        variant: 'destructive',
+      })
+    }
   }
 
   const handleSaveYoutube = async () => {

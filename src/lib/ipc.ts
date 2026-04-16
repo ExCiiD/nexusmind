@@ -121,6 +121,7 @@ export type NexusMindAPI = {
   onUpdateAvailable: (cb: () => void) => () => void
   onUpdateDownloaded: (cb: () => void) => () => void
   installUpdate: () => Promise<void>
+  checkForUpdates: () => Promise<{ updateAvailable: boolean }>
 
   // Recording — library
   scanRecordings: () => Promise<{ scanned: number; matched: number; paths: Array<{ source: string; dir: string; exists: boolean }> }>
@@ -158,13 +159,6 @@ export type NexusMindAPI = {
   onRecordingStarted: (cb: () => void) => () => void
   onRecordingStopped: (cb: (data: { filePath: string }) => void) => () => void
   onRecordingLinked: (cb: (data: { gameId: string; filePath: string }) => void) => () => void
-
-  // WGC — renderer-side window capture
-  onWgcCaptureStart: (cb: (data: { sourceId: string; filePath: string; quality?: string; fps?: number }) => void) => () => void
-  onWgcCaptureStop: (cb: () => void) => () => void
-  wgcChunk: (chunk: ArrayBuffer) => Promise<void>
-  wgcDone: (meta: { mimeType: string }) => Promise<void>
-  wgcError: (message: string) => Promise<void>
 
   // External reviews
   fetchExternalPlayerHistory: (gameName: string, tagLine: string, region: string, count?: number) => Promise<any[]>

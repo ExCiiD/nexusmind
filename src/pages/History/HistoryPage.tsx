@@ -456,10 +456,13 @@ function GamesTab() {
                 )}
 
                 {game.reviewed ? (
-                  <Badge variant="outline" className="border-hextech-green/50 text-hextech-green text-[10px] gap-1">
+                  <button
+                    onClick={() => navigateToReview(game.gameId)}
+                    className="flex items-center gap-1 rounded-full border border-hextech-green/50 bg-hextech-green/5 px-2 py-0.5 text-[10px] text-hextech-green hover:bg-hextech-green/15 transition-colors cursor-pointer"
+                  >
                     <CheckCircle className="h-3 w-3" />
                     {t('history.gamesTab.reviewed')}
-                  </Badge>
+                  </button>
                 ) : game.imported && game.reviewStatus === 'to_be_reviewed' ? (
                   <button
                     onClick={() => navigateToReview(game.gameId)}
@@ -1093,10 +1096,13 @@ function GameRow({ game, index, onDelete }: { game: GameEntry; index: number; on
           )}
 
           {game.review ? (
-            <Badge variant="outline" className="border-hextech-green/50 text-hextech-green text-[10px] gap-1">
+            <button
+              onClick={() => navigate(`/review?gameId=${game.id}`)}
+              className="flex items-center gap-1 rounded-full border border-hextech-green/50 bg-hextech-green/5 px-2 py-0.5 text-[10px] text-hextech-green hover:bg-hextech-green/15 transition-colors cursor-pointer"
+            >
               <CheckCircle className="h-3 w-3" />
               {t('history.gamesTab.reviewed')}
-            </Badge>
+            </button>
           ) : game.reviewStatus === 'to_be_reviewed' ? (
             <button
               onClick={() => navigate(`/review?gameId=${game.id}`)}

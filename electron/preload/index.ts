@@ -105,6 +105,7 @@ const api = {
     return () => { ipcRenderer.removeListener('updater:update-downloaded', cb) }
   },
   installUpdate: () => ipcRenderer.invoke('updater:install-now'),
+  checkForUpdates: () => ipcRenderer.invoke('updater:check') as Promise<{ updateAvailable: boolean }>,
 
   // Recording — library (scan external folders)
   scanRecordings: () => ipcRenderer.invoke('recording:scan'),
@@ -137,21 +138,6 @@ const api = {
     ipcRenderer.on('recording:linked', handler)
     return () => ipcRenderer.removeListener('recording:linked', handler)
   },
-
-  // WGC (Windows Graphics Capture) — renderer-side window capture
-  onWgcCaptureStart: (cb: (data: { sourceId: string; filePath: string; quality?: string; fps?: number }) => void) => {
-    const handler = (_e: Electron.IpcRendererEvent, data: { sourceId: string; filePath: string; quality?: string; fps?: number }) => cb(data)
-    ipcRenderer.on('wgc:capture-start', handler)
-    return () => ipcRenderer.removeListener('wgc:capture-start', handler)
-  },
-  onWgcCaptureStop: (cb: () => void) => {
-    const handler = () => cb()
-    ipcRenderer.on('wgc:capture-stop', handler)
-    return () => ipcRenderer.removeListener('wgc:capture-stop', handler)
-  },
-  wgcChunk: (chunk: ArrayBuffer) => ipcRenderer.invoke('wgc:chunk', chunk),
-  wgcDone: (meta: { mimeType: string }) => ipcRenderer.invoke('wgc:done', meta),
-  wgcError: (message: string) => ipcRenderer.invoke('wgc:error', message),
 
   // External reviews
   fetchExternalPlayerHistory: (gameName: string, tagLine: string, region: string, count?: number) =>

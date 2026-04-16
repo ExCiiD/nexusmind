@@ -59,6 +59,7 @@ export function ReviewPage() {
 
   useEffect(() => {
     if (requestedGameId) {
+      refreshSession()
       setLoadingHistoric(true)
       window.api.getGameContext(requestedGameId)
         .then((ctx) => {
@@ -71,7 +72,7 @@ export function ReviewPage() {
     } else {
       setHistoricContext(null)
     }
-  }, [requestedGameId])
+  }, [requestedGameId, refreshSession])
 
   const isGameInActiveSession = useMemo(() => {
     if (!activeSession || !requestedGameId) return false

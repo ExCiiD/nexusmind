@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app } from 'electron'
+import { ipcMain, dialog, app, BrowserWindow } from 'electron'
 import { getPrisma } from '../database'
 import {
   recordingManager,
@@ -320,24 +320,47 @@ export function registerRecordingHandlers() {
       properties: ['openFile'],
     }
 
-    // Open the dialog directly in the user's external recordings folder if set
-    if (user?.externalRecordingPath) {
+    // Prefer the in-app recordings folder when it exists on disk, so the
+    // picker opens where NexusMind's own captures are saved. Fall back to the
+    // external recordings folder, then to the user's Videos directory.
+    const recordingsDir = user?.recordingPath
+      ? recordingManager.getRecordingsDir(user.recordingPath)
+      : recordingManager.getRecordingsDir()
+
+    if (recordingsDir && existsSync(recordingsDir)) {
+      dialogOptions.defaultPath = recordingsDir
+    } else if (user?.externalRecordingPath && existsSync(user.externalRecordingPath)) {
       dialogOptions.defaultPath = user.externalRecordingPath
     }
 
-    const result = await dialog.showOpenDialog(dialogOptions)
+    const parentWindow = BrowserWindow.getFocusedWindow() ?? undefined
+    const result = parentWindow
+      ? await dialog.showOpenDialog(parentWindow, dialogOptions)
+      : await dialog.showOpenDialog(dialogOptions)
+
     if (result.canceled || !result.filePaths[0]) return null
 
-    const rec = await prisma.recording.upsert({
-      where: { gameId },
-      create: { gameId, filePath: result.filePaths[0], source: 'manual' },
-      update: { filePath: result.filePaths[0], source: 'manual' },
-    })
+    const filePath = result.filePaths[0]
 
-    // Generate thumbnail in background
-    generateThumbnailForRecording(rec.id, result.filePaths[0]).catch(() => {})
+    if (!existsSync(filePath)) {
+      console.error(`[recording:link-file] Selected file does not exist: ${filePath}`)
+      return { error: 'file_not_found', message: `File not found: ${filePath}` }
+    }
 
-    return rec
+    try {
+      const rec = await prisma.recording.upsert({
+        where: { gameId },
+        create: { gameId, filePath, source: 'manual' },
+        update: { filePath, source: 'manual' },
+      })
+
+      generateThumbnailForRecording(rec.id, filePath).catch(() => {})
+
+      return rec
+    } catch (err) {
+      console.error('[recording:link-file] Failed to link recording:', err)
+      return { error: 'link_failed', message: (err as Error)?.message ?? String(err) }
+    }
   })
 
   ipcMain.handle('recording:set-youtube', async (_event, gameId: string, youtubeUrl: string | null) => {
@@ -408,6 +431,7 @@ export function registerRecordingHandlers() {
       recordQuality: user?.recordQuality,
       recordFps: user?.recordFps,
       recordEncoder: user?.recordEncoder,
+      allowDesktopFallback: user?.allowDesktopFallback ?? true,
     })
     return { started: !!path, filePath: path }
   })
