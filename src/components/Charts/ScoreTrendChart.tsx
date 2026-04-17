@@ -9,9 +9,11 @@ interface ScoreTrendData {
 
 interface ScoreTrendChartProps {
   data: ScoreTrendData[]
+  scoreName?: string
+  previousScoreName?: string
 }
 
-export function ScoreTrendChart({ data }: ScoreTrendChartProps) {
+export function ScoreTrendChart({ data, scoreName, previousScoreName }: ScoreTrendChartProps) {
   const { t } = useTranslation()
 
   if (data.length === 0) {
@@ -43,9 +45,9 @@ export function ScoreTrendChart({ data }: ScoreTrendChartProps) {
           }}
         />
         {data.some((d) => d.previousScore !== undefined) && (
-          <Bar dataKey="previousScore" fill="#3C3C41" radius={[4, 4, 0, 0]} name={t('charts.previous')} />
+          <Bar dataKey="previousScore" fill="#3C3C41" radius={[4, 4, 0, 0]} name={previousScoreName ?? t('charts.previous')} />
         )}
-        <Bar dataKey="score" fill="#C8AA6E" radius={[4, 4, 0, 0]} name={t('charts.current')} />
+        <Bar dataKey="score" fill="#C8AA6E" radius={[4, 4, 0, 0]} name={scoreName ?? t('charts.current')} />
       </BarChart>
     </ResponsiveContainer>
   )

@@ -156,6 +156,8 @@ export function registerAuthHandlers() {
       'autoRecord', 'recordingPath', 'externalRecordingPath',
       'recordQuality', 'recordFps', 'recordEncoder',
       'recordScope', 'recordAllowCustom', 'allowDesktopFallback',
+      'recordAudioDesktop', 'recordAudioDesktopDevice',
+      'recordAudioMic', 'recordAudioMicDevice',
     ])
     const safeData: Record<string, unknown> = {}
     for (const key of Object.keys(data)) {

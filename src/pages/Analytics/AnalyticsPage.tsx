@@ -50,6 +50,8 @@ export function AnalyticsPage() {
   const [showTrendFilter, setShowTrendFilter] = useState(false)
   /** When true the trend chart shows live session KPI data in addition to bilans */
   const [trendShowLive, setTrendShowLive] = useState(false)
+  type SessionCountOption = 'current' | 'last' | '3' | '5' | '10' | 'all'
+  const [sessionCount, setSessionCount] = useState<SessionCountOption>('all')
 
   // --- Progress chart filter (chart 1) ---
   const [selectedFundamentalIds, setSelectedFundamentalIdsRaw] = useState<string[] | null>(() => {
@@ -119,7 +121,7 @@ export function AnalyticsPage() {
     [kpiTimeline],
   )
 
-  // Chart 1 (Skill Progress): assessment bilans + optional live KPI data, time-period filtered
+  // Chart 1 (Skill Progress): assessment bilans + session KPI data, time-period filtered
   const mergedProgressData = useMemo(() => [...progressData, ...kpiPoints], [progressData, kpiPoints])
   const periodFilteredData = useMemo(() => {
     if (timePeriod === 'all') return mergedProgressData
@@ -128,7 +130,7 @@ export function AnalyticsPage() {
     return mergedProgressData.filter((p) => new Date(p.date) >= cutoff)
   }, [mergedProgressData, timePeriod])
 
-  // Chart 2 (Current vs Previous): bilans only by default; live mode adds KPI points
+  // Chart 2: data source for filter-dot visibility
   const trendSourceData = useMemo(
     () => (trendShowLive ? mergedProgressData : progressData),
     [trendShowLive, mergedProgressData, progressData],
@@ -258,17 +260,57 @@ export function AnalyticsPage() {
     if (previousScores[id] != null) filteredPreviousScores[id] = previousScores[id]
   }
 
-  // Chart 2 — computed independently from trendSourceData + trendDisplayedIds
-  const trendLatestScores = getLatestScores(trendSourceData)
-  const trendPreviousScores = getPreviousScores(trendSourceData)
+  // Chart 2 — computed independently
+  // "Bilans": latest bilan (gold) vs previous bilan (grey)
+  // "Sessions": avg session objective scores (gold) vs latest bilan (grey), filtered by session count
+  const filteredKpiPoints = (() => {
+    if (!trendShowLive) return []
+    const sessionDates = [...new Set(kpiPoints.map((p) => p.date))].sort()
+    if (sessionCount === 'all') return kpiPoints
+    if (sessionCount === 'current') {
+      const latest = sessionDates[sessionDates.length - 1]
+      return latest ? kpiPoints.filter((p) => p.date === latest) : []
+    }
+    if (sessionCount === 'last') {
+      const prev = sessionDates.length >= 2 ? sessionDates[sessionDates.length - 2] : sessionDates[sessionDates.length - 1]
+      return prev ? kpiPoints.filter((p) => p.date === prev) : []
+    }
+    const n = parseInt(sessionCount, 10)
+    const recentDates = new Set(sessionDates.slice(-n))
+    return kpiPoints.filter((p) => recentDates.has(p.date))
+  })()
 
-  const scoreTrendData = trendDisplayedIds
-    .filter((id) => trendLatestScores[id] != null)
-    .map((id) => ({
-      label: id,
-      score: trendLatestScores[id],
-      previousScore: trendPreviousScores[id],
-    }))
+  const scoreTrendData = (() => {
+    if (trendShowLive) {
+      const bilanLatest = getLatestScores(progressData)
+      const sessionAvg: Record<string, number> = {}
+      const sessionCnts: Record<string, number> = {}
+      for (const p of filteredKpiPoints) {
+        sessionAvg[p.fundamentalId] = (sessionAvg[p.fundamentalId] ?? 0) + p.score
+        sessionCnts[p.fundamentalId] = (sessionCnts[p.fundamentalId] ?? 0) + 1
+      }
+      for (const id of Object.keys(sessionAvg)) {
+        sessionAvg[id] = Number((sessionAvg[id] / sessionCnts[id]).toFixed(2))
+      }
+      const objectiveIds = new Set(Object.keys(sessionAvg))
+      return trendDisplayedIds
+        .filter((id) => objectiveIds.has(id))
+        .map((id) => ({
+          label: id,
+          score: sessionAvg[id],
+          previousScore: bilanLatest[id],
+        }))
+    }
+    const bilanLatest = getLatestScores(progressData)
+    const bilanPrevious = getPreviousScores(progressData)
+    return trendDisplayedIds
+      .filter((id) => bilanLatest[id] != null)
+      .map((id) => ({
+        label: id,
+        score: bilanLatest[id],
+        previousScore: bilanPrevious[id],
+      }))
+  })()
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -417,24 +459,65 @@ export function AnalyticsPage() {
             </CardContent>
           </Card>
 
-          {/* Chart 2: Current vs Previous — bilans only by default, own filter */}
+          {/* Chart 2: Bilan comparison or Session objectives vs Bilan */}
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <CardTitle>{t('analytics.charts.currentVsPrevious')}</CardTitle>
+                <CardTitle>
+                  {trendShowLive ? t('analytics.charts.sessionVsBilan') : t('analytics.charts.currentVsPrevious')}
+                </CardTitle>
                 <div className="flex items-center gap-2">
-                  {/* Live mode toggle */}
-                  <button
-                    onClick={() => setTrendShowLive((v) => !v)}
-                    className={cn(
-                      'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                      trendShowLive
-                        ? 'border-hextech-cyan bg-hextech-cyan/10 text-hextech-cyan'
-                        : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
-                    )}
-                  >
-                    {trendShowLive ? 'Sessions (live)' : 'Bilans seulement'}
-                  </button>
+                  {/* Mode toggle: Bilans / Sessions */}
+                  <div className="flex rounded-full border border-hextech-border-dim overflow-hidden">
+                    <button
+                      onClick={() => setTrendShowLive(false)}
+                      className={cn(
+                        'px-3 py-1 text-xs font-medium transition-colors',
+                        !trendShowLive
+                          ? 'bg-hextech-gold/15 text-hextech-gold-bright'
+                          : 'text-hextech-text-dim hover:text-hextech-text',
+                      )}
+                    >
+                      {t('analytics.charts.modeBilan')}
+                    </button>
+                    <button
+                      onClick={() => setTrendShowLive(true)}
+                      className={cn(
+                        'px-3 py-1 text-xs font-medium transition-colors',
+                        trendShowLive
+                          ? 'bg-hextech-cyan/15 text-hextech-cyan'
+                          : 'text-hextech-text-dim hover:text-hextech-text',
+                      )}
+                    >
+                      {t('analytics.charts.modeSession')}
+                    </button>
+                  </div>
+                  {/* Session count selector (only in session mode) */}
+                  {trendShowLive && (
+                    <div className="flex rounded-full border border-hextech-border-dim overflow-hidden">
+                      {([
+                        ['current', t('analytics.charts.sessionCount_current')],
+                        ['last', t('analytics.charts.sessionCount_last')],
+                        ['3', t('analytics.charts.sessionCount_n', { count: 3 })],
+                        ['5', t('analytics.charts.sessionCount_n', { count: 5 })],
+                        ['10', t('analytics.charts.sessionCount_n', { count: 10 })],
+                        ['all', t('analytics.charts.sessionCount_all')],
+                      ] as const).map(([val, label]) => (
+                        <button
+                          key={val}
+                          onClick={() => setSessionCount(val as SessionCountOption)}
+                          className={cn(
+                            'px-2 py-1 text-[10px] font-medium transition-colors',
+                            sessionCount === val
+                              ? 'bg-hextech-cyan/15 text-hextech-cyan'
+                              : 'text-hextech-text-dim hover:text-hextech-text',
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {/* Filter toggle */}
                   <button
                     className="flex items-center gap-1.5 text-xs text-hextech-text-dim hover:text-hextech-text transition-colors"
@@ -517,7 +600,11 @@ export function AnalyticsPage() {
               )}
             </CardHeader>
             <CardContent>
-              <ScoreTrendChart data={scoreTrendData} />
+              <ScoreTrendChart
+                data={scoreTrendData}
+                scoreName={trendShowLive ? t('charts.sessionAvg') : t('charts.latestBilan')}
+                previousScoreName={trendShowLive ? t('charts.latestBilan') : t('charts.previousBilan')}
+              />
             </CardContent>
           </Card>
         </TabsContent>

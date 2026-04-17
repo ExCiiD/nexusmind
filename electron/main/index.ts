@@ -1,7 +1,6 @@
 import { app, BrowserWindow, ipcMain, protocol } from 'electron'
 
 // Suppress Chromium GPU shader disk-cache errors on Windows (access-denied / cache locked).
-// The GPU shader cache is unnecessary for a desktop Electron app and only produces noise.
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
 
 import { join } from 'path'
@@ -9,7 +8,7 @@ import { createReadStream, statSync, readFileSync, existsSync } from 'fs'
 import { autoUpdater } from 'electron-updater'
 import { initDatabase, getPrisma } from './database'
 import { GameDetector } from './gameDetector'
-import { recordingManager, isFfmpegAvailable, generateThumbnailForRecording } from './recorder'
+import { recordingManager, isFfmpegAvailable, generateThumbnailForRecording, mergeAudioIntoVideo, type PcmAudioFormat } from './recorder'
 import { registerAuthHandlers } from './ipc/auth.ipc'
 import { registerSessionHandlers } from './ipc/session.ipc'
 import { registerReviewHandlers } from './ipc/review.ipc'
@@ -24,7 +23,6 @@ import { registerExternalReviewHandlers } from './ipc/externalReview.ipc'
 import { registerShareHandlers } from './ipc/share.ipc'
 import { registerCoachingHandlers } from './ipc/coaching.ipc'
 import { registerYoutubeHandlers } from './ipc/youtube.ipc'
-// debugAgentLog removed — no longer used
 
 /** Resolves DB recording id for post-game navigation (path normalization + latest-capture fallback). */
 async function resolveCaptureRecordingIdForGameEnd(
@@ -65,6 +63,73 @@ protocol.registerSchemesAsPrivileged([{
 
 let mainWindow: BrowserWindow | null = null
 let gameDetector: GameDetector | null = null
+
+// ── System audio capture (WASAPI loopback via native-audio-node — bypasses Chromium entirely) ──
+let _sysAudioRecorder: InstanceType<typeof import('native-audio-node').SystemAudioRecorder> | null = null
+let _sysAudioChunks: Buffer[] = []
+interface SysAudioMeta { sampleRate: number; channelsPerFrame: number; encoding: string }
+let _sysAudioMeta: SysAudioMeta | null = null
+
+async function startSystemAudioCapture(): Promise<void> {
+  if (_sysAudioRecorder) return
+  try {
+    const { SystemAudioRecorder } = await import('native-audio-node')
+    _sysAudioChunks = []
+    _sysAudioMeta = null
+
+    _sysAudioRecorder = new SystemAudioRecorder({
+      sampleRate: 44100,
+      chunkDurationMs: 200,
+      stereo: true,
+      emitSilence: true,
+    })
+
+    _sysAudioRecorder.on('metadata', (meta) => {
+      _sysAudioMeta = { sampleRate: meta.sampleRate, channelsPerFrame: meta.channelsPerFrame, encoding: meta.encoding }
+      console.log(`[audio] System audio format: ${meta.encoding} ${meta.sampleRate}Hz ${meta.channelsPerFrame}ch`)
+    })
+
+    _sysAudioRecorder.on('data', (chunk) => {
+      _sysAudioChunks.push(chunk.data)
+    })
+
+    _sysAudioRecorder.on('error', (err) => {
+      console.error('[audio] System audio capture error:', err)
+    })
+
+    await _sysAudioRecorder.start()
+    console.log('[audio] System audio capture started (WASAPI loopback)')
+  } catch (err) {
+    console.error('[audio] Failed to start system audio capture:', err)
+    _sysAudioRecorder = null
+  }
+}
+
+interface SystemAudioResult { buffer: Buffer; encoding: string; sampleRate: number; channels: number }
+
+async function stopSystemAudioCapture(): Promise<SystemAudioResult | null> {
+  if (!_sysAudioRecorder) return null
+  try {
+    await _sysAudioRecorder.stop()
+  } catch { /* ignore stop errors */ }
+  _sysAudioRecorder = null
+
+  if (_sysAudioChunks.length === 0 || !_sysAudioMeta) {
+    console.warn('[audio] System audio capture returned no data')
+    return null
+  }
+
+  const buffer = Buffer.concat(_sysAudioChunks)
+  const result: SystemAudioResult = {
+    buffer,
+    encoding: _sysAudioMeta.encoding,
+    sampleRate: _sysAudioMeta.sampleRate,
+    channels: _sysAudioMeta.channelsPerFrame,
+  }
+  _sysAudioChunks = []
+  _sysAudioMeta = null
+  return result
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -304,12 +369,20 @@ async function bootstrap() {
             recordQuality: user.recordQuality,
             recordFps: user.recordFps,
             recordEncoder: user.recordEncoder,
+            audioDesktopEnabled: user.recordAudioDesktop,
+            audioDesktopDevice: user.recordAudioDesktopDevice,
+            audioMicEnabled: user.recordAudioMic,
+            audioMicDevice: user.recordAudioMicDevice,
           })
           if (path) {
             mainWindow?.webContents.send('recording:started')
             console.log('[main] Recording started →', path)
           } else {
             console.warn('[main] startRecording() returned null — ffmpeg may be unavailable')
+          }
+
+          if (user.recordAudioDesktop && path) {
+            startSystemAudioCapture()
           }
         }
       } catch (err) {
@@ -323,7 +396,12 @@ async function bootstrap() {
       if (!stoppedPath) return
 
       console.log(`[main] Recording stop signal sent → ${stoppedPath}`)
-      await recordingManager.waitForDone(30_000)
+
+      const [, sysAudio] = await Promise.all([
+        recordingManager.waitForDone(30_000),
+        stopSystemAudioCapture(),
+      ])
+
       console.log(`[main] Recording finalized → ${stoppedPath}`)
 
       const fileSize = existsSync(stoppedPath)
@@ -334,6 +412,21 @@ async function bootstrap() {
         console.warn(`[main] Recording file empty or missing — skipping DB persist: ${stoppedPath}`)
         recordingManager.clearPendingRecording()
         return
+      }
+
+      if (sysAudio) {
+        console.log(`[main] System audio received (${(sysAudio.buffer.length / 1024).toFixed(0)} KB, ${sysAudio.encoding}) — merging…`)
+        try {
+          await mergeAudioIntoVideo(stoppedPath, sysAudio.buffer, {
+            encoding: sysAudio.encoding,
+            sampleRate: sysAudio.sampleRate,
+            channels: sysAudio.channels,
+          })
+        } catch (err) {
+          console.error('[main] Audio merge failed:', err)
+        }
+      } else {
+        console.log('[main] No system audio captured — video keeps mic-only audio')
       }
 
       try {

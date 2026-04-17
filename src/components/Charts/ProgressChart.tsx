@@ -73,6 +73,7 @@ export function ProgressChart({ data, fundamentalIds }: ProgressChartProps) {
             stroke={CHART_COLORS[i % CHART_COLORS.length]}
             strokeWidth={2}
             dot={{ r: 4, fill: CHART_COLORS[i % CHART_COLORS.length] }}
+            connectNulls
             name={allFundamentals.flatMap((c) => c.fundamentals).find((f) => f.id === id)?.label || id.replace(/_/g, ' ')}
           />
         ))}

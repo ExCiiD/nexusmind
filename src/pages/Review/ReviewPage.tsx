@@ -416,35 +416,67 @@ export function ReviewPage() {
           <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('nav.review')}</h1>
           <p className="text-sm text-hextech-text mt-1">{t('review.waiting.title')}</p>
         </div>
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-10 gap-4">
-            <div className="h-16 w-16 rounded-full bg-hextech-elevated flex items-center justify-center animate-pulse">
-              <Swords className="h-8 w-8 text-hextech-gold" />
-            </div>
-            <p className="text-hextech-text text-center max-w-md">
-              {t('review.waiting.desc')}
-              <br />
-              <span className="text-hextech-text-dim text-xs">
-                {t('review.sessionObjective')} {objectiveLabel}
-              </span>
-            </p>
-            <div className="text-sm text-hextech-text">
-              {t('review.gamePlayed', { count: session?.games?.length ?? 0 })} |{' '}
-              {t('review.gameReviewed', { count: session?.games?.filter((g: any) => g.review).length ?? 0 })}
-            </div>
-          </CardContent>
-        </Card>
 
-        <div className="rounded-xl border border-hextech-border-dim bg-hextech-elevated/30 p-4 space-y-3">
-          <p className="text-sm text-hextech-text-dim text-center">{t('review.waiting.orImport')}</p>
-          <MatchHistoryPicker onImported={() => refreshSession()} />
+        <div className="flex items-center gap-1 border-b border-hextech-border-dim mb-2">
+          <button
+            onClick={() => setActiveTab('review')}
+            className={cn(
+              'px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+              activeTab === 'review'
+                ? 'border-hextech-gold text-hextech-gold-bright'
+                : 'border-transparent text-hextech-text-dim hover:text-hextech-text',
+            )}
+          >
+            My Review
+          </button>
+          <button
+            onClick={() => setActiveTab('external')}
+            className={cn(
+              'px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+              activeTab === 'external'
+                ? 'border-hextech-gold text-hextech-gold-bright'
+                : 'border-transparent text-hextech-text-dim hover:text-hextech-text',
+            )}
+          >
+            External Reviews
+          </button>
         </div>
 
-        <div className="flex justify-center">
-          <Button variant="outline" onClick={() => setShowExternalWizard(true)}>
-            <ExternalLink className="h-4 w-4 mr-2" /> External review
-          </Button>
-        </div>
+        {activeTab === 'review' ? (
+          <>
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-10 gap-4">
+                <div className="h-16 w-16 rounded-full bg-hextech-elevated flex items-center justify-center animate-pulse">
+                  <Swords className="h-8 w-8 text-hextech-gold" />
+                </div>
+                <p className="text-hextech-text text-center max-w-md">
+                  {t('review.waiting.desc')}
+                  <br />
+                  <span className="text-hextech-text-dim text-xs">
+                    {t('review.sessionObjective')} {objectiveLabel}
+                  </span>
+                </p>
+                <div className="text-sm text-hextech-text">
+                  {t('review.gamePlayed', { count: session?.games?.length ?? 0 })} |{' '}
+                  {t('review.gameReviewed', { count: session?.games?.filter((g: any) => g.review).length ?? 0 })}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="rounded-xl border border-hextech-border-dim bg-hextech-elevated/30 p-4 space-y-3">
+              <p className="text-sm text-hextech-text-dim text-center">{t('review.waiting.orImport')}</p>
+              <MatchHistoryPicker onImported={() => refreshSession()} />
+            </div>
+
+            <div className="flex justify-center">
+              <Button variant="outline" onClick={() => setShowExternalWizard(true)}>
+                <ExternalLink className="h-4 w-4 mr-2" /> External review
+              </Button>
+            </div>
+          </>
+        ) : (
+          <ExternalReviewsList onCreateNew={() => setShowExternalWizard(true)} />
+        )}
       </div>
       <ExternalReviewWizard open={showExternalWizard} onClose={() => setShowExternalWizard(false)} />
       </>

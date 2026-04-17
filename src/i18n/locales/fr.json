@@ -297,10 +297,17 @@
     },
     "charts": {
       "skillProgress": "Progression des compétences",
-      "currentVsPrevious": "Actuel vs Évaluation précédente",
+      "currentVsPrevious": "Comparaison des bilans",
+      "sessionVsBilan": "Objectifs de session vs Bilan",
       "noAssessment": "Aucune donnée d'évaluation disponible",
       "noGames": "Aucune partie enregistrée. Démarrez une session et jouez !",
-      "noStats": "Aucune statistique disponible. Jouez des parties et révisez-les !"
+      "noStats": "Aucune statistique disponible. Jouez des parties et révisez-les !",
+      "modeBilan": "Bilans",
+      "modeSession": "Sessions",
+      "sessionCount_current": "Actuelle",
+      "sessionCount_last": "Dernière",
+      "sessionCount_n": "{{count}} dernières",
+      "sessionCount_all": "Toutes"
     },
     "game": {
       "cs": "CS :",
@@ -588,6 +595,9 @@
   "charts": {
     "previous": "Précédent",
     "current": "Actuel",
+    "latestBilan": "Dernier bilan",
+    "previousBilan": "Bilan précédent",
+    "sessionAvg": "Moyenne sessions",
     "wins": "Victoires",
     "losses": "Défaites",
     "games": "parties",

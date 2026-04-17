@@ -1,7 +1,7 @@
 import { spawn, ChildProcess } from 'child_process'
 import { app, screen } from 'electron'
 import { join } from 'path'
-import { existsSync, mkdirSync, statSync } from 'fs'
+import { existsSync, mkdirSync, statSync, writeFileSync, unlinkSync, renameSync } from 'fs'
 import os from 'os'
 import { getPrisma } from './database'
 
@@ -26,6 +26,10 @@ export interface RecordingSettings {
   recordQuality?: string
   recordFps?: number
   recordEncoder?: string
+  audioDesktopEnabled?: boolean
+  audioDesktopDevice?: string | null
+  audioMicEnabled?: boolean
+  audioMicDevice?: string | null
 }
 
 const QUALITY_HEIGHT: Record<string, number> = {
@@ -33,6 +37,16 @@ const QUALITY_HEIGHT: Record<string, number> = {
   '1440p': 1440,
   '1080p': 1080,
   '720p': 720,
+}
+
+/**
+ * Converts a Web API `MediaDeviceInfo.label` into a dshow-compatible device name.
+ * Strips "Default - " prefix and trailing USB vendor:product IDs like " (046d:0aaa)".
+ */
+function sanitizeDshowName(label: string): string {
+  let name = label.replace(/^Default\s*-\s*/i, '')
+  name = name.replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i, '')
+  return name.trim()
 }
 
 function encoderArgs(encoder: string): string[] {
@@ -96,6 +110,9 @@ export class RecordingManager {
       recordQuality = 'source',
       recordFps = 30,
       recordEncoder = 'cpu',
+      audioDesktopEnabled = false,
+      audioMicEnabled = false,
+      audioMicDevice = null,
     } = settings
 
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
@@ -113,14 +130,46 @@ export class RecordingManager {
       ? `hwdownload,format=bgra,scale=-2:${targetH},format=yuv420p`
       : 'hwdownload,format=bgra,format=yuv420p'
 
+    const micDshow = audioMicEnabled && audioMicDevice ? sanitizeDshowName(audioMicDevice) : null
+    const hasAudio = !!micDshow
+
+    if (audioDesktopEnabled) {
+      console.log('[recorder] Desktop audio: capture handled by native-audio-node (WASAPI loopback)')
+    }
+
     console.log(`[recorder] Using ddagrab (DXGI) — display: ${Math.round(width * scaleFactor)}x${capH}, scale=${scaleFactor}`)
     console.log(`[recorder] Settings — quality: ${recordQuality}, fps: ${recordFps}, encoder: ${recordEncoder}`)
+    if (micDshow) console.log(`[recorder] Audio mic dshow: "${micDshow}"`)
+    if (!hasAudio) console.log('[recorder] Audio: no capturable device configured')
+
+    const audioInputArgs: string[] = []
+    if (micDshow) {
+      audioInputArgs.push(
+        '-thread_queue_size', '1024',
+        '-f', 'dshow',
+        '-audio_buffer_size', '50',
+        '-i', `audio=${micDshow}`,
+      )
+    }
+
+    const mappingArgs: string[] = []
+    if (hasAudio) {
+      mappingArgs.push('-map', '0:v', '-map', '1:a')
+    }
+
+    const audioEncoderArgs = hasAudio
+      ? ['-c:a', 'aac', '-b:a', '128k', '-af', 'asetpts=PTS-STARTPTS']
+      : []
 
     const args = [
+      '-thread_queue_size', '1024',
       '-f', 'lavfi',
       '-i', `ddagrab=output_idx=0:draw_mouse=1:framerate=${recordFps}`,
+      ...audioInputArgs,
       '-vf', filterChain,
+      ...mappingArgs,
       ...encoderArgs(recordEncoder),
+      ...audioEncoderArgs,
       '-movflags', '+faststart',
       '-y',
       filePath,
@@ -156,11 +205,18 @@ export class RecordingManager {
         this.retryCount < RecordingManager.MAX_RETRIES
       ) {
         this.retryCount++
-        console.warn(`[recorder] ddagrab crashed after ${elapsed}ms — retry ${this.retryCount}/${RecordingManager.MAX_RETRIES} in 3s`)
+        const fallbackSettings: RecordingSettings = {
+          ...this.lastSettings,
+          audioDesktopEnabled: false,
+          audioDesktopDevice: null,
+          audioMicEnabled: false,
+          audioMicDevice: null,
+        }
+        console.warn(`[recorder] ddagrab crashed after ${elapsed}ms — retry ${this.retryCount}/${RecordingManager.MAX_RETRIES} without audio in 3s`)
         setTimeout(() => {
           if (this.isStopping) { this.doneResolve?.(); return }
-          this.spawnDdagrab(this.lastSettings)
-          console.log(`[recorder] ddagrab retry started → ${this.currentFilePath}`)
+          this.spawnDdagrab(fallbackSettings)
+          console.log(`[recorder] ddagrab retry started (video-only) → ${this.currentFilePath}`)
         }, 3_000)
         return
       }
@@ -240,6 +296,86 @@ export class RecordingManager {
 }
 
 export const recordingManager = new RecordingManager()
+
+// ── Audio merge ──────────────────────────────────────────────────────────────
+
+export interface PcmAudioFormat {
+  encoding: string
+  sampleRate: number
+  channels: number
+}
+
+/**
+ * Merges raw PCM system audio into an existing MP4 video file.
+ * If the video already has a mic audio track, both are mixed via amix.
+ * Video stream is copied (no re-encode), audio is transcoded to AAC.
+ */
+export function mergeAudioIntoVideo(videoPath: string, audioBuffer: Buffer, format?: PcmAudioFormat): Promise<string> {
+  if (!ffmpegBin || !existsSync(ffmpegBin)) return Promise.reject(new Error('ffmpeg not available'))
+
+  const rawEnc = format?.encoding ?? 'pcm_f32le'
+  const ffFmt = rawEnc.replace(/^pcm_/, '')
+  const sr = format?.sampleRate ?? 44100
+  const ch = format?.channels ?? 2
+  const ext = rawEnc.startsWith('pcm_') ? 'raw' : 'webm'
+
+  const dir = join(videoPath, '..')
+  const audioTempPath = join(dir, `_temp_audio_${Date.now()}.${ext}`)
+  const mergedPath = join(dir, `_temp_merged_${Date.now()}.mp4`)
+
+  writeFileSync(audioTempPath, audioBuffer)
+
+  return new Promise((resolve) => {
+    const audioInputArgs = ext === 'raw'
+      ? ['-f', ffFmt, '-ar', String(sr), '-ac', String(ch), '-i', audioTempPath]
+      : ['-i', audioTempPath]
+
+    const args = [
+      '-i', videoPath,
+      ...audioInputArgs,
+      '-c:v', 'copy',
+      '-filter_complex', '[0:a][1:a]amix=inputs=2:duration=shortest:dropout_transition=0[aout]',
+      '-map', '0:v:0', '-map', '[aout]',
+      '-c:a', 'aac', '-b:a', '192k',
+      '-movflags', '+faststart',
+      '-y', mergedPath,
+    ]
+
+    const proc = spawn(ffmpegBin!, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
+    proc.stderr?.on('data', (d: Buffer) => {
+      if (!app.isPackaged) process.stdout.write('[merge] ' + d.toString())
+    })
+
+    proc.on('exit', (code) => {
+      try { unlinkSync(audioTempPath) } catch { /* ignore */ }
+
+      if (code === 0 && existsSync(mergedPath)) {
+        try {
+          unlinkSync(videoPath)
+          renameSync(mergedPath, videoPath)
+          console.log(`[recorder] Audio merged → ${videoPath}`)
+          resolve(videoPath)
+        } catch (err) {
+          console.error('[recorder] Failed to replace video with merged file:', err)
+          try { unlinkSync(mergedPath) } catch { /* ignore */ }
+          resolve(videoPath)
+        }
+      } else {
+        console.warn(`[recorder] Audio merge failed (code ${code}) — keeping video without audio`)
+        try { unlinkSync(mergedPath) } catch { /* ignore */ }
+        resolve(videoPath)
+      }
+    })
+
+    proc.on('error', (err) => {
+      console.error('[recorder] Audio merge spawn error:', err)
+      try { unlinkSync(audioTempPath) } catch { /* ignore */ }
+      resolve(videoPath)
+    })
+
+    setTimeout(() => { try { proc.kill() } catch { /* ignore */ } }, 60_000)
+  })
+}
 
 // ── Thumbnail generation ──────────────────────────────────────────────────────
 

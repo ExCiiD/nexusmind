@@ -36,6 +36,9 @@ export function SettingsPage() {
   const [recordingsDir, setRecordingsDir] = useState('')
   const [isRecording, setIsRecording] = useState(false)
   const [togglingAutoRecord, setTogglingAutoRecord] = useState(false)
+  const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([])
+  const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([])
+  const [loadingAudioDevices, setLoadingAudioDevices] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [gameName, setGameName] = useState('')
   const [tagLine, setTagLine] = useState('')
@@ -80,6 +83,17 @@ export function SettingsPage() {
     }
   }
 
+  const refreshAudioDevices = async () => {
+    setLoadingAudioDevices(true)
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop())).catch(() => {})
+      const all = await navigator.mediaDevices.enumerateDevices()
+      setAudioInputDevices(all.filter(d => d.kind === 'audioinput' && d.deviceId !== ''))
+      setAudioOutputDevices(all.filter(d => d.kind === 'audiooutput' && d.deviceId !== ''))
+    } catch { /* non-critical */ }
+    finally { setLoadingAudioDevices(false) }
+  }
+
   useEffect(() => {
     loadAccounts()
     window.api.getCaptureStatus().then((s) => {
@@ -87,6 +101,7 @@ export function SettingsPage() {
       setIsRecording(s.isRecording)
     }).catch(() => {})
     window.api.getRecordingsDir().then(setRecordingsDir).catch(() => {})
+    refreshAudioDevices()
     const offStarted = window.api.onRecordingStarted(() => setIsRecording(true))
     const offStopped = window.api.onRecordingStopped(() => setIsRecording(false))
     return () => {
@@ -440,7 +455,6 @@ export function SettingsPage() {
                   if (picked) {
                     await window.api.updateUser({ recordingPath: picked })
                     await loadUser()
-                    // Refresh the displayed dir
                     window.api.getRecordingsDir().then(setRecordingsDir).catch(() => {})
                   }
                 }}
@@ -462,6 +476,136 @@ export function SettingsPage() {
                 >
                   <X className="h-3.5 w-3.5" />
                 </Button>
+              )}
+            </div>
+          </div>
+
+          {/* ── Audio ─────────────────────────────────────────────────── */}
+          <div className="space-y-3 pt-2 border-t border-hextech-border-dim/40">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-hextech-text-bright">Audio</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={loadingAudioDevices}
+                onClick={refreshAudioDevices}
+                className="text-xs text-hextech-text-dim hover:text-hextech-text"
+              >
+                {loadingAudioDevices ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Refresh devices'}
+              </Button>
+            </div>
+
+            {/* Desktop audio */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-hextech-text-bright">Record desktop audio</p>
+                  <p className="text-xs text-hextech-text-dim mt-0.5">
+                    Captures everything you hear (game + system sounds).
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    await window.api.updateUser({ recordAudioDesktop: !(user?.recordAudioDesktop ?? true) })
+                    await loadUser()
+                  }}
+                  className={cn(
+                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                    (user?.recordAudioDesktop ?? true) ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
+                  )}
+                >
+                  <span className={cn(
+                    'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
+                    (user?.recordAudioDesktop ?? true) ? 'translate-x-6' : 'translate-x-1',
+                  )} />
+                </button>
+              </div>
+
+              {(user?.recordAudioDesktop ?? true) && (
+                <div className="ml-1">
+                  {audioOutputDevices.length > 0 ? (
+                    <Select
+                      value={user?.recordAudioDesktopDevice ?? '__default__'}
+                      onValueChange={async (val) => {
+                        await window.api.updateUser({ recordAudioDesktopDevice: val === '__default__' ? null : val })
+                        await loadUser()
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Default" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__default__" className="text-xs">Default</SelectItem>
+                        {audioOutputDevices.map((d) => (
+                          <SelectItem key={d.deviceId} value={d.label || d.deviceId} className="text-xs">
+                            {d.label || `Output ${d.deviceId.slice(0, 8)}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-xs text-hextech-text-dim italic">
+                      No audio output device found. Click &quot;Refresh devices&quot;.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Microphone */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-hextech-text-bright">Record microphone</p>
+                  <p className="text-xs text-hextech-text-dim mt-0.5">
+                    Include your voice in the recording.
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    await window.api.updateUser({ recordAudioMic: !(user?.recordAudioMic ?? false) })
+                    await loadUser()
+                  }}
+                  className={cn(
+                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                    (user?.recordAudioMic ?? false) ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
+                  )}
+                >
+                  <span className={cn(
+                    'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
+                    (user?.recordAudioMic ?? false) ? 'translate-x-6' : 'translate-x-1',
+                  )} />
+                </button>
+              </div>
+
+              {(user?.recordAudioMic ?? false) && (
+                <div className="ml-1">
+                  {audioInputDevices.length > 0 ? (
+                    <Select
+                      value={user?.recordAudioMicDevice ?? '__default__'}
+                      onValueChange={async (val) => {
+                        await window.api.updateUser({ recordAudioMicDevice: val === '__default__' ? null : val })
+                        await loadUser()
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Default" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__default__" className="text-xs">Default</SelectItem>
+                        {audioInputDevices.map((d) => (
+                          <SelectItem key={d.deviceId} value={d.label || d.deviceId} className="text-xs">
+                            {d.label || `Microphone ${d.deviceId.slice(0, 8)}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-xs text-hextech-text-dim italic">
+                      No microphone detected. Click &quot;Refresh devices&quot;.
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>

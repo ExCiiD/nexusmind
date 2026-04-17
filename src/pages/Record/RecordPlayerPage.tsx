@@ -232,7 +232,7 @@ export function RecordPlayerPage() {
 
   return (
     // Fixed-height column — no page scroll possible
-    <div className="flex flex-col gap-2 animate-fade-in" style={{ height: 'calc(100vh - 3.25rem)', overflow: 'hidden' }}>
+    <div className="flex flex-col gap-2 animate-fade-in" style={{ height: 'calc(100vh - 3.25rem)', overflow: 'auto' }}>
       {/* Back nav */}
       <button onClick={() => navigate('/record')} className="flex items-center gap-1.5 text-xs text-hextech-text-dim hover:text-hextech-text transition-colors self-start shrink-0">
         <ArrowLeft className="h-3.5 w-3.5" />Back to Record Hub
@@ -247,7 +247,7 @@ export function RecordPlayerPage() {
           src={videoSrc}
           notes={[]}
           readonly
-          videoMaxHeight={creatingClip ? 'max-h-[calc(100vh-22rem)]' : 'max-h-[calc(100vh-18rem)]'}
+          videoMaxHeight={creatingClip ? 'max-h-[calc(100vh-24rem)]' : 'max-h-[calc(100vh-20rem)]'}
           clipping={creatingClip}
           clipRange={creatingClip ? clipRange : undefined}
           onClipRangeChange={creatingClip ? handleClipRangeChange : undefined}

@@ -436,6 +436,7 @@ export function registerSessionHandlers() {
 
   ipcMain.handle('game:delete', async (_event, gameId: string) => {
     const prisma = getPrisma()
+    await prisma.recording.updateMany({ where: { gameId }, data: { gameId: null } })
     await prisma.gameDetailedStats.deleteMany({ where: { gameId } })
     await prisma.review.deleteMany({ where: { gameId } })
     await prisma.game.delete({ where: { id: gameId } })

@@ -297,10 +297,17 @@
     },
     "charts": {
       "skillProgress": "Skill Progress Over Time",
-      "currentVsPrevious": "Current vs Previous Assessment",
+      "currentVsPrevious": "Assessment Comparison",
+      "sessionVsBilan": "Session Objectives vs Assessment",
       "noAssessment": "No assessment data available",
       "noGames": "No games recorded yet. Start a session and play!",
-      "noStats": "No statistics available yet. Play some games and review them!"
+      "noStats": "No statistics available yet. Play some games and review them!",
+      "modeBilan": "Assessments",
+      "modeSession": "Sessions",
+      "sessionCount_current": "Current",
+      "sessionCount_last": "Last",
+      "sessionCount_n": "Last {{count}}",
+      "sessionCount_all": "All"
     },
     "game": {
       "cs": "CS:",
@@ -588,6 +595,9 @@
   "charts": {
     "previous": "Previous",
     "current": "Current",
+    "latestBilan": "Latest assessment",
+    "previousBilan": "Previous assessment",
+    "sessionAvg": "Session average",
     "wins": "Wins",
     "losses": "Losses",
     "games": "games",

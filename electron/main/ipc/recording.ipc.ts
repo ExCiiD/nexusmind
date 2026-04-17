@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app, BrowserWindow } from 'electron'
+import { ipcMain, dialog, app, BrowserWindow, desktopCapturer } from 'electron'
 import { getPrisma } from '../database'
 import {
   recordingManager,
@@ -310,6 +310,7 @@ export function registerRecordingHandlers() {
 
   ipcMain.handle('recording:link-file', async (_event, gameId: string) => {
     const prisma = getPrisma()
+
     const user = await prisma.user.findFirst({ where: { isActive: true } })
 
     const dialogOptions: Electron.OpenDialogOptions = {
@@ -431,7 +432,10 @@ export function registerRecordingHandlers() {
       recordQuality: user?.recordQuality,
       recordFps: user?.recordFps,
       recordEncoder: user?.recordEncoder,
-      allowDesktopFallback: user?.allowDesktopFallback ?? true,
+      audioDesktopEnabled: user?.recordAudioDesktop ?? true,
+      audioDesktopDevice: user?.recordAudioDesktopDevice,
+      audioMicEnabled: user?.recordAudioMic ?? false,
+      audioMicDevice: user?.recordAudioMicDevice,
     })
     return { started: !!path, filePath: path }
   })
@@ -471,6 +475,11 @@ export function registerRecordingHandlers() {
 
   ipcMain.handle('recording:get-recordings-dir', () => {
     return recordingManager.getRecordingsDir()
+  })
+
+  ipcMain.handle('recording:get-desktop-source', async () => {
+    const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
+    return sources[0]?.id ?? null
   })
 
   /**

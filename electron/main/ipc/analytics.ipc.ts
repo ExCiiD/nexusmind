@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
+import { FUNDAMENTALS } from '../../../src/lib/constants/fundamentals'
 
 function includeInAnalytics(game: { reviewStatus?: string | null }) {
   return game.reviewStatus !== 'to_be_reviewed'
@@ -201,10 +202,23 @@ export function registerAnalyticsHandlers() {
   })
 
   /**
+   * Build a lookup: KPI id -> parent fundamental id.
+   * Used to split review scores per objective.
+   */
+  const kpiToFundamental = new Map<string, string>()
+  for (const cat of FUNDAMENTALS) {
+    for (const f of cat.fundamentals) {
+      for (const k of f.kpis) kpiToFundamental.set(k.id, f.id)
+      for (const sub of f.subcategories ?? []) {
+        for (const k of sub.kpis) kpiToFundamental.set(k.id, f.id)
+      }
+    }
+  }
+
+  /**
    * Returns session-based KPI score trends over time.
-   * For each completed session that has at least one reviewed game with KPI scores,
-   * computes the average KPI score across all reviews in that session.
-   * Scores are normalised from the 0-10 KPI scale to the 0-5 Assessment scale.
+   * Emits one data point per objective per session so multi-objective sessions
+   * contribute to every selected fundamental on the charts.
    */
   ipcMain.handle('analytics:get-kpi-timeline', async () => {
     const prisma = getPrisma()
@@ -224,25 +238,43 @@ export function registerAnalyticsHandlers() {
     for (const session of sessions) {
       if (!session.objectiveId) continue
 
-      const allScores: number[] = []
+      let objectives: string[]
+      try {
+        const parsed = JSON.parse(session.objectiveIds ?? '[]')
+        objectives = Array.isArray(parsed) && parsed.length > 0 ? parsed : [session.objectiveId]
+      } catch {
+        objectives = [session.objectiveId]
+      }
+
+      const scoresByObjective = new Map<string, number[]>()
+      for (const objId of objectives) scoresByObjective.set(objId, [])
+
       for (const game of session.games) {
         if (!game.review?.kpiScores) continue
         try {
           const kpiMap: Record<string, number> = JSON.parse(game.review.kpiScores)
-          const vals = Object.values(kpiMap).filter((v) => typeof v === 'number' && v >= 0)
-          allScores.push(...vals)
+          for (const [kpiId, score] of Object.entries(kpiMap)) {
+            if (typeof score !== 'number' || score < 0) continue
+            const parentFundamental = kpiToFundamental.get(kpiId)
+            if (parentFundamental && scoresByObjective.has(parentFundamental)) {
+              scoresByObjective.get(parentFundamental)!.push(score)
+            }
+          }
         } catch { /* ignore malformed JSON */ }
       }
 
-      if (allScores.length === 0) continue
+      const gamesReviewed = session.games.filter((g) => g.review !== null).length
 
-      const avg = allScores.reduce((a, b) => a + b, 0) / allScores.length
-      points.push({
-        date: session.date.toISOString(),
-        objectiveId: session.objectiveId,
-        avgScore: Number(avg.toFixed(2)), // 0-10 scale, same as assessments
-        gamesReviewed: session.games.filter((g) => g.review !== null).length,
-      })
+      for (const [objId, scores] of scoresByObjective) {
+        if (scores.length === 0) continue
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length
+        points.push({
+          date: session.date.toISOString(),
+          objectiveId: objId,
+          avgScore: Number(avg.toFixed(2)),
+          gamesReviewed,
+        })
+      }
     }
 
     return points
