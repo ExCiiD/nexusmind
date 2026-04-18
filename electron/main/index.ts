@@ -458,14 +458,44 @@ app.on('window-all-closed', () => {
 })
 
 function setupAutoUpdater() {
-  if (!app.isPackaged) return
+  // Register the manual-check IPC handler even in dev so the UI can
+  // surface a clear message ("not available in development") instead of
+  // a cryptic "No handler registered" error.
+  if (!app.isPackaged) {
+    ipcMain.handle('updater:check', async () => ({
+      status: 'dev-mode',
+      updateAvailable: false,
+    }))
+    return
+  }
+
+  // File-based logging so we can diagnose auto-update failures post-mortem
+  // (console.error is invisible to end-users in packaged builds).
+  try {
+    const logsDir = app.getPath('logs')
+    const logPath = join(logsDir, 'updater.log')
+    const updaterLogger = {
+      info: (msg: string) => appendUpdaterLog(logPath, 'INFO', msg),
+      warn: (msg: string) => appendUpdaterLog(logPath, 'WARN', msg),
+      error: (msg: string) => appendUpdaterLog(logPath, 'ERROR', msg),
+      debug: (msg: string) => appendUpdaterLog(logPath, 'DEBUG', msg),
+    }
+    ;(autoUpdater as unknown as { logger: typeof updaterLogger }).logger = updaterLogger
+    updaterLogger.info(`autoUpdater init - app version ${app.getVersion()}`)
+  } catch {
+    /* logging best-effort */
+  }
 
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
   autoUpdater.allowPrerelease = true
 
-  autoUpdater.on('update-available', () => {
-    mainWindow?.webContents.send('updater:update-available')
+  autoUpdater.on('update-available', (info) => {
+    mainWindow?.webContents.send('updater:update-available', info?.version)
+  })
+
+  autoUpdater.on('update-not-available', () => {
+    mainWindow?.webContents.send('updater:update-not-available')
   })
 
   autoUpdater.on('download-progress', (progress) => {
@@ -478,6 +508,7 @@ function setupAutoUpdater() {
 
   autoUpdater.on('error', (err) => {
     console.error('[updater]', err.message)
+    mainWindow?.webContents.send('updater:error', err.message)
   })
 
   ipcMain.handle('updater:install-now', () => {
@@ -487,14 +518,85 @@ function setupAutoUpdater() {
   ipcMain.handle('updater:check', async () => {
     try {
       const result = await autoUpdater.checkForUpdates()
-      return { updateAvailable: !!result?.updateInfo }
+
+      // electron-updater returns `null` when a check is already in progress
+      // (throttling) or when the updater is unable to run. Surface that as
+      // an "unknown" state so the UI doesn't falsely report "up to date".
+      if (!result) {
+        return { status: 'unknown', updateAvailable: false } as const
+      }
+
+      // `updateInfo` is always populated with the latest release metadata,
+      // even when you are already on that version. The correct signal for
+      // "update available" is `isUpdateAvailable` (electron-updater v6+).
+      const isUpdateAvailable = (result as unknown as { isUpdateAvailable?: boolean }).isUpdateAvailable
+        ?? compareVersionsNewer(result.updateInfo?.version, app.getVersion())
+
+      return {
+        status: isUpdateAvailable ? 'available' : 'up-to-date',
+        updateAvailable: Boolean(isUpdateAvailable),
+        currentVersion: app.getVersion(),
+        latestVersion: result.updateInfo?.version,
+      } as const
     } catch (err) {
-      console.error('[updater] manual check failed:', err)
-      throw err
+      const message = err instanceof Error ? err.message : String(err)
+      console.error('[updater] manual check failed:', message)
+      return { status: 'error', updateAvailable: false, error: message } as const
     }
   })
 
-  autoUpdater.checkForUpdatesAndNotify().catch(() => {})
+  autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+    console.error('[updater] initial check failed:', err?.message || err)
+  })
+}
+
+/**
+ * Compare two semver-ish version strings and return true iff `candidate`
+ * is strictly newer than `current`. Handles `X.Y.Z` and `X.Y.Z-beta.N`
+ * (and other pre-release identifiers) well enough for our release scheme.
+ * Falls back to `false` on malformed input rather than throwing so that
+ * the update check is never broken by an unexpected server response.
+ */
+function compareVersionsNewer(candidate: string | undefined, current: string | undefined): boolean {
+  if (!candidate || !current) return false
+  const parse = (v: string): { core: number[]; pre: Array<string | number> } => {
+    const [core, pre = ''] = v.split('-', 2)
+    return {
+      core: core.split('.').map((n) => Number.parseInt(n, 10) || 0),
+      pre: pre ? pre.split('.').map((p) => (Number.isNaN(Number(p)) ? p : Number(p))) : [],
+    }
+  }
+  const a = parse(candidate)
+  const b = parse(current)
+  for (let i = 0; i < Math.max(a.core.length, b.core.length); i++) {
+    const ai = a.core[i] ?? 0
+    const bi = b.core[i] ?? 0
+    if (ai > bi) return true
+    if (ai < bi) return false
+  }
+  // Core equal → version without pre-release tag is considered newer.
+  if (a.pre.length === 0 && b.pre.length > 0) return true
+  if (a.pre.length > 0 && b.pre.length === 0) return false
+  for (let i = 0; i < Math.max(a.pre.length, b.pre.length); i++) {
+    const ap = a.pre[i]
+    const bp = b.pre[i]
+    if (ap === bp) continue
+    if (ap === undefined) return false
+    if (bp === undefined) return true
+    if (typeof ap === 'number' && typeof bp === 'number') return ap > bp
+    return String(ap) > String(bp)
+  }
+  return false
+}
+
+function appendUpdaterLog(filePath: string, level: string, message: string): void {
+  try {
+    const line = `[${new Date().toISOString()}] [${level}] ${message}\n`
+    const fs = require('fs') as typeof import('fs')
+    fs.appendFileSync(filePath, line, 'utf8')
+  } catch {
+    /* swallow - logging must never crash the app */
+  }
 }
 
 ipcMain.handle('app:get-version', () => app.getVersion())

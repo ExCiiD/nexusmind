@@ -62,11 +62,47 @@ export function Sidebar() {
     setCheckingUpdate(true)
     try {
       const result = await window.api.checkForUpdates()
-      if (!result.updateAvailable) {
-        toast({ title: t('update.upToDate', 'You are up to date!') })
+      switch (result.status) {
+        case 'available':
+          toast({
+            title: t('update.availableTitle', 'Update available'),
+            description: result.latestVersion
+              ? t('update.availableVersion', 'Version {{version}} is downloading…', { version: result.latestVersion })
+              : t('update.availableDesc', 'The update is downloading in the background.'),
+          })
+          break
+        case 'up-to-date':
+          toast({
+            title: t('update.upToDate', 'You are up to date!'),
+            description: result.currentVersion ? `v${result.currentVersion}` : undefined,
+          })
+          break
+        case 'unknown':
+          toast({
+            title: t('update.checkBusy', 'Update check in progress'),
+            description: t('update.checkBusyDesc', 'Another check is already running. Please wait a moment and retry.'),
+          })
+          break
+        case 'dev-mode':
+          toast({
+            title: t('update.devMode', 'Auto-update disabled in development'),
+            description: t('update.devModeDesc', 'Build and install the packaged app to test updates.'),
+          })
+          break
+        case 'error':
+        default:
+          toast({
+            title: t('update.checkFailed', 'Could not check for updates'),
+            description: result.error,
+            variant: 'destructive',
+          })
       }
-    } catch {
-      toast({ title: t('update.checkFailed', 'Could not check for updates'), variant: 'destructive' })
+    } catch (err) {
+      toast({
+        title: t('update.checkFailed', 'Could not check for updates'),
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      })
     } finally {
       setCheckingUpdate(false)
     }

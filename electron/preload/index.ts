@@ -97,9 +97,10 @@ const api = {
   getUser: () => ipcRenderer.invoke('user:get'),
   updateUser: (data: any) => ipcRenderer.invoke('user:update', data),
 
-  onUpdateAvailable: (cb: () => void) => {
-    ipcRenderer.on('updater:update-available', cb)
-    return () => { ipcRenderer.removeListener('updater:update-available', cb) }
+  onUpdateAvailable: (cb: (version?: string) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, version?: string) => cb(version)
+    ipcRenderer.on('updater:update-available', handler)
+    return () => { ipcRenderer.removeListener('updater:update-available', handler) }
   },
   onUpdateProgress: (cb: (percent: number) => void) => {
     const handler = (_: Electron.IpcRendererEvent, percent: number) => cb(percent)
@@ -109,6 +110,11 @@ const api = {
   onUpdateDownloaded: (cb: () => void) => {
     ipcRenderer.on('updater:update-downloaded', cb)
     return () => { ipcRenderer.removeListener('updater:update-downloaded', cb) }
+  },
+  onUpdateError: (cb: (message: string) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, message: string) => cb(message)
+    ipcRenderer.on('updater:error', handler)
+    return () => { ipcRenderer.removeListener('updater:error', handler) }
   },
   installUpdate: () => ipcRenderer.invoke('updater:install-now'),
   checkForUpdates: () => ipcRenderer.invoke('updater:check') as Promise<{ updateAvailable: boolean }>,

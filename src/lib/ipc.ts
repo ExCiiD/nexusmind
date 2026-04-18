@@ -119,11 +119,18 @@ export type NexusMindAPI = {
   getUser: () => Promise<any>
   updateUser: (data: any) => Promise<any>
 
-  onUpdateAvailable: (cb: () => void) => () => void
+  onUpdateAvailable: (cb: (version?: string) => void) => () => void
   onUpdateProgress: (cb: (percent: number) => void) => () => void
   onUpdateDownloaded: (cb: () => void) => () => void
+  onUpdateError: (cb: (message: string) => void) => () => void
   installUpdate: () => Promise<void>
-  checkForUpdates: () => Promise<{ updateAvailable: boolean }>
+  checkForUpdates: () => Promise<{
+    status: 'available' | 'up-to-date' | 'unknown' | 'error' | 'dev-mode'
+    updateAvailable: boolean
+    currentVersion?: string
+    latestVersion?: string
+    error?: string
+  }>
 
   // Recording — library
   scanRecordings: () => Promise<{ scanned: number; matched: number; orphaned: number; dismissed: number; paths: Array<{ source: string; dir: string; exists: boolean }> }>
