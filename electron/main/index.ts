@@ -462,6 +462,7 @@ function setupAutoUpdater() {
 
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
+  autoUpdater.allowPrerelease = true
 
   autoUpdater.on('update-available', () => {
     mainWindow?.webContents.send('updater:update-available')
