@@ -363,6 +363,7 @@ export function registerSessionHandlers() {
     const gameIds = games.map((g) => g.id)
 
     if (gameIds.length > 0) {
+      await prisma.recording.updateMany({ where: { gameId: { in: gameIds } }, data: { gameId: null } })
       await prisma.gameDetailedStats.deleteMany({ where: { gameId: { in: gameIds } } })
       await prisma.review.deleteMany({ where: { gameId: { in: gameIds } } })
       await prisma.game.deleteMany({ where: { sessionId: id } })
@@ -382,6 +383,7 @@ export function registerSessionHandlers() {
     const gameIds = games.map((g) => g.id)
 
     if (gameIds.length > 0) {
+      await prisma.recording.updateMany({ where: { gameId: { in: gameIds } }, data: { gameId: null } })
       await prisma.gameDetailedStats.deleteMany({ where: { gameId: { in: gameIds } } })
       await prisma.review.deleteMany({ where: { gameId: { in: gameIds } } })
       await prisma.game.deleteMany({ where: { sessionId: { in: ids } } })
@@ -401,6 +403,7 @@ export function registerSessionHandlers() {
     const gameIds = games.map((g) => g.id)
 
     if (gameIds.length > 0) {
+      await prisma.recording.updateMany({ where: { gameId: { in: gameIds } }, data: { gameId: null } })
       await prisma.gameDetailedStats.deleteMany({ where: { gameId: { in: gameIds } } })
       await prisma.review.deleteMany({ where: { gameId: { in: gameIds } } })
       await prisma.game.deleteMany({ where: { sessionId: id } })

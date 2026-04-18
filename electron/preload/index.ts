@@ -93,6 +93,7 @@ const api = {
   simulateGame: () => ipcRenderer.invoke('dev:simulate-game'),
   isDev: () => ipcRenderer.invoke('dev:is-dev'),
 
+  getAppVersion: () => ipcRenderer.invoke('app:get-version') as Promise<string>,
   getUser: () => ipcRenderer.invoke('user:get'),
   updateUser: (data: any) => ipcRenderer.invoke('user:update', data),
 
@@ -118,9 +119,11 @@ const api = {
   getRecordingById: (recordingId: string) => ipcRenderer.invoke('recording:get-by-id', recordingId),
   linkRecordingFile: (gameId: string) => ipcRenderer.invoke('recording:link-file', gameId),
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => ipcRenderer.invoke('recording:set-youtube', gameId, youtubeUrl),
+  deleteReview: (gameId: string) => ipcRenderer.invoke('review:delete', gameId),
   deleteRecording: (gameId: string) => ipcRenderer.invoke('recording:delete', gameId),
   unlinkRecording: (gameId: string) => ipcRenderer.invoke('recording:unlink', gameId),
   deleteRecordingById: (recordingId: string) => ipcRenderer.invoke('recording:delete-by-id', recordingId),
+  resetDismissedRecordings: () => ipcRenderer.invoke('recording:reset-dismissed'),
   getRecordingScanPaths: () => ipcRenderer.invoke('recording:get-scan-paths'),
   listGamesWithRecordings: () => ipcRenderer.invoke('recording:list-with-games'),
   // Recording — in-app capture

@@ -639,6 +639,8 @@ export function SettingsPage() {
                 if (picked) {
                   await window.api.updateUser({ externalRecordingPath: picked })
                   await loadUser()
+                  window.api.scanRecordings().catch(() => {})
+                  toast({ title: t('recording.folderChanged') })
                 }
               }}
             >
@@ -660,6 +662,17 @@ export function SettingsPage() {
               </Button>
             )}
           </div>
+          <Button
+            variant="link"
+            size="sm"
+            className="mt-2 h-auto p-0 text-xs text-hextech-text-dim hover:text-hextech-gold"
+            onClick={async () => {
+              await window.api.resetDismissedRecordings()
+              toast({ title: t('recording.resetDismissedDone') })
+            }}
+          >
+            {t('recording.resetDismissed')}
+          </Button>
         </CardContent>
       </Card>
 

@@ -31,6 +31,11 @@ export function Sidebar() {
   const clearUser = useUserStore((s) => s.clearUser)
   const activeSession = useSessionStore((s) => s.activeSession)
   const [isRecording, setIsRecording] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
+
+  useEffect(() => {
+    window.api.getAppVersion?.().then(setAppVersion).catch(() => {})
+  }, [])
 
   useEffect(() => {
     window.api.getCaptureStatus().then((s) => setIsRecording(s.isRecording)).catch(() => {})
@@ -96,7 +101,10 @@ export function Sidebar() {
         <div className="h-8 w-8 rounded bg-gradient-to-br from-hextech-cyan to-hextech-teal flex items-center justify-center">
           <span className="text-sm font-bold text-hextech-black">N</span>
         </div>
-        <span className="font-display text-lg font-bold text-hextech-gold-bright flex-1">NexusMind</span>
+        <div className="flex-1 min-w-0">
+          <span className="font-display text-lg font-bold text-hextech-gold-bright block leading-tight">NexusMind</span>
+          {appVersion && <span className="text-[10px] text-hextech-text-dim/60 leading-none">v{appVersion}</span>}
+        </div>
         <button
           onClick={handleCheckUpdates}
           disabled={checkingUpdate}

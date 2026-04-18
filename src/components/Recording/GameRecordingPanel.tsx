@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Video, Youtube, Link2, Trash2, Loader2, ExternalLink, RefreshCw, Unlink } from 'lucide-react'
+import { Video, Youtube, Link2, Trash2, Loader2, ExternalLink, RefreshCw, Unlink, FileX2 } from 'lucide-react'
 import { VideoReviewPlayer } from './VideoReviewPlayer'
 import { RecordingMediaPanel } from './RecordingMediaPanel'
 import { useToast } from '@/hooks/useToast'
+import { useTranslation } from 'react-i18next'
 import type { TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
 
 // ── Types & helpers ───────────────────────────────────────────────────────────
@@ -51,12 +52,15 @@ function parseMmSs(v: string): number | null {
 interface GameRecordingPanelProps {
   gameId: string
   readonly?: boolean
+  hasReview?: boolean
+  onReviewDeleted?: () => void
   timelineNotes?: TimelineNote[]
   onAddNote?: (note: TimelineNote) => void
 }
 
-export function GameRecordingPanel({ gameId, readonly, timelineNotes = [], onAddNote }: GameRecordingPanelProps) {
+export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDeleted, timelineNotes = [], onAddNote }: GameRecordingPanelProps) {
   const { toast } = useToast()
+  const { t } = useTranslation()
   const [recording, setRecording] = useState<Recording | null>(null)
   const [loading, setLoading] = useState(true)
   const [scanning, setScanning] = useState(false)
@@ -65,6 +69,7 @@ export function GameRecordingPanel({ gameId, readonly, timelineNotes = [], onAdd
   const [saving, setSaving] = useState(false)
   const [open, setOpen] = useState(false)
   const [fileNotFound, setFileNotFound] = useState(false)
+  const [confirmDeleteVideo, setConfirmDeleteVideo] = useState(false)
 
   // Clip creation
   const [creatingClip, setCreatingClip] = useState(false)
@@ -142,10 +147,18 @@ export function GameRecordingPanel({ gameId, readonly, timelineNotes = [], onAdd
     } finally { setSaving(false) }
   }
 
-  const handleDelete = async () => {
+  const handleDeleteVideo = async () => {
     await window.api.deleteRecording(gameId)
     setRecording(null)
     setOpen(false)
+    setConfirmDeleteVideo(false)
+    toast({ title: t('recording.videoDeleted') })
+  }
+
+  const handleDeleteReview = async () => {
+    await window.api.deleteReview(gameId)
+    toast({ title: t('review.deleted') })
+    onReviewDeleted?.()
   }
 
   const handleUnlink = async () => {
@@ -303,7 +316,7 @@ export function GameRecordingPanel({ gameId, readonly, timelineNotes = [], onAdd
                   <Button variant="outline" size="sm" onClick={handleUnlink} className="gap-1.5">
                     <Unlink className="h-3.5 w-3.5" />Unlink
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={handleDelete} className="text-[#FF4655] hover:text-[#FF4655] gap-1.5">
+                  <Button variant="ghost" size="sm" onClick={handleDeleteVideo} className="text-[#FF4655] hover:text-[#FF4655] gap-1.5">
                     <Trash2 className="h-3.5 w-3.5" />Remove entry
                   </Button>
                 </div>
@@ -312,12 +325,28 @@ export function GameRecordingPanel({ gameId, readonly, timelineNotes = [], onAdd
                   <div className="flex items-center justify-between gap-2 px-0.5">
                     <span className="text-xs text-hextech-text-dim truncate max-w-[70%]">{recording.filePath}</span>
                     <div className="flex items-center gap-1 shrink-0">
-                      <Button variant="ghost" size="sm" onClick={handleUnlink} className="text-hextech-text-dim hover:text-hextech-gold h-7" title="Unlink recording from this game">
+                      {hasReview && (
+                        <Button variant="ghost" size="sm" onClick={handleDeleteReview} className="text-amber-400 hover:text-amber-400 h-7" title={t('recording.deleteReviewButton')}>
+                          <FileX2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" onClick={handleUnlink} className="text-hextech-text-dim hover:text-hextech-gold h-7" title={t('recording.unlinkButton')}>
                         <Unlink className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={handleDelete} className="text-[#FF4655] hover:text-[#FF4655] h-7">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {confirmDeleteVideo ? (
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={handleDeleteVideo} className="text-[#FF4655] hover:text-[#FF4655] h-7 text-[10px] font-bold">
+                            {t('recording.confirmDeleteVideo')}
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteVideo(false)} className="text-hextech-text-dim h-7 text-[10px]">
+                            ✕
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteVideo(true)} className="text-[#FF4655] hover:text-[#FF4655] h-7" title={t('recording.deleteVideoButton')}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                   <RecordingMediaPanel
@@ -351,10 +380,15 @@ export function GameRecordingPanel({ gameId, readonly, timelineNotes = [], onAdd
                     <ExternalLink className="h-3 w-3" />Open on YouTube
                   </a>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" onClick={handleUnlink} className="text-hextech-text-dim hover:text-hextech-gold" title="Unlink recording from this game">
+                    {hasReview && (
+                      <Button variant="ghost" size="sm" onClick={handleDeleteReview} className="text-amber-400 hover:text-amber-400" title={t('recording.deleteReviewButton')}>
+                        <FileX2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={handleUnlink} className="text-hextech-text-dim hover:text-hextech-gold" title={t('recording.unlinkButton')}>
                       <Unlink className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={handleDelete} className="text-[#FF4655] hover:text-[#FF4655]">
+                    <Button variant="ghost" size="sm" onClick={handleDeleteVideo} className="text-[#FF4655] hover:text-[#FF4655]" title={t('recording.deleteVideoButton')}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -372,10 +406,15 @@ export function GameRecordingPanel({ gameId, readonly, timelineNotes = [], onAdd
               </a>
               {!readonly && (
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" onClick={handleUnlink} className="text-hextech-text-dim hover:text-hextech-gold" title="Unlink recording from this game">
+                  {hasReview && (
+                    <Button variant="ghost" size="sm" onClick={handleDeleteReview} className="text-amber-400 hover:text-amber-400" title={t('recording.deleteReviewButton')}>
+                      <FileX2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={handleUnlink} className="text-hextech-text-dim hover:text-hextech-gold" title={t('recording.unlinkButton')}>
                     <Unlink className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={handleDelete} className="text-[#FF4655] hover:text-[#FF4655]">
+                  <Button variant="ghost" size="sm" onClick={handleDeleteVideo} className="text-[#FF4655] hover:text-[#FF4655]" title={t('recording.deleteVideoButton')}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>

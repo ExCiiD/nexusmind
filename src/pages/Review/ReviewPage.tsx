@@ -663,6 +663,8 @@ export function ReviewPage() {
       {/* Recording panel — passes notes for video markers + receives new video-timestamped notes */}
       <GameRecordingPanel
         gameId={latestGame.id}
+        hasReview={!!latestGame.review}
+        onReviewDeleted={refreshSession}
         timelineNotes={timelineNotes}
         onAddNote={(note) => setTimelineNotes((prev) => [...prev, note])}
       />

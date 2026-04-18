@@ -11,7 +11,6 @@ import {
 } from '../recorder'
 import { existsSync, readdirSync, statSync, unlinkSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { join, extname, dirname, basename } from 'path'
-import { homedir } from 'os'
 import { matchRecordingToGame } from '../recordingMatch'
 
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv'])
@@ -66,16 +65,9 @@ function deleteClipFiles(clip: { filePath?: string | null; thumbnailPath?: strin
   }
 }
 
-function getKnownRecordingPaths(): Record<string, string> {
-  const local = process.env.LOCALAPPDATA ?? join(homedir(), 'AppData', 'Local')
-  const roaming = process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming')
-
+function getRecordingPaths(userRecordingPath?: string | null): Record<string, string> {
   return {
-    outplayed: join(local, 'Outplayed', 'Videos', 'League of Legends'),
-    insightcapture: join(roaming, 'InsightCapture', 'recordings'),
-    obs: join(homedir(), 'Videos'),
-    // NexusMind's own capture folder
-    nexusmind: recordingManager.getRecordingsDir(),
+    nexusmind: recordingManager.getRecordingsDir(userRecordingPath),
   }
 }
 
@@ -170,20 +162,65 @@ export function registerRecordingHandlers() {
     const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) throw new Error('No user found')
 
-    const paths = getKnownRecordingPaths()
+    const paths = getRecordingPaths(user.recordingPath)
 
-    // Include the user's external recording folder if configured
     if (user.externalRecordingPath) {
       paths['external'] = user.externalRecordingPath
     }
 
+    console.log('[scan] Active directories:', paths)
+
+    // ── Step 1a: Fix dangling gameIds (game was deleted, recording remains) ──
+    const danglingRows: Array<{ id: string }> = await prisma.$queryRawUnsafe(
+      `SELECT r.id FROM "Recording" r LEFT JOIN "Game" g ON r."gameId" = g.id WHERE r."gameId" IS NOT NULL AND g.id IS NULL`,
+    )
+    if (danglingRows.length > 0) {
+      console.log(`[scan] Fixing ${danglingRows.length} recording(s) with dangling gameId`)
+      for (const row of danglingRows) {
+        await prisma.$executeRawUnsafe(`UPDATE "Recording" SET "gameId" = NULL WHERE "id" = ?`, row.id)
+      }
+    }
+
+    // ── Step 1b: Prune stale DB entries (file missing or outside active dirs) ──
+    let pruneCount = 0
+    const activeDirs = new Set(Object.values(paths).map((d) => d.replace(/\\/g, '/').toLowerCase()))
+    const allRecordings = await prisma.recording.findMany({
+      where: { filePath: { not: null } },
+      select: { id: true, filePath: true, gameId: true },
+    })
+    for (const rec of allRecordings) {
+      if (!rec.filePath) continue
+      const norm = rec.filePath.replace(/\\/g, '/').toLowerCase()
+      const parentDir = norm.substring(0, norm.lastIndexOf('/'))
+      const isInActiveDir = [...activeDirs].some((d) => parentDir === d || parentDir.startsWith(d + '/'))
+      if (!isInActiveDir || !existsSync(rec.filePath)) {
+        console.log('[scan] Pruning stale recording:', rec.filePath, { isInActiveDir, exists: existsSync(rec.filePath) })
+        await prisma.$executeRawUnsafe(`DELETE FROM "Clip" WHERE "recordingId" = ?`, rec.id)
+        await prisma.recording.delete({ where: { id: rec.id } })
+        pruneCount++
+      }
+    }
+
+    // ── Step 2: Prune dismissed paths for files that no longer exist ──────
+    const dismissed = loadDismissedPaths()
+    if (dismissed.size > 0) {
+      let pruned = false
+      for (const p of dismissed) {
+        if (!existsSync(p)) { dismissed.delete(p); pruned = true }
+      }
+      if (pruned) saveDismissedPaths(dismissed)
+    }
+
+    // ── Step 3: Scan video files on disk ─────────────────────────────────
     const allFiles: Array<{ path: string; createdAt: Date; source: string }> = []
 
     for (const [source, dir] of Object.entries(paths)) {
       const files = findVideoFiles(dir).map((f) => ({ ...f, source }))
+      console.log(`[scan] Found ${files.length} video files in ${dir} (${source})`)
       allFiles.push(...files)
     }
 
+    // ── Step 4: Match files to unlinked games ────────────────────────────
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     const games = await prisma.game.findMany({
       where: {
@@ -214,28 +251,33 @@ export function registerRecordingHandlers() {
       if (!rec.thumbnailPath) newlyMatchedIds.push({ id: rec.id, filePath: match.filePath })
     }
 
-    // Save unmatched video files as orphaned recordings (gameId = null)
+    // ── Step 5: Create orphan records (DB is clean from step 1) ──────────
     const matchedPaths = new Set(matched.map((m) => m.filePath))
     const existingPaths = new Set(
       (await prisma.recording.findMany({ select: { filePath: true } }))
         .map((r) => r.filePath)
-        .filter(Boolean) as string[]
+        .filter(Boolean) as string[],
     )
-    const dismissed = loadDismissedPaths()
     let orphanedCount = 0
     const newlyOrphanedIds: Array<{ id: string; filePath: string }> = []
     for (const file of allFiles) {
       if (basename(file.path).startsWith('clip_')) continue
-      if (!matchedPaths.has(file.path) && !existingPaths.has(file.path) && !dismissed.has(file.path)) {
+      const inMatched = matchedPaths.has(file.path)
+      const inExisting = existingPaths.has(file.path)
+      const inDismissed = dismissed.has(file.path)
+      if (!inMatched && !inExisting && !inDismissed) {
+        console.log('[scan] Creating orphan for:', file.path)
         const rec = await prisma.recording.create({
           data: { filePath: file.path, source: file.source, createdAt: file.createdAt },
         })
         newlyOrphanedIds.push({ id: rec.id, filePath: file.path })
         orphanedCount++
+      } else if (!basename(file.path).startsWith('clip_')) {
+        console.log('[scan] Skipping file:', file.path, { inMatched, inExisting, inDismissed })
       }
     }
 
-    // Reset stale or low-quality thumbnails (missing files or tiny black frames)
+    // ── Step 6: Regenerate thumbnails ────────────────────────────────────
     const allWithThumb = await prisma.recording.findMany({
       where: { thumbnailPath: { not: null } },
       select: { id: true, thumbnailPath: true },
@@ -268,26 +310,21 @@ export function registerRecordingHandlers() {
       )
     }
 
-    // Reconcile orphan clip files in each recording directory's clips/ subfolder
+    // ── Step 7: Reconcile orphan clip files ──────────────────────────────
     let clipsReconciled = 0
     const uniqueDirs = new Set(Object.values(paths))
     for (const dir of uniqueDirs) {
       clipsReconciled += await reconcileOrphanClips(dir)
     }
 
-    // Prune dismissed paths for files that no longer exist on disk
-    if (dismissed.size > 0) {
-      let pruned = false
-      for (const p of dismissed) {
-        if (!existsSync(p)) { dismissed.delete(p); pruned = true }
-      }
-      if (pruned) saveDismissedPaths(dismissed)
-    }
+    console.log('[scan] Done:', { scanned: allFiles.length, matched: matched.length, orphaned: orphanedCount, pruned: pruneCount })
 
     return {
       scanned: allFiles.length,
       matched: matched.length,
       orphaned: orphanedCount,
+      dismissed: dismissed.size,
+      pruned: pruneCount,
       clipsReconciled,
       paths: Object.entries(paths).map(([source, dir]) => ({
         source,
@@ -382,6 +419,12 @@ export function registerRecordingHandlers() {
   ipcMain.handle('recording:delete', async (_event, gameId: string) => {
     const prisma = getPrisma()
     const recordings = await prisma.recording.findMany({ where: { gameId } })
+    const status = recordingManager.getStatus()
+    for (const rec of recordings) {
+      if (status.isRecording && rec.filePath && status.filePath === rec.filePath) {
+        throw new Error('Cannot delete a recording that is currently being captured.')
+      }
+    }
     for (const rec of recordings) {
       if (rec.filePath) dismissPath(rec.filePath)
       deleteRecordingFiles(rec)
@@ -399,6 +442,10 @@ export function registerRecordingHandlers() {
     const prisma = getPrisma()
     const rec = await prisma.recording.findUnique({ where: { id: recordingId } })
     if (!rec) return { success: false }
+    const captureStatus = recordingManager.getStatus()
+    if (captureStatus.isRecording && rec.filePath && captureStatus.filePath === rec.filePath) {
+      throw new Error('Cannot delete a recording that is currently being captured.')
+    }
     if (rec.filePath) dismissPath(rec.filePath)
     deleteRecordingFiles(rec)
     const clips: any[] = await prisma.$queryRawUnsafe(
@@ -416,10 +463,15 @@ export function registerRecordingHandlers() {
     return { success: true }
   })
 
+  ipcMain.handle('recording:reset-dismissed', async () => {
+    saveDismissedPaths(new Set())
+    return { success: true }
+  })
+
   ipcMain.handle('recording:get-scan-paths', async () => {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })
-    const paths = getKnownRecordingPaths()
+    const paths = getRecordingPaths(user?.recordingPath)
     if (user?.externalRecordingPath) {
       paths['external'] = user.externalRecordingPath
     }

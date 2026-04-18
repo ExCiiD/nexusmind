@@ -298,7 +298,8 @@
       "successXp": "+50 XP",
       "reviewLaterTitle": "Partie déplacée en À revoir",
       "errorTitle": "Échec de l'enregistrement"
-    }
+    },
+    "deleted": "Review supprimée"
   },
   "analytics": {
     "title": "Statistiques",
@@ -717,5 +718,15 @@
         "Partagez vos revues via webhook Discord pour obtenir des retours de votre communauté."
       ]
     }
+  },
+  "recording": {
+    "deleteReviewButton": "Supprimer la review",
+    "deleteVideoButton": "Supprimer le fichier vidéo",
+    "confirmDeleteVideo": "Confirmer ?",
+    "unlinkButton": "Délier l'enregistrement",
+    "videoDeleted": "Fichier vidéo supprimé",
+    "resetDismissed": "Réimporter les enregistrements précédemment supprimés",
+    "resetDismissedDone": "Liste effacée — lancez un Scan pour réimporter les fichiers",
+    "folderChanged": "Dossier mis à jour — les enregistrements seront scannés"
   }
 }

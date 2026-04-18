@@ -489,12 +489,14 @@ function setupAutoUpdater() {
       return { updateAvailable: !!result?.updateInfo }
     } catch (err) {
       console.error('[updater] manual check failed:', err)
-      return { updateAvailable: false }
+      throw err
     }
   })
 
   autoUpdater.checkForUpdatesAndNotify().catch(() => {})
 }
+
+ipcMain.handle('app:get-version', () => app.getVersion())
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {

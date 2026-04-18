@@ -166,20 +166,38 @@ export function RecordPage() {
     try { setRecords((await window.api.listGamesWithRecordings()) as RecordEntry[]) }
     catch (err) { console.error('[RecordPage] load failed:', err) }
     finally { setLoading(false) }
-    // Clips load is non-blocking — never prevents recordings from showing
     try { setAllClips((await window.api.listAllClips()) as ClipEntry[]) }
     catch { /* clip listing not critical */ }
   }, [])
 
-  useEffect(() => { loadRecords() }, [loadRecords])
+  useEffect(() => {
+    let cancelled = false
+    async function init() {
+      await loadRecords()
+      if (cancelled) return
+      setScanning(true)
+      try {
+        await window.api.scanRecordings()
+        if (!cancelled) await loadRecords()
+      } catch { /* silent background scan */ }
+      finally { if (!cancelled) setScanning(false) }
+    }
+    init()
+    return () => { cancelled = true }
+  }, [loadRecords])
 
   const handleScan = async () => {
     setScanning(true)
     try {
-      await window.api.scanRecordings()
+      const result = await window.api.scanRecordings()
       await loadRecords()
-    } catch {}
-    finally { setScanning(false) }
+      toast({
+        title: 'Scan complete',
+        description: `${result.scanned} files found — ${result.matched} matched, ${result.orphaned} new${result.dismissed > 0 ? `, ${result.dismissed} dismissed` : ''}`,
+      })
+    } catch (err) {
+      toast({ title: 'Scan failed', description: (err as Error)?.message ?? 'An unknown error occurred.', variant: 'destructive' })
+    } finally { setScanning(false) }
   }
 
   // ── Filter ───────────────────────────────────────────────────────────────

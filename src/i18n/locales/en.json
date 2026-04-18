@@ -298,7 +298,8 @@
       "successXp": "+50 XP",
       "reviewLaterTitle": "Game moved to To Be Reviewed",
       "errorTitle": "Failed to save review"
-    }
+    },
+    "deleted": "Review deleted"
   },
   "analytics": {
     "title": "Analytics",
@@ -717,5 +718,15 @@
         "Share your reviews via Discord webhook to get feedback from your community."
       ]
     }
+  },
+  "recording": {
+    "deleteReviewButton": "Delete review",
+    "deleteVideoButton": "Delete video file",
+    "confirmDeleteVideo": "Confirm?",
+    "unlinkButton": "Unlink recording",
+    "videoDeleted": "Video file deleted",
+    "resetDismissed": "Re-import previously deleted recordings",
+    "resetDismissedDone": "Dismissed list cleared — run a Scan to re-import files",
+    "folderChanged": "Folder updated — recordings will be scanned"
   }
 }

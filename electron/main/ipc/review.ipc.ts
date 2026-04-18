@@ -108,6 +108,15 @@ export function registerReviewHandlers() {
     return { game, session: game.session }
   })
 
+  ipcMain.handle('review:delete', async (_event, gameId: string) => {
+    const prisma = getPrisma()
+    const review = await prisma.review.findUnique({ where: { gameId } })
+    if (!review) return { success: false }
+    await prisma.review.delete({ where: { gameId } })
+    await prisma.game.update({ where: { id: gameId }, data: { reviewStatus: 'pending' } })
+    return { success: true }
+  })
+
   ipcMain.handle(
     'review:analyze-bias',
     async (_event, data: { gameId: string; objectiveIds: string[] }) => {

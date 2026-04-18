@@ -115,6 +115,7 @@ export type NexusMindAPI = {
   maximizeWindow: () => Promise<void>
   closeWindow: () => Promise<void>
 
+  getAppVersion: () => Promise<string>
   getUser: () => Promise<any>
   updateUser: (data: any) => Promise<any>
 
@@ -125,14 +126,16 @@ export type NexusMindAPI = {
   checkForUpdates: () => Promise<{ updateAvailable: boolean }>
 
   // Recording — library
-  scanRecordings: () => Promise<{ scanned: number; matched: number; paths: Array<{ source: string; dir: string; exists: boolean }> }>
+  scanRecordings: () => Promise<{ scanned: number; matched: number; orphaned: number; dismissed: number; paths: Array<{ source: string; dir: string; exists: boolean }> }>
   getRecording: (gameId: string) => Promise<{ id: string; gameId: string; filePath: string | null; youtubeUrl: string | null; source: string } | null>
   getRecordingById: (recordingId: string) => Promise<{ id: string; gameId: string | null; filePath: string | null; youtubeUrl: string | null; source: string } | null>
   linkRecordingFile: (gameId: string) => Promise<any>
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => Promise<any>
+  deleteReview: (gameId: string) => Promise<{ success: boolean }>
   deleteRecording: (gameId: string) => Promise<{ success: boolean }>
   unlinkRecording: (gameId: string) => Promise<{ success: boolean }>
   deleteRecordingById: (recordingId: string) => Promise<{ success: boolean }>
+  resetDismissedRecordings: () => Promise<{ success: boolean }>
   getRecordingScanPaths: () => Promise<Array<{ source: string; dir: string; exists: boolean }>>
   listGamesWithRecordings: () => Promise<Array<{
     recordingId: string
