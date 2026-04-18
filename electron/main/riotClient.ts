@@ -285,15 +285,23 @@ export async function getMatchTimeline(
 function findLaneOpponent(matchData: any, puuid: string): any | null {
   const player = matchData.info.participants.find((p: any) => p.puuid === puuid)
   if (!player) return null
+  const enemies = matchData.info.participants.filter((p: any) => p.teamId !== player.teamId)
+
   const position = player.teamPosition || player.individualPosition
-  if (!position) return null
-  return (
-    matchData.info.participants.find(
-      (p: any) =>
-        p.teamId !== player.teamId &&
-        (p.teamPosition === position || p.individualPosition === position),
-    ) ?? null
-  )
+  if (position) {
+    const byPosition = enemies.find(
+      (p: any) => p.teamPosition === position || p.individualPosition === position,
+    )
+    if (byPosition) return byPosition
+  }
+
+  const lane = player.lane
+  if (lane && lane !== 'NONE') {
+    const byLane = enemies.find((p: any) => p.lane === lane)
+    if (byLane) return byLane
+  }
+
+  return null
 }
 
 function getTimelineFrameAt(timelineData: any, participantId: number, targetMs: number) {

@@ -6,7 +6,8 @@
     "history": "Historique",
     "detailedStats": "Stats détaillées",
     "analytics": "Statistiques",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "help": "Aide"
   },
   "settings": {
     "title": "Paramètres",
@@ -174,7 +175,24 @@
       "placeholder": "Ex : j'ai moins mourut de gank mais j'étais trop passif quand j'avais l'avantage. Mon objectif de wave control était respecté mais le trading encore inconsistant.",
       "cancel": "Annuler",
       "skip": "Passer",
-      "confirm": "Terminer & sauvegarder"
+      "confirm": "Terminer & sauvegarder",
+      "confirmAndShare": "Terminer & partager"
+    },
+    "shareDialog": {
+      "title": "Partager la session",
+      "subtitle": "Choisissez ce que vous voulez envoyer et le webhook à utiliser.",
+      "modeLabel": "Contenu",
+      "modeSession": "Session uniquement",
+      "modeSessionDesc": "Un seul embed : aperçu, stats, objectif et conclusion.",
+      "modeWithReviews": "Session + revues",
+      "modeWithReviewsDesc": "L'aperçu + un embed par game avec notes et scores KPI.",
+      "webhookLabel": "Webhook Discord",
+      "noWebhooks": "Aucun webhook configuré. Ajoutez-en un dans les Paramètres.",
+      "cancel": "Annuler",
+      "send": "Envoyer",
+      "sending": "Envoi…",
+      "sent": "Envoyé sur \"{{name}}\" !",
+      "failed": "Échec de l'envoi"
     },
     "kpiSelection": {
       "title": "KPIs à évaluer",
@@ -624,6 +642,80 @@
       "simDesc": "Une fausse partie a été ajoutée. La page de revue va s'ouvrir.",
       "simError": "Échec de la simulation",
       "refreshed": "Session rafraîchie"
+    }
+  },
+  "help": {
+    "title": "Aide",
+    "subtitle": "Découvrez comment tirer le meilleur parti de NexusMind.",
+    "toc": "Sommaire",
+    "whatIs": {
+      "title": "Qu'est-ce que NexusMind ?",
+      "body": "NexusMind est une application desktop de self-coaching pour League of Legends. Elle vous aide à progresser grâce à un workflow structuré : bilans, sessions ciblées, revues de parties, statistiques détaillées et suivi de votre progression dans le temps — le tout en local, sans dépendance à un service cloud.",
+      "why": "Fini les outils éparpillés : un seul endroit pour définir vos axes de travail, revoir vos parties et mesurer vos progrès."
+    },
+    "workflow": {
+      "title": "Comment ça marche ?",
+      "body": "Le cycle d'amélioration NexusMind se déroule en 5 étapes :",
+      "steps": [
+        "Bilan fondamental Periodique— Évaluez vos compétences sur les fondamentaux du jeu quand vous sentez avoir atteint un palier, ou periodiquement",
+        "Session — Choisissez un ou plusieurs objectifs et lancez vos parties.",
+        "Enregistrement — Enregistrez vos parties automatiquement ou liez des VOD externes pour les revoir.",
+        "Revue — Après chaque partie, notez vos KPI, ajoutez des notes horodatées et évaluez vos objectifs.",
+        "Statistiques — Consultez les stats détaillées de vos parties et les tendances de progression à la fin de chaque session."
+      ]
+    },
+    "featuresTitle": "Fonctionnalités",
+    "features": {
+      "dashboard": {
+        "title": "Tableau de bord",
+        "body": "Vue d'ensemble de votre progression : niveau, streak, prochaine session suggérée, derniers résultats et tendances rapides.",
+        "why": "Accédez en un coup d'œil à l'essentiel avant de lancer vos parties."
+      },
+      "session": {
+        "title": "Session",
+        "body": "Créez une session de travail en sélectionnant un ou plusieurs objectifs (fondamentaux). NexusMind détecte automatiquement la fin de vos parties et vous propose la revue correspondante.",
+        "why": "Gardez le focus sur des objectifs précis au lieu de jouer « à vide »."
+      },
+      "record": {
+        "title": "Enregistrement",
+        "body": "Enregistrez vos parties automatiquement grâce à la capture intégrée (ffmpeg). Vous pouvez aussi lier manuellement des fichiers vidéo ou des liens YouTube/Insight Capture. Les enregistrements sont associés aux parties pour faciliter la revue.",
+        "why": "Avoir la VOD sous la main pendant la revue change la qualité de votre analyse."
+      },
+      "review": {
+        "title": "Revue",
+        "body": "Après chaque partie, évaluez vos KPI sur les objectifs choisis, ajoutez des notes horodatées sur la timeline et indiquez vos impressions. Vous pouvez aussi accéder aux revues externes partagées par d'autres joueurs.",
+        "why": "La revue structurée transforme un simple « GG / FF » en apprentissage concret."
+      },
+      "history": {
+        "title": "Historique",
+        "body": "Retrouvez toutes vos parties passées avec filtres par compte, rôle et champion. Accédez à la revue ou aux stats détaillées de n'importe quelle partie.",
+        "why": "Identifiez les patterns récurrents en parcourant votre historique complet."
+      },
+      "stats": {
+        "title": "Stats détaillées",
+        "body": "Explorez les statistiques détaillées de chaque partie : CS, vision, dégâts, gold, timeline et comparaison avec la moyenne du rang.",
+        "why": "Des chiffres précis pour comprendre ce qui a fonctionné ou non dans chaque game."
+      },
+      "analytics": {
+        "title": "Statistiques / Progression",
+        "body": "Visualisez l'évolution de vos compétences dans le temps grâce aux graphiques de progression. Comparez vos bilans fondamentaux, les moyennes de session et suivez vos tendances par objectif.",
+        "why": "Mesurez votre progression réelle plutôt que de vous fier à votre ressenti."
+      },
+      "settings": {
+        "title": "Paramètres",
+        "body": "Gérez vos comptes Riot, configurez l'enregistrement automatique (dossier, sources audio, micro), les webhooks Discord, le lien YouTube, et les options expérimentales.",
+        "why": "Adaptez NexusMind à votre setup pour un workflow fluide."
+      }
+    },
+    "tips": {
+      "title": "Astuces & Raccourcis",
+      "items": [
+        "Activez l'enregistrement automatique dans les paramètres pour ne jamais oublier de capturer une partie.",
+        "Utilisez les notes horodatées pendant la revue pour marquer les moments clés de la partie en utilisant le bouton 'mark' pour gagner plus de temps.",
+        "Comparez vos bilans fondamentaux pour voir votre progression entre deux évaluations.",
+        "Filtrez par compte et par rôle dans l'historique pour analyser un pool de champions spécifique.",
+        "Partagez vos revues via webhook Discord pour obtenir des retours de votre communauté."
+      ]
     }
   }
 }

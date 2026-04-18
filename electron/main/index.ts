@@ -308,16 +308,18 @@ async function bootstrap() {
             const existing = await prisma.recording.findFirst({
               where: { filePath: pendingRecording, gameId: null },
             })
-            const rec = existing
-              ? await prisma.recording.update({
-                  where: { id: existing.id },
-                  data: { gameId: matchData.game.id, source: 'capture' },
-                })
-              : await prisma.recording.upsert({
-                  where: { gameId: matchData.game.id },
-                  create: { gameId: matchData.game.id, filePath: pendingRecording, source: 'capture' },
-                  update: { filePath: pendingRecording, source: 'capture' },
-                })
+            let rec
+            if (existing) {
+              rec = await prisma.recording.update({
+                where: { id: existing.id },
+                data: { gameId: matchData.game.id, source: 'capture' },
+              })
+            } else {
+              const byGame = await prisma.recording.findUnique({ where: { gameId: matchData.game.id } })
+              rec = byGame
+                ? await prisma.recording.update({ where: { id: byGame.id }, data: { filePath: pendingRecording, source: 'capture' } })
+                : await prisma.recording.create({ data: { gameId: matchData.game.id, filePath: pendingRecording, source: 'capture' } })
+            }
             recordingManager.clearPendingRecording()
             mainWindow?.webContents.send('recording:linked', {
               gameId: matchData.game.id,

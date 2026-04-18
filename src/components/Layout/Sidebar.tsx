@@ -13,6 +13,7 @@ import {
   Circle,
   FileSearch,
   RefreshCw,
+  HelpCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/useUserStore'
@@ -75,6 +76,7 @@ export function Sidebar() {
     { to: '/stats', icon: BarChart3, label: t('nav.detailedStats') },
     { to: '/analytics', icon: TrendingUp, label: t('nav.analytics') },
     { to: '/settings', icon: Settings, label: t('nav.settings') },
+    { to: '/help', icon: HelpCircle, label: t('nav.help') },
   ]
 
   const handleDisconnect = async () => {

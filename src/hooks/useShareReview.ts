@@ -117,7 +117,7 @@ export function useShareReview() {
       const description = [
         data.champion && data.opponentChampion
           ? `**${data.champion}** vs **${data.opponentChampion}**`
-          : data.champion ? `**${data.champion}**` : null,
+          : null,
         data.playerName ? `Player: ${data.playerName}` : null,
         data.gameEndAt
           ? new Date(data.gameEndAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })

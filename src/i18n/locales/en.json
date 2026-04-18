@@ -6,7 +6,8 @@
     "history": "History",
     "detailedStats": "Detailed Stats",
     "analytics": "Analytics",
-    "settings": "Settings"
+    "settings": "Settings",
+    "help": "Help"
   },
   "settings": {
     "title": "Settings",
@@ -174,7 +175,24 @@
       "placeholder": "E.g.: I died less to ganks but was too passive when ahead. Wave control objective was respected, trading still inconsistent.",
       "cancel": "Cancel",
       "skip": "Skip",
-      "confirm": "End & Save"
+      "confirm": "End & Save",
+      "confirmAndShare": "End & Share"
+    },
+    "shareDialog": {
+      "title": "Share Session",
+      "subtitle": "Choose what to send and which webhook to use.",
+      "modeLabel": "Content",
+      "modeSession": "Session only",
+      "modeSessionDesc": "One embed: overview, stats, objective and conclusion.",
+      "modeWithReviews": "Session + reviews",
+      "modeWithReviewsDesc": "Overview + one embed per game with notes and KPI scores.",
+      "webhookLabel": "Discord Webhook",
+      "noWebhooks": "No webhook configured. Add one in Settings.",
+      "cancel": "Cancel",
+      "send": "Send",
+      "sending": "Sending…",
+      "sent": "Sent to \"{{name}}\"!",
+      "failed": "Failed to send"
     },
     "kpiSelection": {
       "title": "KPIs to track",
@@ -624,6 +642,80 @@
       "simDesc": "A fake game was added to your session. Review page will open.",
       "simError": "Simulation failed",
       "refreshed": "Session refreshed"
+    }
+  },
+  "help": {
+    "title": "Help",
+    "subtitle": "Learn how to get the most out of NexusMind.",
+    "toc": "Table of Contents",
+    "whatIs": {
+      "title": "What is NexusMind?",
+      "body": "NexusMind is a League of Legends self-coaching desktop app. It helps you improve through a structured workflow: assessments, focused sessions, game reviews, detailed stats, and progression tracking over time — all local-first, with no cloud dependency.",
+      "why": "No more scattered tools: one place to set your focus areas, review your games, and measure your progress."
+    },
+    "workflow": {
+      "title": "How does it work?",
+      "body": "The NexusMind improvement cycle has 5 steps:",
+      "steps": [
+        "Periodic Fundamental Assessment — Rate your skills across the game's core fundamentals when you feel you've reached a milestone, or periodically.",
+        "Session — Pick one or more objectives and start playing.",
+        "Recording — Auto-record your games or link external VODs for later review.",
+        "Review — After each game, score your KPIs, add timestamped notes, and rate your objectives.",
+        "Stats — Check detailed game stats and progression trends at the end of each session."
+      ]
+    },
+    "featuresTitle": "Features",
+    "features": {
+      "dashboard": {
+        "title": "Dashboard",
+        "body": "An overview of your progress: level, streak, suggested next session, recent results, and quick trends.",
+        "why": "See everything that matters at a glance before you queue up."
+      },
+      "session": {
+        "title": "Session",
+        "body": "Create a practice session by selecting one or more objectives (fundamentals). NexusMind auto-detects when your games end and prompts you to review them.",
+        "why": "Stay focused on specific goals instead of playing on autopilot."
+      },
+      "record": {
+        "title": "Recording",
+        "body": "Auto-record your games with the built-in capture (ffmpeg). You can also manually link video files or YouTube/Insight Capture links. Recordings are tied to games for easy review access.",
+        "why": "Having the VOD at hand during review dramatically improves the quality of your analysis."
+      },
+      "review": {
+        "title": "Review",
+        "body": "After each game, rate your KPIs on the selected objectives, add timestamped notes on the timeline, and log your impressions. You can also access external reviews shared by other players.",
+        "why": "Structured review turns a simple 'GG / FF' into concrete learning."
+      },
+      "history": {
+        "title": "History",
+        "body": "Browse all your past games with filters by account, role, and champion. Jump to the review or detailed stats for any game.",
+        "why": "Spot recurring patterns by browsing your complete history."
+      },
+      "stats": {
+        "title": "Detailed Stats",
+        "body": "Explore detailed stats for each game: CS, vision, damage, gold, timeline, and rank average comparison.",
+        "why": "Hard numbers to understand what worked and what didn't in every game."
+      },
+      "analytics": {
+        "title": "Analytics / Progression",
+        "body": "Visualize your skill progression over time with trend charts. Compare fundamental assessments, session averages, and track your trends by objective.",
+        "why": "Measure real progress instead of relying on gut feeling."
+      },
+      "settings": {
+        "title": "Settings",
+        "body": "Manage your Riot accounts, configure auto-recording (folder, audio sources, mic), Discord webhooks, YouTube links, and experimental options.",
+        "why": "Tailor NexusMind to your setup for a smooth workflow."
+      }
+    },
+    "tips": {
+      "title": "Tips & Shortcuts",
+      "items": [
+        "Enable auto-recording in settings so you never forget to capture a game.",
+        "Use timestamped notes during review to mark key moments in the game using the 'mark' button to gain more time",
+        "Compare fundamental assessments to see your progress between evaluations.",
+        "Filter by account and role in history to analyze a specific champion pool.",
+        "Share your reviews via Discord webhook to get feedback from your community."
+      ]
     }
   }
 }

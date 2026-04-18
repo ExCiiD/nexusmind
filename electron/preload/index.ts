@@ -114,6 +114,7 @@ const api = {
   linkRecordingFile: (gameId: string) => ipcRenderer.invoke('recording:link-file', gameId),
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => ipcRenderer.invoke('recording:set-youtube', gameId, youtubeUrl),
   deleteRecording: (gameId: string) => ipcRenderer.invoke('recording:delete', gameId),
+  unlinkRecording: (gameId: string) => ipcRenderer.invoke('recording:unlink', gameId),
   deleteRecordingById: (recordingId: string) => ipcRenderer.invoke('recording:delete-by-id', recordingId),
   getRecordingScanPaths: () => ipcRenderer.invoke('recording:get-scan-paths'),
   listGamesWithRecordings: () => ipcRenderer.invoke('recording:list-with-games'),

@@ -130,6 +130,7 @@ export type NexusMindAPI = {
   linkRecordingFile: (gameId: string) => Promise<any>
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => Promise<any>
   deleteRecording: (gameId: string) => Promise<{ success: boolean }>
+  unlinkRecording: (gameId: string) => Promise<{ success: boolean }>
   deleteRecordingById: (recordingId: string) => Promise<{ success: boolean }>
   getRecordingScanPaths: () => Promise<Array<{ source: string; dir: string; exists: boolean }>>
   listGamesWithRecordings: () => Promise<Array<{

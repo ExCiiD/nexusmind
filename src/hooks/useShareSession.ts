@@ -177,6 +177,15 @@ export function useShareSession() {
     [getObjectiveLabels, buildGameFields],
   )
 
+  /** Same as buildEmbeds but only the overview embed — no per-game embeds. */
+  const buildEmbedsSessionOnly = useCallback(
+    (data: ShareSessionData): object[] => {
+      const full = buildEmbeds(data)
+      return [full[0]]
+    },
+    [buildEmbeds],
+  )
+
   const buildText = useCallback(
     (data: ShareSessionData): string => {
       const winRate = data.gamesPlayed > 0 ? Math.round((data.wins / data.gamesPlayed) * 100) : 0
@@ -238,5 +247,5 @@ export function useShareSession() {
     [getObjectiveLabels, getKpiLabel],
   )
 
-  return { buildEmbeds, buildText }
+  return { buildEmbeds, buildEmbedsSessionOnly, buildText }
 }

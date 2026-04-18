@@ -16,9 +16,11 @@ import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import {
   Target, Lock, Play, Square, Loader2, X, ChevronRight, ChevronLeft,
   Swords, Eye, Clock, CheckCircle, FileSearch, Trash2, Filter, Zap, History, RotateCcw,
-  Ban, Pencil, BookOpen, Sparkles,
+  Ban, Pencil, BookOpen, Sparkles, Share2,
 } from 'lucide-react'
 import { ShareSessionButton } from '@/components/Share/ShareSessionButton'
+import { ShareSessionDialog } from '@/components/Share/ShareSessionDialog'
+import type { ShareSessionData } from '@/hooks/useShareSession'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 import { MatchHistoryPicker } from '@/components/Session/MatchHistoryPicker'
@@ -51,6 +53,7 @@ export function SessionPage() {
   const [ending, setEnding] = useState(false)
   const [endDialogOpen, setEndDialogOpen] = useState(false)
   const [sessionAnalysis, setSessionAnalysis] = useState('')
+  const [pendingShareData, setPendingShareData] = useState<ShareSessionData | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [modifyDialogOpen, setModifyDialogOpen] = useState(false)
@@ -250,6 +253,63 @@ export function SessionPage() {
       await endSession(conclusion || undefined)
       toast({ title: t('session.toast.endedTitle'), description: t('session.toast.endedDesc'), variant: 'success' })
       navigate('/analytics')
+    } catch (err: any) {
+      toast({ title: t('session.toast.endError'), description: err.message, variant: 'destructive' })
+    } finally {
+      setEnding(false)
+    }
+  }
+
+  const doEndAndShare = async (conclusion?: string) => {
+    if (!activeSession) return
+    setEnding(true)
+    setEndDialogOpen(false)
+    try {
+      await endSession(conclusion || undefined)
+      // Build share data snapshot before navigating away
+      const wins = activeSession.games.filter((g) => g.win).length
+      const losses = activeSession.games.length - wins
+      let objectiveIds: string[] = []
+      try { objectiveIds = JSON.parse(activeSession.objectiveIds) } catch { objectiveIds = [activeSession.objectiveId] }
+      let selectedKpiIds: string[] = []
+      try { selectedKpiIds = JSON.parse(activeSession.selectedKpiIds) } catch { /* ignore */ }
+      const gamesWithStats = activeSession.games.filter((g) => g.kills !== undefined)
+      const avgKDA = gamesWithStats.length > 0
+        ? gamesWithStats.reduce((s, g) => s + (g.deaths > 0 ? (g.kills + g.assists) / g.deaths : g.kills + g.assists), 0) / gamesWithStats.length
+        : undefined
+      const avgCSPerMin = gamesWithStats.length > 0
+        ? gamesWithStats.reduce((s, g) => s + (g.duration > 0 ? g.cs / (g.duration / 60) : 0), 0) / gamesWithStats.length
+        : undefined
+      setPendingShareData({
+        objectiveId: activeSession.objectiveId,
+        objectiveIds,
+        selectedKpiIds,
+        subObjective: activeSession.subObjective,
+        customNote: activeSession.customNote,
+        date: activeSession.date,
+        wins,
+        losses,
+        gamesPlayed: activeSession.games.length,
+        avgKDA,
+        avgCSPerMin,
+        aiSummary: activeSession.aiSummary,
+        sessionConclusion: conclusion || activeSession.sessionConclusion,
+        games: activeSession.games.map((g) => ({
+          champion: g.champion,
+          opponentChampion: g.opponentChampion,
+          win: g.win,
+          kills: g.kills,
+          deaths: g.deaths,
+          assists: g.assists,
+          cs: g.cs,
+          visionScore: g.visionScore,
+          duration: g.duration,
+          gameEndAt: g.gameEndAt,
+          review: g.review
+            ? { kpiScores: g.review.kpiScores, freeText: g.review.freeText, aiSummary: g.review.aiSummary, timelineNotes: g.review.timelineNotes }
+            : null,
+        })),
+      })
     } catch (err: any) {
       toast({ title: t('session.toast.endError'), description: err.message, variant: 'destructive' })
     } finally {
@@ -479,6 +539,10 @@ export function SessionPage() {
                 <div className="flex gap-3">
                   <Button variant="ghost" onClick={() => doEndSession()} disabled={ending}>
                     {t('session.endDialog.skip')}
+                  </Button>
+                  <Button variant="outline" onClick={() => doEndAndShare(sessionAnalysis || undefined)} disabled={ending}>
+                    {ending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Share2 className="h-4 w-4 mr-2" />}
+                    {t('session.endDialog.confirmAndShare')}
                   </Button>
                   <Button onClick={() => doEndSession(sessionAnalysis || undefined)} disabled={ending}>
                     {ending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Square className="h-4 w-4 mr-2" />}
@@ -747,6 +811,15 @@ export function SessionPage() {
           <ObjectiveSuggestionPanel assessmentScores={assessmentScores} />
         </div>
       </div>
+
+      {/* Post-end share dialog */}
+      {pendingShareData && (
+        <ShareSessionDialog
+          data={pendingShareData}
+          open={true}
+          onClose={() => { setPendingShareData(null); navigate('/analytics') }}
+        />
+      )}
     </div>
   )
 }

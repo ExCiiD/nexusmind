@@ -207,11 +207,10 @@ export function registerRecordingHandlers() {
 
     const newlyMatchedIds: Array<{ id: string; filePath: string }> = []
     for (const match of matched) {
-      const rec = await prisma.recording.upsert({
-        where: { gameId: match.gameId },
-        create: { gameId: match.gameId, filePath: match.filePath, source: match.source },
-        update: { filePath: match.filePath, source: match.source },
-      })
+      const existing = await prisma.recording.findUnique({ where: { gameId: match.gameId } })
+      const rec = existing
+        ? await prisma.recording.update({ where: { id: existing.id }, data: { filePath: match.filePath, source: match.source } })
+        : await prisma.recording.create({ data: { gameId: match.gameId, filePath: match.filePath, source: match.source } })
       if (!rec.thumbnailPath) newlyMatchedIds.push({ id: rec.id, filePath: match.filePath })
     }
 
@@ -349,16 +348,24 @@ export function registerRecordingHandlers() {
     }
 
     try {
-      const rec = await prisma.recording.upsert({
-        where: { gameId },
-        create: { gameId, filePath, source: 'manual' },
-        update: { filePath, source: 'manual' },
-      })
+      // #region agent log
+      fetch('http://127.0.0.1:7592/ingest/2e2c5cfc-8184-45ae-9d68-00280a0bc26b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a7df7e'},body:JSON.stringify({sessionId:'a7df7e',location:'recording.ipc.ts:link-file',message:'link-file called',data:{gameId,filePath},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+      // #endregion
+      const existing = await prisma.recording.findUnique({ where: { gameId } })
+      // #region agent log
+      fetch('http://127.0.0.1:7592/ingest/2e2c5cfc-8184-45ae-9d68-00280a0bc26b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a7df7e'},body:JSON.stringify({sessionId:'a7df7e',location:'recording.ipc.ts:link-file-lookup',message:'findUnique result',data:{gameId,existingId:existing?.id??null},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+      // #endregion
+      const rec = existing
+        ? await prisma.recording.update({ where: { id: existing.id }, data: { filePath, source: 'manual' } })
+        : await prisma.recording.create({ data: { gameId, filePath, source: 'manual' } })
 
       generateThumbnailForRecording(rec.id, filePath).catch(() => {})
 
       return rec
     } catch (err) {
+      // #region agent log
+      fetch('http://127.0.0.1:7592/ingest/2e2c5cfc-8184-45ae-9d68-00280a0bc26b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a7df7e'},body:JSON.stringify({sessionId:'a7df7e',location:'recording.ipc.ts:link-file-error',message:'link-file failed',data:{gameId,error:String(err)},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+      // #endregion
       console.error('[recording:link-file] Failed to link recording:', err)
       return { error: 'link_failed', message: (err as Error)?.message ?? String(err) }
     }
@@ -366,11 +373,10 @@ export function registerRecordingHandlers() {
 
   ipcMain.handle('recording:set-youtube', async (_event, gameId: string, youtubeUrl: string | null) => {
     const prisma = getPrisma()
-    return prisma.recording.upsert({
-      where: { gameId },
-      create: { gameId, youtubeUrl, source: 'youtube' },
-      update: { youtubeUrl },
-    })
+    const existing = await prisma.recording.findUnique({ where: { gameId } })
+    return existing
+      ? prisma.recording.update({ where: { id: existing.id }, data: { youtubeUrl } })
+      : prisma.recording.create({ data: { gameId, youtubeUrl, source: 'youtube' } })
   })
 
   ipcMain.handle('recording:delete', async (_event, gameId: string) => {
@@ -401,6 +407,12 @@ export function registerRecordingHandlers() {
     for (const clip of clips) deleteClipFiles(clip)
     await prisma.$executeRawUnsafe(`DELETE FROM "Clip" WHERE "recordingId" = ?`, rec.id)
     await prisma.recording.delete({ where: { id: recordingId } })
+    return { success: true }
+  })
+
+  ipcMain.handle('recording:unlink', async (_event, gameId: string) => {
+    const prisma = getPrisma()
+    await prisma.recording.updateMany({ where: { gameId }, data: { gameId: null } })
     return { success: true }
   })
 
@@ -457,13 +469,11 @@ export function registerRecordingHandlers() {
     if (gameId) {
       try {
         const prisma = getPrisma()
-        const rec = await prisma.recording.upsert({
-          where: { gameId },
-          create: { gameId, filePath: path, source: 'capture' },
-          update: { filePath: path, source: 'capture' },
-        })
+        const existingRec = await prisma.recording.findUnique({ where: { gameId } })
+        const rec = existingRec
+          ? await prisma.recording.update({ where: { id: existingRec.id }, data: { filePath: path, source: 'capture' } })
+          : await prisma.recording.create({ data: { gameId, filePath: path, source: 'capture' } })
         recordingManager.clearPendingRecording()
-        // Generate thumbnail in background
         generateThumbnailForRecording(rec.id, path).catch(() => {})
       } catch (err) {
         console.error('[recording] Failed to link manual capture:', err)

@@ -7,9 +7,10 @@ import { formatGameTime } from '@/lib/utils'
 import {
   ArrowLeft, Scissors, Trash2, Loader2, ClipboardCheck,
   Clock, Calendar, Video, ExternalLink, Youtube, Share2,
-  Check, Copy, Save, Square, Play,
+  Check, Copy, Save, Square, Play, Unlink,
 } from 'lucide-react'
 import { ClipSharePanel } from '@/components/Share/ClipSharePanel'
+import { useToast } from '@/hooks/useToast'
 
 type YoutubeUploadState = 'idle' | 'uploading' | 'done' | 'error'
 type BottomTab = 'clips' | 'share'
@@ -104,6 +105,7 @@ export function RecordPlayerPage() {
 
   // External review creation
   const [creatingReview, setCreatingReview] = useState(false)
+  const { toast } = useToast()
 
   const handleOpenReview = useCallback(async () => {
     if (!recording) return
@@ -164,6 +166,13 @@ export function RecordPlayerPage() {
   }, [recordingId])
 
   useEffect(() => { loadData() }, [loadData])
+
+  const handleUnlink = useCallback(async () => {
+    if (!recording?.gameId) return
+    await window.api.unlinkRecording(recording.gameId)
+    toast({ title: 'Recording unlinked', description: 'The recording is still available in your library.' })
+    await loadData()
+  }, [recording, loadData, toast])
 
   const handleClipRangeChange = useCallback((range: { startMs: number; endMs: number }) => {
     setClipRange(range)
@@ -239,7 +248,7 @@ export function RecordPlayerPage() {
       </button>
 
       {/* Meta bar */}
-      <MetaBar recording={recording} onNavigate={(p) => navigate(p)} onReview={handleOpenReview} reviewLoading={creatingReview} />
+      <MetaBar recording={recording} onNavigate={(p) => navigate(p)} onReview={handleOpenReview} reviewLoading={creatingReview} onUnlink={handleUnlink} />
 
       {/* Player — full width, shrinks to give room to controls below */}
       {videoSrc ? (
@@ -313,9 +322,10 @@ interface MetaBarProps {
   onNavigate: (p: string) => void
   onReview: () => void
   reviewLoading: boolean
+  onUnlink: () => void
 }
 
-function MetaBar({ recording, onNavigate, onReview, reviewLoading }: MetaBarProps) {
+function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink }: MetaBarProps) {
   const dateStr = new Date(recording.gameEndAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
   return (
     <div className="flex items-center gap-3 rounded-xl bg-hextech-elevated border border-hextech-border-dim px-3 py-2 flex-wrap shrink-0">
@@ -353,14 +363,25 @@ function MetaBar({ recording, onNavigate, onReview, reviewLoading }: MetaBarProp
 
       {/* Session review (linked game only) */}
       {!recording.isOrphaned && recording.gameId && (
-        <Button
-          variant="outline" size="sm"
-          className={`gap-2 h-7 text-xs shrink-0 ${recording.hasReview ? 'text-hextech-cyan border-hextech-cyan/30 hover:bg-hextech-cyan/10' : ''}`}
-          onClick={() => onNavigate(`/review?gameId=${recording.gameId}`)}
-        >
-          <ClipboardCheck className="h-3.5 w-3.5" />
-          {recording.hasReview ? 'Open Review' : 'Start Review'}
-        </Button>
+        <>
+          <Button
+            variant="outline" size="sm"
+            className={`gap-2 h-7 text-xs shrink-0 ${recording.hasReview ? 'text-hextech-cyan border-hextech-cyan/30 hover:bg-hextech-cyan/10' : ''}`}
+            onClick={() => onNavigate(`/review?gameId=${recording.gameId}`)}
+          >
+            <ClipboardCheck className="h-3.5 w-3.5" />
+            {recording.hasReview ? 'Open Review' : 'Start Review'}
+          </Button>
+          <Button
+            variant="outline" size="sm"
+            className="gap-1.5 h-7 text-xs shrink-0 text-hextech-text-dim hover:text-hextech-gold hover:border-hextech-gold/40"
+            onClick={onUnlink}
+            title="Unlink recording from this game"
+          >
+            <Unlink className="h-3.5 w-3.5" />
+            Unlink
+          </Button>
+        </>
       )}
 
       {recording.youtubeUrl && (

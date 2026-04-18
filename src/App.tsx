@@ -16,6 +16,7 @@ import { RecordPlayerPage } from '@/pages/Record/RecordPlayerPage'
 import { ExternalReviewPage } from '@/pages/Review/ExternalReviewPage'
 import { ExternalReviewNewPage } from '@/pages/Review/ExternalReviewNewPage'
 import { PostGameCapturePage } from '@/pages/Review/PostGameCapturePage'
+import { HelpPage } from '@/pages/Help/HelpPage'
 import { GameEndNav } from '@/components/GameEndNav'
 import { DevToolbar } from '@/components/Dev/DevToolbar'
 import { UpdateBanner } from '@/components/UpdateBanner'
@@ -57,6 +58,7 @@ export function App() {
             <Route path="/stats/:matchId" element={<DetailedStatsPage />} />
             <Route path="/assessment" element={<ReassessmentPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/help" element={<HelpPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         )}
