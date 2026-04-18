@@ -100,6 +100,11 @@ const api = {
     ipcRenderer.on('updater:update-available', cb)
     return () => { ipcRenderer.removeListener('updater:update-available', cb) }
   },
+  onUpdateProgress: (cb: (percent: number) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, percent: number) => cb(percent)
+    ipcRenderer.on('updater:download-progress', handler)
+    return () => { ipcRenderer.removeListener('updater:download-progress', handler) }
+  },
   onUpdateDownloaded: (cb: () => void) => {
     ipcRenderer.on('updater:update-downloaded', cb)
     return () => { ipcRenderer.removeListener('updater:update-downloaded', cb) }

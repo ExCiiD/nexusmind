@@ -31,6 +31,7 @@ win:
   sign: false
   signingHashAlgorithms: []
   forceCodeSigning: false
+  artifactName: NexusMind-Setup-${version}.${ext}
 
 nsis:
   oneClick: false

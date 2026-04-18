@@ -119,6 +119,7 @@ export type NexusMindAPI = {
   updateUser: (data: any) => Promise<any>
 
   onUpdateAvailable: (cb: () => void) => () => void
+  onUpdateProgress: (cb: (percent: number) => void) => () => void
   onUpdateDownloaded: (cb: () => void) => () => void
   installUpdate: () => Promise<void>
   checkForUpdates: () => Promise<{ updateAvailable: boolean }>
