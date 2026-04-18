@@ -168,6 +168,10 @@ export type NexusMindAPI = {
   startCapture: () => Promise<{ started: boolean; filePath: string | null }>
   stopCapture: (gameId?: string) => Promise<{ stopped: boolean; filePath?: string }>
   getRecordingsDir: () => Promise<string>
+
+  // Audio devices — enumerated via native-audio-node (main process)
+  listAudioDevices: () => Promise<AudioDevicesSummary>
+  openSoundSettings: () => Promise<{ opened: boolean; reason?: 'unsupported-platform' | 'failed'; error?: string }>
   onRecordingStarted: (cb: () => void) => () => void
   onRecordingStopped: (cb: (data: { filePath: string }) => void) => () => void
   onRecordingLinked: (cb: (data: { gameId: string; filePath: string }) => void) => () => void
@@ -342,6 +346,24 @@ export interface DiscordWebhook {
   name: string
   url: string
   createdAt: string
+}
+
+export interface AudioDeviceInfo {
+  id: string
+  name: string
+  manufacturer: string | null
+  isDefault: boolean
+  sampleRate: number
+  channelCount: number
+}
+
+export interface AudioDevicesSummary {
+  inputs: AudioDeviceInfo[]
+  outputs: AudioDeviceInfo[]
+  defaultInputId: string | null
+  defaultOutputId: string | null
+  defaultInputName: string | null
+  defaultOutputName: string | null
 }
 
 export interface CoachingWeakKpi {

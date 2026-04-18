@@ -9,6 +9,7 @@ import { autoUpdater } from 'electron-updater'
 import { initDatabase, getPrisma } from './database'
 import { GameDetector } from './gameDetector'
 import { recordingManager, isFfmpegAvailable, generateThumbnailForRecording, mergeAudioIntoVideo, type PcmAudioFormat } from './recorder'
+import { resolveMicDeviceName } from './audio'
 import { registerAuthHandlers } from './ipc/auth.ipc'
 import { registerSessionHandlers } from './ipc/session.ipc'
 import { registerReviewHandlers } from './ipc/review.ipc'
@@ -366,6 +367,16 @@ async function bootstrap() {
         const user = await prisma.user.findFirst({ where: { isActive: true } })
         console.log(`[main] Game detected — autoRecord: ${user?.autoRecord}, ffmpeg: ${isFfmpegAvailable()}`)
         if (user?.autoRecord) {
+          // Resolve the mic device name (stored id/name or live Windows default)
+          // right before spawning ffmpeg so "Default" actually records something.
+          const micEnabled = user.recordAudioMic ?? false
+          const micDeviceName = micEnabled
+            ? await resolveMicDeviceName(user.recordAudioMicDevice ?? null)
+            : null
+          if (micEnabled && !micDeviceName) {
+            console.warn('[main] Mic enabled but no input device resolved — auto-record will have no microphone track')
+          }
+
           const path = await recordingManager.startRecording({
             recordingPath: user.recordingPath,
             recordQuality: user.recordQuality,
@@ -373,8 +384,8 @@ async function bootstrap() {
             recordEncoder: user.recordEncoder,
             audioDesktopEnabled: user.recordAudioDesktop,
             audioDesktopDevice: user.recordAudioDesktopDevice,
-            audioMicEnabled: user.recordAudioMic,
-            audioMicDevice: user.recordAudioMicDevice,
+            audioMicEnabled: micEnabled,
+            audioMicDevice: micDeviceName,
           })
           if (path) {
             mainWindow?.webContents.send('recording:started')

@@ -138,6 +138,10 @@ const api = {
   startCapture: () => ipcRenderer.invoke('recording:start-capture'),
   stopCapture: (gameId?: string) => ipcRenderer.invoke('recording:stop-capture', gameId),
   getRecordingsDir: () => ipcRenderer.invoke('recording:get-recordings-dir'),
+
+  // Audio devices (native-audio-node) — stable ids, no Chromium permission prompt
+  listAudioDevices: () => ipcRenderer.invoke('audio:list-devices'),
+  openSoundSettings: () => ipcRenderer.invoke('system:open-sound-settings'),
   onRecordingStarted: (cb: () => void) => {
     const handler = () => cb()
     ipcRenderer.on('recording:started', handler)

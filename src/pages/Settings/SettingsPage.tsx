@@ -8,8 +8,9 @@ import { useUserStore } from '@/store/useUserStore'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 import { useDiscordWebhooks, type DiscordWebhook } from '@/hooks/useDiscordWebhooks'
-import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Target, Video, Circle, FolderOpen, X, Pencil, Check, FlaskConical, Youtube } from 'lucide-react'
+import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Target, Video, Circle, FolderOpen, X, Pencil, Check, FlaskConical, Youtube, Volume2, Mic, AlertTriangle, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { AudioDevicesSummary } from '@/lib/ipc'
 
 const REGIONS = [
   'BR1', 'EUN1', 'EUW1', 'JP1', 'KR', 'LA1', 'LA2', 'NA1',
@@ -36,8 +37,7 @@ export function SettingsPage() {
   const [recordingsDir, setRecordingsDir] = useState('')
   const [isRecording, setIsRecording] = useState(false)
   const [togglingAutoRecord, setTogglingAutoRecord] = useState(false)
-  const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([])
-  const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([])
+  const [audioDevices, setAudioDevices] = useState<AudioDevicesSummary | null>(null)
   const [loadingAudioDevices, setLoadingAudioDevices] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [gameName, setGameName] = useState('')
@@ -83,15 +83,21 @@ export function SettingsPage() {
     }
   }
 
+  /**
+   * Fetches the current audio device list from the main process (native-audio-node).
+   * Uses OS-level device ids — survives Windows default-device changes without
+   * losing the user's selection (unlike Chromium's ephemeral "Default - " labels).
+   */
   const refreshAudioDevices = async () => {
     setLoadingAudioDevices(true)
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop())).catch(() => {})
-      const all = await navigator.mediaDevices.enumerateDevices()
-      setAudioInputDevices(all.filter(d => d.kind === 'audioinput' && d.deviceId !== ''))
-      setAudioOutputDevices(all.filter(d => d.kind === 'audiooutput' && d.deviceId !== ''))
-    } catch { /* non-critical */ }
-    finally { setLoadingAudioDevices(false) }
+      const summary = await window.api.listAudioDevices()
+      setAudioDevices(summary)
+    } catch (err) {
+      console.warn('[settings] Failed to list audio devices:', err)
+    } finally {
+      setLoadingAudioDevices(false)
+    }
   }
 
   useEffect(() => {
@@ -104,9 +110,22 @@ export function SettingsPage() {
     refreshAudioDevices()
     const offStarted = window.api.onRecordingStarted(() => setIsRecording(true))
     const offStopped = window.api.onRecordingStopped(() => setIsRecording(false))
+
+    // Live-refresh when Windows audio topology changes (device plugged/unplugged
+    // OR the user switches the default output/input in Windows settings).
+    // Debounced because Windows fires multiple events for a single change.
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null
+    const onDeviceChange = () => {
+      if (refreshTimer) clearTimeout(refreshTimer)
+      refreshTimer = setTimeout(() => { refreshAudioDevices() }, 250)
+    }
+    navigator.mediaDevices?.addEventListener?.('devicechange', onDeviceChange)
+
     return () => {
       offStarted()
       offStopped()
+      if (refreshTimer) clearTimeout(refreshTimer)
+      navigator.mediaDevices?.removeEventListener?.('devicechange', onDeviceChange)
     }
   }, [])
 
@@ -481,134 +500,271 @@ export function SettingsPage() {
           </div>
 
           {/* ── Audio ─────────────────────────────────────────────────── */}
-          <div className="space-y-3 pt-2 border-t border-hextech-border-dim/40">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-hextech-text-bright">Audio</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={loadingAudioDevices}
-                onClick={refreshAudioDevices}
-                className="text-xs text-hextech-text-dim hover:text-hextech-text"
-              >
-                {loadingAudioDevices ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Refresh devices'}
-              </Button>
-            </div>
+          {(() => {
+            // Audio section — resolves selection/warnings from the IPC-backed
+            // AudioDevicesSummary (stable OS-level ids).
+            //
+            // Desktop audio caveat: native-audio-node's SystemAudioRecorder
+            // captures WASAPI loopback on the *current Windows default output*
+            // and does not accept a device id. We still surface a dropdown so
+            // the user can declare a *target* output, but if that target is
+            // not the current Windows default we show a clear warning + a
+            // shortcut to the native Windows sound panel where they can
+            // actually change the default.
+            const micInputs = audioDevices?.inputs ?? []
+            const outputs = audioDevices?.outputs ?? []
+            const defaultInputName = audioDevices?.defaultInputName ?? null
+            const defaultOutputName = audioDevices?.defaultOutputName ?? null
+            const defaultOutputId = audioDevices?.defaultOutputId ?? null
 
-            {/* Desktop audio */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-hextech-text-bright">Record desktop audio</p>
-                  <p className="text-xs text-hextech-text-dim mt-0.5">
-                    Captures everything you hear (game + system sounds).
-                  </p>
+            const storedMicValue = user?.recordAudioMicDevice ?? null
+            const selectedMicDevice = storedMicValue
+              ? micInputs.find(d => d.id === storedMicValue || d.name === storedMicValue) ?? null
+              : null
+            const micSelectionMissing = !!storedMicValue && !selectedMicDevice && micInputs.length > 0
+            // Show the stored raw value as a fallback option so Radix Select
+            // has a matching SelectItem and never renders empty.
+            const micSelectValue = storedMicValue ?? '__default__'
+
+            const storedDesktopValue = user?.recordAudioDesktopDevice ?? null
+            const selectedDesktopDevice = storedDesktopValue
+              ? outputs.find(d => d.id === storedDesktopValue || d.name === storedDesktopValue) ?? null
+              : null
+            const desktopSelectionMissing = !!storedDesktopValue && !selectedDesktopDevice && outputs.length > 0
+            const desktopSelectValue = storedDesktopValue ?? '__default__'
+            // True when user targets a specific output that is *not* the
+            // current Windows default — capture will NOT follow the selection.
+            const desktopTargetMismatch =
+              !!selectedDesktopDevice &&
+              !!defaultOutputId &&
+              selectedDesktopDevice.id !== defaultOutputId
+            // What will *actually* be captured right now (always follows the
+            // Windows default, regardless of the user's stored target).
+            const actualCapturedName = defaultOutputName ?? 'No default output detected'
+
+            return (
+              <div className="space-y-3 pt-2 border-t border-hextech-border-dim/40">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-hextech-text-bright">Audio</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={loadingAudioDevices}
+                    onClick={refreshAudioDevices}
+                    className="text-xs text-hextech-text-dim hover:text-hextech-text"
+                  >
+                    {loadingAudioDevices ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Refresh devices'}
+                  </Button>
                 </div>
-                <button
-                  onClick={async () => {
-                    await window.api.updateUser({ recordAudioDesktop: !(user?.recordAudioDesktop ?? true) })
-                    await loadUser()
-                  }}
-                  className={cn(
-                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                    (user?.recordAudioDesktop ?? true) ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
-                  )}
-                >
-                  <span className={cn(
-                    'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
-                    (user?.recordAudioDesktop ?? true) ? 'translate-x-6' : 'translate-x-1',
-                  )} />
-                </button>
-              </div>
 
-              {(user?.recordAudioDesktop ?? true) && (
-                <div className="ml-1">
-                  {audioOutputDevices.length > 0 ? (
-                    <Select
-                      value={user?.recordAudioDesktopDevice ?? '__default__'}
-                      onValueChange={async (val) => {
-                        await window.api.updateUser({ recordAudioDesktopDevice: val === '__default__' ? null : val })
+                {/* Desktop audio — follows Windows default output (WASAPI loopback) */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-hextech-text-bright">Record desktop audio</p>
+                      <p className="text-xs text-hextech-text-dim mt-0.5">
+                        Captures everything you hear (game + system sounds).
+                      </p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        await window.api.updateUser({ recordAudioDesktop: !(user?.recordAudioDesktop ?? true) })
                         await loadUser()
                       }}
+                      className={cn(
+                        'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                        (user?.recordAudioDesktop ?? true) ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
+                      )}
                     >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Default" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__default__" className="text-xs">Default</SelectItem>
-                        {audioOutputDevices.map((d) => (
-                          <SelectItem key={d.deviceId} value={d.label || d.deviceId} className="text-xs">
-                            {d.label || `Output ${d.deviceId.slice(0, 8)}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-xs text-hextech-text-dim italic">
-                      No audio output device found. Click &quot;Refresh devices&quot;.
-                    </p>
+                      <span className={cn(
+                        'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
+                        (user?.recordAudioDesktop ?? true) ? 'translate-x-6' : 'translate-x-1',
+                      )} />
+                    </button>
+                  </div>
+
+                  {(user?.recordAudioDesktop ?? true) && (
+                    <div className="ml-1 space-y-1.5">
+                      {outputs.length > 0 ? (
+                        <Select
+                          value={desktopSelectValue}
+                          onValueChange={async (val) => {
+                            await window.api.updateUser({
+                              recordAudioDesktopDevice: val === '__default__' ? null : val,
+                            })
+                            await loadUser()
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Follow Windows default output" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__default__" className="text-xs">
+                              <span className="flex items-center gap-1.5">
+                                <Volume2 className="h-3 w-3 text-hextech-teal" />
+                                Follow Windows default{defaultOutputName ? ` — ${defaultOutputName}` : ''}
+                              </span>
+                            </SelectItem>
+                            {outputs.map((d) => (
+                              <SelectItem key={d.id} value={d.id} className="text-xs">
+                                {d.name}{d.isDefault ? ' (current default)' : ''}
+                              </SelectItem>
+                            ))}
+                            {desktopSelectionMissing && (
+                              // Stale stored value — keep it visible so the
+                              // user understands what they had picked before.
+                              <SelectItem value={storedDesktopValue!} className="text-xs text-hextech-text-dim italic">
+                                {storedDesktopValue} (unavailable)
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-xs text-hextech-text-dim italic">
+                          No output device detected. Click &quot;Refresh devices&quot;.
+                        </p>
+                      )}
+
+                      {/* Always visible: what's actually going to be captured
+                          right now. This is the source of truth — the Windows
+                          default — since the native lib only does loopback on
+                          the default endpoint. */}
+                      <div className="flex items-start gap-1.5 text-[11px] text-hextech-text-dim leading-snug">
+                        <Volume2 className="h-3 w-3 mt-0.5 shrink-0 text-hextech-teal/80" />
+                        <span>
+                          Currently capturing: <span className="text-hextech-text-bright">{actualCapturedName}</span>
+                          {' '}<span className="text-hextech-text-dim/70">(always follows the Windows default output).</span>
+                        </span>
+                      </div>
+
+                      {/* Mismatch warning — target ≠ current default. */}
+                      {desktopTargetMismatch && (
+                        <div className="rounded-md border border-amber-400/40 bg-amber-400/10 px-2.5 py-2 space-y-1.5">
+                          <div className="flex items-start gap-1.5 text-[11px] text-amber-300 leading-snug">
+                            <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                            <span>
+                              <span className="font-medium">Target mismatch.</span> You picked{' '}
+                              <span className="text-amber-200">&quot;{selectedDesktopDevice!.name}&quot;</span>
+                              {' '}but your Windows default is{' '}
+                              <span className="text-amber-200">&quot;{defaultOutputName ?? 'unknown'}&quot;</span>.
+                              Recordings will capture the current default, not your target, until you change the Windows default.
+                            </span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 gap-1.5 text-[11px] px-2 border-amber-400/50 text-amber-200 hover:bg-amber-400/15 hover:text-amber-100"
+                            onClick={async () => {
+                              const res = await window.api.openSoundSettings()
+                              if (!res.opened) {
+                                toast({
+                                  variant: 'destructive',
+                                  title: 'Could not open Windows sound settings',
+                                  description: res.reason === 'unsupported-platform'
+                                    ? 'This action is only available on Windows.'
+                                    : (res.error ?? 'Unknown error'),
+                                })
+                              }
+                            }}
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Open Windows sound settings
+                          </Button>
+                        </div>
+                      )}
+
+                      {desktopSelectionMissing && (
+                        <div className="flex items-start gap-1.5 text-[11px] text-amber-400/90">
+                          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                          <span>
+                            Selected output is not currently available. Pick another device or reconnect it.
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
 
-            {/* Microphone */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-hextech-text-bright">Record microphone</p>
-                  <p className="text-xs text-hextech-text-dim mt-0.5">
-                    Include your voice in the recording.
-                  </p>
-                </div>
-                <button
-                  onClick={async () => {
-                    await window.api.updateUser({ recordAudioMic: !(user?.recordAudioMic ?? false) })
-                    await loadUser()
-                  }}
-                  className={cn(
-                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                    (user?.recordAudioMic ?? false) ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
-                  )}
-                >
-                  <span className={cn(
-                    'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
-                    (user?.recordAudioMic ?? false) ? 'translate-x-6' : 'translate-x-1',
-                  )} />
-                </button>
-              </div>
-
-              {(user?.recordAudioMic ?? false) && (
-                <div className="ml-1">
-                  {audioInputDevices.length > 0 ? (
-                    <Select
-                      value={user?.recordAudioMicDevice ?? '__default__'}
-                      onValueChange={async (val) => {
-                        await window.api.updateUser({ recordAudioMicDevice: val === '__default__' ? null : val })
+                {/* Microphone */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-hextech-text-bright">Record microphone</p>
+                      <p className="text-xs text-hextech-text-dim mt-0.5">
+                        Include your voice in the recording.
+                      </p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        await window.api.updateUser({ recordAudioMic: !(user?.recordAudioMic ?? false) })
                         await loadUser()
                       }}
+                      className={cn(
+                        'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                        (user?.recordAudioMic ?? false) ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
+                      )}
                     >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Default" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__default__" className="text-xs">Default</SelectItem>
-                        {audioInputDevices.map((d) => (
-                          <SelectItem key={d.deviceId} value={d.label || d.deviceId} className="text-xs">
-                            {d.label || `Microphone ${d.deviceId.slice(0, 8)}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-xs text-hextech-text-dim italic">
-                      No microphone detected. Click &quot;Refresh devices&quot;.
-                    </p>
+                      <span className={cn(
+                        'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
+                        (user?.recordAudioMic ?? false) ? 'translate-x-6' : 'translate-x-1',
+                      )} />
+                    </button>
+                  </div>
+
+                  {(user?.recordAudioMic ?? false) && (
+                    <div className="ml-1 space-y-1.5">
+                      {micInputs.length > 0 ? (
+                        <Select
+                          value={micSelectValue}
+                          onValueChange={async (val) => {
+                            await window.api.updateUser({ recordAudioMicDevice: val === '__default__' ? null : val })
+                            await loadUser()
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="System default (follows Windows)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__default__" className="text-xs">
+                              <span className="flex items-center gap-1.5">
+                                <Mic className="h-3 w-3 text-hextech-teal" />
+                                System default{defaultInputName ? ` — ${defaultInputName}` : ''}
+                              </span>
+                            </SelectItem>
+                            {micInputs.map((d) => (
+                              <SelectItem key={d.id} value={d.id} className="text-xs">
+                                {d.name}{d.isDefault ? ' (default)' : ''}
+                              </SelectItem>
+                            ))}
+                            {micSelectionMissing && (
+                              // Render the stale stored value so Radix keeps the
+                              // selection visible until user picks a new device.
+                              <SelectItem value={storedMicValue!} className="text-xs text-hextech-text-dim italic">
+                                {storedMicValue} (unavailable)
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-xs text-hextech-text-dim italic">
+                          No microphone detected. Click &quot;Refresh devices&quot;.
+                        </p>
+                      )}
+
+                      {micSelectionMissing && (
+                        <div className="flex items-start gap-1.5 text-[11px] text-amber-400/90">
+                          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                          <span>
+                            Selected microphone is not currently available. Pick another device or reconnect it — recording will skip the mic track until resolved.
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
+            )
+          })()}
 
           </div>}
         </CardContent>

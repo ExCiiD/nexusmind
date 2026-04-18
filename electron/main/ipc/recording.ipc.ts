@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app, BrowserWindow, desktopCapturer } from 'electron'
+import { ipcMain, dialog, app, BrowserWindow, desktopCapturer, shell } from 'electron'
 import { getPrisma } from '../database'
 import {
   recordingManager,
@@ -9,6 +9,7 @@ import {
   getFileSize,
   type ClipOptions,
 } from '../recorder'
+import { getAudioDevicesSummary, resolveMicDeviceName } from '../audio'
 import { existsSync, readdirSync, statSync, unlinkSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { join, extname, dirname, basename } from 'path'
 import { matchRecordingToGame } from '../recordingMatch'
@@ -491,6 +492,19 @@ export function registerRecordingHandlers() {
   ipcMain.handle('recording:start-capture', async () => {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })
+
+    // Resolve mic device at the moment capture starts so that:
+    //   - A stored device id/name maps to a current ffmpeg-compatible device name.
+    //   - "Default" (null/empty) is translated to the live Windows default input,
+    //     instead of silently dropping audio (which was the previous behaviour).
+    const micEnabled = user?.recordAudioMic ?? false
+    const micDeviceName = micEnabled
+      ? await resolveMicDeviceName(user?.recordAudioMicDevice ?? null)
+      : null
+    if (micEnabled && !micDeviceName) {
+      console.warn('[recording] Mic enabled but no input device resolved — recording will have no microphone track')
+    }
+
     const path = await recordingManager.startRecording({
       recordingPath: user?.recordingPath,
       recordQuality: user?.recordQuality,
@@ -498,10 +512,38 @@ export function registerRecordingHandlers() {
       recordEncoder: user?.recordEncoder,
       audioDesktopEnabled: user?.recordAudioDesktop ?? true,
       audioDesktopDevice: user?.recordAudioDesktopDevice,
-      audioMicEnabled: user?.recordAudioMic ?? false,
-      audioMicDevice: user?.recordAudioMicDevice,
+      audioMicEnabled: micEnabled,
+      audioMicDevice: micDeviceName,
     })
     return { started: !!path, filePath: path }
+  })
+
+  // Lists audio devices via native-audio-node (stable OS-level ids, no Chromium
+  // permission prompt, no "Default - " ephemeral label prefix issues).
+  ipcMain.handle('audio:list-devices', async () => {
+    return getAudioDevicesSummary()
+  })
+
+  // Opens the native Windows sound panel so the user can change their default
+  // output/input. Uses the ms-settings URI scheme on Windows; falls back to
+  // the legacy mmsys.cpl control panel applet if the URI scheme is unavailable.
+  ipcMain.handle('system:open-sound-settings', async () => {
+    if (process.platform !== 'win32') {
+      return { opened: false, reason: 'unsupported-platform' as const }
+    }
+    try {
+      // Modern Windows 10/11 — opens Settings > System > Sound directly.
+      await shell.openExternal('ms-settings:sound')
+      return { opened: true as const }
+    } catch {
+      try {
+        // Legacy fallback — opens the classic Sound control panel.
+        await shell.openPath('C:\\Windows\\System32\\mmsys.cpl')
+        return { opened: true as const }
+      } catch (err) {
+        return { opened: false, reason: 'failed' as const, error: (err as Error).message }
+      }
+    }
   })
 
   ipcMain.handle('recording:pick-folder', async () => {

@@ -26,6 +26,10 @@ interface User {
   recordScope: string
   recordAllowCustom: boolean
   allowDesktopFallback: boolean
+  recordAudioDesktop: boolean
+  recordAudioDesktopDevice: string | null
+  recordAudioMic: boolean
+  recordAudioMicDevice: string | null
 }
 
 interface UserStore {
