@@ -386,13 +386,7 @@ export function registerRecordingHandlers() {
     }
 
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7592/ingest/2e2c5cfc-8184-45ae-9d68-00280a0bc26b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a7df7e'},body:JSON.stringify({sessionId:'a7df7e',location:'recording.ipc.ts:link-file',message:'link-file called',data:{gameId,filePath},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
       const existing = await prisma.recording.findUnique({ where: { gameId } })
-      // #region agent log
-      fetch('http://127.0.0.1:7592/ingest/2e2c5cfc-8184-45ae-9d68-00280a0bc26b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a7df7e'},body:JSON.stringify({sessionId:'a7df7e',location:'recording.ipc.ts:link-file-lookup',message:'findUnique result',data:{gameId,existingId:existing?.id??null},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
       const rec = existing
         ? await prisma.recording.update({ where: { id: existing.id }, data: { filePath, source: 'manual' } })
         : await prisma.recording.create({ data: { gameId, filePath, source: 'manual' } })
@@ -401,9 +395,6 @@ export function registerRecordingHandlers() {
 
       return rec
     } catch (err) {
-      // #region agent log
-      fetch('http://127.0.0.1:7592/ingest/2e2c5cfc-8184-45ae-9d68-00280a0bc26b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a7df7e'},body:JSON.stringify({sessionId:'a7df7e',location:'recording.ipc.ts:link-file-error',message:'link-file failed',data:{gameId,error:String(err)},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
       console.error('[recording:link-file] Failed to link recording:', err)
       return { error: 'link_failed', message: (err as Error)?.message ?? String(err) }
     }

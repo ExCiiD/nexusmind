@@ -74,12 +74,23 @@ let _sysAudioMeta: SysAudioMeta | null = null
 async function startSystemAudioCapture(): Promise<void> {
   if (_sysAudioRecorder) return
   try {
-    const { SystemAudioRecorder } = await import('native-audio-node')
+    const nativeAudio = await import('native-audio-node')
+    const { SystemAudioRecorder, listAudioDevices } = nativeAudio
     _sysAudioChunks = []
     _sysAudioMeta = null
 
+    // Forcing 44 100 Hz when the default output runs at 48 000 Hz triggers an
+    //   internal WASAPI resample that produces audible crackling on system audio.
+    //   Detect the native device rate and honour it.
+    let nativeRate = 48000
+    try {
+      const devices = listAudioDevices()
+      const defaultOut = devices.find((d) => d.isOutput && d.isDefault)
+      if (defaultOut?.sampleRate && defaultOut.sampleRate > 0) nativeRate = defaultOut.sampleRate
+    } catch { /* fallback to 48000 */ }
+
     _sysAudioRecorder = new SystemAudioRecorder({
-      sampleRate: 44100,
+      sampleRate: nativeRate,
       chunkDurationMs: 200,
       stereo: true,
       emitSilence: true,

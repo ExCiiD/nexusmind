@@ -144,10 +144,15 @@ export class RecordingManager {
 
     const audioInputArgs: string[] = []
     if (micDshow) {
+      // audio_buffer_size: 500 ms is safe under gaming + AMF encoding load
+      //   (ex-50 ms caused dshow underruns → robot-voice crackling).
+      // rtbufsize: 150 MB absorbs bursts when dshow flushes post-open packets
+      //   (device start-PTS of 12 800 s observed in logs indicated buffered samples).
       audioInputArgs.push(
-        '-thread_queue_size', '1024',
+        '-thread_queue_size', '4096',
+        '-rtbufsize', '150M',
         '-f', 'dshow',
-        '-audio_buffer_size', '50',
+        '-audio_buffer_size', '500',
         '-i', `audio=${micDshow}`,
       )
     }
@@ -198,12 +203,12 @@ export class RecordingManager {
       this.process = null
 
       const elapsed = Date.now() - this.startedAt
-      if (
+      const willRetry =
         code !== 0 &&
         elapsed < RecordingManager.EARLY_CRASH_THRESHOLD_MS &&
         !this.isStopping &&
         this.retryCount < RecordingManager.MAX_RETRIES
-      ) {
+      if (willRetry) {
         this.retryCount++
         const fallbackSettings: RecordingSettings = {
           ...this.lastSettings,
@@ -334,7 +339,10 @@ export function mergeAudioIntoVideo(videoPath: string, audioBuffer: Buffer, form
       '-i', videoPath,
       ...audioInputArgs,
       '-c:v', 'copy',
-      '-filter_complex', '[0:a][1:a]amix=inputs=2:duration=shortest:dropout_transition=0[aout]',
+      // normalize=0 keeps each input at its original level (default 1/N scaling
+      //   attenuated by ~6 dB). alimiter gently caps any resulting peak >0.95
+      //   so summed loud mic + loud game audio never clip — transparent below.
+      '-filter_complex', '[0:a][1:a]amix=inputs=2:duration=shortest:normalize=0,alimiter=limit=0.95[aout]',
       '-map', '0:v:0', '-map', '[aout]',
       '-c:a', 'aac', '-b:a', '192k',
       '-movflags', '+faststart',
