@@ -41,7 +41,6 @@ export function Sidebar() {
     window.api.getCaptureStatus().then((s) => setIsRecording(s.isRecording)).catch(() => {})
     const offStarted = window.api.onRecordingStarted(() => setIsRecording(true))
     const offStopped = window.api.onRecordingStopped(() => setIsRecording(false))
-    // Periodically sync status in case IPC events were missed (e.g. recording started before renderer loaded)
     const poll = setInterval(() => {
       window.api.getCaptureStatus().then((s) => setIsRecording(s.isRecording)).catch(() => {})
     }, 10_000)

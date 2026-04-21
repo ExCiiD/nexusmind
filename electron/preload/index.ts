@@ -219,3 +219,63 @@ const api = {
 }
 
 contextBridge.exposeInMainWorld('api', api)
+
+// Dedicated API for the hidden WGC capture renderer. Exposed to all renderers
+// but only consumed by `src/wgc-capture.ts` in the capture window.
+// Kept narrow: no filesystem access, no access to any business data.
+const wgcAPI = {
+  listScreenSources: () =>
+    ipcRenderer.invoke('wgc:list-screen-sources') as Promise<
+      Array<{ id: string; name: string; display_id?: string }>
+    >,
+  onStart: (
+    cb: (payload: {
+      recordFps: number
+      targetHeight: number
+      bitrateKbps: number
+      sourceId: string
+      mainWindowId: number
+    }) => void,
+  ) => {
+    const handler = (
+      _e: Electron.IpcRendererEvent,
+      payload: {
+        recordFps: number
+        targetHeight: number
+        bitrateKbps: number
+        sourceId: string
+        mainWindowId: number
+      },
+    ) => cb(payload)
+    ipcRenderer.on('wgc:start', handler)
+    return () => ipcRenderer.removeListener('wgc:start', handler)
+  },
+  onStop: (cb: () => void) => {
+    const handler = () => cb()
+    ipcRenderer.on('wgc:stop', handler)
+    return () => ipcRenderer.removeListener('wgc:stop', handler)
+  },
+  sendStarted: (info: {
+    mimeType: string
+    width: number
+    height: number
+    audioTracks: number
+    audioDesktop: boolean
+    audioMic: boolean
+  }) => {
+    ipcRenderer.send('wgc:started', info)
+  },
+  sendStopped: () => {
+    ipcRenderer.send('wgc:stopped')
+  },
+  sendError: (message: string) => {
+    ipcRenderer.send('wgc:error', message)
+  },
+  sendChunk: (chunk: ArrayBuffer, isLast: boolean) => {
+    // ArrayBuffer is structured-cloned across the IPC boundary. For typical
+    // 1-second chunks (~1-3 MB) this is negligible overhead.
+    ipcRenderer.send('wgc:chunk', chunk, isLast)
+  },
+}
+
+contextBridge.exposeInMainWorld('wgcAPI', wgcAPI)

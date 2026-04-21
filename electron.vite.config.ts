@@ -27,7 +27,15 @@ export default defineConfig({
     root: '.',
     build: {
       rollupOptions: {
-        input: resolve(__dirname, 'index.html')
+        // Two entry points:
+        //  - `index.html` → main UI (React app)
+        //  - `wgc-capture.html` → hidden capture renderer (vanilla TS,
+        //    MediaRecorder + WGC). Keeping it as a separate entry avoids
+        //    pulling React / Tailwind / i18n into the capture bundle.
+        input: {
+          index: resolve(__dirname, 'index.html'),
+          'wgc-capture': resolve(__dirname, 'wgc-capture.html'),
+        }
       }
     },
     resolve: {

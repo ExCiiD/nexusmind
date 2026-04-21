@@ -3,12 +3,27 @@ import { app, BrowserWindow, ipcMain, protocol } from 'electron'
 // Suppress Chromium GPU shader disk-cache errors on Windows (access-denied / cache locked).
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
 
+// Force Chromium screen/window/desktop capture to use Windows Graphics Capture (WGC)
+// instead of the legacy DXGI Desktop Duplication API. DXGI is fragile to
+// fullscreen-exclusive presentation mode changes in LoL and returns HRESULT
+// 0x887A0026 (DXGI_ERROR_ACCESS_LOST) on every transition — each failed capture
+// is a dropped frame in the MediaRecorder stream, producing the "every-other-frame"
+// stutter seen in VODs. WGC survives those transitions gracefully (same API as
+// Xbox Game Bar / OBS "Window Capture (WGC)"). Flags must be set before
+// app.whenReady(); multiple --enable-features switches are merged by Chromium.
+app.commandLine.appendSwitch(
+  'enable-features',
+  'AllowWgcScreenCapturer,AllowWgcWindowCapturer,AllowWgcDesktopCapturer'
+)
+
 import { join } from 'path'
 import { createReadStream, statSync, readFileSync, existsSync } from 'fs'
 import { autoUpdater } from 'electron-updater'
 import { initDatabase, getPrisma } from './database'
 import { GameDetector } from './gameDetector'
-import { recordingManager, isFfmpegAvailable, generateThumbnailForRecording, mergeAudioIntoVideo, type PcmAudioFormat } from './recorder'
+import { recordingManager, isFfmpegAvailable, generateThumbnailForRecording, mergeAudioIntoVideo, type PcmAudioFormat, type RecordingSettings } from './recorder'
+import { wgcRecorder } from './wgcRecorder'
+import { RECORDER_BACKEND, getActiveRecorder } from './recorderBackend'
 import { resolveMicDeviceName } from './audio'
 import { registerAuthHandlers } from './ipc/auth.ipc'
 import { registerSessionHandlers } from './ipc/session.ipc'
@@ -64,6 +79,26 @@ protocol.registerSchemesAsPrivileged([{
 
 let mainWindow: BrowserWindow | null = null
 let gameDetector: GameDetector | null = null
+
+/**
+ * Tracks the pending `setTimeout` that defers ffmpeg spawn after `onGameStart`.
+ *
+ * Why we defer: ddagrab (DXGI Desktop Duplication) is killed by
+ * `DXGI_ERROR_ACCESS_LOST` whenever the game changes its swap-chain presentation
+ * mode. On LoL, that transition happens around the loading-screen → in-game
+ * switch (~15-25 s after our Live Client API first responds). Starting capture
+ * before this transition is terminal: ddagrab stops producing frames but
+ * ffmpeg keeps running because the audio dshow input keeps the process alive,
+ * resulting in a VOD frozen on the last captured loading-screen frame for
+ * the whole game duration.
+ *
+ * By waiting 30 s, we start ddagrab on an already-stable flip-model session
+ * that no longer transitions. Trade-off: we lose the first 30 s of recording,
+ * but this is purely loading + spawn + late buy phase (no gameplay worth
+ * reviewing post-match).
+ */
+let deferredRecordingStart: ReturnType<typeof setTimeout> | null = null
+const RECORDING_START_DELAY_MS = 30_000
 
 // ── System audio capture (WASAPI loopback via native-audio-node — bypasses Chromium entirely) ──
 let _sysAudioRecorder: InstanceType<typeof import('native-audio-node').SystemAudioRecorder> | null = null
@@ -301,7 +336,8 @@ async function bootstrap() {
       mainWindow?.show()
       mainWindow?.focus()
 
-      const pendingRecording = recordingManager.getPendingRecording()
+      const activeRecorder = getActiveRecorder()
+      const pendingRecording = activeRecorder.getPendingRecording()
 
       const pendingFileValid = pendingRecording
         ? (() => { try { return existsSync(pendingRecording) && statSync(pendingRecording).size > 0 } catch { return false } })()
@@ -311,7 +347,7 @@ async function bootstrap() {
         if (!pendingRecording || !pendingFileValid) {
           if (pendingRecording && !pendingFileValid) {
             console.warn(`[main] Pending recording empty/missing — not linking: ${pendingRecording}`)
-            recordingManager.clearPendingRecording()
+            activeRecorder.clearPendingRecording()
           }
         }
         if (pendingRecording && pendingFileValid) {
@@ -332,7 +368,7 @@ async function bootstrap() {
                 ? await prisma.recording.update({ where: { id: byGame.id }, data: { filePath: pendingRecording, source: 'capture' } })
                 : await prisma.recording.create({ data: { gameId: matchData.game.id, filePath: pendingRecording, source: 'capture' } })
             }
-            recordingManager.clearPendingRecording()
+            activeRecorder.clearPendingRecording()
             mainWindow?.webContents.send('recording:linked', {
               gameId: matchData.game.id,
               filePath: pendingRecording,
@@ -377,38 +413,71 @@ async function bootstrap() {
         const prisma = getPrisma()
         const user = await prisma.user.findFirst({ where: { isActive: true } })
         console.log(`[main] Game detected — autoRecord: ${user?.autoRecord}, ffmpeg: ${isFfmpegAvailable()}`)
-        if (user?.autoRecord) {
-          // Resolve the mic device name (stored id/name or live Windows default)
-          // right before spawning ffmpeg so "Default" actually records something.
-          const micEnabled = user.recordAudioMic ?? false
-          const micDeviceName = micEnabled
-            ? await resolveMicDeviceName(user.recordAudioMicDevice ?? null)
-            : null
-          if (micEnabled && !micDeviceName) {
-            console.warn('[main] Mic enabled but no input device resolved — auto-record will have no microphone track')
-          }
+        if (!user?.autoRecord) return
 
-          const path = await recordingManager.startRecording({
-            recordingPath: user.recordingPath,
-            recordQuality: user.recordQuality,
-            recordFps: user.recordFps,
-            recordEncoder: user.recordEncoder,
-            audioDesktopEnabled: user.recordAudioDesktop,
-            audioDesktopDevice: user.recordAudioDesktopDevice,
-            audioMicEnabled: micEnabled,
-            audioMicDevice: micDeviceName,
-          })
-          if (path) {
-            mainWindow?.webContents.send('recording:started')
-            console.log('[main] Recording started →', path)
-          } else {
-            console.warn('[main] startRecording() returned null — ffmpeg may be unavailable')
-          }
-
-          if (user.recordAudioDesktop && path) {
-            startSystemAudioCapture()
-          }
+        // Resolve the mic device name NOW (before the delay), while the user
+        // preferences are still fresh. We capture the effective device name
+        // into the closure so the delayed spawn uses the same value regardless
+        // of any setting changes during the 30 s window.
+        const micEnabled = user.recordAudioMic ?? false
+        const micDeviceName = micEnabled
+          ? await resolveMicDeviceName(user.recordAudioMicDevice ?? null)
+          : null
+        if (micEnabled && !micDeviceName) {
+          console.warn('[main] Mic enabled but no input device resolved — auto-record will have no microphone track')
         }
+
+        const snapshot = {
+          recordingPath: user.recordingPath,
+          recordQuality: user.recordQuality,
+          recordFps: user.recordFps,
+          recordEncoder: user.recordEncoder,
+          audioDesktopEnabled: user.recordAudioDesktop,
+          audioDesktopDevice: user.recordAudioDesktopDevice,
+          audioMicEnabled: micEnabled,
+          audioMicDevice: micDeviceName,
+        }
+
+        // Abort any previous pending timer (should not happen in practice since
+        // onGameRawEnd clears it, but defensive).
+        if (deferredRecordingStart) {
+          clearTimeout(deferredRecordingStart)
+          deferredRecordingStart = null
+        }
+
+        // WGC is stateless vs. the target's swap chain, so presentation-mode
+        // transitions (loading screen → in-game FSE flip) don't break it. The
+        // 30s deferral was purely an ddagrab-era workaround for ACCESS_LOST.
+        // ddagrab path keeps the deferral.
+        const startDelayMs = RECORDER_BACKEND === 'wgc' ? 0 : RECORDING_START_DELAY_MS
+        const activeRecorder = getActiveRecorder()
+
+        const scheduledAt = Date.now()
+        if (startDelayMs > 0) {
+          console.log(`[main] Deferring recording spawn by ${startDelayMs}ms (backend=${RECORDER_BACKEND}) to let LoL settle into its final presentation mode`)
+        } else {
+          console.log(`[main] Starting recording immediately (backend=${RECORDER_BACKEND}) — WGC handles presentation transitions natively`)
+        }
+        deferredRecordingStart = setTimeout(async () => {
+          deferredRecordingStart = null
+          try {
+            const path = await activeRecorder.startRecording(snapshot as RecordingSettings)
+            if (path) {
+              mainWindow?.webContents.send('recording:started')
+              console.log('[main] Recording started →', path)
+            } else {
+              console.warn('[main] startRecording() returned null — recorder unavailable')
+            }
+
+            // WASAPI desktop-audio path is tied to the ddagrab pipeline. WGC
+            // will fold audio into its own MediaStream in Phase 2.
+            if (RECORDER_BACKEND === 'ddagrab' && snapshot.audioDesktopEnabled && path) {
+              startSystemAudioCapture()
+            }
+          } catch (err) {
+            console.error('[main] Recording spawn error:', err)
+          }
+        }, startDelayMs)
       } catch (err) {
         console.error('[main] onGameStart error:', err)
       }
@@ -416,32 +485,48 @@ async function bootstrap() {
 
     // onGameRawEnd: fires immediately when live client stops (before Riot API match resolution)
     async () => {
-      const stoppedPath = recordingManager.stopRecording()
-      if (!stoppedPath) return
+      // If the user quit the game (or it crashed) during the pre-spawn delay,
+      // cancel the scheduled ffmpeg spawn — otherwise we'd start recording
+      // after the game is already over.
+      if (deferredRecordingStart) {
+        clearTimeout(deferredRecordingStart)
+        deferredRecordingStart = null
+        console.log('[main] Game ended during pre-spawn delay — cancelled pending recording spawn')
+        return
+      }
 
-      console.log(`[main] Recording stop signal sent → ${stoppedPath}`)
+      const activeRecorder = getActiveRecorder()
+      const initialStopPath = activeRecorder.stopRecording()
+      if (!initialStopPath) return
+
+      console.log(`[main] Recording stop signal sent → ${initialStopPath}`)
 
       const [, sysAudio] = await Promise.all([
-        recordingManager.waitForDone(30_000),
-        stopSystemAudioCapture(),
+        activeRecorder.waitForDone(30_000),
+        // In WGC mode there is no parallel WASAPI capture (Phase 2 will fold
+        // audio into the MediaStream directly), so the stop is a no-op here.
+        RECORDER_BACKEND === 'wgc' ? Promise.resolve(null) : stopSystemAudioCapture(),
       ])
 
-      console.log(`[main] Recording finalized → ${stoppedPath}`)
+      // The WGC backend remuxes `.webm` → `.mp4` during finalize, so the final
+      // on-disk path is only known after `waitForDone`. Re-read it here.
+      const finalPath = activeRecorder.getPendingRecording() ?? initialStopPath
+      console.log(`[main] Recording finalized → ${finalPath}`)
 
-      const fileSize = existsSync(stoppedPath)
-        ? (() => { try { return statSync(stoppedPath).size } catch { return 0 } })()
+      const fileSize = existsSync(finalPath)
+        ? (() => { try { return statSync(finalPath).size } catch { return 0 } })()
         : 0
 
       if (fileSize === 0) {
-        console.warn(`[main] Recording file empty or missing — skipping DB persist: ${stoppedPath}`)
-        recordingManager.clearPendingRecording()
+        console.warn(`[main] Recording file empty or missing — skipping DB persist: ${finalPath}`)
+        activeRecorder.clearPendingRecording()
         return
       }
 
       if (sysAudio) {
         console.log(`[main] System audio received (${(sysAudio.buffer.length / 1024).toFixed(0)} KB, ${sysAudio.encoding}) — merging…`)
         try {
-          await mergeAudioIntoVideo(stoppedPath, sysAudio.buffer, {
+          await mergeAudioIntoVideo(finalPath, sysAudio.buffer, {
             encoding: sysAudio.encoding,
             sampleRate: sysAudio.sampleRate,
             channels: sysAudio.channels,
@@ -449,20 +534,20 @@ async function bootstrap() {
         } catch (err) {
           console.error('[main] Audio merge failed:', err)
         }
-      } else {
+      } else if (RECORDER_BACKEND === 'ddagrab') {
         console.log('[main] No system audio captured — video keeps mic-only audio')
       }
 
       try {
         const prisma = getPrisma()
-        const existing = await prisma.recording.findFirst({ where: { filePath: stoppedPath } })
+        const existing = await prisma.recording.findFirst({ where: { filePath: finalPath } })
         if (!existing) {
-          await prisma.recording.create({ data: { filePath: stoppedPath, source: 'capture' } })
+          await prisma.recording.create({ data: { filePath: finalPath, source: 'capture' } })
         }
       } catch (err) {
         console.error('[main] Failed to pre-persist recording:', err)
       }
-      mainWindow?.webContents.send('recording:stopped', { filePath: stoppedPath })
+      mainWindow?.webContents.send('recording:stopped', { filePath: finalPath })
     },
   )
 
@@ -473,6 +558,8 @@ app.whenReady().then(bootstrap)
 
 app.on('window-all-closed', () => {
   recordingManager.stopRecording()
+  wgcRecorder.stopRecording()
+  wgcRecorder.dispose()
   gameDetector?.stop()
   if (process.platform !== 'darwin') {
     app.quit()

@@ -10,3 +10,4 @@ Thumbs.db
 prisma-client/
 .cursor/
 test-results/
+resources/ffmpeg-bin/

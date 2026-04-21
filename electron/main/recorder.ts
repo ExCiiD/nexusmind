@@ -1,24 +1,77 @@
-import { spawn, ChildProcess } from 'child_process'
+import { spawn, ChildProcess, spawnSync } from 'child_process'
 import { app, screen } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync, statSync, writeFileSync, unlinkSync, renameSync } from 'fs'
 import os from 'os'
 import { getPrisma } from './database'
 
-let ffmpegBin: string | null = null
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require('ffmpeg-static')
-  ffmpegBin = typeof mod === 'string' ? mod : (mod?.default ?? null)
-  if (ffmpegBin && app.isPackaged) {
-    ffmpegBin = ffmpegBin.replace('app.asar', 'app.asar.unpacked')
+/**
+ * Resolves which ffmpeg binary to use, in priority order:
+ *   1. Custom bundled FFmpeg 8.1 at `resources/ffmpeg-bin/` (dev) or
+ *      `process.resourcesPath/ffmpeg-bin/` (packaged). Preferred because it
+ *      includes the upstream ddagrab recovery patch landed in 7.0.
+ *   2. `ffmpeg-static` fallback (6.1.1 — no recovery patch).
+ *
+ * Returns null if neither is available.
+ */
+function resolveFfmpegBinary(): { path: string; source: 'bundled' | 'ffmpeg-static'; version: string } | null {
+  const bundledPath = app.isPackaged
+    ? join(process.resourcesPath, 'ffmpeg-bin', 'ffmpeg.exe')
+    : join(app.getAppPath(), 'resources', 'ffmpeg-bin', 'win-x64', 'ffmpeg.exe')
+
+  if (existsSync(bundledPath)) {
+    const version = probeFfmpegVersion(bundledPath)
+    if (version) {
+      return { path: bundledPath, source: 'bundled', version }
+    }
+    console.warn(`[recorder] Bundled ffmpeg found but failed to report version: ${bundledPath}`)
   }
-} catch {
-  console.warn('[recorder] ffmpeg-static not available — auto-record disabled')
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('ffmpeg-static')
+    let staticBin: string | null = typeof mod === 'string' ? mod : (mod?.default ?? null)
+    if (staticBin && app.isPackaged) {
+      staticBin = staticBin.replace('app.asar', 'app.asar.unpacked')
+    }
+    if (staticBin && existsSync(staticBin)) {
+      const version = probeFfmpegVersion(staticBin) ?? 'unknown'
+      return { path: staticBin, source: 'ffmpeg-static', version }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return null
+}
+
+function probeFfmpegVersion(binPath: string): string | null {
+  try {
+    const res = spawnSync(binPath, ['-version'], { encoding: 'utf-8', timeout: 5000 })
+    const first = (res.stdout || res.stderr || '').split('\n')[0] || ''
+    const match = first.match(/ffmpeg version (\S+)/)
+    return match ? match[1] : null
+  } catch {
+    return null
+  }
+}
+
+const resolved = resolveFfmpegBinary()
+const ffmpegBin: string | null = resolved?.path ?? null
+
+if (resolved) {
+  console.log(`[recorder] ffmpeg resolved → ${resolved.source} (v${resolved.version}) @ ${resolved.path}`)
+} else {
+  console.warn('[recorder] No ffmpeg binary available — auto-record disabled')
 }
 
 export function isFfmpegAvailable(): boolean {
   return ffmpegBin !== null && existsSync(ffmpegBin)
+}
+
+/** Path to the resolved ffmpeg binary (bundled 8.1 preferred, ffmpeg-static fallback). */
+export function getFfmpegBinaryPath(): string | null {
+  return ffmpegBin
 }
 
 export interface RecordingSettings {
@@ -194,7 +247,8 @@ export class RecordingManager {
     }
 
     this.process.stderr?.on('data', (data: Buffer) => {
-      if (!app.isPackaged) process.stdout.write('[recorder] ' + data.toString())
+      const text = data.toString()
+      if (!app.isPackaged) process.stdout.write('[recorder] ' + text)
     })
 
     this.process.on('exit', (code) => {
@@ -208,20 +262,18 @@ export class RecordingManager {
         elapsed < RecordingManager.EARLY_CRASH_THRESHOLD_MS &&
         !this.isStopping &&
         this.retryCount < RecordingManager.MAX_RETRIES
+
       if (willRetry) {
         this.retryCount++
-        const fallbackSettings: RecordingSettings = {
-          ...this.lastSettings,
-          audioDesktopEnabled: false,
-          audioDesktopDevice: null,
-          audioMicEnabled: false,
-          audioMicDevice: null,
-        }
-        console.warn(`[recorder] ddagrab crashed after ${elapsed}ms — retry ${this.retryCount}/${RecordingManager.MAX_RETRIES} without audio in 3s`)
+        // NOTE (beta.26): audio is preserved on retry. The previous beta.25
+        // behavior (disabling mic + desktop on retry) was a speculative fallback
+        // with no runtime evidence behind it — all early crashes observed were
+        // in `Parsed_ddagrab_0` (DXGI video path), not dshow/audio.
+        console.warn(`[recorder] ddagrab crashed after ${elapsed}ms — retry ${this.retryCount}/${RecordingManager.MAX_RETRIES} in 3s (audio preserved)`)
         setTimeout(() => {
           if (this.isStopping) { this.doneResolve?.(); return }
-          this.spawnDdagrab(fallbackSettings)
-          console.log(`[recorder] ddagrab retry started (video-only) → ${this.currentFilePath}`)
+          this.spawnDdagrab(this.lastSettings)
+          console.log(`[recorder] ddagrab retry started → ${this.currentFilePath}`)
         }, 3_000)
         return
       }

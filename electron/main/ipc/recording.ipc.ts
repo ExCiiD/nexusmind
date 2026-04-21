@@ -1,5 +1,6 @@
 import { ipcMain, dialog, app, BrowserWindow, desktopCapturer, shell } from 'electron'
 import { getPrisma } from '../database'
+import { getActiveRecorder } from '../recorderBackend'
 import {
   recordingManager,
   isFfmpegAvailable,
@@ -411,7 +412,7 @@ export function registerRecordingHandlers() {
   ipcMain.handle('recording:delete', async (_event, gameId: string) => {
     const prisma = getPrisma()
     const recordings = await prisma.recording.findMany({ where: { gameId } })
-    const status = recordingManager.getStatus()
+    const status = getActiveRecorder().getStatus()
     for (const rec of recordings) {
       if (status.isRecording && rec.filePath && status.filePath === rec.filePath) {
         throw new Error('Cannot delete a recording that is currently being captured.')
@@ -434,7 +435,7 @@ export function registerRecordingHandlers() {
     const prisma = getPrisma()
     const rec = await prisma.recording.findUnique({ where: { id: recordingId } })
     if (!rec) return { success: false }
-    const captureStatus = recordingManager.getStatus()
+    const captureStatus = getActiveRecorder().getStatus()
     if (captureStatus.isRecording && rec.filePath && captureStatus.filePath === rec.filePath) {
       throw new Error('Cannot delete a recording that is currently being captured.')
     }
@@ -477,7 +478,11 @@ export function registerRecordingHandlers() {
   // ── Capture control ──────────────────────────────────────────────────────────
 
   ipcMain.handle('recording:get-capture-status', () => {
-    return { ...recordingManager.getStatus(), ffmpegAvailable: isFfmpegAvailable() }
+    // MUST query the currently active recorder (WGC or ddagrab). Using the
+    // legacy `recordingManager` unconditionally caused the sidebar badge to
+    // flip off mid-game when WGC was the real capture engine.
+    const status = getActiveRecorder().getStatus()
+    return { ...status, ffmpegAvailable: isFfmpegAvailable() }
   })
 
   ipcMain.handle('recording:start-capture', async () => {
