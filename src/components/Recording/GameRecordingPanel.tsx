@@ -6,6 +6,7 @@ import { RecordingMediaPanel } from './RecordingMediaPanel'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 import type { TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
+import type { GameEvent } from '@/lib/ipc'
 
 // ── Types & helpers ───────────────────────────────────────────────────────────
 
@@ -15,6 +16,8 @@ interface Recording {
   filePath: string | null
   youtubeUrl: string | null
   source: string
+  createdAt?: string
+  startOffsetSec?: number | null
 }
 
 function filePathToNxmUrl(filePath: string): string {
@@ -55,10 +58,17 @@ interface GameRecordingPanelProps {
   hasReview?: boolean
   onReviewDeleted?: () => void
   timelineNotes?: TimelineNote[]
+  /** Game timing meta — required to align timeline event markers with video */
+  gameMeta?: {
+    gameEndAt: string | Date
+    gameDurationSec: number
+  }
   onAddNote?: (note: TimelineNote) => void
+  onEditNote?: (index: number, newText: string) => void
+  onDeleteNote?: (index: number) => void
 }
 
-export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDeleted, timelineNotes = [], onAddNote }: GameRecordingPanelProps) {
+export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDeleted, timelineNotes = [], gameMeta, onAddNote, onEditNote, onDeleteNote }: GameRecordingPanelProps) {
   const { toast } = useToast()
   const { t } = useTranslation()
   const [recording, setRecording] = useState<Recording | null>(null)
@@ -70,6 +80,14 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
   const [open, setOpen] = useState(false)
   const [fileNotFound, setFileNotFound] = useState(false)
   const [confirmDeleteVideo, setConfirmDeleteVideo] = useState(false)
+  // True while ffmpeg/remux is finalizing the just-stopped recording. The
+  // recording row may already exist in the DB but the file is not yet playable
+  // (no moov atom, 0:00 duration). We block the player UI behind a clear
+  // "Finalizing…" overlay until `recording:ready` arrives.
+  const [processing, setProcessing] = useState(false)
+  // In-game events (kills, dragons, towers…) for the player timeline markers.
+  // Best-effort: empty array if timeline isn't available for this match.
+  const [gameEvents, setGameEvents] = useState<GameEvent[]>([])
 
   // Clip creation
   const [creatingClip, setCreatingClip] = useState(false)
@@ -93,12 +111,50 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
 
   useEffect(() => { load() }, [load])
 
+  // Fetch the compact game-event list once per gameId. The backend lazily
+  // fetches + caches the timeline blob if needed; we just consume the result.
+  useEffect(() => {
+    let cancelled = false
+    window.api.getGameEvents(gameId)
+      .then((evts) => { if (!cancelled) setGameEvents(evts ?? []) })
+      .catch(() => { /* best-effort, timeline often unavailable */ })
+    return () => { cancelled = true }
+  }, [gameId])
+
   useEffect(() => {
     const off = window.api.onRecordingLinked((data) => {
       if (data.gameId === gameId) load()
     })
     return off
   }, [gameId, load])
+
+  // Subscribe to finalization lifecycle so the panel can show a
+  // "Finalizing video…" overlay instead of a 0:00 broken player.
+  useEffect(() => {
+    const offProcessing = window.api.onRecordingProcessing((data) => {
+      // Auto path doesn't always know the gameId yet, but if it does and
+      // it's NOT ours, ignore. If gameId is undefined, assume it's for the
+      // currently active game (i.e. us, since this panel only mounts for one).
+      if (data.gameId && data.gameId !== gameId) return
+      setProcessing(true)
+    })
+    const offReady = window.api.onRecordingReady((data) => {
+      if (data.gameId && data.gameId !== gameId) return
+      setProcessing(false)
+      // Reload to pick up the new filePath / recording row that the backend
+      // just created/updated post-finalization.
+      load()
+    })
+    const offFailed = window.api.onRecordingFailed((data) => {
+      setProcessing(false)
+      toast({
+        title: t('recording.finalizationFailed', { defaultValue: 'Recording finalization failed' }),
+        description: data.reason,
+        variant: 'destructive',
+      })
+    })
+    return () => { offProcessing(); offReady(); offFailed() }
+  }, [gameId, load, toast, t])
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -238,19 +294,51 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
 
       {open && (
         <div className="border-t border-hextech-border-dim">
+          {/* Finalization overlay — shown while ffmpeg/remux is still writing
+              the file. Without this, the user lands on a 0:00 player and
+              thinks the recording is broken. */}
+          {processing && !recording?.filePath && (
+            <div className="p-6 flex flex-col items-center gap-3 text-center bg-[#050A10]">
+              <Loader2 className="h-8 w-8 animate-spin text-hextech-gold" />
+              <p className="text-sm font-medium text-hextech-text-bright">
+                {t('recording.finalizing', { defaultValue: 'Finalizing video…' })}
+              </p>
+              <p className="text-xs text-hextech-text-dim max-w-md">
+                {t('recording.finalizingDesc', {
+                  defaultValue: 'The recording is being processed. This usually takes 10-60 seconds for a full game. The player will appear automatically when it\'s ready.',
+                })}
+              </p>
+            </div>
+          )}
+
           {/* Local file — VideoReviewPlayer + clips + share */}
           {recording?.filePath && (
             <div className="p-4 space-y-2">
+              {processing && (
+                <div className="rounded-lg bg-hextech-gold/10 border border-hextech-gold/40 px-3 py-2 flex items-center gap-2 text-xs text-hextech-gold">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                  <span>{t('recording.finalizing', { defaultValue: 'Finalizing video — playback may be limited until it\'s done.' })}</span>
+                </div>
+              )}
               <VideoReviewPlayer
                 src={filePathToNxmUrl(recording.filePath)}
                 notes={timelineNotes}
                 onAddNote={onAddNote}
+                onEditNote={onEditNote}
+                onDeleteNote={onDeleteNote}
                 onFileNotFound={() => setFileNotFound(true)}
                 readonly={readonly}
                 clipping={creatingClip}
                 clipRange={creatingClip ? clipRange : undefined}
                 onClipRangeChange={creatingClip ? handleClipRangeChange : undefined}
                 videoMaxHeight="max-h-[62vh] min-h-[300px]"
+                gameEvents={gameEvents}
+                gameMeta={gameMeta && recording.createdAt ? {
+                  gameEndAt: gameMeta.gameEndAt,
+                  gameDurationSec: gameMeta.gameDurationSec,
+                  recordingCreatedAt: recording.createdAt,
+                  startOffsetSec: recording.startOffsetSec,
+                } : undefined}
               />
 
               {/* Inline clip controls bar */}

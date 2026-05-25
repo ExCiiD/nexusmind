@@ -17,6 +17,7 @@ import { ExternalReviewPage } from '@/pages/Review/ExternalReviewPage'
 import { ExternalReviewNewPage } from '@/pages/Review/ExternalReviewNewPage'
 import { PostGameCapturePage } from '@/pages/Review/PostGameCapturePage'
 import { HelpPage } from '@/pages/Help/HelpPage'
+import { TeamPage } from '@/pages/Team/TeamPage'
 import { GameEndNav } from '@/components/GameEndNav'
 import { DevToolbar } from '@/components/Dev/DevToolbar'
 import { UpdateBanner } from '@/components/UpdateBanner'
@@ -57,6 +58,7 @@ export function App() {
             <Route path="/stats/averages" element={<Navigate to="/stats" replace />} />
             <Route path="/stats/:matchId" element={<DetailedStatsPage />} />
             <Route path="/assessment" element={<ReassessmentPage />} />
+            <Route path="/team" element={<TeamPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

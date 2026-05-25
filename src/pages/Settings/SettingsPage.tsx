@@ -991,7 +991,118 @@ export function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Backup & Sync (manual multi-PC) ──────────────────────────────────── */}
+      <BackupCard />
     </div>
+  )
+}
+
+// ── Backup & Sync sub-component ──────────────────────────────────────────────
+
+function BackupCard() {
+  const { t } = useTranslation()
+  const { toast } = useToast()
+  const [exporting, setExporting] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [confirmImport, setConfirmImport] = useState(false)
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const result = await window.api.exportBackup()
+      if (result.canceled) return
+      const c = result.counts
+      toast({
+        title: t('settings.backup.exportDone'),
+        description: t('settings.backup.exportSummary', {
+          path: result.filePath,
+          sessions: c.sessions,
+          games: c.games,
+          reviews: c.reviews,
+        }),
+        variant: 'success',
+      })
+    } catch (err: any) {
+      toast({
+        title: t('settings.backup.exportFailed'),
+        description: err?.message ?? String(err),
+        variant: 'destructive',
+      })
+    } finally { setExporting(false) }
+  }
+
+  const handleImport = async () => {
+    setConfirmImport(false)
+    setImporting(true)
+    try {
+      const result = await window.api.importBackup()
+      if (result.canceled) return
+      const s = result.summary
+      toast({
+        title: t('settings.backup.importDone'),
+        description: t('settings.backup.importSummary', {
+          sessions: s.sessionsAdded,
+          games: s.gamesAdded,
+          reviews: s.reviewsAdded,
+          recordings: s.recordingsAdded,
+          conflicts: s.conflicts,
+        }),
+        variant: 'success',
+      })
+    } catch (err: any) {
+      toast({
+        title: t('settings.backup.importFailed'),
+        description: err?.message ?? String(err),
+        variant: 'destructive',
+      })
+    } finally { setImporting(false) }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <FolderOpen className="h-5 w-5 text-hextech-gold" />
+          {t('settings.backup.title')}
+        </CardTitle>
+        <CardDescription>{t('settings.backup.desc')}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="rounded-lg border border-hextech-border-dim bg-hextech-elevated/40 p-3 text-xs text-hextech-text-dim">
+          {t('settings.backup.note')}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handleExport} disabled={exporting} className="gap-2">
+            {exporting
+              ? <><Loader2 className="h-4 w-4 animate-spin" />{t('settings.backup.exporting')}</>
+              : t('settings.backup.exportButton')}
+          </Button>
+
+          {confirmImport ? (
+            <div className="flex items-center gap-2 rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 py-1.5">
+              <AlertTriangle className="h-4 w-4 text-orange-400 shrink-0" />
+              <span className="text-xs text-orange-200">{t('settings.backup.importConfirm')}</span>
+              <Button size="sm" variant="default" onClick={handleImport} disabled={importing} className="h-7 text-xs gap-1.5">
+                {importing
+                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />{t('settings.backup.importing')}</>
+                  : t('settings.backup.confirmImportButton')}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setConfirmImport(false)} className="h-7 text-xs">
+                {t('settings.backup.cancelButton')}
+              </Button>
+            </div>
+          ) : (
+            <Button variant="outline" onClick={() => setConfirmImport(true)} disabled={importing} className="gap-2">
+              {importing
+                ? <><Loader2 className="h-4 w-4 animate-spin" />{t('settings.backup.importing')}</>
+                : t('settings.backup.importButton')}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

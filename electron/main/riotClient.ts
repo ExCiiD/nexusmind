@@ -155,6 +155,27 @@ export async function getSummonerByPuuid(
   return riotFetchJson(`${base}/lol/summoner/v4/summoners/by-puuid/${puuid}`)
 }
 
+/**
+ * Fetches the top-N champion masteries for a PUUID. Returns champions ordered
+ * by mastery points (highest first). `count` defaults to 20 — enough to seed
+ * a champion pool while keeping the response tiny.
+ */
+export async function getChampionMasteries(
+  puuid: string,
+  region: string,
+  count = 20,
+): Promise<Array<{
+  championId: number
+  championLevel: number
+  championPoints: number
+  lastPlayTime: number
+  championPointsSinceLastLevel: number
+}>> {
+  const base = PLATFORM_URLS[region]
+  if (!base) throw new Error(`Unknown region: ${region}`)
+  return riotFetchJson(`${base}/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=${Math.min(count, 50)}`)
+}
+
 export async function getRankedStats(
   summonerId: string,
   region: string,

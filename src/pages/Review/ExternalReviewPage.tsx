@@ -39,14 +39,17 @@ function parseMmSs(v: string): number | null {
 
 interface ExternalReview {
   id: string
-  title: string | null
+  title: string
   filePath: string | null
-  youtubeUrl: string | null
-  fundamentalId: string | null
-  subcategoryId: string | null
-  notes: string | null
-  kpiScores: Record<string, number> | null
-  timelineNotes: TimelineNote[] | null
+  youtubeUrl?: string | null
+  objectiveId: string | null
+  objectiveIds: string
+  selectedKpiIds: string
+  kpiScores: string
+  timelineNotes: string
+  freeText: string | null
+  playerName: string | null
+  matchData: string | null
   createdAt: string
   updatedAt: string
 }
@@ -261,6 +264,12 @@ export function ExternalReviewPage() {
             src={filePathToNxmUrl(review.filePath)}
             notes={timelineNotes}
             onAddNote={(note) => setTimelineNotes((prev) => [...prev, note])}
+            onEditNote={(index, newText) =>
+              setTimelineNotes((prev) => prev.map((n, i) => (i === index ? { ...n, note: newText } : n)))
+            }
+            onDeleteNote={(index) =>
+              setTimelineNotes((prev) => prev.filter((_, i) => i !== index))
+            }
             clipping={creatingClip}
             clipRange={creatingClip ? clipRange : undefined}
             onClipRangeChange={creatingClip ? handleClipRangeChange : undefined}

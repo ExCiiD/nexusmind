@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { VideoReviewPlayer } from '@/components/Recording/VideoReviewPlayer'
@@ -88,6 +88,11 @@ function extractYtId(url: string) {
 export function RecordPlayerPage() {
   const { recordingId } = useParams<{ recordingId: string }>()
   const navigate = useNavigate()
+  // ?clipId=<id> — when present we play the clip's standalone file
+  // instead of the parent recording. Lets clip cards (Record Hub + the
+  // bottom clip strip on this page) deep-link straight into the clip.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeClipId = searchParams.get('clipId')
 
   const [recording, setRecording] = useState<RecordingDetail | null>(null)
   const [clips, setClips] = useState<ClipEntry[]>([])
@@ -237,7 +242,26 @@ export function RecordPlayerPage() {
     </div>
   )
 
-  const videoSrc = recording.filePath ? nxmUrl(recording.filePath) : null
+  // Resolve the active clip (if any). When `?clipId=` is set we play the
+  // clip's own file — each clip is a standalone mp4 produced by ffmpeg
+  // during creation, so it's already trimmed to the requested range.
+  const activeClip = activeClipId ? clips.find((c) => c.id === activeClipId) ?? null : null
+  const videoSrc = activeClip?.filePath
+    ? nxmUrl(activeClip.filePath)
+    : recording.filePath
+      ? nxmUrl(recording.filePath)
+      : null
+
+  const clearClipMode = () => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('clipId')
+    setSearchParams(next, { replace: true })
+  }
+  const selectClip = (clipId: string) => {
+    const next = new URLSearchParams(searchParams)
+    next.set('clipId', clipId)
+    setSearchParams(next, { replace: true })
+  }
 
   return (
     // Fixed-height column — no page scroll possible
@@ -250,16 +274,60 @@ export function RecordPlayerPage() {
       {/* Meta bar */}
       <MetaBar recording={recording} onNavigate={(p) => navigate(p)} onReview={handleOpenReview} reviewLoading={creatingReview} onUnlink={handleUnlink} />
 
-      {/* Player — full width, shrinks to give room to controls below */}
+      {/* Clip mode banner — visible only when ?clipId= is in the URL.
+          Loading a clip's standalone file means the player shows that
+          trimmed mp4 (not the parent recording), and we surface a one-click
+          escape hatch back to the full record. */}
+      {activeClip && (
+        <div className="flex items-center gap-2 rounded-lg bg-hextech-gold/10 border border-hextech-gold/40 px-3 py-1.5 shrink-0">
+          <Scissors className="h-3.5 w-3.5 text-hextech-gold shrink-0" />
+          <span className="text-xs text-hextech-text-bright font-medium truncate">
+            {activeClip.title || 'Clip'}
+          </span>
+          <span className="text-[10px] font-mono text-hextech-text-dim">
+            {fmtMs(activeClip.startMs)}–{fmtMs(activeClip.endMs)}
+          </span>
+          <div className="flex-1" />
+          <button
+            onClick={clearClipMode}
+            className="text-[11px] text-hextech-text-dim hover:text-hextech-text transition-colors flex items-center gap-1"
+          >
+            <Video className="h-3 w-3" />
+            Full recording
+          </button>
+        </div>
+      )}
+
+      {/* Player — full width, shrinks to give room to controls below.
+          When in clip mode we disable the clip editor (creating a clip of
+          a clip would be confusing) and let the player just play the
+          trimmed file end-to-end. */}
       {videoSrc ? (
         <VideoReviewPlayer
+          // Force the underlying <video> to remount when switching between
+          // the recording and a clip — same key change pattern as elsewhere
+          // in the app, avoids stale buffer / seek state.
+          key={activeClipId ?? 'full'}
           src={videoSrc}
           notes={[]}
           readonly
-          videoMaxHeight={creatingClip ? 'max-h-[calc(100vh-24rem)]' : 'max-h-[calc(100vh-20rem)]'}
-          clipping={creatingClip}
-          clipRange={creatingClip ? clipRange : undefined}
-          onClipRangeChange={creatingClip ? handleClipRangeChange : undefined}
+          // Account for everything stacked below the <video>: the player's
+          // own progress bar + transport row (~6rem), the clip-mode banner
+          // above (~3rem when activeClip), and the BottomPanel under
+          // (~7.5rem). The previous 22.5rem reduction left the bottom
+          // controls overlapping the BottomPanel ("encastré dans la
+          // section"); 26rem in clip mode gives the controls clean
+          // breathing space without scrolling.
+          videoMaxHeight={
+            activeClip
+              ? 'max-h-[calc(100vh-26rem)]'
+              : creatingClip
+                ? 'max-h-[calc(100vh-24rem)]'
+                : 'max-h-[calc(100vh-20rem)]'
+          }
+          clipping={creatingClip && !activeClip}
+          clipRange={creatingClip && !activeClip ? clipRange : undefined}
+          onClipRangeChange={creatingClip && !activeClip ? handleClipRangeChange : undefined}
         />
       ) : recording.youtubeUrl ? (
         <div className="rounded-xl overflow-hidden bg-[#050A10] border border-white/10 aspect-video">
@@ -308,6 +376,8 @@ export function RecordPlayerPage() {
         onNewClip={openClipEditor}
         creatingClip={creatingClip}
         onDeleteClip={handleDeleteClip}
+        onPlayClip={selectClip}
+        activeClipId={activeClipId}
         ytState={ytState} ytProgress={ytProgress} ytUrl={ytUrl} ytError={ytError} ytConnected={ytConnected}
         onYtUpload={handleYtUpload}
       />
@@ -416,11 +486,13 @@ interface BottomPanelProps {
   onNewClip: () => void
   creatingClip: boolean
   onDeleteClip: (id: string) => void
+  onPlayClip: (id: string) => void
+  activeClipId: string | null
   ytState: YoutubeUploadState; ytProgress: number; ytUrl: string | null
   ytError: string | null; ytConnected: boolean; onYtUpload: () => void
 }
 
-function BottomPanel({ recording, clips, activeTab, onTabChange, onNewClip, creatingClip, onDeleteClip, ytState, ytProgress, ytUrl, ytError, ytConnected, onYtUpload }: BottomPanelProps) {
+function BottomPanel({ recording, clips, activeTab, onTabChange, onNewClip, creatingClip, onDeleteClip, onPlayClip, activeClipId, ytState, ytProgress, ytUrl, ytError, ytConnected, onYtUpload }: BottomPanelProps) {
   return (
     <div className="rounded-xl bg-hextech-elevated border border-hextech-border-dim overflow-hidden shrink-0">
       {/* Tab bar */}
@@ -438,7 +510,14 @@ function BottomPanel({ recording, clips, activeTab, onTabChange, onNewClip, crea
 
       <div className="px-3 py-2">
         {activeTab === 'clips' && (
-          <ClipsTab clips={clips} creatingClip={creatingClip} onNewClip={onNewClip} onDeleteClip={onDeleteClip} />
+          <ClipsTab
+            clips={clips}
+            creatingClip={creatingClip}
+            onNewClip={onNewClip}
+            onDeleteClip={onDeleteClip}
+            onPlayClip={onPlayClip}
+            activeClipId={activeClipId}
+          />
         )}
         {activeTab === 'share' && recording.filePath && (
           <ShareTab
@@ -453,7 +532,14 @@ function BottomPanel({ recording, clips, activeTab, onTabChange, onNewClip, crea
 
 // ── Clips tab ─────────────────────────────────────────────────────────────────
 
-function ClipsTab({ clips, creatingClip, onNewClip, onDeleteClip }: { clips: ClipEntry[]; creatingClip: boolean; onNewClip: () => void; onDeleteClip: (id: string) => void }) {
+function ClipsTab({ clips, creatingClip, onNewClip, onDeleteClip, onPlayClip, activeClipId }: {
+  clips: ClipEntry[]
+  creatingClip: boolean
+  onNewClip: () => void
+  onDeleteClip: (id: string) => void
+  onPlayClip: (id: string) => void
+  activeClipId: string | null
+}) {
   return (
     <div className="flex items-center gap-3">
       {/* New clip button */}
@@ -467,7 +553,15 @@ function ClipsTab({ clips, creatingClip, onNewClip, onDeleteClip }: { clips: Cli
         <p className="text-xs text-hextech-text-dim/60">No clips yet</p>
       ) : (
         <div className="flex gap-2 overflow-x-auto pb-0.5">
-          {clips.map((clip) => <ClipRow key={clip.id} clip={clip} onDelete={() => onDeleteClip(clip.id)} />)}
+          {clips.map((clip) => (
+            <ClipRow
+              key={clip.id}
+              clip={clip}
+              onDelete={() => onDeleteClip(clip.id)}
+              onPlay={() => onPlayClip(clip.id)}
+              isActive={clip.id === activeClipId}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -512,18 +606,39 @@ function ShareTab({ filePath, champion, win, isOrphaned, ytState, ytProgress, yt
 
 // ── Clip row (grid card) ──────────────────────────────────────────────────────
 
-function ClipRow({ clip, onDelete }: { clip: ClipEntry; onDelete: () => void }) {
+function ClipRow({ clip, onDelete, onPlay, isActive }: {
+  clip: ClipEntry
+  onDelete: () => void
+  onPlay: () => void
+  isActive: boolean
+}) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   return (
-    <div className="w-44 shrink-0 rounded-lg border border-hextech-border-dim bg-hextech-background/40 px-2.5 py-1.5 flex items-center gap-2">
-      <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-medium text-hextech-text-bright truncate">{clip.title ?? 'Clip'}</p>
+    <div
+      className={`w-44 shrink-0 rounded-lg border bg-hextech-background/40 px-2.5 py-1.5 flex items-center gap-2 transition-colors ${
+        isActive
+          ? 'border-hextech-gold/70 bg-hextech-gold/5'
+          : 'border-hextech-border-dim hover:border-hextech-border'
+      }`}
+    >
+      {/* Clicking the body plays the clip in the main player. The action
+          icons on the right stop propagation so they don't double-fire. */}
+      <button
+        type="button"
+        onClick={onPlay}
+        className="flex-1 min-w-0 text-left cursor-pointer"
+        title="Play this clip in the player"
+      >
+        <p className="text-[11px] font-medium text-hextech-text-bright truncate flex items-center gap-1">
+          {isActive && <Play className="h-2.5 w-2.5 text-hextech-gold shrink-0" />}
+          {clip.title ?? 'Clip'}
+        </p>
         <div className="flex items-center gap-1.5 text-[10px] text-hextech-text-dim">
           <span className="font-mono">{fmtMs(clip.startMs)}–{fmtMs(clip.endMs)}</span>
           <span>{fmtFileSize(clip.fileSize)}</span>
         </div>
-      </div>
-      <div className="flex items-center gap-0.5 shrink-0">
+      </button>
+      <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
         {clip.tempShareUrl && <a href={clip.tempShareUrl} target="_blank" rel="noopener noreferrer" className="text-hextech-teal hover:text-hextech-teal/80 transition-colors"><ExternalLink className="h-3 w-3" /></a>}
         {clip.youtubeUrl && <a href={clip.youtubeUrl} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:text-red-300 transition-colors"><Youtube className="h-3 w-3" /></a>}
         {confirmDelete

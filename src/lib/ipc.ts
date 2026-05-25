@@ -1,3 +1,134 @@
+export type GameEventType =
+  | 'kill' | 'death' | 'assist'
+  | 'dragon' | 'baron' | 'voidgrub' | 'herald' | 'atakhan'
+  | 'turret' | 'inhibitor' | 'plate'
+
+export interface GameEvent {
+  type: GameEventType
+  subType?: string
+  gameTimeMs: number
+  label: string
+  teamId?: 100 | 200
+  isPlayer: boolean
+}
+
+export type TeamRole = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'
+export type PoolTier = 'main' | 'comfort' | 'flex' | 'learning'
+
+export interface ChampionPoolEntry {
+  id: string
+  memberId: string
+  championKey: string
+  role: string
+  tier: string
+  notes?: string | null
+  playRate?: number | null
+  winRate?: number | null
+  updatedAt: string
+}
+
+export interface TeamMember {
+  id: string
+  teamId: string
+  displayName: string
+  ign?: string | null
+  tagLine?: string | null
+  region?: string | null
+  role: string
+  puuid?: string | null
+  champPool?: ChampionPoolEntry[]
+}
+
+export interface Team {
+  id: string
+  userId: string
+  name: string
+  tag?: string | null
+  logo?: string | null
+  notes?: string | null
+  isOpponent: boolean
+  scoutNotes?: string | null
+  createdAt: string
+  updatedAt: string
+  members?: TeamMember[]
+}
+
+export interface CustomGame {
+  id: string
+  teamId: string
+  gameType: 'scrim' | 'tournament'
+  gameDate: string | null
+  durationSec: number
+  win: boolean | null
+  participantsJson: string
+  sourceFile: string | null
+  notes: string | null
+  importedAt: string
+}
+
+export interface SynergyPlayerStats {
+  memberId: string
+  displayName: string
+  role: string
+  gamesPlayed: number
+  wins: number
+  winRate: number
+  averages: {
+    kda: number
+    kills: number
+    deaths: number
+    assists: number
+    cs: number
+    csPerMin: number
+    damage: number
+    damagePerMin: number
+    damageTaken: number
+    ccTime: number
+    visionScore: number
+    wardsPlaced: number
+    wardsKilled: number
+    controlWards: number
+    gold: number
+    goldPerMin: number
+    xpPerMin: number
+    damagePerGold: number
+  }
+  shares: {
+    damagePct: number
+    goldPct: number
+    visionPct: number
+    damageTakenPct: number
+    ccPct: number
+    kpPct: number
+  }
+  byChampion: Array<{ championKey: string; games: number; wins: number; winRate: number }>
+}
+
+export interface TeamSynergyStats {
+  matchCount: number
+  candidateCount: number
+  membersResolved: number
+  membersWithGames: number
+  players: SynergyPlayerStats[]
+  fetchedAt: number
+}
+
+export interface DraftPrep {
+  id: string
+  userId: string
+  name: string
+  vsTeamId?: string | null
+  vsTeam?: Team | null
+  bluePicks: string  // JSON-encoded string[]
+  blueBans: string
+  redPicks: string
+  redBans: string
+  myTeamSide: 'blue' | 'red'
+  notes?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface SavedAccount {
   id: string
   displayName: string
@@ -132,9 +263,19 @@ export type NexusMindAPI = {
     error?: string
   }>
 
+  // Backup & restore (multi-PC manual sync)
+  exportBackup: () => Promise<
+    | { canceled: true }
+    | { canceled: false; filePath: string; counts: { sessions: number; games: number; reviews: number; assessments: number; snapshots: number; recordings: number; externalReviews: number } }
+  >
+  importBackup: () => Promise<
+    | { canceled: true }
+    | { canceled: false; summary: { sessionsAdded: number; gamesAdded: number; reviewsAdded: number; assessmentsAdded: number; snapshotsAdded: number; recordingsAdded: number; externalReviewsAdded: number; conflicts: number; skipped: number } }
+  >
+
   // Recording — library
   scanRecordings: () => Promise<{ scanned: number; matched: number; orphaned: number; dismissed: number; paths: Array<{ source: string; dir: string; exists: boolean }> }>
-  getRecording: (gameId: string) => Promise<{ id: string; gameId: string; filePath: string | null; youtubeUrl: string | null; source: string } | null>
+  getRecording: (gameId: string) => Promise<{ id: string; gameId: string; filePath: string | null; youtubeUrl: string | null; source: string; createdAt?: string; startOffsetSec?: number | null } | null>
   getRecordingById: (recordingId: string) => Promise<{ id: string; gameId: string | null; filePath: string | null; youtubeUrl: string | null; source: string } | null>
   linkRecordingFile: (gameId: string) => Promise<any>
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => Promise<any>
@@ -175,6 +316,56 @@ export type NexusMindAPI = {
   onRecordingStarted: (cb: () => void) => () => void
   onRecordingStopped: (cb: (data: { filePath: string }) => void) => () => void
   onRecordingLinked: (cb: (data: { gameId: string; filePath: string }) => void) => () => void
+  onRecordingProcessing: (cb: (data: { gameId?: string; source: 'auto' | 'manual' }) => void) => () => void
+  onRecordingReady: (cb: (data: { recordingId: string | null; gameId?: string; filePath: string; durationSec: number }) => void) => () => void
+  onRecordingFailed: (cb: (data: { reason: string; filePath?: string }) => void) => () => void
+  getGameEvents: (gameId: string) => Promise<GameEvent[]>
+
+  // Team management
+  listTeams: (opts?: { isOpponent?: boolean }) => Promise<Team[]>
+  getTeam: (id: string) => Promise<Team | null>
+  createTeam: (data: { name: string; tag?: string; logo?: string; notes?: string; isOpponent?: boolean }) => Promise<Team>
+  updateTeam: (id: string, data: Partial<{ name: string; tag: string | null; logo: string | null; notes: string | null; isOpponent: boolean; scoutNotes: string | null }>) => Promise<Team>
+  deleteTeam: (id: string) => Promise<{ ok: true }>
+  addTeamMember: (teamId: string, data: { displayName: string; ign?: string; tagLine?: string; region?: string; role: string; puuid?: string }) => Promise<TeamMember>
+  updateTeamMember: (memberId: string, data: Partial<{ displayName: string; ign: string | null; tagLine: string | null; region: string | null; role: string; puuid: string | null }>) => Promise<TeamMember>
+  removeTeamMember: (memberId: string) => Promise<{ ok: true }>
+  dedupeTeamMembers: (teamId: string) => Promise<{ removed: number }>
+  computeTeamSynergyStats: (
+    teamId: string,
+    opts?: { matchesPerMember?: number; minTogether?: number },
+  ) => Promise<TeamSynergyStats>
+  importCustomGameCsv: (
+    teamId: string,
+    opts?: { csvContent?: string; filename?: string; forceType?: 'scrim' | 'tournament' },
+  ) => Promise<
+    | { canceled: true }
+    | { canceled: false; warning: 'filename-missing-type'; filename: string }
+    | { canceled: false; gameId: string; gameType: 'scrim' | 'tournament'; participants: number; filename: string; win: boolean | null }
+  >
+  listCustomGames: (teamId: string, gameType?: 'scrim' | 'tournament') => Promise<CustomGame[]>
+  deleteCustomGame: (id: string) => Promise<{ ok: true }>
+  computeCustomStats: (teamId: string, gameType: 'scrim' | 'tournament' | 'all') => Promise<TeamSynergyStats>
+  computeCombinedStats: (teamId: string, opts?: { minTogether?: number }) => Promise<TeamSynergyStats>
+  listChampionPool: (memberId: string) => Promise<ChampionPoolEntry[]>
+  upsertChampionPool: (memberId: string, championKey: string, role: string, data: Partial<{ tier: string; notes: string | null; playRate: number | null; winRate: number | null }>) => Promise<ChampionPoolEntry>
+  removeChampionPoolEntry: (entryId: string) => Promise<{ ok: true }>
+  scoutMember: (
+    memberId: string,
+    count?: number,
+    opts?: { roleOnly?: boolean },
+  ) => Promise<{ upserted: number; totalMatches?: number; sameRoleCount?: number }>
+  autoFillPool: (
+    memberId: string,
+    opts?: { matchCount?: number; masteryCount?: number; overwriteTiers?: boolean; roleOnly?: boolean },
+  ) => Promise<{ upserted: number; matchesUsed: number; masteriesUsed: number }>
+
+  listDrafts: () => Promise<DraftPrep[]>
+  getDraft: (id: string) => Promise<DraftPrep | null>
+  createDraft: (data: { name: string; vsTeamId?: string | null; bluePicks?: string[][] | string[]; blueBans?: string[][] | string[]; redPicks?: string[][] | string[]; redBans?: string[][] | string[]; myTeamSide?: 'blue' | 'red'; notes?: string }) => Promise<DraftPrep>
+  updateDraft: (id: string, data: Partial<{ name: string; vsTeamId: string | null; bluePicks: string[][] | string[]; blueBans: string[][] | string[]; redPicks: string[][] | string[]; redBans: string[][] | string[]; myTeamSide: 'blue' | 'red'; notes: string | null }>) => Promise<DraftPrep>
+  deleteDraft: (id: string) => Promise<{ ok: true }>
+  duplicateDraft: (id: string) => Promise<DraftPrep>
 
   // External reviews
   fetchExternalPlayerHistory: (gameName: string, tagLine: string, region: string, count?: number) => Promise<any[]>

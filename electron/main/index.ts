@@ -21,7 +21,7 @@ import { createReadStream, statSync, readFileSync, existsSync } from 'fs'
 import { autoUpdater } from 'electron-updater'
 import { initDatabase, getPrisma } from './database'
 import { GameDetector } from './gameDetector'
-import { recordingManager, isFfmpegAvailable, generateThumbnailForRecording, mergeAudioIntoVideo, type PcmAudioFormat, type RecordingSettings } from './recorder'
+import { recordingManager, isFfmpegAvailable, generateThumbnailForRecording, mergeAudioIntoVideo, waitUntilReadable, probeReadable, type PcmAudioFormat, type RecordingSettings } from './recorder'
 import { wgcRecorder } from './wgcRecorder'
 import { RECORDER_BACKEND, getActiveRecorder } from './recorderBackend'
 import { resolveMicDeviceName } from './audio'
@@ -39,6 +39,8 @@ import { registerExternalReviewHandlers } from './ipc/externalReview.ipc'
 import { registerShareHandlers } from './ipc/share.ipc'
 import { registerCoachingHandlers } from './ipc/coaching.ipc'
 import { registerYoutubeHandlers } from './ipc/youtube.ipc'
+import { registerBackupHandlers } from './ipc/backup.ipc'
+import { registerTeamHandlers } from './ipc/team.ipc'
 
 /** Resolves DB recording id for post-game navigation (path normalization + latest-capture fallback). */
 async function resolveCaptureRecordingIdForGameEnd(
@@ -325,6 +327,8 @@ async function bootstrap() {
   registerShareHandlers()
   registerCoachingHandlers()
   registerYoutubeHandlers()
+  registerBackupHandlers()
+  registerTeamHandlers()
 
   createWindow()
   registerDevHandlers(mainWindow!)
@@ -353,6 +357,21 @@ async function bootstrap() {
         if (pendingRecording && pendingFileValid) {
           try {
             const prisma = getPrisma()
+
+            // Compute startOffsetSec at link time, from file birthtime vs
+            // derived game start. Used by the player to align timeline event
+            // markers (kills/dragons/etc) with the actual video playback.
+            let startOffsetSec: number | null = null
+            try {
+              const birthMs = statSync(pendingRecording).birthtimeMs || statSync(pendingRecording).mtimeMs
+              const gameEndAt = matchData.game.gameEndAt ? new Date(matchData.game.gameEndAt) : null
+              const durationSec = typeof matchData.game.duration === 'number' ? matchData.game.duration : null
+              if (gameEndAt && durationSec) {
+                const gameStartMs = gameEndAt.getTime() - durationSec * 1000
+                startOffsetSec = (birthMs - gameStartMs) / 1000
+              }
+            } catch { /* best-effort, leave null */ }
+
             const existing = await prisma.recording.findFirst({
               where: { filePath: pendingRecording, gameId: null },
             })
@@ -360,13 +379,22 @@ async function bootstrap() {
             if (existing) {
               rec = await prisma.recording.update({
                 where: { id: existing.id },
-                data: { gameId: matchData.game.id, source: 'capture' },
+                data: {
+                  gameId: matchData.game.id,
+                  source: 'capture',
+                  ...(startOffsetSec !== null ? { startOffsetSec } : {}),
+                },
               })
             } else {
               const byGame = await prisma.recording.findUnique({ where: { gameId: matchData.game.id } })
               rec = byGame
-                ? await prisma.recording.update({ where: { id: byGame.id }, data: { filePath: pendingRecording, source: 'capture' } })
-                : await prisma.recording.create({ data: { gameId: matchData.game.id, filePath: pendingRecording, source: 'capture' } })
+                ? await prisma.recording.update({
+                    where: { id: byGame.id },
+                    data: { filePath: pendingRecording, source: 'capture', ...(startOffsetSec !== null ? { startOffsetSec } : {}) },
+                  })
+                : await prisma.recording.create({
+                    data: { gameId: matchData.game.id, filePath: pendingRecording, source: 'capture', ...(startOffsetSec !== null ? { startOffsetSec } : {}) },
+                  })
             }
             activeRecorder.clearPendingRecording()
             mainWindow?.webContents.send('recording:linked', {
@@ -501,16 +529,23 @@ async function bootstrap() {
 
       console.log(`[main] Recording stop signal sent → ${initialStopPath}`)
 
+      // Tell the UI to display a "finalizing…" overlay immediately. Otherwise
+      // the user reaches the review page with a 0:00 player and no clue why
+      // it's not playable yet.
+      mainWindow?.webContents.send('recording:processing', { source: 'auto' })
+
+      // Bumped 30s → 90s. Remuxing a 35-min WGC capture on a modest PC can
+      // exceed 30s; that's the dominant cause of "post-game video stays at
+      // 0:00" — `waitForDone` returned early and the .webm path was persisted
+      // before the remux finished.
       const [, sysAudio] = await Promise.all([
-        activeRecorder.waitForDone(30_000),
-        // In WGC mode there is no parallel WASAPI capture (Phase 2 will fold
-        // audio into the MediaStream directly), so the stop is a no-op here.
+        activeRecorder.waitForDone(90_000),
         RECORDER_BACKEND === 'wgc' ? Promise.resolve(null) : stopSystemAudioCapture(),
       ])
 
       // The WGC backend remuxes `.webm` → `.mp4` during finalize, so the final
       // on-disk path is only known after `waitForDone`. Re-read it here.
-      const finalPath = activeRecorder.getPendingRecording() ?? initialStopPath
+      let finalPath = activeRecorder.getPendingRecording() ?? initialStopPath
       console.log(`[main] Recording finalized → ${finalPath}`)
 
       const fileSize = existsSync(finalPath)
@@ -520,6 +555,7 @@ async function bootstrap() {
       if (fileSize === 0) {
         console.warn(`[main] Recording file empty or missing — skipping DB persist: ${finalPath}`)
         activeRecorder.clearPendingRecording()
+        mainWindow?.webContents.send('recording:failed', { reason: 'empty_file', filePath: finalPath })
         return
       }
 
@@ -538,16 +574,65 @@ async function bootstrap() {
         console.log('[main] No system audio captured — video keeps mic-only audio')
       }
 
+      // Readability gate — even after waitForDone + audio merge, ffmpeg may
+      // still be writing the moov atom (especially with `+faststart` which
+      // reorders metadata to the front of the file). We poll until the file
+      // demuxes cleanly OR refuse to persist a broken `.webm` path.
+      let probe = await probeReadable(finalPath)
+      if (!probe.ok) {
+        console.log(`[main] File not yet readable (${finalPath}) — waiting up to 60s for finalization…`)
+        const dur = await waitUntilReadable(finalPath, { timeoutMs: 60_000, intervalMs: 2_000 })
+        probe = { ok: dur > 0, durationSec: dur }
+      }
+
+      // Hard guard: never persist a `.webm` (raw MediaRecorder output has no
+      // SeekHead/Cues, plays as 0:00 in the UI). If we're stuck with one
+      // post-timeout, treat it as failed.
+      if (finalPath.toLowerCase().endsWith('.webm')) {
+        console.warn(`[main] Refusing to persist raw .webm — remux likely failed: ${finalPath}`)
+        activeRecorder.clearPendingRecording()
+        mainWindow?.webContents.send('recording:failed', { reason: 'remux_timeout', filePath: finalPath })
+        return
+      }
+
+      if (!probe.ok) {
+        console.warn(`[main] Recording never became readable — persisting anyway but UI will need a retry: ${finalPath}`)
+      }
+
+      // Compute startOffsetSec from file birthtime vs derived game start.
+      // The game-start derivation lives in onGameEnd (we don't have matchData
+      // here), so we store birthtime in ms; onGameEnd computes the offset.
+      let recordingCreatedAtMs: number | null = null
+      try {
+        recordingCreatedAtMs = statSync(finalPath).birthtimeMs || statSync(finalPath).mtimeMs
+      } catch { /* ignore */ }
+
+      let createdRecordingId: string | null = null
       try {
         const prisma = getPrisma()
         const existing = await prisma.recording.findFirst({ where: { filePath: finalPath } })
-        if (!existing) {
-          await prisma.recording.create({ data: { filePath: finalPath, source: 'capture' } })
+        if (existing) {
+          createdRecordingId = existing.id
+        } else {
+          const created = await prisma.recording.create({
+            data: {
+              filePath: finalPath,
+              source: 'capture',
+              ...(recordingCreatedAtMs ? { createdAt: new Date(recordingCreatedAtMs) } : {}),
+            },
+          })
+          createdRecordingId = created.id
         }
       } catch (err) {
         console.error('[main] Failed to pre-persist recording:', err)
       }
+
       mainWindow?.webContents.send('recording:stopped', { filePath: finalPath })
+      mainWindow?.webContents.send('recording:ready', {
+        recordingId: createdRecordingId,
+        filePath: finalPath,
+        durationSec: probe.durationSec,
+      })
     },
   )
 

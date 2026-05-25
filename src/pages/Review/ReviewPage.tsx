@@ -666,7 +666,17 @@ export function ReviewPage() {
         hasReview={!!latestGame.review}
         onReviewDeleted={refreshSession}
         timelineNotes={timelineNotes}
+        gameMeta={{
+          gameEndAt: latestGame.gameEndAt,
+          gameDurationSec: latestGame.duration,
+        }}
         onAddNote={(note) => setTimelineNotes((prev) => [...prev, note])}
+        onEditNote={(index, newText) =>
+          setTimelineNotes((prev) => prev.map((n, i) => (i === index ? { ...n, note: newText } : n)))
+        }
+        onDeleteNote={(index) =>
+          setTimelineNotes((prev) => prev.filter((_, i) => i !== index))
+        }
       />
 
       {Object.keys(biasWarningsByObjective).length > 0 && (

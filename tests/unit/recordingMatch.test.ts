@@ -43,3 +43,88 @@ describe('matchRecordingToGame — fichier ↔ partie (fenêtre temporelle)', ()
     expect(matchRecordingToGame(fileAtStart, gameEnd, durationSec, bufferMs)).toBe(true)
   })
 })
+
+// Simulates `recording:scan`'s Step 4 inner loop. Mirrors the implementation in
+// electron/main/ipc/recording.ipc.ts so that any future regression there
+// (e.g. someone removes the matchedFilePaths guard) immediately surfaces here.
+function simulateMatchingLoop(params: {
+  games: Array<{ id: string; gameEndAt: Date; duration: number }>
+  files: Array<{ path: string; createdAt: Date }>
+  alreadyLinkedPaths?: Set<string>
+}): Array<{ gameId: string; filePath: string }> {
+  const matchedFilePaths = new Set<string>()
+  const alreadyLinked = params.alreadyLinkedPaths ?? new Set<string>()
+  const matched: Array<{ gameId: string; filePath: string }> = []
+
+  for (const game of params.games) {
+    for (const file of params.files) {
+      if (matchedFilePaths.has(file.path)) continue
+      if (alreadyLinked.has(file.path)) continue
+      if (matchRecordingToGame(file.createdAt, game.gameEndAt, game.duration)) {
+        matched.push({ gameId: game.id, filePath: file.path })
+        matchedFilePaths.add(file.path)
+        break
+      }
+    }
+  }
+  return matched
+}
+
+describe('recording:scan dedup — Step 4 invariants', () => {
+  it('un même fichier ne peut pas matcher plus d une game dans la même passe', () => {
+    // Two back-to-back games: the same recording file falls in both ±5 min windows.
+    const file = {
+      path: 'C:/recordings/game1.mp4',
+      createdAt: new Date('2026-04-14T19:30:00.000Z'),
+    }
+    const games = [
+      { id: 'game-A', gameEndAt: new Date('2026-04-14T20:00:00.000Z'), duration: 30 * 60 },
+      { id: 'game-B', gameEndAt: new Date('2026-04-14T20:05:00.000Z'), duration: 5 * 60 },
+    ]
+
+    const result = simulateMatchingLoop({ games, files: [file] })
+
+    expect(result).toHaveLength(1)
+    expect(result[0].gameId).toBe('game-A')
+    expect(result[0].filePath).toBe(file.path)
+  })
+
+  it('un fichier déjà lié à un Recording existant est ignoré', () => {
+    const file = {
+      path: 'C:/recordings/already-linked.mp4',
+      createdAt: new Date('2026-04-14T19:30:00.000Z'),
+    }
+    const games = [
+      { id: 'game-A', gameEndAt: new Date('2026-04-14T20:00:00.000Z'), duration: 30 * 60 },
+    ]
+
+    const result = simulateMatchingLoop({
+      games,
+      files: [file],
+      alreadyLinkedPaths: new Set([file.path]),
+    })
+
+    expect(result).toHaveLength(0)
+  })
+
+  it('chaque game prend un fichier distinct quand plusieurs sont disponibles', () => {
+    const fileA = {
+      path: 'C:/recordings/game1.mp4',
+      createdAt: new Date('2026-04-14T19:30:00.000Z'),
+    }
+    const fileB = {
+      path: 'C:/recordings/game2.mp4',
+      createdAt: new Date('2026-04-14T20:30:00.000Z'),
+    }
+    const games = [
+      { id: 'game-A', gameEndAt: new Date('2026-04-14T20:00:00.000Z'), duration: 30 * 60 },
+      { id: 'game-B', gameEndAt: new Date('2026-04-14T21:00:00.000Z'), duration: 30 * 60 },
+    ]
+
+    const result = simulateMatchingLoop({ games, files: [fileA, fileB] })
+
+    expect(result).toHaveLength(2)
+    expect(result.map((r) => r.filePath).sort()).toEqual([fileA.path, fileB.path].sort())
+    expect(new Set(result.map((r) => r.filePath)).size).toBe(2)
+  })
+})

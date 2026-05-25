@@ -54,7 +54,7 @@ export function RecordingMediaPanel({
   creatingClip,
   onNewClip,
   clipSaveKey,
-}: ExternalReviewMediaPanelProps) {
+}: RecordingMediaPanelProps) {
   const [tab, setTab] = useState<MediaTab>('clips')
   const [clips, setClips] = useState<ClipEntry[]>([])
   const [loadingClips, setLoadingClips] = useState(false)

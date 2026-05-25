@@ -45,6 +45,8 @@ model User {
   badges             Badge[]
   accounts           Account[]
   discordWebhooks    DiscordWebhook[]
+  teams              Team[]
+  drafts             DraftPrep[]
 }
 
 model Account {
@@ -164,6 +166,11 @@ model Recording {
   source         String   @default("manual")
   duration       Int?
   thumbnailPath  String?
+  // Seconds between the in-game start (derived from gameEndAt - gameDuration)
+  // and the moment the recording file started writing (file birthtime).
+  // Used by the player to align timeline event markers (kills/dragons/etc)
+  // with the actual video playback time. Nullable for legacy rows.
+  startOffsetSec Float?
   createdAt      DateTime @default(now())
   clips          Clip[]
 }
@@ -235,4 +242,117 @@ model Badge {
   unlockedAt DateTime @default(now())
 
   @@unique([userId, badgeId])
+}
+
+// ── Team management (Drafter-style) ──────────────────────────────────────────
+
+model Team {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  tag         String?
+  logo        String?
+  notes       String?
+  // Distinguishes "my team" (false) from "opponent teams scouted for prep" (true)
+  isOpponent  Boolean  @default(false)
+  scoutNotes  String?  // markdown for opponent intel
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  members     TeamMember[]
+  drafts      DraftPrep[] @relation("DraftVsTeam")
+  customGames CustomGame[]
+
+  @@index([userId])
+}
+
+/**
+ * User-imported custom games (scrim / tournament) parsed from a Replaybook
+ * CSV export. We store the parsed per-participant rows as a JSON blob so we
+ * can compute the same averages/shares as our Riot synergy stats without
+ * locking into a rigid column schema (replaybook output may evolve).
+ */
+model CustomGame {
+  id           String   @id @default(cuid())
+  teamId       String
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  // 'scrim' | 'tournament'
+  gameType     String
+  // When the game was played (parsed from CSV if available, else now())
+  gameDate     DateTime?
+  durationSec  Int
+  // Whether OUR team won — null when ambiguous (e.g. CSV doesn't include
+  // which side we were on). Most consumers can rely on per-participant `win`.
+  win          Boolean?
+  // JSON array of participant rows. Normalized to mostly match Riot's
+  // match-V5 participant shape for downstream reuse:
+  //   { playerName, championName, teamId, teamPosition, win,
+  //     kills, deaths, assists, totalDamageDealtToChampions,
+  //     totalDamageTaken, goldEarned, totalMinionsKilled,
+  //     neutralMinionsKilled, visionScore, wardsPlaced, wardsKilled,
+  //     detectorWardsPurchased, timeCCingOthers, champExperience }
+  participantsJson String
+  // Original CSV filename — useful for traceability and de-dup hints.
+  sourceFile   String?
+  notes        String?
+  importedAt   DateTime @default(now())
+
+  @@index([teamId])
+  @@index([teamId, gameType])
+}
+
+model TeamMember {
+  id          String   @id @default(cuid())
+  teamId      String
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  displayName String
+  ign         String?  // in-game name
+  tagLine     String?
+  region      String?
+  // TOP | JUNGLE | MID | ADC | SUPPORT
+  role        String
+  // Riot puuid if known — used for scouting auto-fetch (optional, manual entry OK)
+  puuid       String?
+  champPool   ChampionPoolEntry[]
+
+  @@index([teamId])
+}
+
+model ChampionPoolEntry {
+  id          String   @id @default(cuid())
+  memberId    String
+  member      TeamMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  championKey String   // Data Dragon key, ex: "Renekton"
+  role        String
+  // main | comfort | flex | learning
+  tier        String   @default("comfort")
+  notes       String?
+  playRate    Int?     // recent play count (auto-populated by scouting)
+  winRate     Int?     // %, optional manual
+  updatedAt   DateTime @updatedAt
+
+  @@index([memberId, role])
+  @@unique([memberId, championKey, role])
+}
+
+model DraftPrep {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  // Optional: link to an opponent team that was scouted
+  vsTeamId    String?
+  vsTeam      Team?    @relation("DraftVsTeam", fields: [vsTeamId], references: [id], onDelete: SetNull)
+  // JSON-encoded arrays of champion keys (size matters — 5 picks, 5 bans per side)
+  bluePicks   String   @default("[]")
+  blueBans    String   @default("[]")
+  redPicks    String   @default("[]")
+  redBans     String   @default("[]")
+  // blue | red — which side is "us" for win-condition tagging
+  myTeamSide  String   @default("blue")
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
 }

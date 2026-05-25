@@ -119,6 +119,15 @@ const api = {
   installUpdate: () => ipcRenderer.invoke('updater:install-now'),
   checkForUpdates: () => ipcRenderer.invoke('updater:check') as Promise<{ updateAvailable: boolean }>,
 
+  exportBackup: () => ipcRenderer.invoke('backup:export') as Promise<
+    | { canceled: true }
+    | { canceled: false; filePath: string; counts: { sessions: number; games: number; reviews: number; assessments: number; snapshots: number; recordings: number; externalReviews: number } }
+  >,
+  importBackup: () => ipcRenderer.invoke('backup:import') as Promise<
+    | { canceled: true }
+    | { canceled: false; summary: { sessionsAdded: number; gamesAdded: number; reviewsAdded: number; assessmentsAdded: number; snapshotsAdded: number; recordingsAdded: number; externalReviewsAdded: number; conflicts: number; skipped: number } }
+  >,
+
   // Recording — library (scan external folders)
   scanRecordings: () => ipcRenderer.invoke('recording:scan'),
   getRecording: (gameId: string) => ipcRenderer.invoke('recording:get', gameId),
@@ -157,6 +166,66 @@ const api = {
     ipcRenderer.on('recording:linked', handler)
     return () => ipcRenderer.removeListener('recording:linked', handler)
   },
+  onRecordingProcessing: (cb: (data: { gameId?: string; source: 'auto' | 'manual' }) => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, data: { gameId?: string; source: 'auto' | 'manual' }) => cb(data)
+    ipcRenderer.on('recording:processing', handler)
+    return () => ipcRenderer.removeListener('recording:processing', handler)
+  },
+  onRecordingReady: (cb: (data: { recordingId: string | null; gameId?: string; filePath: string; durationSec: number }) => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, data: { recordingId: string | null; gameId?: string; filePath: string; durationSec: number }) => cb(data)
+    ipcRenderer.on('recording:ready', handler)
+    return () => ipcRenderer.removeListener('recording:ready', handler)
+  },
+  onRecordingFailed: (cb: (data: { reason: string; filePath?: string }) => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, data: { reason: string; filePath?: string }) => cb(data)
+    ipcRenderer.on('recording:failed', handler)
+    return () => ipcRenderer.removeListener('recording:failed', handler)
+  },
+
+  // Game events (kills, dragons, towers…) for video player timeline markers
+  getGameEvents: (gameId: string) => ipcRenderer.invoke('stats:get-game-events', gameId),
+
+  // ── Team management ────────────────────────────────────────────────────────
+  listTeams: (opts?: { isOpponent?: boolean }) => ipcRenderer.invoke('team:list', opts),
+  getTeam: (id: string) => ipcRenderer.invoke('team:get', id),
+  createTeam: (data: { name: string; tag?: string; logo?: string; notes?: string; isOpponent?: boolean }) =>
+    ipcRenderer.invoke('team:create', data),
+  updateTeam: (id: string, data: Record<string, unknown>) => ipcRenderer.invoke('team:update', id, data),
+  deleteTeam: (id: string) => ipcRenderer.invoke('team:delete', id),
+  addTeamMember: (teamId: string, data: { displayName: string; ign?: string; tagLine?: string; region?: string; role: string; puuid?: string }) =>
+    ipcRenderer.invoke('team:add-member', teamId, data),
+  updateTeamMember: (memberId: string, data: Record<string, unknown>) =>
+    ipcRenderer.invoke('team:update-member', memberId, data),
+  removeTeamMember: (memberId: string) => ipcRenderer.invoke('team:remove-member', memberId),
+  dedupeTeamMembers: (teamId: string) => ipcRenderer.invoke('team:dedupe-members', teamId),
+  computeTeamSynergyStats: (teamId: string, opts?: { matchesPerMember?: number; minTogether?: number }) =>
+    ipcRenderer.invoke('team:compute-synergy-stats', teamId, opts),
+  importCustomGameCsv: (teamId: string, opts?: { csvContent?: string; filename?: string; forceType?: 'scrim' | 'tournament' }) =>
+    ipcRenderer.invoke('team:import-custom-game-csv', teamId, opts),
+  listCustomGames: (teamId: string, gameType?: 'scrim' | 'tournament') =>
+    ipcRenderer.invoke('team:list-custom-games', teamId, gameType),
+  deleteCustomGame: (id: string) =>
+    ipcRenderer.invoke('team:delete-custom-game', id),
+  computeCustomStats: (teamId: string, gameType: 'scrim' | 'tournament' | 'all') =>
+    ipcRenderer.invoke('team:compute-custom-stats', teamId, gameType),
+  computeCombinedStats: (teamId: string, opts?: { minTogether?: number }) =>
+    ipcRenderer.invoke('team:compute-combined-stats', teamId, opts),
+  listChampionPool: (memberId: string) => ipcRenderer.invoke('team:pool-list', memberId),
+  upsertChampionPool: (memberId: string, championKey: string, role: string, data: Record<string, unknown>) =>
+    ipcRenderer.invoke('team:pool-upsert', memberId, championKey, role, data),
+  removeChampionPoolEntry: (entryId: string) => ipcRenderer.invoke('team:pool-remove', entryId),
+  scoutMember: (memberId: string, count?: number, opts?: { roleOnly?: boolean }) =>
+    ipcRenderer.invoke('team:scout-member', memberId, count, opts),
+  autoFillPool: (memberId: string, opts?: { matchCount?: number; masteryCount?: number; overwriteTiers?: boolean; roleOnly?: boolean }) =>
+    ipcRenderer.invoke('team:auto-fill-pool', memberId, opts),
+
+  listDrafts: () => ipcRenderer.invoke('draft:list'),
+  getDraft: (id: string) => ipcRenderer.invoke('draft:get', id),
+  createDraft: (data: { name: string; vsTeamId?: string | null; bluePicks?: string[]; blueBans?: string[]; redPicks?: string[]; redBans?: string[]; myTeamSide?: 'blue' | 'red'; notes?: string }) =>
+    ipcRenderer.invoke('draft:create', data),
+  updateDraft: (id: string, data: Record<string, unknown>) => ipcRenderer.invoke('draft:update', id, data),
+  deleteDraft: (id: string) => ipcRenderer.invoke('draft:delete', id),
+  duplicateDraft: (id: string) => ipcRenderer.invoke('draft:duplicate', id),
 
   // External reviews
   fetchExternalPlayerHistory: (gameName: string, tagLine: string, region: string, count?: number) =>

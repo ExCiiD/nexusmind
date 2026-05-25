@@ -358,8 +358,17 @@ export function RecordPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const isEmpty = !loading && records.length === 0 && filters.content !== 'clips'
-  const noMatch = !loading && records.length > 0 && filtered.length === 0 && filters.content !== 'clips'
+  // In 'all' mode, only treat the page as empty when both records AND clips
+  // are empty — otherwise the user is just seeing one of the two collections.
+  const isEmpty = !loading
+    && filters.content !== 'clips'
+    && records.length === 0
+    && (filters.content !== 'all' || allClips.length === 0)
+  const noMatch = !loading
+    && filters.content !== 'clips'
+    && records.length > 0
+    && filtered.length === 0
+    && (filters.content !== 'all' || allClips.length === 0)
 
   return (
     <div className="animate-fade-in pb-20" style={{ minHeight: 'calc(100vh - 3.25rem)' }}>
@@ -370,7 +379,9 @@ export function RecordPage() {
         <span className="text-xs text-hextech-text-dim bg-hextech-elevated border border-hextech-border-dim rounded px-2 py-0.5 shrink-0">
           {filters.content === 'clips'
             ? `${allClips.length} clip${allClips.length !== 1 ? 's' : ''}`
-            : `${filtered.length}${filtered.length !== records.length ? ` / ${records.length}` : ''} recording${records.length !== 1 ? 's' : ''}`}
+            : filters.content === 'all'
+              ? `${filtered.length} recording${filtered.length !== 1 ? 's' : ''} + ${allClips.length} clip${allClips.length !== 1 ? 's' : ''}`
+              : `${filtered.length}${filtered.length !== records.length ? ` / ${records.length}` : ''} recording${records.length !== 1 ? 's' : ''}`}
         </span>
         <div className="flex-1" />
         <Button variant="outline" size="sm" onClick={() => setShowFilters(v => !v)}
@@ -465,7 +476,7 @@ export function RecordPage() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {allClips.map((clip) => (
-              <ClipCard key={clip.clipId} clip={clip} onOpen={() => navigate(`/record/${clip.recordingId}`)} onDelete={async () => {
+              <ClipCard key={clip.clipId} clip={clip} onOpen={() => navigate(`/record/${clip.recordingId}?clipId=${clip.clipId}`)} onDelete={async () => {
                 try {
                   await window.api.deleteClip(clip.clipId)
                   setAllClips((prev) => prev.filter((c) => c.clipId !== clip.clipId))
@@ -585,6 +596,33 @@ export function RecordPage() {
           >
             Next<ChevronRight className="h-4 w-4" />
           </button>
+        </div>
+      )}
+
+      {/* ── Clips section (only in 'all' mode — keeps records as the primary list) ── */}
+      {!loading && filters.content === 'all' && allClips.length > 0 && (
+        <div className="pt-6 space-y-3">
+          <div className="flex items-center gap-2">
+            <Scissors className="h-4 w-4 text-hextech-gold" />
+            <h2 className="text-sm font-semibold text-hextech-text-bright">
+              Clips
+              <span className="ml-2 text-xs font-normal text-hextech-text-dim">
+                ({allClips.length})
+              </span>
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {allClips.map((clip) => (
+              <ClipCard key={clip.clipId} clip={clip} onOpen={() => navigate(`/record/${clip.recordingId}?clipId=${clip.clipId}`)} onDelete={async () => {
+                try {
+                  await window.api.deleteClip(clip.clipId)
+                  setAllClips((prev) => prev.filter((c) => c.clipId !== clip.clipId))
+                } catch (err: any) {
+                  toast({ title: 'Delete failed', description: err?.message ?? String(err), variant: 'destructive' })
+                }
+              }} />
+            ))}
+          </div>
         </div>
       )}
 

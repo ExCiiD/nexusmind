@@ -464,7 +464,7 @@ export async function generateThumbnail(
   })
 }
 
-function probeDuration(filePath: string): Promise<number> {
+export function probeDuration(filePath: string): Promise<number> {
   if (!ffmpegBin || !existsSync(filePath)) return Promise.resolve(0)
   return new Promise((resolve) => {
     let resolved = false
@@ -490,6 +490,53 @@ function probeDuration(filePath: string): Promise<number> {
     proc.on('error', () => done(0))
     const timer = setTimeout(() => { try { proc.kill() } catch { /* ok */ } done(0) }, 10_000)
   })
+}
+
+/**
+ * Quick file-readiness probe. Returns `{ ok, durationSec }`.
+ *
+ * Used to detect when an in-flight/just-finalized recording is actually playable
+ * (moov atom present, demuxable). HTML <video> tags will silently show 0:00 for
+ * a webm/mp4 without proper metadata, so we use ffmpeg's ability to read the
+ * Duration line as a stand-in for "the file is finalized".
+ *
+ * Heuristic for "ok":
+ *   - ffmpeg can parse a Duration line, AND
+ *   - duration >= minDurationSec (default 0.5s) — guards against partial moov
+ *     writes where ffmpeg sees the header but no real content yet.
+ */
+export async function probeReadable(
+  filePath: string,
+  minDurationSec = 0.5,
+): Promise<{ ok: boolean; durationSec: number }> {
+  const dur = await probeDuration(filePath)
+  return { ok: dur >= minDurationSec, durationSec: dur }
+}
+
+/**
+ * Polls `probeReadable` until the file is playable or the timeout expires.
+ * Returns the final duration (0 if never became ready).
+ *
+ * Used as a backstop after `waitForDone` timeouts: the ffmpeg/remux process
+ * may still be writing the moov atom in the background, so we give it more
+ * time before declaring the recording broken.
+ */
+export async function waitUntilReadable(
+  filePath: string,
+  opts: { timeoutMs?: number; intervalMs?: number; minDurationSec?: number } = {},
+): Promise<number> {
+  const timeoutMs = opts.timeoutMs ?? 60_000
+  const intervalMs = opts.intervalMs ?? 2_000
+  const minDurationSec = opts.minDurationSec ?? 0.5
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (existsSync(filePath)) {
+      const { ok, durationSec } = await probeReadable(filePath, minDurationSec)
+      if (ok) return durationSec
+    }
+    await new Promise<void>((r) => setTimeout(r, intervalMs))
+  }
+  return 0
 }
 
 export async function generateThumbnailForRecording(

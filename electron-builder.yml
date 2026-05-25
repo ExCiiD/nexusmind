@@ -27,7 +27,10 @@ asarUnpack:
 
 publish:
   provider: github
-  releaseType: release
+  # `prerelease` while in beta — flips the GitHub release flag automatically
+  # so auto-updater clients on the stable channel don't pull it. Switch
+  # back to `release` for the first 1.0 GA build.
+  releaseType: prerelease
 
 win:
   target:

@@ -7,6 +7,7 @@ import {
   extractPlayerStats,
   extractDetailedStats,
 } from '../riotClient'
+import { extractGameEvents, type GameEvent } from '../eventExtractor'
 
 let autoSnapshotRunning = false
 
@@ -101,6 +102,67 @@ function hasCurrentSnapshotSchema(parsed: any): boolean {
 }
 
 export function registerStatsHandlers() {
+  // Returns a compact list of game events for the video player timeline.
+  // Lazy-fetches + caches the Riot Match-Timeline-V5 blob if not already cached.
+  // Returns [] when timeline is unavailable (e.g. region temp outage) rather
+  // than throwing — the UI treats events as best-effort.
+  ipcMain.handle('stats:get-game-events', async (_event, gameId: string): Promise<GameEvent[]> => {
+    const prisma = getPrisma()
+    const game = await prisma.game.findUnique({ where: { id: gameId } })
+    if (!game?.matchId) return []
+
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    if (!user?.puuid) return []
+
+    // Multi-account support: resolve which of the user's accounts actually
+    // played this match by scanning matchJson for a matching puuid.
+    const accounts = await prisma.account.findMany({ where: { userId: user.id } })
+    const userPuuids = new Set<string>([user.puuid, ...accounts.map((a) => a.puuid)])
+
+    let cached = await prisma.matchCache.findUnique({ where: { matchId: game.matchId } })
+
+    // Lazy timeline fetch — same pattern as the other stats handlers.
+    if (!cached?.timelineJson) {
+      try {
+        const timelineData = await getMatchTimeline(game.matchId, user.region)
+        if (cached) {
+          await prisma.matchCache.update({
+            where: { matchId: game.matchId },
+            data: { timelineJson: JSON.stringify(timelineData) },
+          })
+          cached = { ...cached, timelineJson: JSON.stringify(timelineData) }
+        } else {
+          // Need matchJson too to upsert the row.
+          const matchData = await getMatch(game.matchId, user.region)
+          cached = await prisma.matchCache.upsert({
+            where: { matchId: game.matchId },
+            create: {
+              matchId: game.matchId,
+              matchJson: JSON.stringify(matchData),
+              timelineJson: JSON.stringify(timelineData),
+            },
+            update: { timelineJson: JSON.stringify(timelineData) },
+          })
+        }
+      } catch (err) {
+        console.warn('[stats:get-game-events] Timeline fetch failed:', err)
+        return []
+      }
+    }
+
+    if (!cached?.timelineJson || !cached.matchJson) return []
+    try {
+      const matchData = JSON.parse(cached.matchJson)
+      const playerPuuid = (matchData?.info?.participants ?? []).find((p: any) =>
+        userPuuids.has(p.puuid),
+      )?.puuid ?? user.puuid
+      return extractGameEvents(cached.timelineJson, cached.matchJson, playerPuuid)
+    } catch (err) {
+      console.warn('[stats:get-game-events] Extraction failed:', err)
+      return []
+    }
+  })
+
   ipcMain.handle(
     'stats:match-history',
     async (_event, count = 20) => {

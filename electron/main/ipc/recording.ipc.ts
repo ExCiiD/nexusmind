@@ -4,10 +4,11 @@ import { getActiveRecorder } from '../recorderBackend'
 import {
   recordingManager,
   isFfmpegAvailable,
-  generateThumbnail,
   generateThumbnailForRecording,
   createClip,
   getFileSize,
+  probeReadable,
+  waitUntilReadable,
   type ClipOptions,
 } from '../recorder'
 import { getAudioDevicesSummary, resolveMicDeviceName } from '../audio'
@@ -223,6 +224,15 @@ export function registerRecordingHandlers() {
     }
 
     // ── Step 4: Match files to unlinked games ────────────────────────────
+    //
+    // Deduplication invariants enforced here (fixes duplicate VOD records bug):
+    //   1) A given filePath can only ever be matched to ONE game per scan.
+    //   2) A filePath that is already linked to ANY existing Recording is
+    //      treated as off-limits for new matches in this scan.
+    //
+    // Without these guards, `matchRecordingToGame` (±5 min window) could happily
+    // match the same video to several back-to-back games, producing duplicate
+    // Recording rows pointing to the same `filePath`.
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     const games = await prisma.game.findMany({
       where: {
@@ -233,12 +243,25 @@ export function registerRecordingHandlers() {
       orderBy: { gameEndAt: 'desc' },
     })
 
+    const alreadyLinkedPaths = new Set(
+      (await prisma.recording.findMany({
+        where: { filePath: { not: null } },
+        select: { filePath: true },
+      }))
+        .map((r) => r.filePath)
+        .filter(Boolean) as string[],
+    )
+
     const matched: Array<{ gameId: string; filePath: string; source: string }> = []
+    const matchedFilePaths = new Set<string>()
 
     for (const game of games) {
       for (const file of allFiles) {
+        if (matchedFilePaths.has(file.path)) continue
+        if (alreadyLinkedPaths.has(file.path)) continue
         if (matchRecordingToGame(file.createdAt, game.gameEndAt, game.duration)) {
           matched.push({ gameId: game.id, filePath: file.path, source: file.source })
+          matchedFilePaths.add(file.path)
           break
         }
       }
@@ -319,7 +342,65 @@ export function registerRecordingHandlers() {
       clipsReconciled += await reconcileOrphanClips(dir)
     }
 
-    console.log('[scan] Done:', { scanned: allFiles.length, matched: matched.length, orphaned: orphanedCount, pruned: pruneCount })
+    // ── Step 8: Final dedup safety net — remove duplicate Recording rows ─
+    //
+    // Even with Step 4's guards, legacy data from older scans may already
+    // contain duplicates (multiple Recording rows pointing to the same
+    // filePath). We collapse them by keeping ONE row per filePath, prioritizing
+    // rows that already have a gameId (so we don't lose game associations).
+    let duplicatesRemoved = 0
+    const dupGroups: Array<{ filePath: string; cnt: bigint }> = await prisma.$queryRawUnsafe(
+      `SELECT "filePath", COUNT(*) as cnt FROM "Recording" WHERE "filePath" IS NOT NULL GROUP BY "filePath" HAVING COUNT(*) > 1`,
+    )
+    for (const group of dupGroups) {
+      const rows = await prisma.recording.findMany({
+        where: { filePath: group.filePath },
+        orderBy: [{ gameId: 'desc' }, { createdAt: 'asc' }],
+      })
+      const keep = rows[0]
+      const toDelete = rows.slice(1)
+      for (const row of toDelete) {
+        await prisma.$executeRawUnsafe(`DELETE FROM "Clip" WHERE "recordingId" = ?`, row.id)
+        await prisma.recording.delete({ where: { id: row.id } })
+        duplicatesRemoved++
+      }
+      console.log(`[scan] Collapsed ${rows.length} duplicate recordings → kept ${keep.id} for ${group.filePath}`)
+    }
+
+    // ── Step 9: Sweep orphan .thumb.jpg files (clip thumbnails no longer used) ──
+    //
+    // We've removed clip thumbnail generation (to avoid 2 files per clip).
+    // Existing .thumb.jpg files still on disk for clips have no DB reference
+    // anymore — wipe them.
+    let orphanThumbsRemoved = 0
+    try {
+      const knownThumbs = new Set<string>()
+      const allRecsWithThumbs = await prisma.recording.findMany({ where: { thumbnailPath: { not: null } }, select: { thumbnailPath: true } })
+      for (const r of allRecsWithThumbs) if (r.thumbnailPath) knownThumbs.add(r.thumbnailPath)
+      const allClipsWithThumbs: Array<{ thumbnailPath: string | null }> = await prisma.$queryRawUnsafe(
+        `SELECT "thumbnailPath" FROM "Clip" WHERE "thumbnailPath" IS NOT NULL`,
+      )
+      for (const c of allClipsWithThumbs) if (c.thumbnailPath) knownThumbs.add(c.thumbnailPath)
+
+      for (const dir of uniqueDirs) {
+        if (!existsSync(dir)) continue
+        try {
+          for (const f of readdirSync(dir)) {
+            if (!f.endsWith('.thumb.jpg')) continue
+            const full = join(dir, f)
+            if (knownThumbs.has(full)) continue
+            // Only sweep clip thumbnails (paired with clip_*.mp4 files)
+            const baseName = f.replace(/\.thumb\.jpg$/, '')
+            if (!baseName.startsWith('clip_')) continue
+            try { unlinkSync(full); orphanThumbsRemoved++ } catch { /* ignore */ }
+          }
+        } catch { /* ignore dir read errors */ }
+      }
+    } catch (err) {
+      console.warn('[scan] Orphan thumb sweep failed:', err)
+    }
+
+    console.log('[scan] Done:', { scanned: allFiles.length, matched: matched.length, orphaned: orphanedCount, pruned: pruneCount, duplicatesRemoved, orphanThumbsRemoved })
 
     return {
       scanned: allFiles.length,
@@ -328,6 +409,8 @@ export function registerRecordingHandlers() {
       dismissed: dismissed.size,
       pruned: pruneCount,
       clipsReconciled,
+      duplicatesRemoved,
+      orphanThumbsRemoved,
       paths: Object.entries(paths).map(([source, dir]) => ({
         source,
         dir,
@@ -501,7 +584,10 @@ export function registerRecordingHandlers() {
       console.warn('[recording] Mic enabled but no input device resolved — recording will have no microphone track')
     }
 
-    const path = await recordingManager.startRecording({
+    // Use the active recorder (WGC or ddagrab) — previously hard-coded to
+    // `recordingManager` (ddagrab), which silently no-op'd when WGC was the
+    // active backend and made manual capture a no-op for the default install.
+    const path = await getActiveRecorder().startRecording({
       recordingPath: user?.recordingPath,
       recordQuality: user?.recordQuality,
       recordFps: user?.recordFps,
@@ -551,26 +637,66 @@ export function registerRecordingHandlers() {
     return result.filePaths[0]
   })
 
-  ipcMain.handle('recording:stop-capture', async (_event, gameId?: string) => {
-    const path = recordingManager.stopRecording()
-    if (!path) return { stopped: false }
+  ipcMain.handle('recording:stop-capture', async (event, gameId?: string) => {
+    // Same flow as the auto game-end path:
+    //   1) stopRecording() returns the initial path (.webm for WGC)
+    //   2) waitForDone() blocks until ffmpeg/remux completes (or 90s timeout)
+    //   3) probe + poll until the file demuxes cleanly
+    //   4) only THEN persist + link, so the UI never sees a 0:00 file
+    const activeRecorder = getActiveRecorder()
+    const initialPath = activeRecorder.stopRecording()
+    if (!initialPath) return { stopped: false }
 
-    // If a gameId is provided, link the recording immediately
+    const win = BrowserWindow.fromWebContents(event.sender) ?? BrowserWindow.getFocusedWindow()
+    win?.webContents.send('recording:processing', { gameId, source: 'manual' })
+
+    await activeRecorder.waitForDone(90_000)
+    let finalPath = activeRecorder.getPendingRecording() ?? initialPath
+
+    // Block raw .webm — same guard as the auto path.
+    if (finalPath.toLowerCase().endsWith('.webm')) {
+      console.warn('[recording] Manual stop produced a .webm — remux likely still in flight')
+      const probe = await probeReadable(finalPath)
+      if (!probe.ok) {
+        win?.webContents.send('recording:failed', { reason: 'remux_pending', filePath: finalPath })
+        return { stopped: true, filePath: finalPath, ready: false as const }
+      }
+      // If remux DID complete, getPendingRecording() should now return the .mp4
+      finalPath = activeRecorder.getPendingRecording() ?? finalPath
+    }
+
+    let probe = await probeReadable(finalPath)
+    if (!probe.ok) {
+      const dur = await waitUntilReadable(finalPath, { timeoutMs: 60_000, intervalMs: 2_000 })
+      probe = { ok: dur > 0, durationSec: dur }
+    }
+
+    let rec: { id: string } | null = null
     if (gameId) {
       try {
         const prisma = getPrisma()
         const existingRec = await prisma.recording.findUnique({ where: { gameId } })
-        const rec = existingRec
-          ? await prisma.recording.update({ where: { id: existingRec.id }, data: { filePath: path, source: 'capture' } })
-          : await prisma.recording.create({ data: { gameId, filePath: path, source: 'capture' } })
-        recordingManager.clearPendingRecording()
-        generateThumbnailForRecording(rec.id, path).catch(() => {})
+        rec = existingRec
+          ? await prisma.recording.update({ where: { id: existingRec.id }, data: { filePath: finalPath, source: 'capture' } })
+          : await prisma.recording.create({ data: { gameId, filePath: finalPath, source: 'capture' } })
+        activeRecorder.clearPendingRecording()
+        if (rec) generateThumbnailForRecording(rec.id, finalPath).catch(() => {})
       } catch (err) {
         console.error('[recording] Failed to link manual capture:', err)
       }
     }
 
-    return { stopped: true, filePath: path }
+    win?.webContents.send('recording:ready', {
+      recordingId: rec?.id ?? null,
+      gameId,
+      filePath: finalPath,
+      durationSec: probe.durationSec,
+    })
+    if (gameId && rec) {
+      win?.webContents.send('recording:linked', { gameId, filePath: finalPath })
+    }
+
+    return { stopped: true, filePath: finalPath, ready: probe.ok, durationSec: probe.durationSec }
   })
 
   ipcMain.handle('recording:get-recordings-dir', () => {
@@ -744,11 +870,11 @@ export function registerRecordingHandlers() {
     const clipPath = await createClip(clipOptions)
     if (!clipPath) throw new Error('Clip creation failed')
 
-    // Generate thumbnail for the clip
-    const thumbPath = join(dirname(clipPath), `${basename(clipPath, '.mp4')}.thumb.jpg`)
-    const thumbOffset = Math.min(30, ((opts.endMs - opts.startMs) / 1000) * 0.12)
-    const thumbResult = await generateThumbnail(clipPath, thumbPath, thumbOffset)
-
+    // NOTE: We intentionally DO NOT generate a thumbnail for clips anymore.
+    // Each clip used to spawn a paired `.thumb.jpg` file, doubling the file
+    // count in the recordings folder for marginal UX value (the UI falls back
+    // to a Scissors icon). The Recording Hub's `ClipCard` already handles a
+    // null `thumbnailPath` gracefully.
     const clipId = `clip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
     await prisma.$executeRawUnsafe(
       `INSERT INTO "Clip" ("id","recordingId","filePath","thumbnailPath","title","startMs","endMs","linkedNoteText","createdAt")
@@ -756,7 +882,7 @@ export function registerRecordingHandlers() {
       clipId,
       opts.recordingId,
       clipPath,
-      thumbResult ?? null,
+      null,
       opts.title ?? null,
       opts.startMs,
       opts.endMs,
@@ -767,7 +893,7 @@ export function registerRecordingHandlers() {
     return {
       id: clipId,
       filePath: clipPath,
-      thumbnailPath: thumbResult ?? null,
+      thumbnailPath: null,
       title: opts.title ?? null,
       startMs: opts.startMs,
       endMs: opts.endMs,
