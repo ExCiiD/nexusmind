@@ -10,7 +10,8 @@
 - ✅ Commit de tout le travail beta.30 → beta.60 (55 fichiers dont 4 migrations).
 - ✅ Suppression du code de debug mort (`debugAgentLog`, logs `.cursor/`).
 - ✅ Nettoyage des artefacts : 14 `query_engine*.tmp` (283 Mo, embarqués dans l'installeur), anciens installeurs `release/`, `win-unpacked/`.
-- ⚠️ **Action manuelle** : révoquer/régénérer les clés OpenAI et Riot — elles sont incluses en clair dans `app.asar` de chaque release publiée (`MAIN_VITE_*` est inliné au build). Tant que la phase 1 n'est pas livrée, toute nouvelle release republiera la nouvelle clé.
+- ⚠️ **Action manuelle** : régénérer la clé Riot — elle est incluse en clair dans `app.asar` de chaque release publiée (`MAIN_VITE_*` est inliné au build). Tant que la phase 1 n'est pas livrée, toute nouvelle release republiera la nouvelle clé.
+- ⚠️ **OpenAI (IA abandonnée)** : *révoquer* la clé existante sans la remplacer (elle reste exploitable à tes frais depuis les anciennes releases), puis retirer `MAIN_VITE_OPENAI_API_KEY` du `.env`.
 
 ---
 
@@ -18,7 +19,7 @@
 
 | # | Tâche | Détail |
 |---|-------|--------|
-| 1.1 | Sortir les secrets du bundle | Riot API & OpenAI via **Edge Function Supabase** (proxy authentifié + rate-limit par utilisateur). Google OAuth : flux PKCE desktop, sans `client_secret` embarqué. Supprimer `MAIN_VITE_*_KEY` de l'app. |
+| 1.1 | Sortir les secrets du bundle | Riot API via **Edge Function Supabase** (proxy authentifié + rate-limit par utilisateur). Google OAuth : flux PKCE desktop, sans `client_secret` embarqué. Supprimer `MAIN_VITE_*_KEY` de l'app. |
 | 1.2 | CSP | `session.defaultSession.webRequest.onHeadersReceived` (promis par le PRD §4, absent). |
 | 1.3 | `sandbox: true` | Fenêtre principale + fenêtre WGC ; adapter le preload si besoin. |
 | 1.4 | Validation IPC | Schéma `zod` sur chaque `ipcMain.handle` (aujourd'hui 0/20 fichiers), helper `validatedHandle(channel, schema, fn)`. |
@@ -115,7 +116,7 @@ Calculer et stocker, par game et en fenêtre glissante, des indicateurs normalis
 - 💡 Plus tard, en option : LLM local (Ollama) uniquement pour reformuler, jamais pour décider.
 
 ### A5 — Retrait de l'IA payante
-Désactiver `gpt-4o` par défaut ; si conservé, uniquement en mode « clé personnelle » de l'utilisateur.
+Décision : pas d'IA. Supprimer `openaiClient.ts`, `ai.ipc.ts`, les panneaux `AIPanel/*`, la dépendance `openai` et leurs tests ; remplacer leurs points d'entrée par les sorties du moteur de règles (A2/A3).
 
 ---
 
