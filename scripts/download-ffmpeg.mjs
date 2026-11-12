@@ -12,7 +12,7 @@
  * notification, or display mode transition is fatal to the capture.
  */
 
-import { createWriteStream, existsSync, mkdirSync, copyFileSync, rmSync, readdirSync, statSync, createReadStream } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, copyFileSync, rmSync, readdirSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'

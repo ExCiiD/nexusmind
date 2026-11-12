@@ -240,7 +240,7 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
       {
         id: 'limits_knowledge',
         label: 'Limits Knowledge',
-        description: 'Knowing your champion\'s power spike windows, opponent\'s \"silent triggers\" (level 6, item spikes), and thresholds for punishing.',
+        description: 'Knowing your champion\'s power spike windows, opponent\'s "silent triggers" (level 6, item spikes), and thresholds for punishing.',
         kpis: [
           { id: 'power_spike_awareness', label: 'Power Spike Awareness', description: 'Knowing when your champion is strong and playing accordingly' },
           { id: 'enemy_spike_respect', label: 'Enemy Spike Respect', description: 'Respecting enemy power spikes (level 6, completed item)' },

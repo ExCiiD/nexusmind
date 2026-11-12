@@ -27,15 +27,16 @@
 | 1.5 | `nxm://` | ✅ | Seuls les dossiers d'enregistrement + fichiers liés en base sont servis (`mediaAccess.ts`). Chemins persistés depuis le renderer : uniquement issus d'une boîte de dialogue native. |
 | 1.6 | Electron | ⏳ | Monter vers une version supportée (33 est EOL) ; vérifier `native-audio-node`, Prisma, WGC. |
 
-## Phase 2 — Qualité ⏳ (2–3 semaines, prérequis avant la synchro)
+## Phase 2 — Qualité 🟡 (prérequis avant la synchro)
 
-- CI GitHub Actions : `typecheck` (web + node), `vitest`, `electron-vite build`, vérification des clés i18n FR/EN.
-- ESLint + Prettier.
-- Remplacer les 27 tests E2E factices (`expect(true)`) par de vrais tests Playwright `_electron`.
-- Tests des handlers IPC sur SQLite temporaire (stats, team, review, recording).
-- Découper les fichiers > 1 400 lignes (`VideoReviewPlayer`, `team.ipc`, `SettingsPage`, `DraftTab`, `SessionPage`, `recording.ipc`).
-- Logger structuré (fichier rotatif) + crash reporting opt-in.
-- Backup automatique de la base avant chaque migration au démarrage.
+- ✅ CI GitHub Actions (`.github/workflows/ci.yml`, Windows) : typecheck web + node, ESLint, i18n, vitest, build, E2E. `npm run check` reproduit la CI en local.
+- ✅ ESLint orienté bugs (0 erreur ; 44 avertissements à résorber). Prettier volontairement non appliqué (éviter un reformatage global).
+- ✅ i18n : script `check:i18n` ; 50 textes qui n'existaient qu'en anglais dans le code ont été traduits.
+- ✅ 27 tests E2E factices remplacés par 20 vrais tests Playwright `_electron` sur données isolées (`NEXUSMIND_DB_PATH`, `NEXUSMIND_USER_DATA`) : onboarding, sécurité (CSP, sandbox, `window.open`, `nxm://`), rendu de toutes les pages principales.
+- 🟡 Tests des handlers IPC sur SQLite temporaire : migrations/backup, session, user, partage, reviews externes. Reste : stats, team, review, recording.
+- ✅ Backup automatique (`VACUUM INTO`, 5 derniers conservés) avant toute migration ; erreur de démarrage affichée au lieu d'une app sans fenêtre.
+- ⏳ Découper les fichiers > 1 400 lignes (`VideoReviewPlayer`, `team.ipc`, `SettingsPage`, `DraftTab`, `SessionPage`, `recording.ipc`) — à faire quand on touche ces fichiers.
+- ⏳ Logger structuré (fichier rotatif) + crash reporting opt-in — avec la plateforme web (même backend).
 
 ## Phase 3 — Roadmap « Next » du PRD ⏳
 

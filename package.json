@@ -14,8 +14,11 @@
     "prisma:migrate": "prisma migrate dev",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
-    "typecheck": "tsc --noEmit -p tsconfig.web.json",
+    "test:e2e": "npm run build && playwright test",
+    "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
+    "lint": "eslint .",
+    "check:i18n": "node scripts/check-i18n.mjs",
+    "check": "npm run typecheck && npm run lint && npm run check:i18n && npm test",
     "seed": "tsx prisma/seed.ts",
     "dist": "npm run build && electron-builder --publish never",
     "dist:dir": "npm run build && electron-builder --dir --publish never",
@@ -60,6 +63,7 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.49.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
@@ -68,11 +72,15 @@
     "electron": "^33.2.0",
     "electron-builder": "^25.1.0",
     "electron-vite": "^5.0.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^15.15.0",
     "postcss": "^8.4.0",
     "prisma": "^6.0.0",
     "tailwindcss": "^3.4.0",
     "tsx": "^4.21.0",
     "typescript": "^5.6.0",
+    "typescript-eslint": "^8.72.2",
     "vite": "^6.0.0",
     "vitest": "^3.0.0"
   }

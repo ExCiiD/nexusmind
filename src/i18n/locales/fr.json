@@ -8,7 +8,8 @@
     "analytics": "Statistiques",
     "team": "Équipe",
     "settings": "Paramètres",
-    "help": "Aide"
+    "help": "Aide",
+    "mistakes": "Erreurs"
   },
   "settings": {
     "title": "Paramètres",
@@ -186,7 +187,12 @@
       "startError": "Échec du démarrage de la session",
       "endedTitle": "Session terminée !",
       "endedDesc": "Consultez les statistiques pour voir votre progression.",
-      "endError": "Échec de la fin de session"
+      "endError": "Échec de la fin de session",
+      "cancelError": "Erreur",
+      "cancelledDesc": "La session et toutes les games associées ont été supprimées.",
+      "cancelledTitle": "Session annulée",
+      "modifiedTitle": "Session mise à jour",
+      "modifyError": "Erreur"
     },
     "endDialog": {
       "title": "Conclusion de session",
@@ -233,6 +239,31 @@
       "delete": "Supprimer",
       "deleteConfirm": "Confirmer",
       "deleteCancel": "Annuler"
+    },
+    "cancelDialog": {
+      "back": "Retour",
+      "confirm": "Annuler la session",
+      "description": "Cette action supprime définitivement la session ainsi que toutes les games et reviews associées. Elle est irréversible.",
+      "gamesWarning": "{{count}} game(s) seront supprimée(s).",
+      "title": "Annuler la session ?"
+    },
+    "cancelSession": "Annuler la session",
+    "modifyDialog": {
+      "cancel": "Annuler",
+      "kpis": "KPI",
+      "note": "Note / commentaire",
+      "notePlaceholder": "Sur quoi voulez-vous vous concentrer ?",
+      "objectives": "Objectifs",
+      "save": "Enregistrer",
+      "subtitle": "Modifiez les objectifs, les KPI ou la note de session.",
+      "title": "Modifier la session"
+    },
+    "modifySession": "Modifier",
+    "templates": {
+      "desc": "Partez d’un modèle de coaching prêt à l’emploi — objectifs, KPI et note de focus sont pré-remplis.",
+      "showAll": "Afficher les {{count}} modèles",
+      "showLess": "Afficher moins",
+      "title": "Modèles de session"
     }
   },
   "review": {
@@ -422,7 +453,9 @@
       "importedDesc": "{{count}} partie(s) ajoutée(s) à la session.",
       "importErrorTitle": "Échec de l'importation",
       "errorTitle": "Impossible de récupérer l'historique"
-    }
+    },
+    "deleteSelected": "Supprimer",
+    "selected": "sélectionné(s)"
   },
   "statsAvg": {
     "title": "Moyennes sur 20 parties",
@@ -648,7 +681,17 @@
     "availableDesc": "Une nouvelle version est en cours de téléchargement.",
     "readyTitle": "Mise à jour prête",
     "readyDesc": "Redémarre l'application pour appliquer la mise à jour.",
-    "restart": "Redémarrer"
+    "restart": "Redémarrer",
+    "availableVersion": "Téléchargement de la version {{version}}…",
+    "checkBusy": "Vérification déjà en cours",
+    "checkBusyDesc": "Une autre vérification est en cours. Patientez un instant puis réessayez.",
+    "checkButton": "Rechercher des mises à jour",
+    "checkFailed": "Impossible de vérifier les mises à jour",
+    "devMode": "Mise à jour automatique désactivée en développement",
+    "devModeDesc": "Compilez et installez l’app empaquetée pour tester les mises à jour.",
+    "errorDesc": "Impossible de télécharger la mise à jour. Réessayez plus tard ou téléchargez-la manuellement depuis GitHub.",
+    "errorTitle": "Échec de la mise à jour",
+    "upToDate": "Vous êtes à jour !"
   },
   "dev": {
     "badge": "DEV",
@@ -1011,11 +1054,38 @@
         "failed": "Échec du calcul des stats adverses",
         "staleHint": "En cache — actualisez pour mettre à jour",
         "freshHint": "Mis à jour il y a {{minutes}}min"
+      },
+      "synergy": {
+        "basedOn": "Stats flex réelles sur {{n}} games où ≥{{min}} adversaires ont joué ensemble",
+        "cacheHint": "Le premier calcul peut être lent ; les résultats sont ensuite mis en cache localement.",
+        "compute": "Calculer la synergie",
+        "computing": "Calcul en cours…",
+        "computingDesc": "Récupération des games flex de chaque adversaire — environ 10 s.",
+        "done": "Synergie adverse prête",
+        "doneDesc": "{{matches}} games flex · {{members}} joueurs avec données",
+        "emptyHint": "Cliquez sur « Calculer la synergie » pour trouver les games flex où ces adversaires ont joué ensemble.",
+        "failed": "Échec du calcul de synergie adverse",
+        "lastUpdate": "Mis à jour",
+        "minTogether": "Min. ensemble :",
+        "noGames": "Aucune game en synergie trouvée",
+        "noGamesDesc": "Aucune game flex récente où ≥{{n}} de ces adversaires ont joué ensemble.",
+        "refresh": "Actualiser",
+        "title": "Synergie adverse — games flex où ≥{{n}} d’entre eux ont joué ensemble"
       }
     },
     "confirmDelete": "Supprimer l'équipe « {{name}} » ? Roster, champion pools, drafts et parties personnalisées importées seront perdus. Cette action est irréversible.",
     "deleted": "Équipe supprimée",
     "deleteFailed": "Échec de la suppression",
     "deleteTooltip": "Supprimer l'équipe"
+  },
+  "common": {
+    "cancel": "Annuler",
+    "create": "Créer",
+    "delete": "Supprimer"
+  },
+  "mistakes": {
+    "deleteFailed": "Impossible de supprimer l'erreur",
+    "tagFailed": "Impossible d'enregistrer l'erreur",
+    "tagged": "Erreur enregistrée"
   }
 }

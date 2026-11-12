@@ -1,9 +1,12 @@
 import type { PrismaClient } from '../../prisma-client'
 import { app } from 'electron'
-import { join } from 'path'
-import { existsSync, mkdirSync, readdirSync, readFileSync } from 'fs'
+import { join, dirname } from 'path'
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync } from 'fs'
 
 let prisma: PrismaClient | null = null
+
+/** Number of pre-migration snapshots kept in `<db dir>/backups`. */
+const MAX_MIGRATION_BACKUPS = 5
 
 export function getDbPath(): string {
   const userDataPath = app.getPath('userData')
@@ -14,7 +17,41 @@ export function getDbPath(): string {
   return join(dbDir, 'nexusmind.db')
 }
 
-async function runMigrations(client: PrismaClient): Promise<void> {
+/**
+ * Resolves the SQLite file to open. `NEXUSMIND_DB_PATH` lets automated tests
+ * (unit + E2E) run against a throw-away database instead of the developer's
+ * `dev.db` or a user's real data.
+ */
+export function resolveDbPath(): string {
+  const override = process.env.NEXUSMIND_DB_PATH
+  if (override) {
+    mkdirSync(dirname(override), { recursive: true })
+    return override
+  }
+  return app.isPackaged ? getDbPath() : join(process.cwd(), 'dev.db')
+}
+
+export function getMigrationsDir(): string {
+  const appRoot = app.isPackaged ? app.getAppPath() : process.cwd()
+  return join(appRoot, 'prisma', 'migrations')
+}
+
+export function listMigrationFolders(migrationsDir: string): string[] {
+  if (!existsSync(migrationsDir)) return []
+  return readdirSync(migrationsDir)
+    .filter((f) => existsSync(join(migrationsDir, f, 'migration.sql')))
+    .sort()
+}
+
+/** Splits a migration file into executable statements (comments stripped). */
+export function splitSqlStatements(sql: string): string[] {
+  return sql
+    .split(';')
+    .map((s) => s.replace(/--[^\n]*/g, '').trim())
+    .filter((s) => s.length > 0)
+}
+
+async function ensureMigrationsTable(client: PrismaClient): Promise<void> {
   await client.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
       "id" TEXT NOT NULL PRIMARY KEY,
@@ -24,36 +61,74 @@ async function runMigrations(client: PrismaClient): Promise<void> {
       "applied_steps_count" INTEGER NOT NULL DEFAULT 0
     )
   `)
+}
 
-  const appRoot = app.isPackaged ? app.getAppPath() : process.cwd()
-  const migrationsDir = join(appRoot, 'prisma', 'migrations')
+async function listPendingMigrations(client: PrismaClient, folders: string[]): Promise<string[]> {
+  const rows = await client.$queryRawUnsafe<{ migration_name: string }[]>(
+    `SELECT migration_name FROM "_prisma_migrations" WHERE finished_at IS NOT NULL`,
+  )
+  const applied = new Set(rows.map((r) => r.migration_name))
+  return folders.filter((f) => !applied.has(f))
+}
+
+/**
+ * Snapshots the database with `VACUUM INTO` (consistent even while the
+ * connection is open) before any migration touches it, then prunes old
+ * snapshots. A brand-new database has nothing to protect and is skipped.
+ */
+export async function backupBeforeMigration(
+  client: PrismaClient,
+  dbPath: string,
+  firstPending: string,
+): Promise<string | null> {
+  const userTables = await client.$queryRawUnsafe<{ n: number | bigint }[]>(
+    `SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name NOT LIKE '\\_%' ESCAPE '\\' AND name NOT LIKE 'sqlite_%'`,
+  )
+  if (Number(userTables[0]?.n ?? 0) === 0) return null
+
+  const backupDir = join(dirname(dbPath), 'backups')
+  mkdirSync(backupDir, { recursive: true })
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const target = join(backupDir, `nexusmind-${stamp}-before-${firstPending}.db`)
+  await client.$executeRawUnsafe(`VACUUM INTO '${target.replace(/'/g, "''")}'`)
+
+  const snapshots = readdirSync(backupDir)
+    .filter((f) => f.startsWith('nexusmind-') && f.endsWith('.db'))
+    .map((f) => ({ f, t: statSync(join(backupDir, f)).mtimeMs }))
+    .sort((a, b) => b.t - a.t)
+  for (const old of snapshots.slice(MAX_MIGRATION_BACKUPS)) {
+    try { unlinkSync(join(backupDir, old.f)) } catch { /* best effort */ }
+  }
+  return target
+}
+
+export async function runMigrations(client: PrismaClient, migrationsDir: string, dbPath?: string): Promise<void> {
+  await ensureMigrationsTable(client)
 
   if (!existsSync(migrationsDir)) {
     console.warn('[db] Migrations directory not found:', migrationsDir)
     return
   }
 
-  const folders = readdirSync(migrationsDir)
-    .filter((f) => existsSync(join(migrationsDir, f, 'migration.sql')))
-    .sort()
+  const pending = await listPendingMigrations(client, listMigrationFolders(migrationsDir))
+  if (pending.length === 0) return
 
-  for (const folder of folders) {
-    const rows = await client.$queryRawUnsafe<{ id: string }[]>(
-      `SELECT id FROM "_prisma_migrations" WHERE migration_name = ? AND finished_at IS NOT NULL`,
-      folder
-    )
-    if (rows.length > 0) continue
+  if (dbPath) {
+    try {
+      const backup = await backupBeforeMigration(client, dbPath, pending[0])
+      if (backup) console.log(`[db] Backup before migration: ${backup}`)
+    } catch (err) {
+      // Refuse to migrate without a safety net: a failed migration on a
+      // user's only copy of their coaching history is unrecoverable.
+      throw new Error(`[db] Could not back up database before migrating: ${(err as Error)?.message ?? err}`)
+    }
+  }
 
-    const sqlPath = join(migrationsDir, folder, 'migration.sql')
-    const sql = readFileSync(sqlPath, 'utf-8')
-
-    const statements = sql
-      .split(';')
-      .map((s) => s.replace(/--[^\n]*/g, '').trim())
-      .filter((s) => s.length > 0)
+  for (const folder of pending) {
+    const sql = readFileSync(join(migrationsDir, folder, 'migration.sql'), 'utf-8')
 
     let appliedCount = 0
-    for (const stmt of statements) {
+    for (const stmt of splitSqlStatements(sql)) {
       try {
         await client.$executeRawUnsafe(stmt)
         appliedCount++
@@ -87,7 +162,7 @@ async function runMigrations(client: PrismaClient): Promise<void> {
 export async function initDatabase(): Promise<PrismaClient> {
   if (prisma) return prisma
 
-  const dbPath = app.isPackaged ? getDbPath() : join(process.cwd(), 'dev.db')
+  const dbPath = resolveDbPath()
 
   const clientPath = app.isPackaged
     ? join(app.getAppPath(), 'prisma-client')
@@ -108,7 +183,7 @@ export async function initDatabase(): Promise<PrismaClient> {
   })
 
   await prisma!.$connect()
-  await runMigrations(prisma!)
+  await runMigrations(prisma!, getMigrationsDir(), dbPath)
   return prisma!
 }
 

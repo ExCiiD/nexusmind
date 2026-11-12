@@ -8,7 +8,8 @@
     "analytics": "Analytics",
     "team": "Team",
     "settings": "Settings",
-    "help": "Help"
+    "help": "Help",
+    "mistakes": "Mistakes"
   },
   "settings": {
     "title": "Settings",
@@ -186,7 +187,12 @@
       "startError": "Failed to create session",
       "endedTitle": "Session completed!",
       "endedDesc": "Check Analytics to see your progress.",
-      "endError": "Failed to end session"
+      "endError": "Failed to end session",
+      "cancelError": "Error",
+      "cancelledDesc": "Session and all linked games have been removed.",
+      "cancelledTitle": "Session cancelled",
+      "modifiedTitle": "Session updated",
+      "modifyError": "Error"
     },
     "endDialog": {
       "title": "Session Conclusion",
@@ -233,6 +239,31 @@
       "delete": "Remove",
       "deleteConfirm": "Confirm",
       "deleteCancel": "Cancel"
+    },
+    "cancelDialog": {
+      "back": "Go Back",
+      "confirm": "Cancel Session",
+      "description": "This will permanently delete this session and all linked games and reviews. This action cannot be undone.",
+      "gamesWarning": "{{count}} game(s) will be deleted.",
+      "title": "Cancel Session?"
+    },
+    "cancelSession": "Cancel Session",
+    "modifyDialog": {
+      "cancel": "Cancel",
+      "kpis": "KPIs",
+      "note": "Note / Comment",
+      "notePlaceholder": "What do you want to focus on?",
+      "objectives": "Objectives",
+      "save": "Save Changes",
+      "subtitle": "Change objectives, KPIs, or your session note.",
+      "title": "Modify Session"
+    },
+    "modifySession": "Modify",
+    "templates": {
+      "desc": "Start with a pre-built coaching template — objectives, KPIs and focus note are pre-filled.",
+      "showAll": "Show all {{count}} templates",
+      "showLess": "Show less",
+      "title": "Session Templates"
     }
   },
   "review": {
@@ -422,7 +453,9 @@
       "importedDesc": "{{count}} game(s) added to the session.",
       "importErrorTitle": "Import failed",
       "errorTitle": "Could not fetch history"
-    }
+    },
+    "deleteSelected": "Delete",
+    "selected": "selected"
   },
   "statsAvg": {
     "title": "20-Game Averages",
@@ -648,7 +681,17 @@
     "availableDesc": "A new version is being downloaded in the background.",
     "readyTitle": "Update ready",
     "readyDesc": "Restart the app to apply the update.",
-    "restart": "Restart now"
+    "restart": "Restart now",
+    "availableVersion": "Version {{version}} is downloading…",
+    "checkBusy": "Update check in progress",
+    "checkBusyDesc": "Another check is already running. Please wait a moment and retry.",
+    "checkButton": "Check for updates",
+    "checkFailed": "Could not check for updates",
+    "devMode": "Auto-update disabled in development",
+    "devModeDesc": "Build and install the packaged app to test updates.",
+    "errorDesc": "Could not download the update. Please try again later or download manually from GitHub.",
+    "errorTitle": "Update failed",
+    "upToDate": "You are up to date!"
   },
   "dev": {
     "badge": "DEV",
@@ -1011,11 +1054,38 @@
         "failed": "Opponent stats failed",
         "staleHint": "Cached — refresh to update",
         "freshHint": "Updated {{minutes}}min ago"
+      },
+      "synergy": {
+        "basedOn": "Real flex stats from {{n}} games where ≥{{min}} opponents played together",
+        "cacheHint": "First run can be slow; results are cached locally for next time.",
+        "compute": "Compute synergy",
+        "computing": "Computing…",
+        "computingDesc": "Fetching flex games for every opponent — usually ~10s.",
+        "done": "Opponent synergy ready",
+        "doneDesc": "{{matches}} flex games · {{members}} players with data",
+        "emptyHint": "Click \"Compute synergy\" to find flex games where these opponents have queued together.",
+        "failed": "Opponent synergy failed",
+        "lastUpdate": "Updated",
+        "minTogether": "Min together:",
+        "noGames": "No synergy games found",
+        "noGamesDesc": "No recent flex games where ≥{{n}} of these opponents played together.",
+        "refresh": "Refresh",
+        "title": "Opponent synergy — flex games where ≥{{n}} of them played together"
       }
     },
     "confirmDelete": "Delete team \"{{name}}\"? Roster, champion pools, draft preps, and imported custom games will be lost. This cannot be undone.",
     "deleted": "Team deleted",
     "deleteFailed": "Failed to delete team",
     "deleteTooltip": "Delete team"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "create": "Create",
+    "delete": "Delete"
+  },
+  "mistakes": {
+    "deleteFailed": "Failed to delete mistake",
+    "tagFailed": "Failed to tag mistake",
+    "tagged": "Mistake tagged"
   }
 }

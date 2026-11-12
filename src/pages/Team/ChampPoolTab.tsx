@@ -197,6 +197,15 @@ export function ChampPoolTab({ team, onChange }: Props) {
     return m
   }, [pool])
 
+  // List of members eligible for a fetch — used by both the pre-flight
+  // checks and the scope dialog (to size its time estimate). Must stay above
+  // the early returns below: hooks have to run in the same order on every
+  // render (adding the first member used to crash the tab).
+  const eligibleMembers = useMemo(
+    () => members.filter((m) => m.ign && m.tagLine && m.region),
+    [members],
+  )
+
   if (!team) {
     return <Card className="p-6 text-center text-hextech-text-dim">
       {t('team.pool.noTeam', { defaultValue: 'Create a team and add members first.' })}
@@ -243,13 +252,6 @@ export function ChampPoolTab({ team, onChange }: Props) {
    * whole run — they're collected and reported in the final toast so you can
    * fix and retry just those.
    */
-  // List of members eligible for a fetch — used by both the pre-flight
-  // checks and the scope dialog (to size its time estimate).
-  const eligibleMembers = useMemo(
-    () => members.filter((m) => m.ign && m.tagLine && m.region),
-    [members],
-  )
-
   /** Opens the Quick/Complete scope picker. The actual fetch happens in
    *  `runAutoFill` once the user makes a choice. */
   const handleAutoFill = () => {

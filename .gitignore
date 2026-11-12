@@ -11,3 +11,4 @@ prisma-client/
 .cursor/
 test-results/
 resources/ffmpeg-bin/
+playwright-report/

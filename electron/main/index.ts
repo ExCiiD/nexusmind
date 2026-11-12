@@ -1,4 +1,11 @@
-import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron'
+
+// Test isolation: E2E runs point userData (recordings, thumbnails, keychain,
+// logs) at a temp folder. All getPath('userData') calls are lazy, so setting
+// it here — before app 'ready' — covers every module.
+if (process.env.NEXUSMIND_USER_DATA) {
+  app.setPath('userData', process.env.NEXUSMIND_USER_DATA)
+}
 
 // Suppress Chromium GPU shader disk-cache errors on Windows (access-denied / cache locked).
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
@@ -720,7 +727,16 @@ async function bootstrap() {
   gameDetector.start()
 }
 
-app.whenReady().then(bootstrap)
+app.whenReady().then(bootstrap).catch((err) => {
+  // Without this, a startup failure (DB locked, backup impossible, failed
+  // migration…) leaves a running process with no window and no message.
+  console.error('[bootstrap] fatal:', err)
+  dialog.showErrorBox(
+    'NexusMind could not start',
+    `${(err as Error)?.message ?? String(err)}\n\nIf this happened during an update, a copy of your database taken before the update is in the "backups" folder next to it.`,
+  )
+  app.quit()
+})
 
 app.on('window-all-closed', () => {
   recordingManager.stopRecording()

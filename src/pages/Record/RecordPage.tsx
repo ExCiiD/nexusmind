@@ -329,7 +329,7 @@ export function RecordPage() {
   // ── Selection ───────────────────────────────────────────────────────────
 
   const toggleSelect = useCallback((id: string) => {
-    setSelectedIds(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })
+    setSelectedIds(p => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n })
   }, [])
 
   const toggleSelectGroup = useCallback((ids: string[]) => {

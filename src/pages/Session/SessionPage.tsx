@@ -1175,7 +1175,7 @@ function TemplatePickerSection({
           >
             {expanded
               ? t('session.templates.showLess', { defaultValue: 'Show less' })
-              : t('session.templates.showAll', { defaultValue: `Show all ${SESSION_TEMPLATES.length} templates` })}
+              : t('session.templates.showAll', { count: SESSION_TEMPLATES.length, defaultValue: `Show all ${SESSION_TEMPLATES.length} templates` })}
             <ChevronRight className={cn('h-3 w-3 transition-transform', expanded && 'rotate-90')} />
           </button>
         )}
