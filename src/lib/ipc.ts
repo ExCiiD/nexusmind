@@ -305,11 +305,6 @@ export type NexusMindAPI = {
   getGameHistory: (limit?: number) => Promise<any[]>
   getKpiTimeline: () => Promise<Array<{ date: string; objectiveId: string; avgScore: number; gamesReviewed: number }>>
 
-  getObjectiveSuggestion: (scores: Record<string, number>) => Promise<string>
-  synthesizeReview: (data: { timelineNotes: any[]; kpiScores: Record<string, number>; objective: string }) => Promise<string>
-  analyzePatterns: (reviews: any[]) => Promise<string>
-  generateSessionSummary: (sessionId: string) => Promise<string>
-
   fetchMatchHistory: (count?: number) => Promise<Array<{
     matchId: string
     champion: string

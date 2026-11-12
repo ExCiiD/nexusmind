@@ -15,6 +15,9 @@ import { AddressInfo } from 'net'
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs'
 import { join } from 'path'
 import { createReadStream, statSync } from 'fs'
+import { z } from 'zod'
+import { validatedHandle, localPath } from './validate'
+import { isMediaPathAllowed } from '../mediaAccess'
 
 // ── Token persistence (encrypted with OS keychain via safeStorage) ────────────
 
@@ -247,13 +250,16 @@ export function registerYoutubeHandlers(): void {
    * Uploads a video file to YouTube using the resumable upload API.
    * Emits `youtube:upload-progress` events with { jobId, percent } during upload.
    */
-  ipcMain.handle('youtube:upload', async (event, opts: {
-    filePath: string
-    title: string
-    description?: string
-    visibility?: 'public' | 'unlisted' | 'private'
-  }) => {
+  validatedHandle('youtube:upload', z.tuple([z.object({
+    filePath: localPath,
+    // YouTube's own limits; truncate rather than reject a long clip title.
+    title: z.string().max(10_000).transform((s) => s.slice(0, 100)),
+    description: z.string().max(100_000).transform((s) => s.slice(0, 5000)).optional(),
+    visibility: z.enum(['public', 'unlisted', 'private']).optional(),
+  })]), async (event, opts) => {
     if (!existsSync(opts.filePath)) throw new Error('FILE_NOT_FOUND')
+    // Only recordings/clips known to the app may leave the machine.
+    if (!(await isMediaPathAllowed(opts.filePath))) throw new Error('FILE_NOT_ALLOWED')
 
     const accessToken = await getValidAccessToken()
     const jobId = `yt_${Date.now()}`

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, protocol } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
 
 // Suppress Chromium GPU shader disk-cache errors on Windows (access-denied / cache locked).
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
@@ -30,7 +30,6 @@ import { registerSessionHandlers } from './ipc/session.ipc'
 import { registerReviewHandlers } from './ipc/review.ipc'
 import { registerAssessmentHandlers } from './ipc/assessment.ipc'
 import { registerAnalyticsHandlers } from './ipc/analytics.ipc'
-import { registerAIHandlers } from './ipc/ai.ipc'
 import { registerStatsHandlers } from './ipc/stats.ipc'
 import { registerAccountHandlers } from './ipc/account.ipc'
 import { registerDevHandlers } from './ipc/dev.ipc'
@@ -45,6 +44,7 @@ import { registerMistakeHandlers } from './ipc/mistakes.ipc'
 import { registerBookmarkHandlers } from './ipc/bookmarks.ipc'
 import { registerDataHandlers } from './ipc/data.ipc'
 import { seedBuiltInMistakeTags } from './seeds/mistakeTags'
+import { isMediaPathAllowed } from './mediaAccess'
 
 /** Resolves DB recording id for post-game navigation (path normalization + latest-capture fallback). */
 async function resolveCaptureRecordingIdForGameEnd(
@@ -202,7 +202,10 @@ function createWindow() {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      // The preload only uses contextBridge + ipcRenderer, which are
+      // available in sandboxed preloads; it must stay CommonJS and free of
+      // other imports for this to keep working.
+      sandbox: true,
       // Chromium throttles backgrounded renderer processes by default,
       // which freezes our long-running auto-fill / scout loops (they live
       // in the renderer and use awaited IPC calls — even though the IPC
@@ -219,6 +222,28 @@ function createWindow() {
   // try/catch because not all Electron versions support every WebContents
   // method and we'd rather lose this perk than crash startup.
   try { mainWindow.webContents.setBackgroundThrottling(false) } catch { /* older Electron */ }
+
+  // Never let the renderer spawn child BrowserWindows (they would inherit
+  // our preload and therefore the full window.api surface). `target=_blank`
+  // links to http(s) open in the user's default browser instead.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) {
+      shell.openExternal(url).catch((err) => console.warn('[window] openExternal failed:', err))
+    }
+    return { action: 'deny' }
+  })
+
+  // Block top-level navigation away from the app bundle (e.g. a dropped
+  // file or a plain <a href> without target). In dev the renderer is
+  // served from ELECTRON_RENDERER_URL, so that origin stays allowed.
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const devUrl = !app.isPackaged ? process.env['ELECTRON_RENDERER_URL'] : undefined
+    if (url.startsWith('file://') || (devUrl && url.startsWith(devUrl))) return
+    event.preventDefault()
+    if (/^https?:\/\//i.test(url)) {
+      shell.openExternal(url).catch((err) => console.warn('[window] openExternal failed:', err))
+    }
+  })
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
@@ -244,7 +269,7 @@ function createWindow() {
 async function bootstrap() {
   // Serve local video files via nxm:// with proper Range/206 support for seeking.
   // net.fetch('file://') does NOT honour Range headers, so we read the file ourselves.
-  protocol.handle('nxm', (request) => {
+  protocol.handle('nxm', async (request) => {
     const raw = request.url.replace('nxm://', '')
     const filePath = decodeURIComponent(raw.startsWith('/') ? raw : `/${raw}`)
       .replace(/\//g, '\\')
@@ -260,6 +285,10 @@ async function bootstrap() {
     const normalized = filePath.replace(/\\/g, '/').toLowerCase()
     if (normalized.includes('..')) {
       return new Response('Forbidden: path traversal', { status: 403 })
+    }
+    if (!(await isMediaPathAllowed(filePath))) {
+      console.warn('[nxm] blocked access outside recording folders:', filePath)
+      return new Response('Forbidden: file is not a linked recording', { status: 403 })
     }
 
     // Serve images directly (no Range support needed)
@@ -337,7 +366,6 @@ async function bootstrap() {
   registerReviewHandlers()
   registerAssessmentHandlers()
   registerAnalyticsHandlers()
-  registerAIHandlers()
   registerStatsHandlers()
   registerAccountHandlers()
   registerRecordingHandlers()

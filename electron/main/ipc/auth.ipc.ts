@@ -1,5 +1,8 @@
 import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
+import { invalidateMediaAccessCache } from '../mediaAccess'
+import { z } from 'zod'
+import { validatedHandle, userUpdateSchema } from './validate'
 import { getAccountByRiotId, getSummonerByPuuid } from '../riotClient'
 
 const GARENA_REGIONS = new Set(['VN2', 'SG2', 'TH2', 'TW2', 'PH2'])
@@ -145,26 +148,17 @@ export function registerAuthHandlers() {
     return user
   })
 
-  ipcMain.handle('user:update', async (_event, data: any) => {
+  // Unknown keys are stripped by the schema, so only whitelisted, correctly
+  // typed fields can ever reach prisma.user.update.
+  validatedHandle('user:update', z.tuple([userUpdateSchema]), async (_event, safeData) => {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) throw new Error('No user found')
 
-    const ALLOWED_FIELDS = new Set([
-      'displayName', 'assessmentFreqDays', 'nextAssessmentAt',
-      'queueFilter', 'mainRole', 'profileIconId',
-      'autoRecord', 'recordingPath', 'externalRecordingPath',
-      'recordQuality', 'recordFps', 'recordEncoder',
-      'recordScope', 'recordAllowCustom', 'allowDesktopFallback',
-      'recordAudioDesktop', 'recordAudioDesktopDevice',
-      'recordAudioMic', 'recordAudioMicDevice',
-    ])
-    const safeData: Record<string, unknown> = {}
-    for (const key of Object.keys(data)) {
-      if (ALLOWED_FIELDS.has(key)) safeData[key] = data[key]
-    }
     if (Object.keys(safeData).length === 0) throw new Error('No allowed fields provided')
 
-    return prisma.user.update({ where: { id: user.id }, data: safeData })
+    const updated = await prisma.user.update({ where: { id: user.id }, data: safeData })
+    if ('recordingPath' in safeData || 'externalRecordingPath' in safeData) invalidateMediaAccessCache()
+    return updated
   })
 }

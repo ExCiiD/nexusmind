@@ -49,17 +49,6 @@ const api = {
   getGameHistory: (limit?: number) => ipcRenderer.invoke('analytics:get-game-history', limit),
   getKpiTimeline: () => ipcRenderer.invoke('analytics:get-kpi-timeline'),
 
-  getObjectiveSuggestion: (scores: Record<string, number>) =>
-    ipcRenderer.invoke('ai:suggest-objective', scores),
-  synthesizeReview: (data: {
-    timelineNotes: Array<{ time: string; note: string }>
-    kpiScores: Record<string, number>
-    objective: string
-  }) => ipcRenderer.invoke('ai:synthesize-review', data),
-  analyzePatterns: (reviews: any[]) => ipcRenderer.invoke('ai:analyze-patterns', reviews),
-  generateSessionSummary: (sessionId: string) =>
-    ipcRenderer.invoke('ai:session-summary', sessionId),
-
   onGameEnd: (callback: (data: any) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, data: any) => callback(data)
     ipcRenderer.on('game:ended', handler)

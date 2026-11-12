@@ -1,5 +1,7 @@
 import { ipcMain, dialog, app, BrowserWindow, desktopCapturer, shell } from 'electron'
 import { getPrisma } from '../database'
+import { z } from 'zod'
+import { validatedHandle, id, httpsUrl, youtubeUrl as youtubeUrlSchema } from './validate'
 import { getActiveRecorder } from '../recorderBackend'
 import {
   recordingManager,
@@ -809,7 +811,7 @@ export function registerRecordingHandlers() {
     }
   })
 
-  ipcMain.handle('recording:set-youtube', async (_event, gameId: string, youtubeUrl: string | null) => {
+  validatedHandle('recording:set-youtube', z.tuple([id, youtubeUrlSchema.nullable()]), async (_event, gameId, youtubeUrl) => {
     const prisma = getPrisma()
     const existing = await prisma.recording.findUnique({ where: { gameId } })
     return existing
@@ -1373,7 +1375,7 @@ export function registerRecordingHandlers() {
     return true
   })
 
-  ipcMain.handle('clip:set-youtube', async (_e, clipId: string, youtubeUrl: string) => {
+  validatedHandle('clip:set-youtube', z.tuple([id, youtubeUrlSchema]), async (_e, clipId, youtubeUrl) => {
     await getPrisma().$executeRawUnsafe(
       `UPDATE "Clip" SET "youtubeUrl" = ? WHERE "id" = ?`,
       youtubeUrl,
@@ -1382,7 +1384,7 @@ export function registerRecordingHandlers() {
     return true
   })
 
-  ipcMain.handle('clip:set-temp-share', async (_e, clipId: string, url: string, expiryHours: number) => {
+  validatedHandle('clip:set-temp-share', z.tuple([id, httpsUrl, z.number().int().min(1).max(72)]), async (_e, clipId, url, expiryHours) => {
     const expiry = new Date(Date.now() + expiryHours * 3600 * 1000).toISOString()
     await getPrisma().$executeRawUnsafe(
       `UPDATE "Clip" SET "tempShareUrl" = ?, "tempShareExpiry" = ? WHERE "id" = ?`,

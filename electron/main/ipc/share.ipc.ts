@@ -1,9 +1,23 @@
 import { ipcMain, clipboard } from 'electron'
 import { getPrisma } from '../database'
 import { existsSync, createReadStream, statSync } from 'fs'
-import { basename } from 'path'
+import { basename, extname } from 'path'
+import { z } from 'zod'
+import { validatedHandle, id, discordWebhookUrl, shortText, localPath } from './validate'
+import { isMediaPathAllowed } from '../mediaAccess'
 
-const DISCORD_WEBHOOK_RE = /^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\//
+const SHAREABLE_VIDEO_EXTS = new Set(['.mp4', '.mkv', '.webm', '.mov'])
+
+/**
+ * Files leave the machine through these handlers, so only recordings/clips
+ * the app knows about may be sent — never an arbitrary path from the renderer.
+ */
+async function assertShareableFile(filePath: string): Promise<void> {
+  if (!SHAREABLE_VIDEO_EXTS.has(extname(filePath).toLowerCase())) throw new Error('UNSUPPORTED_FILE_TYPE')
+  if (!existsSync(filePath)) throw new Error('FILE_NOT_FOUND')
+  if (!(await isMediaPathAllowed(filePath))) throw new Error('FILE_NOT_ALLOWED')
+}
+
 
 /**
  * Enforces Discord embed limits to avoid 400 errors:
@@ -67,20 +81,12 @@ function sanitizeEmbeds(embeds: object[]): object[] {
   })
 }
 
-function validateWebhookUrl(url: string): void {
-  if (!DISCORD_WEBHOOK_RE.test(url)) {
-    throw new Error('Invalid webhook URL — must be a Discord webhook (https://discord.com/api/webhooks/…)')
-  }
-}
-
 export function registerShareHandlers() {
   /**
    * Posts a pre-built Discord embed payload to an explicit webhook URL.
    * The renderer is responsible for building the embed object and picking the target webhook.
    */
-  ipcMain.handle('share:send-to-discord', async (_event, embeds: object[], webhookUrl: string) => {
-    if (!webhookUrl) throw new Error('No webhook URL provided.')
-
+  validatedHandle('share:send-to-discord', z.tuple([z.array(z.record(z.unknown())).max(10), discordWebhookUrl]), async (_event, embeds, webhookUrl) => {
     const sanitized = sanitizeEmbeds(embeds)
     const bodyToSend = JSON.stringify({ embeds: sanitized })
 
@@ -111,8 +117,7 @@ export function registerShareHandlers() {
   })
 
   /** Adds a new named Discord webhook for the active user. */
-  ipcMain.handle('share:add-webhook', async (_event, name: string, url: string) => {
-    validateWebhookUrl(url)
+  validatedHandle('share:add-webhook', z.tuple([shortText(100).trim().min(1), discordWebhookUrl]), async (_event, name, url) => {
 
     const prisma = getPrisma()
     const users: Array<{ id: string }> = await prisma.$queryRawUnsafe(
@@ -133,22 +138,22 @@ export function registerShareHandlers() {
   })
 
   /** Renames an existing webhook. */
-  ipcMain.handle('share:rename-webhook', async (_event, id: string, name: string) => {
+  validatedHandle('share:rename-webhook', z.tuple([id, shortText(100).trim().min(1)]), async (_event, webhookId, name) => {
     const prisma = getPrisma()
     await prisma.$executeRawUnsafe(
       `UPDATE "DiscordWebhook" SET name = ? WHERE id = ?`,
       name.trim(),
-      id,
+      webhookId,
     )
     return { success: true }
   })
 
   /** Deletes a Discord webhook by id. */
-  ipcMain.handle('share:delete-webhook', async (_event, id: string) => {
+  validatedHandle('share:delete-webhook', z.tuple([id]), async (_event, webhookId) => {
     const prisma = getPrisma()
     await prisma.$executeRawUnsafe(
       `DELETE FROM "DiscordWebhook" WHERE id = ?`,
-      id,
+      webhookId,
     )
     return { success: true }
   })
@@ -157,7 +162,7 @@ export function registerShareHandlers() {
    * Copies a plain-text review summary to the system clipboard.
    * Falls back option when no webhook is configured.
    */
-  ipcMain.handle('share:copy-text', (_event, text: string) => {
+  validatedHandle('share:copy-text', z.tuple([z.string().max(20_000)]), (_event, text) => {
     clipboard.writeText(text)
     return { success: true }
   })
@@ -166,9 +171,8 @@ export function registerShareHandlers() {
    * Sends a video file directly to a Discord webhook via multipart/form-data.
    * Discord free-tier limit is 8 MB. Throws 'FILE_TOO_LARGE' if exceeded.
    */
-  ipcMain.handle('share:send-file-to-discord', async (_event, filePath: string, webhookUrl: string, caption?: string) => {
-    if (!DISCORD_WEBHOOK_RE.test(webhookUrl)) throw new Error('INVALID_WEBHOOK_URL')
-    if (!existsSync(filePath)) throw new Error('FILE_NOT_FOUND')
+  validatedHandle('share:send-file-to-discord', z.tuple([localPath, discordWebhookUrl, shortText(2000).optional()]), async (_event, filePath, webhookUrl, caption) => {
+    await assertShareableFile(filePath)
 
     const fileSize = statSync(filePath).size
     const MAX_DISCORD_BYTES = 8 * 1024 * 1024 // 8 MB (free tier)
@@ -201,11 +205,8 @@ export function registerShareHandlers() {
    * Uploads a file to litterbox.catbox.moe for temporary hosting and returns the URL.
    * Supported expiry: 1h, 12h, 24h, 72h.
    */
-  ipcMain.handle('share:upload-temp', async (_event, filePath: string, expiryHours: 1 | 12 | 24 | 72) => {
-    if (!existsSync(filePath)) throw new Error('FILE_NOT_FOUND')
-
-    const VALID_HOURS = [1, 12, 24, 72]
-    if (!VALID_HOURS.includes(expiryHours)) throw new Error('INVALID_EXPIRY')
+  validatedHandle('share:upload-temp', z.tuple([localPath, z.union([z.literal(1), z.literal(12), z.literal(24), z.literal(72)])]), async (_event, filePath, expiryHours) => {
+    await assertShareableFile(filePath)
 
     const fileBuffer = await require('fs').promises.readFile(filePath)
 

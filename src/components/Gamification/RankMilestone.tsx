@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import { getRankColor } from '@/lib/utils'
@@ -9,24 +8,9 @@ interface RankMilestoneProps {
   scoreDeltas?: Record<string, number>
 }
 
-export function RankMilestone({ oldRank, newRank, scoreDeltas }: RankMilestoneProps) {
-  const [aiMessage, setAiMessage] = useState<string | null>(null)
-
+export function RankMilestone({ oldRank, newRank }: RankMilestoneProps) {
   const isPromotion = oldRank && rankValue(newRank) > rankValue(oldRank)
   const isDemotion = oldRank && rankValue(newRank) < rankValue(oldRank)
-
-  useEffect(() => {
-    if (oldRank && oldRank !== newRank && scoreDeltas) {
-      window.api
-        .synthesizeReview({
-          timelineNotes: [],
-          kpiScores: scoreDeltas,
-          objective: `Rank change: ${oldRank} -> ${newRank}`,
-        })
-        .then(setAiMessage)
-        .catch(() => {})
-    }
-  }, [oldRank, newRank, scoreDeltas])
 
   if (!oldRank || oldRank === newRank) return null
 
@@ -56,13 +40,12 @@ export function RankMilestone({ oldRank, newRank, scoreDeltas }: RankMilestonePr
               {newRank}
             </span>
           </div>
-          {aiMessage && <p className="text-sm text-hextech-text mt-1">{aiMessage}</p>}
-          {!aiMessage && isPromotion && (
+          {isPromotion && (
             <p className="text-sm text-hextech-green mt-1">
               Congratulations on ranking up! Your hard work is paying off.
             </p>
           )}
-          {!aiMessage && isDemotion && (
+          {isDemotion && (
             <p className="text-sm text-hextech-text mt-1">
               Don't worry — focus on your fundamentals. The rank will follow.
             </p>

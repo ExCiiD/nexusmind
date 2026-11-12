@@ -45,7 +45,7 @@ export const regionToRoutingValue: Record<string, string> = {
 }
 
 export const apiKeySchema = z.object({
-  service: z.enum(['riot', 'openai']),
+  service: z.enum(['riot']),
   key: z.string().min(10),
 })
 

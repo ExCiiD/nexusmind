@@ -5,6 +5,40 @@ import { randomUUID } from 'crypto'
 import { homedir } from 'os'
 import { join } from 'path'
 import { existsSync, unlinkSync } from 'fs'
+import { z } from 'zod'
+import { validatedHandle, id as idSchema, localPath, shortText } from './validate'
+import { isPersistablePath, rememberUserPickedFile, normalizeMediaPath, isUnderRoot } from '../mediaAccess'
+import { recordingManager } from '../recorder'
+
+/** Optional file path coming from the renderer: '' clears it. */
+const linkablePath = z
+  .union([z.literal(''), localPath])
+  .optional()
+  .refine(async (p) => !p || (await isPersistablePath(p)), 'file must be picked in the file dialog')
+
+/**
+ * The file behind an external review is only deleted with it when NexusMind
+ * owns it (inside the app's recordings folder) and nothing else points at
+ * it. User files picked from elsewhere (OBS folder, Videos…) are never
+ * deleted, nor is a game recording that the review was created from.
+ */
+async function shouldDeleteReviewFile(filePath: string, reviewId: string): Promise<boolean> {
+  const prisma = getPrisma()
+  const user = await prisma.user.findFirst({ where: { isActive: true } })
+  const ownedDir = normalizeMediaPath(recordingManager.getRecordingsDir(user?.recordingPath ?? undefined))
+  const target = normalizeMediaPath(filePath)
+  if (!isUnderRoot(target, ownedDir)) return false
+
+  const [recordings, clips, others] = await Promise.all([
+    prisma.recording.findMany({ select: { filePath: true } }),
+    prisma.clip.findMany({ select: { filePath: true } }),
+    prisma.externalReview.findMany({ where: { NOT: { id: reviewId } }, select: { filePath: true } }),
+  ])
+  const referenced = [...recordings, ...clips, ...others].some(
+    (r) => !!r.filePath && normalizeMediaPath(r.filePath) === target,
+  )
+  return !referenced
+}
 
 /** Fetch the last N ranked games for an external player by Riot ID. */
 async function fetchExternalPlayerGames(
@@ -60,20 +94,20 @@ export function registerExternalReviewHandlers() {
     },
   )
 
-  ipcMain.handle(
+  validatedHandle(
     'external-review:create',
-    async (
-      _event,
-      data: {
-        title: string
-        objectiveId?: string
-        objectiveIds?: string
-        selectedKpiIds?: string
-        filePath?: string
-        playerName?: string
-        matchData?: string
-      },
-    ) => {
+    z.tuple([
+      z.object({
+        title: shortText(200),
+        objectiveId: shortText(100).optional(),
+        objectiveIds: shortText(2000).optional(),
+        selectedKpiIds: shortText(5000).optional(),
+        filePath: linkablePath,
+        playerName: shortText(100).optional(),
+        matchData: z.string().max(2_000_000).optional(),
+      }),
+    ]),
+    async (_event, data) => {
       const prisma = getPrisma()
       const user = await prisma.user.findFirst({ where: { isActive: true } })
       if (!user) throw new Error('No user found')
@@ -90,7 +124,7 @@ export function registerExternalReviewHandlers() {
         data.objectiveId ?? null,
         data.objectiveIds ?? '[]',
         data.selectedKpiIds ?? '[]',
-        data.filePath ?? null,
+        data.filePath || null,
         data.playerName ?? null,
         data.matchData ?? null,
         now,
@@ -112,18 +146,18 @@ export function registerExternalReviewHandlers() {
     return rows[0] ?? null
   })
 
-  ipcMain.handle(
+  validatedHandle(
     'external-review:save',
-    async (
-      _event,
-      id: string,
-      data: {
-        timelineNotes?: string
-        freeText?: string
-        filePath?: string
-        kpiScores?: string
-      },
-    ) => {
+    z.tuple([
+      idSchema,
+      z.object({
+        timelineNotes: z.string().max(500_000).optional(),
+        freeText: z.string().max(50_000).optional(),
+        filePath: linkablePath,
+        kpiScores: z.string().max(50_000).optional(),
+      }),
+    ]),
+    async (_event, id, data) => {
       const prisma = getPrisma()
       const now = new Date().toISOString()
       const setClauses: string[] = ['updatedAt = ?']
@@ -171,16 +205,18 @@ export function registerExternalReviewHandlers() {
     })
 
     if (result.canceled || !result.filePaths[0]) return null
+    rememberUserPickedFile(result.filePaths[0])
     return result.filePaths[0]
   })
 
-  ipcMain.handle('external-review:delete', async (_event, id: string) => {
+  validatedHandle('external-review:delete', z.tuple([idSchema]), async (_event, id) => {
     const prisma = getPrisma()
     const rows: any[] = await prisma.$queryRawUnsafe(
       `SELECT "filePath" FROM "ExternalReview" WHERE id = ?`, id,
     )
-    if (rows[0]?.filePath && existsSync(rows[0].filePath)) {
-      try { unlinkSync(rows[0].filePath) } catch { /* ignore */ }
+    const filePath: string | null = rows[0]?.filePath ?? null
+    if (filePath && existsSync(filePath) && (await shouldDeleteReviewFile(filePath, id))) {
+      try { unlinkSync(filePath) } catch { /* ignore */ }
     }
     await prisma.$executeRawUnsafe(`DELETE FROM "ExternalReview" WHERE id = ?`, id)
     return { success: true }

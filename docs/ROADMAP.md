@@ -15,17 +15,17 @@
 
 ---
 
-## Phase 1 — Sécurité 🔜 (1–2 semaines, prérequis de la plateforme web)
+## Phase 1 — Sécurité 🔜 (prérequis de la plateforme web)
 
-| # | Tâche | Détail |
-|---|-------|--------|
-| 1.1 | Sortir les secrets du bundle | Riot API via **Edge Function Supabase** (proxy authentifié + rate-limit par utilisateur). Google OAuth : flux PKCE desktop, sans `client_secret` embarqué. Supprimer `MAIN_VITE_*_KEY` de l'app. |
-| 1.2 | CSP | `session.defaultSession.webRequest.onHeadersReceived` (promis par le PRD §4, absent). |
-| 1.3 | `sandbox: true` | Fenêtre principale + fenêtre WGC ; adapter le preload si besoin. |
-| 1.4 | Validation IPC | Schéma `zod` sur chaque `ipcMain.handle` (aujourd'hui 0/20 fichiers), helper `validatedHandle(channel, schema, fn)`. |
-| 1.5 | `nxm://` | Servir uniquement les fichiers sous les dossiers d'enregistrement configurés (`realpath` + préfixe). |
-| 1.6 | Electron | Monter vers une version supportée (33 est EOL). |
-| 1.7 | Signature de code | Certificat (Azure Trusted Signing est l'option la moins chère) → plus d'alerte SmartScreen, mises à jour vérifiées. |
+| # | Tâche | État | Détail |
+|---|-------|------|--------|
+| 1.0 | Retrait du code IA | ✅ | `openaiClient`, `ai.ipc`, `AIPanel/*`, dépendance `openai` supprimés. |
+| 1.1 | Sortir les secrets du bundle | ⏳ | Riot API via **Edge Function Supabase** (proxy authentifié + rate-limit par utilisateur). Google OAuth : flux PKCE desktop, sans `client_secret` embarqué. Supprimer `MAIN_VITE_*_KEY` de l'app. Se fait avec W1 (même projet Supabase). |
+| 1.2 | CSP | ✅ | `<meta>` injectée au build (`electron.vite.config.ts`) ; liens externes → navigateur, navigation hors app bloquée. |
+| 1.3 | `sandbox: true` | ✅ | Fenêtre principale + fenêtre WGC. |
+| 1.4 | Validation IPC | 🟡 | Helper `validatedHandle` + schémas sur les handlers sensibles (partage Discord/temp/YouTube, URLs, `user:update`, reviews externes, webhooks). Reste : migrer les ~90 autres handlers au fil de l'eau. |
+| 1.5 | `nxm://` | ✅ | Seuls les dossiers d'enregistrement + fichiers liés en base sont servis (`mediaAccess.ts`). Chemins persistés depuis le renderer : uniquement issus d'une boîte de dialogue native. |
+| 1.6 | Electron | ⏳ | Monter vers une version supportée (33 est EOL) ; vérifier `native-audio-node`, Prisma, WGC. |
 
 ## Phase 2 — Qualité ⏳ (2–3 semaines, prérequis avant la synchro)
 
@@ -127,10 +127,16 @@ Décision : pas d'IA. Supprimer `openaiClient.ts`, `ai.ipc.ts`, les panneaux `AI
 - Rapport hebdomadaire partageable (Discord / lien web public).
 - Télémétrie anonyme opt-in pour mesurer les métriques du PRD §18.
 
+## Phase F — Finalisation (quand l'app est terminée) ⏳
+
+- Signature de code : certificat (Azure Trusted Signing est l'option la moins chère) → plus d'alerte SmartScreen, mises à jour vérifiées. Activer `sign` dans `electron-builder.yml`.
+- Passage de `releaseType: prerelease` à `release` pour la 1.0.
+
 ## Ordre recommandé
 
 ```
 Phase 0 ✅ → Phase 1 (sécurité) → Phase 2 (CI/tests)
                                    ├─→ W1 → W2 → W3 → W4 → W5
                                    └─→ A1 → A2 → A3 → A4 (en parallèle, local)
+                                                         └─→ Phase F (signature, 1.0)
 ```
