@@ -7,8 +7,10 @@ import { formatGameTime } from '@/lib/utils'
 import {
   ArrowLeft, Scissors, Trash2, Loader2, ClipboardCheck,
   Clock, Calendar, Video, ExternalLink, Youtube, Share2,
-  Check, Copy, Save, Square, Play, Unlink,
+  Check, Copy, Save, Square, Play, Unlink, Link2, RefreshCw, Target,
+  AlertTriangle,
 } from 'lucide-react'
+import type { Mistake, MistakeTag, Bookmark } from '@/lib/ipc'
 import { ClipSharePanel } from '@/components/Share/ClipSharePanel'
 import { useToast } from '@/hooks/useToast'
 
@@ -93,12 +95,43 @@ export function RecordPlayerPage() {
   // bottom clip strip on this page) deep-link straight into the clip.
   const [searchParams, setSearchParams] = useSearchParams()
   const activeClipId = searchParams.get('clipId')
+  // ?at=<gameTimeSec> — deep-link target (e.g. from the Lane Phase chart).
+  // Forwarded to the player which maps it to video time and seeks + plays.
+  const seekAtParam = searchParams.get('at')
+  const seekToGameTimeSec = seekAtParam != null && Number.isFinite(Number(seekAtParam))
+    ? Number(seekAtParam)
+    : null
 
   const [recording, setRecording] = useState<RecordingDetail | null>(null)
   const [clips, setClips] = useState<ClipEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<BottomTab>('clips')
+  // Game timeline events (kills, dragons, towers…) for the player markers.
+  // Skipped when playing a clip — events reference the full game's time
+  // so they'd be misaligned against a trimmed clip file.
+  const [gameEvents, setGameEvents] = useState<any[]>([])
+  const [recordingStartOffsetSec, setRecordingStartOffsetSec] = useState<number | null>(null)
+  // Diagnostic state for the events badge / refresh button. `null` while
+  // we haven't tried yet, then populated on every fetch.
+  const [eventsDiag, setEventsDiag] = useState<{
+    reason: string
+    message?: string
+    frameCount?: number
+    playerResolvedVia?: string
+  } | null>(null)
+  const [refreshingEvents, setRefreshingEvents] = useState(false)
+
+  // ── Mistake Library state ─────────────────────────────────────────────
+  // Tags are loaded once per page (they rarely change). Mistakes are
+  // scoped to the recording's game and re-fetched when the user adds /
+  // deletes / runs auto-detect.
+  const [mistakes, setMistakes] = useState<Mistake[]>([])
+  const [mistakeTags, setMistakeTags] = useState<MistakeTag[]>([])
+  const [autoDetecting, setAutoDetecting] = useState(false)
+
+  // Bookmarks — recording-scoped (works on orphans too)
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
 
   // Clip creation
   const [creatingClip, setCreatingClip] = useState(false)
@@ -172,11 +205,212 @@ export function RecordPlayerPage() {
 
   useEffect(() => { loadData() }, [loadData])
 
+  // Load mistake tags once per session — built-ins are seeded on app
+  // start, so this is essentially a static catalog.
+  useEffect(() => {
+    window.api.listMistakeTags()
+      .then(setMistakeTags)
+      .catch(() => setMistakeTags([]))
+  }, [])
+
+  // Re-load mistakes whenever the recording's game changes (e.g. after
+  // a successful "Try to link" recovery).
+  const reloadMistakes = useCallback(async () => {
+    if (!recording?.gameId) { setMistakes([]); return }
+    try {
+      const list = await window.api.listMistakesByGame(recording.gameId)
+      setMistakes(list)
+    } catch {
+      setMistakes([])
+    }
+  }, [recording?.gameId])
+
+  useEffect(() => { reloadMistakes() }, [reloadMistakes])
+
+  const handleAddMistake = useCallback(async (payload: {
+    tagId: string
+    gameTimeSec: number
+    videoTimeMs?: number
+    note?: string
+    severity?: number
+  }) => {
+    if (!recording?.gameId) return
+    try {
+      await window.api.createMistake({
+        gameId: recording.gameId,
+        tagId: payload.tagId,
+        gameTimeSec: payload.gameTimeSec,
+        videoTimeMs: payload.videoTimeMs,
+        note: payload.note,
+        severity: payload.severity,
+        recordingId: recording.id,
+      })
+      await reloadMistakes()
+      toast({ title: 'Mistake tagged', description: `Saved at ${Math.floor(payload.gameTimeSec / 60)}:${String(payload.gameTimeSec % 60).padStart(2, '0')} game time.` })
+    } catch (err) {
+      toast({ title: 'Failed to tag mistake', description: (err as Error)?.message ?? 'Unknown error', variant: 'destructive' })
+    }
+  }, [recording, reloadMistakes, toast])
+
+  const handleDeleteMistake = useCallback(async (id: string) => {
+    try {
+      await window.api.deleteMistake(id)
+      await reloadMistakes()
+    } catch (err) {
+      toast({ title: 'Failed to delete mistake', description: (err as Error)?.message ?? 'Unknown error', variant: 'destructive' })
+    }
+  }, [reloadMistakes, toast])
+
+  // ── Bookmarks ─────────────────────────────────────────────────────────
+  // Recording-scoped, so they work even on orphan recordings (no Riot
+  // game data needed). Reload after any add/delete so the timeline and
+  // side list stay in sync.
+  const reloadBookmarks = useCallback(async () => {
+    if (!recordingId) { setBookmarks([]); return }
+    try {
+      const list = await window.api.listBookmarks(recordingId)
+      setBookmarks(list)
+    } catch {
+      setBookmarks([])
+    }
+  }, [recordingId])
+
+  useEffect(() => { reloadBookmarks() }, [reloadBookmarks])
+
+  const handleAddBookmark = useCallback(async (payload: { videoTimeMs: number; label?: string; color?: string }) => {
+    if (!recordingId) return
+    try {
+      await window.api.createBookmark({ recordingId, ...payload })
+      await reloadBookmarks()
+      toast({ title: 'Bookmark added', description: `Saved at ${fmtMs(payload.videoTimeMs)}.` })
+    } catch (err) {
+      toast({ title: 'Failed to add bookmark', description: (err as Error)?.message ?? 'Unknown error', variant: 'destructive' })
+    }
+  }, [recordingId, reloadBookmarks, toast])
+
+  const handleDeleteBookmark = useCallback(async (id: string) => {
+    try {
+      await window.api.deleteBookmark(id)
+      await reloadBookmarks()
+    } catch (err) {
+      toast({ title: 'Failed to delete bookmark', description: (err as Error)?.message ?? 'Unknown error', variant: 'destructive' })
+    }
+  }, [reloadBookmarks, toast])
+
+  const handleAutoDetect = useCallback(async () => {
+    if (!recording?.gameId) return
+    setAutoDetecting(true)
+    try {
+      const res = await window.api.autoDetectMistakes(recording.gameId)
+      await reloadMistakes()
+      toast({
+        title: 'Auto-detect done',
+        description: `Created ${res.created}, skipped ${res.skipped} duplicate(s).`,
+        variant: res.created > 0 ? undefined : 'destructive',
+      })
+    } catch (err) {
+      toast({ title: 'Auto-detect failed', description: (err as Error)?.message ?? 'Unknown error', variant: 'destructive' })
+    } finally {
+      setAutoDetecting(false)
+    }
+  }, [recording, reloadMistakes, toast])
+
+  // Fetch in-game events + the recording's precise startOffsetSec once we
+  // know which game this recording is linked to. Both are best-effort — the
+  // markers degrade gracefully when either piece is missing.
+  useEffect(() => {
+    let cancelled = false
+    if (!recording?.gameId) {
+      setGameEvents([]); setRecordingStartOffsetSec(null); setEventsDiag(null)
+      return
+    }
+    // Use the diagnostic variant on initial load so we can surface
+    // "timeline fetch failed" or "player not resolved" instead of silently
+    // showing an empty timeline. `forceRefetch: false` keeps the cache.
+    window.api.refreshGameEvents(recording.gameId, false)
+      .then((res) => {
+        if (cancelled) return
+        setGameEvents(res.events ?? [])
+        setEventsDiag(res.diag ?? null)
+      })
+      .catch(() => { /* no events available — quietly hide markers */ })
+    window.api.getRecording(recording.gameId)
+      .then((r) => { if (!cancelled) setRecordingStartOffsetSec(r?.startOffsetSec ?? null) })
+      .catch(() => { /* leave null — eventSync falls back to duration-based estimate */ })
+    return () => { cancelled = true }
+  }, [recording?.gameId])
+
+  // Manual "Refresh events" — drops the cache and refetches from Riot.
+  // Useful when the first fetch failed (rate limit, transient network).
+  // Also recomputes startOffsetSec on the backend, so we re-pull the
+  // recording row to pick up the new offset (otherwise markers from a
+  // bad-offset backfill would stay off-screen).
+  const handleRefreshEvents = useCallback(async () => {
+    if (!recording?.gameId) return
+    setRefreshingEvents(true)
+    try {
+      const res = await window.api.refreshGameEvents(recording.gameId, true)
+      setGameEvents(res.events ?? [])
+      setEventsDiag(res.diag ?? null)
+      try {
+        const r = await window.api.getRecording(recording.gameId)
+        setRecordingStartOffsetSec(r?.startOffsetSec ?? null)
+      } catch { /* leave previous value */ }
+      if (res.events.length > 0) {
+        toast({ title: 'Events refreshed', description: `${res.events.length} event(s) loaded.` })
+      } else {
+        const reasonHint =
+          res.diag.reason === 'timeline-fetch-failed' ? 'Riot timeline API unreachable.'
+          : res.diag.reason === 'player-not-resolved' ? `Player "${recording.champion}" not found in match.`
+          : res.diag.reason === 'no-match-id' ? 'Recording is not linked to a Riot match.'
+          : res.diag.reason === 'empty-timeline' ? 'Timeline has no relevant events.'
+          : res.diag.message ?? 'No events available.'
+        toast({ title: 'No events found', description: reasonHint, variant: 'destructive' })
+      }
+    } catch (err) {
+      toast({ title: 'Refresh failed', description: (err as Error)?.message ?? 'An unknown error occurred.', variant: 'destructive' })
+    } finally {
+      setRefreshingEvents(false)
+    }
+  }, [recording, toast])
+
   const handleUnlink = useCallback(async () => {
     if (!recording?.gameId) return
     await window.api.unlinkRecording(recording.gameId)
     toast({ title: 'Recording unlinked', description: 'The recording is still available in your library.' })
     await loadData()
+  }, [recording, loadData, toast])
+
+  // Manual recovery for the orphan path: ask the backend to look up this
+  // single recording in Riot match history. On success, reload so the
+  // player picks up the new gameId / startOffset / markers.
+  const [tryingLink, setTryingLink] = useState(false)
+  const handleTryLink = useCallback(async () => {
+    if (!recording?.id) return
+    setTryingLink(true)
+    try {
+      const result = await window.api.backfillOrphanRecordings(recording.id)
+      if (result.linked > 0) {
+        toast({ title: 'Recording linked', description: 'Game data recovered from Riot history — reloading to show markers.' })
+        await loadData()
+      } else if (result.skipped > 0) {
+        toast({
+          title: 'Already linked elsewhere',
+          description: 'The matching Riot game is already linked to another recording.',
+          variant: 'destructive',
+        })
+      } else {
+        toast({
+          title: 'No match found',
+          description: 'No Riot game was found within ±5 min of this recording. Confirm the account you played on is linked in NexusMind.',
+          variant: 'destructive',
+        })
+      }
+    } catch (err) {
+      toast({ title: 'Link failed', description: (err as Error)?.message ?? 'An unknown error occurred.', variant: 'destructive' })
+    } finally {
+      setTryingLink(false)
+    }
   }, [recording, loadData, toast])
 
   const handleClipRangeChange = useCallback((range: { startMs: number; endMs: number }) => {
@@ -209,6 +443,37 @@ export function RecordPlayerPage() {
       await loadData()
     } catch (err) { console.error('[RecordPlayerPage] Clip save failed:', err) }
     finally { setSavingClip(false) }
+  }
+
+  // "Export" is the same operation as Save but additionally reveals the
+  // produced mp4 in the OS file browser and surfaces a richer toast.
+  // Useful when the user wants to share the file outside the app.
+  const [exportingClip, setExportingClip] = useState(false)
+  const handleExportClip = async () => {
+    if (!recordingId) return
+    setExportingClip(true)
+    try {
+      const result = await window.api.exportClip({
+        recordingId,
+        startMs: clipRange.startMs,
+        endMs: clipRange.endMs,
+        title: clipTitle || undefined,
+      })
+      setCreatingClip(false)
+      await loadData()
+      toast({
+        title: 'Clip exported',
+        description: `Saved to ${result.filePath}${result.revealedInFolder ? ' — opened in Explorer.' : '.'}`,
+      })
+    } catch (err) {
+      toast({
+        title: 'Clip export failed',
+        description: (err as Error)?.message ?? 'Unknown error',
+        variant: 'destructive',
+      })
+    } finally {
+      setExportingClip(false)
+    }
   }
 
   const handleDeleteClip = async (id: string) => {
@@ -272,7 +537,22 @@ export function RecordPlayerPage() {
       </button>
 
       {/* Meta bar */}
-      <MetaBar recording={recording} onNavigate={(p) => navigate(p)} onReview={handleOpenReview} reviewLoading={creatingReview} onUnlink={handleUnlink} />
+      <MetaBar
+        recording={recording}
+        onNavigate={(p) => navigate(p)}
+        onReview={handleOpenReview}
+        reviewLoading={creatingReview}
+        onUnlink={handleUnlink}
+        onTryLink={handleTryLink}
+        tryingLink={tryingLink}
+        eventsCount={gameEvents.length}
+        eventsDiag={eventsDiag}
+        onRefreshEvents={handleRefreshEvents}
+        refreshingEvents={refreshingEvents}
+        onAutoDetectMistakes={handleAutoDetect}
+        autoDetectingMistakes={autoDetecting}
+        mistakeCount={mistakes.length}
+      />
 
       {/* Clip mode banner — visible only when ?clipId= is in the URL.
           Loading a clip's standalone file means the player shows that
@@ -311,23 +591,52 @@ export function RecordPlayerPage() {
           src={videoSrc}
           notes={[]}
           readonly
-          // Account for everything stacked below the <video>: the player's
-          // own progress bar + transport row (~6rem), the clip-mode banner
-          // above (~3rem when activeClip), and the BottomPanel under
-          // (~7.5rem). The previous 22.5rem reduction left the bottom
-          // controls overlapping the BottomPanel ("encastré dans la
-          // section"); 26rem in clip mode gives the controls clean
-          // breathing space without scrolling.
+          // Account for everything stacked below the <video>: progress
+          // bar with up to 3 lanes of event markers ABOVE it (pt-14 ≈
+          // 3.5rem), the legend chips row (~2rem), the transport button
+          // row (~3rem), the clip-mode banner above (~3rem), and the
+          // BottomPanel below (~7.5rem).
+          //
+          // Earlier values (20-26rem) predated the event-marker lanes
+          // and the legend chips, so the bottom controls got pushed off
+          // the visible area on shorter screens — including the fullscreen
+          // toggle, which made fullscreen unreachable. Adding ~6rem of
+          // breathing room everywhere fixes that without forcing scroll.
           videoMaxHeight={
             activeClip
-              ? 'max-h-[calc(100vh-26rem)]'
+              ? 'max-h-[calc(100vh-32rem)]'
               : creatingClip
-                ? 'max-h-[calc(100vh-24rem)]'
-                : 'max-h-[calc(100vh-20rem)]'
+                ? 'max-h-[calc(100vh-30rem)]'
+                : 'max-h-[calc(100vh-26rem)]'
           }
           clipping={creatingClip && !activeClip}
           clipRange={creatingClip && !activeClip ? clipRange : undefined}
           onClipRangeChange={creatingClip && !activeClip ? handleClipRangeChange : undefined}
+          // Don't pass events when playing a clip — the gameTimeMs values
+          // would be misaligned against the trimmed file.
+          gameEvents={activeClip ? [] : gameEvents}
+          gameMeta={!activeClip && recording.gameEndAt && recording.gameDuration && recording.createdAt ? {
+            gameEndAt: recording.gameEndAt,
+            gameDurationSec: recording.gameDuration,
+            recordingCreatedAt: recording.createdAt,
+            startOffsetSec: recordingStartOffsetSec,
+          } : undefined}
+          // Deep-link seek (Lane Phase chart → replay). Ignored in clip mode
+          // since the trimmed file has a different time-base.
+          seekToGameTimeSec={activeClip ? undefined : seekToGameTimeSec}
+          // Wire mistakes only when not playing a clip: the gameTimeSec
+          // anchors would be offset against a trimmed file the same way
+          // gameEvents would be.
+          mistakes={activeClip ? [] : mistakes}
+          mistakeTags={mistakeTags}
+          onAddMistake={activeClip ? undefined : handleAddMistake}
+          onDeleteMistake={handleDeleteMistake}
+          // Bookmarks are stored against videoTimeMs of the parent file
+          // and the clip is a different file with its own time-base, so
+          // skip them when a clip is active (same logic as mistakes).
+          bookmarks={activeClip ? [] : bookmarks}
+          onAddBookmark={activeClip ? undefined : handleAddBookmark}
+          onDeleteBookmark={handleDeleteBookmark}
         />
       ) : recording.youtubeUrl ? (
         <div className="rounded-xl overflow-hidden bg-[#050A10] border border-white/10 aspect-video">
@@ -357,8 +666,15 @@ export function RecordPlayerPage() {
           <input type="text" value={clipTitle} onChange={(e) => setClipTitle(e.target.value)} placeholder={`Clip — ${recording.champion}`}
             className="w-40 rounded bg-white/5 border border-white/10 px-2 py-1 text-[11px] text-hextech-text placeholder:text-hextech-text-dim/40 focus:outline-none focus:border-hextech-gold/50" />
           <Button size="sm" className="h-7 gap-1 text-xs bg-hextech-gold text-hextech-dark hover:bg-hextech-gold-bright px-2.5"
-            onClick={handleSaveClip} disabled={savingClip || clipRange.endMs <= clipRange.startMs}>
+            onClick={handleSaveClip} disabled={savingClip || exportingClip || clipRange.endMs <= clipRange.startMs}
+            title="Save clip in NexusMind (stays in the app)">
             {savingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}Save
+          </Button>
+          <Button size="sm" variant="outline"
+            className="h-7 gap-1 text-xs border-hextech-cyan/40 text-hextech-cyan hover:bg-hextech-cyan/10 px-2.5"
+            onClick={handleExportClip} disabled={savingClip || exportingClip || clipRange.endMs <= clipRange.startMs}
+            title="Export clip mp4 and reveal it in Explorer">
+            {exportingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}Export
           </Button>
           <button onClick={() => setCreatingClip(false)}
             className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-[#FF4655] border border-[#FF4655]/30 hover:bg-[#FF4655]/10 transition-colors">
@@ -393,9 +709,18 @@ interface MetaBarProps {
   onReview: () => void
   reviewLoading: boolean
   onUnlink: () => void
+  onTryLink: () => void
+  tryingLink: boolean
+  eventsCount: number
+  eventsDiag: { reason: string; message?: string; frameCount?: number; playerResolvedVia?: string } | null
+  onRefreshEvents: () => void
+  refreshingEvents: boolean
+  onAutoDetectMistakes: () => void
+  autoDetectingMistakes: boolean
+  mistakeCount: number
 }
 
-function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink }: MetaBarProps) {
+function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink, onTryLink, tryingLink, eventsCount, eventsDiag, onRefreshEvents, refreshingEvents, onAutoDetectMistakes, autoDetectingMistakes, mistakeCount }: MetaBarProps) {
   const dateStr = new Date(recording.gameEndAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
   return (
     <div className="flex items-center gap-3 rounded-xl bg-hextech-elevated border border-hextech-border-dim px-3 py-2 flex-wrap shrink-0">
@@ -431,9 +756,83 @@ function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink }: M
 
       <div className="flex-1" />
 
+      {/* Orphan-recovery CTA: lets the user fetch missing game data from
+          Riot match history (useful if they connected the account after
+          recording, or had no active NexusMind session at the time). */}
+      {recording.isOrphaned && (
+        <Button
+          variant="outline" size="sm"
+          disabled={tryingLink}
+          onClick={onTryLink}
+          title="Look this recording up in Riot match history"
+          className="gap-1.5 h-7 text-xs shrink-0 border-hextech-gold/40 text-hextech-gold hover:bg-hextech-gold/10"
+        >
+          {tryingLink ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+          {tryingLink ? 'Linking…' : 'Try to link'}
+        </Button>
+      )}
+
+      {/* Events status badge + manual refresh.
+          Shows the live event count when extraction worked, OR a red
+          "no markers" pill with a Refresh button when something went
+          wrong (Riot down, player not found, etc.). Hidden while the
+          first fetch hasn't finished yet (eventsDiag === null). */}
+      {!recording.isOrphaned && recording.gameId && eventsDiag && (
+        eventsCount > 0 ? (
+          <Button
+            variant="outline" size="sm"
+            disabled={refreshingEvents}
+            onClick={onRefreshEvents}
+            title={`Refresh game events (currently ${eventsCount} loaded${eventsDiag.frameCount ? ` from ${eventsDiag.frameCount} timeline frames` : ''})`}
+            className="gap-1.5 h-7 text-xs shrink-0 text-hextech-text-dim hover:text-hextech-gold hover:border-hextech-gold/40"
+          >
+            {refreshingEvents ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {eventsCount} events
+          </Button>
+        ) : (
+          <Button
+            variant="outline" size="sm"
+            disabled={refreshingEvents}
+            onClick={onRefreshEvents}
+            title={eventsDiag.message ?? 'No game events available — click to retry'}
+            className="gap-1.5 h-7 text-xs shrink-0 border-[#FF4655]/40 text-[#FF4655] hover:bg-[#FF4655]/10"
+          >
+            {refreshingEvents ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {refreshingEvents ? 'Refreshing…' : 'No markers — Refresh'}
+          </Button>
+        )
+      )}
+
       {/* Session review (linked game only) */}
       {!recording.isOrphaned && recording.gameId && (
         <>
+          {/* Lane Phase Comparator — opens a dedicated page that crunches
+              the cached Riot timeline into a per-minute laning breakdown
+              vs the direct opponent. Cheap on repeat opens (cached JSON
+              on the Game row). */}
+          <Button
+            variant="outline" size="sm"
+            className="gap-1.5 h-7 text-xs shrink-0 text-hextech-text-dim hover:text-hextech-gold hover:border-hextech-gold/40"
+            onClick={() => onNavigate(`/lane-phase/${recording.gameId}?rec=${recording.id}`)}
+            title="Compare your laning phase to your direct opponent (0-14 min)"
+          >
+            <Target className="h-3.5 w-3.5" />
+            Lane Phase
+          </Button>
+          {/* Run the mistake heuristics on the cached Riot timeline.
+              Idempotent — duplicates within 3s of an existing auto row are
+              skipped, so spamming the button is safe. Shows the current
+              count so the user can tell if nothing came back. */}
+          <Button
+            variant="outline" size="sm"
+            disabled={autoDetectingMistakes}
+            onClick={onAutoDetectMistakes}
+            title="Run the mistake auto-detector for this game"
+            className="gap-1.5 h-7 text-xs shrink-0 text-amber-300 hover:text-white hover:border-amber-400/40 hover:bg-amber-500/10"
+          >
+            {autoDetectingMistakes ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+            Mistakes ({mistakeCount})
+          </Button>
           <Button
             variant="outline" size="sm"
             className={`gap-2 h-7 text-xs shrink-0 ${recording.hasReview ? 'text-hextech-cyan border-hextech-cyan/30 hover:bg-hextech-cyan/10' : ''}`}

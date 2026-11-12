@@ -4,34 +4,109 @@ import {
   Bookmark, Play, Pause, Volume2, VolumeX, Maximize2, Minimize2,
   Check, X, RotateCcw, RotateCw, PanelRight, PanelLeft, PanelRightClose,
   ZoomIn, ZoomOut, StepBack, StepForward, Trash2, Loader2,
+  Sword, Skull, Handshake, Flame, Crown, Eye, Bug, Sparkles, RadioTower, ShieldOff, Shield,
+  User, Users, Target, AlertTriangle, MessageSquare, EyeOff,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
-import type { GameEvent, GameEventType } from '@/lib/ipc'
+import type { GameEvent, GameEventType, Mistake, MistakeTag, Bookmark as BookmarkData } from '@/lib/ipc'
 
-// Visual styling per event category. Kept small/contained so the timeline
-// stays readable even when 50+ markers are rendered.
+// Visual styling per event category. Saturated colors for the most
+// important events (player K/D/A, objectives), muted for buildings so
+// 50+ markers stay readable.
 const EVENT_COLORS: Record<GameEventType, string> = {
-  kill: 'bg-emerald-400',
-  death: 'bg-red-500',
-  assist: 'bg-yellow-400',
-  dragon: 'bg-orange-500',
-  baron: 'bg-purple-500',
-  voidgrub: 'bg-green-600',
-  herald: 'bg-blue-500',
-  atakhan: 'bg-amber-400',
-  turret: 'bg-zinc-400',
-  inhibitor: 'bg-pink-400',
-  plate: 'bg-zinc-500/70',
+  kill:      'bg-emerald-500 text-black',
+  death:     'bg-red-500 text-white',
+  assist:    'bg-yellow-400 text-black',
+  dragon:    'bg-orange-500 text-black',
+  baron:     'bg-purple-600 text-white',
+  voidgrub:  'bg-emerald-700 text-white',
+  herald:    'bg-blue-500 text-white',
+  atakhan:   'bg-amber-500 text-black',
+  turret:    'bg-zinc-300 text-black',
+  inhibitor: 'bg-pink-500 text-white',
+  plate:     'bg-zinc-500 text-white',
 }
 
-// Y-offset (in px from bar center) per category so different event types
-// don't render on top of each other. Bigger categories get more space.
-const EVENT_LANE: Record<GameEventType, number> = {
-  death: -14, kill: -14, assist: -14,
-  dragon: 14, baron: 14, herald: 14, voidgrub: 14, atakhan: 14,
-  turret: 22, inhibitor: 22, plate: 22,
+const EVENT_ICONS: Record<GameEventType, LucideIcon> = {
+  kill: Sword,
+  death: Skull,
+  assist: Handshake,
+  dragon: Flame,
+  baron: Crown,
+  voidgrub: Bug,
+  herald: Eye,
+  atakhan: Sparkles,
+  // Watchtower silhouette (thin column on a base) — reads as "tower"
+  // instead of the previous Castle icon which looked like a fortress.
+  turret: RadioTower,
+  inhibitor: ShieldOff,
+  plate: Shield,
 }
+
+const EVENT_LABELS: Record<GameEventType, string> = {
+  kill: 'Kill',
+  death: 'Death',
+  assist: 'Assist',
+  dragon: 'Drake',
+  baron: 'Nashor',
+  voidgrub: 'Voidgrub',
+  herald: 'Herald',
+  atakhan: 'Atakhan',
+  turret: 'Tower',
+  inhibitor: 'Inhib',
+  plate: 'Plate',
+}
+
+// Order used by the legend / filter chips — most important categories first.
+const EVENT_ORDER: GameEventType[] = [
+  'kill', 'death', 'assist',
+  'dragon', 'baron', 'herald', 'voidgrub', 'atakhan',
+  'turret', 'inhibitor', 'plate',
+]
+
+// Y-offset (in px from bar center) per lane. Markers all sit ABOVE the bar
+// (negative Y), close to each other, à la Insight Capture / Outplayed. The
+// three lanes give a vertical hierarchy: K/D/A closest to the bar (most
+// important), objectives middle, buildings furthest (least critical).
+const EVENT_LANE: Record<GameEventType, number> = {
+  kill: -16, death: -16, assist: -16,
+  dragon: -32, baron: -32, herald: -32, voidgrub: -32, atakhan: -32,
+  turret: -48, inhibitor: -48, plate: -48,
+}
+
+/**
+ * Time window (in seconds of video time) inside which adjacent same-type
+ * markers get collapsed into a single badge with a count. 25s comfortably
+ * covers an entire teamfight + its immediate cleanup (chases, follow-up
+ * picks) so the user sees ONE marker per fight per category instead of a
+ * dense cluster they have to mentally collapse.
+ */
+const CLUSTER_WINDOW_SEC = 25
+
+/**
+ * Horizontal distance (in seconds of video time) below which two markers
+ * are considered "stacked" at the same scrubber position. When the
+ * collision-avoidance pass detects this, the second marker gets bumped
+ * vertically so both stay readable.
+ */
+const COLLISION_WINDOW_SEC = 6
+/** Vertical bump per collision tier, in pixels. */
+const COLLISION_BUMP_PX = 22
+
+/**
+ * Filter modes for the timeline markers. Stored in localStorage so the
+ * user's choice sticks across recordings.
+ *  - mine: only events the user participated in (default)
+ *  - all: every event the extractor returned, including team-fight context
+ *  - objectives: dragons / baron / herald / voidgrub / atakhan / turrets /
+ *    inhibitors regardless of player involvement (drops K/D/A and plates)
+ */
+type EventFilterMode = 'mine' | 'all' | 'objectives'
+const OBJECTIVE_TYPES = new Set<GameEventType>([
+  'dragon', 'baron', 'herald', 'voidgrub', 'atakhan', 'turret', 'inhibitor',
+])
 
 function fmt(seconds: number): string {
   if (!isFinite(seconds)) return '0:00'
@@ -46,6 +121,16 @@ const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2]
 const ZOOM_LEVELS = [1, 2, 5, 10] as const
 type ZoomLevel = (typeof ZOOM_LEVELS)[number]
 type SidebarPosition = 'right' | 'left' | 'hidden'
+type SidebarSection = 'notes' | 'mistakes' | 'bookmarks'
+
+/** Payload for `onAddMistake` — see Mistake Library plan. */
+export interface NewMistakePayload {
+  tagId: string
+  gameTimeSec: number
+  videoTimeMs?: number
+  note?: string
+  severity?: number
+}
 
 interface VideoReviewPlayerProps {
   src: string
@@ -73,13 +158,36 @@ interface VideoReviewPlayerProps {
     /** Pre-computed offset from DB, preferred over deriving from birthtime */
     startOffsetSec?: number | null
   }
+  /** When set (game-time seconds), the player seeks to that moment once
+   *  metadata is ready and starts playing. Used by deep-links like the Lane
+   *  Phase Comparator ("click the 12-min dip → jump to 12 min in the replay").
+   *  Re-applied whenever the value changes. */
+  seekToGameTimeSec?: number | null
+  // ── Mistake Library integration ────────────────────────────────────
+  /** Mistakes attached to this recording's game. Rendered as a separate
+   *  marker lane above game events and as a collapsible side list. */
+  mistakes?: Mistake[]
+  /** All available tags (built-in + user-defined) — used by the add dialog. */
+  mistakeTags?: MistakeTag[]
+  /** Called when the user confirms the add-mistake dialog (hotkey `x`). */
+  onAddMistake?: (payload: NewMistakePayload) => Promise<void> | void
+  onDeleteMistake?: (id: string) => Promise<void> | void
+
+  // ── Bookmarks integration ──────────────────────────────────────────
+  /** Recording-anchored free markers (no game-time mapping). */
+  bookmarks?: BookmarkData[]
+  /** Triggered by hotkey `b` or the inline bookmark button. */
+  onAddBookmark?: (payload: { videoTimeMs: number; label?: string }) => Promise<void> | void
+  onDeleteBookmark?: (id: string) => Promise<void> | void
 }
 
 export function VideoReviewPlayer({
   src, notes, onAddNote, onEditNote, onDeleteNote, onFileNotFound, readonly,
   clipping, clipRange, onClipRangeChange,
   videoMaxHeight = 'max-h-[480px]',
-  gameEvents, gameMeta,
+  gameEvents, gameMeta, seekToGameTimeSec,
+  mistakes, mistakeTags, onAddMistake, onDeleteMistake,
+  bookmarks, onAddBookmark, onDeleteBookmark,
 }: VideoReviewPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const progressRef = useRef<HTMLDivElement>(null)
@@ -93,7 +201,6 @@ export function VideoReviewPlayer({
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [speed, setSpeed] = useState(1)
-  const [isFullscreen, setIsFullscreen] = useState(false)
   const [hoverTime, setHoverTime] = useState<number | null>(null)
   const [hoverX, setHoverX] = useState(0)
   const [marking, setMarking] = useState(false)
@@ -107,8 +214,73 @@ export function VideoReviewPlayer({
   // Track how many auto-retries we've fired so we don't loop infinitely.
   const retryCountRef = useRef(0)
   const [sidebarPosition, setSidebarPosition] = useState<SidebarPosition>('right')
+  // Which sidebar sections are visible. The sidebar exists in BOTH windowed
+  // and fullscreen modes, and shows several sections AT ONCE (notes +
+  // mistakes + bookmarks) — the chips just filter what's listed. Persisted so
+  // the choice sticks across recordings.
+  const [visibleSections, setVisibleSections] = useState<Set<SidebarSection>>(() => {
+    try {
+      const raw = localStorage.getItem('nm.player.sidebarSections')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed)) {
+          const valid = (parsed as string[]).filter(
+            (s): s is SidebarSection => s === 'notes' || s === 'mistakes' || s === 'bookmarks',
+          )
+          if (valid.length > 0) return new Set<SidebarSection>(valid)
+        }
+      }
+    } catch { /* ignore */ }
+    return new Set<SidebarSection>(['notes', 'mistakes', 'bookmarks'])
+  })
+  useEffect(() => {
+    try { localStorage.setItem('nm.player.sidebarSections', JSON.stringify([...visibleSections])) } catch { /* ignore */ }
+  }, [visibleSections])
   // Show/hide the game-event markers (kills/dragons/etc) layer.
   const [showEvents, setShowEvents] = useState(true)
+  // Per-category filter. null = all visible. A Set of types means show ONLY
+  // those types. Persisted to localStorage so the user's last chip
+  // selection auto-applies when they open the next recording — no need to
+  // re-click "Deaths only" every time.
+  const [eventFilter, setEventFilter] = useState<Set<GameEventType> | null>(() => {
+    try {
+      const raw = localStorage.getItem('nm.player.eventFilter')
+      if (!raw) return null
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed) || parsed.length === 0) return null
+      const valid = new Set(EVENT_ORDER)
+      const filtered = (parsed as string[]).filter((t): t is GameEventType => valid.has(t as GameEventType))
+      return filtered.length > 0 ? new Set<GameEventType>(filtered) : null
+    } catch { return null }
+  })
+  useEffect(() => {
+    try {
+      if (eventFilter === null) localStorage.removeItem('nm.player.eventFilter')
+      else localStorage.setItem('nm.player.eventFilter', JSON.stringify([...eventFilter]))
+    } catch { /* ignore */ }
+  }, [eventFilter])
+  // High-level filter mode — switches which events the renderer considers
+  // before applying per-category chips. Persisted to localStorage so
+  // jumping between recordings keeps the same view.
+  const [filterMode, setFilterMode] = useState<EventFilterMode>(() => {
+    try {
+      const v = localStorage.getItem('nm.player.eventFilterMode')
+      if (v === 'mine' || v === 'all' || v === 'objectives') return v
+    } catch { /* ignore */ }
+    return 'mine'
+  })
+  useEffect(() => {
+    try { localStorage.setItem('nm.player.eventFilterMode', filterMode) } catch { /* ignore */ }
+  }, [filterMode])
+  // Custom "section-bounded fullscreen": uses position:fixed within the
+  // app's content area (left:16rem matches the sidebar width) so the
+  // sidebar stays visible — replaces the native Fullscreen API which
+  // covered the whole window and broke the user's navigation.
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  // True while the mouse has been idle long enough in fullscreen — used to
+  // auto-hide the floating controls overlay (YouTube-style).
+  const [controlsHidden, setControlsHidden] = useState(false)
+  const controlsHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Inline note edit state — works in both fullscreen sidebar and inline notes list
   const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null)
   const [editingNoteText, setEditingNoteText] = useState('')
@@ -123,6 +295,31 @@ export function VideoReviewPlayer({
   // Zoom level for timeline precision
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>(1)
 
+  // ── Mistake Library state ─────────────────────────────────────────────
+  // Toggle to hide/show heuristic-detected mistakes (off-by-default until
+  // the user has decided the auto-detector is trustworthy). Persisted to
+  // localStorage so the choice sticks across recordings.
+  const [showAutoDetected, setShowAutoDetected] = useState<boolean>(() => {
+    try { return localStorage.getItem('nm.player.showAutoDetected') === '1' } catch { return false }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('nm.player.showAutoDetected', showAutoDetected ? '1' : '0') } catch { /* ignore */ }
+  }, [showAutoDetected])
+  // Open state + draft fields for the add-mistake dialog (opens via the
+  // `x` hotkey or the inline "+ Mistake" button).
+  const [mistakeDialogOpen, setMistakeDialogOpen] = useState(false)
+  const [mistakeAtSec, setMistakeAtSec] = useState(0)
+  const [mistakeTagId, setMistakeTagId] = useState<string>('')
+  const [mistakeNote, setMistakeNote] = useState('')
+  const [mistakeSeverity, setMistakeSeverity] = useState<1 | 2 | 3>(2)
+  const [mistakeTagQuery, setMistakeTagQuery] = useState('')
+  const [savingMistake, setSavingMistake] = useState(false)
+
+  // Bookmark inline-add dialog: triggered by `b`. Single-line label.
+  const [bookmarkDialogOpen, setBookmarkDialogOpen] = useState(false)
+  const [bookmarkAtMs, setBookmarkAtMs] = useState(0)
+  const [bookmarkLabel, setBookmarkLabel] = useState('')
+
   // Keep a stable reference to the original index for edit/delete callbacks,
   // since `videoNotes` is filtered+sorted (its index ≠ index in `notes`).
   const videoNotes = notes
@@ -133,6 +330,10 @@ export function VideoReviewPlayer({
   // Map game events to video times once per (events, duration, meta) change.
   // Returns [] if metadata is missing, the video isn't loaded yet, or the
   // events were never provided — caller treats them as best-effort.
+  //
+  // Filter mode is applied here so it ripples through clustering / lanes
+  // automatically; recomputing from scratch on toggle is fine because the
+  // input list is tiny (<200 events) and computation is microseconds.
   const mappedEvents = useMemo(() => {
     if (!gameEvents || gameEvents.length === 0 || !gameMeta || duration <= 0) return []
     const gameEndAt = typeof gameMeta.gameEndAt === 'string' ? new Date(gameMeta.gameEndAt) : gameMeta.gameEndAt
@@ -141,6 +342,11 @@ export function VideoReviewPlayer({
       : gameMeta.recordingCreatedAt
     const out: Array<GameEvent & { videoTime: number }> = []
     for (const ev of gameEvents) {
+      // Filter mode gate. "mine" only takes isPlayer=true events.
+      // "objectives" only takes OBJECTIVE_TYPES (regardless of isPlayer).
+      // "all" lets everything through.
+      if (filterMode === 'mine' && !ev.isPlayer) continue
+      if (filterMode === 'objectives' && !OBJECTIVE_TYPES.has(ev.type)) continue
       const t = gameTimeToVideoTime({
         eventGameTimeMs: ev.gameTimeMs,
         gameEndAt,
@@ -152,7 +358,121 @@ export function VideoReviewPlayer({
       if (t !== null) out.push({ ...ev, videoTime: t })
     }
     return out
-  }, [gameEvents, gameMeta, duration])
+  }, [gameEvents, gameMeta, duration, filterMode])
+
+  /**
+   * Cluster same-type adjacent events into a single marker with a count
+   * badge — keeps the scrubber readable when (e.g.) a teamfight kills the
+   * whole team in 5 seconds. A cluster's videoTime is the time of its FIRST
+   * event so clicking the marker seeks to the start of the action.
+   */
+  const clusteredEvents = useMemo(() => {
+    if (mappedEvents.length === 0) return [] as Array<{
+      type: GameEventType
+      videoTime: number
+      gameTimeMs: number
+      label: string
+      count: number
+      events: Array<GameEvent & { videoTime: number }>
+    }>
+    // Stable order: video time, then type so same-type clusters meet.
+    const sorted = [...mappedEvents].sort((a, b) => a.videoTime - b.videoTime || a.type.localeCompare(b.type))
+    const clusters: Array<{
+      type: GameEventType
+      videoTime: number
+      gameTimeMs: number
+      label: string
+      count: number
+      events: Array<GameEvent & { videoTime: number }>
+    }> = []
+    for (const ev of sorted) {
+      // Same-type clustering: scan back through ALL same-type clusters
+      // (not just the immediate previous one) so e.g. an objective taken
+      // 20s after a kill cluster still merges with another nearby kill
+      // cluster instead of starting a new one.
+      const sameTypeBack = clusters
+        .slice()
+        .reverse()
+        .find((c) => c.type === ev.type && Math.abs(ev.videoTime - c.events[c.events.length - 1].videoTime) <= CLUSTER_WINDOW_SEC)
+      if (sameTypeBack) {
+        sameTypeBack.count += 1
+        sameTypeBack.events.push(ev)
+        sameTypeBack.label = `${sameTypeBack.count}× ${EVENT_LABELS[ev.type]}`
+      } else {
+        clusters.push({
+          type: ev.type,
+          videoTime: ev.videoTime,
+          gameTimeMs: ev.gameTimeMs,
+          label: ev.label,
+          count: 1,
+          events: [ev],
+        })
+      }
+    }
+    return clusters
+  }, [mappedEvents])
+
+  /**
+   * Collision-avoidance pass: when two clusters (of any type) end up at
+   * roughly the same X position on the scrubber, bump the later one up by
+   * a row so both icons stay visible. Without this, e.g. a "kill" and a
+   * "death" both at game time 12:30 would render on top of each other
+   * since they share lane Y=-16. Computes a per-cluster `stackOffset` in
+   * px (always non-positive — markers stack upward).
+   */
+  const positionedClusters = useMemo(() => {
+    if (clusteredEvents.length === 0) return [] as Array<typeof clusteredEvents[number] & { stackOffset: number }>
+    const sorted = [...clusteredEvents].sort((a, b) => a.videoTime - b.videoTime)
+    const placed: Array<typeof clusteredEvents[number] & { stackOffset: number }> = []
+    for (const c of sorted) {
+      // All previously-placed clusters within the collision window are
+      // potential physical collisions, regardless of type — the icons take
+      // up the same screen space even when they're conceptually in
+      // different lanes (lanes are 16px apart, icons are 20px wide).
+      const nearby = placed.filter((p) => Math.abs(p.videoTime - c.videoTime) <= COLLISION_WINDOW_SEC)
+      const usedTiers = new Set(nearby.map((p) => Math.round(-p.stackOffset / COLLISION_BUMP_PX)))
+      let tier = 0
+      while (usedTiers.has(tier)) tier++
+      placed.push({ ...c, stackOffset: -tier * COLLISION_BUMP_PX })
+    }
+    return placed
+  }, [clusteredEvents])
+
+  /**
+   * Convert mistakes (game-time seconds) into the same video-time space as
+   * the game-event markers. Mistakes without `videoTimeMs` are converted
+   * via the same offset pipeline as gameEvents.
+   */
+  const mappedMistakes = useMemo(() => {
+    if (!mistakes || mistakes.length === 0 || duration <= 0) return []
+    const out: Array<Mistake & { videoTime: number }> = []
+    for (const m of mistakes) {
+      if (!showAutoDetected && m.autoDetected) continue
+      // Prefer the stored videoTimeMs (saved at marker creation). Fall back
+      // to recomputing through the gameMeta pipeline when missing.
+      let videoTime: number | null = null
+      if (typeof m.videoTimeMs === 'number' && m.videoTimeMs >= 0) {
+        videoTime = m.videoTimeMs / 1000
+      } else if (gameMeta) {
+        const gameEndAt = typeof gameMeta.gameEndAt === 'string' ? new Date(gameMeta.gameEndAt) : gameMeta.gameEndAt
+        const recordingCreatedAt = typeof gameMeta.recordingCreatedAt === 'string'
+          ? new Date(gameMeta.recordingCreatedAt)
+          : gameMeta.recordingCreatedAt
+        videoTime = gameTimeToVideoTime({
+          eventGameTimeMs: m.gameTimeSec * 1000,
+          gameEndAt,
+          gameDurationSec: gameMeta.gameDurationSec,
+          recordingCreatedAt,
+          videoDurationSec: duration,
+          startOffsetSec: gameMeta.startOffsetSec,
+        })
+      }
+      if (videoTime !== null && videoTime >= 0 && videoTime <= duration) {
+        out.push({ ...m, videoTime })
+      }
+    }
+    return out
+  }, [mistakes, showAutoDetected, gameMeta, duration])
 
   const cycleSidebar = useCallback(() => {
     setSidebarPosition((pos) => {
@@ -160,6 +480,14 @@ export function VideoReviewPlayer({
       if (pos === 'left') return 'hidden'
       return 'right'
     })
+  }, [])
+
+  // Bring the sidebar back (if hidden) and make sure a section is enabled —
+  // used when the user triggers an action (mark / mistake / bookmark) so the
+  // relevant section is immediately visible instead of staying filtered out.
+  const revealSidebar = useCallback((section: SidebarSection) => {
+    setVisibleSections((prev) => (prev.has(section) ? prev : new Set(prev).add(section)))
+    setSidebarPosition((pos) => (pos === 'hidden' ? 'right' : pos))
   }, [])
 
   // ── Playback helpers ────────────────────────────────────────────────────────
@@ -203,6 +531,41 @@ export function VideoReviewPlayer({
     videoRef.current.currentTime = time
     videoRef.current.play().catch(() => {})
   }, [])
+
+  // Deep-link seek: when a parent passes `seekToGameTimeSec` (e.g. the Lane
+  // Phase Comparator jumping to the 12-min dip), map it to video time via the
+  // same offset pipeline the event markers use, then seek + play. Applied
+  // once per distinct value, and only after metadata is ready (duration>0).
+  const appliedSeekRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (seekToGameTimeSec == null || !gameMeta || duration <= 0) return
+    if (appliedSeekRef.current === seekToGameTimeSec) return
+    const gameEndAt = typeof gameMeta.gameEndAt === 'string' ? new Date(gameMeta.gameEndAt) : gameMeta.gameEndAt
+    const recordingCreatedAt = typeof gameMeta.recordingCreatedAt === 'string' ? new Date(gameMeta.recordingCreatedAt) : gameMeta.recordingCreatedAt
+    let vt = gameTimeToVideoTime({
+      eventGameTimeMs: seekToGameTimeSec * 1000,
+      gameEndAt,
+      gameDurationSec: gameMeta.gameDurationSec,
+      recordingCreatedAt,
+      videoDurationSec: duration,
+      startOffsetSec: gameMeta.startOffsetSec,
+    })
+    if (vt === null) {
+      // Fallback: video time = game time + offset (mirror of openMistakeDialog).
+      let offsetSec = typeof gameMeta.startOffsetSec === 'number' && Number.isFinite(gameMeta.startOffsetSec)
+        ? gameMeta.startOffsetSec
+        : (recordingCreatedAt.getTime() - (gameEndAt.getTime() - gameMeta.gameDurationSec * 1000)) / 1000
+      if (!Number.isFinite(offsetSec)) offsetSec = 0
+      vt = seekToGameTimeSec + offsetSec
+    }
+    const clamped = Math.max(0, Math.min(duration, vt))
+    if (videoRef.current) {
+      videoRef.current.currentTime = clamped
+      videoRef.current.play().catch(() => {})
+    }
+    setCurrentTime(clamped)
+    appliedSeekRef.current = seekToGameTimeSec
+  }, [seekToGameTimeSec, duration, gameMeta])
 
   // ── Progress bar interaction (drag scrub + zoom) ─────────────────────────────
 
@@ -315,17 +678,16 @@ export function VideoReviewPlayer({
   }
 
   // ── Fullscreen ───────────────────────────────────────────────────────────────
-  // We DO NOT swap the JSX subtree on fullscreen. The same <video> stays mounted
-  // and we only adjust layout classes + render the sidebar conditionally.
-  // This prevents the player from resetting playback position when toggling FS.
+  // SECTION-BOUNDED fullscreen: the player goes position:fixed within
+  // the content area (left:16rem matches the sidebar) instead of using
+  // the native Fullscreen API which covered the whole window and hid the
+  // sidebar / drag region. ESC still exits.
+  //
+  // We DO NOT swap the JSX subtree, so the same <video> stays mounted
+  // (no playback reset on toggle).
 
   const toggleFullscreen = () => {
-    if (!containerRef.current) return
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen()
-    } else {
-      document.exitFullscreen()
-    }
+    setIsFullscreen((prev) => !prev)
   }
 
   // Retry loading when duration stays at 0 — usually means the file was loaded
@@ -356,11 +718,40 @@ export function VideoReviewPlayer({
     return () => clearTimeout(timer)
   }, [duration, videoError, src])
 
+  // ESC exits our custom section-fullscreen mode (mirrors the native API
+  // UX so the user's muscle memory still works).
   useEffect(() => {
-    const onChange = () => setIsFullscreen(!!document.fullscreenElement)
-    document.addEventListener('fullscreenchange', onChange)
-    return () => document.removeEventListener('fullscreenchange', onChange)
-  }, [])
+    if (!isFullscreen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsFullscreen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [isFullscreen])
+
+  // Auto-hide controls in fullscreen after 2.5s of mouse idle. Any mouse
+  // move re-shows them and resets the timer. Hover over the controls bar
+  // itself also keeps them visible (handled via onMouseEnter on the bar).
+  const showControlsTemporarily = useCallback(() => {
+    setControlsHidden(false)
+    if (controlsHideTimerRef.current) clearTimeout(controlsHideTimerRef.current)
+    if (!isFullscreen) return
+    controlsHideTimerRef.current = setTimeout(() => setControlsHidden(true), 2500)
+  }, [isFullscreen])
+
+  useEffect(() => {
+    if (!isFullscreen) {
+      // Leaving fullscreen — always show controls again.
+      setControlsHidden(false)
+      if (controlsHideTimerRef.current) clearTimeout(controlsHideTimerRef.current)
+      return
+    }
+    // Entering fullscreen — start the hide timer.
+    showControlsTemporarily()
+    return () => {
+      if (controlsHideTimerRef.current) clearTimeout(controlsHideTimerRef.current)
+    }
+  }, [isFullscreen, showControlsTemporarily])
 
   // ── Keyboard shortcuts ───────────────────────────────────────────────────────
 
@@ -376,14 +767,13 @@ export function VideoReviewPlayer({
         case 'k': togglePlay(); break
         case 'm': toggleMute(); break
         case 'f': toggleFullscreen(); break
-        case 'n': if (isFullscreen) cycleSidebar(); break
+        case 'n': cycleSidebar(); break
         case 'h':
           // Shortcut to directly TOGGLE the sidebar visibility (hide ↔ show on right).
           // Different from N (cycle right→left→hidden→right) — H is the one-shot
-          // "give me back screen space NOW" key.
-          if (isFullscreen) {
-            setSidebarPosition((pos) => pos === 'hidden' ? 'right' : 'hidden')
-          }
+          // "give me back screen space NOW" key. Works in both windowed and
+          // fullscreen now that the sidebar exists in both.
+          setSidebarPosition((pos) => pos === 'hidden' ? 'right' : 'hidden')
           break
         case '[': seekBy(-1000); break
         case ']': seekBy(1000); break
@@ -397,11 +787,27 @@ export function VideoReviewPlayer({
           const i = ZOOM_LEVELS.indexOf(z)
           return ZOOM_LEVELS[Math.max(0, i - 1)] ?? z
         }); break
+        case 'x':
+          // Mistake tag at current video time — opens the inline dialog.
+          // 'x' chosen because 'm' is mute and 'b' will be Bookmark.
+          if (onAddMistake && gameMeta) {
+            e.preventDefault()
+            openMistakeDialog()
+          }
+          break
+        case 'b':
+          // Free bookmark at current video time. Works on any recording,
+          // even orphans (no Game / gameMeta needed).
+          if (onAddBookmark) {
+            e.preventDefault()
+            openBookmarkDialog()
+          }
+          break
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [togglePlay, skip, seekBy, speed, changeSpeed, isFullscreen, cycleSidebar])
+  }, [togglePlay, skip, seekBy, speed, changeSpeed, isFullscreen, cycleSidebar, onAddMistake, gameMeta, onAddBookmark])
 
   // ── Mark moment ──────────────────────────────────────────────────────────────
 
@@ -411,6 +817,7 @@ export function VideoReviewPlayer({
     setMarkedAt(videoRef.current.currentTime)
     setMarking(true)
     setPendingNote('')
+    revealSidebar('notes')
     setTimeout(() => markInputRef.current?.focus(), 50)
   }
 
@@ -423,6 +830,72 @@ export function VideoReviewPlayer({
     })
     setMarking(false)
     setPendingNote('')
+  }
+
+  // ── Mistake dialog handlers ────────────────────────────────────────────
+
+  /**
+   * Open the inline "+ Mistake" dialog anchored at the current video time.
+   * Computes the in-game seconds from the recording offset so the saved
+   * mistake is anchored to game time (re-aligns even if the user re-records
+   * the same game later).
+   */
+  function openMistakeDialog() {
+    const v = videoRef.current
+    if (!v || !gameMeta) return
+    v.pause()
+    const vt = v.currentTime
+    // Reverse-map videoTime → game time by subtracting the same offset
+    // gameTimeToVideoTime would have added. Falls back to 0 if metadata is missing.
+    const gameEndAt = typeof gameMeta.gameEndAt === 'string' ? new Date(gameMeta.gameEndAt) : gameMeta.gameEndAt
+    const recordingCreatedAt = typeof gameMeta.recordingCreatedAt === 'string' ? new Date(gameMeta.recordingCreatedAt) : gameMeta.recordingCreatedAt
+    let offsetSec = typeof gameMeta.startOffsetSec === 'number' && Number.isFinite(gameMeta.startOffsetSec)
+      ? gameMeta.startOffsetSec
+      : (recordingCreatedAt.getTime() - (gameEndAt.getTime() - gameMeta.gameDurationSec * 1000)) / 1000
+    if (!Number.isFinite(offsetSec)) offsetSec = 0
+    const gameSec = Math.max(0, Math.floor(vt - offsetSec))
+    setMistakeAtSec(gameSec)
+    setMistakeTagId('')
+    setMistakeTagQuery('')
+    setMistakeNote('')
+    setMistakeSeverity(2)
+    setMistakeDialogOpen(true)
+    revealSidebar('mistakes')
+  }
+
+  async function saveMistake() {
+    if (!onAddMistake || !mistakeTagId) return
+    setSavingMistake(true)
+    try {
+      const v = videoRef.current
+      const videoMs = v ? Math.floor(v.currentTime * 1000) : undefined
+      await onAddMistake({
+        tagId: mistakeTagId,
+        gameTimeSec: mistakeAtSec,
+        videoTimeMs: videoMs,
+        note: mistakeNote.trim() || undefined,
+        severity: mistakeSeverity,
+      })
+      setMistakeDialogOpen(false)
+    } finally {
+      setSavingMistake(false)
+    }
+  }
+
+  function openBookmarkDialog() {
+    const v = videoRef.current
+    if (!v) return
+    v.pause()
+    setBookmarkAtMs(Math.floor(v.currentTime * 1000))
+    setBookmarkLabel('')
+    setBookmarkDialogOpen(true)
+    revealSidebar('bookmarks')
+  }
+
+  async function saveBookmark() {
+    if (!onAddBookmark) return
+    await onAddBookmark({ videoTimeMs: bookmarkAtMs, label: bookmarkLabel.trim() || undefined })
+    setBookmarkDialogOpen(false)
   }
 
   // ── Note edit / delete ───────────────────────────────────────────────────────
@@ -577,20 +1050,386 @@ export function VideoReviewPlayer({
     </div>
   )
 
+  // ── Reusable dialog blocks (rendered inside the sidebar in both modes) ──
+
+  const bookmarkDialogBlock = bookmarkDialogOpen && (
+    <div className="rounded-lg border border-hextech-cyan/40 bg-hextech-cyan/5 p-2.5 flex items-center gap-2">
+      <Bookmark className="h-3.5 w-3.5 text-hextech-cyan shrink-0" />
+      <span className="text-xs font-mono text-hextech-cyan shrink-0 bg-hextech-cyan/10 rounded px-1.5 py-0.5">
+        {fmt(bookmarkAtMs / 1000)}
+      </span>
+      <input
+        autoFocus
+        type="text"
+        value={bookmarkLabel}
+        onChange={(e) => setBookmarkLabel(e.target.value)}
+        placeholder="Label (optional)…"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') saveBookmark()
+          if (e.key === 'Escape') setBookmarkDialogOpen(false)
+        }}
+        className="flex-1 bg-transparent text-sm text-white placeholder:text-white/30 focus:outline-none min-w-0"
+      />
+      <button onClick={saveBookmark} className="text-green-400 hover:opacity-80 shrink-0">
+        <Check className="h-4 w-4" />
+      </button>
+      <button onClick={() => setBookmarkDialogOpen(false)} className="text-white/40 hover:text-white shrink-0">
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  )
+
+  const mistakeDialogBlock = mistakeDialogOpen && (
+    <div className="rounded-lg border border-amber-400/40 bg-amber-500/5 p-3 space-y-2.5">
+      <div className="flex items-center gap-2">
+        <AlertTriangle className="h-4 w-4 text-amber-300" />
+        <span className="text-xs text-amber-200">
+          Tag a mistake at game time{' '}
+          <span className="font-mono bg-amber-500/15 rounded px-1.5">{fmt(mistakeAtSec)}</span>
+        </span>
+        <div className="flex-1" />
+        <button onClick={() => setMistakeDialogOpen(false)} className="text-white/40 hover:text-white" title="Close (Esc)">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Tag picker — simple search filter over a chip cloud. */}
+      <input
+        autoFocus
+        type="text"
+        value={mistakeTagQuery}
+        onChange={(e) => setMistakeTagQuery(e.target.value)}
+        placeholder="Filter tags…"
+        className="w-full bg-transparent border-b border-white/10 text-xs text-white py-1 focus:outline-none focus:border-amber-400/60"
+      />
+      <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
+        {(mistakeTags ?? [])
+          .filter((t) => !mistakeTagQuery || t.label.toLowerCase().includes(mistakeTagQuery.toLowerCase()) || t.slug.includes(mistakeTagQuery.toLowerCase()))
+          .map((t) => {
+            const active = mistakeTagId === t.id
+            return (
+              <button
+                key={t.id}
+                onClick={() => setMistakeTagId(t.id)}
+                style={active ? { borderColor: t.color ?? '#FFB454', backgroundColor: `${t.color ?? '#FFB454'}25` } : undefined}
+                className={cn(
+                  'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors',
+                  active ? 'text-white' : 'border-white/15 text-white/50 hover:text-white hover:border-white/30',
+                )}
+              >
+                {t.label}
+                <span className="ml-1 opacity-50 capitalize">· {t.category}</span>
+              </button>
+            )
+          })}
+        {(mistakeTags?.length ?? 0) === 0 && (
+          <span className="text-[10px] text-white/40">No tags available — restart the app to seed them.</span>
+        )}
+      </div>
+
+      <textarea
+        value={mistakeNote}
+        onChange={(e) => setMistakeNote(e.target.value)}
+        placeholder="Note (optional)…"
+        rows={2}
+        className="w-full rounded bg-black/30 border border-white/10 text-xs text-white p-2 resize-none focus:outline-none focus:border-amber-400/40"
+      />
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] text-white/40 uppercase tracking-wider">Severity:</span>
+        {([1, 2, 3] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setMistakeSeverity(s)}
+            className={cn(
+              'rounded px-2 py-0.5 text-[10px] font-semibold uppercase transition-colors',
+              mistakeSeverity === s
+                ? s === 1 ? 'bg-emerald-500/30 text-emerald-200'
+                  : s === 2 ? 'bg-amber-500/30 text-amber-200'
+                  : 'bg-[#FF4655]/30 text-red-200'
+                : 'bg-white/5 text-white/40 hover:bg-white/10',
+            )}
+          >
+            {s === 1 ? 'Minor' : s === 2 ? 'Standard' : 'Critical'}
+          </button>
+        ))}
+        <div className="flex-1" />
+        <button
+          onClick={saveMistake}
+          disabled={!mistakeTagId || savingMistake}
+          className="rounded bg-amber-500 text-black px-3 py-1 text-xs font-semibold hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          {savingMistake ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}
+        </button>
+      </div>
+    </div>
+  )
+
+  // ── Unified filterable sidebar (Notes + Mistakes + Bookmarks together) ──
+  // Rendered in BOTH windowed and fullscreen modes so the user can watch the
+  // replay and review their annotations at the same time. Unlike exclusive
+  // tabs, ALL enabled sections are shown stacked at once; the chips just
+  // filter which sections are listed (e.g. "mistakes only", or notes +
+  // mistakes together). Sections only exist when the host page wired up the
+  // corresponding feature.
+  const showMistakesSection = !!onAddMistake || (mistakes?.length ?? 0) > 0
+  const showBookmarksSection = !!onAddBookmark || (bookmarks?.length ?? 0) > 0
+  const availableSections: Array<{ id: SidebarSection; label: string; count: number; Icon: LucideIcon }> = [
+    { id: 'notes', label: 'Notes', count: videoNotes.length, Icon: MessageSquare },
+    ...(showMistakesSection ? [{ id: 'mistakes' as const, label: 'Mistakes', count: mappedMistakes.length, Icon: AlertTriangle }] : []),
+    ...(showBookmarksSection ? [{ id: 'bookmarks' as const, label: 'Marks', count: bookmarks?.length ?? 0, Icon: Bookmark }] : []),
+  ]
+  const sidebarHasAnyContent = videoNotes.length > 0 || mappedMistakes.length > 0 || (bookmarks?.length ?? 0) > 0 || !!onAddNote || showMistakesSection || showBookmarksSection
+  // A section is rendered when it's available AND enabled in the filter.
+  // If the user turned every chip off we still show nothing (their choice).
+  const sectionVisible = (id: SidebarSection) => visibleSections.has(id)
+
+  const notesSection = (
+    <section className="space-y-1.5">
+      <p className="text-[9px] text-white/30 uppercase tracking-widest font-semibold flex items-center gap-1.5">
+        <MessageSquare className="h-3 w-3" /> Notes
+      </p>
+      {marking && markInputBlock}
+      {videoNotes.length === 0 && !marking ? (
+        <p className="text-[11px] text-white/25">
+          No moments marked yet.
+          {!readonly && onAddNote && <> Press <kbd className="px-1 rounded bg-white/10 font-mono">Mark</kbd>.</>}
+        </p>
+      ) : (
+        videoNotes.map(({ note, originalIndex }) => renderNoteRow(note, originalIndex))
+      )}
+    </section>
+  )
+
+  const mistakesSection = (
+    <section className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[9px] text-amber-200/60 uppercase tracking-widest font-semibold flex items-center gap-1.5">
+          <AlertTriangle className="h-3 w-3" /> Mistakes
+        </p>
+        {(mistakes?.some((m) => m.autoDetected) ?? false) && (
+          <button
+            onClick={() => setShowAutoDetected((v) => !v)}
+            title={showAutoDetected ? 'Hide auto-detected mistakes' : 'Show auto-detected mistakes'}
+            className={cn(
+              'rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider transition-colors',
+              showAutoDetected ? 'bg-amber-500/30 text-amber-200' : 'bg-white/5 text-white/40 hover:bg-white/10',
+            )}
+          >
+            Auto {showAutoDetected ? 'on' : 'off'}
+          </button>
+        )}
+      </div>
+      {mistakeDialogBlock}
+      {mappedMistakes.length === 0 && !mistakeDialogOpen ? (
+        <p className="text-[11px] text-white/25">
+          No mistakes tagged yet.
+          {onAddMistake && <> Press <kbd className="px-1 rounded bg-white/10 font-mono">X</kbd>.</>}
+        </p>
+      ) : (
+        mappedMistakes.map((m) => (
+          <div key={m.id} className="flex items-start gap-2 group/mistake">
+            <button
+              onClick={() => seekTo(m.videoTime)}
+              className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
+            >
+              ▶ {fmt(m.videoTime)}
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-white/80 leading-tight">
+                {m.tag.label}
+                {m.autoDetected && <span className="ml-1.5 text-[9px] text-white/40 uppercase tracking-wider">auto</span>}
+              </p>
+              {m.note && <p className="text-[10px] text-white/40 break-words">{m.note}</p>}
+            </div>
+            {onDeleteMistake && (
+              <button
+                onClick={() => onDeleteMistake(m.id)}
+                title="Delete mistake"
+                className="opacity-0 group-hover/mistake:opacity-100 transition-opacity shrink-0 text-white/40 hover:text-[#FF4655] p-0.5"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        ))
+      )}
+    </section>
+  )
+
+  const bookmarksSection = (
+    <section className="space-y-1.5">
+      <p className="text-[9px] text-hextech-cyan/60 uppercase tracking-widest font-semibold flex items-center gap-1.5">
+        <Bookmark className="h-3 w-3" /> Bookmarks
+      </p>
+      {bookmarkDialogBlock}
+      {(bookmarks?.length ?? 0) === 0 && !bookmarkDialogOpen ? (
+        <p className="text-[11px] text-white/25">
+          No bookmarks yet.
+          {onAddBookmark && <> Press <kbd className="px-1 rounded bg-white/10 font-mono">B</kbd>.</>}
+        </p>
+      ) : (
+        bookmarks?.map((b) => (
+          <div key={b.id} className="flex items-start gap-2 group/bookmark">
+            <button
+              onClick={() => seekTo(b.videoTimeMs / 1000)}
+              className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] text-hextech-cyan bg-hextech-cyan/10 hover:bg-hextech-cyan/20 transition-colors"
+            >
+              ▶ {fmt(b.videoTimeMs / 1000)}
+            </button>
+            <span className="text-xs text-white/80 leading-tight flex-1 break-words">
+              {b.label || <span className="text-white/30 italic">Unlabeled</span>}
+            </span>
+            {onDeleteBookmark && (
+              <button
+                onClick={() => onDeleteBookmark(b.id)}
+                title="Delete bookmark"
+                className="opacity-0 group-hover/bookmark:opacity-100 transition-opacity shrink-0 text-white/40 hover:text-[#FF4655] p-0.5"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        ))
+      )}
+    </section>
+  )
+
+  const sidebarPanel = (
+    <div
+      className={cn(
+        'w-72 max-w-[40vw] flex flex-col bg-[#050A10] shrink-0 self-stretch',
+        sidebarPosition === 'left'
+          ? 'border-r border-white/10 order-first'
+          : 'border-l border-white/10',
+      )}
+    >
+      {/* Filter chips (one per available section) + collapse button. Each
+          chip independently toggles its section, so notes + mistakes can be
+          shown together, or filtered down to just one. */}
+      <div className="flex items-stretch border-b border-white/5">
+        <div className="flex flex-1 min-w-0 items-center gap-1 px-2 py-1.5 flex-wrap">
+          {availableSections.map(({ id, label, count, Icon }) => {
+            const on = sectionVisible(id)
+            return (
+              <button
+                key={id}
+                onClick={() => setVisibleSections((prev) => {
+                  const next = new Set(prev)
+                  if (next.has(id)) next.delete(id)
+                  else next.add(id)
+                  return next
+                })}
+                title={on ? `Hide ${label}` : `Show ${label}`}
+                className={cn(
+                  'flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors',
+                  on
+                    ? id === 'mistakes'
+                      ? 'border-amber-400/40 bg-amber-500/15 text-amber-200'
+                      : id === 'bookmarks'
+                        ? 'border-hextech-cyan/40 bg-hextech-cyan/15 text-hextech-cyan'
+                        : 'border-hextech-gold/40 bg-hextech-gold/15 text-hextech-gold'
+                    : 'border-white/10 text-white/35 hover:text-white/70 hover:bg-white/5',
+                )}
+              >
+                <Icon className="h-2.5 w-2.5 shrink-0" />
+                <span>{label}</span>
+                {count > 0 && <span className="opacity-60">{count}</span>}
+              </button>
+            )
+          })}
+        </div>
+        <button
+          onClick={() => setSidebarPosition('hidden')}
+          title="Hide sidebar (H)"
+          className="px-2 text-white/40 hover:text-white border-l border-white/5 shrink-0"
+        >
+          <PanelRightClose className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Stacked sections — all enabled sections shown at once, separated by
+          dividers. This lets the user read mistakes AND notes together. */}
+      <div className="flex-1 overflow-y-auto px-3 py-2.5 divide-y divide-white/5 [&>section]:py-2.5 [&>section:first-child]:pt-0">
+        {sectionVisible('notes') && notesSection}
+        {showMistakesSection && sectionVisible('mistakes') && mistakesSection}
+        {showBookmarksSection && sectionVisible('bookmarks') && bookmarksSection}
+        {availableSections.every((s) => !sectionVisible(s.id)) && (
+          <p className="text-[11px] text-white/25 text-center pt-6">All sections hidden — tap a chip above to show one.</p>
+        )}
+      </div>
+    </div>
+  )
+
+  // Re-open handle shown on the right edge whenever the sidebar is hidden
+  // (works in windowed and fullscreen). Prevents the "I hid the panel and
+  // can't get it back" trap.
+  const sidebarReopenHandle = sidebarHasAnyContent && (
+    <button
+      type="button"
+      onClick={() => setSidebarPosition('right')}
+      title="Show panel (H)"
+      className="absolute right-0 top-1/2 -translate-y-1/2 z-40 inline-flex items-center gap-1 rounded-l-md bg-hextech-gold/80 hover:bg-hextech-gold text-black px-1.5 py-3 text-[10px] font-semibold uppercase tracking-wider shadow-lg"
+      style={{ writingMode: 'vertical-rl' }}
+    >
+      <PanelRight className="h-3 w-3 rotate-180" />
+      <span>Panel</span>
+    </button>
+  )
+
   // ── Single layout — same DOM in/out of fullscreen so <video> stays mounted ──
+
+  // Whether to render the video as a full-cover layer (controls overlay
+  // on top, sidebar absent). True only when in fullscreen AND no sidebar.
+  // Otherwise the sidebar would get covered by the absolute inset-0 layer.
+  const videoCoversScreen = isFullscreen && sidebarPosition === 'hidden'
+  const sidebarVisible = sidebarPosition !== 'hidden' && sidebarHasAnyContent
 
   return (
     <div
       ref={containerRef}
+      onMouseMove={isFullscreen ? showControlsTemporarily : undefined}
+      // Section-bounded fullscreen: `fixed` with left:16rem (sidebar
+      // width) and top:36px (the app's drag region). Keeps the nav
+      // visible — replaces the native Fullscreen API which used to cover
+      // the entire window and broke the user's navigation.
+      style={
+        isFullscreen
+          ? { position: 'fixed', left: '16rem', top: '36px', right: 0, bottom: 0, zIndex: 40 }
+          : undefined
+      }
       className={cn(
         'select-none bg-[#050A10]',
         isFullscreen
-          ? 'relative flex w-full h-full overflow-hidden'
-          : 'rounded-xl overflow-hidden border border-white/10',
+          ? cn(
+              'overflow-hidden',
+              // Sidebar visible → use flex row so sidebar gets its column.
+              // Sidebar hidden → video uses absolute inset-0 to fill the area.
+              !videoCoversScreen && 'flex',
+              // Hide cursor when controls auto-hid, à la YouTube fullscreen.
+              controlsHidden && 'cursor-none',
+            )
+          // Windowed mode is now ALSO a flex row so the notes/mistakes
+          // sidebar sits next to the video (watch + review at once).
+          // `relative` anchors the re-open handle when the sidebar is hidden.
+          : 'relative flex rounded-xl overflow-hidden border border-white/10',
       )}
     >
-      {/* Video + progress + controls column */}
-      <div className={cn('flex flex-col min-w-0', isFullscreen ? 'flex-1' : 'w-full')}>
+      {/* Video column. In fullscreen WITHOUT sidebar the video fills the
+          entire container (absolute inset-0) and the progress + controls
+          overlay on top with auto-hide. In fullscreen WITH sidebar the
+          column stays in the flex row (flex-1) so the sidebar gets its
+          space. In windowed mode it's a normal stacked column. */}
+      <div
+        className={cn(
+          'min-w-0',
+          isFullscreen
+            ? videoCoversScreen
+              ? 'absolute inset-0 flex flex-col'
+              : 'flex-1 flex flex-col relative'
+            : 'flex-1 flex flex-col',
+        )}
+      >
         <div
           className={cn(
             'relative bg-black cursor-pointer',
@@ -647,8 +1486,32 @@ export function VideoReviewPlayer({
           )}
         </div>
 
-        {/* Progress bar */}
-        <div className="px-3 pt-3 pb-1">
+        {/* Progress bar + controls. In fullscreen this whole block becomes
+            a translucent overlay docked to the bottom of the container so
+            the video keeps the entire screen. Auto-hides after 2.5s of
+            mouse idle (see useEffect above). */}
+        <div
+          onMouseEnter={isFullscreen ? showControlsTemporarily : undefined}
+          className={cn(
+            isFullscreen
+              ? cn(
+                  'absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/95 via-black/80 to-transparent pt-6 pointer-events-auto transition-opacity duration-200',
+                  controlsHidden ? 'opacity-0 pointer-events-none' : 'opacity-100',
+                )
+              : '',
+          )}
+        >
+        {/* Progress bar. The big top padding when events are visible
+            reserves room for the up-to-3 marker lanes that float above
+            the scrubber (kill/death/assist lane, objectives lane,
+            building lane). Without it the icons would overflow into
+            the video area above. */}
+        <div
+          className={cn(
+            'px-3 pb-1',
+            showEvents && positionedClusters.length > 0 ? 'pt-20' : 'pt-3',
+          )}
+        >
           {zoomLevel > 1 && (
             <div className="flex items-center justify-between mb-1 text-[9px] font-mono text-white/30">
               <span>{fmt(windowStart)}</span>
@@ -736,24 +1599,91 @@ export function VideoReviewPlayer({
               )
             })}
 
-            {/* Game event markers — laned per category so they don't overlap.
-                Filter by visible time window for perf at higher zoom levels. */}
-            {showEvents && duration > 0 && mappedEvents.map((ev, idx) => {
-              const pct = timeToPercent(ev.videoTime)
+            {/* Game event markers — Insight-Capture style. Icons stack
+                ABOVE the scrubber on 3 category lanes (K/D/A, objectives,
+                buildings); colliding markers at the same X get an
+                additional vertical bump from the collision pass so two
+                icons never overlap. Cluster badges keep teamfights from
+                spamming the bar (4 deaths → one Skull · 4). */}
+            {showEvents && duration > 0 && positionedClusters.map((c, idx) => {
+              if (eventFilter && !eventFilter.has(c.type)) return null
+              const pct = timeToPercent(c.videoTime)
               if (pct < 0 || pct > 100) return null
-              const lane = EVENT_LANE[ev.type] ?? 0
-              const color = EVENT_COLORS[ev.type] ?? 'bg-white'
+              const lane = EVENT_LANE[c.type] ?? 0
+              const color = EVENT_COLORS[c.type] ?? 'bg-white text-black'
+              const Icon = EVENT_ICONS[c.type]
+              const inGameMin = Math.floor(c.gameTimeMs / 60000)
+              const inGameSec = Math.floor((c.gameTimeMs % 60000) / 1000)
+              const tooltip =
+                c.count === 1
+                  ? `${fmt(c.videoTime)} (video) · ${inGameMin}:${String(inGameSec).padStart(2, '0')} (in-game) — ${c.label}`
+                  : `${fmt(c.videoTime)} · ${c.count}× ${EVENT_LABELS[c.type]} in ${CLUSTER_WINDOW_SEC}s window`
               return (
                 <button
                   key={`evt-${idx}`}
-                  title={`${fmt(ev.videoTime)} — ${ev.label} (${Math.round(ev.gameTimeMs / 1000 / 60)}:${String(Math.round((ev.gameTimeMs / 1000) % 60)).padStart(2, '0')} in-game)`}
-                  onClick={(e) => { e.stopPropagation(); seekTo(ev.videoTime) }}
-                  style={{ left: `${pct}%`, top: `calc(50% + ${lane}px)` }}
+                  title={tooltip}
+                  onClick={(e) => { e.stopPropagation(); seekTo(c.videoTime) }}
+                  style={{ left: `${pct}%`, top: `calc(50% + ${lane + c.stackOffset}px)` }}
                   className={cn(
-                    'absolute -translate-y-1/2 -translate-x-1/2 w-2 h-2 rounded-sm border border-[#050A10] hover:scale-150 hover:z-30 transition-transform z-[5]',
+                    'absolute -translate-y-1/2 -translate-x-1/2 rounded-md border border-black/60 shadow-md flex items-center justify-center gap-0.5 hover:scale-[1.4] hover:z-30 transition-transform z-[5]',
+                    // Wider when there's a count badge so the number fits.
+                    c.count > 1 ? 'h-5 px-1' : 'w-5 h-5',
                     color,
                   )}
-                />
+                >
+                  <Icon className="w-3 h-3 shrink-0" strokeWidth={2.75} />
+                  {c.count > 1 && (
+                    <span className="text-[9px] font-bold leading-none pr-0.5">{c.count}</span>
+                  )}
+                </button>
+              )
+            })}
+
+            {/* Bookmark markers — anchored to videoTimeMs (no game-time
+                mapping). Cyan ribbon shape so they stand out from the
+                gold mistake triangles and the colored event chips. Sits
+                ABOVE the mistake lane (top:-92px). */}
+            {duration > 0 && bookmarks?.map((b) => {
+              const pct = timeToPercent(b.videoTimeMs / 1000)
+              if (pct < 0 || pct > 100) return null
+              const bg = b.color ?? '#00C8C8'
+              return (
+                <button
+                  key={`bookmark-${b.id}`}
+                  title={`${fmt(b.videoTimeMs / 1000)} — ${b.label ?? 'Bookmark'}`}
+                  onClick={(e) => { e.stopPropagation(); seekTo(b.videoTimeMs / 1000) }}
+                  style={{ left: `${pct}%`, top: 'calc(50% - 92px)', backgroundColor: bg }}
+                  className="absolute -translate-y-1/2 -translate-x-1/2 flex items-center justify-center w-5 h-5 rounded-md border border-black/60 shadow-md hover:scale-[1.4] hover:z-30 transition-transform z-[6]"
+                >
+                  <Bookmark className="w-3 h-3 text-black" strokeWidth={2.75} />
+                </button>
+              )
+            })}
+
+            {/* Mistake markers — dedicated lane above everything else so
+                they're never visually mixed with game events. Triangle
+                badge in the tag's color; AUTO badge for heuristic-detected
+                rows so the user can tell at a glance which markers came
+                from the detector. */}
+            {duration > 0 && mappedMistakes.map((m) => {
+              const pct = timeToPercent(m.videoTime)
+              if (pct < 0 || pct > 100) return null
+              const bg = m.tag.color ?? '#FFB454'
+              const isAuto = m.autoDetected
+              return (
+                <button
+                  key={`mistake-${m.id}`}
+                  title={`${fmt(m.videoTime)} — ${m.tag.label}${isAuto ? ' · AUTO' : ''}${m.note ? `\n${m.note}` : ''}`}
+                  onClick={(e) => { e.stopPropagation(); seekTo(m.videoTime) }}
+                  style={{ left: `${pct}%`, top: 'calc(50% - 72px)', backgroundColor: bg }}
+                  className={cn(
+                    'absolute -translate-y-1/2 -translate-x-1/2 flex items-center justify-center gap-0.5 rounded border border-black/60 shadow-md hover:scale-[1.4] hover:z-30 transition-transform z-[6]',
+                    isAuto ? 'h-4 px-1 opacity-80' : 'w-5 h-5',
+                  )}
+                >
+                  <AlertTriangle className="w-3 h-3 text-black" strokeWidth={2.75} />
+                  {isAuto && <span className="text-[7px] font-bold leading-none text-black/70">A</span>}
+                </button>
               )
             })}
 
@@ -771,6 +1701,128 @@ export function VideoReviewPlayer({
             <span>{fmt(currentTime)}</span>
             <span>{fmt(duration)}</span>
           </div>
+
+          {/* Offset-mismatch banner: 38 events came back from the
+              backend but none mapped to the video range, which means the
+              recording's startOffsetSec is wrong (or the game/recording
+              don't actually correspond). Surfaces this loudly instead of
+              silently showing an empty timeline. */}
+          {gameEvents && gameEvents.length > 0 && mappedEvents.length === 0 && duration > 0 && gameMeta && (() => {
+            const offsetSec = (() => {
+              const ge = typeof gameMeta.gameEndAt === 'string' ? new Date(gameMeta.gameEndAt) : gameMeta.gameEndAt
+              const rc = typeof gameMeta.recordingCreatedAt === 'string' ? new Date(gameMeta.recordingCreatedAt) : gameMeta.recordingCreatedAt
+              if (typeof gameMeta.startOffsetSec === 'number' && Number.isFinite(gameMeta.startOffsetSec)) return gameMeta.startOffsetSec
+              const gameStartMs = ge.getTime() - gameMeta.gameDurationSec * 1000
+              const fromBirth = (rc.getTime() - gameStartMs) / 1000
+              if (Number.isFinite(fromBirth) && Math.abs(fromBirth) <= 600) return fromBirth
+              return gameMeta.gameDurationSec - duration
+            })()
+            return (
+              <div className="mt-2 mx-0.5 rounded-md border border-[#FF4655]/40 bg-[#FF4655]/10 px-2 py-1.5 text-[10px] text-[#FF4655] leading-tight">
+                <span className="font-semibold">{gameEvents.length} events loaded but none fit the video range</span>
+                <span className="text-[#FF4655]/70"> · offset {offsetSec.toFixed(1)}s, video {duration.toFixed(0)}s, game {gameMeta.gameDurationSec}s. Click "Refresh" in the header to recompute.</span>
+              </div>
+            )
+          })()}
+
+          {/* Top-level filter mode pills + per-category legend. The mode
+              pills (Mine / All / Objectives) gate which events even
+              reach the renderer; the category chips below let the user
+              hide a specific type within that mode. */}
+          {showEvents && (gameEvents?.length ?? 0) > 0 && (() => {
+            const counts = mappedEvents.reduce<Record<string, number>>((acc, ev) => {
+              acc[ev.type] = (acc[ev.type] ?? 0) + 1
+              return acc
+            }, {})
+            const visibleTypes = EVENT_ORDER.filter((t) => counts[t] > 0)
+            return (
+              <div className="flex flex-wrap items-center gap-1 mt-2 px-0.5">
+                {/* Mode pills */}
+                <div className="flex items-center rounded-md border border-white/10 bg-white/5 p-0.5 mr-1">
+                  {([
+                    { id: 'mine' as const, label: 'Mine', Icon: User, title: 'Only events you were involved in' },
+                    { id: 'all' as const, label: 'All', Icon: Users, title: 'All events including team-fight context' },
+                    { id: 'objectives' as const, label: 'Objectives', Icon: Target, title: 'All objectives + towers regardless of participation' },
+                  ]).map(({ id, label, Icon, title }) => {
+                    const active = filterMode === id
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => { setFilterMode(id); setEventFilter(null) }}
+                        title={title}
+                        className={cn(
+                          'flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors',
+                          active
+                            ? 'bg-hextech-gold/25 text-hextech-gold'
+                            : 'text-white/40 hover:text-white/70 hover:bg-white/5',
+                        )}
+                      >
+                        <Icon className="h-2.5 w-2.5" strokeWidth={2.5} />
+                        <span>{label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {visibleTypes.map((t) => {
+                  const Icon = EVENT_ICONS[t]
+                  const on = !eventFilter || eventFilter.has(t)
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => {
+                        setEventFilter((prev) => {
+                          // First click on any chip from "all visible": start
+                          // filtering with this single type selected.
+                          if (!prev) {
+                            return new Set(visibleTypes.filter((x) => x === t))
+                          }
+                          const next = new Set(prev)
+                          if (next.has(t)) next.delete(t)
+                          else next.add(t)
+                          // If user re-enabled everything, drop the filter
+                          // entirely so future categories show by default.
+                          if (next.size === visibleTypes.length) return null
+                          if (next.size === 0) return null
+                          return next
+                        })
+                      }}
+                      title={on ? `Hide ${EVENT_LABELS[t]}s` : `Show ${EVENT_LABELS[t]}s`}
+                      className={cn(
+                        'flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider border transition-all',
+                        on
+                          ? cn(EVENT_COLORS[t], 'border-white/20 hover:brightness-110')
+                          : 'bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/60',
+                      )}
+                    >
+                      <Icon className="h-2.5 w-2.5" strokeWidth={2.5} />
+                      <span>{EVENT_LABELS[t]}</span>
+                      <span className="opacity-60">{counts[t]}</span>
+                    </button>
+                  )
+                })}
+                {eventFilter && (
+                  <>
+                    <button
+                      onClick={() => setEventFilter(null)}
+                      title="Show all event categories (also clears the saved default)"
+                      className="text-[10px] text-white/40 hover:text-white/80 underline underline-offset-2 px-1"
+                    >
+                      Reset
+                    </button>
+                    {/* Subtle hint that the current chip selection is the
+                        new default for future recordings — answers the
+                        question "is this sticky?" without a settings menu. */}
+                    <span
+                      title="Your current chip selection is saved as the default for future recordings."
+                      className="text-[9px] text-hextech-gold/50 px-1 italic"
+                    >
+                      saved as default
+                    </span>
+                  </>
+                )}
+              </div>
+            )
+          })()}
         </div>
 
         {/* Controls */}
@@ -809,14 +1861,15 @@ export function VideoReviewPlayer({
           {mappedEvents.length > 0 && (
             <button
               onClick={() => setShowEvents((v) => !v)}
-              title={showEvents ? 'Hide game events' : 'Show game events'}
+              title={showEvents ? 'Hide event markers' : 'Show event markers'}
               className={cn(
-                'rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors mr-1',
+                'flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors mr-1',
                 showEvents
                   ? 'bg-hextech-gold/20 text-hextech-gold hover:bg-hextech-gold/30'
                   : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/70',
               )}
             >
+              {showEvents ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
               Events ({mappedEvents.length})
             </button>
           )}
@@ -869,18 +1922,61 @@ export function VideoReviewPlayer({
             </button>
           )}
 
-          {isFullscreen && (
-            // Pill-style button with a visible "Notes" label — previously a
-            // bare 4×4 icon that nobody noticed in fullscreen. N still cycles
-            // position, H toggles visibility directly.
+          {/* Bookmark button — works on every recording (no game data
+              required). Independent of `readonly` like mistakes. */}
+          {onAddBookmark && (
+            <button
+              onClick={openBookmarkDialog}
+              title="Add a bookmark at the current time (B)"
+              className="flex items-center gap-1 rounded px-2 py-1 text-hextech-cyan hover:text-white hover:bg-hextech-cyan/20 transition-colors text-xs font-medium"
+            >
+              <Bookmark className="h-3.5 w-3.5" />
+              {(bookmarks?.length ?? 0) > 0 ? `Bookmarks (${bookmarks!.length})` : 'Bookmark'}
+            </button>
+          )}
+
+          {/* Mistake controls — only rendered when the page wired up
+              onAddMistake (RecordPlayerPage). Two buttons: add-at-current
+              and toggle show-auto-detected. The "Mistakes (N)" count
+              indicator helps the user notice that the heuristic detector
+              found something to review. Independent of `readonly` because
+              mistakes are a separate data plane from notes. */}
+          {onAddMistake && gameMeta && (
+            <>
+              <button
+                onClick={openMistakeDialog}
+                title="Tag a mistake at the current time (X)"
+                className="flex items-center gap-1 rounded px-2 py-1 text-amber-300 hover:text-white hover:bg-amber-500/20 transition-colors text-xs font-medium"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Mistake
+              </button>
+              {(mistakes?.some((m) => m.autoDetected) ?? false) && (
+                <button
+                  onClick={() => setShowAutoDetected((v) => !v)}
+                  title={showAutoDetected ? 'Hide auto-detected mistakes' : 'Show auto-detected mistakes'}
+                  className={cn(
+                    'rounded px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors',
+                    showAutoDetected ? 'bg-amber-500/30 text-amber-200' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/70',
+                  )}
+                >
+                  Auto
+                </button>
+              )}
+            </>
+          )}
+
+          {/* Sidebar toggle — works in BOTH windowed and fullscreen now.
+              N cycles position (right→left→hidden), H toggles visibility. */}
+          {sidebarHasAnyContent && (
             <button
               onClick={cycleSidebar}
-              title={`Sidebar position (N) / Hide (H) — currently: ${sidebarPosition}`}
+              title={`Panel position (N) / Hide (H) — currently: ${sidebarPosition}`}
               className="ml-1 inline-flex items-center gap-1.5 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 px-2.5 py-1 text-[11px] font-medium text-white/90 transition-colors"
             >
-              {sidebarPosition === 'right' && <><PanelRight className="h-3.5 w-3.5" /><span>Notes ▸</span></>}
-              {sidebarPosition === 'left' && <><PanelLeft className="h-3.5 w-3.5" /><span>◂ Notes</span></>}
-              {sidebarPosition === 'hidden' && <><PanelRightClose className="h-3.5 w-3.5" /><span>Show notes</span></>}
+              {sidebarPosition === 'right' && <><PanelRight className="h-3.5 w-3.5" /><span>Panel ▸</span></>}
+              {sidebarPosition === 'left' && <><PanelLeft className="h-3.5 w-3.5" /><span>◂ Panel</span></>}
+              {sidebarPosition === 'hidden' && <><PanelRightClose className="h-3.5 w-3.5" /><span>Show panel</span></>}
             </button>
           )}
 
@@ -892,64 +1988,16 @@ export function VideoReviewPlayer({
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
         </div>
+        </div>{/* /controls overlay wrapper */}
 
-        {/* Inline mark input + notes list (only when NOT fullscreen) */}
-        {!isFullscreen && marking && (
-          <div className="mx-3 mb-3">{markInputBlock}</div>
-        )}
-        {!isFullscreen && videoNotes.length > 0 && (
-          <div className="px-3 py-2 space-y-1 border-t border-white/5">
-            <p className="text-[9px] text-white/30 uppercase tracking-widest font-semibold mb-1.5">Video moments</p>
-            {videoNotes.map(({ note, originalIndex }) => renderNoteRow(note, originalIndex))}
-          </div>
-        )}
-      </div>
+      </div>{/* /video column */}
 
-      {/* Fullscreen sidebar — only rendered when fullscreen */}
-      {/* When hidden in fullscreen, render a small tab/handle on the right edge
-          that re-opens the sidebar in one click. Prevents the "I hid the panel
-          and now I can't find how to bring it back" UX trap. */}
-      {isFullscreen && sidebarPosition === 'hidden' && (
-        <button
-          type="button"
-          onClick={() => setSidebarPosition('right')}
-          title="Show notes (H)"
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-40 inline-flex items-center gap-1 rounded-l-md bg-hextech-gold/80 hover:bg-hextech-gold text-black px-1.5 py-3 text-[10px] font-semibold uppercase tracking-wider shadow-lg"
-          style={{ writingMode: 'vertical-rl' }}
-        >
-          <PanelRight className="h-3 w-3 rotate-180" />
-          <span>Notes</span>
-        </button>
-      )}
-      {isFullscreen && sidebarPosition !== 'hidden' && (
-        <div
-          className={cn(
-            'w-72 flex flex-col bg-[#050A10] shrink-0',
-            sidebarPosition === 'left'
-              ? 'border-r border-white/10 order-first'
-              : 'border-l border-white/10',
-          )}
-        >
-          <div className="px-3 pt-3 pb-2 border-b border-white/5">
-            <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Notes</p>
-          </div>
-
-          {marking && (
-            <div className="px-3 pt-2">{markInputBlock}</div>
-          )}
-
-          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-            {videoNotes.length === 0 ? (
-              <p className="text-xs text-white/25 text-center pt-6">
-                No moments marked yet.
-                {!readonly && <><br />Press <kbd className="px-1 rounded bg-white/10 font-mono">Mark</kbd> to add one.</>}
-              </p>
-            ) : (
-              videoNotes.map(({ note, originalIndex }) => renderNoteRow(note, originalIndex))
-            )}
-          </div>
-        </div>
-      )}
+      {/* Unified tabbed sidebar (Notes / Mistakes / Bookmarks) — present in
+          both windowed and fullscreen modes so the user can watch + review
+          simultaneously. Hideable via the collapse button, the N/H hotkeys,
+          or the control-bar toggle. */}
+      {sidebarVisible && sidebarPanel}
+      {sidebarPosition === 'hidden' && sidebarReopenHandle}
     </div>
   )
 }

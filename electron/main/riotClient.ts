@@ -1,3 +1,29 @@
+// Boost the global HTTP connection pool. By default Undici (Node's fetch
+// client) opens at most 10 connections per host. With each Riot call
+// averaging 200-500ms RTT, 10 connections = 20-50 req/s ceiling per host
+// regardless of how aggressive our rate limiter is. For a season scout
+// (5 members × 500 matches = 2500 requests to europe.api.riotgames.com),
+// this was the *actual* bottleneck — the rate limiter never got a chance
+// to saturate. 50 connections allows ~100-250 req/s to a single Riot host.
+//
+// Wrapped in try/catch because undici's API surface (and Node-version
+// compatibility) shifts between releases. An app key MUST NOT fail to
+// start because the dispatcher tweak doesn't work — we fall back to
+// Node's default 10-connection pool, which is slow but functional.
+// Undici 7.x added a hard dependency on `webidl.util.markAsUncloneable`
+// (Node 23+) and crashed Electron 33 (Node 20); pinning to ^6.21 fixes
+// that, but the try/catch is the actual safety net.
+try {
+  // Lazy require — keeps any import-time errors inside the try/catch
+  // (top-level ESM imports throw before our handler sees them).
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { Agent, setGlobalDispatcher } = require('undici') as typeof import('undici')
+  setGlobalDispatcher(new Agent({ connections: 50, keepAliveTimeout: 30_000, keepAliveMaxTimeout: 60_000 }))
+  console.info('[riotClient] Undici dispatcher boosted to 50 connections')
+} catch (err) {
+  console.warn('[riotClient] could not boost Undici dispatcher — falling back to Node default (10 conn/host). Scouting will be slower but functional.', (err as Error)?.message)
+}
+
 const PLATFORM_URLS: Record<string, string> = {
   BR1: 'https://br1.api.riotgames.com',
   EUN1: 'https://eun1.api.riotgames.com',
@@ -43,49 +69,202 @@ const REGION_TO_ROUTING: Record<string, string> = {
   TR1: 'europe',
 }
 
-class TokenBucket {
-  private tokens: number
-  private lastRefill: number
-  constructor(
-    private maxTokens: number,
-    private refillRate: number,
-  ) {
-    this.tokens = maxTokens
-    this.lastRefill = Date.now()
-  }
+/**
+ * Multi-window token bucket — Riot enforces several rolling windows
+ * simultaneously (typically "X requests per 10s" AND "Y requests per
+ * 10min"), so a single-window limiter is insufficient. We track each
+ * window separately and the slowest one wins.
+ *
+ * Windows can be reconfigured at runtime from the rate-limit headers
+ * (`X-App-Rate-Limit: 500:10,30000:600` → 500/10s, 30000/600s) so the
+ * limiter auto-tunes itself to whatever tier the API key actually has,
+ * without us having to hard-code assumptions about Personal vs
+ * Production keys.
+ */
+interface RateWindow {
+  capacity: number  // max requests in the window
+  windowSec: number // window size in seconds
+  used: number[]    // timestamps (ms) of recent requests
+}
+class MultiWindowLimiter {
+  private windows: RateWindow[]
+  private label: string
+  /**
+   * Serializes acquire() calls. Without this, 25 workers calling
+   * acquire() concurrently all read "99/100 tokens used" simultaneously,
+   * each decide they can proceed, each push their timestamp — bucket
+   * overshoots by 24, Riot returns 429 cascade with 19s backoffs.
+   *
+   * Chaining through a single queue promise means each acquire only
+   * starts checking limits AFTER the previous one has finished its
+   * push, so the count is always accurate.
+   */
+  private acquireQueue: Promise<void> = Promise.resolve()
 
-  async acquire(): Promise<void> {
-    this.refill()
-    if (this.tokens <= 0) {
-      const waitMs = (1 / this.refillRate) * 1000
-      await new Promise((r) => setTimeout(r, waitMs))
-      this.refill()
+  constructor(label: string, initial: Array<{ capacity: number; windowSec: number }>) {
+    this.label = label
+    this.windows = initial.map((w) => ({ ...w, used: [] }))
+  }
+  /** Replace the windows in-place when we learn the actual limits from a response header. */
+  configure(spec: Array<{ capacity: number; windowSec: number }>) {
+    const same =
+      spec.length === this.windows.length &&
+      spec.every((s, i) => s.capacity === this.windows[i].capacity && s.windowSec === this.windows[i].windowSec)
+    if (same) return
+    console.info(`[rateLimiter:${this.label}] updated from headers →`, spec.map((s) => `${s.capacity}/${s.windowSec}s`).join(', '))
+    // Preserve `used` timestamps from any matching window so we don't lose
+    // existing budget when reconfiguring mid-flight.
+    this.windows = spec.map((s) => {
+      const existing = this.windows.find((w) => w.windowSec === s.windowSec)
+      return { capacity: s.capacity, windowSec: s.windowSec, used: existing?.used ?? [] }
+    })
+  }
+  private prune(now: number) {
+    for (const w of this.windows) {
+      const cutoff = now - w.windowSec * 1000
+      while (w.used.length > 0 && w.used[0] < cutoff) w.used.shift()
     }
-    this.tokens--
   }
-
-  private refill() {
-    const now = Date.now()
-    const elapsed = (now - this.lastRefill) / 1000
-    this.tokens = Math.min(this.maxTokens, this.tokens + elapsed * this.refillRate)
-    this.lastRefill = now
+  /** How many ms until the *most-constrained* window has room. 0 = go now. */
+  private waitMs(now: number): number {
+    this.prune(now)
+    let worstWait = 0
+    for (const w of this.windows) {
+      if (w.used.length >= w.capacity) {
+        // Oldest entry must drop out before we can take another slot.
+        // Add 50ms slack so we don't race with the boundary tick — Riot
+        // counts requests by *received-at* timestamps which can drift
+        // ~50ms from our locally-measured `now`.
+        const earliest = w.used[0] + w.windowSec * 1000 - now + 50
+        if (earliest > worstWait) worstWait = earliest
+      }
+    }
+    return worstWait
+  }
+  /**
+   * Serialized acquire — only one caller is inside the wait/push critical
+   * section at a time. The actual HTTP request after this returns can
+   * still happen in parallel (caller's responsibility), but the slot
+   * accounting is atomic.
+   */
+  async acquire(): Promise<void> {
+    // Chain onto the queue. Each acquirer is awaited by the next one
+    // before they get to check limits & push.
+    const previous = this.acquireQueue
+    let releaseNext!: () => void
+    this.acquireQueue = new Promise<void>((r) => { releaseNext = r })
+    try {
+      await previous
+      while (true) {
+        const now = Date.now()
+        const w = this.waitMs(now)
+        if (w <= 0) {
+          for (const win of this.windows) win.used.push(now)
+          return
+        }
+        // Wait the full computed duration (no 1000ms cap) so we don't
+        // wake spuriously to find the slot already taken by the next
+        // queued caller. Re-checks happen automatically via the while
+        // loop if the wait was too short.
+        await new Promise((r) => setTimeout(r, w))
+      }
+    } finally {
+      releaseNext()
+    }
   }
 }
 
-const rateLimiter = new TokenBucket(20, 20)
+// Two limiters: a global "app-tier" budget shared by every endpoint, and
+// a per-method limiter that's set lazily on first response. Both start
+// with PERSONAL-TIER defaults (20/s + 100/120s) because:
+//   1. If the key is Personal, we'd otherwise burst over the limit on
+//      the very first batch of requests before any response header
+//      arrives to teach us the real limits.
+//   2. If the key is Production-tier, the first response will upgrade
+//      these limits within milliseconds.
+// Starting permissive and downgrading on 429 = thrashing. Starting
+// strict and upgrading on success = no overshoots, ever.
+const appLimiter = new MultiWindowLimiter('app', [
+  { capacity: 20, windowSec: 1 },
+  { capacity: 100, windowSec: 120 },
+])
+const methodLimiters = new Map<string, MultiWindowLimiter>()
+function methodLimiterFor(endpointKey: string): MultiWindowLimiter {
+  let lim = methodLimiters.get(endpointKey)
+  if (!lim) {
+    // Same logic — start conservative, let headers expand if applicable.
+    lim = new MultiWindowLimiter(endpointKey, [{ capacity: 50, windowSec: 10 }])
+    methodLimiters.set(endpointKey, lim)
+  }
+  return lim
+}
+
+/**
+ * Parse a Riot rate-limit header like `100:120,1000:600` into an array
+ * of windows. Empty / malformed input returns null so callers can keep
+ * their current config.
+ */
+function parseLimitHeader(value: string | null): Array<{ capacity: number; windowSec: number }> | null {
+  if (!value) return null
+  const parts = value.split(',').map((p) => p.trim()).filter(Boolean)
+  const out: Array<{ capacity: number; windowSec: number }> = []
+  for (const p of parts) {
+    const m = /^(\d+):(\d+)$/.exec(p)
+    if (!m) continue
+    out.push({ capacity: parseInt(m[1], 10), windowSec: parseInt(m[2], 10) })
+  }
+  return out.length > 0 ? out : null
+}
+
+/**
+ * Extract the endpoint key from a Riot API URL so per-method limits can
+ * be tracked separately. Strips IDs by collapsing numeric/alphanumeric
+ * segments after the version (e.g. `/lol/match/v5/matches/EUW1_123/timeline`
+ * → `/lol/match/v5/matches/{id}/timeline`).
+ */
+function endpointKeyFromUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    return u.pathname
+      .replace(/\/by-puuid\/[^/]+/g, '/by-puuid/{x}')
+      .replace(/\/by-riot-id\/[^/]+\/[^/]+/g, '/by-riot-id/{x}/{x}')
+      .replace(/\/matches\/[^/]+/g, '/matches/{id}')
+      .replace(/\/by-champion\/\d+/g, '/by-champion/{id}')
+  } catch {
+    return url
+  }
+}
 
 async function riotFetch(url: string, allowedFallbackStatus?: number[]): Promise<{ data: any; status: number }> {
   const apiKey = (import.meta.env.MAIN_VITE_RIOT_API_KEY as string | undefined)?.trim()
   if (!apiKey || apiKey.startsWith('RGAPI-xxx')) throw new Error('Riot API key not configured — set MAIN_VITE_RIOT_API_KEY in .env')
 
-  await rateLimiter.acquire()
+  const endpointKey = endpointKeyFromUrl(url)
+  const methodLimiter = methodLimiterFor(endpointKey)
+
+  // Acquire both limiters before sending. Order matters: acquire app
+  // first (cheaper to check), then method.
+  await appLimiter.acquire()
+  await methodLimiter.acquire()
 
   const res = await fetch(url, {
     headers: { 'X-Riot-Token': apiKey },
   })
 
+  // Auto-tune limiters from response headers. Riot returns:
+  //   X-App-Rate-Limit: "100:120,1000:600"
+  //   X-Method-Rate-Limit: "2000:10"
+  // We update on every response so newly-discovered methods inherit
+  // their actual limits without a separate config step.
+  const appSpec = parseLimitHeader(res.headers.get('X-App-Rate-Limit'))
+  if (appSpec) appLimiter.configure(appSpec)
+  const methodSpec = parseLimitHeader(res.headers.get('X-Method-Rate-Limit'))
+  if (methodSpec) methodLimiter.configure(methodSpec)
+
   if (res.status === 429) {
     const retryAfter = parseInt(res.headers.get('Retry-After') || '1', 10)
+    const limitType = res.headers.get('X-Rate-Limit-Type') ?? 'unknown'
+    console.warn(`[riotFetch] 429 (${limitType}) — backing off ${retryAfter}s · ${endpointKey}`)
     await new Promise((r) => setTimeout(r, retryAfter * 1000))
     return riotFetch(url, allowedFallbackStatus)
   }
@@ -228,6 +407,107 @@ export async function getMatchIds(
   const queue = queueFilter === 'soloq' ? 420 : 440
   const path = `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queue}&start=${start}&count=${count}`
   return riotFetchWithRoutingFallback(path, routing)
+}
+
+/**
+ * Fetches recent match IDs for a puuid across ALL queues — soloq, flex,
+ * normals, ARAM, Arena, customs, the lot. Used by the orphan-recording
+ * backfill flow which needs to find ANY match that lines up with a video
+ * file, not just ranked ones.
+ *
+ * No queue parameter on the Riot endpoint = no filter, so we just hit it
+ * with start/count. Default 20 covers "the last few sessions" without
+ * burning rate limit budget on a long history.
+ */
+export async function getAnyQueueMatchIds(
+  puuid: string,
+  region: string,
+  count = 20,
+  start = 0,
+): Promise<string[]> {
+  const routing = REGION_TO_ROUTING[region] || 'europe'
+  const path = `/lol/match/v5/matches/by-puuid/${puuid}/ids?start=${start}&count=${count}`
+  const ids = await riotFetchWithRoutingFallback(path, routing)
+  return Array.isArray(ids) ? ids : []
+}
+
+/**
+ * Returns the start of the current ranked season as a JavaScript Date.
+ * Riot resets ranks at the start of each year-split; for the active S1 split
+ * we treat January 1st 00:00 UTC of the current year as the boundary. This
+ * is a conservative choice (a bit before the actual ranked reset), so we
+ * capture every game from the start of the year.
+ */
+export function getCurrentSeasonStart(): Date {
+  const now = new Date()
+  return new Date(Date.UTC(now.getUTCFullYear(), 0, 1, 0, 0, 0))
+}
+
+/**
+ * Paginated fetch of match IDs for a single queue, since a Unix timestamp.
+ * Iterates 100-at-a-time until either an empty page is returned (no more
+ * games in window) or maxPages is reached. We expose a hard cap to keep
+ * worst-case API usage bounded — a season-long fetch for a hyper-active
+ * player might hit it, which is fine (we still get the most recent N games).
+ */
+export async function getMatchIdsInRange(
+  puuid: string,
+  region: string,
+  queueId: 420 | 440 | 700,
+  startTimestampSec: number,
+  maxPages = 10,
+): Promise<string[]> {
+  const routing = REGION_TO_ROUTING[region] || 'europe'
+  const out: string[] = []
+  for (let page = 0; page < maxPages; page++) {
+    const ids: string[] = await riotFetchWithRoutingFallback(
+      `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queueId}&startTime=${startTimestampSec}&start=${page * 100}&count=100`,
+      routing,
+    )
+    if (!Array.isArray(ids) || ids.length === 0) break
+    out.push(...ids)
+    if (ids.length < 100) break
+  }
+  return out
+}
+
+/**
+ * Convenience helper that aggregates SoloQ (420), Flex (440) and Clash (700)
+ * match IDs since `since` for the given puuid. Returns a deduplicated list
+ * sorted by most-recent-first (match IDs embed a timestamp in their second
+ * segment, so we can sort lexicographically by parsing it).
+ *
+ * Clash is rare; we cap it at 5 pages to avoid wasted calls. Solo + Flex
+ * get the default 10 pages each which is enough to cover the full season
+ * for all but the most extreme grinders (1000+ ranked games/year).
+ */
+export async function getSeasonMatchIds(
+  puuid: string,
+  region: string,
+  since: Date = getCurrentSeasonStart(),
+): Promise<string[]> {
+  const ts = Math.floor(since.getTime() / 1000)
+  const [solo, flex, clash] = await Promise.all([
+    getMatchIdsInRange(puuid, region, 420, ts, 10).catch((err) => {
+      console.warn('[getSeasonMatchIds] soloq failed:', err?.message)
+      return [] as string[]
+    }),
+    getMatchIdsInRange(puuid, region, 440, ts, 10).catch((err) => {
+      console.warn('[getSeasonMatchIds] flex failed:', err?.message)
+      return [] as string[]
+    }),
+    getMatchIdsInRange(puuid, region, 700, ts, 5).catch((err) => {
+      console.warn('[getSeasonMatchIds] clash failed:', err?.message)
+      return [] as string[]
+    }),
+  ])
+  const merged = [...new Set([...solo, ...flex, ...clash])]
+  merged.sort((a, b) => {
+    const tsA = parseInt(a.split('_')[1] ?? '0', 10)
+    const tsB = parseInt(b.split('_')[1] ?? '0', 10)
+    return tsB - tsA
+  })
+  return merged
 }
 
 export async function getMatch(

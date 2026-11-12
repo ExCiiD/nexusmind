@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUserStore } from '@/store/useUserStore'
+import { useSessionStore } from '@/store/useSessionStore'
 import { useToast } from '@/hooks/useToast'
 import { ToastAction } from '@/components/ui/toast'
 
@@ -47,6 +48,19 @@ export function GameEndNav() {
     })
     return off
   }, [navigate, toast, user])
+
+  // Subscribe to the post-enrich `game:updated` signal — fired when the
+  // background Match-V5 enrich has replaced the provisional `win: false`
+  // placeholder with the real result. Without this, victories that
+  // ended via enemy FF could keep showing as "Defeat" until the user
+  // navigated away and back.
+  useEffect(() => {
+    if (!user) return
+    const off = window.api.onGameUpdated(() => {
+      useSessionStore.getState().refreshSession()
+    })
+    return off
+  }, [user])
 
   return null
 }

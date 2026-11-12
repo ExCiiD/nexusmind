@@ -121,9 +121,14 @@ model Game {
   gameEndAt        DateTime
   queueType        String   @default("unknown")
   isSessionEligible Boolean  @default(true)
+  // JSON-encoded LanePhaseReport (electron/main/lanePhaseAnalyzer.ts).
+  // Computed lazily by `stats:get-lane-phase` and cached so the renderer
+  // doesn't re-parse a 1-2 MB Riot timeline on every page open.
+  lanePhaseReport  String?
   review           Review?
   detailedStats    GameDetailedStats?
   recording        Recording?
+  mistakes         Mistake[]
 
   @@index([sessionId])
 }
@@ -173,6 +178,25 @@ model Recording {
   startOffsetSec Float?
   createdAt      DateTime @default(now())
   clips          Clip[]
+  mistakes       Mistake[]
+  bookmarks      Bookmark[]
+}
+
+// ── Bookmarks ────────────────────────────────────────────────────────────
+// Free-form per-recording markers — lighter than a Mistake (no tag, no
+// game-time anchoring). Anchored to the video timeline so they work even
+// on orphan recordings that have no linked Game.
+
+model Bookmark {
+  id          String   @id @default(cuid())
+  recordingId String
+  recording   Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  videoTimeMs Int
+  label       String?
+  color       String?
+  createdAt   DateTime @default(now())
+
+  @@index([recordingId])
 }
 
 model Clip {
@@ -329,10 +353,67 @@ model ChampionPoolEntry {
   notes       String?
   playRate    Int?     // recent play count (auto-populated by scouting)
   winRate     Int?     // %, optional manual
+  // Riot champion-mastery points, used by Draft Sim to surface "threat"
+  // picks (300k+ = orange ring, dominant most-played = red, multi-opponent
+  // overlap = yellow). Nullable for legacy entries created before this
+  // column existed and for manual entries that never went through auto-fill.
+  masteryPoints Int?
   updatedAt   DateTime @updatedAt
 
   @@index([memberId, role])
   @@unique([memberId, championKey, role])
+}
+
+// ── Mistake Library ──────────────────────────────────────────────────────────
+// Lets the user tag specific moments in a recorded game with a "mistake"
+// (e.g. overstay, dove-tower, late-back) and aggregate frequency over
+// time. Tags are either built-in (seeded on first launch — `isBuiltIn=true`)
+// or user-defined. Mistakes are scoped to a Game so they appear on the
+// timeline of any recording linked to that game.
+
+model MistakeTag {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  label       String
+  // "macro" | "micro" | "vision" | "economy" | "draft"
+  category    String
+  // Optional lucide-react icon name and CSS color string (renderer-side)
+  icon        String?
+  color       String?
+  isBuiltIn   Boolean  @default(false)
+  // Soft-delete — keeps historical Mistake rows pointing to a valid tag
+  // even after the user "deletes" it from the active list.
+  archivedAt  DateTime?
+  createdAt   DateTime @default(now())
+  mistakes    Mistake[]
+}
+
+model Mistake {
+  id           String   @id @default(cuid())
+  gameId       String
+  game         Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  // Optional link to a specific recording (handy when one game has
+  // multiple recordings, e.g. dual VOD from main + smurf review).
+  recordingId  String?
+  recording    Recording? @relation(fields: [recordingId], references: [id], onDelete: SetNull)
+  tagId        String
+  tag          MistakeTag @relation(fields: [tagId], references: [id], onDelete: Restrict)
+  // In-game seconds where the mistake occurred — used to render markers
+  // on the video player timeline (offset by Recording.startOffsetSec).
+  gameTimeSec  Int
+  // Optional video-time copy (ms) so we don't need to recompute the offset
+  // when seeking from the side list — performance optimisation.
+  videoTimeMs  Int?
+  note         String?
+  // 1 = minor, 2 = standard, 3 = critical — drives marker thickness.
+  severity     Int      @default(2)
+  // True when the row was created by mistakeDetector.ts heuristics rather
+  // than by the user. Lets the UI hide them behind a toggle until trusted.
+  autoDetected Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([gameId])
+  @@index([tagId, createdAt])
 }
 
 model DraftPrep {

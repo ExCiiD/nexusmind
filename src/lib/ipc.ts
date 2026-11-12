@@ -12,6 +12,122 @@ export interface GameEvent {
   isPlayer: boolean
 }
 
+// ── Bookmarks ──────────────────────────────────────────────────────────────
+export interface Bookmark {
+  id: string
+  recordingId: string
+  videoTimeMs: number
+  label?: string | null
+  color?: string | null
+  createdAt: string
+}
+
+// ── Lane Phase Comparator ──────────────────────────────────────────────────
+export type LanePhaseGrade = 'S' | 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D' | 'F'
+
+export interface LanePhaseFrameStat {
+  player: number
+  opponent: number
+  diff: number
+}
+
+export interface LanePhaseFrame {
+  minute: number
+  cs: LanePhaseFrameStat
+  gold: LanePhaseFrameStat
+  xp: LanePhaseFrameStat
+  level: LanePhaseFrameStat
+  damageTaken: LanePhaseFrameStat
+  damageDealt: LanePhaseFrameStat
+}
+
+export interface LanePhaseReport {
+  schemaVersion: 2
+  player: { participantId: number; puuid?: string; championName: string; teamPosition: string }
+  opponent: { participantId: number; championName: string; teamPosition: string }
+  framesByMinute: LanePhaseFrame[]
+  plates: Array<{ minute: number; takenByPlayer: boolean }>
+  soloEvents: Array<{ minute: number; type: 'kill' | 'death' }>
+  grade: LanePhaseGrade
+  scoreComponents: {
+    csAt14: number
+    goldAt14: number
+    xpAt14: number
+    soloKD: { k: number; d: number }
+    plates: { taken: number; lost: number }
+    dmgAt14: { player: number; opponent: number; diff: number }
+    kp: { player: number; opponent: number }
+    objDmg: { player: number; opponent: number }
+    numericScore: number
+  }
+}
+
+// ── Mistake Library ────────────────────────────────────────────────────────
+export interface MistakeTag {
+  id: string
+  slug: string
+  label: string
+  category: 'macro' | 'micro' | 'vision' | 'economy' | 'draft' | string
+  icon?: string | null
+  color?: string | null
+  isBuiltIn: boolean
+  archivedAt?: string | null
+  createdAt: string
+}
+
+export interface Mistake {
+  id: string
+  gameId: string
+  recordingId?: string | null
+  tagId: string
+  tag: MistakeTag
+  gameTimeSec: number
+  videoTimeMs?: number | null
+  note?: string | null
+  severity: number
+  autoDetected: boolean
+  createdAt: string
+}
+
+export interface MistakeTopTagEntry {
+  tag: MistakeTag
+  count: number
+  lastAt: string
+}
+
+export interface MistakeTrendEntry {
+  date: string // YYYY-MM-DD
+  counts: Record<string, number>
+}
+
+export interface MistakeHeatmapEntry {
+  date: string
+  tagId: string
+  tagSlug: string
+  tagLabel: string
+  count: number
+}
+
+export interface LanePhaseDiag {
+  reason:
+    | 'ok'
+    | 'no-game'
+    | 'no-match-id'
+    | 'no-user'
+    | 'timeline-fetch-failed'
+    | 'match-fetch-failed'
+    | 'empty-timeline'
+    | 'no-player'
+    | 'no-opponent'
+    | 'no-frames'
+    | 'bad-data'
+  message?: string
+  matchId?: string
+  frameCount?: number
+  playerResolvedVia?: 'puuid' | 'champion' | 'none'
+  cached?: boolean
+}
+
 export type TeamRole = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'
 export type PoolTier = 'main' | 'comfort' | 'flex' | 'learning'
 
@@ -24,6 +140,11 @@ export interface ChampionPoolEntry {
   notes?: string | null
   playRate?: number | null
   winRate?: number | null
+  /** Lifetime champion-mastery points pulled from Riot during auto-fill /
+   *  scout. Drives the Draft Sim threat highlights (300k+ = orange,
+   *  dominant pick = red). `null` for legacy entries created before this
+   *  column existed and for manual entries that never went through Riot. */
+  masteryPoints?: number | null
   updatedAt: string
 }
 
@@ -231,6 +352,11 @@ export type NexusMindAPI = {
   getAccountAverages: (puuid: string | null) => Promise<{ averages: any; gameCount: number; firstGameAt: string; lastGameAt: string } | null>
   clearStatsSnapshots: () => Promise<{ deleted: number }>
 
+  // Destructive data maintenance (Settings → Danger Zone)
+  clearStatsMistakes: () => Promise<{ snapshots: number; detailedStats: number; lanePhase: number; mistakes: number }>
+  clearRecentData: (days: number) => Promise<{ games: number; recordings: number; files: number; snapshots: number; sessions: number; mistakes: number }>
+  resetAllData: () => Promise<{ sessions: number; games: number; recordings: number; files: number; snapshots: number; matchCache: number; externalReviews: number; assessments: number }>
+
   getBadges: () => Promise<string[]>
 
   listAccounts: () => Promise<Array<{ id: string; puuid: string; gameName: string; tagLine: string; region: string; createdAt: string }>>
@@ -241,6 +367,7 @@ export type NexusMindAPI = {
   isDev: () => Promise<boolean>
 
   onGameEnd: (callback: (data: any) => void) => () => void
+  onGameUpdated: (callback: (info: { gameId: string; matchId: string; win: boolean; queueType: string }) => void) => () => void
 
   minimizeWindow: () => Promise<void>
   maximizeWindow: () => Promise<void>
@@ -274,7 +401,7 @@ export type NexusMindAPI = {
   >
 
   // Recording — library
-  scanRecordings: () => Promise<{ scanned: number; matched: number; orphaned: number; dismissed: number; paths: Array<{ source: string; dir: string; exists: boolean }> }>
+  scanRecordings: () => Promise<{ scanned: number; matched: number; orphaned: number; dismissed: number; backfillLinked?: number; backfillNotFound?: number; paths: Array<{ source: string; dir: string; exists: boolean }> }>
   getRecording: (gameId: string) => Promise<{ id: string; gameId: string; filePath: string | null; youtubeUrl: string | null; source: string; createdAt?: string; startOffsetSec?: number | null } | null>
   getRecordingById: (recordingId: string) => Promise<{ id: string; gameId: string | null; filePath: string | null; youtubeUrl: string | null; source: string } | null>
   linkRecordingFile: (gameId: string) => Promise<any>
@@ -282,6 +409,44 @@ export type NexusMindAPI = {
   deleteReview: (gameId: string) => Promise<{ success: boolean }>
   deleteRecording: (gameId: string) => Promise<{ success: boolean }>
   unlinkRecording: (gameId: string) => Promise<{ success: boolean }>
+  /** Re-runs the orphan-recording Riot lookup. Pass a recording id to
+   *  target a single orphan; omit to retry every orphan. */
+  backfillOrphanRecordings: (recordingId?: string) => Promise<{ considered: number; linked: number; notFound: number; skipped: number }>
+  /** Force-refetch the match + timeline for a game and return diagnostics. */
+  refreshGameEvents: (gameId: string, forceRefetch?: boolean) => Promise<{
+    events: Array<{ type: string; gameTimeMs: number; label: string; subType?: string; teamId?: number; isPlayer: boolean }>
+    diag: {
+      reason: 'ok' | 'no-game' | 'no-match-id' | 'no-user' | 'timeline-fetch-failed' | 'match-fetch-failed' | 'player-not-resolved' | 'empty-timeline'
+      message?: string
+      matchId?: string
+      frameCount?: number
+      playerResolvedVia?: 'puuid' | 'champion' | 'none'
+    }
+  }>
+  /** Read-through cache for the Lane Phase Comparator report. Cheap on
+   *  subsequent calls (persisted on Game.lanePhaseReport). */
+  getLanePhase: (gameId: string) => Promise<{ report: LanePhaseReport | null; diag: LanePhaseDiag }>
+  /** Bypass every cache and recompute the lane phase report from Riot. */
+  refreshLanePhase: (gameId: string) => Promise<{ report: LanePhaseReport | null; diag: LanePhaseDiag }>
+
+  // Mistake Library
+  listMistakeTags: (opts?: { includeArchived?: boolean }) => Promise<MistakeTag[]>
+  createMistakeTag: (args: { label: string; category: string; icon?: string; color?: string }) => Promise<MistakeTag>
+  archiveMistakeTag: (tagId: string) => Promise<{ success: boolean }>
+  listMistakesByGame: (gameId: string) => Promise<Mistake[]>
+  createMistake: (args: { gameId: string; tagId: string; gameTimeSec: number; videoTimeMs?: number; note?: string; severity?: number; recordingId?: string }) => Promise<Mistake>
+  updateMistake: (args: { id: string; note?: string | null; severity?: number; tagId?: string }) => Promise<Mistake>
+  deleteMistake: (id: string) => Promise<{ success: boolean }>
+  autoDetectMistakes: (gameId: string) => Promise<{ created: number; skipped: number; reason: string }>
+  getMistakeTopTags: (opts?: { days?: number; role?: string | null; champion?: string | null }) => Promise<MistakeTopTagEntry[]>
+  getMistakeTrend: (opts: { tagSlugs?: string[]; days?: number; role?: string | null; champion?: string | null }) => Promise<MistakeTrendEntry[]>
+  getMistakeHeatmap: (opts: { days?: number; role?: string | null; champion?: string | null }) => Promise<MistakeHeatmapEntry[]>
+
+  // Bookmarks
+  listBookmarks: (recordingId: string) => Promise<Bookmark[]>
+  createBookmark: (args: { recordingId: string; videoTimeMs: number; label?: string; color?: string }) => Promise<Bookmark>
+  updateBookmark: (args: { id: string; label?: string | null; color?: string | null; videoTimeMs?: number }) => Promise<Bookmark>
+  deleteBookmark: (id: string) => Promise<{ success: boolean }>
   deleteRecordingById: (recordingId: string) => Promise<{ success: boolean }>
   resetDismissedRecordings: () => Promise<{ success: boolean }>
   getRecordingScanPaths: () => Promise<Array<{ source: string; dir: string; exists: boolean }>>
@@ -347,6 +512,7 @@ export type NexusMindAPI = {
   deleteCustomGame: (id: string) => Promise<{ ok: true }>
   computeCustomStats: (teamId: string, gameType: 'scrim' | 'tournament' | 'all') => Promise<TeamSynergyStats>
   computeCombinedStats: (teamId: string, opts?: { minTogether?: number }) => Promise<TeamSynergyStats>
+  computeOpponentDashboard: (teamId: string) => Promise<TeamSynergyStats>
   listChampionPool: (memberId: string) => Promise<ChampionPoolEntry[]>
   upsertChampionPool: (memberId: string, championKey: string, role: string, data: Partial<{ tier: string; notes: string | null; playRate: number | null; winRate: number | null }>) => Promise<ChampionPoolEntry>
   removeChampionPoolEntry: (entryId: string) => Promise<{ ok: true }>
@@ -386,6 +552,8 @@ export type NexusMindAPI = {
 
   // Clips
   createClip: (opts: { recordingId: string; startMs: number; endMs: number; title?: string; linkedNoteText?: string }) => Promise<{ id: string }>
+  exportClip: (opts: { recordingId: string; startMs: number; endMs: number; title?: string; linkedNoteText?: string }) =>
+    Promise<{ id: string; filePath: string; thumbnailPath: string | null; title: string | null; startMs: number; endMs: number; fileSize: number; revealedInFolder: boolean }>
   listClips: (recordingId: string) => Promise<Array<{ id: string; title: string | null; startMs: number; endMs: number; filePath: string | null; youtubeUrl: string | null; tempShareUrl: string | null; createdAt: string }>>
   listAllClips: () => Promise<Array<{ clipId: string; recordingId: string; filePath: string | null; thumbnailPath: string | null; title: string | null; startMs: number; endMs: number; createdAt: string; fileSize: number; champion: string | null; opponentChampion: string | null; win: boolean; duration: number }>>
   deleteClip: (clipId: string) => Promise<{ success: boolean }>

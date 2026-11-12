@@ -45,6 +45,8 @@ interface RawTimelineEvent {
   killerId?: number
   victimId?: number
   assistingParticipantIds?: number[]
+  /** Set by Riot on some objective kills (elite monsters in particular). */
+  participantId?: number
   monsterType?: string
   monsterSubType?: string
   buildingType?: string
@@ -77,9 +79,17 @@ function dragonLabel(subType?: string): string {
 
 function eliteMonsterEvent(e: RawTimelineEvent, participants: ParticipantInfo[], playerPid: number): GameEvent | null {
   const ts = e.timestamp ?? 0
-  const killer = e.killerId ? participants.find((p) => p.participantId === e.killerId) : undefined
+  // Riot inconsistently exposes the killer: most events use `killerId`,
+  // but some objective events use `participantId` instead. Check both.
+  const killerId = e.killerId ?? e.participantId
+  const killer = killerId ? participants.find((p) => p.participantId === killerId) : undefined
   const teamId = killer?.teamId ?? (e.killerTeamId === 100 || e.killerTeamId === 200 ? (e.killerTeamId as 100 | 200) : undefined)
-  const isPlayer = e.killerId === playerPid
+
+  // Compute `isPlayer` but DON'T filter — the renderer needs every elite
+  // monster so the user can toggle between "Mine only" / "All" /
+  // "Objectives" views without re-fetching.
+  const involved = [killerId, ...(e.assistingParticipantIds ?? [])].filter((v): v is number => typeof v === 'number')
+  const isPlayer = involved.includes(playerPid)
 
   switch (e.monsterType) {
     case 'DRAGON':
@@ -110,7 +120,10 @@ function buildingEvent(e: RawTimelineEvent, participants: ParticipantInfo[], pla
   const ts = e.timestamp ?? 0
   const killer = e.killerId ? participants.find((p) => p.participantId === e.killerId) : undefined
   const teamId = killer?.teamId
-  const isPlayer = e.killerId === playerPid || (e.assistingParticipantIds ?? []).includes(playerPid)
+  // Compute involvement flag but don't filter — needed for filter modes.
+  // Minion-killed towers (killerId === 0) keep isPlayer=false naturally.
+  const involved = [e.killerId, ...(e.assistingParticipantIds ?? [])].filter((v): v is number => typeof v === 'number')
+  const isPlayer = involved.includes(playerPid)
 
   if (e.buildingType === 'TOWER_BUILDING') {
     const lane = e.laneType ? e.laneType.replace(/_LANE$/, '').toLowerCase() : ''
@@ -140,9 +153,7 @@ function buildingEvent(e: RawTimelineEvent, participants: ParticipantInfo[], pla
 function plateEvent(e: RawTimelineEvent, participants: ParticipantInfo[], playerPid: number): GameEvent | null {
   const ts = e.timestamp ?? 0
   const involved = [e.killerId, ...(e.assistingParticipantIds ?? [])].filter((v): v is number => typeof v === 'number')
-  // Only include plate events where the PLAYER is involved (otherwise we'd
-  // double the marker count for nothing actionable from a review POV).
-  if (!involved.includes(playerPid)) return null
+  const isPlayer = involved.includes(playerPid)
   const killer = participants.find((p) => p.participantId === e.killerId)
   const lane = e.laneType ? e.laneType.replace(/_LANE$/, '').toLowerCase() : ''
   return {
@@ -150,7 +161,7 @@ function plateEvent(e: RawTimelineEvent, participants: ParticipantInfo[], player
     gameTimeMs: ts,
     label: `Plate${lane ? ` (${lane})` : ''}`,
     teamId: killer?.teamId,
-    isPlayer: true,
+    isPlayer,
   }
 }
 
@@ -163,10 +174,9 @@ function championKillEvent(e: RawTimelineEvent, participants: ParticipantInfo[],
   const isKiller = e.killerId === playerPid
   const isVictim = e.victimId === playerPid
   const isAssist = assists.includes(playerPid)
-  // Only keep CHAMPION_KILL where the player is involved — otherwise we'd
-  // emit 30+ kill markers per game for no actionable purpose.
-  if (!isKiller && !isVictim && !isAssist) return null
+  const isPlayer = isKiller || isVictim || isAssist
 
+  // Player-involved → classify as kill/death/assist with their POV.
   if (isVictim) {
     return {
       type: 'death',
@@ -185,13 +195,87 @@ function championKillEvent(e: RawTimelineEvent, participants: ParticipantInfo[],
       isPlayer: true,
     }
   }
-  return {
-    type: 'assist',
-    gameTimeMs: ts,
-    label: victim ? `Assist on ${victim.championName}` : 'Assist',
-    teamId: killer?.teamId,
-    isPlayer: true,
+  if (isAssist) {
+    return {
+      type: 'assist',
+      gameTimeMs: ts,
+      label: victim ? `Assist on ${victim.championName}` : 'Assist',
+      teamId: killer?.teamId,
+      isPlayer: true,
+    }
   }
+  // Not involved at all — emit it as a generic 'kill' (from the killer's
+  // POV) so the "All events" filter can show team-fight context. The
+  // renderer hides these unless the filter mode is "All".
+  return {
+    type: 'kill',
+    gameTimeMs: ts,
+    label: killer && victim ? `${killer.championName} → ${victim.championName}` : 'Kill',
+    teamId: killer?.teamId,
+    isPlayer: false,
+  }
+}
+
+/**
+ * Player selector — describes the participant we want to extract events for.
+ *
+ * Selection priority:
+ *   1. `puuids` — explicit puuid match (works when the LoL account is linked
+ *      to NexusMind, or when we previously cached the puuid on the Game row).
+ *   2. `championName` (+ optional `win`) — fallback for replays from accounts
+ *      that aren't linked to NexusMind. The local Live Client API gives us
+ *      the champion the user played, which uniquely identifies the
+ *      participant in 99% of cases (a champion can't be picked twice in a
+ *      draft). `win` disambiguates the rare mirror-pick case (e.g. one-for-all
+ *      or a custom game with mirrored champs across teams).
+ *
+ * This is exactly the strategy Insight Capture / Outplayed use: they don't
+ * require an account login because they trust the local client to tell them
+ * which player you are.
+ */
+export interface PlayerSelector {
+  /** Preferred — list of puuids that COULD match the player (user + linked accounts). */
+  puuids?: string[]
+  /** Fallback — champion name (Riot format, e.g. "Aatrox") played by the user. */
+  championName?: string
+  /** Tiebreaker for the rare mirror-pick case. */
+  win?: boolean
+}
+
+/**
+ * Resolve the player's participantId from the match's participants list,
+ * trying each strategy in PlayerSelector. Returns null if nothing matches.
+ */
+function resolvePlayer(
+  participants: ParticipantInfo[],
+  match: any,
+  selector: PlayerSelector,
+): ParticipantInfo | null {
+  // 1) puuid match (best)
+  if (selector.puuids?.length) {
+    const set = new Set(selector.puuids)
+    const hit = participants.find((p) => p.puuid && set.has(p.puuid))
+    if (hit) return hit
+  }
+  // 2) champion match — handles unlinked-account replays
+  if (selector.championName) {
+    const champ = selector.championName.toLowerCase()
+    const sameChamp = participants.filter((p) => p.championName?.toLowerCase() === champ)
+    if (sameChamp.length === 1) return sameChamp[0]
+    // Mirror picks: disambiguate by win/loss when we know it.
+    if (sameChamp.length > 1 && typeof selector.win === 'boolean') {
+      const teams = match?.info?.teams ?? []
+      const winningTeamId = teams.find((t: any) => t.win === true)?.teamId
+      if (winningTeamId) {
+        const playerTeamId = selector.win ? winningTeamId : winningTeamId === 100 ? 200 : 100
+        const onWinSide = sameChamp.find((p) => p.teamId === playerTeamId)
+        if (onWinSide) return onWinSide
+      }
+      // Last resort: return the first one — better than no markers at all.
+      return sameChamp[0]
+    }
+  }
+  return null
 }
 
 /**
@@ -200,11 +284,14 @@ function championKillEvent(e: RawTimelineEvent, participants: ParticipantInfo[],
  * Inputs are accepted as JSON strings (so the caller doesn't have to parse
  * the cached blob) or already-parsed objects. Returns [] on missing data
  * rather than throwing — callers usually treat events as best-effort.
+ *
+ * Backwards-compatible overload: passing a plain string is treated as a
+ * single puuid (the legacy behavior). Prefer passing a {@link PlayerSelector}.
  */
 export function extractGameEvents(
   timelineJson: string | object,
   matchJson: string | object,
-  playerPuuid: string,
+  selector: string | PlayerSelector,
 ): GameEvent[] {
   let timeline: any
   let match: any
@@ -224,7 +311,9 @@ export function extractGameEvents(
     teamId: p.teamId,
   }))
 
-  const player = participants.find((p) => p.puuid === playerPuuid)
+  const normalizedSelector: PlayerSelector =
+    typeof selector === 'string' ? { puuids: [selector] } : selector
+  const player = resolvePlayer(participants, match, normalizedSelector)
   if (!player) return []
   const playerPid = player.participantId
 

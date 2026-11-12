@@ -15,6 +15,7 @@ import {
   RefreshCw,
   HelpCircle,
   Users,
+  AlertTriangle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/useUserStore'
@@ -115,6 +116,7 @@ export function Sidebar() {
     { to: '/review', icon: FileSearch, label: t('nav.review') },
     { to: '/history', icon: ClipboardList, label: t('nav.history') },
     { to: '/stats', icon: BarChart3, label: t('nav.detailedStats') },
+    { to: '/stats/mistakes', icon: AlertTriangle, label: t('nav.mistakes', { defaultValue: 'Mistakes' }) },
     { to: '/analytics', icon: TrendingUp, label: t('nav.analytics') },
     { to: '/team', icon: Users, label: t('nav.team', { defaultValue: 'Team' }) },
     { to: '/settings', icon: Settings, label: t('nav.settings') },

@@ -68,6 +68,18 @@ const api = {
     }
   },
 
+  // Fired after the background Match-V5 enrich finishes correcting the
+  // provisional Game row (real win/loss, matchId, queueType…). The
+  // renderer uses this to invalidate cached session/dashboard views so
+  // the placeholder `win: false` doesn't linger on a victory.
+  onGameUpdated: (callback: (info: { gameId: string; matchId: string; win: boolean; queueType: string }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, info: any) => callback(info)
+    ipcRenderer.on('game:updated', handler)
+    return () => {
+      ipcRenderer.removeListener('game:updated', handler)
+    }
+  },
+
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
@@ -82,6 +94,11 @@ const api = {
   autoSnapshot: () => ipcRenderer.invoke('stats:auto-snapshot'),
   getAccountAverages: (puuid: string | null) => ipcRenderer.invoke('stats:get-account-averages', puuid),
   clearStatsSnapshots: () => ipcRenderer.invoke('stats:clear-snapshots'),
+
+  // Destructive data maintenance (Settings → Danger Zone)
+  clearStatsMistakes: () => ipcRenderer.invoke('data:clear-stats-mistakes'),
+  clearRecentData: (days: number) => ipcRenderer.invoke('data:clear-recent', days),
+  resetAllData: () => ipcRenderer.invoke('data:reset-all'),
 
   getBadges: () => ipcRenderer.invoke('badges:get'),
 
@@ -137,6 +154,12 @@ const api = {
   deleteReview: (gameId: string) => ipcRenderer.invoke('review:delete', gameId),
   deleteRecording: (gameId: string) => ipcRenderer.invoke('recording:delete', gameId),
   unlinkRecording: (gameId: string) => ipcRenderer.invoke('recording:unlink', gameId),
+  // Tries to recreate the missing Game row from Riot match history.
+  // Pass a recordingId to limit to a single orphan; omit to backfill all.
+  backfillOrphanRecordings: (recordingId?: string) => ipcRenderer.invoke('recording:backfill-orphans', recordingId),
+  // Diagnostic variant of getGameEvents: returns events + reason/frameCount
+  // so the UI can show "X events loaded" or a helpful error.
+  refreshGameEvents: (gameId: string, forceRefetch = true) => ipcRenderer.invoke('stats:refresh-game-events', gameId, forceRefetch),
   deleteRecordingById: (recordingId: string) => ipcRenderer.invoke('recording:delete-by-id', recordingId),
   resetDismissedRecordings: () => ipcRenderer.invoke('recording:reset-dismissed'),
   getRecordingScanPaths: () => ipcRenderer.invoke('recording:get-scan-paths'),
@@ -185,6 +208,39 @@ const api = {
   // Game events (kills, dragons, towers…) for video player timeline markers
   getGameEvents: (gameId: string) => ipcRenderer.invoke('stats:get-game-events', gameId),
 
+  // Lane Phase Comparator — lazy-computed + cached on the Game row.
+  // `getLanePhase` is the read-through path, `refreshLanePhase` forces a
+  // full re-fetch from Riot.
+  getLanePhase: (gameId: string) => ipcRenderer.invoke('stats:get-lane-phase', gameId),
+  refreshLanePhase: (gameId: string) => ipcRenderer.invoke('stats:refresh-lane-phase', gameId),
+
+  // Mistake Library — manual tagging + 4 heuristic auto-detections.
+  listMistakeTags: (opts?: { includeArchived?: boolean }) => ipcRenderer.invoke('mistake:list-tags', opts),
+  createMistakeTag: (args: { label: string; category: string; icon?: string; color?: string }) =>
+    ipcRenderer.invoke('mistake:create-tag', args),
+  archiveMistakeTag: (tagId: string) => ipcRenderer.invoke('mistake:archive-tag', tagId),
+  listMistakesByGame: (gameId: string) => ipcRenderer.invoke('mistake:list-by-game', gameId),
+  createMistake: (args: { gameId: string; tagId: string; gameTimeSec: number; videoTimeMs?: number; note?: string; severity?: number; recordingId?: string }) =>
+    ipcRenderer.invoke('mistake:create', args),
+  updateMistake: (args: { id: string; note?: string | null; severity?: number; tagId?: string }) =>
+    ipcRenderer.invoke('mistake:update', args),
+  deleteMistake: (id: string) => ipcRenderer.invoke('mistake:delete', id),
+  autoDetectMistakes: (gameId: string) => ipcRenderer.invoke('mistake:auto-detect', gameId),
+  getMistakeTopTags: (opts?: { days?: number; role?: string | null; champion?: string | null }) =>
+    ipcRenderer.invoke('mistake-stats:top-tags', opts),
+  getMistakeTrend: (opts: { tagSlugs?: string[]; days?: number; role?: string | null; champion?: string | null }) =>
+    ipcRenderer.invoke('mistake-stats:trend', opts),
+  getMistakeHeatmap: (opts: { days?: number; role?: string | null; champion?: string | null }) =>
+    ipcRenderer.invoke('mistake-stats:heatmap', opts),
+
+  // Bookmarks — per-recording free markers (works even on orphan recordings).
+  listBookmarks: (recordingId: string) => ipcRenderer.invoke('bookmark:list-by-recording', recordingId),
+  createBookmark: (args: { recordingId: string; videoTimeMs: number; label?: string; color?: string }) =>
+    ipcRenderer.invoke('bookmark:create', args),
+  updateBookmark: (args: { id: string; label?: string | null; color?: string | null; videoTimeMs?: number }) =>
+    ipcRenderer.invoke('bookmark:update', args),
+  deleteBookmark: (id: string) => ipcRenderer.invoke('bookmark:delete', id),
+
   // ── Team management ────────────────────────────────────────────────────────
   listTeams: (opts?: { isOpponent?: boolean }) => ipcRenderer.invoke('team:list', opts),
   getTeam: (id: string) => ipcRenderer.invoke('team:get', id),
@@ -210,6 +266,8 @@ const api = {
     ipcRenderer.invoke('team:compute-custom-stats', teamId, gameType),
   computeCombinedStats: (teamId: string, opts?: { minTogether?: number }) =>
     ipcRenderer.invoke('team:compute-combined-stats', teamId, opts),
+  computeOpponentDashboard: (teamId: string) =>
+    ipcRenderer.invoke('team:compute-opponent-dashboard', teamId),
   listChampionPool: (memberId: string) => ipcRenderer.invoke('team:pool-list', memberId),
   upsertChampionPool: (memberId: string, championKey: string, role: string, data: Record<string, unknown>) =>
     ipcRenderer.invoke('team:pool-upsert', memberId, championKey, role, data),
@@ -260,6 +318,8 @@ const api = {
   // Clips
   createClip: (opts: { recordingId: string; startMs: number; endMs: number; title?: string; linkedNoteText?: string }) =>
     ipcRenderer.invoke('clip:create', opts),
+  exportClip: (opts: { recordingId: string; startMs: number; endMs: number; title?: string; linkedNoteText?: string }) =>
+    ipcRenderer.invoke('clip:export', opts),
   listClips: (recordingId: string) => ipcRenderer.invoke('clip:list', recordingId),
   listAllClips: () => ipcRenderer.invoke('clip:list-all'),
   deleteClip: (clipId: string) => ipcRenderer.invoke('clip:delete', clipId),

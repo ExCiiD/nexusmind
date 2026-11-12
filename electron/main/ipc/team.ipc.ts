@@ -10,7 +10,7 @@ import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { readFileSync, existsSync } from 'node:fs'
 import { basename } from 'node:path'
 import { getPrisma } from '../database'
-import { getMatchIds, getMatch, getAccountByRiotId, getChampionMasteries } from '../riotClient'
+import { getMatchIds, getMatch, getAccountByRiotId, getChampionMasteries, getSeasonMatchIds } from '../riotClient'
 import { getChampionIdToKey } from '../dataDragon'
 import { championPlaysRole, type Role } from '../../../src/lib/championRoles'
 
@@ -19,6 +19,100 @@ async function getActiveUser() {
   const user = await prisma.user.findFirst({ where: { isActive: true } })
   if (!user) throw new Error('No active user')
   return user
+}
+
+/**
+ * Bulk match fetcher with persistent MatchCache + bounded concurrency.
+ *
+ * The naive `Promise.all(matchIds.map(getMatch))` over a season's worth
+ * of games means 300-800 parallel Riot calls per player — every request
+ * goes through the rate limiter so the user waits 30-60s per scout, with
+ * 100% of that cost paid AGAIN on the next scout (no cross-session reuse).
+ *
+ * This helper:
+ *   1. Reads any matches we already have in `MatchCache.matchJson` in a
+ *      single DB query (free, microseconds).
+ *   2. Fetches only the missing IDs from Riot, in batches of 8 (keeps the
+ *      rate limiter happy while staying ~8x faster than serial fetch).
+ *   3. Upserts new matches into `MatchCache` so subsequent scouts of the
+ *      same player (or any roster member who shared a flex game) are
+ *      instant.
+ *
+ * Returns a Map<matchId, parsed match-V5 object>. Missing IDs (failed
+ * fetch + not cached) are simply absent from the map — callers should
+ * treat that as "skip this match".
+ */
+async function getMatchesBulkCached(
+  matchIds: string[],
+  region: string,
+  // The rate limiter (MultiWindowLimiter in riotClient.ts) is the real
+  // bottleneck here — it serializes acquire() calls so the actual
+  // request throughput is bound by `min(app-tier, method-tier)`. For a
+  // Personal key that's 100/120s = ~0.83 req/s sustained; for a
+  // Production key it auto-tunes to ~150 req/s from response headers.
+  //
+  // Concurrency here just controls how many requests we queue up behind
+  // the limiter. 10 is enough to:
+  //   - keep the burst-window fully utilized (20/s) when budget is fresh
+  //   - never overwhelm the Undici connection pool (50 conn max)
+  //   - keep the SQLite upsert queue bounded so other IPC handlers stay
+  //     responsive while a long scout runs
+  // Bumping this number above 10 doesn't make scouts any faster on a
+  // Personal key (it's already gated by the long-window 100/120s rule)
+  // and just risks more 429s if the limiter has a bug.
+  concurrency = 10,
+): Promise<Map<string, any>> {
+  if (matchIds.length === 0) return new Map()
+  const prisma = getPrisma()
+  const cached = await prisma.matchCache.findMany({
+    where: { matchId: { in: matchIds } },
+    select: { matchId: true, matchJson: true },
+  })
+  const out = new Map<string, any>()
+  for (const row of cached) {
+    try {
+      out.set(row.matchId, JSON.parse(row.matchJson))
+    } catch {
+      // Corrupt cache row — treat as miss, the fetch loop below will refresh it
+    }
+  }
+  const missing = matchIds.filter((id) => !out.has(id))
+  if (missing.length === 0) return out
+
+  let cursor = 0
+  const worker = async () => {
+    while (true) {
+      const i = cursor++
+      if (i >= missing.length) break
+      const id = missing[i]
+      try {
+        const match = await getMatch(id, region)
+        out.set(id, match)
+        // AWAIT the upsert (was fire-and-forget). Without await, 1500
+        // simultaneous SQLite writes from a 5-player auto-fill pile up,
+        // starving every other IPC handler (listChampionPool,
+        // listTeams, …). SQLite serializes writes anyway, so awaiting
+        // doesn't slow us down — it just keeps the queue bounded so
+        // the rest of the renderer stays responsive while a long scout
+        // runs. Failures are non-fatal — match is already in out map.
+        try {
+          await prisma.matchCache.upsert({
+            where: { matchId: id },
+            create: { matchId: id, matchJson: JSON.stringify(match) },
+            update: { matchJson: JSON.stringify(match) },
+          })
+        } catch (dbErr) {
+          console.warn('[getMatchesBulkCached] cache write failed for', id, (dbErr as Error)?.message)
+        }
+      } catch (err) {
+        // Riot can 404 old/deleted matches or temp-fail on outages.
+        // Silently skip so a single bad ID doesn't kill the whole scout.
+        console.warn('[getMatchesBulkCached] fetch failed for', id, (err as Error)?.message)
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, missing.length) }, () => worker()))
+  return out
 }
 
 /**
@@ -433,10 +527,15 @@ export function registerTeamHandlers() {
    * Requires the member to have `ign` + `tagLine` + `region` set. Returns
    * the number of pool entries created/updated.
    */
-  ipcMain.handle('team:scout-member', async (_e, memberId: string, count = 30, opts: { roleOnly?: boolean } = {}) => {
-    // Default to role-filtered: scouting an opponent's "TOP laner" should
-    // tell us what they pick TOP, not what they flex into ARAM or off-role.
-    const roleOnly = opts.roleOnly ?? true
+  ipcMain.handle('team:scout-member', async (_e, memberId: string, count = 100, opts: { roleOnly?: boolean } = {}) => {
+    // Default to UNFILTERED so the champion counts match op.gg's view:
+    // op.gg shows "Aatrox 84g" across all roles, not just TOP. A flex
+    // player who plays 50 TOP + 34 JG on Aatrox should appear as 84g,
+    // since opponents care about WHAT this player can pick — not just
+    // what they pick in their preferred lane. Callers can opt back into
+    // strict role filtering via `opts.roleOnly = true` (Champion Pool
+    // tab's auto-fill, for example).
+    const roleOnly = opts.roleOnly ?? false
     const prisma = getPrisma()
     const member = await prisma.teamMember.findUnique({ where: { id: memberId } })
     if (!member) throw new Error('Member not found')
@@ -455,49 +554,73 @@ export function registerTeamHandlers() {
     }
     if (!region) throw new Error('Region missing')
 
-    // When filtering by role we widen the match window since many games will
-    // be discarded (e.g. autofills, ARAM, off-role flex). 50 games typically
-    // yields 25-40 same-role games for a primary-role main.
-    const fetchCount = roleOnly ? Math.min(count * 2, 50) : Math.min(count, 50)
-    const matchIds = await getMatchIds(puuid, region, fetchCount, 0, 'both')
+    // Fetch ranked + clash game IDs for the current split (SoloQ + Flex +
+    // Clash, paginated). The cap is now driven by the wire `count` param:
+    //   - count = 100 (default)  → ~2 min on Personal key, default "quick"
+    //   - count = 500            → ~10 min on Personal key, "deep" scout
+    //   - count = -1 or large    → no cap, fetch every season match Riot
+    //                              returns (~30 min worst case on Personal,
+    //                              fast on Production). Used by the "Complete"
+    //                              scope dialog option.
+    // We still apply a sanity ceiling at 2500 (~max season-list payload from
+    // getSeasonMatchIds: 1000 solo + 1000 flex + 500 clash) so a runaway
+    // caller can't accidentally allocate forever.
+    const noCap = !Number.isFinite(count) || count <= 0 || count > 2500
+    const scoutStart = Date.now()
+    const allSeasonIds = await getSeasonMatchIds(puuid, region)
+    const matchIds = noCap ? allSeasonIds : allSeasonIds.slice(0, Math.max(1, count))
     if (matchIds.length === 0) return { upserted: 0, totalMatches: 0, sameRoleCount: 0 }
 
     const memberRole = (member.role || '').toUpperCase()
     let sameRoleCount = 0
 
-    // Aggregate champion plays per role
-    const playCount = new Map<string, { championKey: string; role: string; count: number; wins: number }>()
-    const results = await Promise.allSettled(
-      matchIds.map(async (id) => {
-        const match = await getMatch(id, region!)
-        const participant = match?.info?.participants?.find((p: any) => p.puuid === puuid)
-        if (!participant) return
-        // Normalize Riot's MIDDLE/BOTTOM/UTILITY → MID/ADC/SUPPORT so the
-        // role filter and stored entries use the same vocabulary as the rest
-        // of the app (RosterTab, ChampPoolTab, Draft Sim's PoolSidebar).
-        const role = normalizeRole(participant.teamPosition || participant.individualPosition)
-        if (!role || role === 'UNKNOWN' || role === 'INVALID' || role === 'NONE') return
-        // Skip games where the player wasn't on their assigned role. This is
-        // why we widened fetchCount above.
-        if (roleOnly && memberRole && role !== memberRole) return
-        sameRoleCount++
-        const key = `${participant.championName}|${role}`
-        const existing = playCount.get(key)
-        if (existing) {
-          existing.count++
-          if (participant.win) existing.wins++
-        } else {
-          playCount.set(key, {
-            championKey: participant.championName,
-            role,
-            count: 1,
-            wins: participant.win ? 1 : 0,
-          })
-        }
+    // Aggregate champion plays per role using the persistent MatchCache —
+    // each match is fetched at most once across the lifetime of the install.
+    // Mastery is fetched in parallel so we can attach it to the upsert below
+    // (needed for the Draft Sim threat highlights). Mastery is one cheap
+    // call per scout, vs hundreds of match fetches, so we always grab it.
+    const fetchStart = Date.now()
+    const idToKey = await getChampionIdToKey().catch(() => ({} as Record<number, string>))
+    const [matches, masteries] = await Promise.all([
+      getMatchesBulkCached(matchIds, region),
+      getChampionMasteries(puuid, region, 50).catch((err) => {
+        console.warn('[scout-member] mastery fetch failed:', (err as Error)?.message)
+        return [] as Awaited<ReturnType<typeof getChampionMasteries>>
       }),
-    )
-    const failed = results.filter((r) => r.status === 'rejected').length
-    if (failed > 0) console.warn(`[team:scout-member] ${failed}/${matchIds.length} matches failed to fetch`)
+    ])
+    const masteryByKey = new Map<string, number>()
+    for (const m of masteries) {
+      const key = idToKey[m.championId]
+      if (key) masteryByKey.set(key, m.championPoints)
+    }
+    const fetchMs = Date.now() - fetchStart
+    console.info(`[scout-member] ${member.displayName}: ${matchIds.length} matches, ${matches.size} resolved in ${(fetchMs / 1000).toFixed(1)}s (${(matches.size / (fetchMs / 1000)).toFixed(1)} req/s effective)`)
+    const playCount = new Map<string, { championKey: string; role: string; count: number; wins: number }>()
+    let failed = 0
+    for (const id of matchIds) {
+      const match = matches.get(id)
+      if (!match) { failed++; continue }
+      const participant = match?.info?.participants?.find((p: any) => p.puuid === puuid)
+      if (!participant) continue
+      const role = normalizeRole(participant.teamPosition || participant.individualPosition)
+      if (!role || role === 'UNKNOWN' || role === 'INVALID' || role === 'NONE') continue
+      if (roleOnly && memberRole && role !== memberRole) continue
+      sameRoleCount++
+      const key = `${participant.championName}|${role}`
+      const existing = playCount.get(key)
+      if (existing) {
+        existing.count++
+        if (participant.win) existing.wins++
+      } else {
+        playCount.set(key, {
+          championKey: participant.championName,
+          role,
+          count: 1,
+          wins: participant.win ? 1 : 0,
+        })
+      }
+    }
+    if (failed > 0) console.warn(`[team:scout-member] ${failed}/${matchIds.length} matches missing (cache miss + fetch fail)`)
 
     // Cleanup pass. Removes:
     //   1. Pre-normalization entries with raw Riot role names
@@ -533,6 +656,7 @@ export function registerTeamHandlers() {
         : entry.count >= 3 ? 'comfort'
         : 'flex'
       const winRate = Math.round((entry.wins / entry.count) * 100)
+      const masteryPoints = masteryByKey.get(entry.championKey) ?? null
       await prisma.championPoolEntry.upsert({
         where: { memberId_championKey_role: { memberId, championKey: entry.championKey, role: entry.role } },
         create: {
@@ -542,12 +666,14 @@ export function registerTeamHandlers() {
           tier,
           playRate: entry.count,
           winRate,
+          masteryPoints,
         },
-        update: { playRate: entry.count, winRate },
+        update: { playRate: entry.count, winRate, masteryPoints },
       })
       upserted++
     }
 
+    console.info(`[scout-member] ${member.displayName}: total ${((Date.now() - scoutStart) / 1000).toFixed(1)}s · ${upserted} pool entries`)
     return { upserted, totalMatches: matchIds.length, sameRoleCount }
   })
 
@@ -581,12 +707,19 @@ export function registerTeamHandlers() {
     // show all roles separately for flex players, this just biases the
     // auto-seeded entries toward the assigned role.
     const roleOnly = opts.roleOnly ?? true
-    // We fetch enough matches to make the "50 games on a champ" comfort
-    // threshold actually reachable for one-tricks. Riot caps each call at
-    // 100 but `getMatchIds` queries SoloQ + Flex in parallel and merges, so
-    // the effective ceiling is ~150–200 unique matches — plenty for season
-    // coverage on active players.
-    const matchCount = Math.min(opts.matchCount ?? 100, 100)
+    // Upper-cap applied AFTER paginating the season match list:
+    //   - 100  (default, "quick")    : ~2 min on Personal key
+    //   - 500  ("deep")               : ~10 min on Personal key
+    //   - <= 0 or huge ("complete")   : no cap, every season game Riot has
+    //                                   (~30 min on Personal, fast on Prod)
+    // The tier thresholds (main = 5+ plays, comfort = 3+ plays) saturate
+    // quickly so the default of 100 is enough for accurate tiering on most
+    // ranked accounts. The hard ceiling of 2500 matches the worst-case
+    // payload from getSeasonMatchIds (1000 solo + 1000 flex + 500 clash)
+    // and prevents accidental runaway allocations.
+    const rawMatchCount = opts.matchCount ?? 100
+    const matchCountNoCap = !Number.isFinite(rawMatchCount) || rawMatchCount <= 0 || rawMatchCount > 2500
+    const matchCount = matchCountNoCap ? 2500 : Math.max(1, Math.min(rawMatchCount, 2500))
     const masteryCount = Math.min(opts.masteryCount ?? 30, 50)
     const overwriteTiers = opts.overwriteTiers ?? true
 
@@ -609,10 +742,11 @@ export function registerTeamHandlers() {
 
     const memberRole = (member.role || '').toUpperCase()
 
-    // Fetch mastery + match list in parallel — these are independent calls
-    // and the API has plenty of headroom for both at once.
-    const [matchIds, masteries, idToKey] = await Promise.all([
-      getMatchIds(puuid, region, matchCount, 0, 'both').catch((err) => {
+    // Fetch mastery + season match list in parallel. The match list now
+    // covers the full current split (SoloQ + Flex + Clash, paginated) so
+    // play-counts shown in the Champion Pool tab reflect the real season.
+    const [allSeasonIds, masteries, idToKey] = await Promise.all([
+      getSeasonMatchIds(puuid, region).catch((err) => {
         console.warn('[auto-fill] match list failed:', err.message)
         return [] as string[]
       }),
@@ -622,6 +756,7 @@ export function registerTeamHandlers() {
       }),
       getChampionIdToKey(),
     ])
+    const matchIds = allSeasonIds.slice(0, matchCount)
 
     // Aggregate match data per (championKey, role)
     interface Agg {
@@ -634,35 +769,34 @@ export function registerTeamHandlers() {
     const agg = new Map<string, Agg>()
 
     if (matchIds.length > 0) {
-      const matchResults = await Promise.allSettled(
-        matchIds.map(async (id) => {
-          const match = await getMatch(id, region)
-          const participant = match?.info?.participants?.find((p: any) => p.puuid === puuid)
-          if (!participant) return
-          // Normalize Riot's MIDDLE/BOTTOM/UTILITY → MID/ADC/SUPPORT so the
-          // filter and storage agree with the rest of the app's role enum.
-          const role = normalizeRole(participant.teamPosition || participant.individualPosition)
-          if (!role || role === 'UNKNOWN' || role === 'INVALID' || role === 'NONE') return
-          // Same-role filter — see roleOnly docstring above.
-          if (roleOnly && memberRole && role !== memberRole) return
-          const key = `${participant.championName}|${role}`
-          const existing = agg.get(key)
-          if (existing) {
-            existing.count++
-            if (participant.win) existing.wins++
-          } else {
-            agg.set(key, {
-              championKey: participant.championName,
-              role,
-              count: 1,
-              wins: participant.win ? 1 : 0,
-              masteryPoints: 0,
-            })
-          }
-        }),
-      )
-      const failed = matchResults.filter((r) => r.status === 'rejected').length
-      if (failed > 0) console.warn(`[auto-fill] ${failed}/${matchIds.length} matches failed`)
+      // Use the shared MatchCache helper so re-running auto-fill (or having
+      // previously scouted the same player) costs essentially zero API calls.
+      const matches = await getMatchesBulkCached(matchIds, region)
+      let failed = 0
+      for (const id of matchIds) {
+        const match = matches.get(id)
+        if (!match) { failed++; continue }
+        const participant = match?.info?.participants?.find((p: any) => p.puuid === puuid)
+        if (!participant) continue
+        const role = normalizeRole(participant.teamPosition || participant.individualPosition)
+        if (!role || role === 'UNKNOWN' || role === 'INVALID' || role === 'NONE') continue
+        if (roleOnly && memberRole && role !== memberRole) continue
+        const key = `${participant.championName}|${role}`
+        const existing = agg.get(key)
+        if (existing) {
+          existing.count++
+          if (participant.win) existing.wins++
+        } else {
+          agg.set(key, {
+            championKey: participant.championName,
+            role,
+            count: 1,
+            wins: participant.win ? 1 : 0,
+            masteryPoints: 0,
+          })
+        }
+      }
+      if (failed > 0) console.warn(`[auto-fill] ${failed}/${matchIds.length} matches missing (cache miss + fetch fail)`)
     }
 
     // Attach mastery points to existing entries; for mastery-only champions,
@@ -763,6 +897,7 @@ export function registerTeamHandlers() {
       // writes a number (even 0 for mastery-only entries). Don't change
       // this to `entry.count || null` or stale mastery-only entries would
       // be misclassified as manual and survive forever.
+      const masteryPoints = entry.masteryPoints > 0 ? entry.masteryPoints : null
       await prisma.championPoolEntry.upsert({
         where: { memberId_championKey_role: { memberId, championKey: entry.championKey, role: entry.role } },
         create: {
@@ -772,11 +907,13 @@ export function registerTeamHandlers() {
           tier,
           playRate: entry.count,
           winRate,
+          masteryPoints,
         },
         update: {
           ...(overwriteTiers || !existing ? { tier } : {}),
           playRate: entry.count,
           winRate: winRate ?? existing?.winRate ?? null,
+          masteryPoints,
         },
       })
       upserted++
@@ -915,29 +1052,29 @@ export function registerTeamHandlers() {
       })
     }
 
+    // Group candidate matches by the region of a seeder member so the bulk
+    // fetcher can pull each match from the right routing cluster. Different
+    // regions live on different Riot endpoints, so we can't mix them in one
+    // batched call.
+    const idsByRegion = new Map<string, string[]>()
+    for (const matchId of candidateMatchIds) {
+      const seederPuuid = Array.from(matchToPuuids.get(matchId)!)[0]
+      const seeder = puuidToMember.get(seederPuuid)
+      if (!seeder) continue
+      const arr = idsByRegion.get(seeder.region) ?? []
+      arr.push(matchId)
+      idsByRegion.set(seeder.region, arr)
+    }
+    const allMatches = new Map<string, any>()
+    for (const [region, ids] of idsByRegion) {
+      const fetched = await getMatchesBulkCached(ids, region)
+      for (const [id, m] of fetched) allMatches.set(id, m)
+    }
+
     let confirmedMatchCount = 0
     for (const matchId of candidateMatchIds) {
-      let matchData: any = null
-      try {
-        const cached = await prisma.matchCache.findUnique({ where: { matchId } })
-        if (cached?.matchJson) {
-          matchData = JSON.parse(cached.matchJson)
-        } else {
-          // Fetch using the region of any member who appeared in this match
-          const seeder = puuidToMember.get(Array.from(matchToPuuids.get(matchId)!)[0])!
-          matchData = await getMatch(matchId, seeder.region)
-          if (matchData) {
-            await prisma.matchCache.upsert({
-              where: { matchId },
-              create: { matchId, matchJson: JSON.stringify(matchData) },
-              update: { matchJson: JSON.stringify(matchData) },
-            })
-          }
-        }
-      } catch (err) {
-        console.warn('[synergy] match fetch failed for', matchId, err)
-        continue
-      }
+      const matchData = allMatches.get(matchId)
+      if (!matchData) continue
 
       const participants: any[] = matchData?.info?.participants ?? []
       const durationSec: number = matchData?.info?.gameDuration ?? 0
@@ -1225,7 +1362,7 @@ export function registerTeamHandlers() {
     const prisma = getPrisma()
     const team = await prisma.team.findUnique({ where: { id: teamId }, include: { members: true } })
     if (!team) throw new Error('Team not found')
-    const normName = (s: string | undefined) => (s ?? '').trim().toLowerCase()
+    const normName = (s: string | null | undefined) => (s ?? '').trim().toLowerCase()
     const rosterNames = new Set(team.members.flatMap((m) => [normName(m.ign), normName(m.displayName)].filter(Boolean)))
     const blueMatches = participants.filter((p) => p.teamId === 100 && rosterNames.has(normName(p.playerName))).length
     const redMatches = participants.filter((p) => p.teamId === 200 && rosterNames.has(normName(p.playerName))).length
@@ -1376,6 +1513,217 @@ export function registerTeamHandlers() {
     }
 
     return aggregateMatchLike(team, [...flexMatchLike, ...customMatchLike], minTogether)
+  })
+
+  /**
+   * Opponent dashboard stats. Unlike `team:compute-synergy-stats` which looks
+   * for games where multiple of OUR roster played together, opponents almost
+   * never play together in our DB — so we aggregate PER-PLAYER across each
+   * member's full season match list (SoloQ + Flex + Clash), filtered to games
+   * where they played their assigned role.
+   *
+   * The output mirrors `TeamSynergyStats` so the renderer can reuse the same
+   * Dashboard layout. The "shares" donuts are approximations: each player's
+   * share = his per-game average / sum of the 5 players' averages. Real
+   * synergy shares (same-game contributions) aren't possible since opponents
+   * are scouted independently.
+   *
+   * Caps each member at 100 most recent same-role games to keep the API
+   * usage and runtime bounded.
+   */
+  ipcMain.handle('team:compute-opponent-dashboard', async (_e, teamId: string) => {
+    const prisma = getPrisma()
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+      include: { members: true },
+    })
+    if (!team) throw new Error('Team not found')
+
+    const MAX_GAMES_PER_MEMBER = 100
+
+    interface Accum {
+      memberId: string; displayName: string; role: string
+      games: number; wins: number
+      sums: { kills: number; deaths: number; assists: number; cs: number; durationMin: number; damage: number; damageTaken: number; ccTime: number; visionScore: number; wardsPlaced: number; wardsKilled: number; controlWards: number; gold: number; xp: number }
+      byChampion: Map<string, { games: number; wins: number }>
+    }
+    const accums: Accum[] = []
+
+    let totalCandidateMatches = 0
+    let totalMatchesUsed = 0
+    let membersResolved = 0
+
+    for (const member of team.members) {
+      let puuid = member.puuid
+      const region = member.region
+      if (!puuid && member.ign && member.tagLine && region) {
+        try {
+          const acct = await getAccountByRiotId(member.ign, member.tagLine, region)
+          if (acct?.puuid) {
+            puuid = acct.puuid
+            await prisma.teamMember.update({ where: { id: member.id }, data: { puuid } })
+          }
+        } catch (err) {
+          console.warn('[opponent-dashboard] could not resolve', member.displayName, (err as Error).message)
+        }
+      }
+      if (!puuid || !region) continue
+      membersResolved++
+
+      const acc: Accum = {
+        memberId: member.id, displayName: member.displayName, role: member.role,
+        games: 0, wins: 0,
+        sums: { kills: 0, deaths: 0, assists: 0, cs: 0, durationMin: 0, damage: 0, damageTaken: 0, ccTime: 0, visionScore: 0, wardsPlaced: 0, wardsKilled: 0, controlWards: 0, gold: 0, xp: 0 },
+        byChampion: new Map(),
+      }
+
+      let matchIds: string[] = []
+      try {
+        matchIds = await getSeasonMatchIds(puuid, region)
+      } catch (err) {
+        console.warn('[opponent-dashboard] match list failed for', member.displayName, (err as Error).message)
+      }
+      totalCandidateMatches += matchIds.length
+      if (matchIds.length === 0) {
+        accums.push(acc)
+        continue
+      }
+
+      const assignedRole = (member.role || '').toUpperCase()
+      // Bound how many of the season's matches we hydrate per opponent.
+      // 3x MAX_GAMES_PER_MEMBER reflects the typical ~30% same-role hit
+      // rate; we'll usually stop early once we've collected enough.
+      const candidateIds = matchIds.slice(0, MAX_GAMES_PER_MEMBER * 3)
+      const matches = await getMatchesBulkCached(candidateIds, region)
+      let collected = 0
+      for (const id of candidateIds) {
+        if (collected >= MAX_GAMES_PER_MEMBER) break
+        const match = matches.get(id)
+        if (!match) continue
+        const p = match?.info?.participants?.find((q: any) => q.puuid === puuid)
+        if (!p) continue
+        const playedRole = normalizeRole(p.teamPosition || p.individualPosition)
+        if (!playedRole || (assignedRole && playedRole !== assignedRole)) continue
+
+        collected++
+        totalMatchesUsed++
+        const durationSec: number = match.info?.gameDuration ?? 0
+        if (durationSec <= 0) continue
+        const dmin = durationSec / 60
+        const cs = (p.totalMinionsKilled ?? 0) + (p.neutralMinionsKilled ?? 0)
+        acc.games++
+        if (p.win) acc.wins++
+        acc.sums.kills += p.kills ?? 0
+        acc.sums.deaths += p.deaths ?? 0
+        acc.sums.assists += p.assists ?? 0
+        acc.sums.cs += cs
+        acc.sums.durationMin += dmin
+        acc.sums.damage += p.totalDamageDealtToChampions ?? 0
+        acc.sums.damageTaken += p.totalDamageTaken ?? 0
+        acc.sums.ccTime += p.timeCCingOthers ?? p.totalTimeCCDealt ?? 0
+        acc.sums.visionScore += p.visionScore ?? 0
+        acc.sums.wardsPlaced += p.wardsPlaced ?? 0
+        acc.sums.wardsKilled += p.wardsKilled ?? 0
+        acc.sums.controlWards += p.detectorWardsPurchased ?? p.visionWardsBoughtInGame ?? 0
+        acc.sums.gold += p.goldEarned ?? 0
+        acc.sums.xp += p.champExperience ?? 0
+        const champKey = p.championName ?? 'Unknown'
+        const champ = acc.byChampion.get(champKey) ?? { games: 0, wins: 0 }
+        champ.games++
+        if (p.win) champ.wins++
+        acc.byChampion.set(champKey, champ)
+      }
+      accums.push(acc)
+    }
+
+    // First pass: compute per-player averages (the absolute values).
+    const baseStats = accums.map((a) => {
+      if (a.games === 0) {
+        return {
+          memberId: a.memberId,
+          displayName: a.displayName,
+          role: a.role,
+          gamesPlayed: 0,
+          wins: 0,
+          winRate: 0,
+          averages: {
+            kda: 0, kills: 0, deaths: 0, assists: 0, cs: 0, csPerMin: 0,
+            damage: 0, damagePerMin: 0, damageTaken: 0, ccTime: 0,
+            visionScore: 0, wardsPlaced: 0, wardsKilled: 0, controlWards: 0,
+            gold: 0, goldPerMin: 0, xpPerMin: 0, damagePerGold: 0,
+          },
+          byChampion: [] as Array<{ championKey: string; games: number; wins: number; winRate: number }>,
+        }
+      }
+      const g = a.games
+      const dmin = Math.max(0.001, a.sums.durationMin)
+      return {
+        memberId: a.memberId,
+        displayName: a.displayName,
+        role: a.role,
+        gamesPlayed: a.games,
+        wins: a.wins,
+        winRate: Math.round((a.wins / g) * 100),
+        averages: {
+          kda: a.sums.deaths > 0 ? (a.sums.kills + a.sums.assists) / a.sums.deaths : a.sums.kills + a.sums.assists,
+          kills: a.sums.kills / g,
+          deaths: a.sums.deaths / g,
+          assists: a.sums.assists / g,
+          cs: a.sums.cs / g,
+          csPerMin: a.sums.cs / dmin,
+          damage: a.sums.damage / g,
+          damagePerMin: a.sums.damage / dmin,
+          damageTaken: a.sums.damageTaken / g,
+          ccTime: a.sums.ccTime / g,
+          visionScore: a.sums.visionScore / g,
+          wardsPlaced: a.sums.wardsPlaced / g,
+          wardsKilled: a.sums.wardsKilled / g,
+          controlWards: a.sums.controlWards / g,
+          gold: a.sums.gold / g,
+          goldPerMin: a.sums.gold / dmin,
+          xpPerMin: a.sums.xp / dmin,
+          damagePerGold: a.sums.gold > 0 ? a.sums.damage / a.sums.gold : 0,
+        },
+        byChampion: Array.from(a.byChampion.entries())
+          .map(([championKey, v]) => ({ championKey, games: v.games, wins: v.wins, winRate: Math.round((v.wins / v.games) * 100) }))
+          .sort((x, y) => y.games - x.games),
+      }
+    })
+
+    // Second pass: compute approximate "team shares" by normalizing each
+    // player's averages against the sum across all 5. These aren't real
+    // synergy shares (the games are independent) but give a useful
+    // comparison of contribution profiles across the opposing roster.
+    const teamSums = baseStats.reduce((s, p) => {
+      s.dmg += p.averages.damage
+      s.dmgTaken += p.averages.damageTaken
+      s.gold += p.averages.gold
+      s.vision += p.averages.visionScore
+      s.cc += p.averages.ccTime
+      s.killsAssists += p.averages.kills + p.averages.assists
+      return s
+    }, { dmg: 0, dmgTaken: 0, gold: 0, vision: 0, cc: 0, killsAssists: 0 })
+
+    const players = baseStats.map((p) => ({
+      ...p,
+      shares: {
+        damagePct: teamSums.dmg > 0 ? (p.averages.damage / teamSums.dmg) * 100 : 0,
+        goldPct: teamSums.gold > 0 ? (p.averages.gold / teamSums.gold) * 100 : 0,
+        visionPct: teamSums.vision > 0 ? (p.averages.visionScore / teamSums.vision) * 100 : 0,
+        damageTakenPct: teamSums.dmgTaken > 0 ? (p.averages.damageTaken / teamSums.dmgTaken) * 100 : 0,
+        ccPct: teamSums.cc > 0 ? (p.averages.ccTime / teamSums.cc) * 100 : 0,
+        kpPct: teamSums.killsAssists > 0 ? ((p.averages.kills + p.averages.assists) / teamSums.killsAssists) * 100 : 0,
+      },
+    }))
+
+    return {
+      matchCount: totalMatchesUsed,
+      candidateCount: totalCandidateMatches,
+      membersResolved,
+      membersWithGames: players.filter((p) => p.gamesPlayed > 0).length,
+      players,
+      fetchedAt: Date.now(),
+    }
   })
 }
 

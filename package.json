@@ -1,6 +1,6 @@
 {
   "name": "nexusmind",
-  "version": "0.2.0-beta.29",
+  "version": "0.2.0-beta.60",
   "private": true,
   "description": "League of Legends Self-Coaching Desktop App",
   "author": "NexusMind",
@@ -19,8 +19,9 @@
     "seed": "tsx prisma/seed.ts",
     "dist": "npm run build && electron-builder --publish never",
     "dist:dir": "npm run build && electron-builder --dir --publish never",
-    "release": "npm run build && electron-builder --publish always",
-    "release:draft": "npm run build && electron-builder --publish onTagOrDraft"
+    "release": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1",
+    "release:publish-only": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1 -PublishOnly",
+    "release:no-publish": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1 -NoPublish"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -55,6 +56,7 @@
     "react-router-dom": "^6.28.0",
     "recharts": "^2.14.0",
     "tailwind-merge": "^2.6.0",
+    "undici": "^6.26.0",
     "zod": "^3.23.0",
     "zustand": "^5.0.0"
   },

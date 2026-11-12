@@ -10,6 +10,8 @@ import { ReassessmentPage } from '@/pages/Assessment/ReassessmentPage'
 import { HistoryPage } from '@/pages/History/HistoryPage'
 import { DetailedStatsPage } from '@/pages/DetailedStats/DetailedStatsPage'
 import { StatsLandingPage } from '@/pages/DetailedStats/StatsLandingPage'
+import { LanePhasePage } from '@/pages/Stats/LanePhasePage'
+import { MistakeStatsPage } from '@/pages/Stats/MistakeStatsPage'
 import { SettingsPage } from '@/pages/Settings/SettingsPage'
 import { RecordPage } from '@/pages/Record/RecordPage'
 import { RecordPlayerPage } from '@/pages/Record/RecordPlayerPage'
@@ -18,10 +20,12 @@ import { ExternalReviewNewPage } from '@/pages/Review/ExternalReviewNewPage'
 import { PostGameCapturePage } from '@/pages/Review/PostGameCapturePage'
 import { HelpPage } from '@/pages/Help/HelpPage'
 import { TeamPage } from '@/pages/Team/TeamPage'
+import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
 import { GameEndNav } from '@/components/GameEndNav'
 import { DevToolbar } from '@/components/Dev/DevToolbar'
 import { UpdateBanner } from '@/components/UpdateBanner'
 import { Toaster } from '@/components/ui/toaster'
+import { BackgroundJobsIndicator } from '@/components/BackgroundJobsIndicator'
 import { useEffect } from 'react'
 
 export function App() {
@@ -57,8 +61,10 @@ export function App() {
             <Route path="/stats" element={<StatsLandingPage />} />
             <Route path="/stats/averages" element={<Navigate to="/stats" replace />} />
             <Route path="/stats/:matchId" element={<DetailedStatsPage />} />
+            <Route path="/lane-phase/:gameId" element={<LanePhasePage />} />
+            <Route path="/stats/mistakes" element={<MistakeStatsPage />} />
             <Route path="/assessment" element={<ReassessmentPage />} />
-            <Route path="/team" element={<TeamPage />} />
+            <Route path="/team" element={<PanelErrorBoundary label="Team page"><TeamPage /></PanelErrorBoundary>} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -67,6 +73,10 @@ export function App() {
       </Routes>
       {user && <DevToolbar />}
       <UpdateBanner />
+      {/* Persistent indicator for long-running team scouts / auto-fills.
+          Rendered above the toaster so its pills don't get covered by
+          stacked toasts. Hidden when no jobs are active. */}
+      {user && <BackgroundJobsIndicator />}
       <Toaster />
     </>
   )

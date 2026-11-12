@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import { existsSync as fsExistsSync, statSync as fsStatSync } from 'fs'
 import { getPrisma } from '../database'
 import {
   getMatchIds,
@@ -8,6 +9,8 @@ import {
   extractDetailedStats,
 } from '../riotClient'
 import { extractGameEvents, type GameEvent } from '../eventExtractor'
+import { analyzeLanePhase, type LanePhaseResult } from '../lanePhaseAnalyzer'
+import { detectMistakes } from '../mistakeDetector'
 
 let autoSnapshotRunning = false
 
@@ -101,67 +104,391 @@ function hasCurrentSnapshotSchema(parsed: any): boolean {
   )
 }
 
+/**
+ * Reason buckets shared by both `loadGameEvents` and `loadLanePhase` —
+ * gives the renderer a stable taxonomy to map to user-facing messages.
+ */
+type CacheLoadReason =
+  | 'ok'
+  | 'no-game'
+  | 'no-match-id'
+  | 'no-user'
+  | 'timeline-fetch-failed'
+  | 'match-fetch-failed'
+  | 'empty-timeline'
+
+interface MatchCacheLoadOk {
+  ok: true
+  matchJson: string
+  timelineJson: string
+  game: { id: string; matchId: string; champion: string; win: boolean }
+  user: { puuid: string; region: string }
+  userPuuids: string[]
+}
+
+interface MatchCacheLoadErr {
+  ok: false
+  reason: CacheLoadReason
+  message?: string
+  matchId?: string
+}
+
+/**
+ * Make sure both match + timeline blobs are present in MatchCache for the
+ * given game. Lazily fetches from Riot if needed, and (when `forceRefetch`
+ * is true) wipes the cached copy first so the next call hits the network.
+ *
+ * Extracted from `loadGameEvents` so multiple consumers (lane phase
+ * analyzer, mistake detector, future analyzers) can share the same
+ * lazy-fetch-and-cache pipeline without duplicating the Riot calls.
+ */
+async function ensureMatchCache(gameId: string, forceRefetch: boolean, logPrefix = 'cache'): Promise<MatchCacheLoadOk | MatchCacheLoadErr> {
+  const prisma = getPrisma()
+  const game = await prisma.game.findUnique({ where: { id: gameId } })
+  if (!game) return { ok: false, reason: 'no-game', message: 'Game record not found.' }
+  if (!game.matchId) return { ok: false, reason: 'no-match-id', message: 'This game has no matchId yet — try "Try to link" first.' }
+
+  const user = await prisma.user.findFirst({ where: { isActive: true } })
+  if (!user) return { ok: false, reason: 'no-user', message: 'No active user.', matchId: game.matchId }
+
+  const accounts = await prisma.account.findMany({ where: { userId: user.id } })
+  const userPuuids = [user.puuid, ...accounts.map((a) => a.puuid)].filter(
+    (p): p is string => typeof p === 'string' && p.length > 0,
+  )
+
+  if (forceRefetch) {
+    await prisma.matchCache
+      .update({ where: { matchId: game.matchId }, data: { matchJson: '', timelineJson: null } })
+      .catch(() => { /* no row yet — fine */ })
+  }
+
+  let cached = await prisma.matchCache.findUnique({ where: { matchId: game.matchId } })
+
+  if (!cached?.matchJson) {
+    try {
+      const matchData = await getMatch(game.matchId, user.region)
+      cached = await prisma.matchCache.upsert({
+        where: { matchId: game.matchId },
+        create: { matchId: game.matchId, matchJson: JSON.stringify(matchData) },
+        update: { matchJson: JSON.stringify(matchData) },
+      })
+      console.log(`[${logPrefix}] Cached match for ${game.matchId}`)
+    } catch (err) {
+      console.warn(`[${logPrefix}] Match fetch failed:`, (err as Error)?.message ?? err)
+      return { ok: false, reason: 'match-fetch-failed', message: (err as Error)?.message ?? 'Match fetch failed', matchId: game.matchId }
+    }
+  }
+
+  if (!cached?.timelineJson) {
+    try {
+      const timelineData = await getMatchTimeline(game.matchId, user.region)
+      await prisma.matchCache.update({
+        where: { matchId: game.matchId },
+        data: { timelineJson: JSON.stringify(timelineData) },
+      })
+      cached = { ...cached, timelineJson: JSON.stringify(timelineData) } as any
+      const fc = timelineData?.info?.frames?.length ?? 0
+      console.log(`[${logPrefix}] Cached timeline for ${game.matchId} (${fc} frames)`)
+    } catch (err) {
+      console.warn(`[${logPrefix}] Timeline fetch failed:`, (err as Error)?.message ?? err)
+      return { ok: false, reason: 'timeline-fetch-failed', message: (err as Error)?.message ?? 'Timeline fetch failed', matchId: game.matchId }
+    }
+  }
+
+  if (!cached?.timelineJson || !cached.matchJson) {
+    return { ok: false, reason: 'empty-timeline', message: 'Cache is missing match or timeline JSON.', matchId: game.matchId }
+  }
+
+  return {
+    ok: true,
+    matchJson: cached.matchJson,
+    timelineJson: cached.timelineJson,
+    game: { id: game.id, matchId: game.matchId, champion: game.champion, win: game.win },
+    user: { puuid: user.puuid, region: user.region },
+    userPuuids,
+  }
+}
+
 export function registerStatsHandlers() {
   // Returns a compact list of game events for the video player timeline.
   // Lazy-fetches + caches the Riot Match-Timeline-V5 blob if not already cached.
   // Returns [] when timeline is unavailable (e.g. region temp outage) rather
   // than throwing — the UI treats events as best-effort.
-  ipcMain.handle('stats:get-game-events', async (_event, gameId: string): Promise<GameEvent[]> => {
+  /**
+   * Shared implementation for `stats:get-game-events` and
+   * `stats:refresh-game-events`. `forceRefetch` blows away the cached
+   * timeline + match blobs so the next call hits Riot fresh — used by the
+   * "Refresh events" button in the player when extraction came back empty.
+   *
+   * Returns events PLUS a small diagnostic block so the renderer can
+   * surface "timeline fetched OK, 0 events for Varus" vs "timeline fetch
+   * failed — Riot rate limit" rather than a silent empty array.
+   */
+  async function loadGameEvents(gameId: string, forceRefetch: boolean): Promise<{
+    events: GameEvent[]
+    diag: {
+      reason: CacheLoadReason | 'player-not-resolved'
+      message?: string
+      matchId?: string
+      frameCount?: number
+      playerResolvedVia?: 'puuid' | 'champion' | 'none'
+    }
+  }> {
+    const loaded = await ensureMatchCache(gameId, forceRefetch, 'events')
+    if (!loaded.ok) return { events: [], diag: { reason: loaded.reason, message: loaded.message, matchId: loaded.matchId } }
+    const { matchJson, timelineJson, game, userPuuids } = loaded
     const prisma = getPrisma()
-    const game = await prisma.game.findUnique({ where: { id: gameId } })
-    if (!game?.matchId) return []
 
-    const user = await prisma.user.findFirst({ where: { isActive: true } })
-    if (!user?.puuid) return []
-
-    // Multi-account support: resolve which of the user's accounts actually
-    // played this match by scanning matchJson for a matching puuid.
-    const accounts = await prisma.account.findMany({ where: { userId: user.id } })
-    const userPuuids = new Set<string>([user.puuid, ...accounts.map((a) => a.puuid)])
-
-    let cached = await prisma.matchCache.findUnique({ where: { matchId: game.matchId } })
-
-    // Lazy timeline fetch — same pattern as the other stats handlers.
-    if (!cached?.timelineJson) {
+    // When forcing a refresh (= "the player has bad markers, retry from
+    // scratch"), recompute the recording's startOffsetSec too: the
+    // original backfill may have used the DB createdAt rather than the
+    // file birthtime, which sends every marker off-screen. Re-deriving it
+    // from the file on disk + the freshly cached match data fixes that
+    // for existing linked recordings, not just future backfills.
+    if (forceRefetch) {
       try {
-        const timelineData = await getMatchTimeline(game.matchId, user.region)
-        if (cached) {
-          await prisma.matchCache.update({
-            where: { matchId: game.matchId },
-            data: { timelineJson: JSON.stringify(timelineData) },
-          })
-          cached = { ...cached, timelineJson: JSON.stringify(timelineData) }
-        } else {
-          // Need matchJson too to upsert the row.
-          const matchData = await getMatch(game.matchId, user.region)
-          cached = await prisma.matchCache.upsert({
-            where: { matchId: game.matchId },
-            create: {
-              matchId: game.matchId,
-              matchJson: JSON.stringify(matchData),
-              timelineJson: JSON.stringify(timelineData),
-            },
-            update: { timelineJson: JSON.stringify(timelineData) },
-          })
+        const rec = await prisma.recording.findUnique({ where: { gameId } })
+        if (rec?.filePath && fsExistsSync(rec.filePath)) {
+          const matchData = JSON.parse(matchJson)
+          const gameEndMs: number = matchData?.info?.gameEndTimestamp
+          const durationSec: number = matchData?.info?.gameDuration
+          if (gameEndMs && durationSec) {
+            const stat = fsStatSync(rec.filePath)
+            const recordingStartMs = stat.birthtimeMs || stat.mtimeMs
+            if (recordingStartMs) {
+              const gameStartMs = gameEndMs - durationSec * 1000
+              const candidate = (recordingStartMs - gameStartMs) / 1000
+              if (Math.abs(candidate) <= 600) {
+                await prisma.recording.update({
+                  where: { id: rec.id },
+                  data: { startOffsetSec: candidate },
+                })
+                console.log(`[events] Recomputed startOffsetSec=${candidate.toFixed(1)}s for recording ${rec.id}`)
+              } else {
+                console.warn(`[events] Implausible startOffsetSec=${candidate.toFixed(1)}s — leaving stored value alone.`)
+              }
+            }
+          }
         }
       } catch (err) {
-        console.warn('[stats:get-game-events] Timeline fetch failed:', err)
-        return []
+        console.warn('[events] startOffsetSec recompute failed:', (err as Error)?.message ?? err)
       }
     }
 
-    if (!cached?.timelineJson || !cached.matchJson) return []
     try {
-      const matchData = JSON.parse(cached.matchJson)
-      const playerPuuid = (matchData?.info?.participants ?? []).find((p: any) =>
-        userPuuids.has(p.puuid),
-      )?.puuid ?? user.puuid
-      return extractGameEvents(cached.timelineJson, cached.matchJson, playerPuuid)
+      // Resolution diagnostic — figure out how the player was matched so
+      // the UI can flag "player not found" cases (e.g. wrong champion
+      // stored on the Game row).
+      let resolvedVia: 'puuid' | 'champion' | 'none' = 'none'
+      try {
+        const parsedMatch = JSON.parse(matchJson)
+        const parts: any[] = parsedMatch?.info?.participants ?? []
+        if (userPuuids.some((p) => parts.some((pp) => pp.puuid === p))) resolvedVia = 'puuid'
+        else if (parts.some((pp) => pp.championName?.toLowerCase() === game.champion?.toLowerCase())) resolvedVia = 'champion'
+      } catch { /* ignore */ }
+
+      const events = extractGameEvents(timelineJson, matchJson, {
+        puuids: userPuuids,
+        championName: game.champion,
+        win: game.win,
+      })
+
+      let parsedTimeline: any = null
+      try { parsedTimeline = JSON.parse(timelineJson) } catch { /* ignore */ }
+      const frameCount = parsedTimeline?.info?.frames?.length ?? 0
+
+      console.log(`[events] ${events.length} event(s) for game ${gameId} (matchId=${game.matchId}, resolvedVia=${resolvedVia}, frames=${frameCount})`)
+
+      if (resolvedVia === 'none' && events.length === 0) {
+        return {
+          events: [],
+          diag: {
+            reason: 'player-not-resolved',
+            message: `Could not find player "${game.champion}" in match participants. The champion stored on this game might be wrong.`,
+            matchId: game.matchId,
+            frameCount,
+            playerResolvedVia: 'none',
+          },
+        }
+      }
+
+      return {
+        events,
+        diag: {
+          reason: 'ok',
+          matchId: game.matchId,
+          frameCount,
+          playerResolvedVia: resolvedVia,
+        },
+      }
     } catch (err) {
-      console.warn('[stats:get-game-events] Extraction failed:', err)
-      return []
+      console.warn('[events] Extraction failed:', (err as Error)?.message ?? err)
+      return { events: [], diag: { reason: 'empty-timeline', message: (err as Error)?.message ?? 'Extraction failed', matchId: game.matchId } }
     }
+  }
+
+  /**
+   * Best-effort auto-detect — run the mistake heuristics on a freshly-cached
+   * timeline. Called fire-and-forget from inside `loadGameEvents` when the
+   * timeline cache has been (re)populated, so users get markers without
+   * having to click an extra button. Skips silently on any error.
+   */
+  async function autoDetectMistakesSilently(gameId: string): Promise<void> {
+    try {
+      const prisma = getPrisma()
+      const game = await prisma.game.findUnique({ where: { id: gameId } })
+      if (!game?.matchId) return
+      const cache = await prisma.matchCache.findUnique({ where: { matchId: game.matchId } })
+      if (!cache?.matchJson || !cache.timelineJson) return
+      const user = await prisma.user.findFirst({ where: { isActive: true } })
+      const accounts = user ? await prisma.account.findMany({ where: { userId: user.id } }) : []
+      const userPuuids = user ? [user.puuid, ...accounts.map((a) => a.puuid)].filter((p) => !!p) : []
+
+      const candidates = detectMistakes(cache.timelineJson, cache.matchJson, {
+        puuids: userPuuids,
+        championName: game.champion,
+        win: game.win,
+      })
+      if (candidates.length === 0) return
+
+      const slugs = [...new Set(candidates.map((c) => c.tagSlug))]
+      const tags = await prisma.mistakeTag.findMany({ where: { slug: { in: slugs }, archivedAt: null } })
+      const slugToTagId = new Map(tags.map((t) => [t.slug, t.id]))
+
+      const existing = await prisma.mistake.findMany({
+        where: { gameId, autoDetected: true },
+        select: { tagId: true, gameTimeSec: true },
+      })
+      const bucket = new Map<string, number[]>()
+      for (const e of existing) {
+        const list = bucket.get(e.tagId) ?? []
+        list.push(e.gameTimeSec)
+        bucket.set(e.tagId, list)
+      }
+
+      let created = 0
+      for (const c of candidates) {
+        const tagId = slugToTagId.get(c.tagSlug)
+        if (!tagId) continue
+        const nearby = bucket.get(tagId) ?? []
+        if (nearby.some((t) => Math.abs(t - c.gameTimeSec) <= 3)) continue
+        await prisma.mistake.create({
+          data: {
+            gameId,
+            tagId,
+            gameTimeSec: Math.max(0, Math.floor(c.gameTimeSec)),
+            note: c.note ?? null,
+            severity: Math.min(3, Math.max(1, c.severity ?? 2)),
+            autoDetected: true,
+          },
+        })
+        created++
+        nearby.push(c.gameTimeSec)
+        bucket.set(tagId, nearby)
+      }
+      if (created > 0) console.log(`[events] Auto-detected ${created} mistake(s) for game ${gameId}`)
+    } catch (err) {
+      console.warn('[events] auto-detect failed:', (err as Error)?.message ?? err)
+    }
+  }
+
+  // Backwards-compatible: returns just the events array. UI components that
+  // don't care about diagnostics keep working with the old shape.
+  ipcMain.handle('stats:get-game-events', async (_event, gameId: string): Promise<GameEvent[]> => {
+    const { events } = await loadGameEvents(gameId, false)
+    return events
   })
+
+  // Diagnostic variant — UI uses this for the "Refresh events" button and
+  // to display "X events loaded" / "no player found" badges. `forceRefetch`
+  // drops the cache, useful when Riot was down on the first attempt.
+  // Also triggers a fire-and-forget mistake auto-detect run so newly
+  // refreshed timelines populate the side list without an extra click.
+  ipcMain.handle('stats:refresh-game-events', async (_event, gameId: string, forceRefetch = true) => {
+    const res = await loadGameEvents(gameId, forceRefetch)
+    if (res.diag.reason === 'ok') autoDetectMistakesSilently(gameId)
+    return res
+  })
+
+  /**
+   * Lazy-compute (and cache) a Lane Phase Comparator report.
+   *
+   * Stored as JSON on `Game.lanePhaseReport` so subsequent opens are
+   * instant — the only re-computation happens when the user explicitly
+   * hits "Refresh" (or the cache version mismatches in a future schema
+   * bump).
+   *
+   * Returns `{ report, diag }` so the renderer can display the same
+   * "player not resolved" / "no opponent" diagnostics surfaced by the
+   * game-events pipeline.
+   */
+  async function loadLanePhase(gameId: string, forceRefetch: boolean): Promise<{
+    report: LanePhaseResult['report']
+    diag: {
+      reason: CacheLoadReason | 'no-player' | 'no-opponent' | 'no-frames' | 'bad-data'
+      message?: string
+      matchId?: string
+      frameCount?: number
+      playerResolvedVia?: 'puuid' | 'champion' | 'none'
+      cached?: boolean
+    }
+  }> {
+    const prisma = getPrisma()
+
+    if (!forceRefetch) {
+      const game = await prisma.game.findUnique({ where: { id: gameId } })
+      if (game?.lanePhaseReport) {
+        try {
+          const parsed = JSON.parse(game.lanePhaseReport)
+          if (parsed?.schemaVersion === 2) {
+            return {
+              report: parsed,
+              diag: { reason: 'ok', matchId: game.matchId, cached: true },
+            }
+          }
+          // Schema mismatch — fall through to recompute and overwrite.
+        } catch { /* corrupted JSON — recompute */ }
+      }
+    }
+
+    const loaded = await ensureMatchCache(gameId, forceRefetch, 'lane-phase')
+    if (!loaded.ok) return { report: null, diag: { reason: loaded.reason, message: loaded.message, matchId: loaded.matchId } }
+    const { matchJson, timelineJson, game, userPuuids } = loaded
+
+    const result = analyzeLanePhase({
+      matchJson,
+      timelineJson,
+      selector: { puuids: userPuuids, championName: game.champion, win: game.win },
+    })
+
+    // Persist when we have a report, otherwise leave the previous one alone.
+    if (result.report) {
+      await prisma.game
+        .update({ where: { id: gameId }, data: { lanePhaseReport: JSON.stringify(result.report) } })
+        .catch((err) => console.warn('[lane-phase] Failed to cache report:', err))
+      console.log(`[lane-phase] Computed report for game ${gameId} — grade ${result.report.grade} (frames=${result.diag.frameCount})`)
+    } else {
+      console.warn(`[lane-phase] No report for game ${gameId} — reason=${result.diag.reason}`)
+    }
+
+    return {
+      report: result.report,
+      diag: {
+        reason: result.diag.reason,
+        message: result.diag.message,
+        matchId: game.matchId,
+        frameCount: result.diag.frameCount,
+        playerResolvedVia: result.diag.playerResolvedVia,
+        cached: false,
+      },
+    }
+  }
+
+  // Read-through cache: returns the persisted report when present, computes
+  // it on the fly otherwise. Cheap to call from the UI on mount.
+  ipcMain.handle('stats:get-lane-phase', async (_event, gameId: string) => loadLanePhase(gameId, false))
+  // Force-refresh — bypasses every cache and re-extracts from Riot.
+  ipcMain.handle('stats:refresh-lane-phase', async (_event, gameId: string) => loadLanePhase(gameId, true))
 
   ipcMain.handle(
     'stats:match-history',

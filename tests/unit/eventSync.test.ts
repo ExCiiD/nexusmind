@@ -42,6 +42,27 @@ describe('gameTimeToVideoTime', () => {
     expect(t).toBeCloseTo(60, 0)
   })
 
+  it('ignores an implausible stored startOffsetSec and falls back (reproduces WGC remux birthtime bug)', () => {
+    // Real beta-tester scenario: stored startOffsetSec = +1801s for a
+    // 1800s game / 1871s video. With the old code this pushed every
+    // event to videoT < 0 → "145 events loaded but none fit the video
+    // range" banner. The new plausibility guard discards >600s values
+    // and falls through to the duration-based estimate (-71s here),
+    // recovering the event display.
+    const t = gameTimeToVideoTime({
+      gameEndAt: new Date('2026-01-01T12:30:00Z'),
+      gameDurationSec: 1800,
+      // recordingCreatedAt is also bogus on the same scenario (remux time
+      // ≈ game end), but the duration-based fallback doesn't need it.
+      recordingCreatedAt: new Date('2026-01-01T12:30:00Z'),
+      videoDurationSec: 1871,
+      startOffsetSec: 1801,
+      eventGameTimeMs: 500_000, // 8:20 in-game
+    })
+    // Expected fallback: offset = 1800 - 1871 = -71 → videoT = 500 - (-71) = 571
+    expect(t).toBeCloseTo(571, 0)
+  })
+
   it('handles recording started BEFORE game start (negative offset)', () => {
     const t = gameTimeToVideoTime({
       ...baseOpts,
@@ -50,6 +71,37 @@ describe('gameTimeToVideoTime', () => {
     })
     // offset = -30s → videoT = 60 - (-30) = 90
     expect(t).toBeCloseTo(90, 0)
+  })
+
+  it('falls back to duration-based estimate when recordingCreatedAt is wildly off (old/imported recording)', () => {
+    // Simulates an old recording where `recording.createdAt` is the DB-row
+    // insertion time (e.g. user imported the file 6 months later), not the
+    // file birthtime. The birthtime path would yield a garbage offset; the
+    // duration-based fallback assumes the recording ended at game end.
+    const t = gameTimeToVideoTime({
+      ...baseOpts,
+      // 6 months after game — clearly bogus birthtime substitute
+      recordingCreatedAt: new Date('2026-07-01T12:30:00Z'),
+      // Video is exactly the game length → fallback offset = 0 → events
+      // map 1:1 to gameTimeMs in seconds.
+      videoDurationSec: 1800,
+      eventGameTimeMs: 300_000,
+    })
+    // offset = gameDur - videoDur = 1800 - 1800 = 0 → videoT = 300
+    expect(t).toBeCloseTo(300, 0)
+  })
+
+  it('duration-based fallback when video is longer than game (recording started before game)', () => {
+    // 35-min video for a 30-min game means recording started 5 min before
+    // game start. Events should be shifted right by 5 min in the video.
+    const t = gameTimeToVideoTime({
+      ...baseOpts,
+      recordingCreatedAt: new Date('2027-01-01T00:00:00Z'), // bogus birthtime → fallback
+      videoDurationSec: 2100, // 35 min
+      eventGameTimeMs: 0, // game start
+    })
+    // offset = 1800 - 2100 = -300 → videoT = 0 - (-300) = 300
+    expect(t).toBeCloseTo(300, 0)
   })
 })
 

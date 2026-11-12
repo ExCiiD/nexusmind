@@ -751,6 +751,12 @@
     "finalizingDesc": "L'enregistrement est en cours de traitement. Cela prend généralement 10-60 secondes pour une partie complète. Le lecteur apparaîtra automatiquement quand ce sera prêt.",
     "finalizationFailed": "Échec de la finalisation de l'enregistrement"
   },
+  "jobs": {
+    "cancel": "Annuler après le joueur courant",
+    "progress": "{{name}} · {{done}}/{{total}}",
+    "starting": "Démarrage…",
+    "cancelling": "Arrêt après le joueur courant…"
+  },
   "team": {
     "title": "Gestion d'équipe",
     "subtitle": "Gérez votre roster, préparez vos drafts et scoutez vos adversaires.",
@@ -813,10 +819,29 @@
       "poolTitle": "Pool",
       "empty": "Vide",
       "emptyHint": "Aucun champion. Utilisez Auto-remplir ou cliquez sur un champion à gauche.",
+      "emptyForRole": "Aucun champion {{role}} pour le moment. Utilisez Auto-remplir ou cliquez sur un champion à gauche.",
+      "roleFilter": "Rôle",
       "removeDuplicates": "Supprimer {{count}} doublon(s)",
       "dedupeHint": "Fusionne les membres qui partagent le même Riot ID. La plus ancienne entrée est conservée et les pools sont fusionnés.",
       "dedupeDone": "{{count}} doublon(s) supprimé(s)",
-      "dedupeFailed": "Impossible de supprimer les doublons"
+      "dedupeFailed": "Impossible de supprimer les doublons",
+      "autoFillScopeTitle": "À quel point l'auto-remplissage doit être approfondi ?",
+      "autoFillJobLabel": "Auto-remplissage — {{team}}",
+      "autoFillAllSummaryShort": "{{upserted}} champions · {{matches}} games analysées",
+      "autoFillCancelled": "Auto-remplissage annulé",
+      "autoFillCancelledDesc": "{{upserted}} champions ajoutés avant l'arrêt."
+    },
+    "scope": {
+      "title": "À quel point la récupération doit être approfondie ?",
+      "desc": "Riot limite les clés API gratuites à environ 100 requêtes par 2 minutes. Choisissez la profondeur de cette récupération.",
+      "quickTitle": "Rapide (recommandé)",
+      "quickSubtitle": "Les ~100 dernières games par joueur · suffisant pour les seuils main/comfort",
+      "completeTitle": "Saison complète",
+      "completeSubtitle": "Toutes les games de la saison encore disponibles chez Riot · données les plus précises",
+      "timeEstimate": "~{{min}} min au total ({{perPlayer}} min × {{count}} joueur(s))",
+      "completeTimeEstimate": "~{{min}} min au total ({{perPlayer}} min × {{count}} joueur(s)) — beaucoup plus rapide avec une clé Production",
+      "completeWarning": "Vous pouvez continuer à utiliser le reste de l'app, mais les nouvelles requêtes Riot (autres scouts, refresh dashboard) seront en attente derrière celle-ci.",
+      "cacheNote": "Les matchs déjà analysés sont en cache local — toute récupération suivante est quasi-instantanée."
     },
     "draft": {
       "saved": "Draft sauvegardé",
@@ -850,7 +875,11 @@
       "opponent": "Adversaire",
       "noMyTeam": "Aucune équipe active. Créez ou sélectionnez-en une ci-dessus.",
       "noOpponentPool": "Aucun adversaire assigné à ce draft. Choisissez-en un dans la barre d'outils.",
-      "noMembers": "Aucun membre dans cette équipe."
+      "noMembers": "Aucun membre dans cette équipe.",
+      "threats": "Menaces adverses",
+      "threatRed": "100+ games & le plus joué",
+      "threatOrange": "300k+ mastery",
+      "threatYellow": "pick flex (2+ joueurs)"
     },
     "dashboard": {
       "noTeam": "Sélectionnez ou créez une équipe d'abord.",
@@ -859,6 +888,7 @@
       "emptyHint": "Cliquez sur « Calculer les stats de synergie » pour remplir le dashboard.",
       "statsTable": "Stats des joueurs",
       "basedOn": "Moyennes sur {{n}} parties",
+      "basedOnFlex": "Moyennes sur {{n}} parties flex",
       "dmgShare": "Part de dégâts",
       "dmgTakenShare": "Part de dégâts encaissés",
       "goldShare": "Part d'or",
@@ -957,7 +987,35 @@
       "partial": "{{ok}}/{{total}} scoutés",
       "partialDesc": "Échec : {{names}}",
       "noEligible": "Aucun membre scoutable",
-      "noEligibleDesc": "Chaque membre doit avoir un IGN, un tag et une région pour être scouté."
-    }
+      "noEligibleDesc": "Chaque membre doit avoir un IGN, un tag et une région pour être scouté.",
+      "noRiotId": "Riot ID manquant",
+      "noRiotIdDesc": "Ajoutez l'IGN, le tag et la région avant de scout.",
+      "scopeTitleOne": "Scout {{name}} — quelle profondeur ?",
+      "scopeTitleAll": "Scout tous les adversaires — quelle profondeur ?",
+      "scoutOneJobLabel": "Scout — {{name}}",
+      "scoutAllJobLabel": "Scout — {{team}}",
+      "scoutCancelled": "Scout annulé",
+      "scoutCancelledDesc": "{{ok}} membre(s) scouté(s) avant l'arrêt · {{upserted}} entrées.",
+      "dashboard": {
+        "title": "Stats des adversaires — moyennes par joueur sur la saison (SoloQ + Flex + Clash)",
+        "compute": "Calculer les stats adverses",
+        "refresh": "Actualiser les stats",
+        "computing": "Calcul en cours…",
+        "computingDesc": "Récupération des parties de la saison pour chaque adversaire — peut prendre jusqu'à une minute.",
+        "emptyHint": "Cliquez sur « Calculer les stats adverses » pour récupérer tout l'historique de la saison de chaque adversaire.",
+        "slowHint": "Peut prendre 30 à 60 secondes — on parcourt SoloQ + Flex + Clash pour chaque membre.",
+        "basedOn": "Moyennes par joueur sur {{n}} parties dans leur rôle (cette saison)",
+        "approxDisclaimer": "Les parts sont approximatives — les adversaires ne jouent pas ensemble, les % sont basés sur les moyennes individuelles, pas sur de vraies parties communes.",
+        "noGames": "Aucune partie trouvée dans le rôle assigné",
+        "noGamesDesc": "Aucun des adversaires n'a de partie ranked récente dans leur rôle assigné.",
+        "failed": "Échec du calcul des stats adverses",
+        "staleHint": "En cache — actualisez pour mettre à jour",
+        "freshHint": "Mis à jour il y a {{minutes}}min"
+      }
+    },
+    "confirmDelete": "Supprimer l'équipe « {{name}} » ? Roster, champion pools, drafts et parties personnalisées importées seront perdus. Cette action est irréversible.",
+    "deleted": "Équipe supprimée",
+    "deleteFailed": "Échec de la suppression",
+    "deleteTooltip": "Supprimer l'équipe"
   }
 }

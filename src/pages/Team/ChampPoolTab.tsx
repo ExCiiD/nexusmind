@@ -7,8 +7,23 @@ import { Search, X, Trash2, Wand2, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAllChampions } from '@/hooks/useAllChampions'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
-import type { Team, ChampionPoolEntry } from '@/lib/ipc'
+import type { Team, TeamMember, ChampionPoolEntry } from '@/lib/ipc'
 import { compareByRole } from '@/lib/championRoles'
+import { ScopeDialog, type FetchScope } from '@/components/team/ScopeDialog'
+import { useBackgroundJobsStore } from '@/store/useBackgroundJobsStore'
+
+export type Role = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'
+const ROLES: Role[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
+
+// Community Dragon position icons — same set the live client uses in champ
+// select, so they're instantly recognizable to LoL players.
+const ROLE_ICON_URLS: Record<Role, string> = {
+  TOP: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-top.png',
+  JUNGLE: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-jungle.png',
+  MID: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-middle.png',
+  ADC: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-bottom.png',
+  SUPPORT: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-utility.png',
+}
 
 const TIERS = ['main', 'comfort', 'flex', 'learning'] as const
 type Tier = (typeof TIERS)[number]
@@ -32,14 +47,26 @@ export function ChampPoolTab({ team, onChange }: Props) {
   const { toast } = useToast()
   const { champions, loading: champsLoading } = useAllChampions()
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
-  const [roleFilter, setRoleFilter] = useState<string>('ALL')
+  // Active role filter. Drives both the highlight on the champion grid
+  // (which champs are already in the pool for this role) AND the right-
+  // hand pool sidebar (which entries are visible). Picking a member auto-
+  // resets this to their primary role so the typical "open tab → see this
+  // player's pool for their lane" path requires zero clicks.
+  const [roleFilter, setRoleFilter] = useState<Role>('MID')
   const [search, setSearch] = useState('')
   const [pool, setPool] = useState<ChampionPoolEntry[]>([])
   const [poolLoading, setPoolLoading] = useState(false)
-  const [autoFilling, setAutoFilling] = useState(false)
-  // Progress label shown on the button while auto-filling the whole team
-  // (sequential to respect Riot rate limits).
-  const [autoFillProgress, setAutoFillProgress] = useState<{ done: number; total: number; current: string } | null>(null)
+  // Two-step Auto-fill flow: open the scope dialog first, then kick off
+  // the actual fetch once the user picks Quick vs Complete.
+  const [scopeDialogOpen, setScopeDialogOpen] = useState(false)
+  // Subscribe to the global background-jobs store so the in-tab button can
+  // reflect the loop's state even though the loop itself lives outside
+  // this component (so it survives navigation).
+  const runningAutoFill = useBackgroundJobsStore(
+    (s) => s.jobs.find((j) => j.kind === 'autoFill' && team && j.label.includes(team.name)) ?? null,
+  )
+  const startAutoFillJob = useBackgroundJobsStore((s) => s.runAutoFill)
+  const autoFilling = !!runningAutoFill
   const [showPickedOnly, setShowPickedOnly] = useState(false)
   // Currently-open tier picker (click a champion to open, click again or
   // click outside / press Escape to close).
@@ -111,6 +138,18 @@ export function ChampPoolTab({ team, onChange }: Props) {
       setSelectedMemberId(members[0].id)
     }
   }, [members, selectedMemberId])
+
+  // Sync the role filter to the active member's primary role whenever the
+  // selection changes. Means swapping from a TOP main to a JG main flips
+  // the pool view to JUNGLE automatically — matches user expectation that
+  // each player's "default view" is their main lane.
+  useEffect(() => {
+    if (!selectedMember) return
+    const r = (selectedMember.role || '').toUpperCase() as Role
+    if (r === 'TOP' || r === 'JUNGLE' || r === 'MID' || r === 'ADC' || r === 'SUPPORT') {
+      setRoleFilter(r)
+    }
+  }, [selectedMember?.id, selectedMember?.role])
 
   // Close the tier picker on Escape — feels natural and avoids trapping the
   // user when they want to bail without clicking outside the popup.
@@ -204,16 +243,18 @@ export function ChampPoolTab({ team, onChange }: Props) {
    * whole run — they're collected and reported in the final toast so you can
    * fix and retry just those.
    */
-  const handleAutoFill = async () => {
+  // List of members eligible for a fetch — used by both the pre-flight
+  // checks and the scope dialog (to size its time estimate).
+  const eligibleMembers = useMemo(
+    () => members.filter((m) => m.ign && m.tagLine && m.region),
+    [members],
+  )
+
+  /** Opens the Quick/Complete scope picker. The actual fetch happens in
+   *  `runAutoFill` once the user makes a choice. */
+  const handleAutoFill = () => {
     if (members.length === 0) return
-
-    // Pre-filter to members with the data we need. Members without Riot ID
-    // can't be auto-filled — they're reported as skipped but don't break the
-    // run.
-    const eligible = members.filter((m) => m.ign && m.tagLine && m.region)
-    const skipped = members.filter((m) => !m.ign || !m.tagLine || !m.region)
-
-    if (eligible.length === 0) {
+    if (eligibleMembers.length === 0) {
       toast({
         title: t('team.pool.autoFillMissingInfo', { defaultValue: 'IGN, tag and region required' }),
         description: t('team.pool.autoFillMissingInfoDesc', { defaultValue: 'Edit the member in the Roster tab to add their Riot ID first.' }),
@@ -221,102 +262,96 @@ export function ChampPoolTab({ team, onChange }: Props) {
       })
       return
     }
-
-    setAutoFilling(true)
-    setAutoFillProgress({ done: 0, total: eligible.length, current: eligible[0].displayName })
-
-    let totalUpserted = 0
-    let totalMatches = 0
-    let totalMasteries = 0
-    const failures: { name: string; reason: string }[] = []
-
-    for (let i = 0; i < eligible.length; i++) {
-      const m = eligible[i]
-      setAutoFillProgress({ done: i, total: eligible.length, current: m.displayName })
-      try {
-        const res = await window.api.autoFillPool(m.id, {
-          matchCount: 30,
-          masteryCount: 20,
-          roleOnly: true,
-        })
-        totalUpserted += res.upserted
-        totalMatches += res.matchesUsed
-        totalMasteries += res.masteriesUsed
-      } catch (err) {
-        failures.push({ name: m.displayName, reason: (err as Error).message })
-      }
-    }
-
-    setAutoFillProgress(null)
-    setAutoFilling(false)
-
-    // Refresh the currently-displayed member's pool view
-    if (effectiveMemberId) await reloadPool(effectiveMemberId)
-
-    // Build a summary toast — counts are aggregated across all members.
-    if (failures.length === 0 && skipped.length === 0) {
-      toast({
-        title: t('team.pool.autoFillAllDone', { defaultValue: 'All {{count}} pools auto-filled', count: eligible.length }),
-        description: t('team.pool.autoFillAllSummary', {
-          defaultValue: '{{upserted}} champions total · {{matches}} games · {{mastery}} masteries scanned',
-          upserted: totalUpserted,
-          matches: totalMatches,
-          mastery: totalMasteries,
-        }),
-      })
-    } else {
-      const okCount = eligible.length - failures.length
-      toast({
-        title: t('team.pool.autoFillPartial', {
-          defaultValue: '{{ok}}/{{total}} pools auto-filled',
-          ok: okCount,
-          total: members.length,
-        }),
-        description: [
-          totalUpserted > 0 && `${totalUpserted} champions added`,
-          failures.length > 0 && `${failures.length} failed: ${failures.slice(0, 2).map((f) => f.name).join(', ')}${failures.length > 2 ? '…' : ''}`,
-          skipped.length > 0 && `${skipped.length} skipped (no Riot ID): ${skipped.slice(0, 2).map((m) => m.displayName).join(', ')}${skipped.length > 2 ? '…' : ''}`,
-        ].filter(Boolean).join(' · '),
-        variant: failures.length > 0 ? 'destructive' : 'default',
-      })
-    }
+    setScopeDialogOpen(true)
   }
 
-  const targetRole = roleFilter === 'ALL' ? (selectedMember?.role ?? 'MID') : roleFilter
+  const runAutoFill = async (scope: FetchScope) => {
+    setScopeDialogOpen(false)
+    if (!team || eligibleMembers.length === 0) return
+    const skipped = members.filter((m) => !m.ign || !m.tagLine || !m.region)
+
+    // Delegate to the global store so the loop survives this component
+    // unmounting (e.g. user navigates to Stats Flex mid-fill). The store
+    // also feeds the persistent corner pill so progress stays visible
+    // anywhere in the app.
+    await startAutoFillJob({
+      label: t('team.pool.autoFillJobLabel', {
+        defaultValue: 'Auto-fill — {{team}}',
+        team: team.name,
+      }),
+      members: eligibleMembers,
+      scope,
+      onDone: ({ upserted, matches, cancelled, failed }) => {
+        console.info(`[ChampPoolTab] auto-fill (${scope}) finished · upserted=${upserted} · matches=${matches} · cancelled=${cancelled} · failed=${failed.length}`)
+        // Refresh the currently-displayed pool view if the user is still
+        // on this tab when the job finishes. If they navigated away the
+        // effective member id is stale but `reloadPool` just no-ops on
+        // an unmounted setter.
+        if (effectiveMemberId) reloadPool(effectiveMemberId)
+
+        if (cancelled) {
+          toast({
+            title: t('team.pool.autoFillCancelled', { defaultValue: 'Auto-fill cancelled' }),
+            description: t('team.pool.autoFillCancelledDesc', {
+              defaultValue: '{{upserted}} champions added before stopping.',
+              upserted,
+            }),
+          })
+          return
+        }
+        if (failed.length === 0 && skipped.length === 0) {
+          toast({
+            title: t('team.pool.autoFillAllDone', { defaultValue: 'All {{count}} pools auto-filled', count: eligibleMembers.length }),
+            description: t('team.pool.autoFillAllSummaryShort', {
+              defaultValue: '{{upserted}} champions · {{matches}} games scanned',
+              upserted,
+              matches,
+            }),
+          })
+        } else {
+          const okCount = eligibleMembers.length - failed.length
+          toast({
+            title: t('team.pool.autoFillPartial', {
+              defaultValue: '{{ok}}/{{total}} pools auto-filled',
+              ok: okCount,
+              total: members.length,
+            }),
+            description: [
+              upserted > 0 && `${upserted} champions added`,
+              failed.length > 0 && `${failed.length} failed: ${failed.slice(0, 2).join(', ')}${failed.length > 2 ? '…' : ''}`,
+              skipped.length > 0 && `${skipped.length} skipped (no Riot ID)`,
+            ].filter(Boolean).join(' · '),
+            variant: failed.length > 0 ? 'destructive' : 'default',
+          })
+        }
+      },
+    })
+  }
+
+  const targetRole = roleFilter
 
   return (
     <div className="space-y-3">
-      {/* Member + role selector + auto-fill */}
+      {/* Combined player + role selector: 5 role icons that pick the
+          teammate assigned to that role. Eliminates the previous "JOUEUR
+          dropdown + RÔLE picker" double-selector — clicking the TOP icon
+          jumps straight to the top laner's pool. */}
       <Card className="p-3 flex items-center gap-3 flex-wrap">
         <span className="text-xs uppercase tracking-wider text-hextech-text-dim font-semibold">
           {t('team.pool.player', { defaultValue: 'Player' })}:
         </span>
-        <select
-          value={effectiveMemberId ?? ''}
-          onChange={(e) => setSelectedMemberId(e.target.value)}
-          className="bg-hextech-dark border border-hextech-border rounded px-2 py-1 text-sm"
-        >
-          {members.map((m) => (
-            <option key={m.id} value={m.id}>{m.displayName} ({m.role})</option>
-          ))}
-        </select>
-
-        <span className="text-xs uppercase tracking-wider text-hextech-text-dim font-semibold ml-2">
-          {t('team.pool.assignTo', { defaultValue: 'Assign to role' })}:
-        </span>
-        <select
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-          className="bg-hextech-dark border border-hextech-border rounded px-2 py-1 text-sm"
-          title={t('team.pool.assignToHint', { defaultValue: "Which role to assign when clicking a champion. Defaults to the member's primary role." })}
-        >
-          <option value="ALL">{selectedMember?.role ?? 'MID'} (default)</option>
-          <option value="TOP">Top</option>
-          <option value="JUNGLE">Jungle</option>
-          <option value="MID">Mid</option>
-          <option value="ADC">ADC</option>
-          <option value="SUPPORT">Support</option>
-        </select>
+        <MemberRolePicker
+          members={members}
+          selectedId={effectiveMemberId}
+          onSelect={(id) => setSelectedMemberId(id)}
+        />
+        {/* Show currently-selected member's name so users on small screens
+            still see who they're editing without scrolling. */}
+        {selectedMember && (
+          <span className="text-xs text-hextech-text-bright font-semibold truncate max-w-[180px]" title={selectedMember.displayName}>
+            {selectedMember.displayName}
+          </span>
+        )}
 
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-hextech-text-dim" />
@@ -367,18 +402,18 @@ export function ChampPoolTab({ team, onChange }: Props) {
           onClick={handleAutoFill}
           disabled={autoFilling || members.length === 0}
           title={t('team.pool.autoFillAllHint', {
-            defaultValue: 'Pulls mastery + last 30 games from Riot for EVERY member of the team, filtered to their assigned role',
+            defaultValue: 'Pulls mastery + full season match history (up to 500 games per member) from Riot in parallel. ~15s for 5 members on first run, near-instant after.',
           })}
         >
           {autoFilling
             ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
             : <Wand2 className="h-3.5 w-3.5 mr-1.5" />}
-          {autoFillProgress
+          {runningAutoFill
             ? t('team.pool.autoFillProgress', {
                 defaultValue: 'Filling {{name}} ({{done}}/{{total}})…',
-                name: autoFillProgress.current,
-                done: autoFillProgress.done + 1,
-                total: autoFillProgress.total,
+                name: runningAutoFill.currentName ?? '…',
+                done: Math.min(runningAutoFill.done + 1, runningAutoFill.total),
+                total: runningAutoFill.total,
               })
             : t('team.pool.autoFillAll', { defaultValue: 'Auto-fill all members ({{count}})', count: members.length })}
         </Button>
@@ -427,46 +462,67 @@ export function ChampPoolTab({ team, onChange }: Props) {
           </div>
         </Card>
 
-        {/* Selected pool by tier */}
+        {/* Selected pool by tier — filtered to the currently active role.
+            Switching role icons swaps the sidebar without round-tripping
+            to the DB. The total count reflects only this role's entries
+            so users always see "what does this player play as <role>". */}
         <Card className="p-3 max-h-[78vh] overflow-y-auto space-y-3 xl:sticky xl:top-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-hextech-text-dim">
-              {t('team.pool.poolTitle', { defaultValue: 'Pool' })} ({pool.length})
-            </h3>
-            {poolLoading && <Loader2 className="h-3 w-3 animate-spin text-hextech-text-dim" />}
-          </div>
-
-          {pool.length === 0 && !poolLoading && (
-            <div className="text-xs text-hextech-text-dim italic text-center py-4 space-y-2">
-              <p>{t('team.pool.emptyHint', { defaultValue: 'No champions yet. Use Auto-fill or click any champion on the left.' })}</p>
-            </div>
-          )}
-
-          {TIERS.map((tier) => {
-            const tierEntries = pool.filter((p) => p.tier === tier)
+          {(() => {
+            const roleEntries = pool.filter((p) => p.role === roleFilter)
             return (
-              <div key={tier}>
-                <div className={cn(
-                  'px-2 py-1 rounded border text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center justify-between',
-                  TIER_COLORS[tier].bg, TIER_COLORS[tier].border, TIER_COLORS[tier].text,
-                )}>
-                  <span>{tier}</span>
-                  <span className="opacity-70">({tierEntries.length})</span>
+              <>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-hextech-text-dim">
+                    {t('team.pool.poolTitle', { defaultValue: 'Pool' })} {roleFilter} ({roleEntries.length})
+                  </h3>
+                  {poolLoading && <Loader2 className="h-3 w-3 animate-spin text-hextech-text-dim" />}
                 </div>
-                {tierEntries.length === 0 ? (
-                  <p className="text-[10px] text-hextech-text-dim italic px-2">{t('team.pool.empty', { defaultValue: 'Empty' })}</p>
-                ) : (
-                  <div className="space-y-1">
-                    {tierEntries.map((e) => (
-                      <PoolRow key={e.id} entry={e} onRemove={() => remove(e)} />
-                    ))}
+
+                {roleEntries.length === 0 && !poolLoading && (
+                  <div className="text-xs text-hextech-text-dim italic text-center py-4 space-y-2">
+                    <p>{t('team.pool.emptyForRole', {
+                      defaultValue: 'No {{role}} champions yet. Use Auto-fill or click a champion on the left.',
+                      role: roleFilter,
+                    })}</p>
                   </div>
                 )}
-              </div>
+
+                {TIERS.map((tier) => {
+                  const tierEntries = roleEntries.filter((p) => p.tier === tier)
+                  return (
+                    <div key={tier}>
+                      <div className={cn(
+                        'px-2 py-1 rounded border text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center justify-between',
+                        TIER_COLORS[tier].bg, TIER_COLORS[tier].border, TIER_COLORS[tier].text,
+                      )}>
+                        <span>{tier}</span>
+                        <span className="opacity-70">({tierEntries.length})</span>
+                      </div>
+                      {tierEntries.length === 0 ? (
+                        <p className="text-[10px] text-hextech-text-dim italic px-2">{t('team.pool.empty', { defaultValue: 'Empty' })}</p>
+                      ) : (
+                        <div className="space-y-1">
+                          {tierEntries.map((e) => (
+                            <PoolRow key={e.id} entry={e} onRemove={() => remove(e)} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </>
             )
-          })}
+          })()}
         </Card>
       </div>
+
+      <ScopeDialog
+        open={scopeDialogOpen}
+        playerCount={eligibleMembers.length}
+        actionLabel={t('team.pool.autoFillScopeTitle', { defaultValue: 'How thorough should the auto-fill be?' })}
+        onCancel={() => setScopeDialogOpen(false)}
+        onConfirm={runAutoFill}
+      />
     </div>
   )
 }
@@ -567,6 +623,96 @@ function ChampionCard({
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+/**
+ * Renders the 5 lane-position icons (TOP → SUP). Each icon corresponds to
+ * the team member assigned to that role; clicking it selects that member
+ * and (via the existing useEffect on selectedMember.role) swaps the pool
+ * view to their lane. Disabled icons mean no member fills that role.
+ *
+ * If two members share a role (e.g. 6-man roster with two TOPs), the icon
+ * cycles between them on repeated clicks so all members remain reachable.
+ */
+function MemberRolePicker({
+  members,
+  selectedId,
+  onSelect,
+}: {
+  members: TeamMember[]
+  selectedId: string | null
+  onSelect: (id: string) => void
+}) {
+  // Group members by their normalized role so we can do quick lookups and
+  // cycle through duplicates without rebuilding on every click.
+  const byRole = useMemo(() => {
+    const map = new Map<Role, TeamMember[]>()
+    for (const m of members) {
+      const r = (m.role || '').toUpperCase() as Role
+      if (r === 'TOP' || r === 'JUNGLE' || r === 'MID' || r === 'ADC' || r === 'SUPPORT') {
+        const arr = map.get(r) ?? []
+        arr.push(m)
+        map.set(r, arr)
+      }
+    }
+    return map
+  }, [members])
+
+  return (
+    <div className="flex items-center gap-1">
+      {ROLES.map((role) => {
+        const candidates = byRole.get(role) ?? []
+        const isSelected = candidates.some((m) => m.id === selectedId)
+        const primary = candidates[0]
+        const hasMembers = candidates.length > 0
+
+        return (
+          <button
+            key={role}
+            type="button"
+            disabled={!hasMembers}
+            onClick={() => {
+              if (!hasMembers) return
+              // Cycle to the next member in this role if already selected
+              // (lets 2 TOPs both be reachable from the same icon).
+              const currentIdx = candidates.findIndex((m) => m.id === selectedId)
+              const nextIdx = currentIdx >= 0 ? (currentIdx + 1) % candidates.length : 0
+              onSelect(candidates[nextIdx].id)
+            }}
+            className={cn(
+              'relative rounded-md flex items-center justify-center transition-all border h-9 w-9 p-1.5',
+              isSelected
+                ? 'border-hextech-gold bg-hextech-gold/15 ring-1 ring-hextech-gold/50'
+                : hasMembers
+                  ? 'border-hextech-border bg-white/5 hover:bg-white/10 hover:border-hextech-border-bright'
+                  : 'border-hextech-border/40 bg-white/[0.02] opacity-30 cursor-not-allowed',
+            )}
+            title={
+              hasMembers
+                ? candidates.map((m) => m.displayName).join(' · ') + (candidates.length > 1 ? ' (click to cycle)' : '')
+                : `No member assigned to ${role}`
+            }
+          >
+            <img
+              src={ROLE_ICON_URLS[role]}
+              alt={role}
+              className={cn(
+                'w-full h-full object-contain transition-opacity',
+                isSelected ? 'opacity-100' : hasMembers ? 'opacity-60' : 'opacity-30',
+              )}
+            />
+            {/* Tiny indicator if 2+ members share this role */}
+            {candidates.length > 1 && (
+              <span className="absolute -top-1 -right-1 h-3 w-3 bg-hextech-gold/80 text-[8px] font-bold text-black rounded-full flex items-center justify-center">
+                {candidates.length}
+              </span>
+            )}
+            {primary && candidates.length > 1 && <div className="sr-only">+{candidates.length - 1} more</div>}
+          </button>
+        )
+      })}
     </div>
   )
 }

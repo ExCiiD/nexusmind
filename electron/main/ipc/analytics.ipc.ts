@@ -73,7 +73,9 @@ export function registerAnalyticsHandlers() {
     const accounts = await prisma.account.findMany({ where: { userId: user.id } })
 
     const sessions = await prisma.session.findMany({
-      where: { userId: user.id },
+      // Exclude the system "review-only" container — it groups backfilled
+      // games from outside any real session and would clutter session lists.
+      where: { userId: user.id, objectiveId: { not: '__review_only__' } },
       orderBy: { date: 'desc' },
       include: {
         games: {

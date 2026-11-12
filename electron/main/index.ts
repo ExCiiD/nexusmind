@@ -41,6 +41,10 @@ import { registerCoachingHandlers } from './ipc/coaching.ipc'
 import { registerYoutubeHandlers } from './ipc/youtube.ipc'
 import { registerBackupHandlers } from './ipc/backup.ipc'
 import { registerTeamHandlers } from './ipc/team.ipc'
+import { registerMistakeHandlers } from './ipc/mistakes.ipc'
+import { registerBookmarkHandlers } from './ipc/bookmarks.ipc'
+import { registerDataHandlers } from './ipc/data.ipc'
+import { seedBuiltInMistakeTags } from './seeds/mistakeTags'
 
 /** Resolves DB recording id for post-game navigation (path normalization + latest-capture fallback). */
 async function resolveCaptureRecordingIdForGameEnd(
@@ -199,8 +203,22 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      // Chromium throttles backgrounded renderer processes by default,
+      // which freezes our long-running auto-fill / scout loops (they live
+      // in the renderer and use awaited IPC calls — even though the IPC
+      // handler runs in main, the .then() resumption is paced by the
+      // renderer's event loop). Turning throttling off keeps a multi-
+      // minute scout running at full speed while the user alt-tabs to do
+      // something else.
+      backgroundThrottling: false,
     },
   })
+
+  // Belt-and-suspenders: also prevent the dev-tools "low power" mode
+  // from kicking in when the user switches workspaces. Wrapped in a
+  // try/catch because not all Electron versions support every WebContents
+  // method and we'd rather lose this perk than crash startup.
+  try { mainWindow.webContents.setBackgroundThrottling(false) } catch { /* older Electron */ }
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
@@ -329,6 +347,14 @@ async function bootstrap() {
   registerYoutubeHandlers()
   registerBackupHandlers()
   registerTeamHandlers()
+  registerMistakeHandlers()
+  registerBookmarkHandlers()
+  registerDataHandlers()
+
+  // Idempotent — adds new built-in tags on app updates without ever
+  // overwriting user-edited ones. Fire-and-forget; if it fails we still
+  // boot the UI (the user can manually add tags).
+  seedBuiltInMistakeTags().catch((err) => console.warn('[seed] mistake tags failed:', err))
 
   createWindow()
   registerDevHandlers(mainWindow!)
@@ -368,7 +394,21 @@ async function bootstrap() {
               const durationSec = typeof matchData.game.duration === 'number' ? matchData.game.duration : null
               if (gameEndAt && durationSec) {
                 const gameStartMs = gameEndAt.getTime() - durationSec * 1000
-                startOffsetSec = (birthMs - gameStartMs) / 1000
+                const candidate = (birthMs - gameStartMs) / 1000
+                // Plausibility gate — see `eventSync.deriveOffsetSec` for
+                // the rationale. Without this, the WGC backend's
+                // `.webm → .mp4` remux at game end produces a `.mp4`
+                // whose birthtime is the remux completion time, pushing
+                // `candidate` to ≈ +gameDurationSec (typically +1800s).
+                // We leave the field null in that case so the player
+                // falls through to the `gameDur - videoDur` fallback,
+                // which is always correct for end-of-game-stopped
+                // recordings (the common case).
+                if (Math.abs(candidate) <= 600) {
+                  startOffsetSec = candidate
+                } else {
+                  console.warn(`[main] Implausible startOffsetSec=${candidate.toFixed(1)}s for ${pendingRecording} — likely WGC remux birthtime; leaving null so eventSync falls back to duration-based offset.`)
+                }
               }
             } catch { /* best-effort, leave null */ }
 
@@ -633,6 +673,19 @@ async function bootstrap() {
         filePath: finalPath,
         durationSec: probe.durationSec,
       })
+    },
+
+    // onGameEnriched: background Match-V5 enrich finished — push a
+    // refresh signal to the renderer so the session view / dashboard
+    // pick up the authoritative win/loss instead of the placeholder
+    // `win: false` set when the provisional row was created.
+    async (info) => {
+      try {
+        mainWindow?.webContents.send('game:updated', info)
+        console.log(`[main] Enrich complete → game:updated emitted (gameId=${info.gameId}, win=${info.win}, queue=${info.queueType})`)
+      } catch (err) {
+        console.warn('[main] Failed to emit game:updated:', err)
+      }
     },
   )
 

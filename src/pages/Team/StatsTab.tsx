@@ -207,7 +207,7 @@ export function StatsTab({ team }: Props) {
             onClick={handleCompute}
             disabled={loading || !team || (team.members ?? []).length < minTogether}
             title={t('team.stats.computeHint', {
-              defaultValue: 'Fetches the last 100 flex games per member and aggregates stats. First run can take a minute.',
+              defaultValue: 'Fetches the last 100 flex games per member and aggregates stats. ~10s on first run, cached after.',
             })}
           >
             {loading

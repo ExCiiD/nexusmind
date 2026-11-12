@@ -15,6 +15,13 @@ import { getAudioDevicesSummary, resolveMicDeviceName } from '../audio'
 import { existsSync, readdirSync, statSync, unlinkSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { join, extname, dirname, basename } from 'path'
 import { matchRecordingToGame } from '../recordingMatch'
+import {
+  getAnyQueueMatchIds,
+  getMatch,
+  getMatchTimeline,
+  extractPlayerStats,
+  isQueueSessionEligible,
+} from '../riotClient'
 
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv'])
 
@@ -157,6 +164,302 @@ async function reconcileOrphanClips(baseDir: string): Promise<number> {
   }
 
   return reconciled
+}
+
+// ── Orphan-recording backfill ────────────────────────────────────────────────
+//
+// Recordings end up "orphan" (gameId = null) when the user captured a video
+// outside an active NexusMind session OR on an account that wasn't linked
+// at the time. The scan flow only matches orphans to EXISTING Game rows —
+// it can't create new ones. This module fills that gap: for each orphan,
+// query Riot's match history on every linked account and create a Game row
+// (in a one-off "review-only" session) when a match lines up with the
+// recording's wall-clock timestamp.
+//
+// Cheap-by-design: 1 short match-IDs call per account + N short match
+// fetches (cached after the first time). Only runs when there's at least
+// one orphan, so a typical scan with no orphans pays nothing.
+
+const REVIEW_ONLY_OBJECTIVE_ID = '__review_only__'
+
+/**
+ * Returns the per-user session that hosts backfilled Game rows for games
+ * the user played outside of any active NexusMind session. Created on
+ * first need, then reused. Always marked `status: 'closed'` and tagged
+ * via `objectiveId` so other queries can filter it out of session KPIs.
+ */
+async function getOrCreateReviewOnlySession(userId: string): Promise<string> {
+  const prisma = getPrisma()
+  const existing = await prisma.session.findFirst({
+    where: { userId, objectiveId: REVIEW_ONLY_OBJECTIVE_ID },
+  })
+  if (existing) return existing.id
+  const created = await prisma.session.create({
+    data: {
+      userId,
+      objectiveId: REVIEW_ONLY_OBJECTIVE_ID,
+      status: 'closed',
+      sessionConclusion:
+        'System container for backfilled games (videos linked to Riot matches that were played outside any active session).',
+    },
+  })
+  console.log(`[backfill] Created review-only session ${created.id} for user ${userId}`)
+  return created.id
+}
+
+interface BackfillResult {
+  /** Total orphans considered this run. */
+  considered: number
+  /** Orphans that got linked to a (new or existing) Game row. */
+  linked: number
+  /** Orphans we couldn't find a match for. */
+  notFound: number
+  /** Orphans skipped because the matching game already has a recording. */
+  skipped: number
+}
+
+/**
+ * For each candidate orphan recording, look it up in Riot's match history
+ * (all linked accounts, all queues), create / reuse the Game row, and
+ * link it. `recordingIds` lets callers backfill a specific recording
+ * instead of every orphan — used by the manual "Try to link" button.
+ *
+ * Returns a tally so the caller can show a toast like
+ * "Linked 1 recording, 2 not found".
+ */
+async function backfillOrphanRecordings(opts: { recordingIds?: string[] } = {}): Promise<BackfillResult> {
+  const prisma = getPrisma()
+  const user = await prisma.user.findFirst({ where: { isActive: true } })
+  if (!user) return { considered: 0, linked: 0, notFound: 0, skipped: 0 }
+
+  // Pull all puuids we know about — main account + every linked smurf.
+  const accounts = await prisma.account.findMany({ where: { userId: user.id } })
+  const allAccounts: Array<{ puuid: string; region: string }> = [
+    { puuid: user.puuid, region: user.region },
+    ...accounts.map((a) => ({ puuid: a.puuid, region: a.region })),
+  ].filter((a) => typeof a.puuid === 'string' && a.puuid.length > 0)
+  if (allAccounts.length === 0) return { considered: 0, linked: 0, notFound: 0, skipped: 0 }
+
+  // Candidate orphans: those with a real file on disk and no game link.
+  const orphans = await prisma.recording.findMany({
+    where: {
+      gameId: null,
+      filePath: { not: null },
+      ...(opts.recordingIds ? { id: { in: opts.recordingIds } } : {}),
+    },
+    orderBy: { createdAt: 'desc' },
+    take: opts.recordingIds ? opts.recordingIds.length : 50,
+  })
+  if (orphans.length === 0) return { considered: 0, linked: 0, notFound: 0, skipped: 0 }
+
+  console.log(`[backfill] Considering ${orphans.length} orphan recording(s) across ${allAccounts.length} account(s)`)
+
+  // Fetch recent match IDs across all queues, per account. Sequential to
+  // stay friendly with Riot's rate limit — these are quick calls.
+  const matchIdsByAccount: Array<{ puuid: string; region: string; matchIds: string[] }> = []
+  for (const acc of allAccounts) {
+    try {
+      const ids = await getAnyQueueMatchIds(acc.puuid, acc.region, 20)
+      matchIdsByAccount.push({ ...acc, matchIds: ids })
+      console.log(`[backfill] Fetched ${ids.length} recent match IDs for puuid ${acc.puuid.slice(0, 8)}…`)
+    } catch (err) {
+      console.warn(`[backfill] Failed to fetch match IDs for ${acc.puuid.slice(0, 8)}…:`, (err as Error)?.message ?? err)
+    }
+  }
+
+  // Pre-fetch match data once per matchId (cache then network) so we don't
+  // re-download the same payload for several orphans that happen to share
+  // an account's history window.
+  const matchDataCache = new Map<string, { data: any; region: string }>()
+  async function loadMatch(matchId: string, region: string): Promise<any | null> {
+    if (matchDataCache.has(matchId)) return matchDataCache.get(matchId)!.data
+    const cached = await prisma.matchCache.findUnique({ where: { matchId } })
+    if (cached?.matchJson) {
+      try {
+        const parsed = JSON.parse(cached.matchJson)
+        matchDataCache.set(matchId, { data: parsed, region })
+        return parsed
+      } catch { /* fall through to network */ }
+    }
+    try {
+      const md = await getMatch(matchId, region)
+      if (md) {
+        matchDataCache.set(matchId, { data: md, region })
+        // Persist for future timeline lookups (event extractor).
+        await prisma.matchCache
+          .upsert({
+            where: { matchId },
+            create: { matchId, matchJson: JSON.stringify(md) },
+            update: { matchJson: JSON.stringify(md) },
+          })
+          .catch(() => {})
+        return md
+      }
+    } catch (err) {
+      console.warn(`[backfill] getMatch(${matchId}) failed:`, (err as Error)?.message ?? err)
+    }
+    return null
+  }
+
+  let linked = 0
+  let notFound = 0
+  let skipped = 0
+
+  for (const orphan of orphans) {
+    let bestMatch: { matchData: any; puuid: string; region: string; matchId: string } | null = null
+
+    // Try every account's recent matches in order, stop at first time-fit.
+    for (const acc of matchIdsByAccount) {
+      for (const matchId of acc.matchIds) {
+        const md = await loadMatch(matchId, acc.region)
+        if (!md?.info) continue
+        const gameEndMs: number | undefined = md.info.gameEndTimestamp
+        const durationSec: number | undefined = md.info.gameDuration
+        if (!gameEndMs || !durationSec) continue
+        if (matchRecordingToGame(orphan.createdAt, new Date(gameEndMs), durationSec)) {
+          bestMatch = { matchData: md, puuid: acc.puuid, region: acc.region, matchId }
+          break
+        }
+      }
+      if (bestMatch) break
+    }
+
+    if (!bestMatch) {
+      console.log(`[backfill] No Riot match found for orphan ${orphan.id} (createdAt=${orphan.createdAt.toISOString()})`)
+      notFound++
+      continue
+    }
+
+    // Reuse an existing Game row if we already have one for this matchId,
+    // otherwise create one in the review-only session.
+    let gameId: string
+    const existingGame = await prisma.game.findUnique({ where: { matchId: bestMatch.matchId } })
+    if (existingGame) {
+      const existingRec = await prisma.recording.findUnique({ where: { gameId: existingGame.id } })
+      if (existingRec && existingRec.id !== orphan.id) {
+        console.log(`[backfill] Game ${existingGame.id} already linked to recording ${existingRec.id}; skipping orphan ${orphan.id}`)
+        skipped++
+        continue
+      }
+      gameId = existingGame.id
+    } else {
+      const stats = extractPlayerStats(bestMatch.matchData, bestMatch.puuid)
+      if (!stats) {
+        console.warn(`[backfill] extractPlayerStats failed for match ${bestMatch.matchId} puuid ${bestMatch.puuid.slice(0, 8)}…`)
+        notFound++
+        continue
+      }
+      const queueType = stats.queueType ?? 'unknown'
+      const sessionEligible = isQueueSessionEligible(queueType)
+      const reviewSessionId = await getOrCreateReviewOnlySession(user.id)
+      const newGame = await prisma.game.create({
+        data: {
+          sessionId: reviewSessionId,
+          matchId: bestMatch.matchId,
+          champion: stats.champion,
+          role: stats.role,
+          kills: stats.kills,
+          deaths: stats.deaths,
+          assists: stats.assists,
+          cs: stats.cs,
+          visionScore: stats.visionScore,
+          duration: stats.duration,
+          win: stats.win,
+          gameEndAt: stats.gameEndAt,
+          queueType,
+          // Backfilled games are always outside a real session, so they
+          // never count toward session KPIs — even if queue is ranked.
+          isSessionEligible: false,
+          opponentChampion: stats.opponentChampion ?? null,
+        },
+      })
+      gameId = newGame.id
+      console.log(
+        `[backfill] Created Game ${gameId} from match ${bestMatch.matchId} ` +
+          `(${stats.champion}, ${stats.win ? 'WIN' : 'LOSS'}, queue=${queueType}, eligible=${sessionEligible})`,
+      )
+    }
+
+    // Compute startOffsetSec so the markers line up with video time.
+    // Source the recording start instant from the FILE's birthtime (when
+    // available), NOT from the DB createdAt column — for orphan rows
+    // created by older flows the column might hold the DB insertion time
+    // rather than the actual recording start, which would yield an offset
+    // of hundreds of seconds and push every marker outside the video range.
+    //
+    // Fallback chain: file birthtime → file mtime → orphan.createdAt.
+    let startOffsetSec: number | null = null
+    try {
+      const gameEndMs: number = bestMatch.matchData.info.gameEndTimestamp
+      const durationSec: number = bestMatch.matchData.info.gameDuration
+      const gameStartMs = gameEndMs - durationSec * 1000
+
+      let recordingStartMs: number | null = null
+      if (orphan.filePath && existsSync(orphan.filePath)) {
+        try {
+          const s = statSync(orphan.filePath)
+          recordingStartMs = s.birthtimeMs || s.mtimeMs || null
+        } catch { /* file unreadable */ }
+      }
+      if (recordingStartMs == null) recordingStartMs = orphan.createdAt.getTime()
+
+      const candidate = (recordingStartMs - gameStartMs) / 1000
+      // Sanity: a real offset is small (a few minutes max). Anything wilder
+      // means the recording wasn't actually for this game OR one of our
+      // timestamps is bogus; in that case we leave startOffsetSec null and
+      // let the player fall back to the duration-based heuristic (which
+      // assumes recording ended ~at gameEnd, almost always true).
+      if (Math.abs(candidate) <= 600) {
+        startOffsetSec = candidate
+      } else {
+        console.warn(
+          `[backfill] Computed startOffsetSec=${candidate.toFixed(1)}s for ${orphan.id} is implausible — leaving null so the player uses the duration-based fallback.`,
+        )
+      }
+    } catch (err) {
+      console.warn('[backfill] startOffsetSec computation failed:', (err as Error)?.message ?? err)
+    }
+
+    await prisma.recording.update({
+      where: { id: orphan.id },
+      data: {
+        gameId,
+        ...(startOffsetSec !== null ? { startOffsetSec } : {}),
+      },
+    })
+    linked++
+    console.log(`[backfill] Linked recording ${orphan.id} → game ${gameId}` + (startOffsetSec !== null ? ` (offset=${startOffsetSec.toFixed(1)}s)` : ''))
+
+    // Eagerly cache the match-timeline-v5 blob NOW so the player doesn't
+    // have to hit Riot the first time the user opens the recording (and
+    // also so we surface any fetch failure during the visible backfill
+    // step instead of silently in the player). The event extractor needs
+    // BOTH matchJson and timelineJson — matchJson is already cached by
+    // loadMatch() above, timelineJson is the missing piece.
+    try {
+      const existingCache = await prisma.matchCache.findUnique({ where: { matchId: bestMatch.matchId } })
+      if (!existingCache?.timelineJson) {
+        const timelineData = await getMatchTimeline(bestMatch.matchId, bestMatch.region)
+        if (timelineData) {
+          await prisma.matchCache.upsert({
+            where: { matchId: bestMatch.matchId },
+            create: {
+              matchId: bestMatch.matchId,
+              matchJson: JSON.stringify(bestMatch.matchData),
+              timelineJson: JSON.stringify(timelineData),
+            },
+            update: { timelineJson: JSON.stringify(timelineData) },
+          })
+          const frameCount = timelineData?.info?.frames?.length ?? 0
+          console.log(`[backfill] Cached timeline for ${bestMatch.matchId} (${frameCount} frames)`)
+        }
+      }
+    } catch (err) {
+      console.warn(`[backfill] Timeline pre-fetch for ${bestMatch.matchId} failed (player will retry):`, (err as Error)?.message ?? err)
+    }
+  }
+
+  return { considered: orphans.length, linked, notFound, skipped }
 }
 
 export function registerRecordingHandlers() {
@@ -400,17 +703,39 @@ export function registerRecordingHandlers() {
       console.warn('[scan] Orphan thumb sweep failed:', err)
     }
 
-    console.log('[scan] Done:', { scanned: allFiles.length, matched: matched.length, orphaned: orphanedCount, pruned: pruneCount, duplicatesRemoved, orphanThumbsRemoved })
+    // ── Step 10: Riot-history backfill for orphan recordings ──────────────
+    //
+    // Anything still orphaned at this point couldn't be matched against an
+    // existing Game row. Try to recover them by asking Riot directly:
+    // each linked account's recent match list is scanned, and any match
+    // whose end-time falls in the recording's ±5min window gets a freshly
+    // created Game row + link. No-op (and free) when there are no orphans
+    // or no linked accounts.
+    let backfill: BackfillResult = { considered: 0, linked: 0, notFound: 0, skipped: 0 }
+    try {
+      backfill = await backfillOrphanRecordings()
+      if (backfill.considered > 0) {
+        console.log(
+          `[scan] Backfill: considered=${backfill.considered} linked=${backfill.linked} notFound=${backfill.notFound} skipped=${backfill.skipped}`,
+        )
+      }
+    } catch (err) {
+      console.warn('[scan] Backfill failed (non-fatal):', err)
+    }
+
+    console.log('[scan] Done:', { scanned: allFiles.length, matched: matched.length, orphaned: orphanedCount, pruned: pruneCount, duplicatesRemoved, orphanThumbsRemoved, backfillLinked: backfill.linked })
 
     return {
       scanned: allFiles.length,
-      matched: matched.length,
-      orphaned: orphanedCount,
+      matched: matched.length + backfill.linked,
+      orphaned: Math.max(0, orphanedCount - backfill.linked),
       dismissed: dismissed.size,
       pruned: pruneCount,
       clipsReconciled,
       duplicatesRemoved,
       orphanThumbsRemoved,
+      backfillLinked: backfill.linked,
+      backfillNotFound: backfill.notFound,
       paths: Object.entries(paths).map(([source, dir]) => ({
         source,
         dir,
@@ -531,6 +856,13 @@ export function registerRecordingHandlers() {
     await prisma.$executeRawUnsafe(`DELETE FROM "Clip" WHERE "recordingId" = ?`, rec.id)
     await prisma.recording.delete({ where: { id: recordingId } })
     return { success: true }
+  })
+
+  // Manual backfill — used by the "Try to link" button on orphan
+  // recording cards. Passing a recordingId limits the lookup to that
+  // single orphan (cheaper / faster than rescanning everything).
+  ipcMain.handle('recording:backfill-orphans', async (_event, recordingId?: string) => {
+    return backfillOrphanRecordings(recordingId ? { recordingIds: [recordingId] } : {})
   })
 
   ipcMain.handle('recording:unlink', async (_event, gameId: string) => {
@@ -898,6 +1230,76 @@ export function registerRecordingHandlers() {
       startMs: opts.startMs,
       endMs: opts.endMs,
       fileSize: getFileSize(clipPath),
+    }
+  })
+
+  /**
+   * Exports a clip just like `clip:create`, but additionally reveals the
+   * resulting mp4 in the OS file browser (Explorer / Finder). The
+   * "Export" button in the clip editor uses this — semantically distinct
+   * from "Save" (which keeps the clip in-app without surfacing the file).
+   * Returns the Clip row + the source `filePath` so the renderer can show
+   * a toast with the actual on-disk location.
+   */
+  ipcMain.handle('clip:export', async (_e, opts: {
+    recordingId: string
+    startMs: number
+    endMs: number
+    title?: string
+    linkedNoteText?: string
+  }) => {
+    const prisma = getPrisma()
+    const rec = await prisma.recording.findUnique({ where: { id: opts.recordingId } })
+    if (!rec?.filePath || !existsSync(rec.filePath)) {
+      throw new Error('Source recording file not found')
+    }
+
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    const outputDir = recordingManager.getRecordingsDir(user?.recordingPath)
+
+    const clipPath = await createClip({
+      recordingId: opts.recordingId,
+      filePath: rec.filePath,
+      title: opts.title,
+      startMs: opts.startMs,
+      endMs: opts.endMs,
+      linkedNoteText: opts.linkedNoteText,
+      outputDir,
+    })
+    if (!clipPath) throw new Error('Clip export failed (both stream-copy and re-encode attempts errored)')
+
+    const clipId = `clip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "Clip" ("id","recordingId","filePath","thumbnailPath","title","startMs","endMs","linkedNoteText","createdAt")
+       VALUES (?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)`,
+      clipId,
+      opts.recordingId,
+      clipPath,
+      null,
+      opts.title ?? null,
+      opts.startMs,
+      opts.endMs,
+      opts.linkedNoteText ?? null,
+    )
+
+    // Surface the exported file in the OS file manager. Wrapped in
+    // try/catch so a missing OS handler (rare, but happens in CI sandboxes)
+    // doesn't fail the whole export.
+    try { shell.showItemInFolder(clipPath) } catch (err) {
+      console.warn('[clip:export] showItemInFolder failed:', err)
+    }
+
+    console.log(`[clip:export] Clip exported: ${clipId} → ${clipPath}`)
+
+    return {
+      id: clipId,
+      filePath: clipPath,
+      thumbnailPath: null,
+      title: opts.title ?? null,
+      startMs: opts.startMs,
+      endMs: opts.endMs,
+      fileSize: getFileSize(clipPath),
+      revealedInFolder: true,
     }
   })
 

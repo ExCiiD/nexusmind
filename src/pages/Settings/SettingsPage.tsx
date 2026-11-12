@@ -994,7 +994,186 @@ export function SettingsPage() {
 
       {/* ── Backup & Sync (manual multi-PC) ──────────────────────────────────── */}
       <BackupCard />
+
+      {/* ── Danger Zone — destructive bulk cleanups ──────────────────────────── */}
+      <DangerZoneCard />
     </div>
+  )
+}
+
+// ── Danger Zone sub-component ────────────────────────────────────────────────
+
+function DangerZoneCard() {
+  const { toast } = useToast()
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [confirmReset, setConfirmReset] = useState(false)
+  const [clearing, setClearing] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  // Recent-window cleanup: which day-range is pending confirmation (null = idle).
+  const [pendingDays, setPendingDays] = useState<number | null>(null)
+  const [clearingRecent, setClearingRecent] = useState(false)
+
+  const RECENT_OPTIONS = [
+    { days: 1, label: '24h' },
+    { days: 3, label: '3 days' },
+    { days: 7, label: 'last week' },
+  ]
+
+  const handleClearRecent = async (days: number) => {
+    setClearingRecent(true)
+    try {
+      const r = await window.api.clearRecentData(days)
+      toast({
+        title: 'Recent data cleared',
+        description: `Deleted ${r.games} game(s), ${r.recordings} recording(s) (${r.files} file(s) freed) and ${r.mistakes} mistake(s) from the last ${days === 1 ? '24h' : `${days} days`}.`,
+        variant: 'success',
+      })
+      setPendingDays(null)
+      setTimeout(() => window.location.reload(), 800)
+    } catch (err: any) {
+      toast({ title: 'Clear failed', description: err?.message ?? 'Unknown error', variant: 'destructive' })
+    } finally {
+      setClearingRecent(false)
+    }
+  }
+
+  const handleClear = async () => {
+    setClearing(true)
+    try {
+      const r = await window.api.clearStatsMistakes()
+      toast({
+        title: 'Stats & mistakes cleared',
+        description: `Removed ${r.mistakes} mistake(s), ${r.detailedStats} detailed-stats cache(s), ${r.snapshots} snapshot(s) and ${r.lanePhase} lane reports.`,
+        variant: 'success',
+      })
+      setConfirmClear(false)
+      // Reload so every cached stats/mistakes view reflects the wipe.
+      setTimeout(() => window.location.reload(), 700)
+    } catch (err: any) {
+      toast({ title: 'Clear failed', description: err?.message ?? 'Unknown error', variant: 'destructive' })
+    } finally {
+      setClearing(false)
+    }
+  }
+
+  const handleReset = async () => {
+    setResetting(true)
+    try {
+      const r = await window.api.resetAllData()
+      toast({
+        title: 'App reset',
+        description: `Deleted ${r.games} game(s), ${r.recordings} recording(s) (${r.files} file(s) freed) and all stats. Restarting view…`,
+        variant: 'success',
+      })
+      setConfirmReset(false)
+      setTimeout(() => window.location.reload(), 900)
+    } catch (err: any) {
+      toast({ title: 'Reset failed', description: err?.message ?? 'Unknown error', variant: 'destructive' })
+    } finally {
+      setResetting(false)
+    }
+  }
+
+  return (
+    <Card className="border-[#FF4655]/40">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-[#FF4655]">
+          <AlertTriangle className="h-5 w-5" />
+          Danger Zone
+        </CardTitle>
+        <CardDescription>
+          Permanently delete data. These actions cannot be undone — export a backup first if unsure.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Clear stats & mistakes */}
+        <div className="flex items-start justify-between gap-3 flex-wrap rounded-lg border border-hextech-border-dim bg-hextech-elevated px-3 py-2.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-hextech-text-bright">Clear stats &amp; mistakes</p>
+            <p className="text-xs text-hextech-text-dim mt-0.5">
+              Removes all tagged &amp; auto-detected mistakes, progression snapshots, the detailed-stats cache and lane-phase reports.
+              Your games, recordings, reviews and notes are kept.
+            </p>
+          </div>
+          {confirmClear ? (
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="destructive" size="sm" disabled={clearing} onClick={handleClear} className="gap-1.5">
+                {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                Confirm clear
+              </Button>
+              <Button variant="ghost" size="sm" disabled={clearing} onClick={() => setConfirmClear(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline" size="sm"
+              onClick={() => setConfirmClear(true)}
+              className="shrink-0 gap-1.5 border-[#FF4655]/40 text-[#FF4655] hover:bg-[#FF4655]/10"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Clear stats &amp; mistakes
+            </Button>
+          )}
+        </div>
+
+        {/* Clear recent data (time-scoped) */}
+        <div className="flex items-start justify-between gap-3 flex-wrap rounded-lg border border-hextech-border-dim bg-hextech-elevated px-3 py-2.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-hextech-text-bright">Clear recent data</p>
+            <p className="text-xs text-hextech-text-dim mt-0.5">
+              Deletes games, stats, mistakes and recordings (files included) from the last few days only — older history is kept.
+              Useful to drop a bad test session.
+            </p>
+          </div>
+          {pendingDays !== null ? (
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="destructive" size="sm" disabled={clearingRecent} onClick={() => handleClearRecent(pendingDays)} className="gap-1.5">
+                {clearingRecent ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                Delete last {pendingDays === 1 ? '24h' : `${pendingDays} days`}
+              </Button>
+              <Button variant="ghost" size="sm" disabled={clearingRecent} onClick={() => setPendingDays(null)}>Cancel</Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {RECENT_OPTIONS.map((o) => (
+                <Button
+                  key={o.days}
+                  variant="outline" size="sm"
+                  onClick={() => setPendingDays(o.days)}
+                  className="gap-1.5 border-[#FF4655]/40 text-[#FF4655] hover:bg-[#FF4655]/10"
+                >
+                  {o.label}
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Full reset */}
+        <div className="flex items-start justify-between gap-3 flex-wrap rounded-lg border border-[#FF4655]/30 bg-[#FF4655]/5 px-3 py-2.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-hextech-text-bright">Reset everything</p>
+            <p className="text-xs text-hextech-text-dim mt-0.5">
+              Deletes <span className="text-[#FF8694] font-medium">all</span> sessions, games, stats, mistakes, reviews and recordings
+              (video files included) and resets your XP/streak. Your account, settings and teams are kept.
+            </p>
+          </div>
+          {confirmReset ? (
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="destructive" size="sm" disabled={resetting} onClick={handleReset} className="gap-1.5">
+                {resetting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                Confirm full reset
+              </Button>
+              <Button variant="ghost" size="sm" disabled={resetting} onClick={() => setConfirmReset(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <Button variant="destructive" size="sm" onClick={() => setConfirmReset(true)} className="shrink-0 gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Reset everything
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

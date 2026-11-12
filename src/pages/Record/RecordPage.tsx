@@ -8,7 +8,7 @@ import {
   Video, Youtube, RefreshCw, Loader2, ClipboardCheck,
   Swords, Clock, Film, Scissors, Filter, Trash2,
   FolderPlus, ChevronDown, ChevronUp, Check, FolderOpen,
-  Pencil, X, ChevronLeft, ChevronRight, Play,
+  Pencil, X, ChevronLeft, ChevronRight, Play, Link2,
 } from 'lucide-react'
 import { AccountBadge } from '@/components/ui/AccountBadge'
 
@@ -191,13 +191,50 @@ export function RecordPage() {
     try {
       const result = await window.api.scanRecordings()
       await loadRecords()
+      // Surface what the Riot-history backfill found if it ran — useful
+      // feedback for the user (otherwise "0 new orphans" feels broken when
+      // they specifically clicked Scan to recover an orphan).
+      const backfillNote =
+        (result.backfillLinked ?? 0) > 0
+          ? ` · linked ${result.backfillLinked} from Riot history`
+          : ''
       toast({
         title: 'Scan complete',
-        description: `${result.scanned} files found — ${result.matched} matched, ${result.orphaned} new${result.dismissed > 0 ? `, ${result.dismissed} dismissed` : ''}`,
+        description:
+          `${result.scanned} files found — ${result.matched} matched, ${result.orphaned} new` +
+          `${result.dismissed > 0 ? `, ${result.dismissed} dismissed` : ''}${backfillNote}`,
       })
     } catch (err) {
       toast({ title: 'Scan failed', description: (err as Error)?.message ?? 'An unknown error occurred.', variant: 'destructive' })
     } finally { setScanning(false) }
+  }
+
+  /**
+   * Manually backfill a single orphan recording by querying Riot match
+   * history. Fired from the "Try to link" button on orphan cards.
+   */
+  const handleBackfillOne = async (recordingId: string) => {
+    try {
+      const result = await window.api.backfillOrphanRecordings(recordingId)
+      if (result.linked > 0) {
+        toast({ title: 'Recording linked', description: 'Game data found in Riot history — opening with markers now.' })
+        await loadRecords()
+      } else if (result.skipped > 0) {
+        toast({
+          title: 'Already linked elsewhere',
+          description: 'The matching Riot game is already linked to another recording.',
+          variant: 'destructive',
+        })
+      } else {
+        toast({
+          title: 'No match found',
+          description: 'No Riot game was found within ±5 min of this recording. Make sure you played that game on one of your linked accounts.',
+          variant: 'destructive',
+        })
+      }
+    } catch (err) {
+      toast({ title: 'Link failed', description: (err as Error)?.message ?? 'An unknown error occurred.', variant: 'destructive' })
+    }
   }
 
   // ── Filter ───────────────────────────────────────────────────────────────
@@ -527,6 +564,7 @@ export function RecordPage() {
           onOpen={handleOpen}
           onDelete={handleDelete}
           onRemoveFromFolder={(recordingId) => handleRemoveFromFolder(folder.id, recordingId)}
+          onTryLink={handleBackfillOne}
         />
       ))}
 
@@ -544,6 +582,7 @@ export function RecordPage() {
           onToggleCard={toggleSelect}
           onOpen={handleOpen}
           onDelete={handleDelete}
+          onTryLink={handleBackfillOne}
         />
       ))}
 
@@ -690,9 +729,10 @@ interface RecordGroupSectionProps {
   onOpen: (r: RecordEntry) => void
   onDelete: (r: RecordEntry) => void
   onRemoveFromFolder?: (recordingId: string) => void
+  onTryLink?: (recordingId: string) => void
 }
 
-function RecordGroupSection({ groupKey, label, records, selectedIds, collapsed, onToggleCollapse, onToggleGroupSelect, onToggleCard, onOpen, onDelete, onRemoveFromFolder }: RecordGroupSectionProps) {
+function RecordGroupSection({ groupKey, label, records, selectedIds, collapsed, onToggleCollapse, onToggleGroupSelect, onToggleCard, onOpen, onDelete, onRemoveFromFolder, onTryLink }: RecordGroupSectionProps) {
   const ids = records.map(r => r.recordingId)
   const allSelected = ids.length > 0 && ids.every(id => selectedIds.has(id))
   const someSelected = ids.some(id => selectedIds.has(id))
@@ -726,6 +766,7 @@ function RecordGroupSection({ groupKey, label, records, selectedIds, collapsed, 
                 onOpen={onOpen}
                 onDelete={onDelete}
                 onRemoveFromFolder={onRemoveFromFolder}
+                onTryLink={onTryLink}
               />
             ))}
           </div>
@@ -744,9 +785,11 @@ interface RecordCardProps {
   onOpen: (r: RecordEntry) => void
   onDelete: (r: RecordEntry) => void
   onRemoveFromFolder?: (recordingId: string) => void
+  onTryLink?: (recordingId: string) => void
 }
 
-function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, onRemoveFromFolder }: RecordCardProps) {
+function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, onRemoveFromFolder, onTryLink }: RecordCardProps) {
+  const [linking, setLinking] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const date = new Date(r.gameEndAt)
   const dateStr = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
@@ -826,7 +869,37 @@ function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, o
             <span className="flex items-center gap-1 text-hextech-text-dim"><Clock className="h-2.5 w-2.5" />{formatGameTime(r.duration)}</span>
           </div>
         ) : (
-          <div className="flex items-center gap-1 text-[10px] text-hextech-text-dim"><Video className="h-2.5 w-2.5" /><span>Not linked to a game</span></div>
+          <div className="flex items-center justify-between gap-1 text-[10px] text-hextech-text-dim">
+            <div className="flex items-center gap-1 min-w-0">
+              <Video className="h-2.5 w-2.5 shrink-0" />
+              <span className="truncate">Not linked to a game</span>
+            </div>
+            {onTryLink && (
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation()
+                  if (linking) return
+                  setLinking(true)
+                  try { await onTryLink(r.recordingId) } finally { setLinking(false) }
+                }}
+                disabled={linking}
+                title="Look this recording up in Riot match history"
+                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider bg-hextech-gold/15 text-hextech-gold border border-hextech-gold/40 hover:bg-hextech-gold/30 disabled:opacity-50 disabled:cursor-wait transition-colors shrink-0"
+              >
+                {linking ? (
+                  <>
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    <span>Linking…</span>
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="h-2.5 w-2.5" />
+                    <span>Try link</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         )}
         <div className="flex items-center gap-1 min-w-0">
           {!r.isOrphaned && r.accountName && <AccountBadge name={r.accountName} />}

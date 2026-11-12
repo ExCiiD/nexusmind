@@ -751,6 +751,12 @@
     "finalizingDesc": "The recording is being processed. This usually takes 10-60 seconds for a full game. The player will appear automatically when it's ready.",
     "finalizationFailed": "Recording finalization failed"
   },
+  "jobs": {
+    "cancel": "Cancel after current player",
+    "progress": "{{name}} · {{done}}/{{total}}",
+    "starting": "Starting…",
+    "cancelling": "Stopping after current player…"
+  },
   "team": {
     "title": "Team Management",
     "subtitle": "Manage your roster, prepare drafts, and scout opponents.",
@@ -813,10 +819,29 @@
       "poolTitle": "Pool",
       "empty": "Empty",
       "emptyHint": "No champions yet. Use Auto-fill or click any champion on the left.",
+      "emptyForRole": "No {{role}} champions yet. Use Auto-fill or click any champion on the left.",
+      "roleFilter": "Role",
       "removeDuplicates": "Remove {{count}} duplicate(s)",
       "dedupeHint": "Merge members that share the same Riot ID. The oldest entry is kept and champion pools are merged.",
       "dedupeDone": "Removed {{count}} duplicate(s)",
-      "dedupeFailed": "Could not remove duplicates"
+      "dedupeFailed": "Could not remove duplicates",
+      "autoFillScopeTitle": "How thorough should the auto-fill be?",
+      "autoFillJobLabel": "Auto-fill — {{team}}",
+      "autoFillAllSummaryShort": "{{upserted}} champions · {{matches}} games scanned",
+      "autoFillCancelled": "Auto-fill cancelled",
+      "autoFillCancelledDesc": "{{upserted}} champions added before stopping."
+    },
+    "scope": {
+      "title": "How thorough should the fetch be?",
+      "desc": "Riot caps free API keys at ~100 requests per 2 minutes. Pick how deep this fetch should go.",
+      "quickTitle": "Quick (recommended)",
+      "quickSubtitle": "Last ~100 games per player · enough for the main/comfort tier thresholds",
+      "completeTitle": "Complete season",
+      "completeSubtitle": "Every season game Riot still has on record · most accurate game counts",
+      "timeEstimate": "~{{min}} min total ({{perPlayer}} min × {{count}} player(s))",
+      "completeTimeEstimate": "~{{min}} min total ({{perPlayer}} min × {{count}} player(s)) — much faster on a Production key",
+      "completeWarning": "You can keep using the rest of the app, but new Riot calls (other scouts, dashboard refresh) will queue behind this one.",
+      "cacheNote": "Previously-scanned matches are cached on disk — every subsequent fetch is near-instant."
     },
     "draft": {
       "saved": "Draft saved",
@@ -850,7 +875,11 @@
       "opponent": "Opponent",
       "noMyTeam": "No active team selected. Create or pick one above.",
       "noOpponentPool": "No opponent assigned to this draft. Pick one in the toolbar.",
-      "noMembers": "No members on this team yet."
+      "noMembers": "No members on this team yet.",
+      "threats": "Opponent threats",
+      "threatRed": "100+ games & most-played",
+      "threatOrange": "300k+ mastery",
+      "threatYellow": "flex pick (2+ players)"
     },
     "dashboard": {
       "noTeam": "Select or create a team first.",
@@ -859,6 +888,7 @@
       "emptyHint": "Click \"Compute synergy stats\" to populate the dashboard.",
       "statsTable": "Player stats",
       "basedOn": "Averages from {{n}} games",
+      "basedOnFlex": "Averages from {{n}} flex games",
       "dmgShare": "Damage share",
       "dmgTakenShare": "Damage taken share",
       "goldShare": "Gold share",
@@ -957,7 +987,35 @@
       "partial": "{{ok}}/{{total}} scouted",
       "partialDesc": "Failed: {{names}}",
       "noEligible": "No scoutable members",
-      "noEligibleDesc": "Each member needs IGN, tag line, and region before they can be scouted."
-    }
+      "noEligibleDesc": "Each member needs IGN, tag line, and region before they can be scouted.",
+      "noRiotId": "Missing Riot ID",
+      "noRiotIdDesc": "Add IGN, tag, and region before scouting.",
+      "scopeTitleOne": "Scout {{name}} — how thorough?",
+      "scopeTitleAll": "Scout all opponents — how thorough?",
+      "scoutOneJobLabel": "Scout — {{name}}",
+      "scoutAllJobLabel": "Scout — {{team}}",
+      "scoutCancelled": "Scout cancelled",
+      "scoutCancelledDesc": "{{ok}} member(s) scouted before stopping · {{upserted}} entries.",
+      "dashboard": {
+        "title": "Opponent stats — per-player averages from this season (SoloQ + Flex + Clash)",
+        "compute": "Compute opponent stats",
+        "refresh": "Refresh stats",
+        "computing": "Computing…",
+        "computingDesc": "Fetching season games for every opponent — this can take up to a minute.",
+        "emptyHint": "Click \"Compute opponent stats\" to fetch the full season match history for every opponent.",
+        "slowHint": "Can take 30–60 seconds — we paginate through SoloQ + Flex + Clash for each member.",
+        "basedOn": "Per-player averages from {{n}} same-role games (this season)",
+        "approxDisclaimer": "Shares are approximations — opponents do not play together so percentages are based on per-player averages rather than real synergy games.",
+        "noGames": "No same-role games found",
+        "noGamesDesc": "None of the opponents have recent ranked games on their assigned role.",
+        "failed": "Opponent stats failed",
+        "staleHint": "Cached — refresh to update",
+        "freshHint": "Updated {{minutes}}min ago"
+      }
+    },
+    "confirmDelete": "Delete team \"{{name}}\"? Roster, champion pools, draft preps, and imported custom games will be lost. This cannot be undone.",
+    "deleted": "Team deleted",
+    "deleteFailed": "Failed to delete team",
+    "deleteTooltip": "Delete team"
   }
 }

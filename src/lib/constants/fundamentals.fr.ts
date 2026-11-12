@@ -89,15 +89,15 @@ export const FUNDAMENTALS_FR: FundamentalCategory[] = [
         kpis: [
           { id: 'minimap_frequency', label: 'Fréquence minimap', description: 'Regarder régulièrement la minimap toutes les quelques secondes' },
           { id: 'threat_anticipation', label: 'Anticipation des menaces', description: 'Prédire les ganks ou roams avant qu\'ils surviennent' },
-          { id: 'mia_reaction', label: 'Réaction aux MIA', description: 'Ajuster son positionnement quand des ennemis disparaissent' },
+          { id: 'mia_reaction', label: 'Réaction aux MIA(Missing in Action)', description: 'Ajuster son positionnement quand des ennemis disparaissent' },
           { id: 'camera_control', label: 'Contrôle de la caméra', description: 'Utiliser les mouvements de caméra pour récolter plus d\'informations que la minimap seule' },
           { id: 'crossmap_reaction', label: 'Réaction crossmap', description: 'Réagir rapidement aux escarmouches, dives et plays globaux ailleurs sur la carte' },
         ],
       },
       {
         id: 'csing_pathing',
-        label: 'CS / Déplacement',
-        description: 'Efficacité du last hit, objectifs CS/min (7+ pour les laners), et déplacement optimal sous pression.',
+        label: 'CS / Pathing jgler',
+        description: 'Efficacité du last hit, objectifs CS/min (7+ pour les laners), et pathing optimal sous pression.',
         kpis: [
           { id: 'last_hit_accuracy', label: 'Précision du last hit', description: 'Last hit régulier y compris sous la tour' },
           { id: 'cs_per_min', label: 'CS/min', description: 'Maintenir un CS élevé tout au long de la partie (objectif 7+)' },
@@ -190,7 +190,7 @@ export const FUNDAMENTALS_FR: FundamentalCategory[] = [
       {
         id: 'aggression_calibration',
         label: 'Calibrage de l\'agressivité',
-        description: 'Lire quand échanger, pocher, all-in, ou désengager selon les PV, la mana et les recharges.',
+        description: 'Lire quand trade, poke, all-in, ou désengager selon les PV, la mana et les cooldowns.',
         kpis: [
           { id: 'trade_windows', label: 'Fenêtres d\'échange', description: 'Reconnaître quand vous avez une fenêtre d\'échange favorable (CD ennemi utilisé, avantage de vague)' },
           { id: 'all_in_timing', label: 'Timing de l\'all-in', description: 'S\'engager en all-in seulement quand vous avez la pression du kill' },
@@ -235,20 +235,20 @@ export const FUNDAMENTALS_FR: FundamentalCategory[] = [
         kpis: [
           { id: 'pregame_research', label: 'Recherche pré-partie', description: 'Consulter les runes, builds et style de jeu spécifiques au match-up avant la partie' },
           { id: 'adaptation', label: 'Adaptation en jeu', description: 'S\'adapter aux picks inattendus ou styles de jeu non préparés' },
-          { id: 'level_one_plan', label: 'Plan de niveau 1', description: 'Commencer la lane avec une idée claire de qui gagne le niveau 1, le niveau 2 et les trois premières vagues' },
+          { id: 'level_one_plan', label: 'Plan de niveau 1', description: 'Commencer la lane avec une idée claire de qui gagne le niveau 1, le niveau 2 et les trois premières waves' },
           { id: 'rune_setup_accuracy', label: 'Précision des runes', description: 'Choisir les runes et shards qui correspondent réellement au match-up et au plan de lane' },
         ],
       },
       {
         id: 'wave_management',
-        label: 'Gestion de la vague',
+        label: 'Gestion des waves',
         description: 'Contrôler les vagues de sbires pour créer des avantages : freeze, push lent, push rapide, rebond et manipulation avancée.',
         kpis: [
-          { id: 'wave_state_awareness', label: 'Conscience de l\'état de vague', description: 'Connaître l\'état actuel de la vague et ce qu\'elle deviendra' },
-          { id: 'wave_manipulation_execution', label: 'Exécution de la manipulation', description: 'Réussir à mettre en place l\'état de vague désiré' },
-          { id: 'wave_objective_sync', label: 'Sync vague-objectif', description: 'Aligner les états de vague avec les objectifs et rappels' },
-          { id: 'enemy_wave_punish', label: 'Punition des erreurs de vague', description: 'Punir les erreurs adverses quand l\'ennemi thin, crash ou tient mal la vague' },
-          { id: 'lane_safety_through_wave', label: 'Sécurité via la vague', description: 'Utiliser la vague pour réduire le risque de gank au lieu de traiter la gestion de vague comme une mécanique isolée' },
+          { id: 'wave_state_awareness', label: 'Conscience de l\'état de wave', description: 'Connaître l\'état actuel de la wave et ce qu\'elle deviendra' },
+          { id: 'wave_manipulation_execution', label: 'Exécution de la manipulation de wave', description: 'Réussir à mettre en place l\'état de wave désiré' },
+          { id: 'wave_objective_sync', label: 'Sync wave-objectif', description: 'Aligner les états de waves avec les objectifs et rappels' },
+          { id: 'enemy_wave_punish', label: 'Punition des erreurs de wave', description: 'Punir les erreurs adverses quand l\'ennemi thin, crash ou tient mal la wave' },
+          { id: 'lane_safety_through_wave', label: 'Sécurité via la wave', description: 'Utiliser la wave pour réduire le risque de gank au lieu de traiter la gestion de wave comme une mécanique isolée' },
         ],
         subcategories: [
           {

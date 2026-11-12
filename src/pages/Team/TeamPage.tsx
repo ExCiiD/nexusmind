@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useToast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Users, Swords, Target, ListTree, Plus, BarChart3, LayoutDashboard, Sword, Trophy } from 'lucide-react'
+import { Users, Swords, Target, ListTree, Plus, BarChart3, LayoutDashboard, Sword, Trophy, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Team } from '@/lib/ipc'
 import { RosterTab } from './RosterTab'
@@ -13,6 +13,7 @@ import { ScoutingTab } from './ScoutingTab'
 import { StatsTab } from './StatsTab'
 import { DashboardTab } from './DashboardTab'
 import { CustomGamesStatsTab } from './CustomGamesStatsTab'
+import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
 
 type TabId = 'roster' | 'pool' | 'draft' | 'scouting' | 'stats' | 'dashboard' | 'scrim' | 'tournament'
 
@@ -59,6 +60,29 @@ export function TeamPage() {
     }
   }
 
+  const handleDeleteTeam = async (id: string, name: string) => {
+    const confirmed = confirm(t('team.confirmDelete', {
+      defaultValue: 'Delete team "{{name}}"? Roster, champion pools, draft preps, and imported custom games will be lost. This cannot be undone.',
+      name,
+    }))
+    if (!confirmed) return
+    try {
+      await window.api.deleteTeam(id)
+      if (activeTeamId === id) {
+        const remaining = teams.filter((t) => t.id !== id)
+        setActiveTeamId(remaining[0]?.id ?? null)
+      }
+      await load()
+      toast({ title: t('team.deleted', { defaultValue: 'Team deleted' }), description: name })
+    } catch (err) {
+      toast({
+        title: t('team.deleteFailed', { defaultValue: 'Failed to delete team' }),
+        description: (err as Error).message,
+        variant: 'destructive',
+      })
+    }
+  }
+
   const activeTeam = teams.find((t) => t.id === activeTeamId) ?? null
 
   return (
@@ -89,19 +113,35 @@ export function TeamPage() {
           </span>
         )}
         {teams.map((team) => (
-          <button
+          <div
             key={team.id}
-            onClick={() => setActiveTeamId(team.id)}
             className={cn(
-              'px-3 py-1 rounded-md text-sm font-medium transition-colors',
+              'group flex items-center rounded-md text-sm font-medium transition-colors',
               team.id === activeTeamId
                 ? 'bg-hextech-gold text-black'
                 : 'bg-white/5 text-hextech-text hover:bg-white/10',
             )}
           >
-            {team.name}
-            {team.tag && <span className="ml-1 text-xs opacity-60">[{team.tag}]</span>}
-          </button>
+            <button
+              onClick={() => setActiveTeamId(team.id)}
+              className="px-3 py-1 flex items-center"
+            >
+              {team.name}
+              {team.tag && <span className="ml-1 text-xs opacity-60">[{team.tag}]</span>}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleDeleteTeam(team.id, team.name) }}
+              className={cn(
+                'opacity-0 group-hover:opacity-100 transition-opacity pr-2 pl-1 py-1',
+                team.id === activeTeamId
+                  ? 'text-black/60 hover:text-red-700'
+                  : 'text-hextech-text-dim hover:text-red-400',
+              )}
+              title={t('team.deleteTooltip', { defaultValue: 'Delete team' })}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         ))}
         {creatingTeam ? (
           <div className="flex items-center gap-1">
@@ -158,31 +198,50 @@ export function TeamPage() {
         ))}
       </div>
 
-      {/* Tab content */}
+      {/* Tab content — each tab wrapped in its own error boundary so a
+          crash in one (e.g. a bad render in the synergy panel) never
+          black-screens the entire app. Each boundary's `key` is the tab
+          id so switching tabs always resets the boundary state. */}
       <div>
         {tab === 'roster' && (
-          <RosterTab team={activeTeam} loading={loading} onChange={load} />
+          <PanelErrorBoundary key="roster" label="Roster">
+            <RosterTab team={activeTeam} loading={loading} onChange={load} />
+          </PanelErrorBoundary>
         )}
         {tab === 'pool' && (
-          <ChampPoolTab team={activeTeam} onChange={load} />
+          <PanelErrorBoundary key="pool" label="Champion pool">
+            <ChampPoolTab team={activeTeam} onChange={load} />
+          </PanelErrorBoundary>
         )}
         {tab === 'draft' && (
-          <DraftTab myTeam={activeTeam} />
+          <PanelErrorBoundary key="draft" label="Draft sim">
+            <DraftTab myTeam={activeTeam} />
+          </PanelErrorBoundary>
         )}
         {tab === 'scouting' && (
-          <ScoutingTab />
+          <PanelErrorBoundary key="scouting" label="Scouting">
+            <ScoutingTab />
+          </PanelErrorBoundary>
         )}
         {tab === 'dashboard' && (
-          <DashboardTab team={activeTeam} />
+          <PanelErrorBoundary key="dashboard" label="Dashboard">
+            <DashboardTab team={activeTeam} />
+          </PanelErrorBoundary>
         )}
         {tab === 'stats' && (
-          <StatsTab team={activeTeam} />
+          <PanelErrorBoundary key="stats" label="Stats Flex">
+            <StatsTab team={activeTeam} />
+          </PanelErrorBoundary>
         )}
         {tab === 'scrim' && (
-          <CustomGamesStatsTab team={activeTeam} gameType="scrim" />
+          <PanelErrorBoundary key="scrim" label="Stats Scrim">
+            <CustomGamesStatsTab team={activeTeam} gameType="scrim" />
+          </PanelErrorBoundary>
         )}
         {tab === 'tournament' && (
-          <CustomGamesStatsTab team={activeTeam} gameType="tournament" />
+          <PanelErrorBoundary key="tournament" label="Stats Tournament">
+            <CustomGamesStatsTab team={activeTeam} gameType="tournament" />
+          </PanelErrorBoundary>
         )}
       </div>
     </div>

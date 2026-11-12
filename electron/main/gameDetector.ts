@@ -1,11 +1,19 @@
 import https from 'https'
 import { getMatch, getMatchIds, extractPlayerStats, isQueueSessionEligible } from './riotClient'
 import { getPrisma } from './database'
-import { agentLog } from './debugAgentLog'
 
 const LIVE_CLIENT_HOST = '127.0.0.1'
 const LIVE_CLIENT_PORT = 2999
 const POLL_INTERVAL_MS = 5_000
+
+/**
+ * How far back (relative to the detector's `gameStartedAt`) a match from
+ * Riot's history is still considered "the game we just played". Anything
+ * older is treated as stale history and skipped. 30 min of slack handles
+ * clock skew + slow LCU detection while still rejecting matches from a
+ * previous session.
+ */
+const STALE_MATCH_WINDOW_MS = 30 * 60 * 1000
 
 // ── Live Client API helpers ───────────────────────────────────────────────────
 
@@ -116,6 +124,14 @@ export class GameDetector {
     private onGameEnd: (matchData: any) => void,
     private onGameStart?: () => void,
     private onGameRawEnd?: () => void | Promise<void>,
+    /**
+     * Fired after the background Match-V5 enrich finishes updating
+     * (or creating) the Game row with the authoritative win/loss + queue
+     * type. The renderer uses this to refresh the session view so the
+     * `win: false` placeholder doesn't linger after the real result is
+     * available.
+     */
+    private onGameEnriched?: (info: { gameId: string; matchId: string; win: boolean; queueType: string }) => void,
   ) {}
 
   start() {
@@ -246,12 +262,18 @@ export class GameDetector {
 
       const isSummonersRift = snapshot.gameMode === 'CLASSIC'
       const isAram = snapshot.gameMode === 'ARAM'
+      const isArena = snapshot.gameMode === 'CHERRY'
+      // Modes for which we create a Game row so the user gets review +
+      // markers on the video timeline. Summoner's Rift drives session
+      // KPIs; Arena is review-only (still gets timeline events from
+      // match-v5). ARAM intentionally excluded for now — separate model.
+      const isTrackableMode = isSummonersRift || isArena
 
       const activeSession = await prisma.session.findFirst({
         where: { userId: user.id, status: 'active' },
       })
 
-      if (activeSession && isSummonersRift) {
+      if (activeSession && isTrackableMode) {
         const game = await prisma.game.create({
           data: {
             sessionId: activeSession.id,
@@ -266,35 +288,35 @@ export class GameDetector {
             duration: snapshot.duration,
             win: false,
             gameEndAt: new Date(),
-            queueType: 'pending',
-            isSessionEligible: true,
+            queueType: isArena ? 'arena' : 'pending',
+            // Arena games are review-only — they don't count toward
+            // session win-rate / role KPIs.
+            isSessionEligible: !isArena,
           },
         })
 
         const isOffRole =
+          !isArena &&
           !!user.mainRole &&
           !!snapshot.role &&
           snapshot.role !== 'UNKNOWN' &&
           user.mainRole.toUpperCase() !== snapshot.role.toUpperCase()
 
-        agentLog(
-          'gameDetector.ts:fireInstantGameEnd',
-          'instant-game-created',
-          { gameId: game.id, sessionId: activeSession.id, champion: snapshot.champion },
-          'INSTANT',
-        )
-
-        console.log(`[detector] Provisional game created (id=${game.id}) — review page should open now`)
+        console.log(`[detector] Provisional game created (id=${game.id}, mode=${snapshot.gameMode}) — review page should open now`)
 
         this.onGameEnd({
           game,
-          stats: { ...snapshot, gameEndAt: new Date().toISOString(), matchId: game.matchId, queueType: 'pending' },
+          stats: { ...snapshot, gameEndAt: new Date().toISOString(), matchId: game.matchId, queueType: isArena ? 'arena' : 'pending' },
           sessionId: activeSession.id,
           isOffRole,
-          isSessionEligible: true,
+          isSessionEligible: !isArena,
         })
       } else {
-        const reason = !activeSession ? 'no active session' : isAram ? 'ARAM' : `gameMode=${snapshot.gameMode}`
+        const reason = !activeSession
+          ? 'no active session'
+          : isAram
+            ? 'ARAM'
+            : `gameMode=${snapshot.gameMode}`
         console.log(`[detector] No provisional game — ${reason}`)
 
         this.onGameEnd({
@@ -302,7 +324,7 @@ export class GameDetector {
           stats: { ...snapshot, gameEndAt: new Date().toISOString(), queueType: 'unknown' },
           sessionId: null,
           isOffRole: false,
-          isSessionEligible: isSummonersRift,
+          isSessionEligible: isTrackableMode,
         })
       }
     } catch (err) {
@@ -326,7 +348,11 @@ export class GameDetector {
       ...linkedAccounts.map((a) => ({ puuid: a.puuid, region: a.region })),
     ]
 
-    const DELAYS_MS = [10_000, 15_000, 20_000, 30_000, 45_000]
+    // Match-V5 publishing is sometimes slow (especially after a quick
+    // FF) — extended the budget from 120s to 270s to give Riot enough
+    // time to publish the post-game data before we give up and leave the
+    // provisional row stuck at the placeholder `win: false`.
+    const DELAYS_MS = [10_000, 15_000, 20_000, 30_000, 45_000, 60_000, 90_000]
     let latestMatchId: string | null = null
     let matchRegion: string = user.region
     let stats: ReturnType<typeof extractPlayerStats> = null
@@ -343,7 +369,17 @@ export class GameDetector {
           const s = extractPlayerStats(matchData, acc.puuid)
           if (!s) return null
           const matchEndMs = s.gameEndAt ? new Date(s.gameEndAt).getTime() : 0
-          if (matchEndMs > 0 && matchEndMs < gameStartedAt) return null
+          // Relaxed "too old" guard: accept matches that ended up to
+          // STALE_MATCH_WINDOW_MS *before* the detected game start.
+          // Original strict check (`matchEndMs < gameStartedAt`) was
+          // dropping the correct match when:
+          //   - LCU detection was a few seconds late (5s poll cycle)
+          //   - Local clock had a small skew vs Riot servers
+          //   - Game ended via early FF (4-6 min), so the window between
+          //     `gameStartedAt` and `gameEndAt` was already tight.
+          // 30 min of slack covers all of these without re-picking stale
+          // history matches (which are always >>30min old).
+          if (matchEndMs > 0 && matchEndMs < gameStartedAt - STALE_MATCH_WINDOW_MS) return null
           return { matchId: ids[0], region: acc.region, stats: s }
         }),
       )
@@ -376,7 +412,6 @@ export class GameDetector {
 
     if (!latestMatchId || !stats) {
       console.log('[detector] Enrich: no match found after all retries')
-      agentLog('gameDetector.ts:enrichWithMatchApi', 'no-match', { reason: 'timeout' }, 'ENRICH')
       return
     }
 
@@ -419,12 +454,16 @@ export class GameDetector {
           })
         }
 
-        agentLog(
-          'gameDetector.ts:enrichWithMatchApi',
-          'game-updated',
-          { gameId: provisionalGame.id, matchId: latestMatchId, win: stats.win, queueType, sessionEligible },
-          'ENRICH',
-        )
+        try {
+          this.onGameEnriched?.({
+            gameId: provisionalGame.id,
+            matchId: latestMatchId,
+            win: stats.win,
+            queueType,
+          })
+        } catch (err) {
+          console.warn('[detector] onGameEnriched callback failed:', err)
+        }
       } else {
         const existing = await prisma.game.findUnique({ where: { matchId: latestMatchId } })
         if (!existing) {
@@ -432,7 +471,19 @@ export class GameDetector {
             where: { userId: user.id, status: 'active' },
           })
 
-          if (activeSession && sessionEligible) {
+          // Symmetric with `fireInstantGameEnd`: accept any queue type
+          // the provisional path would have accepted (CLASSIC → soloq/
+          // flex/normal, CHERRY → arena). The old `sessionEligible` gate
+          // dropped Normal SR games even when a session was running and
+          // the provisional row was somehow missing (e.g. LCU never
+          // responded at game start), which is the root of the "game not
+          // added" report. `isSessionEligible` itself is still computed
+          // from `sessionEligible` (soloq/flex only) so analytics stay
+          // ranked-only.
+          const isTrackableQueue =
+            queueType === 'soloq' || queueType === 'flex' ||
+            queueType === 'normal' || queueType === 'arena'
+          if (activeSession && isTrackableQueue) {
             const newGame = await prisma.game.create({
               data: {
                 sessionId: activeSession.id,
@@ -448,7 +499,7 @@ export class GameDetector {
                 win: stats.win,
                 gameEndAt: stats.gameEndAt,
                 queueType,
-                isSessionEligible: true,
+                isSessionEligible: sessionEligible,
                 opponentChampion: stats.opponentChampion ?? null,
               },
             })
@@ -469,14 +520,18 @@ export class GameDetector {
               console.log(`[detector] Enrich: linked orphan recording ${pendingRec.id} to game ${newGame.id}`)
             }
 
-            agentLog(
-              'gameDetector.ts:enrichWithMatchApi',
-              'game-created-fallback',
-              { gameId: newGame.id, matchId: latestMatchId, linkedRecording: pendingRec?.id ?? null },
-              'ENRICH',
-            )
+            try {
+              this.onGameEnriched?.({
+                gameId: newGame.id,
+                matchId: latestMatchId,
+                win: stats.win,
+                queueType,
+              })
+            } catch (err) {
+              console.warn('[detector] onGameEnriched callback failed:', err)
+            }
           } else {
-            const reason = !activeSession ? 'no active session' : 'not session-eligible'
+            const reason = !activeSession ? 'no active session' : `untrackable queue (${queueType})`
             console.log(`[detector] Enrich: no provisional game — ${reason}, skipping game creation`)
           }
         } else {

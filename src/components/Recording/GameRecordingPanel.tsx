@@ -6,7 +6,7 @@ import { RecordingMediaPanel } from './RecordingMediaPanel'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 import type { TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
-import type { GameEvent } from '@/lib/ipc'
+import type { GameEvent, Mistake, MistakeTag } from '@/lib/ipc'
 
 // ── Types & helpers ───────────────────────────────────────────────────────────
 
@@ -89,6 +89,11 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
   // Best-effort: empty array if timeline isn't available for this match.
   const [gameEvents, setGameEvents] = useState<GameEvent[]>([])
 
+  // Mistake Library — same data plane as RecordPlayerPage, surfaced here so
+  // the review player's sidebar exposes the "Mistakes" section/chip too.
+  const [mistakes, setMistakes] = useState<Mistake[]>([])
+  const [mistakeTags, setMistakeTags] = useState<MistakeTag[]>([])
+
   // Clip creation
   const [creatingClip, setCreatingClip] = useState(false)
   const [clipRange, setClipRange] = useState({ startMs: 0, endMs: 30_000 })
@@ -120,6 +125,54 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
       .catch(() => { /* best-effort, timeline often unavailable */ })
     return () => { cancelled = true }
   }, [gameId])
+
+  // Mistake tags are a near-static catalog (seeded on app start) — load once.
+  useEffect(() => {
+    window.api.listMistakeTags().then(setMistakeTags).catch(() => setMistakeTags([]))
+  }, [])
+
+  const reloadMistakes = useCallback(async () => {
+    try {
+      setMistakes(await window.api.listMistakesByGame(gameId))
+    } catch {
+      setMistakes([])
+    }
+  }, [gameId])
+
+  useEffect(() => { reloadMistakes() }, [reloadMistakes])
+
+  const handleAddMistake = useCallback(async (payload: {
+    tagId: string
+    gameTimeSec: number
+    videoTimeMs?: number
+    note?: string
+    severity?: number
+  }) => {
+    try {
+      await window.api.createMistake({
+        gameId,
+        tagId: payload.tagId,
+        gameTimeSec: payload.gameTimeSec,
+        videoTimeMs: payload.videoTimeMs,
+        note: payload.note,
+        severity: payload.severity,
+        recordingId: recording?.id,
+      })
+      await reloadMistakes()
+      toast({ title: t('mistakes.tagged', { defaultValue: 'Mistake tagged' }) })
+    } catch (err) {
+      toast({ title: t('mistakes.tagFailed', { defaultValue: 'Failed to tag mistake' }), description: (err as Error)?.message, variant: 'destructive' })
+    }
+  }, [gameId, recording?.id, reloadMistakes, toast, t])
+
+  const handleDeleteMistake = useCallback(async (id: string) => {
+    try {
+      await window.api.deleteMistake(id)
+      await reloadMistakes()
+    } catch (err) {
+      toast({ title: t('mistakes.deleteFailed', { defaultValue: 'Failed to delete mistake' }), description: (err as Error)?.message, variant: 'destructive' })
+    }
+  }, [reloadMistakes, toast, t])
 
   useEffect(() => {
     const off = window.api.onRecordingLinked((data) => {
@@ -339,6 +392,10 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
                   recordingCreatedAt: recording.createdAt,
                   startOffsetSec: recording.startOffsetSec,
                 } : undefined}
+                mistakes={mistakes}
+                mistakeTags={mistakeTags}
+                onAddMistake={handleAddMistake}
+                onDeleteMistake={handleDeleteMistake}
               />
 
               {/* Inline clip controls bar */}

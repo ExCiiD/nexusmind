@@ -27,7 +27,9 @@ import {
   Shield,
   TrendingUp,
   TrendingDown,
+  AlertTriangle,
 } from 'lucide-react'
+import type { MistakeTopTagEntry } from '@/lib/ipc'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { useTranslation } from 'react-i18next'
 import { formatKDA, formatGameTime, cn } from '@/lib/utils'
@@ -259,7 +261,50 @@ export function DashboardPage() {
           <CoachingPatternCard />
         </div>
       </div>
+
+      {/* Recurring mistakes (last 7 days) — appears only when there's data
+          to show. Same compact card style as the stat diffs so it doesn't
+          fight for attention until the user starts tagging. */}
+      <MistakeFrequencyCard onViewAll={() => navigate('/stats/mistakes')} />
     </div>
+  )
+}
+
+function MistakeFrequencyCard({ onViewAll }: { onViewAll: () => void }) {
+  const [top, setTop] = useState<MistakeTopTagEntry[]>([])
+  useEffect(() => {
+    window.api.getMistakeTopTags({ days: 7 })
+      .then((rows) => setTop(rows.slice(0, 3)))
+      .catch(() => setTop([]))
+  }, [])
+  if (top.length === 0) return null
+
+  return (
+    <Card>
+      <CardHeader className="pb-2 pt-4 px-4 flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <AlertTriangle className="h-4 w-4 text-amber-300" />
+          Recurring mistakes (7 days)
+        </CardTitle>
+        <Button variant="ghost" size="sm" onClick={onViewAll} className="text-xs h-7">
+          View all
+          <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+        </Button>
+      </CardHeader>
+      <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-2 px-4 pb-4">
+        {top.map((entry) => (
+          <div
+            key={entry.tag.id}
+            className="rounded-lg border border-hextech-border-dim bg-hextech-elevated px-3 py-2.5"
+            style={entry.tag.color ? { borderLeftColor: entry.tag.color, borderLeftWidth: 3 } : undefined}
+          >
+            <p className="text-xs text-hextech-text-bright font-medium truncate" title={entry.tag.label}>{entry.tag.label}</p>
+            <p className="text-[10px] text-hextech-text-dim capitalize">{entry.tag.category}</p>
+            <p className="text-lg font-bold text-amber-200 mt-1">{entry.count}<span className="ml-1 text-[10px] text-hextech-text-dim font-normal">tagged</span></p>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   )
 }
 

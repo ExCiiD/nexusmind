@@ -584,6 +584,29 @@ export interface ClipOptions {
   outputDir: string
 }
 
+/**
+ * Run ffmpeg with the given args and resolve with the exit code (or
+ * `null` on spawn failure). Captures stderr into a circular buffer so
+ * callers can log it on failure without keeping the whole stream in
+ * memory for long clips.
+ */
+function runFfmpeg(args: string[], timeoutMs = 120_000): Promise<{ code: number | null; stderrTail: string }> {
+  return new Promise((resolve) => {
+    if (!ffmpegBin) { resolve({ code: null, stderrTail: 'ffmpeg binary not found' }); return }
+    const proc = spawn(ffmpegBin, args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    let stderrTail = ''
+    proc.stderr?.on('data', (chunk: Buffer) => {
+      stderrTail = (stderrTail + chunk.toString('utf8')).slice(-4096)
+    })
+    const killer = setTimeout(() => {
+      try { proc.kill('SIGKILL') } catch { /* ok */ }
+      resolve({ code: null, stderrTail: 'timeout' })
+    }, timeoutMs)
+    proc.on('exit', (code) => { clearTimeout(killer); resolve({ code, stderrTail }) })
+    proc.on('error', () => { clearTimeout(killer); resolve({ code: null, stderrTail: 'spawn error' }) })
+  })
+}
+
 export async function createClip(options: ClipOptions): Promise<string | null> {
   if (!ffmpegBin || !existsSync(ffmpegBin)) return null
   if (!existsSync(options.filePath)) return null
@@ -599,23 +622,47 @@ export async function createClip(options: ClipOptions): Promise<string | null> {
   const startSecs = options.startMs / 1000
   const endSecs = options.endMs / 1000
 
-  return new Promise((resolve) => {
-    const args = [
-      '-ss', String(startSecs),
-      '-to', String(endSecs),
-      '-i', options.filePath,
-      '-c', 'copy',
-      '-movflags', '+faststart',
-      '-avoid_negative_ts', 'make_zero',
-      '-y',
-      outputPath,
-    ]
-    const proc = spawn(ffmpegBin!, args, { stdio: ['ignore', 'ignore', 'pipe'] })
-    proc.stderr?.resume()
-    proc.on('exit', (code) => resolve(code === 0 && existsSync(outputPath) ? outputPath : null))
-    proc.on('error', () => resolve(null))
-    setTimeout(() => { try { proc.kill() } catch { /* ok */ } resolve(null) }, 60_000)
-  })
+  // Fast path — `-c copy` rewraps without re-encoding. Cheap (a few
+  // hundred ms even for long clips) but the cut snaps to the nearest
+  // keyframe, which can produce a slightly different start time or, in
+  // pathological cases (e.g. open-GOP captures), fail outright.
+  const copyAttempt = await runFfmpeg([
+    '-ss', String(startSecs),
+    '-to', String(endSecs),
+    '-i', options.filePath,
+    '-c', 'copy',
+    '-movflags', '+faststart',
+    '-avoid_negative_ts', 'make_zero',
+    '-y',
+    outputPath,
+  ])
+  if (copyAttempt.code === 0 && existsSync(outputPath) && getFileSize(outputPath) > 0) {
+    return outputPath
+  }
+  // The copy attempt left a junk file behind (zero-byte or invalid).
+  try { if (existsSync(outputPath)) unlinkSync(outputPath) } catch { /* ignore */ }
+  console.warn('[createClip] -c copy failed (code=%s), falling back to re-encode:', copyAttempt.code, copyAttempt.stderrTail.slice(-300))
+
+  // Fallback — re-encode with libx264. Slower but frame-accurate.
+  // `-ss` after `-i` forces ffmpeg to decode up to the start point,
+  // guaranteeing the cut hits the exact frame instead of snapping
+  // backwards to a keyframe.
+  const reAttempt = await runFfmpeg([
+    '-i', options.filePath,
+    '-ss', String(startSecs),
+    '-to', String(endSecs),
+    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23',
+    '-c:a', 'aac', '-b:a', '160k',
+    '-movflags', '+faststart',
+    '-y',
+    outputPath,
+  ], 300_000)
+  if (reAttempt.code === 0 && existsSync(outputPath) && getFileSize(outputPath) > 0) {
+    return outputPath
+  }
+  console.warn('[createClip] re-encode fallback failed too (code=%s):', reAttempt.code, reAttempt.stderrTail.slice(-300))
+  try { if (existsSync(outputPath)) unlinkSync(outputPath) } catch { /* ignore */ }
+  return null
 }
 
 export function getFileSize(filePath: string): number {
