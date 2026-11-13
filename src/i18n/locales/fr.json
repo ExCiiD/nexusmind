@@ -397,6 +397,50 @@
       "objSuccess": "Obj. réussis",
       "sessions": "Sessions",
       "winRate": "Taux de victoire"
+    },
+    "gate": {
+      "title": "Bilan initial requis",
+      "desc": "Avant d'accéder aux statistiques, complétez votre premier bilan de compétences. NexusMind s'en sert comme point de départ pour suivre votre progression.",
+      "cta": "Faire mon bilan maintenant"
+    },
+    "summary": {
+      "title": "Où j'en suis",
+      "basedOn": "D'après votre dernier bilan ({{date}})",
+      "average": "Niveau moyen",
+      "sincePrevious": "{{delta}} depuis le bilan précédent",
+      "strengths": "Points forts",
+      "toWork": "À travailler",
+      "moves": "Plus gros changements",
+      "stable": "Pas de gros changement depuis le bilan précédent.",
+      "firstAssessment": "Faites un deuxième bilan pour voir votre progression."
+    },
+    "hints": {
+      "progress": "Chaque ligne est un fondamental dans le temps : bilans et scores KPI de vos sessions. Utilisez la période et le filtre pour vous concentrer sur quelques lignes.",
+      "bilans": "Barre dorée : votre dernier bilan. Barre grise : le précédent. Une barre dorée plus haute que la grise = progression.",
+      "sessions": "Barre dorée : votre score KPI moyen sur les sessions choisies. Barre grise : votre dernier bilan. Cela montre si vous jouez vos objectifs au niveau où vous vous êtes évalué."
+    },
+    "period": {
+      "label": "Période",
+      "all": "Tout",
+      "90d": "90 derniers jours",
+      "30d": "30 derniers jours"
+    },
+    "compare": {
+      "label": "Comparer",
+      "sessions": "Sessions prises en compte"
+    },
+    "filter": {
+      "label": "Fondamentaux",
+      "all": "Tous les fondamentaux",
+      "count": "{{count}} sélectionnés : {{names}}…",
+      "reset": "Tout afficher",
+      "hint": "Cliquez sur une catégorie ou un fondamental pour vous concentrer dessus, puis sur d'autres pour les ajouter ou les retirer.",
+      "noData": "Aucune donnée pour cette vue",
+      "dotLegend": "= a des données dans cette vue"
+    },
+    "changes": {
+      "titleBilans": "Évolution depuis le bilan précédent",
+      "titleSessions": "Écart entre vos sessions et votre bilan"
     }
   },
   "history": {
@@ -1110,8 +1154,13 @@
         "rateLimited": "Trop de tentatives. Patientez une minute puis réessayez.",
         "invalidCode": "Ce code est invalide ou expiré. Demandez-en un nouveau.",
         "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
-        "generic": "La connexion a échoué. Vérifiez votre connexion internet et réessayez."
-      }
+        "generic": "La connexion a échoué. Vérifiez votre connexion internet et réessayez.",
+        "needsInvite": "Cette adresse n'a pas encore de compte : NexusMind est sur invitation. Entrez votre code d'invitation.",
+        "inviteInvalid": "Ce code d'invitation est invalide, expiré, déjà utilisé ou réservé à une autre adresse."
+      },
+      "inviteLabel": "Code d'invitation",
+      "inviteHint": "NexusMind est sur invitation. Le code n'est demandé qu'à la première connexion (un code d'équipe ou de coaching fonctionne aussi).",
+      "haveInvite": "J'ai un code d'invitation"
     },
     "legal": {
       "privacy": "Politique de confidentialité",
@@ -1124,7 +1173,9 @@
       "deleteTitle": "Supprimer votre compte NexusMind ?",
       "deleteDesc": "Votre compte et TOUTES vos sauvegardes cloud seront définitivement supprimés. Les données de ce PC sont conservées. Tapez DELETE pour confirmer.",
       "deleteConfirm": "Supprimer définitivement",
-      "deleted": "Votre compte a été supprimé."
+      "deleted": "Votre compte a été supprimé.",
+      "openWeb": "Ouvrir l'app web",
+      "openWebHint": "Ouvre l'app web dans votre navigateur, déjà connecté à ce compte."
     },
     "backup": {
       "now": "Sauvegarder maintenant",
@@ -1567,6 +1618,28 @@
       "done": "fait",
       "wont_do": "ne sera pas fait",
       "duplicate": "doublon"
+    }
+  },
+  "access": {
+    "title": "Inviter sur NexusMind",
+    "desc": "L'accès est réservé aux personnes invitées. Chaque code sert une fois et expire après 14 jours.",
+    "emailLabel": "E-mail (optionnel)",
+    "emailPlaceholder": "réservé à cette adresse",
+    "noteLabel": "Note (optionnel)",
+    "notePlaceholder": "ex. joueur mid, essai",
+    "create": "Créer une invitation",
+    "rules": "Le code et le lien sont copiés automatiquement. Les codes d'équipe / de coaching donnent aussi accès à l'app.",
+    "copy": "Copier",
+    "copied": "Invitation copiée dans le presse-papiers",
+    "copyText": "Tu es invité sur NexusMind ! Code : {{code}} — ou ouvre {{url}}",
+    "revoke": "Révoquer",
+    "anyEmail": "toute adresse",
+    "expires": "expire le {{date}}",
+    "status": {
+      "active": "Active",
+      "used": "Utilisée",
+      "expired": "Expirée",
+      "revoked": "Révoquée"
     }
   }
 }

@@ -92,6 +92,13 @@ Lecture et actions légères pour qui n'a pas son PC (`web/`, `npm run web:dev` 
 - ⏳ Tableau de bord progression / analytics (lecture) ; résumé des games custom (`CustomGame`) dans l'analyse post-scrim ; découpage du bundle (254 Ko gzip).
 - Pas d'enregistrement, pas de détection de partie : ça reste desktop.
 
+### W6 — Accès sur invitation & connexion web automatique 🟡 (code fait, à tester)
+- ✅ Inscriptions publiques fermées : un nouveau compte n'est créé que par l'Edge Function `redeem-invite` à partir d'un **code d'accès** (`access_invites`, usage unique, 14 j, éventuellement réservé à un e-mail) ou d'un **code d'équipe / coaching** (W3). Limite anti-abus : 10 échecs / IP / heure.
+- ✅ Écran de connexion : champ « code d'invitation » demandé seulement à la première connexion ; liens `<web>/#invite=CODE` pré-remplis.
+- ✅ Admins (`app_admins`, ajoutés à la main dans Supabase) : carte « Inviter sur NexusMind » dans Réglages (desktop) et Compte (web) — créer, copier, révoquer.
+- ✅ Web : session persistante (localStorage, rafraîchie automatiquement) → pas de code à chaque ouverture ; bouton desktop **« Ouvrir l'app web »** (Edge Function `web-handoff` : jeton magic-link à usage unique dans le fragment d'URL, jamais envoyé par e-mail).
+- ⏳ Désactiver « Allow new users to sign up » dans Supabase Auth ; test bout en bout avec un compte invité.
+
 ### W5 — Notifications (≈ 1–2 sem.)
 - Canaux : in-app (Realtime), Web Push (PWA), Discord (webhooks déjà gérés), e-mail en option.
 - Événements : review commentée par le coach, nouvel objectif assigné, scrim planifié / rappel J-1 et H-1, analyse de scrim disponible, joueur inactif depuis X jours (côté coach), rapport hebdomadaire prêt.
@@ -134,12 +141,49 @@ Décision : pas d'IA. Supprimer `openaiClient.ts`, `ai.ipc.ts`, les panneaux `AI
 
 ---
 
+## Phase B — Autonomie du joueur ⏳
+
+Objectif : donner au joueur la boucle *hypothèse → pratique → mesure → verdict* et une méthode à chaque étape, pour qu'il apprenne à se diagnostiquer seul. Tout en règles métier, sur l'existant. (Exercices de pratique délibérée volontairement exclus : couverts par Skill Gap.)
+
+| # | Axe | Impact | Effort | S'appuie sur |
+|---|-----|--------|--------|--------------|
+| B1 | **Objectifs = expériences** : règle concrète + critère mesuré + durée (N games) → verdict automatique (acquis / en progrès / sans effet) ; fondamental « diplômé » puis suggestion du suivant | ⭐⭐⭐ | Moyen | Sessions, KPI, features de l'assistant |
+| B2 | **Revue des morts guidée** : saut vidéo 15 s avant chaque mort, 3 questions fixes, cause choisie dans la taxonomie → profil d'erreurs | ⭐⭐⭐ | Moyen | `eventExtractor`, VOD, Mistake Library |
+| B3 | **Revue à deux vitesses** : revue rapide 60 s après chaque game (3 questions, part des 3 points de l'assistant), revue complète 1 game sur 3 choisie par l'app (défaite serrée, écart à la moyenne) | ⭐⭐⭐ | Faible | Review, assistant |
+| B4 | **« Toi à ton meilleur vs ton pire »** : écarts entre tes 20 % meilleures et 20 % pires games, indicateurs qui pèsent sur tes victoires | ⭐⭐ | Faible | Régression locale (A4), features |
+| B5 | **Carnet de matchups** : note par couple champion/adversaire (niveaux clés, objet, plan de lane, ce qui m'a tué), remplie en 2 clics, affichée automatiquement en sélection des champions | ⭐⭐⭐ | Moyen–élevé | Nouveau : API locale du client LoL (LCU) pour la sélection |
+| B6 | **Grilles de niveau** : comportements observables par palier pour chaque fondamental, à cocher ; calibre l'auto-évaluation et révèle les biais | ⭐⭐ | Faible (surtout contenu) | Évaluations |
+| B8 | **Règles anti-tilt personnelles** : le joueur fixe ses limites, l'app rappelle et mesure respect + effet | ⭐⭐ | Faible | Règles tilt de l'assistant |
+| B9 | **Bibliothèque de référence** : clips/bookmarks classés par fondamental, « exemple à suivre » / « à ne plus faire », proposés avant une session | ⭐⭐ | Faible | Clips, bookmarks, reviews externes |
+| B10 | **Apprendre en analysant les autres** : revue croisée entre joueurs d'un groupe et étude de pros avec grilles ciblées | ⭐⭐ | Faible–moyen | Reviews externes, groupes W3 |
+
+Ordre conseillé : B1 → B2 + B3 → B4 → B5 → B6 / B8 / B9 / B10.
+
+Plans détaillés liés : [catalogue des règles métier](AUDIT_REGLES_METIER.md), [gestion d'équipe](PLAN_GESTION_EQUIPE.md), [vitrine](PLAN_VITRINE.md).
+
 ## Idées complémentaires 💡
 
 - Clips automatiques à chaque mort / erreur détectée (`eventExtractor` + `mistakeDetector` + bookmarks).
 - Export CSV/JSON des reviews et stats.
 - Rapport hebdomadaire partageable (Discord / lien web public).
 - Télémétrie anonyme opt-in pour mesurer les métriques du PRD §18.
+
+## Phase S — Audit de sécurité avant publication du site ⏳
+
+Dernière étape avant la mise en ligne publique complète : un audit de sécurité de **notre propre infrastructure** (app web, vitrine, Supabase, Workers Cloudflare, app desktop), mené sur un environnement de test avec des comptes de test, après sauvegarde. Objectif : vérifier qu'on ne peut pas accéder au compte ou aux données d'un autre utilisateur, et corriger puis retester toute faille critique ou haute avant publication. Peut être confié à un prestataire pentest ou outillé (OWASP ZAP, `supabase` advisors, revue manuelle).
+
+| Axe | Ce qu'on vérifie | Points de contrôle |
+|---|---|---|
+| S1 Authentification & invitations | Impossible de créer un compte ou de se connecter sans invitation valide ; pas d'énumération d'e-mails | Inscriptions publiques désactivées, `redeem-invite` (expiration, usage unique, e-mail lié, limite d'échecs par IP), réponses génériques, `web-handoff` à usage unique |
+| S2 Autorisation / RLS | Un utilisateur ne voit et ne modifie que ses données et celles partagées avec son consentement | Revue de toutes les politiques RLS (sync, backups, collab W3, scrims W4, invitations), helpers `private.*`, tests négatifs à deux comptes, `get_advisors` au vert |
+| S3 Isolation des données | Pas de fuite inter-comptes dans le stockage ni la synchro | Bucket `backups` (chemins par utilisateur), `sync_records` / `sync_push`, `access_invite_attempts` service-role only |
+| S4 Edge Functions & Worker | Entrées validées, secrets protégés, pas d'accès non authentifié aux fonctions sensibles | Vérification JWT (JWKS ES256 du proxy Riot), `getUser` dans chaque fonction, quotas, secrets hors du code |
+| S5 En-têtes & transport | En-têtes de sécurité stricts et HTTPS partout | CSP, HSTS, X-Frame-Options, `connect-src` minimal, pas de secret exposé côté client |
+| S6 Entrées & XSS | Pas d'injection via contenu utilisateur (noms, commentaires, feedback) | Échappement React, validation zod, assainissement des diagnostics joints aux rapports |
+| S7 App desktop | Durcissement Electron maintenu | `contextIsolation`/`sandbox`, protocole `nxm://` restreint, tokens confinés au main process, CSP au build |
+| S8 Dépendances & secrets | Pas de vulnérabilité connue ni de secret versionné | `npm audit`, scan du dépôt, rotation documentée des clés |
+
+Sortie : rapport de constats classés par gravité, corrections, puis re-test. Publication publique conditionnée à la résolution des constats critiques/hauts.
 
 ## Phase F — Finalisation (quand l'app est terminée) ⏳
 
@@ -153,4 +197,6 @@ Phase 0 ✅ → Phase 1 (sécurité) → Phase 2 (CI/tests)
                                    ├─→ W1 → W2 → W3 → W4 → W5
                                    └─→ A1 ✅ → A2 ✅ → A3 ✅ → A4 🟡 (en parallèle, local)
                                                          └─→ Phase F (signature, 1.0)
+
+Avant la mise en ligne publique du site complet : Phase S (audit de sécurité) → corrections → re-test.
 ```

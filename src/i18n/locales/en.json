@@ -397,6 +397,50 @@
       "objSuccess": "Obj. Success",
       "sessions": "Sessions",
       "winRate": "Win Rate"
+    },
+    "gate": {
+      "title": "First assessment required",
+      "desc": "Before seeing your statistics, complete your first skills assessment. NexusMind uses it as the starting point to track your progress.",
+      "cta": "Take my assessment now"
+    },
+    "summary": {
+      "title": "Where I stand",
+      "basedOn": "From your latest assessment ({{date}})",
+      "average": "Average level",
+      "sincePrevious": "{{delta}} since the previous assessment",
+      "strengths": "Strengths",
+      "toWork": "To work on",
+      "moves": "Biggest changes",
+      "stable": "No big change since the previous assessment.",
+      "firstAssessment": "Do a second assessment to see your progress."
+    },
+    "hints": {
+      "progress": "Each line is one fundamental over time: assessments plus your session KPI scores. Use the period and the filter to focus on a few lines.",
+      "bilans": "Gold bar: your latest assessment. Grey bar: the previous one. A gold bar higher than the grey one means progress.",
+      "sessions": "Gold bar: your average KPI score in the selected sessions. Grey bar: your latest assessment. It shows whether you play your objectives at the level you assessed yourself."
+    },
+    "period": {
+      "label": "Period",
+      "all": "All time",
+      "90d": "Last 90 days",
+      "30d": "Last 30 days"
+    },
+    "compare": {
+      "label": "Compare",
+      "sessions": "Sessions included"
+    },
+    "filter": {
+      "label": "Fundamentals",
+      "all": "All fundamentals",
+      "count": "{{count}} selected: {{names}}…",
+      "reset": "Show all",
+      "hint": "Click a category or a fundamental to focus on it, then click others to add or remove them.",
+      "noData": "No data for this view",
+      "dotLegend": "= has data in this view"
+    },
+    "changes": {
+      "titleBilans": "Changes since the previous assessment",
+      "titleSessions": "Sessions compared with your assessment"
     }
   },
   "history": {
@@ -1110,8 +1154,13 @@
         "rateLimited": "Too many attempts. Wait a minute and try again.",
         "invalidCode": "This code is invalid or expired. Request a new one.",
         "invalidEmail": "Please enter a valid e-mail address.",
-        "generic": "Sign-in failed. Check your connection and try again."
-      }
+        "generic": "Sign-in failed. Check your connection and try again.",
+        "needsInvite": "This address has no account yet: NexusMind is invite-only. Enter your invite code.",
+        "inviteInvalid": "This invite code is invalid, expired, already used or reserved for another address."
+      },
+      "inviteLabel": "Invite code",
+      "inviteHint": "NexusMind is invite-only. The code is only needed the first time you sign in (a team or coaching invite code works too).",
+      "haveInvite": "I have an invite code"
     },
     "legal": {
       "privacy": "Privacy policy",
@@ -1124,7 +1173,9 @@
       "deleteTitle": "Delete your NexusMind account?",
       "deleteDesc": "Your account and ALL your cloud backups will be permanently deleted. Data on this PC is kept. Type DELETE to confirm.",
       "deleteConfirm": "Delete permanently",
-      "deleted": "Your account has been deleted."
+      "deleted": "Your account has been deleted.",
+      "openWeb": "Open web app",
+      "openWebHint": "Opens the web app in your browser, already signed in to this account."
     },
     "backup": {
       "now": "Back up now",
@@ -1567,6 +1618,28 @@
       "done": "done",
       "wont_do": "won't do",
       "duplicate": "duplicate"
+    }
+  },
+  "access": {
+    "title": "Invite to NexusMind",
+    "desc": "Access is reserved to invited people. Each code works once and expires after 14 days.",
+    "emailLabel": "E-mail (optional)",
+    "emailPlaceholder": "reserved for this address",
+    "noteLabel": "Note (optional)",
+    "notePlaceholder": "e.g. mid laner, trial",
+    "create": "Create invite",
+    "rules": "The code and link are copied automatically. Team / coaching invite codes also grant access to the app.",
+    "copy": "Copy",
+    "copied": "Invite copied to clipboard",
+    "copyText": "You are invited to NexusMind! Code: {{code}} — or open {{url}}",
+    "revoke": "Revoke",
+    "anyEmail": "any address",
+    "expires": "expires {{date}}",
+    "status": {
+      "active": "Active",
+      "used": "Used",
+      "expired": "Expired",
+      "revoked": "Revoked"
     }
   }
 }

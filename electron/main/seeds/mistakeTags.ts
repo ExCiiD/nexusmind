@@ -45,9 +45,13 @@ const BUILT_IN_TAGS: BuiltInTag[] = [
   { slug: 'forgot-trinket',     label: 'Forgot trinket up',       category: 'vision',  color: '#0AC8B9' },
   { slug: 'no-ward-pre-obj',    label: 'No ward pre-objective',   category: 'vision',  color: '#0AC8B9' },
   { slug: 'walked-into-ward',   label: 'Walked into enemy ward',  category: 'vision',  color: '#0AC8B9' },
+  // Macro — detected automatically (docs/AUDIT_REGLES_METIER.md M5, M9)
+  { slug: 'death-before-objective', label: 'Died before a lost objective', category: 'macro', color: '#FF4655' },
+  { slug: 'caught-out',         label: 'Caught out alone',        category: 'macro',   color: '#FF4655' },
   // Economy
   { slug: 'late-back',          label: 'Late back',               category: 'economy', color: '#C8AA6E' },
   { slug: 'unused-gold',        label: 'Died with unspent gold',  category: 'economy', color: '#C8AA6E' },
+  { slug: 'cs-deficit',         label: 'CS deficit at 10 min',    category: 'economy', color: '#C8AA6E' },
   // Draft
   { slug: 'bad-rune-choice',    label: 'Bad rune choice',         category: 'draft',   color: '#A78BFA' },
 ]

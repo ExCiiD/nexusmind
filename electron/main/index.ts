@@ -37,7 +37,7 @@ import { registerSessionHandlers } from './ipc/session.ipc'
 import { registerReviewHandlers } from './ipc/review.ipc'
 import { registerAssessmentHandlers } from './ipc/assessment.ipc'
 import { registerAnalyticsHandlers } from './ipc/analytics.ipc'
-import { registerStatsHandlers } from './ipc/stats.ipc'
+import { registerStatsHandlers, prefetchGameAnalysis } from './ipc/stats.ipc'
 import { registerAccountHandlers } from './ipc/account.ipc'
 import { registerDevHandlers } from './ipc/dev.ipc'
 import { registerRecordingHandlers } from './ipc/recording.ipc'
@@ -738,6 +738,8 @@ async function bootstrap() {
       } catch (err) {
         console.warn('[main] Failed to emit game:updated:', err)
       }
+      // Timeline + automatic mistake detection, without waiting for the review.
+      prefetchGameAnalysis(info.gameId).catch((err) => console.warn('[main] post-game analysis failed:', (err as Error)?.message))
     },
   )
 

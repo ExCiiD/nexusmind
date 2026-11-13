@@ -209,7 +209,20 @@ async function ensureMatchCache(gameId: string, forceRefetch: boolean, logPrefix
   }
 }
 
+let loadGameEventsImpl: ((gameId: string, forceRefetch: boolean) => Promise<unknown>) | null = null
+
+/**
+ * Post-game analysis in the background: fetches + caches the timeline and,
+ * through the same path, runs the Mistake Library rules — so mistakes are
+ * already there when the player opens the review (AUDIT_REGLES_METIER MX2).
+ */
+export async function prefetchGameAnalysis(gameId: string): Promise<void> {
+  if (!loadGameEventsImpl) return
+  await loadGameEventsImpl(gameId, false)
+}
+
 export function registerStatsHandlers() {
+  loadGameEventsImpl = (gameId, forceRefetch) => loadGameEvents(gameId, forceRefetch)
   // Returns a compact list of game events for the video player timeline.
   // Lazy-fetches + caches the Riot Match-Timeline-V5 blob if not already cached.
   // Returns [] when timeline is unavailable (e.g. region temp outage) rather

@@ -11,9 +11,10 @@
  */
 
 import type { PlayerSelector } from './eventExtractor'
+import { detectAdvancedMistakes, type AdvancedTag } from './mistakeRules'
 
 export interface MistakeCandidate {
-  tagSlug: 'unused-gold' | 'dove-tower' | 'late-back' | 'overstay'
+  tagSlug: 'unused-gold' | 'dove-tower' | 'late-back' | 'overstay' | AdvancedTag
   gameTimeSec: number
   note?: string
   severity?: 1 | 2 | 3
@@ -319,6 +320,15 @@ export function detectMistakes(
       }
     }
   }
+
+  // Rules M5–M13 (see docs/AUDIT_REGLES_METIER.md §3.1).
+  const raw = match.info.participants.find((p: any) => p.participantId === pid)
+  out.push(...detectAdvancedMistakes(timeline, match, {
+    participantId: pid,
+    teamId: player.teamId,
+    championName: player.championName,
+    position: raw?.teamPosition ?? raw?.individualPosition ?? '',
+  }))
 
   return out
 }
