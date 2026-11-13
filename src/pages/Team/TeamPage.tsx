@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Users, Swords, Target, ListTree, Plus, BarChart3, LayoutDashboard, Sword, Trophy, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Team } from '@/lib/ipc'
+import { PublishTeamDialog } from './PublishTeamDialog'
 import { RosterTab } from './RosterTab'
 import { ChampPoolTab } from './ChampPoolTab'
 import { DraftTab } from './DraftTab'
@@ -26,6 +27,7 @@ export function TeamPage() {
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null)
   const [creatingTeam, setCreatingTeam] = useState(false)
   const [newTeamName, setNewTeamName] = useState('')
+  const [publishing, setPublishing] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -166,7 +168,22 @@ export function TeamPage() {
             {t('team.newTeam', { defaultValue: 'New team' })}
           </Button>
         )}
+        {activeTeam && window.api.teamPublishToGroup && (
+          <Button size="sm" variant="outline" className="ml-auto" onClick={() => setPublishing(true)}>
+            <Users className="h-3.5 w-3.5 mr-1" />
+            {t('team.publishToGroup', { defaultValue: 'Publish to a group…' })}
+          </Button>
+        )}
       </Card>
+
+      {activeTeam && (
+        <PublishTeamDialog
+          open={publishing}
+          onOpenChange={setPublishing}
+          teamId={activeTeam.id}
+          teamName={activeTeam.name}
+        />
+      )}
 
       {/* Tabs */}
       <div className="flex border-b border-hextech-border-dim">

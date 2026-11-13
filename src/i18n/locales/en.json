@@ -1129,7 +1129,22 @@
     "confirmDelete": "Delete team \"{{name}}\"? Roster, champion pools, draft preps, and imported custom games will be lost. This cannot be undone.",
     "deleted": "Team deleted",
     "deleteFailed": "Failed to delete team",
-    "deleteTooltip": "Delete team"
+    "deleteTooltip": "Delete team",
+    "publishToGroup": "Publish to a group…",
+    "publishTitle": "Publish \"{{name}}\" to a group",
+    "publishDesc": "The staff (owner/coach/analyst) of the group you pick will see your roster, champion pools, drafts and scouting notes on the web. This replaces whatever was published there before — it does not sync live, publish again after changes.",
+    "publishNoGroups": "You are not in any group yet — create or join one from Coaching first.",
+    "publishButton": "Publish",
+    "publishDone": "Team published",
+    "publishCount": "{{count}} rows shared",
+    "workspace": {
+      "title": "Team workspace",
+      "empty": "Nothing published yet for this group — a player publishes their team from the desktop app (Team → Publish to a group…).",
+      "roster": "Roster",
+      "drafts": "Drafts",
+      "picks": "picks",
+      "scouting": "Scouting"
+    }
   },
   "common": {
     "cancel": "Cancel",

@@ -36,11 +36,11 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
 
 ## 4. Features, par lots
 
-### E1 — Espace d'équipe partagé (fondation) ⭐⭐⭐
-- Tables serveur `team_rosters`, `team_pool_entries`, `team_drafts`, `team_scouting` liées au **groupe** (W3) au lieu du PC local ; migration « publier mon équipe locale dans le groupe ».
-- Édition concurrente simple (dernier qui écrit gagne + historique des modifications), verrou doux sur une draft en cours d'édition.
-- Desktop : la page Équipe lit/écrit l'espace partagé quand l'équipe est liée à un groupe ; reste locale sinon.
-- Web : mêmes onglets que le desktop (roster, pools, drafts, scouting) — réutilisation des composants comme pour Coaching.
+### E1 — Espace d'équipe partagé (fondation) 🟡 (v1 livré : publication + lecture ; édition partagée restante)
+- ✅ Tables serveur `team_rosters`, `team_pool_entries`, `team_drafts`, `team_scouting` liées au **groupe** (W3), RLS par rôle (staff = tout ; joueur = lecture + **son propre pool**, via `team_rosters.user_id`).
+- ✅ Desktop : bouton « Publier vers un groupe… » sur la page Équipe — prend un instantané de l'équipe locale (roster, pools, drafts du joueur actif, équipes adverses scoutées) et remplace ce qui était déjà publié pour ce groupe (« dernier qui écrit gagne », pas d'édition concurrente pour l'instant — historique des modifications non fait).
+- ✅ Web **et** desktop : nouvel « Espace d'équipe » sur la page Coaching (visible du staff), lecture du roster/pools/drafts/scouting publiés.
+- ⏳ Restant : édition partagée directement depuis le web (aujourd'hui lecture seule), lien automatique équipe↔groupe (aujourd'hui : publication ponctuelle, à refaire après chaque changement), verrou doux sur une draft en cours d'édition, réutilisation des onglets desktop complets (`ChampPoolTab`, `DraftTab`, `ScoutingTab`) côté web plutôt qu'une vue condensée.
 
 ### E2 — Tableau de bord staff (web d'abord) ⭐⭐⭐
 - Une ligne par joueur : forme récente (winrate 10 dernières, perf index de l'assistant), volume de jeu de la semaine, reviews faites / à faire, erreurs dominantes (Mistake Library), objectif en cours et son verdict (B1), humeur (E6).

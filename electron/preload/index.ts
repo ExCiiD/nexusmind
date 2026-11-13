@@ -135,6 +135,10 @@ const api = {
   notificationsMarkRead: (id: string) => ipcRenderer.invoke('notifications:mark-read', id),
   notificationsMarkAllRead: () => ipcRenderer.invoke('notifications:mark-all-read'),
 
+  // E1: shared team workspace
+  teamPublishToGroup: (groupId: string, teamId: string) => ipcRenderer.invoke('team:publish-to-group', groupId, teamId),
+  teamGetShared: (groupId: string) => ipcRenderer.invoke('team:get-shared', groupId),
+
   // Ascend cloud account & backups (tokens never leave the main process)
   cloudStatus: () => ipcRenderer.invoke('cloud:status'),
   cloudSendCode: (email: string, inviteCode?: string) => ipcRenderer.invoke('cloud:send-code', email, inviteCode ?? null),

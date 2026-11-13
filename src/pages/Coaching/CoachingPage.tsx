@@ -4,6 +4,7 @@ import { useCollab } from '@/hooks/useCollab'
 import { AssignedObjectivesCard } from '@/components/Coaching/AssignedObjectivesCard'
 import { GroupsSection } from './GroupsSection'
 import { PlayersSection } from './PlayersSection'
+import { TeamWorkspaceSection } from './TeamWorkspaceSection'
 
 /** Teams & coaching: groups, invitations, sharing, coach view of players. */
 export function CoachingPage() {
@@ -24,6 +25,7 @@ export function CoachingPage() {
         <>
           <AssignedObjectivesCard />
           {staffGroups.length > 0 && <PlayersSection staffGroups={staffGroups} myUserId={myUserId} nameOf={nameOf} />}
+          <TeamWorkspaceSection staffGroups={staffGroups} />
           <GroupsSection groups={groups} myUserId={myUserId} reload={reload} />
         </>
       )}

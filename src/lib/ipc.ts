@@ -2,6 +2,7 @@ import type { AccessInvite } from './accessCore'
 import type { CollabApi } from './collab'
 import type { FeedbackApi } from './feedback'
 import type { NotificationsApi } from './notifications'
+import type { TeamShareApi } from './team'
 import type {
   AssistantMoment,
   AssistantReport,
@@ -310,7 +311,7 @@ export interface SavedAccount {
   _count: { sessions: number }
 }
 
-export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & {
+export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareApi & {
   connectRiot: (gameName: string, tagLine: string, region: string, displayName?: string) => Promise<any>
   disconnectRiot: () => Promise<void>
   reactivateAccount: (userId: string) => Promise<any>

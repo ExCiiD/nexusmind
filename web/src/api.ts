@@ -1,5 +1,6 @@
 import * as core from '@/lib/collabCore'
 import * as notifications from '@/lib/notificationsCore'
+import * as team from '@/lib/teamCore'
 import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
@@ -144,6 +145,9 @@ export const webApi = {
     await notifications.markAllNotificationsRead(sb, await currentUserId())
     return { ok: true }
   },
+
+  // ── E1: shared team workspace (read-only on the web for now) ──
+  teamGetShared: (groupId: string) => team.getSharedTeam(sb, groupId),
 
   // ── bug reports / feature requests ──
   feedbackSend: async (report: FeedbackInput) =>

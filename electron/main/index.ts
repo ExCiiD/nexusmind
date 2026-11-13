@@ -60,6 +60,7 @@ import { startSyncService } from './sync/syncService'
 import { registerCollabHandlers } from './ipc/collab.ipc'
 import { registerFeedbackHandlers } from './ipc/feedback.ipc'
 import { registerNotificationsHandlers } from './ipc/notifications.ipc'
+import { registerTeamShareHandlers } from './ipc/teamShare.ipc'
 import { seedBuiltInMistakeTags } from './seeds/mistakeTags'
 import { isMediaPathAllowed } from './mediaAccess'
 
@@ -401,6 +402,7 @@ async function bootstrap() {
   registerAssistantHandlers()
   registerFeedbackHandlers()
   registerNotificationsHandlers()
+  registerTeamShareHandlers()
   if (isCloudConfigured()) {
     startAutoCloudBackup()
     startSyncService()

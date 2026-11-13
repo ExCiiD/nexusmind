@@ -1129,7 +1129,22 @@
     "confirmDelete": "Supprimer l'équipe « {{name}} » ? Roster, champion pools, drafts et parties personnalisées importées seront perdus. Cette action est irréversible.",
     "deleted": "Équipe supprimée",
     "deleteFailed": "Échec de la suppression",
-    "deleteTooltip": "Supprimer l'équipe"
+    "deleteTooltip": "Supprimer l'équipe",
+    "publishToGroup": "Publier vers un groupe…",
+    "publishTitle": "Publier « {{name}} » vers un groupe",
+    "publishDesc": "Le staff (owner/coach/analyste) du groupe choisi verra ton roster, tes pools de champions, tes drafts et tes notes de scouting sur le web. Ceci remplace ce qui était déjà publié — ça ne se synchronise pas en direct, republie après chaque changement.",
+    "publishNoGroups": "Tu n'es dans aucun groupe pour l'instant — crée ou rejoins-en un depuis Coaching d'abord.",
+    "publishButton": "Publier",
+    "publishDone": "Équipe publiée",
+    "publishCount": "{{count}} ligne(s) partagée(s)",
+    "workspace": {
+      "title": "Espace d'équipe",
+      "empty": "Rien de publié pour ce groupe pour l'instant — un joueur publie son équipe depuis l'app desktop (Équipe → Publier vers un groupe…).",
+      "roster": "Roster",
+      "drafts": "Drafts",
+      "picks": "picks",
+      "scouting": "Scouting"
+    }
   },
   "common": {
     "cancel": "Annuler",
