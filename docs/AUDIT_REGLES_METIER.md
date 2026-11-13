@@ -1,6 +1,6 @@
 # Audit des features & catalogue des règles métier
 
-> Objectif : rendre NexusMind **le plus automatique possible sans IA**, en laissant au joueur uniquement ce qui demande son jugement (et qui le fait progresser).
+> Objectif : rendre Ascend **le plus automatique possible sans IA**, en laissant au joueur uniquement ce qui demande son jugement (et qui le fait progresser).
 > Statut : ✅ codé · 🟡 partiel · ⏳ à faire. Dernière mise à jour : 13/11/2026.
 
 ---
@@ -76,8 +76,8 @@ Déclencheur commun : la timeline de la partie est disponible (après enrichisse
 | M11 | `bad-positioning` | combat d'équipe (≥ 3 morts en 15 s) où le joueur **meurt en premier** ; ADC / mid / support enchanteur → sévérité 2, autres → 1 | 1-2 | ✅ |
 | M12 | `bad-lane-opening` | laners : (a) mort avant 4:00, ou (b) CS à 5:00 inférieur de ≥ 8 à l'adversaire, ou (c) or à 5:00 < −400 ; 2 cas sur 3 → sévérité 3 | 2-3 | ✅ |
 | M13 | `cs-deficit` *(nouveau)* | laners : CS à 10:00 inférieur de ≥ 15 à l'adversaire direct (≥ 25 → 3) | 2-3 | ✅ |
-| M14 | `xp-deficit` *(nouveau)* | 2 niveaux de retard ou plus sur l'adversaire direct à 10:00 ou 15:00 | 2 | ⏳ |
-| M15 | `dead-during-objective` *(nouveau)* | mort et encore mort au moment d'un objectif majeur pris par l'ennemi (complète M5 quand la mort a lieu > 60 s avant) | 2 | ⏳ |
+| M14 | `xp-deficit` *(nouveau)* | 2 niveaux de retard ou plus sur l'adversaire direct à 10:00 ou 15:00 | 2 | ✅ |
+| M15 | `dead-during-objective` *(nouveau)* | mort et encore mort au moment d'un objectif majeur pris par l'ennemi (complète M5 quand la mort a lieu > 60 s avant) | 2 | reporté — nécessite une formule fiable du timer de mort (dépend du niveau et du temps de jeu) ; le risque de faux positifs est trop élevé sans elle |
 | M16 | `walked-into-ward` | non détectable (pas de position des wards) | — | manuel |
 | M17 | `face-checked` | non détectable fiablement (pas de buissons) | — | manuel |
 | M18 | `wasted-summoner`, `whiff-skillshot`, `bad-kiting`, `bad-engage-angle`, `bad-dmg-maximisation`, `bad-threat-assessment`, `bad-wave-sync`, `bad-rune-choice` | non observables dans les données Riot | — | manuel (le joueur les tague en VOD) |
@@ -85,17 +85,17 @@ Déclencheur commun : la timeline de la partie est disponible (après enrichisse
 Règles transverses de la Mistake Library :
 - **MX1 — Déduplication** : une erreur auto par (tag, minute) ; les erreurs manuelles ne sont jamais touchées.
 - **MX2 — Relance automatique** : la détection tourne dès que la timeline est en cache (enrichissement post-partie, ouverture d'une review, refresh) ✅.
-- **MX3 — Apprentissage du seuil** : si le joueur supprime ≥ 3 fois un même tag auto sans le recréer, sa sévérité par défaut baisse de 1 (⏳).
-- **MX4 — Top erreurs → objectif** : un tag présent dans ≥ 40 % des 10 dernières games devient une suggestion d'objectif (assistant) (⏳).
-- **MX5 — Clip auto** : erreur sévérité 3 avec vidéo liée → bookmark à `t − 15 s` (⏳).
+- **MX3 — Apprentissage du seuil** : si le joueur supprime ≥ 3 fois un même tag auto, sa sévérité par défaut baisse de 1 pour ce joueur (✅ ; simplification : compteur cumulatif, jamais remis à zéro par une recréation manuelle — voir [MOTEUR_REGLES.md](MOTEUR_REGLES.md)).
+- **MX4 — Top erreurs → objectif** : un tag présent dans ≥ 40 % des 10 dernières games devient une suggestion d'objectif (assistant) (✅ règle `dominant_mistake`).
+- **MX5 — Clip auto** : erreur sévérité 3 avec vidéo liée → bookmark à `t − 15 s` (✅, seulement si le décalage vidéo de l'enregistrement est fiable).
 
 ### 3.2 Sessions & objectifs
 
 | ID | Règle | Cas | Statut |
 |---|---|---|---|
 | S1 | Proposer l'objectif | (a) objectif assigné par le coach en cours → prioritaire ; (b) tag d'erreur récurrent (MX4) ; (c) fondamental le plus faible du bilan ; (d) objectif répété 4 sessions sans progrès → fondamental voisin | 🟡 (a)(c)(d) |
-| S2 | Objectif-expérience (B1) | critère mesurable choisi dans une liste (morts < 14 min, CS@10, wards/min, KP…) → verdict après N games : **acquis** (critère tenu ≥ 70 % des games), **en progrès** (tendance positive), **sans effet** | ⏳ |
-| S3 | Fin de session auto | aucune partie depuis 45 min (ou client fermé) → clôture + conclusion pré-remplie | ⏳ |
+| S2 | Objectif-expérience (B1) | critère mesurable choisi dans une liste (morts < 14 min, CS@10, wards/min, KP…) → verdict après N games : **acquis** (critère tenu ≥ 70 % des games), **en progrès** (tendance positive), **sans effet** | ✅ (moteur de coaching, lot 2) |
+| S3 | Fin de session auto | aucune partie depuis 45 min → clôture + conclusion pré-remplie | ✅ (détection « client fermé » non faite) |
 | S4 | Garde-fou de session | (a) 3 défaites d'affilée → suggestion de pause ; (b) règle anti-tilt du joueur (B8) atteinte → rappel ; (c) > 2 h 30 de jeu → fatigue | 🟡 (a)(c) |
 | S5 | Game hors rôle | rôle joué ≠ rôle principal → exclue des moyennes du rôle, signalée ✅ | ✅ |
 
@@ -103,16 +103,16 @@ Règles transverses de la Mistake Library :
 
 | ID | Règle | Cas | Statut |
 |---|---|---|---|
-| R1 | Notes horodatées pré-remplies | chaque mort, multi-kill, objectif pris/perdu, tour perdue → note à compléter | ⏳ |
-| R2 | Respect de l'objectif calculé | si l'objectif a un critère (S2) → coché/décoché automatiquement, modifiable | ⏳ |
+| R1 | Notes horodatées pré-remplies | chaque mort, multi-kill, objectif pris/perdu, tour perdue → note à compléter | ✅ |
+| R2 | Respect de l'objectif calculé | si l'objectif a un critère (S2) → coché/décoché automatiquement, modifiable | ✅ |
 | R3 | Détection de biais | KPI auto-noté ≥ 4 alors que l'indicateur lié est dans le pire tiers personnel → alerte « auto-évaluation optimiste » | ✅ (assistant) |
-| R4 | Choix de la review complète (B3) | priorité : défaite serrée (écart d'or final < 3k) > game avec ≥ 2 erreurs sévérité 3 > écart à la moyenne > dernière game | ⏳ |
-| R5 | Rappel de review | > 3 games non reviewées dans la session → bandeau ; coach notifié si > 7 jours (W5) | ⏳ |
+| R4 | Choix de la review complète (B3) | priorité : défaite serrée (écart d'or final < 3k) > game avec ≥ 2 erreurs sévérité 3 > écart à la moyenne > dernière game | ✅ |
+| R5 | Rappel de review | > 3 games non reviewées dans la session → bandeau (existant, assistant) ; game prioritaire désormais fournie (R4) ; coach notifié si > 7 jours → W5 | 🟡 (notification coach ⏳ W5) |
 
 ### 3.4 Assistant (Phase A) — existant, à enrichir
 
 Règles actuelles : morts précoces répétées, biais KPI, objectif sans progrès, tilt, baisse de vision, tendance CS, longue session… (voir `electron/main/assistant/rules.ts`).
-Ajouts proposés : **AS1** profil meilleur/pire (B4) ; **AS2** tag d'erreur dominant (MX4) ; **AS3** champion à sortir du pool (≥ 10 games, winrate < 40 %, KDA sous la moyenne personnelle) ; **AS4** heure de jeu défavorable (winrate après minuit < winrate global − 10 pts sur ≥ 15 games) ; **AS5** fatigue de série (performance des games 4+ d'une session < games 1-3).
+Ajouts proposés (✅ livrés avec le moteur de coaching, voir [MOTEUR_REGLES.md](MOTEUR_REGLES.md)) : **AS1** profil meilleur/pire (B4) ; **AS2** tag d'erreur dominant (MX4) ; **AS3** champion à sortir du pool (≥ 10 games, winrate < 40 %, KDA sous la moyenne personnelle) ; **AS4** heure de jeu défavorable (winrate après minuit < winrate global − 10 pts sur ≥ 15 games) ; **AS5** fatigue de série (performance des games 4+ d'une session < games 1-3).
 
 ### 3.5 Équipe (staff)
 
@@ -140,8 +140,8 @@ Ajouts proposés : **AS1** profil meilleur/pire (B4) ; **AS2** tag d'erreur domi
 
 | ID | Règle | Cas | Statut |
 |---|---|---|---|
-| P1 | Rappel de réévaluation | date planifiée atteinte ✅ ; ou écart stats/bilan > 1,5 point sur ≥ 3 fondamentaux | 🟡 |
-| P2 | Fondamental « diplômé » | verdict S2 « acquis » 2 fois de suite → badge + suggestion du fondamental suivant de la même catégorie | ⏳ |
+| P1 | Rappel de réévaluation | date planifiée atteinte ✅ ; ou écart stats/bilan > 1,5 point sur ≥ 3 fondamentaux | ✅ |
+| P2 | Fondamental « diplômé » | verdict S2 « acquis » 2 fois de suite → badge + suggestion du fondamental suivant de la même catégorie | ✅ |
 | P3 | Grilles de niveau (B6) | comportements cochés → niveau proposé ; écart > 1 avec l'auto-note → alerte biais | ⏳ |
 
 ---
@@ -155,5 +155,7 @@ Ajouts proposés : **AS1** profil meilleur/pire (B4) ; **AS2** tag d'erreur domi
 
 ## 5. Mise en œuvre
 
-- Cette itération : M5–M13 ✅ (9 nouvelles détections, 4 nouveaux tags), détection relancée automatiquement après chaque partie.
-- Suivant : M14–M15, MX3–MX5, puis S2/R1/R2/R4 avec la phase B.
+- M5–M13 ✅ (9 nouvelles détections, 4 nouveaux tags), détection relancée automatiquement après chaque partie.
+- Moteur de coaching (voir [MOTEUR_REGLES.md](MOTEUR_REGLES.md)) : S2, R2, P2 (lot 2) puis MX2 (corrigé), MX5, R1, R4, R5, S3 (lot 3), puis AS1, AS3, AS4, AS5, M14, MX3, P1 (lot 4) ✅. M15 reporté (formule de timer de mort pas assez fiable).
+- Lot 5 (page « Mon plan », pré-remplissage du bilan depuis les stats) ✅.
+- Les 5 lots du moteur de coaching sont livrés. Le moteur de règles métier est terminé pour cette itération ; la suite se trouve dans [PLAN_GESTION_EQUIPE.md](PLAN_GESTION_EQUIPE.md) (équipe) et [ROADMAP.md](ROADMAP.md) (reste du produit).

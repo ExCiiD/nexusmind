@@ -4,7 +4,7 @@ import { gzipSync, gunzipSync } from 'zlib'
 import { getPrisma, getPrismaNamespace } from '../database'
 
 /**
- * NexusMind backup format
+ * Ascend backup format
  * ───────────────────────
  * A gzipped JSON payload `{ manifest, tables }`, shared by the `.nexusmind`
  * file export and the cloud backup. Imports MERGE into the local database
@@ -116,6 +116,18 @@ const TABLES: TableSpec[] = [
     existing: (r, c) => ({ userId: c.localUserId, insightKey: r.insightKey }),
   },
   {
+    model: 'AdviceLog',
+    userField: 'userId',
+    existing: (r, c) => ({ userId: c.localUserId, problemId: r.problemId, day: r.day }),
+  },
+  { model: 'CoachingExperiment', userField: 'userId' },
+  {
+    model: 'MistakeTagTuning',
+    userField: 'userId',
+    parents: { tagId: 'MistakeTag' },
+    existing: (r, c) => ({ userId: c.localUserId, tagId: mapId(c, 'MistakeTag', r.tagId) }),
+  },
+  {
     model: 'Mistake',
     parents: { gameId: 'Game', tagId: 'MistakeTag' },
     optionalParents: { recordingId: 'Recording' },
@@ -180,7 +192,7 @@ export function decodeBackup(buf: Buffer): BackupPayload {
   }
   if (!payload?.manifest || !payload.tables) throw new Error('Invalid backup: missing manifest')
   if (payload.manifest.version > BACKUP_VERSION) {
-    throw new Error(`Backup made by a newer NexusMind (format v${payload.manifest.version}). Update the app first.`)
+    throw new Error(`Backup made by a newer Ascend (format v${payload.manifest.version}). Update the app first.`)
   }
   return payload
 }

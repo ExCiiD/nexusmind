@@ -1,4 +1,4 @@
-# NexusMind — Roadmap technique & produit
+# Ascend — Roadmap technique & produit
 
 > Issu de l'audit du 12/11/2026 (v0.2.0-beta.60). Ce document complète le [PRD](../PRD.md).
 > Légende : ✅ fait · 🔜 prochain · ⏳ planifié · 💡 idée
@@ -95,7 +95,7 @@ Lecture et actions légères pour qui n'a pas son PC (`web/`, `npm run web:dev` 
 ### W6 — Accès sur invitation & connexion web automatique 🟡 (code fait, à tester)
 - ✅ Inscriptions publiques fermées : un nouveau compte n'est créé que par l'Edge Function `redeem-invite` à partir d'un **code d'accès** (`access_invites`, usage unique, 14 j, éventuellement réservé à un e-mail) ou d'un **code d'équipe / coaching** (W3). Limite anti-abus : 10 échecs / IP / heure.
 - ✅ Écran de connexion : champ « code d'invitation » demandé seulement à la première connexion ; liens `<web>/#invite=CODE` pré-remplis.
-- ✅ Admins (`app_admins`, ajoutés à la main dans Supabase) : carte « Inviter sur NexusMind » dans Réglages (desktop) et Compte (web) — créer, copier, révoquer.
+- ✅ Admins (`app_admins`, ajoutés à la main dans Supabase) : carte « Inviter sur Ascend » dans Réglages (desktop) et Compte (web) — créer, copier, révoquer.
 - ✅ Web : session persistante (localStorage, rafraîchie automatiquement) → pas de code à chaque ouverture ; bouton desktop **« Ouvrir l'app web »** (Edge Function `web-handoff` : jeton magic-link à usage unique dans le fragment d'URL, jamais envoyé par e-mail).
 - ⏳ Désactiver « Allow new users to sign up » dans Supabase Auth ; test bout en bout avec un compte invité.
 
@@ -159,7 +159,7 @@ Objectif : donner au joueur la boucle *hypothèse → pratique → mesure → ve
 
 Ordre conseillé : B1 → B2 + B3 → B4 → B5 → B6 / B8 / B9 / B10.
 
-Plans détaillés liés : [catalogue des règles métier](AUDIT_REGLES_METIER.md), [gestion d'équipe](PLAN_GESTION_EQUIPE.md), [vitrine](PLAN_VITRINE.md).
+Plans détaillés liés : [moteur de coaching (design)](MOTEUR_REGLES.md), [catalogue des règles métier](AUDIT_REGLES_METIER.md), [gestion d'équipe](PLAN_GESTION_EQUIPE.md), [vitrine](PLAN_VITRINE.md).
 
 ## Idées complémentaires 💡
 

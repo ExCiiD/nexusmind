@@ -18,6 +18,7 @@
 import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
 import { detectMistakes, type MistakeCandidate } from '../mistakeDetector'
+import { nextTuning } from '../mistakeTuning'
 
 const TAG_CATEGORIES = new Set(['macro', 'micro', 'vision', 'economy', 'draft'])
 
@@ -124,7 +125,21 @@ export function registerMistakeHandlers() {
 
   ipcMain.handle('mistake:delete', async (_e, id: string) => {
     const prisma = getPrisma()
-    await prisma.mistake.delete({ where: { id } })
+    const deleted = await prisma.mistake.delete({ where: { id } })
+    // MX3: deleting an auto-detected mistake counts toward lowering that
+    // tag's default severity for this player. Manually-created ones never count.
+    if (deleted.autoDetected) {
+      const user = await prisma.user.findFirst({ where: { isActive: true } })
+      if (user) {
+        const existing = await prisma.mistakeTagTuning.findUnique({ where: { userId_tagId: { userId: user.id, tagId: deleted.tagId } } })
+        const { deletedCount, severityDelta } = nextTuning(existing?.deletedCount ?? 0)
+        await prisma.mistakeTagTuning.upsert({
+          where: { userId_tagId: { userId: user.id, tagId: deleted.tagId } },
+          create: { userId: user.id, tagId: deleted.tagId, deletedCount, severityDelta },
+          update: { deletedCount, severityDelta },
+        })
+      }
+    }
     return { success: true }
   })
 

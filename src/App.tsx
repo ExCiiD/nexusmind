@@ -3,6 +3,7 @@ import { useUserStore } from '@/store/useUserStore'
 import { AppLayout } from '@/components/Layout/AppLayout'
 import { OnboardingPage } from '@/pages/Onboarding/OnboardingPage'
 import { DashboardPage } from '@/pages/Dashboard/DashboardPage'
+import { MyPlanPage } from '@/pages/Plan/MyPlanPage'
 import { SessionPage } from '@/pages/Session/SessionPage'
 import { ReviewPage } from '@/pages/Review/ReviewPage'
 import { AnalyticsPage } from '@/pages/Analytics/AnalyticsPage'
@@ -49,6 +50,7 @@ export function App() {
         ) : (
           <Route element={<AppLayout />}>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/plan" element={<MyPlanPage />} />
             <Route path="/session" element={<SessionPage />} />
             <Route path="/replays" element={<Navigate to="/record" replace />} />
             <Route path="/record" element={<RecordPage />} />

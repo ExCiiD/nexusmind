@@ -132,6 +132,31 @@ describe('assistant IPC', () => {
     expect(await getPrisma().assistantFeedback.count()).toBe(0)
   })
 
+  it('logs each problem it puts forward once per day, and reads it back as history', async () => {
+    const prisma = getPrisma()
+    await prisma.adviceLog.deleteMany()
+    const report = await invoke('assistant:get-report', 'session')
+    expect(report.insights.length).toBeGreaterThan(0)
+    await invoke('assistant:get-report', 'session') // same day: no duplicate rows
+    const rows = await prisma.adviceLog.findMany()
+    expect(rows.map((r) => r.problemId).sort()).toEqual([...new Set(report.insights.map((i: any) => i.problemId))].sort())
+    expect(report.insights.filter((i: any) => i.focus).length).toBeLessThanOrEqual(1)
+
+    // Rows from previous days become history; today's do not count.
+    const { loadAdviceHistory, localDay } = await import('../../electron/main/assistant/assistant.ipc')
+    const user = await prisma.user.findFirstOrThrow()
+    const now = Date.now()
+    for (const daysAgo of [1, 2, 3]) {
+      const at = now - daysAgo * 86_400_000
+      await prisma.adviceLog.create({ data: { userId: user.id, problemId: 'farming', insightKey: `cs10_low:x${daysAgo}`, moment: 'session', day: localDay(at), shownAt: new Date(at) } })
+    }
+    const history = await loadAdviceHistory(user.id, now)
+    expect(history.farming.priorDays).toBe(3)
+    expect(history.farming.lastShownAt).toBe(now - 86_400_000)
+    const todayOnly = rows[0]?.problemId
+    if (todayOnly && todayOnly !== 'farming') expect(history[todayOnly]).toBeUndefined()
+  })
+
   it('rejects invalid input', async () => {
     await expect(invoke('assistant:get-report', 'monthly')).rejects.toThrow(/Invalid input/)
     await expect(invoke('assistant:feedback', 'k:1', 'not_a_rule', 'session', 1)).rejects.toThrow(/unknown rule/)

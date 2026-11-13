@@ -18,6 +18,7 @@ export type AdvancedTag =
   | 'bad-positioning'
   | 'bad-lane-opening'
   | 'cs-deficit'
+  | 'xp-deficit'
 
 export interface AdvancedCandidate {
   tagSlug: AdvancedTag
@@ -105,6 +106,10 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
   const goldOf = (f: any, id: number): number | null => {
     const g = f?.participantFrames?.[String(id)]?.totalGold
     return typeof g === 'number' ? g : null
+  }
+  const levelOf = (f: any, id: number): number | null => {
+    const l = f?.participantFrames?.[String(id)]?.level
+    return typeof l === 'number' ? l : null
   }
   const alliesWithin = (ts: number, center: Point, radius: number) => {
     const f = frameNear(ts)
@@ -251,6 +256,21 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
         note: `${gap} CS behind ${opponent.championName} at 10:00 (${cs10[0]} vs ${cs10[1]})`,
         severity: gap <= -25 ? 3 : 2,
       })
+    }
+
+    // M14 xp-deficit — 2+ levels behind the direct opponent at 10:00 or 15:00.
+    for (const [minute, ts] of [[10, 600], [15, 900]] as const) {
+      const f = frameAtMinute(minute)
+      const lv = [levelOf(f, pid), levelOf(f, opponent.participantId)]
+      if (f && lv[0] != null && lv[1] != null && lv[0] - lv[1] <= -2) {
+        out.push({
+          tagSlug: 'xp-deficit',
+          gameTimeSec: ts,
+          note: `Level ${lv[0]} vs ${opponent.championName}'s level ${lv[1]} at ${minute}:00`,
+          severity: lv[0] - lv[1] <= -3 ? 3 : 2,
+        })
+        break // one xp-deficit flag per game is enough signal
+      }
     }
   }
 

@@ -129,7 +129,7 @@ const api = {
   collabSetAssignmentStatus: (id: string, status: 'open' | 'done' | 'dismissed') =>
     ipcRenderer.invoke('collab:set-assignment-status', id, status),
 
-  // NexusMind cloud account & backups (tokens never leave the main process)
+  // Ascend cloud account & backups (tokens never leave the main process)
   cloudStatus: () => ipcRenderer.invoke('cloud:status'),
   cloudSendCode: (email: string, inviteCode?: string) => ipcRenderer.invoke('cloud:send-code', email, inviteCode ?? null),
   cloudSignInPassword: (email: string, password: string) => ipcRenderer.invoke('cloud:sign-in-password', email, password),
@@ -257,6 +257,8 @@ const api = {
 
   // Game events (kills, dragons, towers…) for video player timeline markers
   getGameEvents: (gameId: string) => ipcRenderer.invoke('stats:get-game-events', gameId),
+  // R1: draft timestamped notes built from this game's own events + mistakes
+  getPrefilledNotes: (gameId: string) => ipcRenderer.invoke('review:prefilled-notes', gameId),
 
   // Lane Phase Comparator — lazy-computed + cached on the Game row.
   // `getLanePhase` is the read-through path, `refreshLanePhase` forces a
@@ -375,6 +377,14 @@ const api = {
     ipcRenderer.invoke('coach:start-experiment', problemId, tagSlug, ruleId),
   coachAbandonExperiment: (experimentId: string) => ipcRenderer.invoke('coach:abandon-experiment', experimentId),
   coachObjectiveCheck: (gameId: string) => ipcRenderer.invoke('coach:objective-check', gameId),
+  // R4/R5: which unreviewed game to review first, and the backlog size
+  reviewPriorityGame: () => ipcRenderer.invoke('review:priority-game'),
+  // P1: stats/bilan gap check (reassessment reminder)
+  coachReassessmentCheck: () => ipcRenderer.invoke('coach:reassessment-check'),
+  // Lot 5: pre-fill the next self-assessment from recent stats
+  coachSuggestedScores: () => ipcRenderer.invoke('coach:suggested-scores'),
+  // Lot 5: minimal game info for an insight's "Why?" evidence list
+  coachGamesByIds: (gameIds: string[]) => ipcRenderer.invoke('coach:games-by-ids', gameIds),
 
   // Clips
   createClip: (opts: { recordingId: string; startMs: number; endMs: number; title?: string; linkedNoteText?: string }) =>

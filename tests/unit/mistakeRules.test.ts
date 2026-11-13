@@ -18,7 +18,7 @@ function match(playerRole = 'MIDDLE', duration = 1800) {
   return { info: { gameDuration: duration, participants } }
 }
 
-type Frame = { minute: number; pos?: Record<number, { x: number; y: number }>; cs?: Record<number, number>; gold?: Record<number, number>; events?: any[] }
+type Frame = { minute: number; pos?: Record<number, { x: number; y: number }>; cs?: Record<number, number>; gold?: Record<number, number>; level?: Record<number, number>; events?: any[] }
 
 function timeline(frames: Frame[], minutes = 30) {
   const out = []
@@ -26,12 +26,15 @@ function timeline(frames: Frame[], minutes = 30) {
     const f = frames.find((x) => x.minute === m)
     const participantFrames: Record<string, any> = {}
     for (let id = 1; id <= 10; id++) {
-      participantFrames[String(id)] = {
+      const pf: Record<string, any> = {
         position: f?.pos?.[id] ?? { x: 7000 + id * 10, y: 7000 },
         minionsKilled: f?.cs?.[id] ?? m * 7,
         jungleMinionsKilled: 0,
         totalGold: f?.gold?.[id] ?? 500 + m * 350,
       }
+      // Only set when a test cares — M5-M13 never read it, so this never affects them.
+      if (f?.level?.[id] != null) pf.level = f.level[id]
+      participantFrames[String(id)] = pf
     }
     out.push({ timestamp: m * 60_000, participantFrames, events: f?.events ?? [] })
   }
@@ -141,5 +144,27 @@ describe('mistake rules M5–M13', () => {
     // Junglers have no direct lane opponent → no lane rules.
     const jg = detectAdvancedMistakes(tl, match('JUNGLE'), { ...PLAYER, position: 'JUNGLE' })
     expect(tags(jg)).not.toContain('cs-deficit')
+  })
+
+  it('M14: 2+ levels behind the direct opponent at 10:00 → severity 2, 3+ levels → severity 3', () => {
+    const tl = timeline([{ minute: 10, level: { 1: 7, 6: 9 }, events: steadyWards() }])
+    const m = detectAdvancedMistakes(tl, match(), PLAYER).find((o) => o.tagSlug === 'xp-deficit')
+    expect(m).toMatchObject({ severity: 2, gameTimeSec: 600 })
+    expect(m?.note).toMatch(/Level 7/)
+
+    const tl3 = timeline([{ minute: 10, level: { 1: 6, 6: 9 }, events: steadyWards() }])
+    expect(detectAdvancedMistakes(tl3, match(), PLAYER).find((o) => o.tagSlug === 'xp-deficit')?.severity).toBe(3)
+  })
+
+  it('M14: no flag under a 2-level gap, and checks 15:00 when 10:00 is fine', () => {
+    const even = timeline([{ minute: 10, level: { 1: 8, 6: 9 }, events: steadyWards() }])
+    expect(tags(detectAdvancedMistakes(even, match(), PLAYER))).not.toContain('xp-deficit')
+
+    const laterGap = timeline([
+      { minute: 10, level: { 1: 8, 6: 9 }, events: steadyWards() },
+      { minute: 15, level: { 1: 9, 6: 11 }, events: steadyWards() },
+    ])
+    const m = detectAdvancedMistakes(laterGap, match(), PLAYER).find((o) => o.tagSlug === 'xp-deficit')
+    expect(m).toMatchObject({ gameTimeSec: 900 })
   })
 })

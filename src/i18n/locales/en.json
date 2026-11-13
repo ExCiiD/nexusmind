@@ -10,7 +10,8 @@
     "settings": "Settings",
     "help": "Help",
     "mistakes": "Mistakes",
-    "coaching": "Coaching"
+    "coaching": "Coaching",
+    "plan": "My Plan"
   },
   "settings": {
     "title": "Settings",
@@ -98,14 +99,17 @@
   "assessment": {
     "toast": {
       "successTitle": "Assessment complete!",
-      "successDesc": "Welcome to NexusMind. Let's start improving.",
+      "successDesc": "Welcome to Ascend. Let's start improving.",
       "errorTitle": "Failed to save assessment"
     },
     "saving": "Saving your assessment...",
     "backToDashboard": "Back to Dashboard",
     "title": "Reassessment",
     "subtitle": "Rate your current skill level across all fundamentals. This updates your progress charts and objective suggestions.",
-    "rankNote": "This does not reflect your level the way a rank does — it is precisely meant to position you relative to your current rank, and identify which fundamental concepts are your strengths and weaknesses at this point in your development."
+    "rankNote": "This does not reflect your level the way a rank does — it is precisely meant to position you relative to your current rank, and identify which fundamental concepts are your strengths and weaknesses at this point in your development.",
+    "prefill": {
+      "banner": "{{n}} fundamentals pre-filled from your recent stats ({{fundamentals}}) — starting from your previous rating. Freely editable."
+    }
   },
   "dashboard": {
     "welcome": "Welcome back,",
@@ -119,6 +123,7 @@
     "reassessmentBanner": {
       "title": "Time for your periodic assessment",
       "desc": "Update your skill ratings to keep your coaching data accurate.",
+      "statGapDesc": "Your recent stats have clearly shifted on {{n}} fundamentals compared to your last self-assessment. Worth updating it.",
       "cta": "Start Assessment"
     },
     "fullAssessmentButton": "Full skill assessment",
@@ -400,7 +405,7 @@
     },
     "gate": {
       "title": "First assessment required",
-      "desc": "Before seeing your statistics, complete your first skills assessment. NexusMind uses it as the starting point to track your progress.",
+      "desc": "Before seeing your statistics, complete your first skills assessment. Ascend uses it as the starting point to track your progress.",
       "cta": "Take my assessment now"
     },
     "summary": {
@@ -631,8 +636,10 @@
       "sessions_50": "Veteran",
       "sessions_50_desc": "Complete 50 sessions",
       "rank_up": "Climber",
-      "rank_up_desc": "Rank up while using NexusMind",
-      "locked": "Locked"
+      "rank_up_desc": "Rank up while using Ascend",
+      "locked": "Locked",
+      "fundamental_graduated": "Graduate",
+      "fundamental_graduated_desc": "Validate a fundamental in two experiments in a row"
     },
     "streak": {
       "noStreak": "Start a streak by reviewing games daily",
@@ -686,7 +693,8 @@
       "guideText": "Focus on decisions you made related to your session objective. What went right? What went wrong?",
       "timePlaceholder": "M:SS",
       "notePlaceholder": "What happened at this moment? What decision did you make?",
-      "addButton": "Add Timeline Note"
+      "addButton": "Add Timeline Note",
+      "autoBadge": "Pre-filled"
     }
   },
   "fundamentalsGrid": {
@@ -754,16 +762,16 @@
   },
   "help": {
     "title": "Help",
-    "subtitle": "Learn how to get the most out of NexusMind.",
+    "subtitle": "Learn how to get the most out of Ascend.",
     "toc": "Table of Contents",
     "whatIs": {
-      "title": "What is NexusMind?",
-      "body": "NexusMind is a League of Legends self-coaching desktop app. It helps you improve through a structured workflow: assessments, focused sessions, game reviews, detailed stats, and progression tracking over time — all local-first, with no cloud dependency.",
+      "title": "What is Ascend?",
+      "body": "Ascend is a League of Legends self-coaching desktop app. It helps you improve through a structured workflow: assessments, focused sessions, game reviews, detailed stats, and progression tracking over time — all local-first, with no cloud dependency.",
       "why": "No more scattered tools: one place to set your focus areas, review your games, and measure your progress."
     },
     "workflow": {
       "title": "How does it work?",
-      "body": "The NexusMind improvement cycle has 5 steps:",
+      "body": "The Ascend improvement cycle has 5 steps:",
       "steps": [
         "Periodic Fundamental Assessment — Rate your skills across the game's core fundamentals when you feel you've reached a milestone, or periodically.",
         "Session — Pick one or more objectives and start playing.",
@@ -781,7 +789,7 @@
       },
       "session": {
         "title": "Session",
-        "body": "Create a practice session by selecting one or more objectives (fundamentals). NexusMind auto-detects when your games end and prompts you to review them.",
+        "body": "Create a practice session by selecting one or more objectives (fundamentals). Ascend auto-detects when your games end and prompts you to review them.",
         "why": "Stay focused on specific goals instead of playing on autopilot."
       },
       "record": {
@@ -812,7 +820,7 @@
       "settings": {
         "title": "Settings",
         "body": "Manage your Riot accounts, configure auto-recording (folder, audio sources, mic), Discord webhooks, YouTube links, and experimental options.",
-        "why": "Tailor NexusMind to your setup for a smooth workflow."
+        "why": "Tailor Ascend to your setup for a smooth workflow."
       }
     },
     "tips": {
@@ -1126,7 +1134,8 @@
   "common": {
     "cancel": "Cancel",
     "create": "Create",
-    "delete": "Delete"
+    "delete": "Delete",
+    "loading": "Loading…"
   },
   "mistakes": {
     "deleteFailed": "Failed to delete mistake",
@@ -1134,13 +1143,13 @@
     "tagged": "Mistake tagged"
   },
   "cloud": {
-    "title": "NexusMind account",
+    "title": "Ascend account",
     "desc": "Cloud backups of your coaching data and access to Riot data. Videos stay on this PC.",
     "errors": {
       "title": "Cloud error"
     },
     "login": {
-      "title": "Sign in to NexusMind",
+      "title": "Sign in to Ascend",
       "subtitle": "First sign-in: enter your e-mail and we send you a code. After that you stay signed in, and an optional password avoids codes on a new device.",
       "emailLabel": "E-mail",
       "sendCode": "Send me a code",
@@ -1148,20 +1157,20 @@
       "codeLabel": "Sign-in code",
       "verify": "Sign in",
       "changeEmail": "Use another e-mail",
-      "why": "Why an account? Riot data is loaded through the NexusMind server (the Riot API key can't be shipped inside the app), and your account keeps cloud backups of your progress so you can switch PCs without losing anything.",
+      "why": "Why an account? Riot data is loaded through the Ascend server (the Riot API key can't be shipped inside the app), and your account keeps cloud backups of your progress so you can switch PCs without losing anything.",
       "consent": "By signing in you accept the",
       "errors": {
         "rateLimited": "Too many attempts. Wait a minute and try again.",
         "invalidCode": "This code is invalid or expired. Request a new one.",
         "invalidEmail": "Please enter a valid e-mail address.",
         "generic": "Sign-in failed. Check your connection and try again.",
-        "needsInvite": "This address has no account yet: NexusMind is invite-only. Enter your invite code.",
+        "needsInvite": "This address has no account yet: Ascend is invite-only. Enter your invite code.",
         "inviteInvalid": "This invite code is invalid, expired, already used or reserved for another address.",
         "badPassword": "Wrong e-mail or password. No password yet? Get a code by e-mail.",
         "weakPassword": "Password too weak: at least 8 characters, with a letter and a digit."
       },
       "inviteLabel": "Invite code",
-      "inviteHint": "NexusMind is invite-only. The code is only needed the first time you sign in (a team or coaching invite code works too).",
+      "inviteHint": "Ascend is invite-only. The code is only needed the first time you sign in (a team or coaching invite code works too).",
       "haveInvite": "I have an invite code",
       "passwordLabel": "Password",
       "signInPassword": "Sign in",
@@ -1181,7 +1190,7 @@
       "signedInAs": "Signed in as",
       "signOut": "Sign out",
       "delete": "Delete my account",
-      "deleteTitle": "Delete your NexusMind account?",
+      "deleteTitle": "Delete your Ascend account?",
       "deleteDesc": "Your account and ALL your cloud backups will be permanently deleted. Data on this PC is kept. Type DELETE to confirm.",
       "deleteConfirm": "Delete permanently",
       "deleted": "Your account has been deleted.",
@@ -1233,7 +1242,7 @@
   "coaching": {
     "title": "Teams & coaching",
     "subtitle": "Share your reviews with a coach or your team, get feedback and objectives.",
-    "unavailable": "Sign in to your NexusMind account to use teams and coaching.",
+    "unavailable": "Sign in to your Ascend account to use teams and coaching.",
     "roles": {
       "owner": "Owner",
       "coach": "Coach",
@@ -1317,7 +1326,7 @@
       "INVITE_INVALID": "This code is invalid or expired.",
       "FORBIDDEN": "You don't have permission to do this.",
       "TOO_MANY_GROUPS": "You already own the maximum number of groups (10).",
-      "LOGIN_REQUIRED": "Sign in to your NexusMind account first.",
+      "LOGIN_REQUIRED": "Sign in to your Ascend account first.",
       "generic": "Something went wrong. Check your connection and try again."
     }
   },
@@ -1397,7 +1406,9 @@
       "kp": "Kill participation",
       "goldDiff10": "Gold diff @10",
       "laneScore": "Lane phase score",
-      "objectiveRespected": "Objective respected"
+      "objectiveRespected": "Objective respected",
+      "kda": "KDA",
+      "goldDiff14": "Gold diff at 14 min"
     },
     "rules": {
       "early_deaths_pattern": {
@@ -1519,7 +1530,32 @@
         "v1": "{{wins}} wins in a row! Keep the same routine.",
         "v2": "Win streak: {{wins}}. Whatever you're doing, keep doing it.",
         "v3": "{{wins}} straight wins, {{name}}. Stay focused on your objective."
+      },
+      "dominant_mistake": {
+        "v1": "\"{{tag}}\" is your main mistake: present in {{count}} of your last {{n}} games. Make it your objective.",
+        "v2": "Dominant mistake: \"{{tag}}\" in {{count}}/{{n}} recent games. It's the fundamental that will pay off most right now."
+      },
+      "weak_champion_pool": {
+        "v1": "{{champion}}: {{winrate}}% winrate over {{games}} games, and a KDA below your average. Worth reworking or dropping from your pool for now.",
+        "v2": "On {{champion}} ({{games}} games), your winrate ({{winrate}}%) and KDA are below your usual level. A candidate to drop from your pool."
+      },
+      "bad_hour_performance": {
+        "v1": "Your games after midnight: {{nightWinrate}}% winrate over {{n}} games, vs {{overallWinrate}}% overall. Worth avoiding for ranked.",
+        "v2": "{{n}} games played after midnight at {{nightWinrate}}% winrate, well below your usual {{overallWinrate}}%."
+      },
+      "session_fatigue": {
+        "v1": "Across {{sessions}} sessions of 4+ games, your performance drops clearly from the 4th game on. An earlier break might help.",
+        "v2": "Session fatigue detected across {{sessions}} sessions: games 4+ are clearly below the first 3."
       }
+    },
+    "focus": "Focus",
+    "focusHint": "Top priority right now: what costs you the most wins.",
+    "support_one": "Confirmed by 1 other signal.",
+    "support_other": "Confirmed by {{count}} other signals.",
+    "bestWorst": {
+      "title": "You at your best vs you at your worst",
+      "vs": "vs",
+      "explain": "Average of your {{best}} best games vs your {{worst}} worst (by performance index). A trend, not an absolute rule."
     }
   },
   "web": {
@@ -1541,11 +1577,11 @@
     "reviews": {
       "title": "Your reviews",
       "subtitle": "Synced from your PC. Edit them in the desktop app; reply to your coach here.",
-      "empty": "Nothing synced yet. Open NexusMind on your PC while signed in."
+      "empty": "Nothing synced yet. Open Ascend on your PC while signed in."
     },
     "account": {
-      "deleteHint": "To delete your account and cloud data, use Settings → NexusMind account in the desktop app.",
-      "desktop": "NexusMind for Windows: recording, live game detection, reviews.",
+      "deleteHint": "To delete your account and cloud data, use Settings → Ascend account in the desktop app.",
+      "desktop": "Ascend for Windows: recording, live game detection, reviews.",
       "download": "Download"
     },
     "scrims": {
@@ -1597,13 +1633,13 @@
       }
     },
     "download": {
-      "short": "Download NexusMind",
-      "full": "Download NexusMind for Windows"
+      "short": "Download Ascend",
+      "full": "Download Ascend for Windows"
     }
   },
   "feedback": {
     "button": "Report a bug / suggest",
-    "title": "Help improve NexusMind",
+    "title": "Help improve Ascend",
     "desc": "Your report goes straight to the developer. You'll see its status here.",
     "kinds": {
       "bug": "Report a bug",
@@ -1640,7 +1676,7 @@
     }
   },
   "access": {
-    "title": "Invite to NexusMind",
+    "title": "Invite to Ascend",
     "desc": "Access is reserved to invited people. Each code works once and expires after 14 days.",
     "emailLabel": "E-mail (optional)",
     "emailPlaceholder": "reserved for this address",
@@ -1650,7 +1686,7 @@
     "rules": "The code and link are copied automatically. Team / coaching invite codes also grant access to the app.",
     "copy": "Copy",
     "copied": "Invite copied to clipboard",
-    "copyText": "You are invited to NexusMind! Code: {{code}} — or open {{url}}",
+    "copyText": "You are invited to Ascend! Code: {{code}} — or open {{url}}",
     "revoke": "Revoke",
     "anyEmail": "any address",
     "expires": "expires {{date}}",
@@ -1659,6 +1695,81 @@
       "used": "Used",
       "expired": "Expired",
       "revoked": "Revoked"
+    }
+  },
+  "coach": {
+    "problems": {
+      "laning": "Laning phase",
+      "deaths": "Avoidable deaths",
+      "farming": "Farming",
+      "vision": "Vision",
+      "objective-setup": "Objective setup",
+      "map-awareness": "Map awareness",
+      "gold-management": "Gold management",
+      "teamfight": "Teamfights",
+      "mechanics": "Mechanics",
+      "preparation": "Preparation (runes, matchup)",
+      "objective-progress": "Session objective",
+      "self-assessment": "Self-assessment",
+      "review-habit": "Reviews",
+      "tilt-fatigue": "Tilt and fatigue",
+      "momentum": "Momentum",
+      "other-mistakes": "Other mistakes",
+      "champion-pool": "Champion pool",
+      "play-schedule": "Play schedule",
+      "session-fatigue": "Session fatigue"
+    },
+    "criterion": {
+      "max": {
+        "deathsBefore14": "At most {{target}} death(s) before 14 min",
+        "deathsBefore10": "At most {{target}} death(s) before 10 min",
+        "deaths": "At most {{target}} deaths in the game",
+        "generic": "{{metric}}: at most {{target}}"
+      },
+      "min": {
+        "csPerMin": "At least {{target}} CS/min",
+        "visionPerMin": "At least {{target}} vision/min",
+        "kp": "At least {{target}}% kill participation",
+        "generic": "{{metric}}: at least {{target}}"
+      },
+      "noMistake": "No \"{{tags}}\" mistake in the game"
+    },
+    "experiment": {
+      "activeTitle": "Experiment running",
+      "doneTitle": "Experiment result",
+      "progress": "{{passes}} passed out of {{counted}} · {{left}} game(s) to go.",
+      "fromSession": "Started automatically from the session objective.",
+      "abandon": "Abandon the experiment",
+      "start": "Test it over {{n}} games",
+      "startHint": "The app checks the criterion on each of your next 5 games, then gives a verdict.",
+      "verdict": {
+        "acquired": "Acquired: criterion met in {{rate}}% of games ({{passes}}/{{counted}}).",
+        "progressing": "Progressing: clearly better than your average, not consistent yet ({{passes}}/{{counted}}).",
+        "no_effect": "No effect so far ({{passes}}/{{counted}}): the next focus will try another angle."
+      },
+      "graduated": "{{objective}} validated twice in a row: fundamental acquired!",
+      "next": "Next: {{objective}}."
+    },
+    "review": {
+      "prefilled": "Pre-filled from the running experiment: {{criterion}} — {{result}}. You can change it.",
+      "passed": "met",
+      "failed": "not met"
+    }
+  },
+  "plan": {
+    "title": "My plan",
+    "subtitle": "What the app suggests right now, why, and what has already worked.",
+    "empty": "Not enough games yet to build a plan. Check back after a few more.",
+    "focusTitle": "Your #1 priority",
+    "otherTitle": "Also worth watching",
+    "otherDesc": "Lower priority than the focus, but worth keeping in mind.",
+    "why": "Why?",
+    "historyTitle": "Experiment history",
+    "graduatedTitle": "Graduated fundamentals",
+    "verdict": {
+      "acquired": "Acquired",
+      "progressing": "Progressing",
+      "no_effect": "No effect"
     }
   }
 }

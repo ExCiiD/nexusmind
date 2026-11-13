@@ -9,6 +9,7 @@ import { useGameStore } from '@/store/useGameStore'
 import { XPBar } from '@/components/Gamification/XPBar'
 import { StreakCounter } from '@/components/Gamification/StreakCounter'
 import { CoachingPatternCard } from '@/components/Coaching/CoachingPatternCard'
+import { ReassessmentBanner } from '@/components/Coaching/ReassessmentBanner'
 import { AssistantCard } from '@/components/Assistant/AssistantCard'
 import { ProgressChart } from '@/components/Charts/ProgressChart'
 import {
@@ -21,7 +22,6 @@ import {
   ShieldCheck,
   Eye,
   Trophy,
-  ClipboardList,
   ClipboardCheck,
   Clock,
   ChevronRight,
@@ -78,8 +78,6 @@ export function DashboardPage() {
 
   if (!user) return null
 
-  const needsReassessment = user.nextAssessmentAt && new Date(user.nextAssessmentAt) < new Date()
-
   // Resolve session objective IDs
   const sessionObjectiveIds = (() => {
     if (!activeSession) return []
@@ -114,20 +112,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {needsReassessment && (
-        <div className="flex items-center justify-between rounded-lg border border-hextech-gold/30 bg-hextech-gold/5 px-4 py-2.5">
-          <div className="flex items-center gap-3">
-            <ClipboardList className="h-4 w-4 text-hextech-gold shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-hextech-gold-bright">{t('dashboard.reassessmentBanner.title')}</p>
-              <p className="text-xs text-hextech-text">{t('dashboard.reassessmentBanner.desc')}</p>
-            </div>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => navigate('/assessment')} className="shrink-0 ml-4 border-hextech-gold/50 text-hextech-gold hover:bg-hextech-gold/10">
-            {t('dashboard.reassessmentBanner.cta')}
-          </Button>
-        </div>
-      )}
+      <ReassessmentBanner />
 
       {/* Main row: content (2/3) + sidebar (1/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

@@ -11,7 +11,7 @@
  * (`assistant.rules.<id>.v1..vN` in en.json / fr.json). No code change.
  */
 
-import { roleBucket, type GameFeatures, type Metric, type MetricStats, type PlayerContext } from './features'
+import { mean, roleBucket, type GameFeatures, type Metric, type MetricStats, type PlayerContext } from './features'
 
 export type Moment = 'post_game' | 'session' | 'weekly'
 export type Op = '>=' | '<=' | '>' | '<' | '=='
@@ -46,6 +46,12 @@ export type Condition =
   | { kind: 'role'; bucket: 'jungle' | 'support' | 'laner'; not?: boolean }
   /** Some mistake tag shows up in at least `atLeast` of the newest `of` games. */
   | { kind: 'recurringMistake'; atLeast: number; of: number; as?: string }
+  /** AS3: a champion with ≥ minGames, winrate < maxWinrate (%), and KDA below the player's own average. */
+  | { kind: 'weakChampion'; minGames: number; maxWinrate: number; as?: string }
+  /** AS4: winrate in [startHour, endHour) local time is at least `gapAtLeast` points below the overall winrate. */
+  | { kind: 'badHour'; startHour: number; endHour: number; minGames: number; gapAtLeast: number; as?: string }
+  /** AS5: mean perfIndex of games 4+ in a session is at least `gapAtLeast` below games 1-3, across enough sessions. */
+  | { kind: 'sessionFatigue'; minSessionGames: number; minQualifyingSessions: number; gapAtLeast: number; as?: string }
 
 export type ActionSpec =
   | { type: 'objective'; objectiveId: string }
@@ -55,6 +61,8 @@ export type ActionSpec =
   | { type: 'break'; minutes: number }
   | { type: 'drill'; drillId: string }
   | { type: 'review' }
+  /** Objective = the fundamental of the matched mistake tag's problem (problems.ts). */
+  | { type: 'mistakeObjective' }
 
 export type ParamSpec = string | { from: string; digits?: number; kind?: 'objective' }
 
@@ -433,6 +441,56 @@ export const RULES: Rule[] = [
     why: { key: 'lastGames', n: 'c0.of' },
     action: { type: 'rewatch', source: 'mistake' },
   },
+  {
+    // AS2 / MX4: a tag in ≥ 40 % of the last 10 games becomes the objective to work on.
+    id: 'dominant_mistake',
+    moments: TRENDS,
+    tone: 'negative',
+    priority: 74,
+    confidence: 0.75,
+    when: [{ kind: 'recurringMistake', atLeast: 4, of: 10 }],
+    variants: 2,
+    params: { tag: 'c0.tagLabel', count: 'c0.matched', n: 'c0.of' },
+    why: { key: 'lastGames', n: 'c0.of' },
+    action: { type: 'mistakeObjective' },
+  },
+  {
+    // AS3: a champion played enough to be meaningful, with a losing record
+    // and a KDA below the player's own average — a pool candidate to drop.
+    id: 'weak_champion_pool',
+    moments: ['weekly'],
+    tone: 'warning',
+    priority: 56,
+    confidence: 0.6,
+    when: [{ kind: 'weakChampion', minGames: 10, maxWinrate: 40 }],
+    variants: 2,
+    params: { champion: 'c0.champion', games: 'c0.games', winrate: 'c0.winrate' },
+    why: { key: 'lastGames', n: 'c0.games' },
+  },
+  {
+    // AS4: winrate overnight (00:00-05:00 local) well below the overall winrate.
+    id: 'bad_hour_performance',
+    moments: ['weekly'],
+    tone: 'warning',
+    priority: 50,
+    confidence: 0.55,
+    when: [{ kind: 'badHour', startHour: 0, endHour: 5, minGames: 15, gapAtLeast: 10 }],
+    variants: 2,
+    params: { nightWinrate: 'c0.nightWinrate', overallWinrate: 'c0.overallWinrate', n: 'c0.nightGames' },
+    why: { key: 'lastGames', n: 'c0.nightGames' },
+  },
+  {
+    // AS5: games 4+ of a session perform clearly worse than games 1-3, across enough sessions.
+    id: 'session_fatigue',
+    moments: ['weekly'],
+    tone: 'warning',
+    priority: 52,
+    confidence: 0.6,
+    when: [{ kind: 'sessionFatigue', minSessionGames: 4, minQualifyingSessions: 3, gapAtLeast: 0.5 }],
+    variants: 2,
+    params: { sessions: 'c0.sessions' },
+    why: { key: 'lastSessions', n: 'c0.sessions' },
+  },
 
   // ─ Mental ─
   {
@@ -623,6 +681,65 @@ export function evaluateCondition(c: Condition, ctx: PlayerContext, target: Eval
         evidence: { tag: best[0], tagLabel: label, matched: best[1].length, of: c.of },
         games: best[1],
         tagSlug: best[0],
+      }
+    }
+    case 'weakChampion': {
+      const kdas = ctx.games.map((g) => g.values.kda).filter((v): v is number => v != null)
+      const personalKda = mean(kdas)
+      if (personalKda == null) return { ok: false, evidence: {} }
+      const perChampion = new Map<string, GameFeatures[]>()
+      for (const g of ctx.games) perChampion.set(g.champion, [...(perChampion.get(g.champion) ?? []), g])
+      let worst: { champion: string; gs: GameFeatures[]; winrate: number; kda: number } | null = null
+      for (const [champion, gs] of perChampion) {
+        if (gs.length < c.minGames) continue
+        const winrate = (gs.filter((g) => g.values.win === 1).length / gs.length) * 100
+        const champKdas = gs.map((g) => g.values.kda).filter((v): v is number => v != null)
+        const kda = mean(champKdas) ?? 0
+        if (winrate >= c.maxWinrate || kda >= personalKda) continue
+        if (!worst || winrate < worst.winrate) worst = { champion, gs, winrate, kda }
+      }
+      if (!worst) return { ok: false, evidence: {} }
+      return {
+        ok: true,
+        evidence: { champion: worst.champion, games: worst.gs.length, winrate: Math.round(worst.winrate), kda: Number(worst.kda.toFixed(1)), personalKda: Number(personalKda.toFixed(1)) },
+        games: worst.gs,
+      }
+    }
+    case 'badHour': {
+      const inWindow = (hour: number) => (c.startHour <= c.endHour ? hour >= c.startHour && hour < c.endHour : hour >= c.startHour || hour < c.endHour)
+      const night = ctx.games.filter((g) => inWindow(new Date(g.endedAt).getHours()))
+      if (night.length < c.minGames || ctx.games.length < c.minGames) return { ok: false, evidence: {} }
+      const nightWinrate = (night.filter((g) => g.values.win === 1).length / night.length) * 100
+      const overallWinrate = (ctx.games.filter((g) => g.values.win === 1).length / ctx.games.length) * 100
+      const gap = overallWinrate - nightWinrate
+      return {
+        ok: gap >= c.gapAtLeast,
+        evidence: { nightGames: night.length, nightWinrate: Math.round(nightWinrate), overallWinrate: Math.round(overallWinrate), gap: Math.round(gap) },
+        games: night,
+      }
+    }
+    case 'sessionFatigue': {
+      const perSession = new Map<string, GameFeatures[]>()
+      for (const g of ctx.games) perSession.set(g.sessionId, [...(perSession.get(g.sessionId) ?? []), g])
+      const early: number[] = []
+      const late: number[] = []
+      let qualifying = 0
+      for (const gs of perSession.values()) {
+        if (gs.length < c.minSessionGames) continue
+        const ordered = [...gs].sort((a, b) => a.endedAt - b.endedAt)
+        qualifying++
+        for (const [i, g] of ordered.entries()) {
+          if (g.values.perfIndex == null) continue
+          ;(i < 3 ? early : late).push(g.values.perfIndex)
+        }
+      }
+      if (qualifying < c.minQualifyingSessions || early.length < 3 || late.length < 3) return { ok: false, evidence: {} }
+      const earlyMean = mean(early)!
+      const lateMean = mean(late)!
+      const gap = earlyMean - lateMean
+      return {
+        ok: gap >= c.gapAtLeast,
+        evidence: { sessions: qualifying, earlyPerf: Number(earlyMean.toFixed(2)), latePerf: Number(lateMean.toFixed(2)), gap: Number(gap.toFixed(2)) },
       }
     }
   }

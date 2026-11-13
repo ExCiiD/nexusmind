@@ -1,7 +1,13 @@
 import type { AccessInvite } from './accessCore'
 import type { CollabApi } from './collab'
 import type { FeedbackApi } from './feedback'
-import type { AssistantMoment, AssistantReport } from '../components/Assistant/types'
+import type {
+  AssistantMoment,
+  AssistantReport,
+  CoachExperiment,
+  CoachExperimentState,
+  CoachObjectiveCheck,
+} from '../components/Assistant/types'
 
 export type GameEventType =
   | 'kill' | 'death' | 'assist'
@@ -29,7 +35,7 @@ export interface CloudStatus {
   /** False when the build has no Supabase URL/key (cloud features hidden). */
   configured: boolean
   user: CloudUser | null
-  /** How Riot calls are sent: via the NexusMind proxy, a local dev key, or not at all. */
+  /** How Riot calls are sent: via the Ascend proxy, a local dev key, or not at all. */
   riotMode: 'proxy' | 'direct' | 'none'
   lastBackupAt: string | null
 }
@@ -303,7 +309,7 @@ export interface SavedAccount {
   _count: { sessions: number }
 }
 
-export type NexusMindAPI = CollabApi & FeedbackApi & {
+export type AscendAPI = CollabApi & FeedbackApi & {
   connectRiot: (gameName: string, tagLine: string, region: string, displayName?: string) => Promise<any>
   disconnectRiot: () => Promise<void>
   reactivateAccount: (userId: string) => Promise<any>
@@ -434,7 +440,7 @@ export type NexusMindAPI = CollabApi & FeedbackApi & {
     | { canceled: false; summary: { sessionsAdded: number; gamesAdded: number; reviewsAdded: number; assessmentsAdded: number; snapshotsAdded: number; recordingsAdded: number; externalReviewsAdded: number; conflicts: number; skipped: number } }
   >
 
-  // NexusMind cloud account & backups
+  // Ascend cloud account & backups
   cloudStatus: () => Promise<CloudStatus>
   /** `inviteCode` is required the first time an e-mail signs in (invite-only access). */
   cloudSendCode: (email: string, inviteCode?: string) => Promise<{ sent: boolean }>
@@ -550,6 +556,8 @@ export type NexusMindAPI = CollabApi & FeedbackApi & {
   onRecordingReady: (cb: (data: { recordingId: string | null; gameId?: string; filePath: string; durationSec: number }) => void) => () => void
   onRecordingFailed: (cb: (data: { reason: string; filePath?: string }) => void) => () => void
   getGameEvents: (gameId: string) => Promise<GameEvent[]>
+  /** R1: draft timestamped notes built from this game's own events + severity-3 mistakes. */
+  getPrefilledNotes: (gameId: string) => Promise<Array<{ time: string; note: string; auto: true }>>
 
   // Team management
   listTeams: (opts?: { isOpponent?: boolean }) => Promise<Team[]>
@@ -647,6 +655,18 @@ export type NexusMindAPI = CollabApi & FeedbackApi & {
 
   getAssistantReport: (moment: AssistantMoment, gameId?: string | null) => Promise<AssistantReport | null>
   sendAssistantFeedback: (insightKey: string, ruleId: string, moment: AssistantMoment, vote: 1 | -1 | 0) => Promise<{ ok: boolean }>
+  coachExperiments: () => Promise<CoachExperimentState | null>
+  coachStartExperiment: (problemId: string, tagSlug: string | null, ruleId: string | null) => Promise<CoachExperiment>
+  coachAbandonExperiment: (experimentId: string) => Promise<{ ok: boolean }>
+  coachObjectiveCheck: (gameId: string) => Promise<CoachObjectiveCheck | null>
+  /** R4/R5: which unreviewed game to review first, and the backlog size. */
+  reviewPriorityGame: () => Promise<{ gameId: string; reason: 'close_loss' | 'severe_mistakes' | 'deviation' | 'recency'; backlogCount: number } | null>
+  /** P1: fundamentals whose measured performance has clearly shifted since the last self-rating. */
+  coachReassessmentCheck: () => Promise<{ gaps: Array<{ fundamentalId: string; metric: string; selfScore: number; z: number }> } | null>
+  /** Lot 5: pre-fills the next self-assessment from recent stats (empty on first-ever assessment). */
+  coachSuggestedScores: () => Promise<Array<{ fundamentalId: string; metric: string; score: number; previousScore: number; z: number }>>
+  /** Lot 5: minimal game info ("Why?" evidence list), in the order requested. */
+  coachGamesByIds: (gameIds: string[]) => Promise<Array<{ id: string; champion: string; win: boolean; endedAt: number; reviewed: boolean }>>
 }
 
 export interface DetailedGameStats {
@@ -820,6 +840,6 @@ export interface ReviewBiasSignal {
 
 declare global {
   interface Window {
-    api: NexusMindAPI
+    api: AscendAPI
   }
 }

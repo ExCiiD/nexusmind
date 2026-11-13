@@ -17,6 +17,7 @@ import {
   Users,
   AlertTriangle,
   GraduationCap,
+  ListTodo,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/useUserStore'
@@ -114,6 +115,7 @@ export function Sidebar() {
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { to: '/plan', icon: ListTodo, label: t('nav.plan') },
     { to: '/session', icon: Swords, label: t('nav.session') },
     { to: '/record', icon: Film, label: 'Record' },
     { to: '/review', icon: FileSearch, label: t('nav.review') },

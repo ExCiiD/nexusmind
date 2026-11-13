@@ -32,6 +32,20 @@ async function seedLosingSession(dir: string): Promise<void> {
         },
       })
     }
+    // Ten days earlier: 8 games at ~9 CS/min, so today's 5.7 reads as a CS
+    // downtrend — a measurable problem the focus can be tested on.
+    const older = await prisma.session.create({
+      data: { userId: user.id, objectiveId: 'csing_pathing', objectiveIds: '["csing_pathing"]', status: 'completed', date: new Date(Date.now() - 13 * 86_400_000) },
+    })
+    for (let i = 0; i < 8; i++) {
+      await prisma.game.create({
+        data: {
+          sessionId: older.id, matchId: `EUW1_E2EOLD${i}`, champion: 'Ahri', role: 'MIDDLE',
+          kills: 6, deaths: 3, assists: 6, cs: 260 + (i % 3) * 10, visionScore: 22, duration: 1800, win: true,
+          gameEndAt: new Date(Date.now() - (10 * 1440 + i * 120) * 60_000),
+        },
+      })
+    }
   } finally {
     await prisma.$disconnect()
   }
@@ -60,6 +74,44 @@ test.describe('rule-based assistant', () => {
     await expect(breakInsight).toBeVisible()
     await expect(breakInsight).toContainText('4')
     await expect(card).toContainText('Based on')
+    expect(ctx.pageErrors).toEqual([])
+  })
+
+  test('insights are grouped by problem, the break guard comes first, at most one focus', async () => {
+    await goto(ctx.page, '/session')
+    const card = ctx.page.getByTestId('assistant-card-session')
+    const insights = card.getByTestId('assistant-insight')
+    await expect(insights.first()).toHaveAttribute('data-rule-id', 'tilt_break')
+    const problems = await insights.evaluateAll((els) => els.map((e) => e.getAttribute('data-problem-id')))
+    expect(problems.every(Boolean)).toBe(true)
+    expect(new Set(problems).size).toBe(problems.length)
+    expect(await card.locator('[data-focus="true"]').count()).toBeLessThanOrEqual(1)
+    // The brief was remembered for anti-repetition.
+    await expect.poll(async () => {
+      const prisma = prismaFor(dir)
+      try { return await prisma.adviceLog.count() } finally { await prisma.$disconnect() }
+    }).toBeGreaterThan(0)
+  })
+
+  test('the focus can be tested over 5 games: experiment panel, then abandon', async () => {
+    await goto(ctx.page, '/session')
+    const card = ctx.page.getByTestId('assistant-card-session')
+    const start = card.getByTestId('coach-start-experiment')
+    await expect(start).toBeVisible()
+    await start.click()
+    const panel = card.getByTestId('coach-experiment')
+    await expect(panel).toBeVisible()
+    await expect(panel).toHaveAttribute('data-status', 'active')
+    await expect(panel).toContainText('0 passed out of 0')
+    await expect(card.getByTestId('coach-start-experiment')).toHaveCount(0)
+    await expect.poll(async () => {
+      const prisma = prismaFor(dir)
+      try { return await prisma.coachingExperiment.count({ where: { status: 'active' } }) } finally { await prisma.$disconnect() }
+    }).toBe(1)
+
+    await panel.getByRole('button', { name: 'Abandon the experiment' }).click()
+    await expect(card.getByTestId('coach-experiment')).toHaveCount(0)
+    await expect(card.getByTestId('coach-start-experiment')).toBeVisible()
     expect(ctx.pageErrors).toEqual([])
   })
 
