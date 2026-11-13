@@ -139,7 +139,7 @@ function buildInsights(
 
 const variantStyles: Record<InsightLine['variant'], string> = {
   positive: 'text-hextech-green',
-  negative: 'text-[#FF4655]',
+  negative: 'text-[#E24C3A]',
   neutral: 'text-hextech-text-dim',
   warning: 'text-hextech-gold',
 }

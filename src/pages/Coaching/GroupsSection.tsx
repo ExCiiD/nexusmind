@@ -118,7 +118,7 @@ export function GroupsSection({ groups, myUserId, reload }: Props) {
                       {roleLabel(m.role)}
                       {g.myRole === 'owner' && m.userId !== myUserId && (
                         <button title={t('coaching.groups.remove')} onClick={() => run(`rm-${m.userId}`, async () => { await window.api.collabRemoveMember(g.id, m.userId); await reload() })}>
-                          <UserMinus className="h-3.5 w-3.5 hover:text-[#FF4655]" />
+                          <UserMinus className="h-3.5 w-3.5 hover:text-[#E24C3A]" />
                         </button>
                       )}
                     </span>
@@ -171,7 +171,7 @@ export function GroupsSection({ groups, myUserId, reload }: Props) {
 
               <div className="flex justify-end">
                 {g.myRole === 'owner' ? (
-                  <Button size="sm" variant="ghost" className="gap-1 text-[#FF4655]" disabled={busy !== null}
+                  <Button size="sm" variant="ghost" className="gap-1 text-[#E24C3A]" disabled={busy !== null}
                     onClick={() => { if (window.confirm(t('coaching.groups.deleteConfirm', { name: g.name }))) run(`del-${g.id}`, async () => { await window.api.collabDeleteGroup(g.id, 'DELETE'); await reload() }) }}>
                     <Trash2 className="h-3.5 w-3.5" />{t('coaching.groups.delete')}
                   </Button>

@@ -78,7 +78,7 @@ export function ExperimentPanel({
           return (
             <span
               key={i}
-              className={cn('h-2 w-6 rounded-full', !r ? 'bg-hextech-elevated' : r.passed ? 'bg-hextech-green' : 'bg-[#FF4655]/80')}
+              className={cn('h-2 w-6 rounded-full', !r ? 'bg-hextech-elevated' : r.passed ? 'bg-hextech-green' : 'bg-[#E24C3A]/80')}
             />
           )
         })}

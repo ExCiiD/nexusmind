@@ -272,10 +272,10 @@ export function SettingsPage() {
 
           {/* Live recording indicator */}
           {isRecording && (
-            <div className="flex items-center gap-2 text-sm text-[#FF4655]">
+            <div className="flex items-center gap-2 text-sm text-[#E24C3A]">
               <Circle className="h-2.5 w-2.5 fill-current animate-pulse" />
               <span className="font-medium">Recording in progress</span>
-              <Button variant="outline" size="sm" onClick={handleManualRecord} className="ml-auto text-xs border-[#FF4655]/40 text-[#FF4655] hover:bg-[#FF4655]/10">
+              <Button variant="outline" size="sm" onClick={handleManualRecord} className="ml-auto text-xs border-[#E24C3A]/40 text-[#E24C3A] hover:bg-[#E24C3A]/10">
                 Stop now
               </Button>
             </div>
@@ -284,7 +284,7 @@ export function SettingsPage() {
           {/* Manual record button (when auto-record is off) */}
           {!user?.autoRecord && !isRecording && ffmpegAvailable && (
             <Button variant="outline" size="sm" onClick={handleManualRecord} className="gap-2">
-              <Circle className="h-3 w-3 fill-[#FF4655] text-[#FF4655]" />
+              <Circle className="h-3 w-3 fill-[#E24C3A] text-[#E24C3A]" />
               Start manual recording
             </Button>
           )}
@@ -488,7 +488,7 @@ export function SettingsPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="shrink-0 text-hextech-text-dim hover:text-[#FF4655]"
+                  className="shrink-0 text-hextech-text-dim hover:text-[#E24C3A]"
                   title="Reset to default"
                   onClick={async () => {
                     await window.api.updateUser({ recordingPath: null })
@@ -810,7 +810,7 @@ export function SettingsPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="shrink-0 text-hextech-text-dim hover:text-[#FF4655]"
+                className="shrink-0 text-hextech-text-dim hover:text-[#E24C3A]"
                 title="Clear folder"
                 onClick={async () => {
                   await window.api.updateUser({ externalRecordingPath: null })
@@ -918,7 +918,7 @@ export function SettingsPage() {
                     ) : (
                       <button
                         onClick={() => setConfirmRemoveId(acc.id)}
-                        className="rounded p-1.5 text-hextech-text-dim hover:text-[#FF4655] hover:bg-[#FF4655]/10 transition-colors"
+                        className="rounded p-1.5 text-hextech-text-dim hover:text-[#E24C3A] hover:bg-[#E24C3A]/10 transition-colors"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -1082,9 +1082,9 @@ function DangerZoneCard() {
   }
 
   return (
-    <Card className="border-[#FF4655]/40">
+    <Card className="border-[#E24C3A]/40">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-[#FF4655]">
+        <CardTitle className="flex items-center gap-2 text-[#E24C3A]">
           <AlertTriangle className="h-5 w-5" />
           Danger Zone
         </CardTitle>
@@ -1114,7 +1114,7 @@ function DangerZoneCard() {
             <Button
               variant="outline" size="sm"
               onClick={() => setConfirmClear(true)}
-              className="shrink-0 gap-1.5 border-[#FF4655]/40 text-[#FF4655] hover:bg-[#FF4655]/10"
+              className="shrink-0 gap-1.5 border-[#E24C3A]/40 text-[#E24C3A] hover:bg-[#E24C3A]/10"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Clear stats &amp; mistakes
@@ -1146,7 +1146,7 @@ function DangerZoneCard() {
                   key={o.days}
                   variant="outline" size="sm"
                   onClick={() => setPendingDays(o.days)}
-                  className="gap-1.5 border-[#FF4655]/40 text-[#FF4655] hover:bg-[#FF4655]/10"
+                  className="gap-1.5 border-[#E24C3A]/40 text-[#E24C3A] hover:bg-[#E24C3A]/10"
                 >
                   {o.label}
                 </Button>
@@ -1156,7 +1156,7 @@ function DangerZoneCard() {
         </div>
 
         {/* Full reset */}
-        <div className="flex items-start justify-between gap-3 flex-wrap rounded-lg border border-[#FF4655]/30 bg-[#FF4655]/5 px-3 py-2.5">
+        <div className="flex items-start justify-between gap-3 flex-wrap rounded-lg border border-[#E24C3A]/30 bg-[#E24C3A]/5 px-3 py-2.5">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-hextech-text-bright">Reset everything</p>
             <p className="text-xs text-hextech-text-dim mt-0.5">
@@ -1479,7 +1479,7 @@ function DiscordWebhookCard() {
                         <button
                           onClick={() => handleDelete(wh.id)}
                           disabled={deletingId === wh.id}
-                          className="rounded px-2 py-0.5 text-[10px] font-medium text-white bg-[#FF4655] hover:bg-[#FF4655]/80 disabled:opacity-50 transition-colors"
+                          className="rounded px-2 py-0.5 text-[10px] font-medium text-white bg-[#E24C3A] hover:bg-[#E24C3A]/80 disabled:opacity-50 transition-colors"
                         >
                           {deletingId === wh.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Yes'}
                         </button>
@@ -1494,7 +1494,7 @@ function DiscordWebhookCard() {
                       <button
                         onClick={() => setConfirmDeleteId(wh.id)}
                         title="Remove webhook"
-                        className="rounded p-1.5 text-hextech-text-dim hover:text-[#FF4655] hover:bg-[#FF4655]/10 transition-colors"
+                        className="rounded p-1.5 text-hextech-text-dim hover:text-[#E24C3A] hover:bg-[#E24C3A]/10 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -1632,7 +1632,7 @@ function YouTubeCard() {
             <Button
               variant="outline"
               size="sm"
-              className="text-[#FF4655] border-[#FF4655]/30 hover:bg-[#FF4655]/10 text-xs"
+              className="text-[#E24C3A] border-[#E24C3A]/30 hover:bg-[#E24C3A]/10 text-xs"
               onClick={handleDisconnect}
             >
               Disconnect
@@ -1645,7 +1645,7 @@ function YouTubeCard() {
               <p>Add <code className="font-mono bg-white/5 px-1 rounded">MAIN_VITE_GOOGLE_CLIENT_ID</code> and <code className="font-mono bg-white/5 px-1 rounded">MAIN_VITE_GOOGLE_CLIENT_SECRET</code> to your <code className="font-mono bg-white/5 px-1 rounded">.env</code> file to enable YouTube uploads.</p>
             </div>
             {error && (
-              <p className="text-xs text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/30 rounded px-3 py-2">
+              <p className="text-xs text-[#E24C3A] bg-[#E24C3A]/10 border border-[#E24C3A]/30 rounded px-3 py-2">
                 {error}
               </p>
             )}

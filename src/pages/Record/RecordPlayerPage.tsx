@@ -677,7 +677,7 @@ export function RecordPlayerPage() {
             {exportingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}Export
           </Button>
           <button onClick={() => setCreatingClip(false)}
-            className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-[#FF4655] border border-[#FF4655]/30 hover:bg-[#FF4655]/10 transition-colors">
+            className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-[#E24C3A] border border-[#E24C3A]/30 hover:bg-[#E24C3A]/10 transition-colors">
             <Square className="h-3 w-3" />Cancel
           </button>
         </div>
@@ -725,7 +725,7 @@ function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink, onT
   return (
     <div className="flex items-center gap-3 rounded-xl bg-hextech-elevated border border-hextech-border-dim px-3 py-2 flex-wrap shrink-0">
       {!recording.isOrphaned && (
-        <div className={`w-1 h-8 rounded-full shrink-0 ${recording.win ? 'bg-hextech-teal' : 'bg-[#FF4655]'}`} />
+        <div className={`w-1 h-8 rounded-full shrink-0 ${recording.win ? 'bg-hextech-teal' : 'bg-[#E24C3A]'}`} />
       )}
       <div className="min-w-0">
         <p className="text-sm font-semibold text-hextech-text-bright">{recording.champion}</p>
@@ -795,7 +795,7 @@ function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink, onT
             disabled={refreshingEvents}
             onClick={onRefreshEvents}
             title={eventsDiag.message ?? 'No game events available — click to retry'}
-            className="gap-1.5 h-7 text-xs shrink-0 border-[#FF4655]/40 text-[#FF4655] hover:bg-[#FF4655]/10"
+            className="gap-1.5 h-7 text-xs shrink-0 border-[#E24C3A]/40 text-[#E24C3A] hover:bg-[#E24C3A]/10"
           >
             {refreshingEvents ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
             {refreshingEvents ? 'Refreshing…' : 'No markers — Refresh'}
@@ -996,7 +996,7 @@ function ShareTab({ filePath, champion, win, isOrphaned, ytState, ytProgress, yt
               <button onClick={() => navigator.clipboard.writeText(ytUrl)} className="text-hextech-text-dim hover:text-hextech-text flex items-center gap-1"><Copy className="h-3 w-3" />Copy</button>
             </div>
           )}
-          {ytState === 'error' && <span className="text-xs text-[#FF4655]">{ytError}</span>}
+          {ytState === 'error' && <span className="text-xs text-[#E24C3A]">{ytError}</span>}
         </div>
       )}
     </div>
@@ -1041,8 +1041,8 @@ function ClipRow({ clip, onDelete, onPlay, isActive }: {
         {clip.tempShareUrl && <a href={clip.tempShareUrl} target="_blank" rel="noopener noreferrer" className="text-hextech-teal hover:text-hextech-teal/80 transition-colors"><ExternalLink className="h-3 w-3" /></a>}
         {clip.youtubeUrl && <a href={clip.youtubeUrl} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:text-red-300 transition-colors"><Youtube className="h-3 w-3" /></a>}
         {confirmDelete
-          ? <><button onClick={onDelete} className="text-[10px] text-[#FF4655] font-medium">✓</button><button onClick={() => setConfirmDelete(false)} className="text-[10px] text-hextech-text-dim">✕</button></>
-          : <button onClick={() => setConfirmDelete(true)} className="text-hextech-text-dim/40 hover:text-[#FF4655] transition-colors"><Trash2 className="h-3 w-3" /></button>
+          ? <><button onClick={onDelete} className="text-[10px] text-[#E24C3A] font-medium">✓</button><button onClick={() => setConfirmDelete(false)} className="text-[10px] text-hextech-text-dim">✕</button></>
+          : <button onClick={() => setConfirmDelete(true)} className="text-hextech-text-dim/40 hover:text-[#E24C3A] transition-colors"><Trash2 className="h-3 w-3" /></button>
         }
       </div>
     </div>

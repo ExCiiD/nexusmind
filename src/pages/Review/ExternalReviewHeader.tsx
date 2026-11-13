@@ -65,7 +65,7 @@ export function ExternalReviewHeader({ review, onDelete }: Props) {
               {matchData.win ? 'Victory' : 'Defeat'}
             </Badge>
           )}
-          <Button variant="ghost" size="sm" onClick={onDelete} className="text-hextech-text-dim hover:text-[#FF4655]">
+          <Button variant="ghost" size="sm" onClick={onDelete} className="text-hextech-text-dim hover:text-[#E24C3A]">
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>

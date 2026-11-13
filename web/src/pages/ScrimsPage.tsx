@@ -223,7 +223,7 @@ function ScrimDetail({ scrim, group, myUserId, availability, nameOf, onChanged, 
               return (
                 <li key={m.userId} className="flex items-center justify-between rounded bg-hextech-elevated/30 px-2 py-1 text-xs">
                   <span className="truncate">{m.userId === myUserId ? t('coaching.comments.you') : nameOf(m.userId)}</span>
-                  <span className={cn(a?.status === 'yes' ? 'text-hextech-green' : a?.status === 'no' ? 'text-[#FF4655]' : 'text-hextech-text-dim')}>
+                  <span className={cn(a?.status === 'yes' ? 'text-hextech-green' : a?.status === 'no' ? 'text-[#E24C3A]' : 'text-hextech-text-dim')}>
                     {a ? t(`web.scrims.avail.${a.status}`) : '—'}{a?.comment ? ` · ${a.comment}` : ''}
                   </span>
                 </li>
@@ -244,7 +244,7 @@ function ScrimDetail({ scrim, group, myUserId, availability, nameOf, onChanged, 
                 </button>
                 <span className={cn(item.done && 'line-through opacity-60')}>{item.label}</span>
                 {staff && (
-                  <button className="ml-auto text-hextech-text-dim hover:text-[#FF4655]" onClick={() => run(() => updateScrim(scrim.id, { checklist: scrim.checklist.filter((_, j) => j !== i) }))}>
+                  <button className="ml-auto text-hextech-text-dim hover:text-[#E24C3A]" onClick={() => run(() => updateScrim(scrim.id, { checklist: scrim.checklist.filter((_, j) => j !== i) }))}>
                     <X className="h-3.5 w-3.5" />
                   </button>
                 )}
@@ -274,7 +274,7 @@ function ScrimDetail({ scrim, group, myUserId, availability, nameOf, onChanged, 
               <div><span className="text-red-400">{t('web.scrims.red')}</span> {d.redPicks.filter(Boolean).join(', ') || '—'} <span className="text-hextech-text-dim">({t('web.scrims.bans')}: {d.redBans.filter(Boolean).join(', ') || '—'})</span></div>
               {d.notes && <p className="mt-1 whitespace-pre-wrap">{d.notes}</p>}
               {staff && (
-                <button className="mt-1 text-hextech-text-dim hover:text-[#FF4655]" onClick={() => run(() => updateScrim(scrim.id, { draftIds: scrim.draftIds.filter((x) => x !== d.id) }))}>
+                <button className="mt-1 text-hextech-text-dim hover:text-[#E24C3A]" onClick={() => run(() => updateScrim(scrim.id, { draftIds: scrim.draftIds.filter((x) => x !== d.id) }))}>
                   {t('web.scrims.unlink')}
                 </button>
               )}
@@ -303,7 +303,7 @@ function ScrimDetail({ scrim, group, myUserId, availability, nameOf, onChanged, 
           <div className="flex flex-wrap gap-2 border-t border-hextech-border-dim pt-3">
             {scrim.status !== 'done' && <Button size="sm" variant="outline" onClick={() => run(() => updateScrim(scrim.id, { status: 'done' }))}>{t('web.scrims.markDone')}</Button>}
             {scrim.status === 'planned' && <Button size="sm" variant="ghost" onClick={() => run(() => updateScrim(scrim.id, { status: 'cancelled' }))}>{t('web.scrims.cancel')}</Button>}
-            <Button size="sm" variant="ghost" className="ml-auto gap-1 text-[#FF4655]"
+            <Button size="sm" variant="ghost" className="ml-auto gap-1 text-[#E24C3A]"
               onClick={() => { if (window.confirm(t('web.scrims.deleteConfirm'))) deleteScrim(scrim.id).then(onDeleted).catch(onError) }}>
               <Trash2 className="h-3.5 w-3.5" />{t('common.delete')}
             </Button>

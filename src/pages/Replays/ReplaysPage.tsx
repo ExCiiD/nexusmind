@@ -164,7 +164,7 @@ function ReplayCard({ replay, onOpen }: ReplayCardProps) {
         {/* Win/Loss indicator */}
         <div
           className={`w-1 self-stretch rounded-full shrink-0 ${
-            replay.win ? 'bg-hextech-teal' : 'bg-[#FF4655]'
+            replay.win ? 'bg-hextech-teal' : 'bg-[#E24C3A]'
           }`}
         />
 

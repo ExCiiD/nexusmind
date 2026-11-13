@@ -152,7 +152,7 @@ export function ExternalReviewsList({ onCreateNew }: Props) {
                   <button
                     onClick={(e) => handleDelete(e, review.id)}
                     disabled={deletingId === review.id}
-                    className="p-1.5 rounded text-hextech-text-dim/40 hover:text-[#FF4655] hover:bg-[#FF4655]/10 transition-colors opacity-0 group-hover:opacity-100"
+                    className="p-1.5 rounded text-hextech-text-dim/40 hover:text-[#E24C3A] hover:bg-[#E24C3A]/10 transition-colors opacity-0 group-hover:opacity-100"
                   >
                     {deletingId === review.id
                       ? <Loader2 className="h-3.5 w-3.5 animate-spin" />

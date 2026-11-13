@@ -549,7 +549,7 @@ export function RecordPage() {
                 <button onClick={e => { e.stopPropagation(); setEditingFolderId(folder.id); setEditFolderName(folder.name) }} className="text-hextech-text-dim/40 hover:text-hextech-text-dim ml-1">
                   <Pencil className="h-3 w-3" />
                 </button>
-                <button onClick={e => { e.stopPropagation(); handleDeleteFolder(folder.id) }} className="text-hextech-text-dim/40 hover:text-[#FF4655]">
+                <button onClick={e => { e.stopPropagation(); handleDeleteFolder(folder.id) }} className="text-hextech-text-dim/40 hover:text-[#E24C3A]">
                   <Trash2 className="h-3 w-3" />
                 </button>
               </span>
@@ -700,7 +700,7 @@ export function RecordPage() {
           {/* Bulk delete */}
           <button
             onClick={handleBulkDelete}
-            className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs bg-[#FF4655]/10 border border-[#FF4655]/40 text-[#FF4655] hover:bg-[#FF4655]/20 transition-colors font-medium"
+            className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs bg-[#E24C3A]/10 border border-[#E24C3A]/40 text-[#E24C3A] hover:bg-[#E24C3A]/20 transition-colors font-medium"
           >
             <Trash2 className="h-3.5 w-3.5" />
             Delete
@@ -833,7 +833,7 @@ function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, o
             : <div className="w-full h-full flex items-center justify-center"><Film className="h-8 w-8 text-hextech-text-dim/20" /></div>}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
         </div>
-        {!r.isOrphaned && <div className={`absolute inset-y-0 left-0 w-1 ${r.win ? 'bg-hextech-teal' : 'bg-[#FF4655]'}`} />}
+        {!r.isOrphaned && <div className={`absolute inset-y-0 left-0 w-1 ${r.win ? 'bg-hextech-teal' : 'bg-[#E24C3A]'}`} />}
 
         {/* Badges top-right of thumbnail */}
         <div className="absolute top-1.5 right-8 flex items-center gap-1">
@@ -853,7 +853,7 @@ function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, o
               )}
             </div>
             {!r.isOrphaned && (
-              <span className={`text-[10px] font-bold leading-none px-1.5 py-0.5 rounded shrink-0 ${r.win ? 'bg-hextech-teal/90 text-white' : 'bg-[#FF4655]/90 text-white'}`}>
+              <span className={`text-[10px] font-bold leading-none px-1.5 py-0.5 rounded shrink-0 ${r.win ? 'bg-hextech-teal/90 text-white' : 'bg-[#E24C3A]/90 text-white'}`}>
                 {r.win ? 'W' : 'L'}
               </span>
             )}
@@ -1009,11 +1009,11 @@ function ClipCard({ clip, onOpen, onDelete }: { clip: ClipEntry; onOpen: () => v
       <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
         {confirmDelete ? (
           <div className="flex gap-1">
-            <button onClick={onDelete} className="rounded bg-[#FF4655]/90 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-[#FF4655]">Delete</button>
+            <button onClick={onDelete} className="rounded bg-[#E24C3A]/90 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-[#E24C3A]">Delete</button>
             <button onClick={() => setConfirmDelete(false)} className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white hover:bg-black/80">Cancel</button>
           </div>
         ) : (
-          <button onClick={() => setConfirmDelete(true)} className="rounded bg-black/50 p-1 text-hextech-text-dim hover:text-[#FF4655] hover:bg-black/70 transition-colors">
+          <button onClick={() => setConfirmDelete(true)} className="rounded bg-black/50 p-1 text-hextech-text-dim hover:text-[#E24C3A] hover:bg-black/70 transition-colors">
             <Trash2 className="h-3 w-3" />
           </button>
         )}

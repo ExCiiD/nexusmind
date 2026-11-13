@@ -1002,7 +1002,7 @@ export function VideoReviewPlayer({
               <button
                 onClick={() => handleDeleteNote(originalIndex)}
                 title="Delete note"
-                className="opacity-0 group-hover/note:opacity-100 transition-opacity shrink-0 text-white/40 hover:text-[#FF4655] p-0.5"
+                className="opacity-0 group-hover/note:opacity-100 transition-opacity shrink-0 text-white/40 hover:text-[#E24C3A] p-0.5"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
@@ -1146,7 +1146,7 @@ export function VideoReviewPlayer({
               mistakeSeverity === s
                 ? s === 1 ? 'bg-emerald-500/30 text-emerald-200'
                   : s === 2 ? 'bg-amber-500/30 text-amber-200'
-                  : 'bg-[#FF4655]/30 text-red-200'
+                  : 'bg-[#E24C3A]/30 text-red-200'
                 : 'bg-white/5 text-white/40 hover:bg-white/10',
             )}
           >
@@ -1246,7 +1246,7 @@ export function VideoReviewPlayer({
               <button
                 onClick={() => onDeleteMistake(m.id)}
                 title="Delete mistake"
-                className="opacity-0 group-hover/mistake:opacity-100 transition-opacity shrink-0 text-white/40 hover:text-[#FF4655] p-0.5"
+                className="opacity-0 group-hover/mistake:opacity-100 transition-opacity shrink-0 text-white/40 hover:text-[#E24C3A] p-0.5"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
@@ -1284,7 +1284,7 @@ export function VideoReviewPlayer({
               <button
                 onClick={() => onDeleteBookmark(b.id)}
                 title="Delete bookmark"
-                className="opacity-0 group-hover/bookmark:opacity-100 transition-opacity shrink-0 text-white/40 hover:text-[#FF4655] p-0.5"
+                className="opacity-0 group-hover/bookmark:opacity-100 transition-opacity shrink-0 text-white/40 hover:text-[#E24C3A] p-0.5"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
@@ -1718,9 +1718,9 @@ export function VideoReviewPlayer({
               return gameMeta.gameDurationSec - duration
             })()
             return (
-              <div className="mt-2 mx-0.5 rounded-md border border-[#FF4655]/40 bg-[#FF4655]/10 px-2 py-1.5 text-[10px] text-[#FF4655] leading-tight">
+              <div className="mt-2 mx-0.5 rounded-md border border-[#E24C3A]/40 bg-[#E24C3A]/10 px-2 py-1.5 text-[10px] text-[#E24C3A] leading-tight">
                 <span className="font-semibold">{gameEvents.length} events loaded but none fit the video range</span>
-                <span className="text-[#FF4655]/70"> · offset {offsetSec.toFixed(1)}s, video {duration.toFixed(0)}s, game {gameMeta.gameDurationSec}s. Click "Refresh" in the header to recompute.</span>
+                <span className="text-[#E24C3A]/70"> · offset {offsetSec.toFixed(1)}s, video {duration.toFixed(0)}s, game {gameMeta.gameDurationSec}s. Click "Refresh" in the header to recompute.</span>
               </div>
             )
           })()}

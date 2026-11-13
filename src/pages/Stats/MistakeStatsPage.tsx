@@ -157,11 +157,11 @@ export function MistakeStatsPage() {
           ) : (
             <ResponsiveContainer width="100%" height={Math.min(40 * topTags.length + 30, 360)}>
               <BarChart data={topTags.map((t) => ({ name: t.tag.label, count: t.count, color: t.tag.color }))} layout="vertical" margin={{ left: 12 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1E2328" />
-                <XAxis type="number" tick={{ fill: '#A09B8C', fontSize: 11 }} allowDecimals={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: '#C8AA6E', fontSize: 11 }} width={160} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#2A1D11" />
+                <XAxis type="number" tick={{ fill: '#B5A68C', fontSize: 11 }} allowDecimals={false} />
+                <YAxis type="category" dataKey="name" tick={{ fill: '#D4A24C', fontSize: 11 }} width={160} />
                 <RTooltip
-                  contentStyle={{ background: '#0a0e13', border: '1px solid #1E2328', borderRadius: 6, fontSize: 11 }}
+                  contentStyle={{ background: '#0a0e13', border: '1px solid #2A1D11', borderRadius: 6, fontSize: 11 }}
                   cursor={{ fill: '#ffffff10' }}
                 />
                 <Bar dataKey="count" fill="#FFB454" radius={[0, 4, 4, 0]} />
@@ -200,10 +200,10 @@ export function MistakeStatsPage() {
           ) : (
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1E2328" />
-                <XAxis dataKey="date" tick={{ fill: '#A09B8C', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#A09B8C', fontSize: 11 }} allowDecimals={false} />
-                <RTooltip contentStyle={{ background: '#0a0e13', border: '1px solid #1E2328', borderRadius: 6, fontSize: 11 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#2A1D11" />
+                <XAxis dataKey="date" tick={{ fill: '#B5A68C', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#B5A68C', fontSize: 11 }} allowDecimals={false} />
+                <RTooltip contentStyle={{ background: '#0a0e13', border: '1px solid #2A1D11', borderRadius: 6, fontSize: 11 }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 {selectedSlugs.map((slug, i) => {
                   const tag = allTags.find((t) => t.slug === slug)

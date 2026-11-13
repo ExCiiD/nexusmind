@@ -218,7 +218,7 @@ export function DashboardPage() {
                   </div>
                   <div className="flex justify-between mt-1">
                     <span className="text-[10px] text-hextech-green">{stats.wins}W</span>
-                    <span className="text-[10px] text-[#FF4655]">{stats.losses}L</span>
+                    <span className="text-[10px] text-[#E24C3A]">{stats.losses}L</span>
                   </div>
                 </div>
               )}
@@ -397,7 +397,7 @@ function LastGameCard({ game, onViewDetails }: { game: LastGame; onViewDetails: 
   return (
     <Card className={cn(
       'border transition-colors',
-      game.win ? 'border-hextech-green/30 bg-hextech-green/5' : 'border-[#FF4655]/20 bg-[#FF4655]/5',
+      game.win ? 'border-hextech-green/30 bg-hextech-green/5' : 'border-[#E24C3A]/20 bg-[#E24C3A]/5',
     )}>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
@@ -420,7 +420,7 @@ function LastGameCard({ game, onViewDetails }: { game: LastGame; onViewDetails: 
             <ChampionIcon
               name={game.champion}
               size={52}
-              className={game.win ? 'border-hextech-green/50' : 'border-[#FF4655]/40'}
+              className={game.win ? 'border-hextech-green/50' : 'border-[#E24C3A]/40'}
             />
             <div className="flex flex-col items-center">
               <span className="text-xs text-hextech-text-dim">{t('dashboard.lastGame.vs')}</span>
@@ -494,7 +494,7 @@ function StatDiffsCard({ diffs, onViewAll }: { diffs: StatDiffItem[]; onViewAll:
         {diffs.map((item) => {
           const isPositive = item.higherIsBetter ? item.diff > 0 : item.diff < 0
           const isNegative = item.higherIsBetter ? item.diff < 0 : item.diff > 0
-          const diffColor = isPositive ? 'text-hextech-green' : isNegative ? 'text-[#FF4655]' : 'text-hextech-text-dim'
+          const diffColor = isPositive ? 'text-hextech-green' : isNegative ? 'text-[#E24C3A]' : 'text-hextech-text-dim'
 
           return (
             <div key={item.label} className="flex items-center justify-between py-1">

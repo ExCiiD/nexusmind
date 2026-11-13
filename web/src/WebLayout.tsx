@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { FeedbackButton } from '@/components/Feedback/FeedbackDialog'
 import { NotificationBell } from '@/components/Notifications/NotificationBell'
 import { DownloadButton } from './DownloadButton'
+import logo from '@/assets/ascend-logo-mark.png'
 
 const NAV = [
   { to: '/', icon: Home, key: 'web.nav.home', end: true },
@@ -21,7 +22,7 @@ export function WebLayout() {
     <div className="min-h-screen bg-hextech-black text-hextech-text">
       <aside className="fixed inset-y-0 left-0 hidden w-56 flex-col border-r border-hextech-border-dim bg-hextech-dark p-4 md:flex">
         <div className="mb-6 flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded bg-hextech-gold/20 font-display font-bold text-hextech-gold">A</span>
+          <img src={logo} alt="" className="h-8 w-8 rounded-full object-cover" />
           <span className="flex-1 font-display text-lg text-hextech-gold-bright">Ascend</span>
           <NotificationBell />
         </div>

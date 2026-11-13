@@ -277,7 +277,7 @@ function GamesTab() {
   if (error) {
     return (
       <Card>
-        <CardContent className="py-12 text-center text-[#FF4655]">{error}</CardContent>
+        <CardContent className="py-12 text-center text-[#E24C3A]">{error}</CardContent>
       </Card>
     )
   }
@@ -405,7 +405,7 @@ function GamesTab() {
               'rounded-lg border transition-colors',
               game.win
                 ? 'border-hextech-green/20 bg-hextech-green/5'
-                : 'border-[#FF4655]/20 bg-[#FF4655]/5',
+                : 'border-[#E24C3A]/20 bg-[#E24C3A]/5',
             )}
           >
             <div className="flex items-center gap-3 p-3">
@@ -854,7 +854,7 @@ function SessionsTab() {
           <button
             onClick={handleBulkDelete}
             disabled={bulkDeleting}
-            className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs bg-[#FF4655]/10 border border-[#FF4655]/40 text-[#FF4655] hover:bg-[#FF4655]/20 transition-colors font-medium disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs bg-[#E24C3A]/10 border border-[#E24C3A]/40 text-[#E24C3A] hover:bg-[#E24C3A]/20 transition-colors font-medium disabled:opacity-50"
           >
             {bulkDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
             {t('history.deleteSelected', { defaultValue: 'Delete' })}
@@ -972,7 +972,7 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
               </div>
             ) : (
               <button
-                className="text-hextech-text-dim hover:text-[#FF4655] transition-colors ml-2 shrink-0"
+                className="text-hextech-text-dim hover:text-[#E24C3A] transition-colors ml-2 shrink-0"
                 title={t('history.deleteSession')}
                 onClick={(e) => { e.stopPropagation(); setConfirmDelete(true) }}
               >
@@ -1052,7 +1052,7 @@ function GameRow({ game, index, onDelete }: { game: GameEntry; index: number; on
   return (
     <div className={cn(
       'rounded-md border transition-colors',
-      game.win ? 'border-hextech-green/20 bg-hextech-green/5' : 'border-[#FF4655]/20 bg-[#FF4655]/5',
+      game.win ? 'border-hextech-green/20 bg-hextech-green/5' : 'border-[#E24C3A]/20 bg-[#E24C3A]/5',
     )}>
       <div className="flex items-center gap-4 p-3">
         <span className="text-xs text-hextech-text-dim w-5 shrink-0">#{index}</span>
@@ -1170,7 +1170,7 @@ function GameRow({ game, index, onDelete }: { game: GameEntry; index: number; on
               </div>
             ) : (
               <button
-                className="text-hextech-text-dim hover:text-[#FF4655] transition-colors"
+                className="text-hextech-text-dim hover:text-[#E24C3A] transition-colors"
                 title={t('history.deleteGame')}
                 onClick={() => setConfirmDelete(true)}
               >
