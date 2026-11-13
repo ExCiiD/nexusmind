@@ -17,6 +17,8 @@ export interface GroupSharing {
   shareReviews: boolean
   shareStats: boolean
   shareTeam: boolean
+  /** Unlike the other three, this defaults to false — wellbeing is opt-in. */
+  shareWellbeing: boolean
 }
 
 export interface Group {

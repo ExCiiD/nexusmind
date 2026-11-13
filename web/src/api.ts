@@ -5,6 +5,7 @@ import * as dashboardCore from '@/lib/staffDashboardCore'
 import * as devPlanCore from '@/lib/devPlanCore'
 import * as calendarCore from '@/lib/calendarCore'
 import * as vodReviewCore from '@/lib/vodReviewCore'
+import * as wellbeingCore from '@/lib/wellbeingCore'
 import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
@@ -124,7 +125,7 @@ export const webApi = {
   collabLeave: async (groupId: string) => core.leaveGroup(sb, await currentUserId(), groupId),
   collabDeleteGroup: (groupId: string) => core.deleteGroup(sb, groupId),
   collabRemoveMember: (groupId: string, userId: string) => core.removeMember(sb, groupId, userId),
-  collabSetSharing: async (groupId: string, s: { shareReviews: boolean; shareStats: boolean; shareTeam: boolean }) =>
+  collabSetSharing: async (groupId: string, s: { shareReviews: boolean; shareStats: boolean; shareTeam: boolean; shareWellbeing: boolean }) =>
     core.setSharing(sb, await currentUserId(), groupId, s),
   collabPlayerSessions: (playerId: string) => core.getPlayerSessions(sb, playerId),
   collabListComments: async (reviewId: string, playerId?: string) => core.listComments(sb, playerId ?? (await currentUserId()), reviewId),
@@ -172,6 +173,11 @@ export const webApi = {
   vodReviewSetAssignment: (sessionId: string, input: Parameters<typeof vodReviewCore.setAssignment>[2]) => vodReviewCore.setAssignment(sb, sessionId, input),
   vodReviewSetAssignmentStatus: (id: string, status: 'pending' | 'done') => vodReviewCore.setAssignmentStatus(sb, id, status),
   vodReviewDeleteAssignment: (id: string) => vodReviewCore.deleteAssignment(sb, id),
+
+  // ── E6: wellbeing & load ──
+  wellbeingAddCheckin: (input: Parameters<typeof wellbeingCore.addCheckin>[1]) => wellbeingCore.addCheckin(sb, input),
+  wellbeingListMine: async (limit?: number) => wellbeingCore.listMine(sb, await currentUserId(), limit),
+  wellbeingListForGroup: (playerIds: string[]) => wellbeingCore.listForGroup(sb, playerIds),
 
   // ── W5: notifications ──
   notificationsList: async (onlyUnread?: boolean) =>

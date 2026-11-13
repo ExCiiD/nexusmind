@@ -1314,6 +1314,7 @@
       "reviews": "Sessions, games, reviews et erreurs (coachs/analystes)",
       "stats": "Évaluations et statistiques (coachs/analystes)",
       "team": "Données d'équipe : rosters, pools de champions, drafts (tout le groupe)",
+      "wellbeing": "Check-ins bien-être (énergie, humeur, sommeil) (coachs/analystes)",
       "hint": "Les vidéos ne quittent jamais votre PC. Modifiable à tout moment."
     },
     "players": {
@@ -1790,6 +1791,25 @@
       "pending": "en attente",
       "done": "fait"
     }
+  },
+  "wellbeing": {
+    "title": "Bien-être",
+    "desc": "Un check-in rapide et optionnel avant une session — privé sauf si tu choisis de le partager avec le staff d'un groupe.",
+    "myCheckin": "Check-in rapide",
+    "energy": "Énergie",
+    "mood": "Humeur",
+    "sleep": "Sommeil",
+    "energyShort": "É",
+    "moodShort": "H",
+    "sleepShort": "S",
+    "notePlaceholder": "Quelque chose à ajouter ? (optionnel)",
+    "save": "Enregistrer le check-in",
+    "saved": "Check-in enregistré",
+    "correlationLow": "Games un jour de basse énergie (≤2) : {{rate}}% de victoires ({{count}} games)",
+    "correlationOther": "Les autres jours : {{rate}}% de victoires ({{count}} games)",
+    "team": "Bien-être de l'équipe",
+    "noShared": "Aucun joueur n'a partagé son bien-être dans ce groupe pour l'instant.",
+    "moodDeclining": "Humeur en baisse"
   },
   "access": {
     "title": "Inviter sur Ascend",

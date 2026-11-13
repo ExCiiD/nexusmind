@@ -1314,6 +1314,7 @@
       "reviews": "Sessions, games, reviews and mistakes (coaches/analysts)",
       "stats": "Assessments and stats (coaches/analysts)",
       "team": "Team data: rosters, champion pools, drafts (whole group)",
+      "wellbeing": "Wellbeing check-ins (energy, mood, sleep) (coaches/analysts)",
       "hint": "Videos never leave your PC. You can change this at any time."
     },
     "players": {
@@ -1790,6 +1791,25 @@
       "pending": "pending",
       "done": "done"
     }
+  },
+  "wellbeing": {
+    "title": "Wellbeing",
+    "desc": "A quick, optional check-in before a session — private unless you opt in to share it with a group's staff.",
+    "myCheckin": "Quick check-in",
+    "energy": "Energy",
+    "mood": "Mood",
+    "sleep": "Sleep",
+    "energyShort": "E",
+    "moodShort": "M",
+    "sleepShort": "S",
+    "notePlaceholder": "Anything to add? (optional)",
+    "save": "Log check-in",
+    "saved": "Check-in saved",
+    "correlationLow": "Games on a low-energy day (≤2): {{rate}}% winrate ({{count}} games)",
+    "correlationOther": "Other days: {{rate}}% winrate ({{count}} games)",
+    "team": "Team wellbeing",
+    "noShared": "No player has shared their wellbeing check-ins in this group yet.",
+    "moodDeclining": "Mood declining"
   },
   "access": {
     "title": "Invite to Ascend",

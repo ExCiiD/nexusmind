@@ -18,7 +18,7 @@ export function registerCollabHandlers() {
   validatedHandle('collab:leave', z.tuple([uuid]), (_e, groupId) => collab.leaveGroup(groupId))
   validatedHandle('collab:delete-group', z.tuple([uuid, z.literal('DELETE')]), (_e, groupId) => collab.deleteGroup(groupId))
   validatedHandle('collab:remove-member', z.tuple([uuid, uuid]), (_e, groupId, userId) => collab.removeMember(groupId, userId))
-  validatedHandle('collab:set-sharing', z.tuple([uuid, z.object({ shareReviews: z.boolean(), shareStats: z.boolean(), shareTeam: z.boolean() })]),
+  validatedHandle('collab:set-sharing', z.tuple([uuid, z.object({ shareReviews: z.boolean(), shareStats: z.boolean(), shareTeam: z.boolean(), shareWellbeing: z.boolean() })]),
     (_e, groupId, s) => collab.setSharing(groupId, s))
 
   validatedHandle('collab:player-sessions', z.tuple([uuid]), (_e, playerId) => collab.getPlayerSessions(playerId))
@@ -110,4 +110,12 @@ export function registerCollabHandlers() {
   validatedHandle('vodreview:set-assignment', z.tuple([uuid, assignmentInput]), (_e, sessionId, input) => collab.vodReviewSetAssignment(sessionId, input))
   validatedHandle('vodreview:set-assignment-status', z.tuple([uuid, assignmentStatus]), (_e, id, status) => collab.vodReviewSetAssignmentStatus(id, status))
   validatedHandle('vodreview:delete-assignment', z.tuple([uuid]), (_e, id) => collab.vodReviewDeleteAssignment(id))
+
+  const checkinInput = z.object({
+    energy: z.number().int().min(1).max(5), mood: z.number().int().min(1).max(5), sleep: z.number().int().min(1).max(5),
+    note: z.string().max(500).nullable().optional(),
+  })
+  validatedHandle('wellbeing:add-checkin', z.tuple([checkinInput]), (_e, input) => collab.wellbeingAddCheckin(input))
+  validatedHandle('wellbeing:list-mine', z.tuple([z.number().int().min(1).max(200).optional()]), (_e, limit) => collab.wellbeingListMine(limit))
+  validatedHandle('wellbeing:list-for-group', z.tuple([z.array(uuid).max(50)]), (_e, playerIds) => collab.wellbeingListForGroup(playerIds))
 }

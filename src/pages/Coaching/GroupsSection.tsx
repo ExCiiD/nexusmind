@@ -159,6 +159,7 @@ export function GroupsSection({ groups, myUserId, reload }: Props) {
                     ['shareReviews', 'coaching.sharing.reviews'],
                     ['shareStats', 'coaching.sharing.stats'],
                     ['shareTeam', 'coaching.sharing.team'],
+                    ['shareWellbeing', 'coaching.sharing.wellbeing'],
                   ] as const).map(([key, label]) => (
                     <label key={key} className="flex items-center justify-between gap-3 text-sm text-hextech-text">
                       <span>{t(label)}</span>

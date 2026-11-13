@@ -9,6 +9,7 @@ import { StaffDashboardSection } from './StaffDashboardSection'
 import { DevPlanCard } from '@/components/Coaching/DevPlanCard'
 import { PlanningSection } from './PlanningSection'
 import { VodReviewSection } from './VodReviewSection'
+import { WellbeingSection } from './WellbeingSection'
 
 /** Teams & coaching: groups, invitations, sharing, coach view of players. */
 export function CoachingPage() {
@@ -34,6 +35,7 @@ export function CoachingPage() {
           <StaffDashboardSection staffGroups={staffGroups} />
           <PlanningSection groups={groups} myUserId={myUserId} />
           <VodReviewSection groups={groups} myUserId={myUserId} nameOf={nameOf} />
+          <WellbeingSection groups={groups} myUserId={myUserId} nameOf={nameOf} />
           {staffGroups.length > 0 && <PlayersSection staffGroups={staffGroups} myUserId={myUserId} nameOf={nameOf} />}
           <TeamWorkspaceSection staffGroups={staffGroups} />
           <GroupsSection groups={groups} myUserId={myUserId} reload={reload} />

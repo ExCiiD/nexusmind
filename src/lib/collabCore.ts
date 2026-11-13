@@ -44,7 +44,7 @@ export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Gro
   const [groups, members, sharing] = await Promise.all([
     sb.from('groups').select('id, name, kind').in('id', ids),
     sb.from('group_members').select('group_id, user_id, role, display_name, riot_id, joined_at').in('group_id', ids),
-    sb.from('group_sharing').select('group_id, share_reviews, share_stats, share_team').eq('user_id', uid).in('group_id', ids),
+    sb.from('group_sharing').select('group_id, share_reviews, share_stats, share_team, share_wellbeing').eq('user_id', uid).in('group_id', ids),
   ])
   if (groups.error) fail(groups.error, 'list groups failed')
   if (members.error) fail(members.error, 'list members failed')
@@ -63,6 +63,7 @@ export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Gro
         shareReviews: share?.share_reviews ?? true,
         shareStats: share?.share_stats ?? true,
         shareTeam: share?.share_team ?? true,
+        shareWellbeing: share?.share_wellbeing ?? false,
       },
     }
   })
@@ -108,6 +109,7 @@ export async function removeMember(sb: SupabaseClient, groupId: string, userId: 
 export async function setSharing(sb: SupabaseClient, uid: string, groupId: string, s: GroupSharing): Promise<void> {
   const { error } = await sb.from('group_sharing').upsert({
     group_id: groupId, user_id: uid, share_reviews: s.shareReviews, share_stats: s.shareStats, share_team: s.shareTeam,
+    share_wellbeing: s.shareWellbeing,
   })
   if (error) fail(error, 'sharing update failed')
 }

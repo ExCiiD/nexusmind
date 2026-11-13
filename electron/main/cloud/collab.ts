@@ -5,10 +5,12 @@ import * as dashboard from '../../../src/lib/staffDashboardCore'
 import * as devPlan from '../../../src/lib/devPlanCore'
 import * as calendar from '../../../src/lib/calendarCore'
 import * as vodReview from '../../../src/lib/vodReviewCore'
+import * as wellbeing from '../../../src/lib/wellbeingCore'
 import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
 import type { AxisStatus, NewAxisInput } from '../../../src/lib/devPlan'
 import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput } from '../../../src/lib/calendar'
 import type { AssignmentStatus, NewVodAssignmentInput, NewVodCommentInput, NewVodSessionInput } from '../../../src/lib/vodReview'
+import type { NewWellbeingCheckinInput } from '../../../src/lib/wellbeing'
 
 /**
  * Desktop entry points for W3 collaboration. The data access itself lives in
@@ -93,3 +95,7 @@ export const vodReviewDeleteActionItem = (id: string) => vodReview.deleteActionI
 export const vodReviewSetAssignment = (sessionId: string, input: NewVodAssignmentInput) => vodReview.setAssignment(getSupabase(), sessionId, input)
 export const vodReviewSetAssignmentStatus = (id: string, status: AssignmentStatus) => vodReview.setAssignmentStatus(getSupabase(), id, status)
 export const vodReviewDeleteAssignment = (id: string) => vodReview.deleteAssignment(getSupabase(), id)
+
+export const wellbeingAddCheckin = (input: NewWellbeingCheckinInput) => wellbeing.addCheckin(getSupabase(), input)
+export const wellbeingListMine = async (limit?: number) => wellbeing.listMine(getSupabase(), await me(), limit)
+export const wellbeingListForGroup = (playerIds: string[]) => wellbeing.listForGroup(getSupabase(), playerIds)

@@ -62,10 +62,10 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
 - ✅ Web **et** desktop : nouvelle section « Review VOD » sur la page Coaching — le staff crée une session (titre + lien VOD), tout le monde ajoute des commentaires horodatés avec tag d'équipe, actions à retenir cochables, le staff assigne un créneau à un joueur qui voit son « à faire » et le marque fait depuis son app.
 - ⏳ Restant : lier explicitement une session à un scrim existant depuis l'UI (le champ `scrim_id` existe en base), résumé auto du scrim (customs importées + stats par joueur + erreurs auto détectées — dépend de T5, pas construit), lecteur vidéo synchronisé (aujourd'hui un simple lien externe), notification à l'assignation (dépend de E8).
 
-### E6 — Bien-être & charge ⭐⭐
-- Check-in rapide avant session (énergie, humeur, sommeil, 1-5) — optionnel, visible du staff seulement si le joueur l'accepte.
-- Règle : charge de jeu hebdo > X h + humeur en baisse 3 jours → alerte staff (pas au joueur).
-- Corrélation affichée au joueur : « tes games avec énergie ≤ 2 : 38 % de victoires ».
+### E6 — Bien-être & charge 🟡 (v1 livré : check-in + consentement + alerte humeur + corrélation joueur ; charge hebdo restante)
+- ✅ Table serveur `wellbeing_checkins` (énergie/humeur/sommeil 1-5 + note libre), privée par défaut : nouveau flag de partage **opt-in** `share_wellbeing` (contrairement aux trois autres flags de partage, actifs par défaut) sur `group_sharing`, visible du staff uniquement une fois accepté — vérifié par un test RLS end-to-end (0 ligne visible avant consentement, 1 après).
+- ✅ Web **et** desktop : check-in rapide sur la page Coaching (tout le monde), historique perso, corrélation « tes games un jour de basse énergie (≤2) : X % de victoires » calculée à partir de ses propres games (aucun souci de consentement, ce sont ses données) ; côté staff, vue « Bien-être de l'équipe » (uniquement les joueurs ayant partagé) avec alerte si l'humeur baisse strictement sur les 3 derniers jours avec check-in.
+- ⏳ Restant : la règle complète « charge de jeu hebdo > X h + humeur en baisse » (demande de croiser avec les stats de jeu sous un **second** consentement, `share_stats` — volontairement non fait dans cette v1 pour ne pas mélanger deux consentements dans une seule alerte), alerte poussée au staff (dépend de E8), réglage du seuil X par le staff.
 
 ### E7 — Communication & tâches ⭐⭐
 - Annonces d'équipe (épinglées), fil par scrim / par draft, mentions.

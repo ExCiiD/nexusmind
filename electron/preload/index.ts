@@ -116,7 +116,7 @@ const api = {
   collabLeave: (groupId: string) => ipcRenderer.invoke('collab:leave', groupId),
   collabDeleteGroup: (groupId: string, confirm: 'DELETE') => ipcRenderer.invoke('collab:delete-group', groupId, confirm),
   collabRemoveMember: (groupId: string, userId: string) => ipcRenderer.invoke('collab:remove-member', groupId, userId),
-  collabSetSharing: (groupId: string, s: { shareReviews: boolean; shareStats: boolean; shareTeam: boolean }) =>
+  collabSetSharing: (groupId: string, s: { shareReviews: boolean; shareStats: boolean; shareTeam: boolean; shareWellbeing: boolean }) =>
     ipcRenderer.invoke('collab:set-sharing', groupId, s),
   collabPlayerSessions: (playerId: string) => ipcRenderer.invoke('collab:player-sessions', playerId),
   collabListComments: (reviewId: string, playerId?: string) => ipcRenderer.invoke('collab:list-comments', reviewId, playerId),
@@ -175,6 +175,11 @@ const api = {
   vodReviewSetAssignment: (sessionId: string, input: unknown) => ipcRenderer.invoke('vodreview:set-assignment', sessionId, input),
   vodReviewSetAssignmentStatus: (id: string, status: 'pending' | 'done') => ipcRenderer.invoke('vodreview:set-assignment-status', id, status),
   vodReviewDeleteAssignment: (id: string) => ipcRenderer.invoke('vodreview:delete-assignment', id),
+
+  // E6: wellbeing & load
+  wellbeingAddCheckin: (input: unknown) => ipcRenderer.invoke('wellbeing:add-checkin', input),
+  wellbeingListMine: (limit?: number) => ipcRenderer.invoke('wellbeing:list-mine', limit),
+  wellbeingListForGroup: (playerIds: string[]) => ipcRenderer.invoke('wellbeing:list-for-group', playerIds),
 
   // Ascend cloud account & backups (tokens never leave the main process)
   cloudStatus: () => ipcRenderer.invoke('cloud:status'),
