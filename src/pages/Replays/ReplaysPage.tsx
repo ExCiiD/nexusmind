@@ -39,7 +39,7 @@ interface ReplayEntry {
 
 function sourceLabel(source: string): string {
   switch (source) {
-    case 'capture': return 'NexusMind'
+    case 'capture': return 'Ascend'
     case 'outplayed': return 'Outplayed'
     case 'insightcapture': return 'InsightCapture'
     case 'obs': return 'OBS'

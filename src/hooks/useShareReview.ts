@@ -129,7 +129,7 @@ export function useShareReview() {
         description: description || undefined,
         color,
         fields,
-        footer: { text: 'Shared via NexusMind' },
+        footer: { text: 'Shared via Ascend' },
         timestamp: new Date().toISOString(),
       }
     },
@@ -183,7 +183,7 @@ export function useShareReview() {
         lines.push(`\n🤖 AI Summary\n${data.aiSummary.trim()}`)
       }
 
-      lines.push('\n*Shared via NexusMind*')
+      lines.push('\n*Shared via Ascend*')
       return lines.join('\n')
     },
     [getObjectiveLabels, getKpiLabel],

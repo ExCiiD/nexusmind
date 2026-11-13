@@ -19,9 +19,9 @@ export function registerBackupHandlers() {
     const parentWindow = BrowserWindow.getFocusedWindow() ?? undefined
     const stamp = new Date().toISOString().slice(0, 10)
     const dialogOptions: Electron.SaveDialogOptions = {
-      title: 'Export NexusMind data',
+      title: 'Export Ascend data',
       defaultPath: `nexusmind-backup-${stamp}.nexusmind`,
-      filters: [{ name: 'NexusMind backup', extensions: ['nexusmind'] }],
+      filters: [{ name: 'Ascend backup', extensions: ['nexusmind'] }],
     }
     const result = parentWindow
       ? await dialog.showSaveDialog(parentWindow, dialogOptions)
@@ -49,8 +49,8 @@ export function registerBackupHandlers() {
   ipcMain.handle('backup:import', async () => {
     const parentWindow = BrowserWindow.getFocusedWindow() ?? undefined
     const dialogOptions: Electron.OpenDialogOptions = {
-      title: 'Import NexusMind data',
-      filters: [{ name: 'NexusMind backup', extensions: ['nexusmind'] }],
+      title: 'Import Ascend data',
+      filters: [{ name: 'Ascend backup', extensions: ['nexusmind'] }],
       properties: ['openFile'],
     }
     const result = parentWindow

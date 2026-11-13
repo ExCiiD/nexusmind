@@ -3,7 +3,7 @@
   "version": "0.2.0-beta.61",
   "private": true,
   "description": "League of Legends Self-Coaching Desktop App",
-  "author": "NexusMind",
+  "author": "Ascend",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",

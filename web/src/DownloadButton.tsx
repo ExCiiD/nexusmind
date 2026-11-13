@@ -3,7 +3,7 @@ import { Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLatestRelease } from './useLatestRelease'
 
-/** Download link to the newest NexusMind for Windows installer. */
+/** Download link to the newest Ascend for Windows installer. */
 export function DownloadButton({ className, compact }: { className?: string; compact?: boolean }) {
   const { t } = useTranslation()
   const { url, version } = useLatestRelease()

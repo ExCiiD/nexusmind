@@ -1,8 +1,8 @@
-# Mise en place du cloud NexusMind (W1)
+# Mise en place du cloud Ascend (W1)
 
 Ce qui est **déjà fait** (via le code et le MCP Supabase) :
 
-- Projet Supabase `NexusMind` (`zwubyzrfpelhxjjezvrh`, Zurich) réactivé.
+- Projet Supabase `Ascend` (`zwubyzrfpelhxjjezvrh`, Zurich) réactivé.
 - Table `public.cloud_backups` + bucket privé `backups` (50 Mo/fichier, un dossier par utilisateur, RLS).
 - Edge Function `delete-account` (suppression RGPD des sauvegardes + du compte).
 - Worker Cloudflare `nexusmind-riot-proxy` **déployé** : https://nexusmind-riot-proxy.nexusmind-riot-proxy.workers.dev (clé Riot permanente en secret `RIOT_API_KEY`, JWT Supabase vérifiés via JWKS ES256).
@@ -14,14 +14,14 @@ Ce qu'il reste à faire **par toi** (comptes et tableaux de bord) :
 Supabase → *Authentication → Emails → Templates*. Remplace le contenu de **Magic link** **et** de **Confirm signup** par :
 
 ```html
-<h2>Ton code NexusMind / Your NexusMind code</h2>
+<h2>Ton code Ascend / Your Ascend code</h2>
 <p>Saisis ce code dans l'application / Enter this code in the app:</p>
 <p style="font-size:28px;font-weight:bold;letter-spacing:6px">{{ .Token }}</p>
 <p>Il expire dans 1 heure. Si tu n'as rien demandé, ignore cet e-mail.<br>
 It expires in 1 hour. If you didn't request it, ignore this e-mail.</p>
 ```
 
-Objet conseillé : `{{ .Token }} — code NexusMind`.
+Objet conseillé : `{{ .Token }} — code Ascend`.
 
 > L'envoi d'e-mails intégré à Supabase est très limité (quelques e-mails par heure) : suffisant pour tester, pas pour la bêta publique. Avant d'inviter des joueurs, configure un SMTP (*Authentication → Emails → SMTP Settings*), par exemple Resend ou Brevo, qui ont des offres gratuites.
 

@@ -2,7 +2,7 @@
   "name": "nexusmind-riot-proxy",
   "private": true,
   "version": "1.0.0",
-  "description": "Cloudflare Worker proxying NexusMind's Riot API calls (keeps the API key out of the desktop app).",
+  "description": "Cloudflare Worker proxying Ascend's Riot API calls (keeps the API key out of the desktop app).",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",

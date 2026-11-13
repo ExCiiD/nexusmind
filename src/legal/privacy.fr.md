@@ -1,20 +1,20 @@
-# Politique de confidentialité — NexusMind
+# Politique de confidentialité — Ascend
 
 _Version 0.1 (bêta) — brouillon à faire valider avant la version publique._
 
 ## Qui est responsable de vos données ?
-NexusMind est édité par [NOM DE L'ÉDITEUR], [ADRESSE / PAYS].
+Ascend est édité par [NOM DE L'ÉDITEUR], [ADRESSE / PAYS].
 Contact : [ADRESSE E-MAIL DE CONTACT].
 
-## Ce que NexusMind stocke, et où
+## Ce que Ascend stocke, et où
 **Sur votre PC (par défaut).** Vos sessions, reviews, scores, notes, enregistrements vidéo et statistiques restent dans l'application, sur votre ordinateur.
 
-**Dans le cloud NexusMind, uniquement si vous avez un compte :**
+**Dans le cloud Ascend, uniquement si vous avez un compte :**
 - votre adresse e-mail (connexion par code) ;
 - vos sauvegardes : une copie compressée de vos données de coaching (sessions, games, reviews, erreurs, équipes, pools de champions). Les vidéos et le cache des matchs Riot n'y figurent jamais ;
 - des informations techniques sur chaque sauvegarde (date, taille, version de l'app, nom de l'ordinateur).
 
-**Lors des appels à l'API Riot**, l'application passe par un serveur relais NexusMind (Cloudflare) qui ajoute la clé d'API Riot. Ce relais voit votre identifiant de compte NexusMind et la requête envoyée à Riot (par exemple votre Riot ID ou un identifiant de match). Il ne conserve pas ces requêtes au-delà des journaux techniques temporaires de l'hébergeur.
+**Lors des appels à l'API Riot**, l'application passe par un serveur relais Ascend (Cloudflare) qui ajoute la clé d'API Riot. Ce relais voit votre identifiant de compte Ascend et la requête envoyée à Riot (par exemple votre Riot ID ou un identifiant de match). Il ne conserve pas ces requêtes au-delà des journaux techniques temporaires de l'hébergeur.
 
 ## Pourquoi
 - Fournir le service : sauvegarde, restauration sur un autre PC, accès aux données Riot.
@@ -35,8 +35,8 @@ Aucune donnée n'est vendue, ni utilisée à des fins publicitaires.
 
 ## Vos droits
 - **Accès et portabilité** : *Réglages → Sauvegarde* exporte toutes vos données dans un fichier `.nexusmind`.
-- **Effacement** : *Réglages → Compte NexusMind → Supprimer mon compte* supprime immédiatement votre compte et toutes vos sauvegardes cloud. Les données présentes sur votre PC ne sont pas touchées.
+- **Effacement** : *Réglages → Compte Ascend → Supprimer mon compte* supprime immédiatement votre compte et toutes vos sauvegardes cloud. Les données présentes sur votre PC ne sont pas touchées.
 - **Rectification, opposition, réclamation** : écrivez à [ADRESSE E-MAIL DE CONTACT]. Vous pouvez aussi saisir l'autorité de protection des données de votre pays (en France : la CNIL).
 
 ## Mentions Riot Games
-NexusMind n'est ni approuvé ni sponsorisé par Riot Games et ne reflète pas les opinions de Riot Games ou de toute personne officiellement impliquée dans la production ou la gestion des propriétés de Riot Games. Riot Games et toutes les propriétés associées sont des marques commerciales ou des marques déposées de Riot Games, Inc.
+Ascend n'est ni approuvé ni sponsorisé par Riot Games et ne reflète pas les opinions de Riot Games ou de toute personne officiellement impliquée dans la production ou la gestion des propriétés de Riot Games. Riot Games et toutes les propriétés associées sont des marques commerciales ou des marques déposées de Riot Games, Inc.

@@ -21,7 +21,7 @@ export function WebLayout() {
       <aside className="fixed inset-y-0 left-0 hidden w-56 flex-col border-r border-hextech-border-dim bg-hextech-dark p-4 md:flex">
         <div className="mb-6 flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded bg-hextech-gold/20 font-display font-bold text-hextech-gold">N</span>
-          <span className="font-display text-lg text-hextech-gold-bright">NexusMind</span>
+          <span className="font-display text-lg text-hextech-gold-bright">Ascend</span>
         </div>
         <nav className="space-y-1">
           {NAV.map(({ to, icon: Icon, key, end }) => (

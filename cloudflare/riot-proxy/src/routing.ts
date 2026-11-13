@@ -3,7 +3,7 @@
  *
  * The app calls `https://<proxy>/<host>/<riot path>?<query>` where <host> is
  * a Riot platform (euw1, na1…) or regional cluster (europe, americas…).
- * Only the read-only endpoints NexusMind actually uses are forwarded; the
+ * Only the read-only endpoints Ascend actually uses are forwarded; the
  * proxy must never become a general-purpose relay for our API key.
  */
 

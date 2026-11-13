@@ -17,7 +17,7 @@ const linkablePath = z
   .refine(async (p) => !p || (await isPersistablePath(p)), 'file must be picked in the file dialog')
 
 /**
- * The file behind an external review is only deleted with it when NexusMind
+ * The file behind an external review is only deleted with it when Ascend
  * owns it (inside the app's recordings folder) and nothing else points at
  * it. User files picked from elsewhere (OBS folder, Videos…) are never
  * deleted, nor is a game recording that the review was created from.

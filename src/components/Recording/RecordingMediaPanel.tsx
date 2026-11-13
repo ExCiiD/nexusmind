@@ -103,7 +103,7 @@ export function RecordingMediaPanel({
       const r = await (window.api as any).youtubeUpload({
         filePath,
         title,
-        description: 'Reviewed with NexusMind',
+        description: 'Reviewed with Ascend',
         visibility: 'unlisted',
       })
       setYtUrl(r.url)

@@ -12,7 +12,7 @@ export interface LatestRelease {
 let cache: Promise<LatestRelease> | null = null
 
 /**
- * Newest NexusMind installer, pre-releases included: GitHub's
+ * Newest Ascend installer, pre-releases included: GitHub's
  * `releases/latest` skips pre-releases, and every beta is one.
  */
 function fetchLatest(): Promise<LatestRelease> {

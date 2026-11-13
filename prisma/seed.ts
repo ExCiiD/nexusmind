@@ -62,7 +62,7 @@ const AI_SUMMARIES = [
 // ── seed ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('🌱 Seeding NexusMind database...')
+  console.log('🌱 Seeding Ascend database...')
 
   // Wipe existing data
   await prisma.badge.deleteMany()
@@ -79,7 +79,7 @@ async function main() {
 
   const user = await prisma.user.create({
     data: {
-      summonerName: 'NexusMind',
+      summonerName: 'Ascend',
       tagLine: 'DEV',
       puuid: 'dev-puuid-nexusmind-seed-001',
       region: 'EUW1',

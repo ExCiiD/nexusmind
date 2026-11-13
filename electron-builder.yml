@@ -1,5 +1,5 @@
-appId: com.nexusmind.app
-productName: NexusMind
+appId: com.ascend.app
+productName: Ascend
 
 directories:
   output: release
@@ -41,7 +41,7 @@ win:
   sign: false
   signingHashAlgorithms: []
   forceCodeSigning: false
-  artifactName: NexusMind-Setup-${version}.${ext}
+  artifactName: Ascend-Setup-${version}.${ext}
 
 nsis:
   oneClick: false
@@ -51,4 +51,4 @@ nsis:
   installerHeaderIcon: build/icon.ico
   createDesktopShortcut: always
   createStartMenuShortcut: true
-  shortcutName: NexusMind
+  shortcutName: Ascend

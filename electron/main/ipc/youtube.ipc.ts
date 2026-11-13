@@ -213,7 +213,7 @@ export function registerYoutubeHandlers(): void {
             res.writeHead(200, { 'Content-Type': 'text/html' })
             res.end(`<html><body style="font-family:sans-serif;text-align:center;padding:40px">
               <h2 style="color:#1DB954">✓ YouTube Connected</h2>
-              <p>You can close this tab and return to NexusMind.</p>
+              <p>You can close this tab and return to Ascend.</p>
             </body></html>`)
 
             server.close()
@@ -280,7 +280,7 @@ export function registerYoutubeHandlers(): void {
         body: JSON.stringify({
           snippet: {
             title: opts.title.slice(0, 100),
-            description: (opts.description ?? 'Uploaded by NexusMind').slice(0, 5000),
+            description: (opts.description ?? 'Uploaded by Ascend').slice(0, 5000),
           },
           status: {
             privacyStatus: visibility,

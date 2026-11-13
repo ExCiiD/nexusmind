@@ -1,5 +1,5 @@
 /**
- * Hidden-window capture renderer for NexusMind recording.
+ * Hidden-window capture renderer for Ascend recording.
  *
  * Pipeline (Phase 2 — video + audio via WGC/Chromium APIs):
  *  1. Receive `wgc:start` IPC from the main process with capture settings.

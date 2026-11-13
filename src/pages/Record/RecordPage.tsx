@@ -442,7 +442,7 @@ export function RecordPage() {
               <FilterRow label="Review" value={filters.review} onChange={v => updateFilter('review', v as ReviewFilter)}
                 options={[{ value: 'all', label: 'All' }, { value: 'reviewed', label: 'Reviewed' }, { value: 'unreviewed', label: 'Unreviewed' }]} />
               <FilterRow label="Source" value={filters.source} onChange={v => updateFilter('source', v as SourceFilter)}
-                options={[{ value: 'all', label: 'All' }, { value: 'capture', label: 'NexusMind' }, { value: 'obs', label: 'OBS' }, { value: 'outplayed', label: 'Outplayed' }, { value: 'insightcapture', label: 'Insight' }, { value: 'youtube', label: 'YouTube' }, { value: 'manual', label: 'Manual' }]} />
+                options={[{ value: 'all', label: 'All' }, { value: 'capture', label: 'Ascend' }, { value: 'obs', label: 'OBS' }, { value: 'outplayed', label: 'Outplayed' }, { value: 'insightcapture', label: 'Insight' }, { value: 'youtube', label: 'YouTube' }, { value: 'manual', label: 'Manual' }]} />
             </div>
           </CardContent>
         </Card>

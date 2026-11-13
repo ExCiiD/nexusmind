@@ -171,7 +171,7 @@ async function reconcileOrphanClips(baseDir: string): Promise<number> {
 // ── Orphan-recording backfill ────────────────────────────────────────────────
 //
 // Recordings end up "orphan" (gameId = null) when the user captured a video
-// outside an active NexusMind session OR on an account that wasn't linked
+// outside an active Ascend session OR on an account that wasn't linked
 // at the time. The scan flow only matches orphans to EXISTING Game rows —
 // it can't create new ones. This module fills that gap: for each orphan,
 // query Riot's match history on every linked account and create a Game row
@@ -186,7 +186,7 @@ const REVIEW_ONLY_OBJECTIVE_ID = '__review_only__'
 
 /**
  * Returns the per-user session that hosts backfilled Game rows for games
- * the user played outside of any active NexusMind session. Created on
+ * the user played outside of any active Ascend session. Created on
  * first need, then reused. Always marked `status: 'closed'` and tagged
  * via `objectiveId` so other queries can filter it out of session KPIs.
  */
@@ -770,7 +770,7 @@ export function registerRecordingHandlers() {
     }
 
     // Prefer the in-app recordings folder when it exists on disk, so the
-    // picker opens where NexusMind's own captures are saved. Fall back to the
+    // picker opens where Ascend's own captures are saved. Fall back to the
     // external recordings folder, then to the user's Videos directory.
     const recordingsDir = user?.recordingPath
       ? recordingManager.getRecordingsDir(user.recordingPath)

@@ -1,5 +1,5 @@
 /**
- * NexusMind Riot API proxy (Cloudflare Worker).
+ * Ascend Riot API proxy (Cloudflare Worker).
  *
  * Keeps the Riot API key out of the desktop app: the app sends its Supabase
  * access token, the Worker checks it, applies a per-player rate limit and
@@ -57,7 +57,7 @@ export default {
     const route = routeRequest(req.method, url)
     if (!route.ok) return json(route.status, { error: route.error })
 
-    // A real (non-anonymous) NexusMind account is required.
+    // A real (non-anonymous) Ascend account is required.
     const user = await verifyUser(req, env)
     if (!user?.sub || (user as any).is_anonymous) return json(401, { error: 'login_required' })
 

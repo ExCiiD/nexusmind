@@ -53,7 +53,7 @@ export function OnboardingPage() {
               <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-hextech-cyan to-hextech-teal flex items-center justify-center">
                 <span className="text-xl font-bold text-hextech-black">N</span>
               </div>
-              <h1 className="font-display text-3xl font-bold text-gradient-gold">NexusMind</h1>
+              <h1 className="font-display text-3xl font-bold text-gradient-gold">Ascend</h1>
             </div>
             <p className="text-hextech-text">{t('onboarding.tagline')}</p>
           </div>

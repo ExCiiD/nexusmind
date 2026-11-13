@@ -4,7 +4,7 @@ import { routeRequest } from '../../cloudflare/riot-proxy/src/routing'
 const route = (path: string, method = 'GET') => routeRequest(method, new URL(`https://proxy.example${path}`))
 
 describe('riot proxy routing', () => {
-  it('forwards the endpoints NexusMind uses', () => {
+  it('forwards the endpoints Ascend uses', () => {
     const cases = [
       '/europe/riot/account/v1/accounts/by-riot-id/Faker/KR1',
       '/euw1/lol/summoner/v4/summoners/by-puuid/abc-DEF_123',

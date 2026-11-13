@@ -250,7 +250,7 @@ export function SettingsPage() {
               <p className="text-sm font-medium text-hextech-text-bright">Auto-record games</p>
               <p className="text-xs text-hextech-text-dim mt-0.5">
                 Starts recording when LoL launches, stops and saves when the game ends. For best results, use{' '}
-                <span className="text-hextech-text/90">borderless</span> or <span className="text-hextech-text/90">windowed</span> mode in League — exclusive fullscreen can produce a black capture with some setups. NexusMind minimizes while recording so it does not appear on your footage.
+                <span className="text-hextech-text/90">borderless</span> or <span className="text-hextech-text/90">windowed</span> mode in League — exclusive fullscreen can produce a black capture with some setups. Ascend minimizes while recording so it does not appear on your footage.
               </p>
             </div>
             <button
@@ -995,7 +995,7 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* ── NexusMind account: cloud backups, sign-out, account deletion ──────── */}
+      {/* ── Ascend account: cloud backups, sign-out, account deletion ──────── */}
       <CloudAccountCard />
       <AccessInvitesCard webUrl={DEFAULT_WEB_URL} />
 
@@ -1365,10 +1365,10 @@ function DiscordWebhookCard() {
     setTestingId(wh.id)
     try {
       await window.api.sendToDiscord([{
-        title: '✅ NexusMind webhook test',
+        title: '✅ Ascend webhook test',
         description: `**${wh.name}** is correctly configured. Reviews will be shared to this channel.`,
         color: 0xc89b3c,
-        footer: { text: 'NexusMind' },
+        footer: { text: 'Ascend' },
         timestamp: new Date().toISOString(),
       }], wh.url)
       toast({ title: `Test sent to "${wh.name}"`, variant: 'gold' })
@@ -1613,7 +1613,7 @@ function YouTubeCard() {
           YouTube Upload
         </CardTitle>
         <CardDescription>
-          Connect your YouTube account to upload recordings and clips directly from NexusMind.
+          Connect your YouTube account to upload recordings and clips directly from Ascend.
           Requires a Google Cloud project with YouTube Data API v3 enabled.
         </CardDescription>
       </CardHeader>

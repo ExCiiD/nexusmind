@@ -145,7 +145,7 @@ export function Sidebar() {
           <span className="text-sm font-bold text-hextech-black">N</span>
         </div>
         <div className="flex-1 min-w-0">
-          <span className="font-display text-lg font-bold text-hextech-gold-bright block leading-tight">NexusMind</span>
+          <span className="font-display text-lg font-bold text-hextech-gold-bright block leading-tight">Ascend</span>
           {appVersion && <span className="text-[10px] text-hextech-text-dim/60 leading-none">v{appVersion}</span>}
         </div>
         <button

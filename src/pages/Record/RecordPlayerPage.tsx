@@ -78,7 +78,7 @@ function parseMmSs(v: string): number | null {
 function fmtFileSize(b: number) { return b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB` }
 
 function sourceLabel(s: string) {
-  return ({ capture: 'NexusMind', outplayed: 'Outplayed', insightcapture: 'InsightCapture', obs: 'OBS', youtube: 'YouTube', external: 'External' } as Record<string, string>)[s] ?? 'Manual'
+  return ({ capture: 'Ascend', outplayed: 'Outplayed', insightcapture: 'InsightCapture', obs: 'OBS', youtube: 'YouTube', external: 'External' } as Record<string, string>)[s] ?? 'Manual'
 }
 
 function extractYtId(url: string) {
@@ -402,7 +402,7 @@ export function RecordPlayerPage() {
       } else {
         toast({
           title: 'No match found',
-          description: 'No Riot game was found within ±5 min of this recording. Confirm the account you played on is linked in NexusMind.',
+          description: 'No Riot game was found within ±5 min of this recording. Confirm the account you played on is linked in Ascend.',
           variant: 'destructive',
         })
       }
@@ -487,8 +487,8 @@ export function RecordPlayerPage() {
     try {
       const r = await (window.api as any).youtubeUpload({
         filePath: recording.filePath,
-        title: `${recording.champion} — ${recording.win ? 'Victory' : 'Defeat'} | NexusMind`,
-        description: 'Recorded with NexusMind', visibility: 'unlisted',
+        title: `${recording.champion} — ${recording.win ? 'Victory' : 'Defeat'} | Ascend`,
+        description: 'Recorded with Ascend', visibility: 'unlisted',
       })
       setYtUrl(r.url); setYtState('done')
       if (recording.gameId) await window.api.setYoutubeUrl(recording.gameId, r.url)
@@ -667,7 +667,7 @@ export function RecordPlayerPage() {
             className="w-40 rounded bg-white/5 border border-white/10 px-2 py-1 text-[11px] text-hextech-text placeholder:text-hextech-text-dim/40 focus:outline-none focus:border-hextech-gold/50" />
           <Button size="sm" className="h-7 gap-1 text-xs bg-hextech-gold text-hextech-dark hover:bg-hextech-gold-bright px-2.5"
             onClick={handleSaveClip} disabled={savingClip || exportingClip || clipRange.endMs <= clipRange.startMs}
-            title="Save clip in NexusMind (stays in the app)">
+            title="Save clip in Ascend (stays in the app)">
             {savingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}Save
           </Button>
           <Button size="sm" variant="outline"
@@ -758,7 +758,7 @@ function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink, onT
 
       {/* Orphan-recovery CTA: lets the user fetch missing game data from
           Riot match history (useful if they connected the account after
-          recording, or had no active NexusMind session at the time). */}
+          recording, or had no active Ascend session at the time). */}
       {recording.isOrphaned && (
         <Button
           variant="outline" size="sm"

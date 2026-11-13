@@ -21,7 +21,7 @@ function inviteStatus(i: AccessInvite): 'revoked' | 'used' | 'expired' | 'active
 }
 
 /**
- * Admins only (rows in public.app_admins): invite people to NexusMind.
+ * Admins only (rows in public.app_admins): invite people to Ascend.
  * Rendered on the desktop (Settings) and the web app (Account); hidden for
  * everyone else.
  */

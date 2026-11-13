@@ -6,7 +6,7 @@ import react from '@vitejs/plugin-react'
 const pkg = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf-8')) as { version: string }
 
 /**
- * NexusMind web companion (W4): read your reviews, coach feedback and plan
+ * Ascend web companion (W4): read your reviews, coach feedback and plan
  * scrims from any device. Reuses the desktop UI from `../src` — the desktop
  * `window.api` is replaced by a Supabase-backed adapter (src/api.ts).
  *

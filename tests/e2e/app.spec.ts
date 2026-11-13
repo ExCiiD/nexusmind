@@ -23,7 +23,7 @@ test.describe('first launch (no account)', () => {
   })
 })
 
-test.describe('NexusMind account gate', () => {
+test.describe('Ascend account gate', () => {
   let ctx: LaunchedApp
 
   test.beforeAll(async () => { ctx = await launchApp(makeDataDir(), { cloud: true }) })
@@ -32,7 +32,7 @@ test.describe('NexusMind account gate', () => {
   test('asks to sign in before anything else when the build has a cloud backend', async () => {
     const status = await ctx.page.evaluate(() => (window as any).api.cloudStatus())
     test.skip(!status.configured, 'build without Supabase configuration (e.g. CI)')
-    await expect(ctx.page.getByText('Sign in to NexusMind')).toBeVisible()
+    await expect(ctx.page.getByText('Sign in to Ascend')).toBeVisible()
     await expect(ctx.page.getByLabel('E-mail')).toBeVisible()
     // Onboarding is not reachable until signed in.
     await expect(ctx.page.getByText('Connect Your Riot Account')).toHaveCount(0)
@@ -120,7 +120,7 @@ test.describe('main UI with an onboarded user', () => {
   test('the feedback button opens the bug / feature form', async () => {
     await ctx.page.getByRole('button', { name: 'Report a bug / suggest' }).click()
     const dialog = ctx.page.getByRole('dialog')
-    await expect(dialog.getByText('Help improve NexusMind')).toBeVisible()
+    await expect(dialog.getByText('Help improve Ascend')).toBeVisible()
     const send = dialog.getByRole('button', { name: 'Send' })
     await expect(send).toBeDisabled()
     await dialog.getByLabel('Short title').fill('Crash on save')
@@ -135,7 +135,7 @@ test.describe('main UI with an onboarded user', () => {
       const before = ctx.pageErrors.length
       await goto(ctx.page, route)
       // The sidebar stays mounted unless the whole tree crashed.
-      await expect(ctx.page.getByText('NexusMind').first()).toBeVisible()
+      await expect(ctx.page.getByText('Ascend').first()).toBeVisible()
       const bodyText = await ctx.page.evaluate(() => document.body.innerText)
       expect(bodyText).not.toMatch(/Something went wrong|Unexpected Application Error/i)
       expect(ctx.pageErrors.slice(before), `uncaught errors on ${route}`).toEqual([])

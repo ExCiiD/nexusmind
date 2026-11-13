@@ -7,7 +7,7 @@ import { getAccessToken } from './cloud/supabase'
  * Decides how a Riot API call leaves the app.
  *
  *  - Proxy (default, and the only option in packaged builds): the call goes
- *    to the NexusMind Cloudflare Worker with the user's Supabase token; the
+ *    to the Ascend Cloudflare Worker with the user's Supabase token; the
  *    Riot key lives only in the Worker.
  *  - Direct (development only): `RIOT_DEV_API_KEY` from `.env`, read at
  *    runtime so it can never be inlined into a build.
@@ -58,7 +58,7 @@ export async function prepareRiotRequest(riotUrl: string): Promise<{ url: string
   const mode = riotTransportMode()
   if (mode === 'proxy') {
     const token = await getAccessToken()
-    if (!token) throw new RiotAuthError('LOGIN_REQUIRED', 'Sign in to your NexusMind account to load Riot data.')
+    if (!token) throw new RiotAuthError('LOGIN_REQUIRED', 'Sign in to your Ascend account to load Riot data.')
     return { url: toProxyUrl(riotUrl, PROXY_URL), headers: { Authorization: `Bearer ${token}` } }
   }
   if (mode === 'direct') {

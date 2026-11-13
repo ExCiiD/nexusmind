@@ -1,4 +1,4 @@
-# Plan — site vitrine NexusMind
+# Plan — site vitrine Ascend
 
 > Front-end généré avec **Gemini 4** (code) et **Midjourney** (visuels). Ce document est le brief : objectifs, structure, textes, visuels (prompts), contraintes, technique et lancement.
 
@@ -47,7 +47,7 @@ KPI : taux de clic sur « Télécharger », comptes créés, groupes créés (me
 ### Interdits (droits)
 - **Aucun asset Riot** (splash arts, icônes de champions, logo LoL, police Beaufort officielle, maps) sur la vitrine — Riot autorise l'usage de son API, pas de ses marques dans le marketing.
 - Midjourney : ne pas demander de champions nommés ni de « League of Legends style » ; rester générique (fantasy-tech).
-- Mention obligatoire en footer : « NexusMind isn't endorsed by Riot Games… » (texte complet dans la politique de confidentialité).
+- Mention obligatoire en footer : « Ascend isn't endorsed by Riot Games… » (texte complet dans la politique de confidentialité).
 
 ### Prompts Midjourney (point de départ)
 1. **Hero background** : `dark fantasy-tech command room, floating holographic strategy map, thin gold filigree lines, deep navy and black, subtle cyan glow, cinematic lighting, wide composition with empty center for text, ultra clean, no characters, no text --ar 21:9 --style raw --v 7`

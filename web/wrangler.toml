@@ -1,4 +1,4 @@
-# NexusMind web companion, served by Cloudflare Workers static assets
+# Ascend web companion, served by Cloudflare Workers static assets
 # (Cloudflare's successor to Pages: same free tier, `_headers` supported).
 # Deploy (after `npm run web:build` at the repo root), from this folder:
 #   npx wrangler deploy

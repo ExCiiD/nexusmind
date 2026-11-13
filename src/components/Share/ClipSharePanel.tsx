@@ -82,7 +82,7 @@ export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipShar
             [{
               description: embedContent,
               color: 0xC89B3C,
-              footer: { text: 'NexusMind Clip' },
+              footer: { text: 'Ascend Clip' },
               timestamp: new Date().toISOString(),
             }],
             selectedWebhook,

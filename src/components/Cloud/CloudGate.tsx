@@ -10,7 +10,7 @@ import type { CloudStatus } from '@/lib/ipc'
 import { LegalDialog } from './LegalDialog'
 
 /**
- * A NexusMind account is required: it authenticates Riot calls (the Riot API
+ * An Ascend account is required: it authenticates Riot calls (the Riot API
  * key lives in our proxy, not in the app) and owns the cloud backups.
  * Builds without cloud configuration (CI, tests) skip the gate.
  */
@@ -146,7 +146,7 @@ export function CloudLogin({ onSignedIn, footer }: { onSignedIn: (user: CloudSta
         <CardHeader>
           <div className="mb-2 flex items-center gap-2 text-hextech-gold">
             <ShieldCheck className="h-5 w-5" />
-            <span className="font-display text-sm tracking-wider">NexusMind</span>
+            <span className="font-display text-sm tracking-wider">Ascend</span>
           </div>
           <CardTitle>{t('cloud.login.title')}</CardTitle>
           <CardDescription>{t('cloud.login.subtitle')}</CardDescription>

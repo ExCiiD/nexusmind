@@ -178,7 +178,7 @@ export class SyncEngine {
       return
     }
     if ((profile.data as any)?.puuid !== puuid) {
-      throw new SyncError('DIFFERENT_PLAYER', 'This NexusMind account already syncs another Riot player.')
+      throw new SyncError('DIFFERENT_PLAYER', 'This Ascend account already syncs another Riot player.')
     }
   }
 

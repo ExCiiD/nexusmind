@@ -1,6 +1,6 @@
 # Signalements et demandes des joueurs
 
-Les boutons **« Signaler un bug / proposer »** (sidebar de l'app desktop, sidebar et page Compte du site web) écrivent dans la table Supabase `public.feedback_reports` du projet `NexusMind` (`zwubyzrfpelhxjjezvrh`).
+Les boutons **« Signaler un bug / proposer »** (sidebar de l'app desktop, sidebar et page Compte du site web) écrivent dans la table Supabase `public.feedback_reports` du projet `Ascend` (`zwubyzrfpelhxjjezvrh`).
 
 - Chaque joueur ne voit que ses propres envois, et leur **statut** + ta **note** (`dev_note`) s'affichent dans sa fenêtre de signalement.
 - Limite : 20 envois par joueur et par 24 h.

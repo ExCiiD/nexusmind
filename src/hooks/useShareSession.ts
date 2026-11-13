@@ -149,7 +149,7 @@ export function useShareSession() {
           description: descParts.join('\n') || undefined,
           color: overviewColor,
           fields: overviewFields,
-          footer: { text: 'Shared via NexusMind' },
+          footer: { text: 'Shared via Ascend' },
           timestamp: new Date(data.date).toISOString(),
         },
       ]
@@ -241,7 +241,7 @@ export function useShareSession() {
         lines.push(`\n📝 Session Conclusion\n${conclusionTxt}`)
       }
 
-      lines.push('\n*Shared via NexusMind*')
+      lines.push('\n*Shared via Ascend*')
       return lines.join('\n')
     },
     [getObjectiveLabels, getKpiLabel],

@@ -1,4 +1,4 @@
-# NexusMind — Product Requirements Document
+# Ascend — Product Requirements Document
 
 **Version:** 1.2  
 **Date:** 2026-04-11  
@@ -8,11 +8,11 @@
 
 ## 1. Vision & Objectives
 
-NexusMind is a League of Legends self-coaching desktop application designed to help players improve through structured reviews, persistent objectives, detailed game statistics, and deterministic coaching rules in a local-first environment.
+Ascend is a League of Legends self-coaching desktop application designed to help players improve through structured reviews, persistent objectives, detailed game statistics, and deterministic coaching rules in a local-first environment.
 
 **Core problem:** Players want to improve but lack a repeatable workflow to set focus areas, review games, measure progress, and identify recurring mistakes without relying on scattered tools.
 
-**Product direction:** NexusMind shifts from an AI-centered product to a business-rules-first product. The primary engine is built on sessions, reviews, KPI scoring, detailed stats, replays, and persistent filters. AI becomes an optional assistance layer, never a dependency for the main flow.
+**Product direction:** Ascend shifts from an AI-centered product to a business-rules-first product. The primary engine is built on sessions, reviews, KPI scoring, detailed stats, replays, and persistent filters. AI becomes an optional assistance layer, never a dependency for the main flow.
 
 **Solution:** An always-on desktop companion that detects game ends, opens the right review context, links recordings, tracks fundamentals over time, and generates coaching insights from structured local data and deterministic heuristics.
 
@@ -158,7 +158,7 @@ NexusMind is a League of Legends self-coaching desktop application designed to h
 
 ### 5.11 Deterministic Insight Engine
 
-NexusMind now prioritizes deterministic rule-based insights over model-generated coaching.
+Ascend now prioritizes deterministic rule-based insights over model-generated coaching.
 
 | Capability | Rule-based source of truth |
 |---|---|
@@ -303,7 +303,7 @@ All fundamentals are stored in `src/lib/constants/fundamentals.ts` as a typed co
 
 ## 7. Data Model
 
-NexusMind is local-first. The production data model centers on the following local entities:
+Ascend is local-first. The production data model centers on the following local entities:
 
 | Entity | Purpose |
 |---|---|
@@ -498,7 +498,7 @@ npm run dist         # electron-builder → NSIS installer
 ```
 
 ### Output
-- Windows NSIS installer: `dist/NexusMind-Setup-{version}.exe`
+- Windows NSIS installer: `dist/Ascend-Setup-{version}.exe`
 - Auto-update via `electron-updater` (update feed URL configurable in `electron-builder.yml`)
 
 ---

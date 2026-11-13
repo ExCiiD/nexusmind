@@ -221,9 +221,9 @@ function championKillEvent(e: RawTimelineEvent, participants: ParticipantInfo[],
  *
  * Selection priority:
  *   1. `puuids` — explicit puuid match (works when the LoL account is linked
- *      to NexusMind, or when we previously cached the puuid on the Game row).
+ *      to Ascend, or when we previously cached the puuid on the Game row).
  *   2. `championName` (+ optional `win`) — fallback for replays from accounts
- *      that aren't linked to NexusMind. The local Live Client API gives us
+ *      that aren't linked to Ascend. The local Live Client API gives us
  *      the champion the user played, which uniquely identifies the
  *      participant in 99% of cases (a champion can't be picked twice in a
  *      draft). `win` disambiguates the rare mirror-pick case (e.g. one-for-all

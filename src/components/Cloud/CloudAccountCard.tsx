@@ -16,7 +16,7 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1048576).toFixed(1)} MB`
 }
 
-/** Settings → NexusMind account: cloud backups, sign-out, GDPR erasure. */
+/** Settings → Ascend account: cloud backups, sign-out, GDPR erasure. */
 export function CloudAccountCard() {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()

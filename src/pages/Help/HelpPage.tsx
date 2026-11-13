@@ -107,7 +107,7 @@ export function HelpPage() {
         </CardContent>
       </Card>
 
-      {/* What is NexusMind */}
+      {/* What is Ascend */}
       <section ref={(el) => { sectionRefs.current['what-is'] = el }}>
         <Card className="border-hextech-gold/20 bg-gradient-to-br from-hextech-dark to-hextech-elevated/30">
           <CardHeader>

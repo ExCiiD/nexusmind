@@ -273,12 +273,12 @@ async function riotFetch(url: string, allowedFallbackStatus?: number[]): Promise
     if (allowedFallbackStatus?.includes(res.status)) {
       return { data: null, status: res.status }
     }
-    // Statuses produced by the NexusMind proxy itself (never by Riot).
+    // Statuses produced by the Ascend proxy itself (never by Riot).
     if (res.status === 401) {
-      throw new RiotAuthError('LOGIN_REQUIRED', 'Your NexusMind session expired — please sign in again.')
+      throw new RiotAuthError('LOGIN_REQUIRED', 'Your Ascend session expired — please sign in again.')
     }
     if (res.status === 502) {
-      throw new Error('NexusMind Riot service is temporarily unavailable. Please try again later.')
+      throw new Error('Ascend Riot service is temporarily unavailable. Please try again later.')
     }
     if (res.status === 403) {
       throw new Error('Riot API key is expired or invalid. Development keys expire every 24 hours — please regenerate at developer.riotgames.com')
@@ -531,7 +531,7 @@ export async function getMatch(
 }
 
 /**
- * Maps a Riot queueId + gameMode string to a normalized NexusMind queue type.
+ * Maps a Riot queueId + gameMode string to a normalized Ascend queue type.
  * Queue IDs: 420=SoloQ, 440=Flex, 450=ARAM, 1700/1710=Arena, 0=Custom/Practice
  */
 export function resolveQueueType(queueId: number, gameMode: string): string {
