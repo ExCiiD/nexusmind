@@ -1,4 +1,5 @@
 import type { CollabApi } from './collab'
+import type { FeedbackApi } from './feedback'
 import type { AssistantMoment, AssistantReport } from '../components/Assistant/types'
 
 export type GameEventType =
@@ -299,7 +300,7 @@ export interface SavedAccount {
   _count: { sessions: number }
 }
 
-export type NexusMindAPI = CollabApi & {
+export type NexusMindAPI = CollabApi & FeedbackApi & {
   connectRiot: (gameName: string, tagLine: string, region: string, displayName?: string) => Promise<any>
   disconnectRiot: () => Promise<void>
   reactivateAccount: (userId: string) => Promise<any>

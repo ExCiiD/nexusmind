@@ -2,6 +2,8 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { CalendarDays, FileSearch, GraduationCap, Home, UserCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { FeedbackButton } from '@/components/Feedback/FeedbackDialog'
+import { DownloadButton } from './DownloadButton'
 
 const NAV = [
   { to: '/', icon: Home, key: 'web.nav.home', end: true },
@@ -35,7 +37,11 @@ export function WebLayout() {
             </NavLink>
           ))}
         </nav>
-        <p className="mt-auto text-xs text-hextech-text-dim">{t('web.desktopHint')}</p>
+        <div className="mt-auto space-y-3">
+          <DownloadButton compact className="w-full" />
+          <p className="text-xs text-hextech-text-dim">{t('web.desktopHint')}</p>
+          <FeedbackButton />
+        </div>
       </aside>
 
       <main className="px-4 pb-24 pt-4 md:ml-56 md:px-8 md:pb-8 md:pt-8">

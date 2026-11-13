@@ -1525,6 +1525,48 @@
         "comms": "Test vocal 15 min avant",
         "goals": "Fixer 1–2 objectifs d'équipe pour le bloc"
       }
+    },
+    "download": {
+      "short": "Télécharger NexusMind",
+      "full": "Télécharger NexusMind pour Windows"
+    }
+  },
+  "feedback": {
+    "button": "Signaler un bug / proposer",
+    "title": "Aidez à améliorer NexusMind",
+    "desc": "Votre message arrive directement chez le développeur. Vous verrez son statut ici.",
+    "kinds": {
+      "bug": "Signaler un bug",
+      "feature": "Proposer une fonctionnalité"
+    },
+    "fields": {
+      "title": "Titre court",
+      "whatHappened": "Que s'est-il passé ? Étapes pour reproduire",
+      "idea": "Votre idée, et pourquoi elle aiderait",
+      "expected": "Qu'attendiez-vous à la place ? (optionnel)"
+    },
+    "placeholders": {
+      "bugTitle": "ex. La page Review se fige après l'enregistrement",
+      "featureTitle": "ex. Comparer deux sessions côte à côte",
+      "bugSteps": "1. Ouvrir… 2. Cliquer… 3. …",
+      "featureWhy": "Qu'en feriez-vous ?"
+    },
+    "attach": "Joindre les infos techniques",
+    "attachHint": "Version de l'app, système, page en cours et erreurs récentes. E-mails, chemins et clés sont retirés.",
+    "send": "Envoyer",
+    "sent": "Merci ! Message envoyé",
+    "sentDesc": "Vous pouvez suivre son statut dans cette fenêtre.",
+    "failed": "Envoi impossible. Vérifiez votre connexion et réessayez.",
+    "rateLimited": "Vous avez déjà beaucoup envoyé aujourd'hui — réessayez demain.",
+    "history": "Vos signalements",
+    "status": {
+      "new": "envoyé",
+      "seen": "lu",
+      "planned": "prévu",
+      "in_progress": "en cours",
+      "done": "fait",
+      "wont_do": "ne sera pas fait",
+      "duplicate": "doublon"
     }
   }
 }

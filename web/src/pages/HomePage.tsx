@@ -7,6 +7,7 @@ import { AssignedObjectivesCard } from '@/components/Coaching/AssignedObjectives
 import { useCollab } from '@/hooks/useCollab'
 import type { ReviewComment } from '@/lib/collab'
 import { listScrims, type Scrim } from '../scrims'
+import { DownloadButton } from '../DownloadButton'
 
 /** What changed since you last opened your PC: coach feedback, objectives, next scrims. */
 export function HomePage() {
@@ -28,7 +29,11 @@ export function HomePage() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('web.home.title')}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('web.home.title')}</h1>
+        {/* On phones the sidebar (with its download button) is hidden. */}
+        <DownloadButton compact className="md:hidden" />
+      </div>
 
       <AssignedObjectivesCard />
 

@@ -12,9 +12,13 @@ import { HomePage } from './pages/HomePage'
 import { MyReviewsPage } from './pages/MyReviewsPage'
 import { ScrimsPage } from './pages/ScrimsPage'
 import { AccountPage } from './pages/AccountPage'
+import { DownloadButton } from './DownloadButton'
+import { installDiagnostics } from '@/lib/diagnostics'
 
 // Must run before any shared component calls window.api.
 installWebApi()
+// Last client errors, attached to bug reports only if the user agrees.
+installDiagnostics()
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
@@ -25,7 +29,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <CloudGate>
+      <CloudGate loginFooter={<DownloadButton className="w-full" />}>
         <Routes>
           <Route element={<WebLayout />}>
             <Route path="/" element={<HomePage />} />

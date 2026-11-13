@@ -1,6 +1,9 @@
 import { resolve } from 'path'
+import { readFileSync } from 'fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+
+const pkg = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf-8')) as { version: string }
 
 /**
  * NexusMind web companion (W4): read your reviews, coach feedback and plan
@@ -16,6 +19,10 @@ export default defineConfig({
   envPrefix: ['WEB_', 'MAIN_VITE_SUPABASE_'],
   base: '/',
   plugins: [react()],
+  define: {
+    // Shown in bug reports so issues can be tied to a web build.
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   resolve: {
     alias: {
       '@': resolve(__dirname, '../src'),

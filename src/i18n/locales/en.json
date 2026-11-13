@@ -1525,6 +1525,48 @@
         "comms": "Voice check 15 min before",
         "goals": "Set 1–2 team goals for the block"
       }
+    },
+    "download": {
+      "short": "Download NexusMind",
+      "full": "Download NexusMind for Windows"
+    }
+  },
+  "feedback": {
+    "button": "Report a bug / suggest",
+    "title": "Help improve NexusMind",
+    "desc": "Your report goes straight to the developer. You'll see its status here.",
+    "kinds": {
+      "bug": "Report a bug",
+      "feature": "Suggest a feature"
+    },
+    "fields": {
+      "title": "Short title",
+      "whatHappened": "What happened? Steps to reproduce",
+      "idea": "Your idea, and why it would help",
+      "expected": "What did you expect instead? (optional)"
+    },
+    "placeholders": {
+      "bugTitle": "e.g. Review page freezes after saving",
+      "featureTitle": "e.g. Compare two sessions side by side",
+      "bugSteps": "1. Open… 2. Click… 3. …",
+      "featureWhy": "What would you do with it?"
+    },
+    "attach": "Attach technical info",
+    "attachHint": "App version, system, current page and recent errors. Emails, paths and keys are removed.",
+    "send": "Send",
+    "sent": "Thanks! Report sent",
+    "sentDesc": "You can follow its status in this window.",
+    "failed": "Could not send. Check your connection and try again.",
+    "rateLimited": "You've sent a lot today — please try again tomorrow.",
+    "history": "Your reports",
+    "status": {
+      "new": "sent",
+      "seen": "seen",
+      "planned": "planned",
+      "in_progress": "in progress",
+      "done": "done",
+      "wont_do": "won't do",
+      "duplicate": "duplicate"
     }
   }
 }

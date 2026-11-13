@@ -117,6 +117,19 @@ test.describe('main UI with an onboarded user', () => {
     await expect(ctx.page.getByText('E2E Tester').first()).toBeVisible()
   })
 
+  test('the feedback button opens the bug / feature form', async () => {
+    await ctx.page.getByRole('button', { name: 'Report a bug / suggest' }).click()
+    const dialog = ctx.page.getByRole('dialog')
+    await expect(dialog.getByText('Help improve NexusMind')).toBeVisible()
+    const send = dialog.getByRole('button', { name: 'Send' })
+    await expect(send).toBeDisabled()
+    await dialog.getByLabel('Short title').fill('Crash on save')
+    await dialog.getByLabel(/What happened/).fill('The app closes when I save a review.')
+    await expect(send).toBeEnabled()
+    await ctx.page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+  })
+
   for (const route of MAIN_ROUTES) {
     test(`page ${route} renders without crashing`, async () => {
       const before = ctx.pageErrors.length

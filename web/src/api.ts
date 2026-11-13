@@ -1,6 +1,9 @@
 import * as core from '@/lib/collabCore'
+import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
 import { sb, currentUserId, supabaseConfigured } from './supabase'
+
+declare const __APP_VERSION__: string
 
 /**
  * Web implementation of the slice of `window.api` used by the shared
@@ -83,6 +86,15 @@ export const webApi = {
     core.listAssignments(sb, playerId ?? (await currentUserId()), onlyOpen ?? true),
   collabAssignObjective: async (a: Parameters<typeof core.assignObjective>[2]) => core.assignObjective(sb, await currentUserId(), a),
   collabSetAssignmentStatus: (id: string, status: 'open' | 'done' | 'dismissed') => core.setAssignmentStatus(sb, id, status),
+
+  // ── bug reports / feature requests ──
+  feedbackSend: async (report: FeedbackInput) =>
+    sendFeedback(sb, await currentUserId(), report, {
+      source: 'web',
+      appVersion: `web-${__APP_VERSION__}`,
+      platform: navigator.userAgent.slice(0, 200),
+    }),
+  feedbackList: async () => listMyFeedback(sb, await currentUserId()),
 }
 
 /** Installs the adapter as `window.api` before React renders. */

@@ -103,6 +103,10 @@ const api = {
   getUser: () => ipcRenderer.invoke('user:get'),
   updateUser: (data: any) => ipcRenderer.invoke('user:update', data),
 
+  // Bug reports & feature requests
+  feedbackSend: (report: unknown) => ipcRenderer.invoke('feedback:send', report),
+  feedbackList: () => ipcRenderer.invoke('feedback:list'),
+
   // Collaboration (groups, coach comments, assigned objectives)
   collabListGroups: () => ipcRenderer.invoke('collab:list-groups'),
   collabCreateGroup: (name: string, kind: 'team' | 'coaching') => ipcRenderer.invoke('collab:create-group', name, kind),

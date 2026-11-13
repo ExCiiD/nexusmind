@@ -13,7 +13,8 @@ import { LegalDialog } from './LegalDialog'
  * key lives in our proxy, not in the app) and owns the cloud backups.
  * Builds without cloud configuration (CI, tests) skip the gate.
  */
-export function CloudGate({ children }: { children: ReactNode }) {
+/** `loginFooter`: extra content under the sign-in card (the web app shows the download link there). */
+export function CloudGate({ children, loginFooter }: { children: ReactNode; loginFooter?: ReactNode }) {
   const [status, setStatus] = useState<CloudStatus | null>(null)
 
   useEffect(() => {
@@ -33,7 +34,7 @@ export function CloudGate({ children }: { children: ReactNode }) {
     )
   }
   if (!status.configured || status.user) return <>{children}</>
-  return <CloudLogin onSignedIn={(user) => setStatus({ ...status, user })} />
+  return <CloudLogin footer={loginFooter} onSignedIn={(user) => setStatus({ ...status, user })} />
 }
 
 function errorKey(err: unknown): string {
@@ -44,7 +45,7 @@ function errorKey(err: unknown): string {
   return 'cloud.login.errors.generic'
 }
 
-export function CloudLogin({ onSignedIn }: { onSignedIn: (user: CloudStatus['user']) => void }) {
+export function CloudLogin({ onSignedIn, footer }: { onSignedIn: (user: CloudStatus['user']) => void; footer?: ReactNode }) {
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
@@ -157,6 +158,7 @@ export function CloudLogin({ onSignedIn }: { onSignedIn: (user: CloudStatus['use
               {t('cloud.legal.privacy')}
             </button>
           </p>
+          {footer && <div className="mt-4 border-t border-hextech-border-dim pt-4">{footer}</div>}
         </CardContent>
       </Card>
       <LegalDialog doc={legal} onClose={() => setLegal(null)} />

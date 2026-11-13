@@ -57,6 +57,7 @@ import { registerSyncHandlers } from './ipc/sync.ipc'
 import { registerAssistantHandlers } from './assistant/assistant.ipc'
 import { startSyncService } from './sync/syncService'
 import { registerCollabHandlers } from './ipc/collab.ipc'
+import { registerFeedbackHandlers } from './ipc/feedback.ipc'
 import { seedBuiltInMistakeTags } from './seeds/mistakeTags'
 import { isMediaPathAllowed } from './mediaAccess'
 
@@ -396,6 +397,7 @@ async function bootstrap() {
   registerSyncHandlers()
   registerCollabHandlers()
   registerAssistantHandlers()
+  registerFeedbackHandlers()
   if (isCloudConfigured()) {
     startAutoCloudBackup()
     startSyncService()
