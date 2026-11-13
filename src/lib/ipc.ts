@@ -1,4 +1,5 @@
 import type { CollabApi } from './collab'
+import type { AssistantMoment, AssistantReport } from '../components/Assistant/types'
 
 export type GameEventType =
   | 'kill' | 'death' | 'assist'
@@ -626,6 +627,9 @@ export type NexusMindAPI = CollabApi & {
   onYoutubeUploadProgress: (cb: (data: { jobId: string; percent: number }) => void) => () => void
 
   getCoachingPatterns: () => Promise<CoachingPatterns | null>
+
+  getAssistantReport: (moment: AssistantMoment, gameId?: string | null) => Promise<AssistantReport | null>
+  sendAssistantFeedback: (insightKey: string, ruleId: string, moment: AssistantMoment, vote: 1 | -1 | 0) => Promise<{ ok: boolean }>
 }
 
 export interface DetailedGameStats {

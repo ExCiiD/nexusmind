@@ -41,6 +41,8 @@ export const SYNC_TABLES: SyncTableSpec[] = [
   { table: 'DraftPrep', userColumns: ['userId'], fks: { vsTeamId: 'Team' } },
   { table: 'MistakeTag', naturalKey: ['slug'] },
   { table: 'Mistake', fks: { gameId: 'Game', tagId: 'MistakeTag', recordingId: 'Recording' } },
+  // Phase A: 👍/👎 on assistant insights (personal — never shared with a group).
+  { table: 'AssistantFeedback', userColumns: ['userId'], naturalKey: ['userId', 'insightKey'] },
 ]
 
 export const SYNC_TABLE_NAMES = SYNC_TABLES.map((t) => t.table)
@@ -74,10 +76,17 @@ export async function ensureLocalSyncTables(prisma: PrismaClient): Promise<void>
   )
   for (const { table } of SYNC_TABLES) {
     if (!existing.has(table)) continue
+    // v1 triggers used INSERT OR REPLACE, but SQLite lets the OUTER
+    // statement's conflict handling override a trigger's: under a Prisma
+    // upsert (INSERT … ON CONFLICT DO UPDATE) the REPLACE became ABORT and the
+    // user's write failed when the row was already queued. DELETE + INSERT
+    // never conflicts.
+    for (const op of ['ins', 'upd', 'del']) await exec(`DROP TRIGGER IF EXISTS "_sync_${table}_${op}"`)
     const track = (row: 'NEW' | 'OLD') =>
-      `INSERT OR REPLACE INTO "_sync_outbox" ("table_name", "record_id", "changed_at") VALUES ('${table}', ${row}."id", ${NOW_ISO});`
-    await exec(`CREATE TRIGGER IF NOT EXISTS "_sync_${table}_ins" AFTER INSERT ON "${table}" WHEN ${NOT_APPLYING} BEGIN ${track('NEW')} END`)
-    await exec(`CREATE TRIGGER IF NOT EXISTS "_sync_${table}_upd" AFTER UPDATE ON "${table}" WHEN ${NOT_APPLYING} BEGIN ${track('NEW')} END`)
-    await exec(`CREATE TRIGGER IF NOT EXISTS "_sync_${table}_del" AFTER DELETE ON "${table}" WHEN ${NOT_APPLYING} BEGIN ${track('OLD')} END`)
+      `DELETE FROM "_sync_outbox" WHERE "table_name" = '${table}' AND "record_id" = ${row}."id";` +
+      ` INSERT INTO "_sync_outbox" ("table_name", "record_id", "changed_at") VALUES ('${table}', ${row}."id", ${NOW_ISO});`
+    await exec(`CREATE TRIGGER IF NOT EXISTS "_sync_${table}_ins_v2" AFTER INSERT ON "${table}" WHEN ${NOT_APPLYING} BEGIN ${track('NEW')} END`)
+    await exec(`CREATE TRIGGER IF NOT EXISTS "_sync_${table}_upd_v2" AFTER UPDATE ON "${table}" WHEN ${NOT_APPLYING} BEGIN ${track('NEW')} END`)
+    await exec(`CREATE TRIGGER IF NOT EXISTS "_sync_${table}_del_v2" AFTER DELETE ON "${table}" WHEN ${NOT_APPLYING} BEGIN ${track('OLD')} END`)
   }
 }

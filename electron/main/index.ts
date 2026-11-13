@@ -54,6 +54,7 @@ import { registerCloudHandlers } from './ipc/cloud.ipc'
 import { isCloudConfigured } from './cloud/supabase'
 import { startAutoCloudBackup } from './cloud/cloudBackup'
 import { registerSyncHandlers } from './ipc/sync.ipc'
+import { registerAssistantHandlers } from './assistant/assistant.ipc'
 import { startSyncService } from './sync/syncService'
 import { registerCollabHandlers } from './ipc/collab.ipc'
 import { seedBuiltInMistakeTags } from './seeds/mistakeTags'
@@ -394,6 +395,7 @@ async function bootstrap() {
   registerCloudHandlers()
   registerSyncHandlers()
   registerCollabHandlers()
+  registerAssistantHandlers()
   if (isCloudConfigured()) {
     startAutoCloudBackup()
     startSyncService()

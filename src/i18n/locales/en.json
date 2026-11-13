@@ -1250,5 +1250,206 @@
       "LOGIN_REQUIRED": "Sign in to your NexusMind account first.",
       "generic": "Something went wrong. Check your connection and try again."
     }
+  },
+  "assistant": {
+    "title": {
+      "post_game": "Assistant — 3 takeaways",
+      "session": "Assistant — session brief",
+      "weekly": "Assistant — weekly summary"
+    },
+    "intro": {
+      "post_game": {
+        "v1": "GG {{name}}. Here is what stands out from this game.",
+        "v2": "Game saved, {{name}}. A few things worth keeping in mind:",
+        "v3": "{{name}}, quick debrief before the next one:"
+      },
+      "session": {
+        "v1": "Before you queue, {{name}}, here is what your recent games say.",
+        "v2": "{{name}}, your brief for this session:",
+        "v3": "Ready, {{name}}? Keep these in mind this session."
+      },
+      "weekly": {
+        "v1": "{{name}}, here is your week at a glance.",
+        "v2": "Weekly check-in, {{name}}:",
+        "v3": "{{name}}, this is how your week went."
+      },
+      "notEnough": {
+        "v1": "{{name}}, play and import a few more games — I only have {{n}} to work with so far.",
+        "v2": "Not much data yet ({{n}} games), {{name}}. Advice gets sharper with every game.",
+        "v3": "{{name}}, I need a few more games than {{n}} to spot real patterns."
+      }
+    },
+    "empty": {
+      "post_game": "Nothing unusual in this game compared to your usual level — steady.",
+      "session": "No warning signs in your recent games. Focus on your objective.",
+      "weekly": "No strong pattern this week. Keep playing and reviewing."
+    },
+    "why": {
+      "lastGames": "Based on your last {{n}} games.",
+      "thisGame": "Based on this game's timeline and stats.",
+      "thisSession": "Based on the current session.",
+      "lastSessions": "Based on your last {{n}} sessions.",
+      "baseline": "Compared with your average over {{n}} games.",
+      "reviews": "Based on your self-scores in your last {{n}} reviews vs your stats."
+    },
+    "feedback": {
+      "helpful": "Helpful",
+      "notHelpful": "Not helpful"
+    },
+    "actions": {
+      "objective": "Suggested objective: {{objective}}",
+      "rewatch": "Re-watch:",
+      "noRecording": "No recording for this game — opens the lane phase instead",
+      "lanePhase": "Open the lane phase breakdown",
+      "break": "Take a {{minutes}}-minute break away from the screen before the next game.",
+      "review": "Review your pending games"
+    },
+    "drills": {
+      "last_hit": "Drill: 5 minutes of last-hitting in practice tool (no items) before your first game.",
+      "ward_timers": "Drill: every time you back, buy a control ward and place it before you reach lane."
+    },
+    "weekly": {
+      "summary": "{{games}} games this week, {{wins}} wins ({{winrate}}%), {{reviewed}} reviewed.",
+      "noGames": "No games this week yet.",
+      "vsPrevious": "Previous week: {{winrate}}% wins."
+    },
+    "drivers": {
+      "title": "What matters for you",
+      "higher": "more → more wins",
+      "lower": "less → more wins",
+      "explain": "Local logistic regression on your last {{n}} games: a correlation, not a guarantee. Top lever: {{objective}}."
+    },
+    "metrics": {
+      "csPerMin": "CS per minute",
+      "visionPerMin": "Vision per minute",
+      "deaths": "Deaths",
+      "deathsBefore10": "Deaths before 10 min",
+      "kp": "Kill participation",
+      "goldDiff10": "Gold diff @10",
+      "laneScore": "Lane phase score",
+      "objectiveRespected": "Objective respected"
+    },
+    "rules": {
+      "early_deaths_pattern": {
+        "v1": "Your laning phase is costing you games: {{count}} of your last {{n}} games had 2+ deaths before 10 minutes. Play for safe trades and re-watch those deaths.",
+        "v2": "Early deaths are a pattern right now — {{count}} games out of {{n}} with at least 2 deaths before 10:00. Trade only when your key spell is up.",
+        "v3": "{{name}}, the first 10 minutes keep going wrong: {{count}}/{{n}} recent games with 2+ early deaths. Let's look at them together."
+      },
+      "pg_early_deaths": {
+        "v1": "{{deaths}} deaths before 10 minutes this game. Re-watch them: what did you not see coming?",
+        "v2": "The early game hurt — {{deaths}} deaths before 10:00. Check whether the jungler was visible on the map.",
+        "v3": "{{deaths}} early deaths. Each one is a lesson: re-watch the 10 seconds before each."
+      },
+      "high_deaths_trend": {
+        "v1": "You average {{avg}} deaths per game lately. Fewer deaths is the fastest way to climb — work on death regulation.",
+        "v2": "{{avg}} deaths per game recently: before each fight, ask yourself if dying here is worth it."
+      },
+      "pg_deaths_spike": {
+        "v1": "{{deaths}} deaths this game, well above your average of {{avg}}. Something pulled you out of your usual game.",
+        "v2": "Unusual number of deaths ({{deaths}} vs {{avg}} on average). Was it tilt, a hard matchup, or over-aggression?"
+      },
+      "lane_weak_pattern": {
+        "v1": "Your lane phase was graded C or below in {{count}} of your last {{n}} games. Work on trading patterns.",
+        "v2": "Lane phase is a weak spot right now ({{count}}/{{n}} weak grades). Focus on winning trades, not just surviving."
+      },
+      "pg_lane_weak": {
+        "v1": "Tough lane phase. Open the breakdown to see where the gold and CS gap opened.",
+        "v2": "You fell behind in lane this game — the minute-by-minute breakdown shows when."
+      },
+      "pg_lane_strong": {
+        "v1": "Strong lane phase — you came out ahead of your opponent. That's the foundation to build on.",
+        "v2": "Lane won. Look at what you did right so you can repeat it.",
+        "v3": "Excellent laning this game, {{name}}. Keep that same discipline."
+      },
+      "cs_trend_down": {
+        "v1": "Your farming is slipping: {{recent}} CS/min lately vs {{base}} before.",
+        "v2": "CS/min is trending down ({{recent}} vs {{base}}). A few minutes of last-hitting practice will help."
+      },
+      "cs_trend_up": {
+        "v1": "Your farming is improving: {{recent}} CS/min lately vs {{base}} before. Nice work.",
+        "v2": "CS/min up to {{recent}} (from {{base}}). The work is paying off."
+      },
+      "cs10_low": {
+        "v1": "About {{cs}} CS at 10 minutes on average lately — the target for a laner is 70+.",
+        "v2": "Your CS at 10 min ({{cs}}) leaves gold on the table. Focus on last hits under tower."
+      },
+      "pg_cs_low": {
+        "v1": "{{cs}} CS/min this game vs {{avg}} usually. Where did the waves go?",
+        "v2": "Lower farm than usual ({{cs}} vs {{avg}} CS/min). Watch for waves you left to crash."
+      },
+      "pg_cs_high": {
+        "v1": "{{cs}} CS/min — clearly above your average of {{avg}}. Great farming.",
+        "v2": "Farming on point: {{cs}} CS/min vs {{avg}} usually.",
+        "v3": "Excellent CS this game ({{cs}}/min). That's the level to aim for every game."
+      },
+      "vision_drop": {
+        "v1": "Your vision is dropping: {{recent}} vision/min lately vs {{base}} before.",
+        "v2": "Less vision than usual lately ({{recent}} vs {{base}} per minute). Buy control wards on every back."
+      },
+      "pg_vision_low": {
+        "v1": "Low vision this game: {{vision}}/min vs {{avg}} usually.",
+        "v2": "Vision was below your level ({{vision}} vs {{avg}} per minute). Use your trinket on cooldown."
+      },
+      "pg_vision_high": {
+        "v1": "Good vision this game: {{vision}}/min vs {{avg}} on average.",
+        "v2": "You lit up the map ({{vision}} vision/min). Keep it up."
+      },
+      "low_kp": {
+        "v1": "Your kill participation is around {{kp}}% lately — you're often not there when fights happen.",
+        "v2": "KP at {{kp}}%: watch the minimap and move first toward fights."
+      },
+      "kpi_bias": {
+        "v1": "Your self-scores went up by {{delta}} points while your stats went down. Be harsh in your reviews — that's how you improve.",
+        "v2": "Possible bias: you rate yourself higher (+{{delta}}) but your objective stats are below your average.",
+        "v3": "{{name}}, your reviews are more generous than your stats lately (+{{delta}} points). Re-watch before scoring."
+      },
+      "pg_self_bias": {
+        "v1": "You gave yourself {{score}}/10 but your stats this game are below your usual level. Are you sure?",
+        "v2": "Self-score {{score}}/10, yet the stats say this was below average. Re-watch a key moment before validating."
+      },
+      "pg_harsh_self": {
+        "v1": "Only {{score}}/10 from you, but your stats were above your average. You played better than you think.",
+        "v2": "You're harsh on yourself ({{score}}/10) — the numbers say this was a good game for you."
+      },
+      "review_backlog": {
+        "v1": "{{count}} of your last 10 games are not reviewed. Reviews are where progress happens.",
+        "v2": "{{count}} games waiting for review. Even a 5-minute review beats none."
+      },
+      "objective_stagnation": {
+        "v1": "{{sessions}} sessions in a row on \"{{objective}}\" without clear progress. Try a neighbouring objective for a while.",
+        "v2": "\"{{objective}}\" isn't moving after {{sessions}} sessions. A different angle may unlock it."
+      },
+      "objective_progress": {
+        "v1": "Your work on \"{{objective}}\" is paying off: steady progress over {{sessions}} sessions.",
+        "v2": "\"{{objective}}\" is improving session after session ({{sessions}} so far). Keep going."
+      },
+      "pg_objective_respected": {
+        "v1": "Objective respected this game. That's what builds the habit.",
+        "v2": "You stuck to your objective — good discipline.",
+        "v3": "Objective respected. One more brick in the wall, {{name}}."
+      },
+      "recurring_mistake": {
+        "v1": "\"{{tag}}\" keeps coming back: tagged in {{count}} of your last {{n}} games. Re-watch them back to back.",
+        "v2": "Recurring mistake: \"{{tag}}\" in {{count}}/{{n}} recent games. Watching them in a row makes the pattern obvious."
+      },
+      "tilt_break": {
+        "v1": "{{losses}} losses in a row after {{hours}} h of play. This is the moment to take a break.",
+        "v2": "{{name}}, {{losses}} straight losses and {{hours}} h into the session — your focus is not what it was. Pause.",
+        "v3": "Long session ({{hours}} h) and {{losses}} losses in a row: the next game is more likely to go wrong. Step away for a bit."
+      },
+      "loss_streak": {
+        "v1": "{{losses}} losses in a row. Take a short break and reset before queuing again.",
+        "v2": "Losing streak ({{losses}}). Breathe, drink some water, and come back with a clear head."
+      },
+      "long_session": {
+        "v1": "{{games}} games already this session. Fatigue creeps in — plan a break.",
+        "v2": "That's {{games}} games. Your focus drops with time: a short break will help."
+      },
+      "win_streak": {
+        "v1": "{{wins}} wins in a row! Keep the same routine.",
+        "v2": "Win streak: {{wins}}. Whatever you're doing, keep doing it.",
+        "v3": "{{wins}} straight wins, {{name}}. Stay focused on your objective."
+      }
+    }
   }
 }

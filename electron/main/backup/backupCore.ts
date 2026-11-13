@@ -111,6 +111,11 @@ const TABLES: TableSpec[] = [
   { model: 'DraftPrep', userField: 'userId', optionalParents: { vsTeamId: 'Team' } },
   { model: 'MistakeTag', existing: (r) => ({ slug: r.slug }) },
   {
+    model: 'AssistantFeedback',
+    userField: 'userId',
+    existing: (r, c) => ({ userId: c.localUserId, insightKey: r.insightKey }),
+  },
+  {
     model: 'Mistake',
     parents: { gameId: 'Game', tagId: 'MistakeTag' },
     optionalParents: { recordingId: 'Recording' },

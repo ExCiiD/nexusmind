@@ -166,6 +166,15 @@ describe('sync engine', () => {
     expect(await getPrisma().review.findUnique({ where: { id: 'rev-late' } })).not.toBeNull()
   })
 
+  it('change tracking survives Prisma upserts on a row already waiting to be pushed', async () => {
+    const prisma = getPrisma()
+    const where = { userId_badgeId: { userId, badgeId: 'first_review' } }
+    // Two upserts in a row: the second one hits a row already queued in the outbox.
+    await prisma.badge.upsert({ where, create: { userId, badgeId: 'first_review' }, update: {} })
+    await prisma.badge.upsert({ where, create: { userId, badgeId: 'first_review' }, update: { unlockedAt: new Date() } })
+    expect((await outbox()).filter((k) => k.startsWith('Badge:'))).toHaveLength(1)
+  })
+
   it("refuses to sync when the cloud account belongs to another player", async () => {
     await remote.push([{ t: '_profile', id: 'owner', data: { puuid: 'someone-else' }, at: new Date(Date.now() + 100_000).toISOString(), dev: 'other-pc' }])
     await expect(engine.syncOnce()).rejects.toBeInstanceOf(SyncError)

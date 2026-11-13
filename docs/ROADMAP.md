@@ -97,31 +97,34 @@ Lecture et actions légères pour qui n'a pas son PC :
 
 ---
 
-## Phase A — « Assistant » à règles métier (remplace l'IA payante) ⏳
+## Phase A — « Assistant » à règles métier (remplace l'IA payante) 🟡 (A1–A4 codés, à valider sur de vraies parties)
 
-Objectif : un assistant qui *paraît* intelligent, à coût d'inférence nul, déterministe et explicable. Peut avancer en parallèle de la Phase W (100 % local).
+Objectif : un assistant qui *paraît* intelligent, à coût d'inférence nul, déterministe et explicable. 100 % local : tout le code est dans `electron/main/assistant/` (fonctions pures testées) et `src/components/Assistant/`.
 
-### A1 — Feature store
-Calculer et stocker, par game et en fenêtre glissante, des indicateurs normalisés : CS@10/@14, morts avant 14 min, gold diff @10/@15, vision/min, participation, KPI de review, rapport de phase de lane (`lanePhaseAnalyzer`), tags d'erreurs (`mistakeDetector`). Pour chaque indicateur : moyenne personnelle, tendance, écart au baseline personnel (z-score) et au palier de rang.
+### A1 — Feature store ✅
+- ✅ `features.ts` : par game, indicateurs normalisés — CS/min, CS@10/@14 et gold diff @10/@14 (rapport `lanePhaseAnalyzer` en cache sur `Game`, sinon recalculé en mémoire depuis `MatchCache`), morts avant 10 et 14 min et participation aux kills (timeline Riot en cache, `timeline.ts`), vision/min, KDA, score de phase de lane, moyenne des KPI de review, objectif respecté, tags d'erreurs.
+- ✅ Par indicateur : moyenne personnelle, écart-type, moyenne récente (5 games) vs baseline (games précédentes), z-score, tendance (pente sur 10 games). Indice composite « perf objective » (z-scores des stats non auto-évaluées) pour détecter les biais d'auto-évaluation.
+- ✅ Contexte joueur : séries de victoires/défaites, durée de jeu continue de la session active (une pause > 45 min la remet à zéro, une session oubliée ouverte ne compte pas comme 10 h de jeu), taux de review, objectif répété N sessions et sa progression (pente des KPI de l'objectif et du taux « objectif respecté »).
+- ⏳ Écart au palier de rang : pas de benchmarks par rang en local, à faire avec les agrégats anonymes (A4, après Phase W).
+- Choix : pas de table de features. Tout est recalculé à la demande (40 dernières games, 20 timelines max, cache mémoire des timelines) : rien à migrer quand une règle change, et rien de plus à synchroniser.
 
-### A2 — Moteur de règles déclaratif
-- Règles stockées comme **données** (pas du code dispersé) : `id`, conditions sur les features, priorité, confiance, message i18n à variables, action suggérée (objectif, drill, clip à revoir).
-- Exemples :
-  - *3 des 5 dernières games avec ≥ 2 morts avant 10 min* → « Ta phase de lane te coûte des games : objectif "trading safe" + revois ces 3 morts » (liens vers les bookmarks).
-  - *Auto-score KPI élevé mais stats objectives en baisse* → alerte de biais (déjà au PRD).
-  - *Objectif répété 4 sessions sans progrès* → proposer un objectif voisin.
-  - *Tilt* : 3 défaites d'affilée + durée de session > 2 h → suggestion de pause.
-- Testable unitairement, versionnable, enrichissable sans redéployer de modèle.
+### A2 — Moteur de règles déclaratif ✅
+- ✅ `rules.ts` : 28 règles stockées comme **données** sérialisables en JSON (`id`, moments, ton, priorité, confiance, groupe, conditions, nombre de formulations, paramètres du message, justification, action). Conditions : `count` (X des N dernières games), `stat` (moyenne récente / z-score / tendance), `context`, `game` et `gameZ` (la game commentée vs la moyenne perso), `role`, `recurringMistake`.
+- ✅ Actions suggérées : objectif, objectif voisin (carte de voisinage + fondamental suivant de la même catégorie), clips à revoir (morts précoces ou erreurs taguées, liens `/record/:id?at=` avec enregistrement en priorité, sinon la phase de lane), analyse de phase de lane, pause, drill, reviews en attente.
+- ✅ Règles : morts précoces répétées (3/5 games avec ≥ 2 morts avant 10 min), morts élevées, pic de morts sur la game, phase de lane faible (série / game) et forte, CS en baisse / en hausse, CS@10 bas, CS de la game vs moyenne (haut/bas), vision en baisse, vision de la game (haute/basse), KP faible (jungle/support), biais d'auto-évaluation (tendance et game), auto-évaluation trop sévère, reviews en retard, objectif répété ≥ 4 sessions sans progrès → objectif voisin, objectif qui progresse, objectif respecté, erreur récurrente, tilt (3 défaites d'affilée + > 2 h → pause 15 min), série de défaites, session longue, série de victoires.
+- ✅ Un seul conseil par groupe (ex. le schéma sur 5 games remplace la règle « cette game »), classement = priorité × confiance × poids appris.
 
-### A3 — Personnalité « assistant »
-- Moments clés : brief avant session, rappel d'objectif en début de game, 3 points après la game, bilan hebdomadaire.
-- Génération de texte par gabarits variés (plusieurs formulations par règle, ton cohérent, prénom du joueur) — donne une impression de conversation sans LLM.
-- Toujours expliquer *pourquoi* (« basé sur tes 10 dernières games ») : c'est l'avantage du déterministe sur l'IA.
+### A3 — Personnalité « assistant » ✅
+- ✅ Trois moments, intégrés dans les pages existantes (pas de nouvelle page) : **3 points après la game** (page Review, après l'enregistrement), **brief de session** (page Session, avant de lancer et pendant la session), **bilan hebdomadaire** (Dashboard, à côté des patterns : semaine vs semaine précédente + « ce qui compte pour vous »).
+- ✅ 2 à 3 formulations par règle en anglais et en français (vouvoiement), prénom du joueur, intro variée par moment. La formulation change d'un jour à l'autre mais reste stable dans la journée.
+- ✅ Chaque conseil affiche son *pourquoi* (« Basé sur vos 5 dernières parties », « Comparé à votre moyenne sur 12 parties »…).
+- ⏳ Rappel d'objectif en début de game (overlay / notification) : non fait.
 
-### A4 — Un assistant qui « apprend », sans budget IA
-- **Feedback 👍/👎** sur chaque conseil → ajustement des poids de règles par joueur (bandit manchot / Thompson sampling) : l'assistant met en avant ce qui aide ce joueur précis.
-- **Ce qui compte pour toi** : régression logistique locale (quelques lignes de TS, aucun serveur) entre KPI/features et victoire → classement personnel des fondamentaux qui influencent le plus ses résultats.
-- **Agrégats anonymes opt-in** (après Phase W) : benchmarks par rôle/rang calculés côté serveur en SQL, sans IA.
+### A4 — Un assistant qui « apprend », sans budget IA 🟡
+- ✅ **Feedback 👍/👎** sur chaque conseil, stocké en local (table `AssistantFeedback`, une ligne par conseil, clic à nouveau = retrait du vote) → poids par règle et par joueur via un prior Beta(2, 2). Le classement utilise la moyenne a posteriori (déterministe : un 👍 ne fait jamais descendre un conseil) ; l'échantillonnage de Thompson est implémenté (`weights.ts`) mais pas activé, car le réordonnancement aléatoire nuit à l'explicabilité. Poids bornés (0,4–1,6) et règles de bien-être (`tilt_break`) jamais repondérées.
+- ✅ **Ce qui compte pour vous** : régression logistique locale (`regression.ts`, descente de gradient + L2 sur features standardisées) entre CS/min, vision/min, morts, morts précoces, KP, gold diff @10, score de lane, objectif respecté et victoire, à partir de 15 games avec au moins 4 victoires et 4 défaites. Affichée dans le bilan hebdo avec la mention « corrélation, pas garantie ».
+- ⏳ `AssistantFeedback` à ajouter à la synchro (`SYNC_TABLES`) et aux sauvegardes (`backupCore` TABLES) — laissé à la session W3 qui gère ces fichiers.
+- ⏳ **Agrégats anonymes opt-in** (après Phase W) : benchmarks par rôle/rang calculés côté serveur en SQL, sans IA.
 - 💡 Plus tard, en option : LLM local (Ollama) uniquement pour reformuler, jamais pour décider.
 
 ### A5 — Retrait de l'IA payante
@@ -146,6 +149,6 @@ Décision : pas d'IA. Supprimer `openaiClient.ts`, `ai.ipc.ts`, les panneaux `AI
 ```
 Phase 0 ✅ → Phase 1 (sécurité) → Phase 2 (CI/tests)
                                    ├─→ W1 → W2 → W3 → W4 → W5
-                                   └─→ A1 → A2 → A3 → A4 (en parallèle, local)
+                                   └─→ A1 ✅ → A2 ✅ → A3 ✅ → A4 🟡 (en parallèle, local)
                                                          └─→ Phase F (signature, 1.0)
 ```

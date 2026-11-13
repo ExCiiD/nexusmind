@@ -85,8 +85,19 @@ export function cleanup(dir: string): void {
   try { rmSync(dir, { recursive: true, force: true }) } catch { /* Windows may still hold files */ }
 }
 
-/** Client-side navigation (the app uses a hash router). */
+/**
+ * Client-side navigation (the app uses a hash router). Right after launch the
+ * app may still redirect on its own (profile load → `/`), which would undo a
+ * single hash change; keep re-applying it until the route sticks.
+ */
 export async function goto(page: Page, route: string): Promise<void> {
-  await page.evaluate((r) => { window.location.hash = `#${r}` }, route)
-  await page.waitForTimeout(800)
+  const target = `#${route}`
+  const deadline = Date.now() + 10_000
+  while (Date.now() < deadline) {
+    await page.evaluate((h) => { if (window.location.hash !== h) window.location.hash = h }, target)
+    await page.waitForTimeout(400)
+    if ((await page.evaluate(() => window.location.hash)) === target) break
+  }
+  // Let the page mount and fire its first IPC calls.
+  await page.waitForTimeout(600)
 }
