@@ -131,7 +131,12 @@ const api = {
 
   // NexusMind cloud account & backups (tokens never leave the main process)
   cloudStatus: () => ipcRenderer.invoke('cloud:status'),
-  cloudSendCode: (email: string) => ipcRenderer.invoke('cloud:send-code', email),
+  cloudSendCode: (email: string, inviteCode?: string) => ipcRenderer.invoke('cloud:send-code', email, inviteCode ?? null),
+  cloudOpenWeb: () => ipcRenderer.invoke('cloud:open-web'),
+  accessIsAdmin: () => ipcRenderer.invoke('access:is-admin'),
+  accessListInvites: () => ipcRenderer.invoke('access:list-invites'),
+  accessCreateInvite: (opts: unknown) => ipcRenderer.invoke('access:create-invite', opts),
+  accessRevokeInvite: (code: string) => ipcRenderer.invoke('access:revoke-invite', code),
   cloudVerifyCode: (email: string, code: string) => ipcRenderer.invoke('cloud:verify-code', email, code),
   cloudSignOut: () => ipcRenderer.invoke('cloud:sign-out'),
   cloudBackupNow: () => ipcRenderer.invoke('cloud:backup-now'),

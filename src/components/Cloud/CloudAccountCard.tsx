@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Cloud, Loader2, LogOut, RotateCcw, Trash2, UploadCloud, FileText } from 'lucide-react'
+import { Cloud, ExternalLink, Loader2, LogOut, RotateCcw, Trash2, UploadCloud, FileText } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -73,6 +73,10 @@ export function CloudAccountCard() {
     await window.api.cloudSignOut()
   })
 
+  const openWeb = () => run('open-web', async () => {
+    await window.api.cloudOpenWeb?.()
+  })
+
   const deleteAccount = () => run('delete-account', async () => {
     await window.api.cloudDeleteAccount('DELETE')
     setDeleteOpen(false)
@@ -93,9 +97,17 @@ export function CloudAccountCard() {
           <span className="text-hextech-text">
             {t('cloud.account.signedInAs')} <strong className="text-hextech-text-bright">{status.user?.email}</strong>
           </span>
-          <Button variant="outline" size="sm" onClick={signOut} disabled={busy !== null} className="gap-2">
-            <LogOut className="h-4 w-4" />{t('cloud.account.signOut')}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {window.api.cloudOpenWeb && (
+              <Button variant="outline" size="sm" onClick={openWeb} disabled={busy !== null} className="gap-2" title={t('cloud.account.openWebHint')}>
+                {busy === 'open-web' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+                {t('cloud.account.openWeb')}
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={signOut} disabled={busy !== null} className="gap-2">
+              <LogOut className="h-4 w-4" />{t('cloud.account.signOut')}
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2">

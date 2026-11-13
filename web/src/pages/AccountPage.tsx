@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { LegalDialog } from '@/components/Cloud/LegalDialog'
 import { FeedbackDialog } from '@/components/Feedback/FeedbackDialog'
 import type { FeedbackKind } from '@/lib/feedback'
+import { AccessInvitesCard } from '@/components/Cloud/AccessInvitesCard'
 import { DownloadButton } from '../DownloadButton'
 
 export function AccountPage() {
@@ -34,6 +35,7 @@ export function AccountPage() {
           <p className="text-xs text-hextech-text-dim">{t('web.account.deleteHint')}</p>
         </CardContent>
       </Card>
+      <AccessInvitesCard webUrl={window.location.origin} />
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6 text-sm">
           <span>{t('web.account.desktop')}</span>

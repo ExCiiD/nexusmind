@@ -1,4 +1,5 @@
 import * as core from '@/lib/collabCore'
+import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
 import { sb, currentUserId, supabaseConfigured } from './supabase'
@@ -19,12 +20,6 @@ function toUser(u: { id: string; email?: string | null; is_anonymous?: boolean }
   return { id: u.id, email: u.email ?? null }
 }
 
-function authError(message: string | undefined): Error {
-  const m = (message ?? '').toLowerCase()
-  if (m.includes('rate limit') || m.includes('security purposes')) return new Error('AUTH_RATE_LIMITED')
-  if (m.includes('expired') || m.includes('invalid')) return new Error('AUTH_INVALID_CODE')
-  return new Error(message || 'AUTH_FAILED')
-}
 
 /** On the web there is no local Riot profile: show the e-mail's name part. */
 async function webIdentity(): Promise<core.MemberIdentity> {
@@ -33,24 +28,53 @@ async function webIdentity(): Promise<core.MemberIdentity> {
   return { displayName: email ? email.split('@')[0].slice(0, 64) : null, riotId: null }
 }
 
+/**
+ * Links opened from the desktop app (`#handoff=<token_hash>`, single use,
+ * see the web-handoff Edge Function) sign the browser in without an e-mail
+ * code; invite links (`#invite=<code>`) pre-fill the sign-in screen. The
+ * fragment never reaches a server and is removed from the address bar at once.
+ */
+let pendingHandoff: Promise<void> = Promise.resolve()
+let pendingInvite: string | null = null
+
+function consumeUrlFragment(): void {
+  const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  const handoff = params.get('handoff')
+  const invite = params.get('invite')
+  if (!handoff && !invite) return
+  window.history.replaceState(null, '', window.location.pathname + window.location.search)
+  if (invite) {
+    const code = access.normaliseInviteCode(invite)
+    if (access.INVITE_CODE.test(code)) pendingInvite = code
+  }
+  if (handoff && /^[A-Za-z0-9_-]{16,128}$/.test(handoff) && supabaseConfigured) {
+    pendingHandoff = sb.auth.verifyOtp({ token_hash: handoff, type: 'magiclink' })
+      .then(() => undefined, () => undefined)
+  }
+}
+
 export const webApi = {
+  /** Invite code from an invite link, for the sign-in screen. */
+  pendingInviteCode: (): string | null => pendingInvite,
   // ── account ──
   async cloudStatus(): Promise<CloudStatus> {
     if (!supabaseConfigured) return { configured: false, user: null, riotMode: 'none', lastBackupAt: null }
+    await pendingHandoff
     const { data } = await sb.auth.getSession()
     return { configured: true, user: toUser(data.session?.user), riotMode: 'none', lastBackupAt: null }
   },
-  async cloudSendCode(email: string) {
+  async cloudSendCode(email: string, inviteCode?: string) {
     const address = email.trim().toLowerCase()
     if (!EMAIL.test(address)) throw new Error('Invalid input for cloud:send-code')
-    const { error } = await sb.auth.signInWithOtp({ email: address, options: { shouldCreateUser: true } })
-    if (error) throw authError(error.message)
+    const invite = inviteCode ? access.normaliseInviteCode(inviteCode) : undefined
+    if (invite !== undefined && !access.INVITE_CODE.test(invite)) throw new Error('INVITE_INVALID')
+    await access.sendSignInCode(sb, address, invite)
     return { sent: true }
   },
   async cloudVerifyCode(email: string, code: string) {
     if (!/^\d{6,10}$/.test(code.trim())) throw new Error('invalid code')
     const { data, error } = await sb.auth.verifyOtp({ email: email.trim().toLowerCase(), token: code.trim(), type: 'email' })
-    if (error) throw authError(error.message)
+    if (error) throw new Error(access.authErrorCode(error.message))
     return toUser(data.session?.user)
   },
   async cloudSignOut() {
@@ -60,6 +84,15 @@ export const webApi = {
   onCloudAuthChanged(cb: (user: CloudUser | null) => void) {
     const { data } = sb.auth.onAuthStateChange((_e, session) => cb(toUser(session?.user)))
     return () => data.subscription.unsubscribe()
+  },
+
+  // ── invite-only access (admins) ──
+  accessIsAdmin: async () => access.isAppAdmin(sb, await currentUserId()),
+  accessListInvites: () => access.listAccessInvites(sb),
+  accessCreateInvite: (opts: Parameters<typeof access.createAccessInvite>[1]) => access.createAccessInvite(sb, opts),
+  async accessRevokeInvite(code: string) {
+    await access.revokeAccessInvite(sb, access.normaliseInviteCode(code))
+    return { revoked: true }
   },
 
   // ── collaboration (same semantics as electron/main/cloud/collab.ts) ──
@@ -99,5 +132,6 @@ export const webApi = {
 
 /** Installs the adapter as `window.api` before React renders. */
 export function installWebApi(): void {
+  consumeUrlFragment()
   ;(window as unknown as { api: typeof webApi }).api = webApi
 }

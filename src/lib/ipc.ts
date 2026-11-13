@@ -1,3 +1,4 @@
+import type { AccessInvite } from './accessCore'
 import type { CollabApi } from './collab'
 import type { FeedbackApi } from './feedback'
 import type { AssistantMoment, AssistantReport } from '../components/Assistant/types'
@@ -433,7 +434,16 @@ export type NexusMindAPI = CollabApi & FeedbackApi & {
 
   // NexusMind cloud account & backups
   cloudStatus: () => Promise<CloudStatus>
-  cloudSendCode: (email: string) => Promise<{ sent: boolean }>
+  /** `inviteCode` is required the first time an e-mail signs in (invite-only access). */
+  cloudSendCode: (email: string, inviteCode?: string) => Promise<{ sent: boolean }>
+  /** Opens the web app in the browser, already signed in. Desktop only. */
+  cloudOpenWeb?: () => Promise<{ signedIn: boolean }>
+  /** Web only: invite code from an invite link (read once). */
+  pendingInviteCode?: () => string | null
+  accessIsAdmin: () => Promise<boolean>
+  accessListInvites: () => Promise<AccessInvite[]>
+  accessCreateInvite: (opts: { email?: string | null; days?: number; maxUses?: number; note?: string | null }) => Promise<string>
+  accessRevokeInvite: (code: string) => Promise<{ revoked: boolean }>
   cloudVerifyCode: (email: string, code: string) => Promise<CloudUser | null>
   cloudSignOut: () => Promise<{ signedOut: boolean }>
   cloudBackupNow: () => Promise<CloudBackup>

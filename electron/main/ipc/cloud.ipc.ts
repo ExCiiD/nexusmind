@@ -11,6 +11,8 @@ import {
 } from '../cloud/cloudBackup'
 import { toLegacySummary } from './backup.ipc'
 import { syncNow } from '../sync/syncService'
+import { shell } from 'electron'
+import * as access from '../../../src/lib/accessCore'
 
 const email = z.string().trim().toLowerCase().email().max(254)
 /** Supabase e-mail OTPs are 6 digits by default (configurable up to 10). */
@@ -18,10 +20,20 @@ const otp = z.string().trim().regex(/^\d{6,10}$/, 'invalid code')
 
 /** Maps Supabase auth errors to stable codes the renderer can translate. */
 function authError(message: string | undefined): Error {
-  const m = (message ?? '').toLowerCase()
-  if (m.includes('rate limit') || m.includes('security purposes')) return new Error('AUTH_RATE_LIMITED')
-  if (m.includes('expired') || m.includes('invalid')) return new Error('AUTH_INVALID_CODE')
-  return new Error(message || 'AUTH_FAILED')
+  return new Error(access.authErrorCode(message))
+}
+
+const inviteCode = z.string().transform(access.normaliseInviteCode).pipe(z.string().regex(access.INVITE_CODE))
+
+/** Public web app; the desktop can open it already signed in (web-handoff). */
+const WEB_URL = (import.meta.env.MAIN_VITE_WEB_URL || access.DEFAULT_WEB_URL).replace(/\/+$/, '')
+
+async function me(): Promise<string> {
+  const token = await getAccessToken()
+  if (!token) throw new Error('LOGIN_REQUIRED')
+  const { data } = await getSupabase().auth.getUser(token)
+  if (!data.user) throw new Error('LOGIN_REQUIRED')
+  return data.user.id
 }
 
 export function registerCloudHandlers() {
@@ -36,9 +48,8 @@ export function registerCloudHandlers() {
     }
   })
 
-  validatedHandle('cloud:send-code', z.tuple([email]), async (_e, address) => {
-    const { error } = await getSupabase().auth.signInWithOtp({ email: address, options: { shouldCreateUser: true } })
-    if (error) throw authError(error.message)
+  validatedHandle('cloud:send-code', z.tuple([email, inviteCode.nullable()]), async (_e, address, invite) => {
+    await access.sendSignInCode(getSupabase(), address, invite ?? undefined)
     return { sent: true }
   })
 
@@ -48,6 +59,45 @@ export function registerCloudHandlers() {
     // Pull this account's data from the other PCs right away.
     setTimeout(() => { syncNow().catch(() => {}) }, 500)
     return toCloudUser(data.session)
+  })
+
+  // ── invite-only access (admins) ──
+  validatedHandle('access:is-admin', z.tuple([]), async () => access.isAppAdmin(getSupabase(), await me()))
+  validatedHandle('access:list-invites', z.tuple([]), async () => { await me(); return access.listAccessInvites(getSupabase()) })
+  validatedHandle(
+    'access:create-invite',
+    z.tuple([z.object({
+      email: email.nullable().optional(),
+      days: z.number().int().min(1).max(90).optional(),
+      maxUses: z.number().int().min(1).max(100).optional(),
+      note: z.string().max(200).nullable().optional(),
+    })]),
+    async (_e, opts) => { await me(); return access.createAccessInvite(getSupabase(), opts) },
+  )
+  validatedHandle('access:revoke-invite', z.tuple([inviteCode]), async (_e, code) => {
+    await me()
+    await access.revokeAccessInvite(getSupabase(), code)
+    return { revoked: true }
+  })
+
+  /** Opens the web app in the browser, already signed in to this account. */
+  validatedHandle('cloud:open-web', z.tuple([]), async () => {
+    const token = await getAccessToken()
+    if (!token) {
+      await shell.openExternal(WEB_URL)
+      return { signedIn: false }
+    }
+    const { data, error } = await getSupabase().functions.invoke('web-handoff', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const hash = (data as { token_hash?: string } | null)?.token_hash
+    if (error || !hash || !/^[A-Za-z0-9_-]{16,128}$/.test(hash)) {
+      await shell.openExternal(WEB_URL)
+      return { signedIn: false }
+    }
+    await shell.openExternal(`${WEB_URL}/#handoff=${encodeURIComponent(hash)}`)
+    return { signedIn: true }
   })
 
   validatedHandle('cloud:sign-out', z.tuple([]), async () => {

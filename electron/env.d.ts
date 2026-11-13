@@ -12,6 +12,8 @@ interface ImportMetaEnv {
   readonly MAIN_VITE_SUPABASE_ANON_KEY?: string
   /** https://<worker>.workers.dev — the NexusMind Riot proxy. */
   readonly MAIN_VITE_RIOT_PROXY_URL?: string
+  /** Public web app URL ("Ouvrir l'app web"). */
+  readonly MAIN_VITE_WEB_URL?: string
   readonly MAIN_VITE_GOOGLE_CLIENT_ID?: string
   readonly MAIN_VITE_GOOGLE_CLIENT_SECRET?: string
 }

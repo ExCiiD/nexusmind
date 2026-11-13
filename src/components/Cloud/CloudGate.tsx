@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2, Mail, ShieldCheck } from 'lucide-react'
+import { KeyRound, Loader2, Mail, ShieldCheck } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,6 +39,8 @@ export function CloudGate({ children, loginFooter }: { children: ReactNode; logi
 
 function errorKey(err: unknown): string {
   const msg = (err as Error)?.message ?? ''
+  if (msg.includes('AUTH_NEEDS_INVITE')) return 'cloud.login.errors.needsInvite'
+  if (msg.includes('INVITE_INVALID')) return 'cloud.login.errors.inviteInvalid'
   if (msg.includes('AUTH_RATE_LIMITED')) return 'cloud.login.errors.rateLimited'
   if (msg.includes('AUTH_INVALID_CODE') || msg.includes('invalid code')) return 'cloud.login.errors.invalidCode'
   if (msg.includes('Invalid input') && msg.includes('cloud:send-code')) return 'cloud.login.errors.invalidEmail'
@@ -49,6 +51,9 @@ export function CloudLogin({ onSignedIn, footer }: { onSignedIn: (user: CloudSta
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
+  // Invite-only access: the first sign-in of an e-mail needs an invite code.
+  const [invite, setInvite] = useState(() => window.api.pendingInviteCode?.() ?? '')
+  const [showInvite, setShowInvite] = useState(invite !== '')
   const [step, setStep] = useState<'email' | 'code'>('email')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -58,9 +63,10 @@ export function CloudLogin({ onSignedIn, footer }: { onSignedIn: (user: CloudSta
     setBusy(true)
     setError(null)
     try {
-      await window.api.cloudSendCode(email)
+      await window.api.cloudSendCode(email, showInvite && invite.trim() ? invite : undefined)
       setStep('code')
     } catch (err) {
+      if ((err as Error)?.message?.includes('AUTH_NEEDS_INVITE')) setShowInvite(true)
       setError(t(errorKey(err)))
     } finally {
       setBusy(false)
@@ -109,6 +115,31 @@ export function CloudLogin({ onSignedIn, footer }: { onSignedIn: (user: CloudSta
                   placeholder="you@example.com"
                 />
               </div>
+              {showInvite ? (
+                <div className="space-y-2">
+                  <Label htmlFor="cloud-invite">{t('cloud.login.inviteLabel')}</Label>
+                  <Input
+                    id="cloud-invite"
+                    autoComplete="off"
+                    spellCheck={false}
+                    maxLength={20}
+                    value={invite}
+                    onChange={(e) => setInvite(e.target.value.toUpperCase())}
+                    placeholder="ABCD-EFGH-JKMN"
+                    className="font-mono tracking-wider"
+                  />
+                  <p className="text-xs text-hextech-text-dim">{t('cloud.login.inviteHint')}</p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="flex items-center gap-1 text-xs text-hextech-text-dim underline-offset-2 hover:underline"
+                  onClick={() => setShowInvite(true)}
+                >
+                  <KeyRound className="h-3 w-3" />
+                  {t('cloud.login.haveInvite')}
+                </button>
+              )}
               <Button type="submit" className="w-full" disabled={!email || busy}>
                 {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
                 {t('cloud.login.sendCode')}
