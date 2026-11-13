@@ -3,7 +3,7 @@ import { Sidebar } from './Sidebar'
 
 export function AppLayout() {
   return (
-    <div className="flex h-screen bg-hextech-black">
+    <div className="ascend-texture-bg flex h-screen">
       {/* Fixed drag region at the top of the main area (outside the scroll container) */}
       <div className="app-drag-region fixed top-0 right-0 h-9 z-50" style={{ left: '16rem' }} />
       <Sidebar />

@@ -6,6 +6,7 @@ import { AccountPickerStep } from './AccountPickerStep'
 import { cn } from '@/lib/utils'
 import { useTranslation } from 'react-i18next'
 import { SavedAccount } from '@/lib/ipc'
+import logo from '@/assets/ascend-logo-mark.png'
 
 type Flow = 'loading' | 'picker' | 'new-account'
 
@@ -36,23 +37,21 @@ export function OnboardingPage() {
 
   if (flow === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-hextech-black">
+      <div className="ascend-texture-bg flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 rounded bg-gradient-to-br from-hextech-cyan to-hextech-teal flex items-center justify-center animate-pulse">
-          <span className="text-sm font-bold text-hextech-black">N</span>
+          <span className="text-sm font-bold text-hextech-black">A</span>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-hextech-black">
+    <div className="ascend-texture-bg flex min-h-screen">
       <div className="flex flex-1 flex-col items-center justify-center px-8 py-12">
         <div className="w-full max-w-2xl space-y-8">
           <div className="text-center space-y-3">
             <div className="flex items-center justify-center gap-3 mb-6">
-              <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-hextech-cyan to-hextech-teal flex items-center justify-center">
-                <span className="text-xl font-bold text-hextech-black">N</span>
-              </div>
+              <img src={logo} alt="" className="h-12 w-12 rounded-full object-cover" />
               <h1 className="font-display text-3xl font-bold text-gradient-gold">Ascend</h1>
             </div>
             <p className="text-hextech-text">{t('onboarding.tagline')}</p>

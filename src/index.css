@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Faint swirl texture — put this on the layout's own root container, never
+   on `body`: the layout root paints an opaque background over the whole
+   viewport once React mounts, so a body-level background disappears right
+   after the first frame (looked fine only while the page was loading). */
+.ascend-texture-bg {
+  background-image: linear-gradient(rgba(13, 10, 6, 0.94), rgba(13, 10, 6, 0.94)), url('./assets/ascend-bg-swirl-1.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
 .app-drag-region {
   -webkit-app-region: drag;
 }
@@ -24,23 +35,6 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-color: #0d0a06;
-    position: relative;
-  }
-
-  /* Faint swirl texture behind every screen — fixed, low opacity, never
-     intercepts clicks (pointer-events: none) and sits behind all content
-     (negative z-index on a body pseudo-element, body itself is the
-     positioning context set above). */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-image: url('./assets/ascend-bg-swirl-1.jpg');
-    background-size: cover;
-    background-position: center;
-    opacity: 0.05;
   }
 
   ::-webkit-scrollbar {

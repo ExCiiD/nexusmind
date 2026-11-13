@@ -19,7 +19,7 @@ const NAV = [
 export function WebLayout() {
   const { t } = useTranslation()
   return (
-    <div className="min-h-screen bg-hextech-black text-hextech-text">
+    <div className="ascend-texture-bg min-h-screen text-hextech-text">
       <aside className="fixed inset-y-0 left-0 hidden w-56 flex-col border-r border-hextech-border-dim bg-hextech-dark p-4 md:flex">
         <div className="mb-6 flex items-center gap-2">
           <img src={logo} alt="" className="h-8 w-8 rounded-full object-cover" />

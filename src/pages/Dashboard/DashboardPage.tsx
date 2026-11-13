@@ -194,14 +194,15 @@ export function DashboardPage() {
           {lastGame && <LastGameCard game={lastGame} onViewDetails={() => navigate(`/stats/${lastGame.matchId}`)} />}
         </div>
 
-        {/* Right sidebar */}
-        <div className="space-y-4">
+        {/* Right sidebar — same height as the left column's stack, so the
+            card doesn't leave a tall dead gap below it on long pages. */}
+        <div className="flex flex-col">
           {/* Progression + compact winrate merged */}
-          <Card>
+          <Card className="flex h-full flex-col">
             <CardHeader className="pb-2 pt-4 px-4">
               <CardTitle className="text-sm">{t('dashboard.progress')}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 px-4 pb-4">
+            <CardContent className="flex flex-1 flex-col space-y-3 px-4 pb-4">
               <XPBar totalXp={user.xp} />
               <StreakCounter days={user.streakDays} />
               {winrate !== null && stats && (
@@ -225,7 +226,7 @@ export function DashboardPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full border-hextech-gold/40 text-hextech-gold hover:bg-hextech-gold/10 gap-2"
+                className="w-full border-hextech-gold/40 text-hextech-gold hover:bg-hextech-gold/10 gap-2 mt-auto"
                 onClick={() => navigate('/assessment')}
               >
                 <ClipboardCheck className="h-4 w-4" />
@@ -497,17 +498,15 @@ function StatDiffsCard({ diffs, onViewAll }: { diffs: StatDiffItem[]; onViewAll:
           const diffColor = isPositive ? 'text-hextech-green' : isNegative ? 'text-[#E24C3A]' : 'text-hextech-text-dim'
 
           return (
-            <div key={item.label} className="flex items-center justify-between py-1">
-              <span className="text-xs text-hextech-text w-28 shrink-0">{item.label}</span>
-              <div className="flex items-center gap-3 flex-1 justify-end">
-                <span className="text-xs text-hextech-text-dim">{item.format(item.prev)}</span>
-                <span className="text-[10px] text-hextech-text-dim">→</span>
-                <span className="text-xs font-semibold text-hextech-text-bright">{item.format(item.curr)}</span>
-                <span className={`flex items-center gap-0.5 text-xs font-bold w-14 justify-end shrink-0 ${diffColor}`}>
-                  {isPositive ? <TrendingUp className="h-3 w-3" /> : isNegative ? <TrendingDown className="h-3 w-3" /> : null}
-                  {item.diff > 0 ? '+' : ''}{item.diff.toFixed(1)}
-                </span>
-              </div>
+            <div key={item.label} className="grid grid-cols-[7rem_1fr_1.25rem_1fr_3.75rem] items-center gap-2 py-1">
+              <span className="text-xs text-hextech-text">{item.label}</span>
+              <span className="text-xs text-hextech-text-dim text-right tabular-nums">{item.format(item.prev)}</span>
+              <span className="text-[10px] text-hextech-text-dim text-center">→</span>
+              <span className="text-xs font-semibold text-hextech-text-bright text-left tabular-nums">{item.format(item.curr)}</span>
+              <span className={`flex items-center justify-end gap-0.5 text-xs font-bold tabular-nums ${diffColor}`}>
+                {isPositive ? <TrendingUp className="h-3 w-3" /> : isNegative ? <TrendingDown className="h-3 w-3" /> : null}
+                {item.diff > 0 ? '+' : ''}{item.diff.toFixed(1)}
+              </span>
             </div>
           )
         })}
