@@ -438,7 +438,7 @@ export function registerStatsHandlers() {
         existingVideoTimesMs: existing.map((b) => b.videoTimeMs),
       })
       for (const b of plan) {
-        await prisma.bookmark.create({ data: { recordingId: recording.id, videoTimeMs: b.videoTimeMs, label: b.label, color: '#FF4655' } })
+        await prisma.bookmark.create({ data: { recordingId: recording.id, videoTimeMs: b.videoTimeMs, label: b.label, color: '#E24C3A' } })
       }
       if (plan.length) console.log(`[events] Auto-bookmarked ${plan.length} mistake(s) for game ${gameId}`)
     } catch (err) {
