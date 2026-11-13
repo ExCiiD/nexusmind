@@ -155,6 +155,20 @@ describe('timeline extraction', () => {
 
   it('falls back to the champion when the puuid is unknown, and survives bad JSON', () => {
     expect(extractTimelineFacts(JSON.stringify(match), null, { championName: 'ahri' }).killParticipation).toBeCloseTo(80)
-    expect(extractTimelineFacts('{bad', null, { puuids: ['me'] })).toEqual({ deathTimesSec: null, killParticipation: null, lane: null })
+    expect(extractTimelineFacts('{bad', null, { puuids: ['me'] })).toEqual({ deathTimesSec: null, killParticipation: null, lane: null, finalGoldDiff: null })
+  })
+
+  it('computes the final gold diff from match participants, and leaves it null when any value is missing', () => {
+    const withGold = {
+      info: {
+        participants: [
+          { participantId: 1, puuid: 'me', championName: 'Ahri', teamId: 100, kills: 3, assists: 5, win: true, goldEarned: 12000 },
+          { participantId: 2, puuid: 'ally', championName: 'Lee', teamId: 100, kills: 7, assists: 2, win: true, goldEarned: 11000 },
+          { participantId: 6, puuid: 'foe', championName: 'Zed', teamId: 200, kills: 4, assists: 0, win: false, goldEarned: 15000 },
+        ],
+      },
+    }
+    expect(extractTimelineFacts(withGold, null, { puuids: ['me'] }).finalGoldDiff).toBe(12000 + 11000 - 15000)
+    expect(extractTimelineFacts(match, null, { puuids: ['me'] }).finalGoldDiff).toBeNull()
   })
 })

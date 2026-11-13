@@ -632,7 +632,9 @@
       "sessions_50_desc": "Compléter 50 sessions",
       "rank_up": "Grimpeur",
       "rank_up_desc": "Monter en rang avec NexusMind",
-      "locked": "Verrouillé"
+      "locked": "Verrouillé",
+      "fundamental_graduated": "Diplômé",
+      "fundamental_graduated_desc": "Valider un fondamental deux expériences de suite"
     },
     "streak": {
       "noStreak": "Commencez une série en faisant des revues quotidiennes",
@@ -686,7 +688,8 @@
       "guideText": "Concentrez-vous sur les décisions prises en rapport avec votre objectif. Qu'est-ce qui a bien fonctionné ? Qu'est-ce qui a mal tourné ?",
       "timePlaceholder": "M:SS",
       "notePlaceholder": "Que s'est-il passé à ce moment ? Quelle décision avez-vous prise ?",
-      "addButton": "Ajouter une note"
+      "addButton": "Ajouter une note",
+      "autoBadge": "Pré-rempli"
     }
   },
   "fundamentalsGrid": {
@@ -1519,8 +1522,16 @@
         "v1": "{{wins}} victoires d'affilée ! Gardez la même routine.",
         "v2": "Série de victoires : {{wins}}. Quoi que vous fassiez, continuez.",
         "v3": "{{wins}} victoires de suite, {{name}}. Restez concentré sur votre objectif."
+      },
+      "dominant_mistake": {
+        "v1": "« {{tag}} » est votre erreur principale : présente dans {{count}} de vos {{n}} dernières parties. Faites-en votre objectif.",
+        "v2": "Erreur dominante : « {{tag}} » dans {{count}}/{{n}} parties récentes. C'est le fondamental qui vous rapportera le plus en ce moment."
       }
-    }
+    },
+    "focus": "Focus",
+    "focusHint": "La priorité n°1 en ce moment : ce qui vous coûte le plus de victoires.",
+    "support_one": "Confirmé par 1 autre signal.",
+    "support_other": "Confirmé par {{count}} autres signaux."
   },
   "web": {
     "nav": {
@@ -1659,6 +1670,62 @@
       "used": "Utilisée",
       "expired": "Expirée",
       "revoked": "Révoquée"
+    }
+  },
+  "coach": {
+    "problems": {
+      "laning": "Phase de lane",
+      "deaths": "Morts évitables",
+      "farming": "Farm",
+      "vision": "Vision",
+      "objective-setup": "Préparation des objectifs",
+      "map-awareness": "Lecture de la carte",
+      "gold-management": "Gestion de l'or",
+      "teamfight": "Combats d'équipe",
+      "mechanics": "Mécanique",
+      "preparation": "Préparation (runes, matchup)",
+      "objective-progress": "Objectif de session",
+      "self-assessment": "Auto-évaluation",
+      "review-habit": "Reviews",
+      "tilt-fatigue": "Tilt et fatigue",
+      "momentum": "Dynamique",
+      "other-mistakes": "Autres erreurs"
+    },
+    "criterion": {
+      "max": {
+        "deathsBefore14": "Au plus {{target}} mort(s) avant 14 min",
+        "deathsBefore10": "Au plus {{target}} mort(s) avant 10 min",
+        "deaths": "Au plus {{target}} morts dans la partie",
+        "generic": "{{metric}} : au plus {{target}}"
+      },
+      "min": {
+        "csPerMin": "Au moins {{target}} CS/min",
+        "visionPerMin": "Au moins {{target}} de vision/min",
+        "kp": "Au moins {{target}} % de participation aux kills",
+        "generic": "{{metric}} : au moins {{target}}"
+      },
+      "noMistake": "Aucune erreur « {{tags}} » dans la partie"
+    },
+    "experiment": {
+      "activeTitle": "Expérience en cours",
+      "doneTitle": "Résultat de l'expérience",
+      "progress": "{{passes}} réussie(s) sur {{counted}} · encore {{left}} partie(s).",
+      "fromSession": "Lancée automatiquement depuis l'objectif de la session.",
+      "abandon": "Abandonner l'expérience",
+      "start": "Tester sur {{n}} parties",
+      "startHint": "L'app vérifie le critère sur chacune de vos 5 prochaines parties, puis donne un verdict.",
+      "verdict": {
+        "acquired": "Acquis : critère tenu dans {{rate}} % des parties ({{passes}}/{{counted}}).",
+        "progressing": "En progrès : nettement mieux que votre moyenne, pas encore régulier ({{passes}}/{{counted}}).",
+        "no_effect": "Sans effet pour l'instant ({{passes}}/{{counted}}) : le prochain focus prendra un autre angle."
+      },
+      "graduated": "{{objective}} validé deux fois de suite : fondamental acquis !",
+      "next": "Prochain : {{objective}}."
+    },
+    "review": {
+      "prefilled": "Pré-rempli automatiquement d'après l'expérience en cours : {{criterion}} — {{result}}. Vous pouvez corriger.",
+      "passed": "tenu",
+      "failed": "pas tenu"
     }
   }
 }

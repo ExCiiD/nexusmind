@@ -8,6 +8,7 @@ import {
   Shield,
   Zap,
   Crown,
+  GraduationCap,
   type LucideIcon,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
@@ -30,6 +31,7 @@ export const BADGES: BadgeDef[] = [
   { id: 'sessions_10', icon: Zap, color: 'text-hextech-cyan' },
   { id: 'sessions_50', icon: Trophy, color: 'text-hextech-gold' },
   { id: 'rank_up', icon: TrendingUp, color: 'text-hextech-gold-bright' },
+  { id: 'fundamental_graduated', icon: GraduationCap, color: 'text-hextech-green' },
 ]
 
 interface BadgeDisplayProps {

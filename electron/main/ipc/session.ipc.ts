@@ -2,6 +2,47 @@ import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
 import { tryUnlockBadge } from '../badgeUnlock'
 import { getMatchIds, getMatch, getMatchTimeline, extractPlayerStats } from '../riotClient'
+
+/**
+ * Completes a session: status, optional conclusion/summary, XP, session-count
+ * badges. Shared by the manual `session:end` handler and the S3 auto-close
+ * (sessionAutoClose.ts) so both paths award the same XP and badges.
+ */
+export async function endSessionCore(id: string, manualSummary?: string, sessionConclusion?: string) {
+  const prisma = getPrisma()
+
+  const session = await prisma.session.update({
+    where: { id },
+    data: {
+      status: 'completed',
+      ...(sessionConclusion !== undefined ? { sessionConclusion } : manualSummary ? { aiSummary: manualSummary } : {}),
+    },
+    include: {
+      games: { include: { review: true } },
+    },
+  })
+
+  const user = await prisma.user.findFirst({ where: { isActive: true } })
+  if (user) {
+    const gamesPlayed = session.games.length
+    const reviewsCompleted = session.games.filter((g) => g.review).length
+    const xpGained = gamesPlayed * 25 + reviewsCompleted * 50
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { xp: user.xp + xpGained },
+    })
+
+    // Badges: sessions_10, sessions_50
+    const completedCount = await prisma.session.count({
+      where: { userId: user.id, status: 'completed' },
+    })
+    if (completedCount >= 10) await tryUnlockBadge(user.id, 'sessions_10')
+    if (completedCount >= 50) await tryUnlockBadge(user.id, 'sessions_50')
+  }
+
+  return session
+}
+
 export function registerSessionHandlers() {
   ipcMain.handle('session:create', async (_event, data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) => {
     const prisma = getPrisma()
@@ -318,40 +359,9 @@ export function registerSessionHandlers() {
     }
   })
 
-  ipcMain.handle('session:end', async (_event, id: string, manualSummary?: string, sessionConclusion?: string) => {
-    const prisma = getPrisma()
-
-    const session = await prisma.session.update({
-      where: { id },
-      data: {
-        status: 'completed',
-        ...(sessionConclusion !== undefined ? { sessionConclusion } : manualSummary ? { aiSummary: manualSummary } : {}),
-      },
-      include: {
-        games: { include: { review: true } },
-      },
-    })
-
-    const user = await prisma.user.findFirst({ where: { isActive: true } })
-    if (user) {
-      const gamesPlayed = session.games.length
-      const reviewsCompleted = session.games.filter((g) => g.review).length
-      const xpGained = gamesPlayed * 25 + reviewsCompleted * 50
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { xp: user.xp + xpGained },
-      })
-
-      // Badges: sessions_10, sessions_50
-      const completedCount = await prisma.session.count({
-        where: { userId: user.id, status: 'completed' },
-      })
-      if (completedCount >= 10) await tryUnlockBadge(user.id, 'sessions_10')
-      if (completedCount >= 50) await tryUnlockBadge(user.id, 'sessions_50')
-    }
-
-    return session
-  })
+  ipcMain.handle('session:end', async (_event, id: string, manualSummary?: string, sessionConclusion?: string) =>
+    endSessionCore(id, manualSummary, sessionConclusion),
+  )
 
   ipcMain.handle('session:delete', async (_event, id: string) => {
     const prisma = getPrisma()

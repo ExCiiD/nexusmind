@@ -11,6 +11,8 @@ import {
 import { extractGameEvents, type GameEvent } from '../eventExtractor'
 import { analyzeLanePhase, type LanePhaseResult } from '../lanePhaseAnalyzer'
 import { detectMistakes } from '../mistakeDetector'
+import { planAutoBookmarks, type AutoBookmarkCandidate } from '../mistakeBookmarks'
+import { buildPrefilledNotes } from '../reviewNotes'
 
 let autoSnapshotRunning = false
 
@@ -209,20 +211,24 @@ async function ensureMatchCache(gameId: string, forceRefetch: boolean, logPrefix
   }
 }
 
-let loadGameEventsImpl: ((gameId: string, forceRefetch: boolean) => Promise<unknown>) | null = null
+let loadGameEventsImpl: ((gameId: string, forceRefetch: boolean) => Promise<{ diag: { reason: string } }>) | null = null
+let autoDetectMistakesImpl: ((gameId: string) => Promise<void>) | null = null
 
 /**
  * Post-game analysis in the background: fetches + caches the timeline and,
- * through the same path, runs the Mistake Library rules — so mistakes are
- * already there when the player opens the review (AUDIT_REGLES_METIER MX2).
+ * through the same path, runs the Mistake Library rules (and, for severity-3
+ * mistakes with a linked recording, auto-bookmarks them — MX5) — so mistakes
+ * are already there when the player opens the review (AUDIT_REGLES_METIER MX2).
  */
 export async function prefetchGameAnalysis(gameId: string): Promise<void> {
   if (!loadGameEventsImpl) return
-  await loadGameEventsImpl(gameId, false)
+  const res = await loadGameEventsImpl(gameId, false)
+  if (res.diag.reason === 'ok' && autoDetectMistakesImpl) await autoDetectMistakesImpl(gameId)
 }
 
 export function registerStatsHandlers() {
   loadGameEventsImpl = (gameId, forceRefetch) => loadGameEvents(gameId, forceRefetch)
+  autoDetectMistakesImpl = (gameId) => autoDetectMistakesSilently(gameId)
   // Returns a compact list of game events for the video player timeline.
   // Lazy-fetches + caches the Riot Match-Timeline-V5 blob if not already cached.
   // Returns [] when timeline is unavailable (e.g. region temp outage) rather
@@ -380,28 +386,58 @@ export function registerStatsHandlers() {
       }
 
       let created = 0
+      const newlyCreated: AutoBookmarkCandidate[] = []
       for (const c of candidates) {
         const tagId = slugToTagId.get(c.tagSlug)
         if (!tagId) continue
         const nearby = bucket.get(tagId) ?? []
         if (nearby.some((t) => Math.abs(t - c.gameTimeSec) <= 3)) continue
+        const severity = Math.min(3, Math.max(1, c.severity ?? 2))
         await prisma.mistake.create({
           data: {
             gameId,
             tagId,
             gameTimeSec: Math.max(0, Math.floor(c.gameTimeSec)),
             note: c.note ?? null,
-            severity: Math.min(3, Math.max(1, c.severity ?? 2)),
+            severity,
             autoDetected: true,
           },
         })
         created++
+        newlyCreated.push({ tagSlug: c.tagSlug, tagLabel: tags.find((t) => t.id === tagId)?.label ?? c.tagSlug, gameTimeSec: c.gameTimeSec, severity })
         nearby.push(c.gameTimeSec)
         bucket.set(tagId, nearby)
       }
       if (created > 0) console.log(`[events] Auto-detected ${created} mistake(s) for game ${gameId}`)
+      if (newlyCreated.some((c) => c.severity >= 3)) await autoBookmarkSevereMistakes(gameId, game.duration, newlyCreated)
     } catch (err) {
       console.warn('[events] auto-detect failed:', (err as Error)?.message ?? err)
+    }
+  }
+
+  /**
+   * MX5 — a severity-3 mistake with a linked recording gets a bookmark at
+   * `t − 15s`, so the clip is ready to re-watch without hunting for it.
+   * Best-effort: skipped entirely when the recording has no trustworthy
+   * `startOffsetSec` (see mistakeBookmarks.ts).
+   */
+  async function autoBookmarkSevereMistakes(gameId: string, gameDurationSec: number, candidates: AutoBookmarkCandidate[]): Promise<void> {
+    try {
+      const prisma = getPrisma()
+      const recording = await prisma.recording.findUnique({ where: { gameId } })
+      if (!recording) return
+      const existing = await prisma.bookmark.findMany({ where: { recordingId: recording.id }, select: { videoTimeMs: true } })
+      const plan = planAutoBookmarks(candidates, {
+        startOffsetSec: recording.startOffsetSec,
+        gameDurationSec,
+        existingVideoTimesMs: existing.map((b) => b.videoTimeMs),
+      })
+      for (const b of plan) {
+        await prisma.bookmark.create({ data: { recordingId: recording.id, videoTimeMs: b.videoTimeMs, label: b.label, color: '#FF4655' } })
+      }
+      if (plan.length) console.log(`[events] Auto-bookmarked ${plan.length} mistake(s) for game ${gameId}`)
+    } catch (err) {
+      console.warn('[events] auto-bookmark failed:', (err as Error)?.message ?? err)
     }
   }
 
@@ -410,6 +446,23 @@ export function registerStatsHandlers() {
   ipcMain.handle('stats:get-game-events', async (_event, gameId: string): Promise<GameEvent[]> => {
     const { events } = await loadGameEvents(gameId, false)
     return events
+  })
+
+  /**
+   * R1 — draft, timestamped notes built from this game's own events and
+   * severity-3 mistakes. The renderer only uses this when the review form
+   * is otherwise empty (no saved review, no draft) and never overwrites
+   * anything the player typed.
+   */
+  ipcMain.handle('review:prefilled-notes', async (_event, gameId: string) => {
+    const { events, diag } = await loadGameEvents(gameId, false)
+    if (diag.reason !== 'ok') return []
+    const prisma = getPrisma()
+    const mistakes = await prisma.mistake.findMany({ where: { gameId }, select: { gameTimeSec: true, severity: true, tag: { select: { slug: true, label: true } } } })
+    return buildPrefilledNotes(
+      events,
+      mistakes.map((m) => ({ tagSlug: m.tag.slug, tagLabel: m.tag.label, gameTimeSec: m.gameTimeSec, severity: m.severity })),
+    )
   })
 
   // Diagnostic variant — UI uses this for the "Refresh events" button and

@@ -55,6 +55,8 @@ export type ActionSpec =
   | { type: 'break'; minutes: number }
   | { type: 'drill'; drillId: string }
   | { type: 'review' }
+  /** Objective = the fundamental of the matched mistake tag's problem (problems.ts). */
+  | { type: 'mistakeObjective' }
 
 export type ParamSpec = string | { from: string; digits?: number; kind?: 'objective' }
 
@@ -432,6 +434,19 @@ export const RULES: Rule[] = [
     params: { tag: 'c0.tagLabel', count: 'c0.matched', n: 'c0.of' },
     why: { key: 'lastGames', n: 'c0.of' },
     action: { type: 'rewatch', source: 'mistake' },
+  },
+  {
+    // AS2 / MX4: a tag in ≥ 40 % of the last 10 games becomes the objective to work on.
+    id: 'dominant_mistake',
+    moments: TRENDS,
+    tone: 'negative',
+    priority: 74,
+    confidence: 0.75,
+    when: [{ kind: 'recurringMistake', atLeast: 4, of: 10 }],
+    variants: 2,
+    params: { tag: 'c0.tagLabel', count: 'c0.matched', n: 'c0.of' },
+    why: { key: 'lastGames', n: 'c0.of' },
+    action: { type: 'mistakeObjective' },
   },
 
   // ─ Mental ─

@@ -86,7 +86,7 @@ Règles transverses de la Mistake Library :
 - **MX1 — Déduplication** : une erreur auto par (tag, minute) ; les erreurs manuelles ne sont jamais touchées.
 - **MX2 — Relance automatique** : la détection tourne dès que la timeline est en cache (enrichissement post-partie, ouverture d'une review, refresh) ✅.
 - **MX3 — Apprentissage du seuil** : si le joueur supprime ≥ 3 fois un même tag auto sans le recréer, sa sévérité par défaut baisse de 1 (⏳).
-- **MX4 — Top erreurs → objectif** : un tag présent dans ≥ 40 % des 10 dernières games devient une suggestion d'objectif (assistant) (⏳).
+- **MX4 — Top erreurs → objectif** : un tag présent dans ≥ 40 % des 10 dernières games devient une suggestion d'objectif (assistant) (✅ règle `dominant_mistake`).
 - **MX5 — Clip auto** : erreur sévérité 3 avec vidéo liée → bookmark à `t − 15 s` (⏳).
 
 ### 3.2 Sessions & objectifs
@@ -94,7 +94,7 @@ Règles transverses de la Mistake Library :
 | ID | Règle | Cas | Statut |
 |---|---|---|---|
 | S1 | Proposer l'objectif | (a) objectif assigné par le coach en cours → prioritaire ; (b) tag d'erreur récurrent (MX4) ; (c) fondamental le plus faible du bilan ; (d) objectif répété 4 sessions sans progrès → fondamental voisin | 🟡 (a)(c)(d) |
-| S2 | Objectif-expérience (B1) | critère mesurable choisi dans une liste (morts < 14 min, CS@10, wards/min, KP…) → verdict après N games : **acquis** (critère tenu ≥ 70 % des games), **en progrès** (tendance positive), **sans effet** | ⏳ |
+| S2 | Objectif-expérience (B1) | critère mesurable choisi dans une liste (morts < 14 min, CS@10, wards/min, KP…) → verdict après N games : **acquis** (critère tenu ≥ 70 % des games), **en progrès** (tendance positive), **sans effet** | ✅ (moteur de coaching, lot 2) |
 | S3 | Fin de session auto | aucune partie depuis 45 min (ou client fermé) → clôture + conclusion pré-remplie | ⏳ |
 | S4 | Garde-fou de session | (a) 3 défaites d'affilée → suggestion de pause ; (b) règle anti-tilt du joueur (B8) atteinte → rappel ; (c) > 2 h 30 de jeu → fatigue | 🟡 (a)(c) |
 | S5 | Game hors rôle | rôle joué ≠ rôle principal → exclue des moyennes du rôle, signalée ✅ | ✅ |
@@ -104,7 +104,7 @@ Règles transverses de la Mistake Library :
 | ID | Règle | Cas | Statut |
 |---|---|---|---|
 | R1 | Notes horodatées pré-remplies | chaque mort, multi-kill, objectif pris/perdu, tour perdue → note à compléter | ⏳ |
-| R2 | Respect de l'objectif calculé | si l'objectif a un critère (S2) → coché/décoché automatiquement, modifiable | ⏳ |
+| R2 | Respect de l'objectif calculé | si l'objectif a un critère (S2) → coché/décoché automatiquement, modifiable | ✅ |
 | R3 | Détection de biais | KPI auto-noté ≥ 4 alors que l'indicateur lié est dans le pire tiers personnel → alerte « auto-évaluation optimiste » | ✅ (assistant) |
 | R4 | Choix de la review complète (B3) | priorité : défaite serrée (écart d'or final < 3k) > game avec ≥ 2 erreurs sévérité 3 > écart à la moyenne > dernière game | ⏳ |
 | R5 | Rappel de review | > 3 games non reviewées dans la session → bandeau ; coach notifié si > 7 jours (W5) | ⏳ |
@@ -112,7 +112,7 @@ Règles transverses de la Mistake Library :
 ### 3.4 Assistant (Phase A) — existant, à enrichir
 
 Règles actuelles : morts précoces répétées, biais KPI, objectif sans progrès, tilt, baisse de vision, tendance CS, longue session… (voir `electron/main/assistant/rules.ts`).
-Ajouts proposés : **AS1** profil meilleur/pire (B4) ; **AS2** tag d'erreur dominant (MX4) ; **AS3** champion à sortir du pool (≥ 10 games, winrate < 40 %, KDA sous la moyenne personnelle) ; **AS4** heure de jeu défavorable (winrate après minuit < winrate global − 10 pts sur ≥ 15 games) ; **AS5** fatigue de série (performance des games 4+ d'une session < games 1-3).
+Ajouts proposés (✅ AS2 livré avec le moteur de coaching, voir [MOTEUR_REGLES.md](MOTEUR_REGLES.md)) : **AS1** profil meilleur/pire (B4) ; **AS2** tag d'erreur dominant (MX4) ; **AS3** champion à sortir du pool (≥ 10 games, winrate < 40 %, KDA sous la moyenne personnelle) ; **AS4** heure de jeu défavorable (winrate après minuit < winrate global − 10 pts sur ≥ 15 games) ; **AS5** fatigue de série (performance des games 4+ d'une session < games 1-3).
 
 ### 3.5 Équipe (staff)
 
@@ -141,7 +141,7 @@ Ajouts proposés : **AS1** profil meilleur/pire (B4) ; **AS2** tag d'erreur domi
 | ID | Règle | Cas | Statut |
 |---|---|---|---|
 | P1 | Rappel de réévaluation | date planifiée atteinte ✅ ; ou écart stats/bilan > 1,5 point sur ≥ 3 fondamentaux | 🟡 |
-| P2 | Fondamental « diplômé » | verdict S2 « acquis » 2 fois de suite → badge + suggestion du fondamental suivant de la même catégorie | ⏳ |
+| P2 | Fondamental « diplômé » | verdict S2 « acquis » 2 fois de suite → badge + suggestion du fondamental suivant de la même catégorie | ✅ |
 | P3 | Grilles de niveau (B6) | comportements cochés → niveau proposé ; écart > 1 avec l'auto-note → alerte biais | ⏳ |
 
 ---

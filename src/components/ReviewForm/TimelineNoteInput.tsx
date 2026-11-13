@@ -12,6 +12,8 @@ export interface TimelineNote {
   note: string
   /** Video timestamp in seconds — set when the note was marked from the video player */
   videoTime?: number
+  /** Pre-filled by the app from this game's own events/mistakes (R1) — cleared on the first edit. */
+  auto?: boolean
 }
 
 interface TimelineNoteInputProps {
@@ -54,7 +56,7 @@ export function TimelineNoteInput({ notes, onChange, objectiveLabel }: TimelineN
 
   const updateNote = (idx: number, field: keyof TimelineNote, value: string) => {
     const updated = [...notes]
-    updated[idx] = { ...updated[idx], [field]: value }
+    updated[idx] = { ...updated[idx], [field]: value, auto: false }
     onChange(updated)
   }
 
@@ -113,13 +115,20 @@ export function TimelineNoteInput({ notes, onChange, objectiveLabel }: TimelineN
                 className="w-20 font-mono text-xs"
               />
             )}
-            <Textarea
-              placeholder={t('reviewForm.timeline.notePlaceholder')}
-              value={note.note}
-              onChange={(e) => updateNote(idx, 'note', e.target.value)}
-              className="flex-1 min-h-[36px] text-sm"
-              rows={1}
-            />
+            <div className="flex-1 min-w-0">
+              {note.auto && (
+                <span className="mb-0.5 inline-block text-[9px] uppercase tracking-wider text-hextech-text-dim/70">
+                  {t('reviewForm.timeline.autoBadge')}
+                </span>
+              )}
+              <Textarea
+                placeholder={t('reviewForm.timeline.notePlaceholder')}
+                value={note.note}
+                onChange={(e) => updateNote(idx, 'note', e.target.value)}
+                className="min-h-[36px] text-sm"
+                rows={1}
+              />
+            </div>
             <Button variant="ghost" size="icon" onClick={() => removeNote(idx)} className="shrink-0 mt-0.5">
               <Trash2 className="h-4 w-4 text-hextech-red/70" />
             </Button>

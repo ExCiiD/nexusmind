@@ -12,6 +12,8 @@ export interface TimelineFacts {
   deathTimesSec: number[] | null
   killParticipation: number | null
   lane: LaneRecord | null
+  /** The player's team's total gold minus the enemy team's, at game end (R4). */
+  finalGoldDiff: number | null
 }
 
 function parse(json: string | object | null | undefined): any {
@@ -44,15 +46,23 @@ export function extractTimelineFacts(
 ): TimelineFacts {
   const match = parse(matchJson)
   const timeline = parse(timelineJson)
-  const empty: TimelineFacts = { deathTimesSec: null, killParticipation: null, lane: null }
+  const empty: TimelineFacts = { deathTimesSec: null, killParticipation: null, lane: null, finalGoldDiff: null }
   if (!match) return empty
   const p = resolveParticipant(match, selector)
   if (!p) return empty
 
-  const teamKills = (match.info.participants as any[])
+  const allParticipants = match.info.participants as any[]
+  const teamKills = allParticipants
     .filter((x) => x.teamId === p.teamId)
     .reduce((a, x) => a + (x.kills ?? 0), 0)
   const killParticipation = teamKills > 0 ? (((p.kills ?? 0) + (p.assists ?? 0)) / teamKills) * 100 : null
+
+  let finalGoldDiff: number | null = null
+  if (typeof p.teamId === 'number' && allParticipants.every((x) => typeof x.goldEarned === 'number')) {
+    const myGold = allParticipants.filter((x) => x.teamId === p.teamId).reduce((a, x) => a + x.goldEarned, 0)
+    const theirGold = allParticipants.filter((x) => x.teamId !== p.teamId).reduce((a, x) => a + x.goldEarned, 0)
+    finalGoldDiff = myGold - theirGold
+  }
 
   let deathTimesSec: number[] | null = null
   const frames: any[] | undefined = timeline?.info?.frames
@@ -71,5 +81,5 @@ export function extractTimelineFacts(
       lane = laneFromReport(analyzeLanePhase({ matchJson: match, timelineJson: timeline, selector }).report)
     } catch { lane = null }
   }
-  return { deathTimesSec, killParticipation, lane }
+  return { deathTimesSec, killParticipation, lane, finalGoldDiff }
 }

@@ -159,7 +159,7 @@ Objectif : donner au joueur la boucle *hypothèse → pratique → mesure → ve
 
 Ordre conseillé : B1 → B2 + B3 → B4 → B5 → B6 / B8 / B9 / B10.
 
-Plans détaillés liés : [catalogue des règles métier](AUDIT_REGLES_METIER.md), [gestion d'équipe](PLAN_GESTION_EQUIPE.md), [vitrine](PLAN_VITRINE.md).
+Plans détaillés liés : [moteur de coaching (design)](MOTEUR_REGLES.md), [catalogue des règles métier](AUDIT_REGLES_METIER.md), [gestion d'équipe](PLAN_GESTION_EQUIPE.md), [vitrine](PLAN_VITRINE.md).
 
 ## Idées complémentaires 💡
 
