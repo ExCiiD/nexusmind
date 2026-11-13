@@ -113,6 +113,18 @@ const api = {
   cloudRestoreBackup: (id: string) => ipcRenderer.invoke('cloud:restore-backup', id),
   cloudDeleteBackup: (id: string) => ipcRenderer.invoke('cloud:delete-backup', id),
   cloudDeleteAccount: (confirm: 'DELETE') => ipcRenderer.invoke('cloud:delete-account', confirm),
+  syncStatus: () => ipcRenderer.invoke('sync:status'),
+  syncNow: () => ipcRenderer.invoke('sync:now'),
+  onSyncStatus: (cb: (status: unknown) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, s: unknown) => cb(s)
+    ipcRenderer.on('sync:status', handler)
+    return () => { ipcRenderer.removeListener('sync:status', handler) }
+  },
+  onSyncApplied: (cb: (info: { tables: string[]; count: number }) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, info: { tables: string[]; count: number }) => cb(info)
+    ipcRenderer.on('sync:applied', handler)
+    return () => { ipcRenderer.removeListener('sync:applied', handler) }
+  },
   onCloudAuthChanged: (cb: (user: { id: string; email: string | null } | null) => void) => {
     const handler = (_: Electron.IpcRendererEvent, user: { id: string; email: string | null } | null) => cb(user)
     ipcRenderer.on('cloud:auth-changed', handler)

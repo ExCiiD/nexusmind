@@ -10,6 +10,7 @@ import {
   getLastCloudBackupAt,
 } from '../cloud/cloudBackup'
 import { toLegacySummary } from './backup.ipc'
+import { syncNow } from '../sync/syncService'
 
 const email = z.string().trim().toLowerCase().email().max(254)
 /** Supabase e-mail OTPs are 6 digits by default (configurable up to 10). */
@@ -44,6 +45,8 @@ export function registerCloudHandlers() {
   validatedHandle('cloud:verify-code', z.tuple([email, otp]), async (_e, address, code) => {
     const { data, error } = await getSupabase().auth.verifyOtp({ email: address, token: code, type: 'email' })
     if (error) throw authError(error.message)
+    // Pull this account's data from the other PCs right away.
+    setTimeout(() => { syncNow().catch(() => {}) }, 500)
     return toCloudUser(data.session)
   })
 

@@ -27,6 +27,15 @@ export interface CloudStatus {
   lastBackupAt: string | null
 }
 
+export interface SyncStatus {
+  phase: 'idle' | 'syncing' | 'error' | 'blocked'
+  /** Local changes not yet uploaded. */
+  pending: number
+  lastSyncAt: string | null
+  /** SIGNED_OUT | NETWORK | DIFFERENT_PLAYER | MULTIPLE_LOCAL_PROFILES | NO_LOCAL_PROFILE */
+  error: string | null
+}
+
 export interface CloudBackup {
   id: string
   created_at: string
@@ -429,6 +438,12 @@ export type NexusMindAPI = {
   cloudDeleteBackup: (id: string) => Promise<{ deleted: boolean }>
   cloudDeleteAccount: (confirm: 'DELETE') => Promise<{ deleted: boolean }>
   onCloudAuthChanged: (cb: (user: CloudUser | null) => void) => () => void
+
+  // Multi-device sync
+  syncStatus: () => Promise<SyncStatus>
+  syncNow: () => Promise<SyncStatus>
+  onSyncStatus: (cb: (status: SyncStatus) => void) => () => void
+  onSyncApplied: (cb: (info: { tables: string[]; count: number }) => void) => () => void
 
   // Recording — library
   scanRecordings: () => Promise<{ scanned: number; matched: number; orphaned: number; dismissed: number; backfillLinked?: number; backfillNotFound?: number; paths: Array<{ source: string; dir: string; exists: boolean }> }>

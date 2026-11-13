@@ -53,6 +53,8 @@ import { registerDataHandlers } from './ipc/data.ipc'
 import { registerCloudHandlers } from './ipc/cloud.ipc'
 import { isCloudConfigured } from './cloud/supabase'
 import { startAutoCloudBackup } from './cloud/cloudBackup'
+import { registerSyncHandlers } from './ipc/sync.ipc'
+import { startSyncService } from './sync/syncService'
 import { seedBuiltInMistakeTags } from './seeds/mistakeTags'
 import { isMediaPathAllowed } from './mediaAccess'
 
@@ -389,7 +391,11 @@ async function bootstrap() {
   registerBookmarkHandlers()
   registerDataHandlers()
   registerCloudHandlers()
-  if (isCloudConfigured()) startAutoCloudBackup()
+  registerSyncHandlers()
+  if (isCloudConfigured()) {
+    startAutoCloudBackup()
+    startSyncService()
+  }
 
   // Idempotent — adds new built-in tags on app updates without ever
   // overwriting user-edited ones. Fire-and-forget; if it fails we still

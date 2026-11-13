@@ -26,6 +26,7 @@ import { useState, useEffect } from 'react'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 import i18n from '../../i18n/config'
+import { SyncIndicator } from '@/components/Cloud/SyncIndicator'
 
 export function Sidebar() {
   const { t } = useTranslation()
@@ -208,6 +209,8 @@ export function Sidebar() {
               </div>
             ) : null}
           </div>
+
+          <SyncIndicator />
 
           <div className="flex items-center justify-between">
             <div className="truncate min-w-0">

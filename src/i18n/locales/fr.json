@@ -1137,5 +1137,26 @@
       "restoreDesc": "Les sessions, games et reviews manquantes sont ajoutées sur ce PC. Rien de ce qui existe déjà n'est écrasé ni supprimé.",
       "restored": "Sauvegarde restaurée"
     }
+  },
+  "sync": {
+    "clickToSync": "Cliquer pour synchroniser maintenant",
+    "state": {
+      "synced": "Synchronisé à {{time}}",
+      "waiting": "Synchronisation en attente…",
+      "syncing": "Synchronisation…",
+      "pending": "{{count}} modification(s) à synchroniser",
+      "offline": "Hors ligne — {{count}} modification(s) en attente"
+    },
+    "errors": {
+      "generic": "Synchronisation indisponible",
+      "DIFFERENT_PLAYER": "Compte lié à un autre joueur Riot",
+      "MULTIPLE_LOCAL_PROFILES": "Synchro désactivée : plusieurs profils locaux",
+      "NO_LOCAL_PROFILE": "Connectez votre compte Riot pour synchroniser"
+    },
+    "applied": {
+      "title": "Synchronisé depuis un autre PC",
+      "desc": "{{count}} élément(s) mis à jour.",
+      "refresh": "Actualiser"
+    }
   }
 }

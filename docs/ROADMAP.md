@@ -63,12 +63,14 @@ Recommandation d'objectif par règles, résumé de review déterministe, pattern
 - ⏳ À faire par toi : modèles d'e-mail avec `{{ .Token }}`, déploiement du Worker, `MAIN_VITE_RIOT_PROXY_URL`, SMTP avant la bêta publique (`docs/CLOUD_SETUP.md`).
 - ⏳ Nettoyer les anciennes tables Supabase vides (`synced_*`, `coach_*`) en W3.
 
-### W2 — Synchronisation multi-appareils (≈ 3–4 sem.)
-- Schéma : ajouter `updatedAt`, `deletedAt` (tombstones) et `ownerId` aux modèles synchronisés ; les ids `cuid()` actuels sont déjà globalement uniques.
-- Table locale `SyncOutbox` (pattern outbox) : chaque écriture IPC enregistre l'opération ; un worker pousse vers Supabase et tire les changements `updated_at > lastPulledAt`.
-- Conflits : *last-write-wins* par ligne pour les entités simples ; *append-only* pour notes de timeline, commentaires, bookmarks (pas de conflit possible).
-- Périmètre : User, Account, Assessment(+Scores), Session, Game, Review, Bookmark, Clip (métadonnées), Mistake/MistakeTag, ExternalReview, Team, TeamMember, ChampionPoolEntry, DraftPrep, CustomGame. Exclus : MatchCache, GameDetailedStats (re-téléchargeables depuis Riot).
-- Indicateur de statut de synchro dans la sidebar + écran de résolution manuelle si besoin.
+### W2 — Synchronisation multi-appareils 🟡 (code fait, test réel sur 2 PC à faire)
+- ✅ Serveur : table générique `sync_records` (une ligne JSON par enregistrement, RLS par compte) + RPC `sync_push` (last-write-wins sur l'heure du changement, curseur `seq` serveur). Testée en conditions réelles.
+- ✅ Local : triggers SQLite → `_sync_outbox` (capte aussi le SQL brut, aucun handler IPC modifié). Première synchro : tout l'existant est envoyé avec sa vraie date de modification.
+- ✅ Fusion : `userId` réécrit vers le profil local, doublons naturels fusionnés via `_sync_idmap` (tag intégré par `slug`, game par `matchId`, compte par `puuid`…), enfants en attente de leur parent dans `_sync_inbox`, suppressions en tombstones (cascade locale).
+- ✅ Jamais synchronisé : chemins vidéo/miniatures, cache Riot, stats détaillées, webhooks Discord, clips, réglages du profil `User` (spécifiques au PC).
+- ✅ Garde-fous : un compte cloud = un joueur Riot (`_profile`), synchro désactivée avec plusieurs profils locaux.
+- ✅ Indicateur dans la sidebar (clic = synchro), synchro 5 s après une modification + toutes les 30 s, toast « Actualiser » quand un autre PC a envoyé des données.
+- ⏳ Limites connues : XP / streak / réglages non synchronisés ; une écriture locale pendant l'application d'un lot distant (< 1 s) peut ne pas être détectée ; pas d'écran de résolution manuelle (last-write-wins seulement).
 
 ### W3 — Collaboration multi-joueurs (≈ 3 sem.)
 - Modèle : `organizations` (équipe/structure) → `memberships(role: owner | coach | analyst | player)` ; `coach_students` existant devient un cas particulier (coach ↔ joueur sans équipe).

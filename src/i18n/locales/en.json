@@ -1137,5 +1137,26 @@
       "restoreDesc": "Missing sessions, games and reviews are added to this PC. Nothing already here is overwritten or deleted.",
       "restored": "Backup restored"
     }
+  },
+  "sync": {
+    "clickToSync": "Click to sync now",
+    "state": {
+      "synced": "Synced {{time}}",
+      "waiting": "Sync pending…",
+      "syncing": "Syncing…",
+      "pending": "{{count}} change(s) to sync",
+      "offline": "Offline — {{count}} change(s) waiting"
+    },
+    "errors": {
+      "generic": "Sync unavailable",
+      "DIFFERENT_PLAYER": "Account linked to another Riot player",
+      "MULTIPLE_LOCAL_PROFILES": "Sync off: several local profiles",
+      "NO_LOCAL_PROFILE": "Connect your Riot account to sync"
+    },
+    "applied": {
+      "title": "Synced from another PC",
+      "desc": "{{count}} item(s) updated.",
+      "refresh": "Refresh"
+    }
   }
 }

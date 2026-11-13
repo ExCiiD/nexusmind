@@ -2,6 +2,7 @@ import type { PrismaClient } from '../../prisma-client'
 import { app } from 'electron'
 import { join, dirname } from 'path'
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync } from 'fs'
+import { ensureLocalSyncTables } from './sync/syncSchema'
 
 let prisma: PrismaClient | null = null
 /** The generated client's `Prisma` namespace (DMMF, error classes…). */
@@ -187,6 +188,9 @@ export async function initDatabase(): Promise<PrismaClient> {
 
   await prisma!.$connect()
   await runMigrations(prisma!, getMigrationsDir(), dbPath)
+  // Change tracking for multi-device sync (idempotent, after migrations so
+  // triggers exist on every synced table).
+  await ensureLocalSyncTables(prisma!)
   return prisma!
 }
 
