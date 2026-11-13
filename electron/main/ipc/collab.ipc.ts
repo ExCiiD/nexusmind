@@ -50,4 +50,6 @@ export function registerCollabHandlers() {
   })]), (_e, a) => collab.assignObjective(a))
   validatedHandle('collab:set-assignment-status', z.tuple([uuid, z.enum(['open', 'done', 'dismissed'])]),
     (_e, id, status) => collab.setAssignmentStatus(id, status))
+
+  validatedHandle('collab:staff-dashboard', z.tuple([uuid]), (_e, groupId) => collab.getStaffDashboard(groupId))
 }

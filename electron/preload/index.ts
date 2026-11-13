@@ -128,6 +128,7 @@ const api = {
   collabAssignObjective: (a: unknown) => ipcRenderer.invoke('collab:assign-objective', a),
   collabSetAssignmentStatus: (id: string, status: 'open' | 'done' | 'dismissed') =>
     ipcRenderer.invoke('collab:set-assignment-status', id, status),
+  collabStaffDashboard: (groupId: string) => ipcRenderer.invoke('collab:staff-dashboard', groupId),
 
   // W5: notifications
   notificationsList: (onlyUnread?: boolean) => ipcRenderer.invoke('notifications:list', onlyUnread),

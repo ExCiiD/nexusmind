@@ -988,7 +988,31 @@
       "dmgShare": "Damage share",
       "dmgTakenShare": "Damage taken share",
       "goldShare": "Gold share",
-      "kpShare": "Kill participation share"
+      "kpShare": "Kill participation share",
+      "title": "Staff dashboard",
+      "noPlayers": "No players in this group yet.",
+      "col": {
+        "player": "Player",
+        "form": "Form (10)",
+        "week": "This week",
+        "reviews": "Reviews",
+        "mistake": "Dominant mistake",
+        "objective": "Objective",
+        "alerts": "Alerts"
+      },
+      "games": "{{count}} games",
+      "pending": "pending",
+      "verdict": {
+        "active": "in progress",
+        "acquired": "acquired",
+        "progressing": "progressing",
+        "no_effect": "no effect"
+      },
+      "alerts": {
+        "inactive": "Inactive",
+        "review_backlog": "Review backlog",
+        "objective_failing": "Objective failing"
+      }
     },
     "custom": {
       "imported": "Game imported",

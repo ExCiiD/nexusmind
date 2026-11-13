@@ -1,4 +1,5 @@
 /** Renderer-side mirror of electron/main/cloud/collab.ts types. */
+import type { PlayerDashboardRow } from './staffDashboard'
 
 export type GroupRole = 'owner' | 'coach' | 'analyst' | 'player'
 export type GroupKind = 'team' | 'coaching'
@@ -106,6 +107,7 @@ export interface CollabApi {
     groupId: string; playerId: string; objectiveIds: string[]; kpiIds?: string[]; note?: string | null; dueDate?: string | null
   }) => Promise<AssignedObjective>
   collabSetAssignmentStatus: (id: string, status: AssignedObjective['status']) => Promise<void>
+  collabStaffDashboard: (groupId: string) => Promise<PlayerDashboardRow[]>
 }
 
 /** Stable error codes thrown by the main process → i18n keys. */

@@ -1,6 +1,7 @@
 import * as core from '@/lib/collabCore'
 import * as notifications from '@/lib/notificationsCore'
 import * as team from '@/lib/teamCore'
+import * as dashboardCore from '@/lib/staffDashboardCore'
 import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
@@ -132,6 +133,7 @@ export const webApi = {
     core.listAssignments(sb, playerId ?? (await currentUserId()), onlyOpen ?? true),
   collabAssignObjective: async (a: Parameters<typeof core.assignObjective>[2]) => core.assignObjective(sb, await currentUserId(), a),
   collabSetAssignmentStatus: (id: string, status: 'open' | 'done' | 'dismissed') => core.setAssignmentStatus(sb, id, status),
+  collabStaffDashboard: (groupId: string) => dashboardCore.getStaffDashboard(sb, groupId),
 
   // ── W5: notifications ──
   notificationsList: async (onlyUnread?: boolean) =>

@@ -42,10 +42,10 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
 - ✅ Web **et** desktop : nouvel « Espace d'équipe » sur la page Coaching (visible du staff), lecture du roster/pools/drafts/scouting publiés.
 - ⏳ Restant : édition partagée directement depuis le web (aujourd'hui lecture seule), lien automatique équipe↔groupe (aujourd'hui : publication ponctuelle, à refaire après chaque changement), verrou doux sur une draft en cours d'édition, réutilisation des onglets desktop complets (`ChampPoolTab`, `DraftTab`, `ScoutingTab`) côté web plutôt qu'une vue condensée.
 
-### E2 — Tableau de bord staff (web d'abord) ⭐⭐⭐
-- Une ligne par joueur : forme récente (winrate 10 dernières, perf index de l'assistant), volume de jeu de la semaine, reviews faites / à faire, erreurs dominantes (Mistake Library), objectif en cours et son verdict (B1), humeur (E6).
-- Alertes du jour (règles C1–C6) : joueur inactif, review en retard, objectif en échec, disponibilités manquantes.
-- Comparaison joueur vs moyenne de l'équipe et vs son propre historique.
+### E2 — Tableau de bord staff (web d'abord) 🟡 (v1 livré, voir ce qui reste ci-dessous)
+- ✅ Une ligne par joueur, agrégée côté client depuis `sync_records` (même RLS par consentement que le reste) : forme récente (winrate sur les 10 dernières), volume de jeu de la semaine, reviews faites/en retard, erreur dominante (Mistake Library, 10 dernières games), objectif en cours et son verdict (lit directement `CoachingExperiment`, le moteur de coaching — nouvelle règle d'accès ajoutée à `private.can_read_player_table`).
+- ✅ Alertes : **C1** joueur inactif (≥ 5 j), **review en retard** (> 3 games non reviewées), **objectif en échec** — simplifié : verdict `no_effect` sur la dernière expérience, pas encore « 2 fois sur le même objectif » (**C2** complet).
+- ⏳ Restant : perf index de l'assistant (colonne séparée), humeur (E6, pas construit), comparaison joueur vs moyenne d'équipe / historique perso, **C3–C6** (review en attente, disponibilités, scrim terminé, rapport pré-scrim).
 
 ### E3 — Plans de développement individuels ⭐⭐⭐
 - Par joueur : 2-3 axes du trimestre (fondamentaux), objectifs liés (W3 assignés + B1 expériences), jalons, verdicts automatiques, historique des 1:1.

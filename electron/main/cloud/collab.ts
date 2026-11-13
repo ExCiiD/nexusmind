@@ -1,6 +1,7 @@
 import { getSupabase, getAccessToken } from './supabase'
 import { getPrisma } from '../database'
 import * as core from '../../../src/lib/collabCore'
+import * as dashboard from '../../../src/lib/staffDashboardCore'
 import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
 
 /**
@@ -50,3 +51,5 @@ export const listAssignments = async (playerId?: string, onlyOpen = true) =>
   core.listAssignments(getSupabase(), playerId ?? (await me()), onlyOpen)
 export const assignObjective = async (a: Parameters<typeof core.assignObjective>[2]) => core.assignObjective(getSupabase(), await me(), a)
 export const setAssignmentStatus = (id: string, status: AssignedObjective['status']) => core.setAssignmentStatus(getSupabase(), id, status)
+
+export const getStaffDashboard = (groupId: string) => dashboard.getStaffDashboard(getSupabase(), groupId)

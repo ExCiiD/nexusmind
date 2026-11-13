@@ -988,7 +988,31 @@
       "dmgShare": "Part de dégâts",
       "dmgTakenShare": "Part de dégâts encaissés",
       "goldShare": "Part d'or",
-      "kpShare": "Part de KP"
+      "kpShare": "Part de KP",
+      "title": "Tableau de bord staff",
+      "noPlayers": "Aucun joueur dans ce groupe pour l'instant.",
+      "col": {
+        "player": "Joueur",
+        "form": "Forme (10)",
+        "week": "Cette semaine",
+        "reviews": "Reviews",
+        "mistake": "Erreur dominante",
+        "objective": "Objectif",
+        "alerts": "Alertes"
+      },
+      "games": "{{count}} partie(s)",
+      "pending": "en attente",
+      "verdict": {
+        "active": "en cours",
+        "acquired": "acquis",
+        "progressing": "en progrès",
+        "no_effect": "sans effet"
+      },
+      "alerts": {
+        "inactive": "Inactif",
+        "review_backlog": "Reviews en retard",
+        "objective_failing": "Objectif en échec"
+      }
     },
     "custom": {
       "imported": "Partie importée",

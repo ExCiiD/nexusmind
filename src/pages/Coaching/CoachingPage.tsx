@@ -5,6 +5,7 @@ import { AssignedObjectivesCard } from '@/components/Coaching/AssignedObjectives
 import { GroupsSection } from './GroupsSection'
 import { PlayersSection } from './PlayersSection'
 import { TeamWorkspaceSection } from './TeamWorkspaceSection'
+import { StaffDashboardSection } from './StaffDashboardSection'
 
 /** Teams & coaching: groups, invitations, sharing, coach view of players. */
 export function CoachingPage() {
@@ -24,6 +25,7 @@ export function CoachingPage() {
       ) : (
         <>
           <AssignedObjectivesCard />
+          <StaffDashboardSection staffGroups={staffGroups} />
           {staffGroups.length > 0 && <PlayersSection staffGroups={staffGroups} myUserId={myUserId} nameOf={nameOf} />}
           <TeamWorkspaceSection staffGroups={staffGroups} />
           <GroupsSection groups={groups} myUserId={myUserId} reload={reload} />
