@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { CloudStatus } from '@/lib/ipc'
 import { LegalDialog } from './LegalDialog'
+import heroArt from '@/assets/ascend-hero.jpg'
 
 /**
  * An Ascend account is required: it authenticates Riot calls (the Riot API
@@ -141,7 +142,10 @@ export function CloudLogin({ onSignedIn, footer }: { onSignedIn: (user: CloudSta
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-hextech-black p-4">
+    <div
+      className="relative flex h-screen items-center justify-center bg-hextech-black bg-cover bg-center p-4"
+      style={{ backgroundImage: `linear-gradient(rgba(13,10,6,0.82), rgba(13,10,6,0.92)), url(${heroArt})` }}
+    >
       <Card className="w-full max-w-md border-hextech-border bg-hextech-dark">
         <CardHeader>
           <div className="mb-2 flex items-center gap-2 text-hextech-gold">

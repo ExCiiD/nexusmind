@@ -203,7 +203,7 @@ function InsightBlock({
               className="flex items-center gap-1 rounded border border-hextech-border px-2 py-0.5 text-[11px] text-hextech-text hover:border-hextech-gold/50 hover:text-hextech-gold-bright"
               onClick={() => navigate(g.reviewed ? `/history` : `/review?gameId=${g.id}`)}
             >
-              <span className={g.win ? 'text-hextech-green' : 'text-[#FF4655]'}>{g.win ? 'W' : 'L'}</span>
+              <span className={g.win ? 'text-hextech-green' : 'text-[#E24C3A]'}>{g.win ? 'W' : 'L'}</span>
               {g.champion} · {new Date(g.endedAt).toLocaleDateString()}
             </button>
           ))}

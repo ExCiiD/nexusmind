@@ -38,11 +38,11 @@ export function ProfileStep({ onNext }: ProfileStepProps) {
             value={name}
             onChange={(e) => { setName(e.target.value); setError(false) }}
             onKeyDown={(e) => e.key === 'Enter' && handleNext()}
-            className={error ? 'border-[#FF4655]' : ''}
+            className={error ? 'border-[#E24C3A]' : ''}
             autoFocus
           />
           {error && (
-            <p className="text-xs text-[#FF4655]">{t('profileStep.error')}</p>
+            <p className="text-xs text-[#E24C3A]">{t('profileStep.error')}</p>
           )}
         </div>
         <Button onClick={handleNext} disabled={!name.trim()} className="w-full gap-2">

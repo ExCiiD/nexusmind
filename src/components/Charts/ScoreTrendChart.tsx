@@ -27,27 +27,27 @@ export function ScoreTrendChart({ data, scoreName, previousScoreName }: ScoreTre
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 40 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1E2328" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#2A1D11" />
         <XAxis
           dataKey="label"
-          tick={{ fill: '#A09B8C', fontSize: 10 }}
+          tick={{ fill: '#B5A68C', fontSize: 10 }}
           angle={-35}
           textAnchor="end"
           height={60}
         />
-        <YAxis domain={[0, 10]} tick={{ fill: '#A09B8C', fontSize: 11 }} />
+        <YAxis domain={[0, 10]} tick={{ fill: '#B5A68C', fontSize: 11 }} />
         <Tooltip
           contentStyle={{
-            backgroundColor: '#0A1628',
-            border: '1px solid #3C3C41',
+            backgroundColor: '#1C140C',
+            border: '1px solid #4A3A24',
             borderRadius: '8px',
-            color: '#F0E6D2',
+            color: '#F5E3BE',
           }}
         />
         {data.some((d) => d.previousScore !== undefined) && (
-          <Bar dataKey="previousScore" fill="#3C3C41" radius={[4, 4, 0, 0]} name={previousScoreName ?? t('charts.previous')} />
+          <Bar dataKey="previousScore" fill="#4A3A24" radius={[4, 4, 0, 0]} name={previousScoreName ?? t('charts.previous')} />
         )}
-        <Bar dataKey="score" fill="#C8AA6E" radius={[4, 4, 0, 0]} name={scoreName ?? t('charts.current')} />
+        <Bar dataKey="score" fill="#D4A24C" radius={[4, 4, 0, 0]} name={scoreName ?? t('charts.current')} />
       </BarChart>
     </ResponsiveContainer>
   )

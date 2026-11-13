@@ -13,7 +13,7 @@ interface ProgressChartProps {
   fundamentalIds?: string[]
 }
 
-const CHART_COLORS = ['#C8AA6E', '#0AC8B9', '#0ACE83', '#FF4655', '#576CCE', '#9D48E0', '#F4C874']
+const CHART_COLORS = ['#D4A24C', '#3E8E7E', '#6FA84A', '#E24C3A', '#576CCE', '#9D48E0', '#F4C874']
 
 export function ProgressChart({ data, fundamentalIds }: ProgressChartProps) {
   const { t } = useTranslation()
@@ -53,18 +53,18 @@ export function ProgressChart({ data, fundamentalIds }: ProgressChartProps) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1E2328" />
-        <XAxis dataKey="date" tick={{ fill: '#A09B8C', fontSize: 11 }} />
-        <YAxis domain={[0, 10]} tick={{ fill: '#A09B8C', fontSize: 11 }} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#2A1D11" />
+        <XAxis dataKey="date" tick={{ fill: '#B5A68C', fontSize: 11 }} />
+        <YAxis domain={[0, 10]} tick={{ fill: '#B5A68C', fontSize: 11 }} />
         <Tooltip
           contentStyle={{
-            backgroundColor: '#0A1628',
-            border: '1px solid #3C3C41',
+            backgroundColor: '#1C140C',
+            border: '1px solid #4A3A24',
             borderRadius: '8px',
-            color: '#F0E6D2',
+            color: '#F5E3BE',
           }}
         />
-        <Legend wrapperStyle={{ color: '#A09B8C', fontSize: 12 }} />
+        <Legend wrapperStyle={{ color: '#B5A68C', fontSize: 12 }} />
         {ids.map((id, i) => (
           <Line
             key={id}

@@ -456,7 +456,7 @@ export function SessionPage() {
                 variant="outline"
                 onClick={() => setCancelDialogOpen(true)}
                 disabled={cancelling}
-                className="border-[#FF4655]/40 text-[#FF4655] hover:bg-[#FF4655]/10"
+                className="border-[#E24C3A]/40 text-[#E24C3A] hover:bg-[#E24C3A]/10"
               >
                 {cancelling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Ban className="h-4 w-4 mr-2" />}
                 {t('session.cancelSession', { defaultValue: 'Cancel Session' })}
@@ -561,9 +561,9 @@ export function SessionPage() {
         {/* Cancel session confirmation dialog */}
         {cancelDialogOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="w-full max-w-md mx-4 rounded-xl border border-[#FF4655]/40 bg-hextech-dark shadow-2xl space-y-4 p-6">
+            <div className="w-full max-w-md mx-4 rounded-xl border border-[#E24C3A]/40 bg-hextech-dark shadow-2xl space-y-4 p-6">
               <div>
-                <h2 className="font-display text-lg font-bold text-[#FF4655]">
+                <h2 className="font-display text-lg font-bold text-[#E24C3A]">
                   {t('session.cancelDialog.title', { defaultValue: 'Cancel Session?' })}
                 </h2>
                 <p className="text-sm text-hextech-text mt-2">
@@ -572,7 +572,7 @@ export function SessionPage() {
                   })}
                 </p>
                 {activeSession.games.length > 0 && (
-                  <p className="text-sm text-[#FF4655] mt-2 font-medium">
+                  <p className="text-sm text-[#E24C3A] mt-2 font-medium">
                     {t('session.cancelDialog.gamesWarning', {
                       count: activeSession.games.length,
                       defaultValue: `${activeSession.games.length} game(s) will be deleted.`,
@@ -630,7 +630,7 @@ export function SessionPage() {
                         {label}
                         <button
                           onClick={() => modifyRemoveObjective(id)}
-                          className="hover:text-[#FF4655] transition-colors"
+                          className="hover:text-[#E24C3A] transition-colors"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -1309,7 +1309,7 @@ function ActiveSessionGameList({
               key={game.id}
               className={cn(
                 'rounded-md border p-3 transition-colors',
-                game.win ? 'border-hextech-green/20 bg-hextech-green/5' : 'border-[#FF4655]/20 bg-[#FF4655]/5',
+                game.win ? 'border-hextech-green/20 bg-hextech-green/5' : 'border-[#E24C3A]/20 bg-[#E24C3A]/5',
               )}
             >
               <div className="flex items-center gap-3">
@@ -1420,7 +1420,7 @@ function ActiveSessionGameList({
                     </div>
                   ) : (
                     <button
-                      className="text-hextech-text-dim hover:text-[#FF4655] transition-colors"
+                      className="text-hextech-text-dim hover:text-[#E24C3A] transition-colors"
                       title={t('session.gamesList.delete')}
                       onClick={() => setConfirmId(game.id)}
                     >

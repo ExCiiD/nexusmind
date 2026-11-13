@@ -157,7 +157,7 @@ export function CloudAccountCard() {
           <button className="flex items-center gap-1 text-hextech-text-dim hover:text-hextech-text" onClick={() => setLegal('terms')}>
             <FileText className="h-3.5 w-3.5" />{t('cloud.legal.terms')}
           </button>
-          <button className="ml-auto text-[#FF4655]/80 hover:text-[#FF4655]" onClick={() => { setDeleteText(''); setDeleteOpen(true) }}>
+          <button className="ml-auto text-[#E24C3A]/80 hover:text-[#E24C3A]" onClick={() => { setDeleteText(''); setDeleteOpen(true) }}>
             {t('cloud.account.delete')}
           </button>
         </div>
@@ -182,7 +182,7 @@ export function CloudAccountCard() {
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-[#FF4655]">{t('cloud.account.deleteTitle')}</DialogTitle>
+            <DialogTitle className="text-[#E24C3A]">{t('cloud.account.deleteTitle')}</DialogTitle>
             <DialogDescription>{t('cloud.account.deleteDesc')}</DialogDescription>
           </DialogHeader>
           <Input value={deleteText} onChange={(e) => setDeleteText(e.target.value)} placeholder="DELETE" />

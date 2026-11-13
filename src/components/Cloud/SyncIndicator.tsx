@@ -49,7 +49,7 @@ export function SyncIndicator() {
   } else if (status.phase === 'blocked') {
     icon = <AlertTriangle className="h-3 w-3" />
     label = t(`sync.errors.${status.error ?? 'generic'}`, { defaultValue: t('sync.errors.generic') })
-    tone = 'text-[#FF4655]'
+    tone = 'text-[#E24C3A]'
   } else if (status.phase === 'error') {
     icon = <CloudOff className="h-3 w-3" />
     label = t('sync.state.offline', { count: status.pending })

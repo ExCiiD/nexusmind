@@ -34,7 +34,7 @@ const GRADE_COLORS: Record<LanePhaseGrade, { text: string; bg: string; border: s
   'B':  { text: 'text-emerald-500',         bg: 'bg-emerald-500/10',   border: 'border-emerald-500/40' },
   'C':  { text: 'text-amber-400',           bg: 'bg-amber-500/15',     border: 'border-amber-500/60' },
   'D':  { text: 'text-orange-400',          bg: 'bg-orange-500/15',    border: 'border-orange-500/60' },
-  'F':  { text: 'text-[#FF4655]',           bg: 'bg-[#FF4655]/15',     border: 'border-[#FF4655]/60' },
+  'F':  { text: 'text-[#E24C3A]',           bg: 'bg-[#E24C3A]/15',     border: 'border-[#E24C3A]/60' },
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -146,10 +146,10 @@ export function LanePhasePage() {
       )}
 
       {!loading && (!report || diag?.reason !== 'ok') && diag && (
-        <Card className="border-[#FF4655]/40">
-          <CardContent className="py-6 text-sm text-[#FF4655]">
+        <Card className="border-[#E24C3A]/40">
+          <CardContent className="py-6 text-sm text-[#E24C3A]">
             <p className="font-medium mb-1">No lane phase report available</p>
-            <p className="text-xs text-[#FF4655]/80">{diagMessage(diag)}</p>
+            <p className="text-xs text-[#E24C3A]/80">{diagMessage(diag)}</p>
             {diag.frameCount !== undefined && (
               <p className="text-xs text-hextech-text-dim mt-2">Timeline frames available: {diag.frameCount}</p>
             )}
@@ -187,7 +187,7 @@ function LanePhaseHeader({ report, playerIcon, oppIcon }: { report: LanePhaseRep
               <p className="text-[10px] text-hextech-text-dim uppercase tracking-wider">{role}</p>
             </div>
             <span className="text-hextech-text-dim text-sm mx-1">vs</span>
-            {oppIcon && <img src={oppIcon} alt={report.opponent.championName} className="h-12 w-12 rounded-md border-2 border-[#FF4655]/60" />}
+            {oppIcon && <img src={oppIcon} alt={report.opponent.championName} className="h-12 w-12 rounded-md border-2 border-[#E24C3A]/60" />}
             <div className="flex flex-col min-w-0">
               <p className="text-sm font-semibold text-hextech-text-bright">{report.opponent.championName}</p>
               <p className="text-[10px] text-hextech-text-dim uppercase tracking-wider">opponent</p>
@@ -228,7 +228,7 @@ function KpiTile({ icon, label, value, positive, negative, title }: { icon: Reac
     <div title={title} className={cn(
       'flex flex-col gap-0.5 rounded-md border px-3 py-2',
       positive ? 'border-emerald-500/40 bg-emerald-500/5'
-      : negative ? 'border-[#FF4655]/40 bg-[#FF4655]/5'
+      : negative ? 'border-[#E24C3A]/40 bg-[#E24C3A]/5'
       : 'border-hextech-border-dim bg-hextech-elevated',
     )}>
       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-hextech-text-dim">
@@ -305,17 +305,17 @@ function DiffChart({ data, dataKey, title, unit, onSeek }: { data: any[]; dataKe
                 <stop offset="100%" stopColor="#10b981" stopOpacity={0.0} />
               </linearGradient>
               <linearGradient id={`g-${dataKey}-neg`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor="#FF4655" stopOpacity={0.0} />
-                <stop offset="100%" stopColor="#FF4655" stopOpacity={0.4} />
+                <stop offset="0%"   stopColor="#E24C3A" stopOpacity={0.0} />
+                <stop offset="100%" stopColor="#E24C3A" stopOpacity={0.4} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1E2328" />
-            <XAxis dataKey="minute" tick={{ fill: '#A09B8C', fontSize: 10 }} tickFormatter={(v) => `${v}m`} />
-            <YAxis tick={{ fill: '#A09B8C', fontSize: 10 }} tickFormatter={(v) => `${v > 0 ? '+' : ''}${v}`} />
-            <ReferenceLine y={0} stroke="#5b5a56" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#2A1D11" />
+            <XAxis dataKey="minute" tick={{ fill: '#B5A68C', fontSize: 10 }} tickFormatter={(v) => `${v}m`} />
+            <YAxis tick={{ fill: '#B5A68C', fontSize: 10 }} tickFormatter={(v) => `${v > 0 ? '+' : ''}${v}`} />
+            <ReferenceLine y={0} stroke="#6b5c44" />
             <RTooltip
-              contentStyle={{ background: '#0a0e13', border: '1px solid #1E2328', borderRadius: 6, fontSize: 11 }}
-              labelStyle={{ color: '#C8AA6E' }}
+              contentStyle={{ background: '#0a0e13', border: '1px solid #2A1D11', borderRadius: 6, fontSize: 11 }}
+              labelStyle={{ color: '#D4A24C' }}
               formatter={(v: any) => [`${v > 0 ? '+' : ''}${v}${unit}`, 'diff']}
               labelFormatter={(v) => `min ${v}`}
             />
@@ -324,7 +324,7 @@ function DiffChart({ data, dataKey, title, unit, onSeek }: { data: any[]; dataKe
                 arranged so they only paint on their respective side. */}
             <Area type="monotone" dataKey={dataKey} stroke="none" fill={`url(#g-${dataKey}-pos)`} />
             <Area type="monotone" dataKey={dataKey} stroke="none" fill={`url(#g-${dataKey}-neg)`} />
-            <Line type="monotone" dataKey={dataKey} stroke="#C8AA6E" strokeWidth={2} dot={{ r: 2, fill: '#C8AA6E' }} />
+            <Line type="monotone" dataKey={dataKey} stroke="#D4A24C" strokeWidth={2} dot={{ r: 2, fill: '#D4A24C' }} />
           </ComposedChart>
         </ResponsiveContainer>
       </CardContent>
@@ -384,7 +384,7 @@ function SoloAndPlatesStrip({ report, onSeek }: { report: LanePhaseReport; onSee
             </div>
             <div className="flex items-center gap-3 flex-wrap text-[10px] text-hextech-text-dim mt-2 px-2">
               <Legend swatch="bg-emerald-500/40 border-emerald-500" label="Solo kill" />
-              <Legend swatch="bg-[#FF4655]/40 border-[#FF4655]" label="Solo death" />
+              <Legend swatch="bg-[#E24C3A]/40 border-[#E24C3A]" label="Solo death" />
               <Legend swatch="bg-hextech-teal/40 border-hextech-teal" label="Plate taken" />
               <Legend swatch="bg-orange-500/40 border-orange-500" label="Plate lost" />
             </div>
@@ -397,7 +397,7 @@ function SoloAndPlatesStrip({ report, onSeek }: { report: LanePhaseReport; onSee
 
 const MARKER_PROPS: Record<string, { cls: string; label: string; title: string }> = {
   'solo-kill':  { cls: 'bg-emerald-500/40 border-emerald-400 text-emerald-100',  label: 'K', title: 'Solo kill' },
-  'solo-death': { cls: 'bg-[#FF4655]/40 border-[#FF4655] text-red-100',          label: 'D', title: 'Solo death' },
+  'solo-death': { cls: 'bg-[#E24C3A]/40 border-[#E24C3A] text-red-100',          label: 'D', title: 'Solo death' },
   'plate-taken':{ cls: 'bg-hextech-teal/40 border-hextech-teal text-cyan-100',   label: 'P', title: 'Plate taken' },
   'plate-lost': { cls: 'bg-orange-500/40 border-orange-400 text-orange-100',     label: 'P', title: 'Plate lost' },
 }

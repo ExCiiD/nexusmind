@@ -64,7 +64,7 @@ export function MyReviewsPage() {
                     {s.games.map((g) => (
                       <div key={g.id} className={cn('space-y-2 rounded-lg bg-hextech-elevated/30 p-3', g.review?.id === focusReview && 'ring-1 ring-hextech-gold/60')}>
                         <div className="flex flex-wrap items-center gap-2 text-sm">
-                          <span className={cn('font-medium', g.win ? 'text-hextech-green' : 'text-[#FF4655]')}>
+                          <span className={cn('font-medium', g.win ? 'text-hextech-green' : 'text-[#E24C3A]')}>
                             {g.win ? t('coaching.players.win') : t('coaching.players.loss')}
                           </span>
                           <span className="text-hextech-text-bright">{g.champion}</span>

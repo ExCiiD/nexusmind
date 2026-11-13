@@ -47,10 +47,10 @@ export function DevToolbar() {
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
       {open && (
-        <div className="w-64 rounded-lg border border-[#FF4655]/40 bg-hextech-dark shadow-xl overflow-hidden animate-fade-in">
-          <div className="flex items-center gap-2 bg-[#FF4655]/10 px-3 py-2 border-b border-[#FF4655]/30">
-            <Gamepad2 className="h-3.5 w-3.5 text-[#FF4655]" />
-            <span className="text-xs font-bold text-[#FF4655] uppercase tracking-wider">{t('dev.title')}</span>
+        <div className="w-64 rounded-lg border border-[#E24C3A]/40 bg-hextech-dark shadow-xl overflow-hidden animate-fade-in">
+          <div className="flex items-center gap-2 bg-[#E24C3A]/10 px-3 py-2 border-b border-[#E24C3A]/30">
+            <Gamepad2 className="h-3.5 w-3.5 text-[#E24C3A]" />
+            <span className="text-xs font-bold text-[#E24C3A] uppercase tracking-wider">{t('dev.title')}</span>
           </div>
 
           <div className="px-3 py-2 border-b border-hextech-border-dim">
@@ -101,7 +101,7 @@ export function DevToolbar() {
         onClick={() => setOpen(!open)}
         className={cn(
           'flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wider shadow-lg transition-all',
-          'border border-[#FF4655]/50 bg-hextech-dark text-[#FF4655] hover:bg-[#FF4655]/10',
+          'border border-[#E24C3A]/50 bg-hextech-dark text-[#E24C3A] hover:bg-[#E24C3A]/10',
         )}
       >
         <Gamepad2 className="h-3.5 w-3.5" />

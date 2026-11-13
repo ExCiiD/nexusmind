@@ -79,7 +79,7 @@ export function CoachingPatternCard() {
                 <span
                   className={cn(
                     'text-xs font-semibold tabular-nums shrink-0 ml-2',
-                    kpi.avgScore < 4 ? 'text-[#FF4655]' : 'text-hextech-gold',
+                    kpi.avgScore < 4 ? 'text-[#E24C3A]' : 'text-hextech-gold',
                   )}
                 >
                   {kpi.avgScore}/10 · {kpi.sessionCount} sess.
@@ -107,11 +107,11 @@ export function CoachingPatternCard() {
 
         {/* High deaths warning */}
         {hasHighDeaths && (
-          <div className="flex items-start gap-2 rounded-md border border-[#FF4655]/30 bg-[#FF4655]/5 px-3 py-2">
-            <AlertTriangle className="h-4 w-4 text-[#FF4655] shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2 rounded-md border border-[#E24C3A]/30 bg-[#E24C3A]/5 px-3 py-2">
+            <AlertTriangle className="h-4 w-4 text-[#E24C3A] shrink-0 mt-0.5" />
             <p className="text-sm text-hextech-text">
               Moy.{' '}
-              <span className="font-semibold text-[#FF4655]">
+              <span className="font-semibold text-[#E24C3A]">
                 {patterns.avgDeathsRecent} morts/partie
               </span>
               {' '}sur tes 20 dernières games — travaille{' '}
@@ -127,7 +127,7 @@ export function CoachingPatternCard() {
             <AlertTriangle className="h-4 w-4 text-hextech-gold shrink-0 mt-0.5" />
             <p className="text-sm text-hextech-text">
               Taux de review :{' '}
-              <span className="font-semibold text-[#FF4655]">
+              <span className="font-semibold text-[#E24C3A]">
                 {patterns.reviewCompletionRate}%
               </span>
               {' '}— pense à reviewer plus de parties pour des données précises

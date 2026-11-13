@@ -157,7 +157,7 @@ function FundamentalItem({
       {assessmentScore !== undefined && (
         <span className={cn(
           'shrink-0 text-xs font-semibold tabular-nums',
-          assessmentScore <= 4 ? 'text-[#FF4655]'
+          assessmentScore <= 4 ? 'text-[#E24C3A]'
             : assessmentScore <= 6 ? 'text-hextech-gold'
             : 'text-hextech-green',
         )}>

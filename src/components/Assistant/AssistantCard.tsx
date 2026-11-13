@@ -30,7 +30,7 @@ const TONE_ICON: Record<AssistantTone, React.ComponentType<{ className?: string 
 const TONE_COLOR: Record<AssistantTone, string> = {
   positive: 'text-hextech-green',
   warning: 'text-hextech-gold',
-  negative: 'text-[#FF4655]',
+  negative: 'text-[#E24C3A]',
   neutral: 'text-hextech-cyan',
 }
 
@@ -203,7 +203,7 @@ export function AssistantCard({ moment, gameId, refreshKey, className }: Assista
                     aria-label={t('assistant.feedback.notHelpful')}
                     title={t('assistant.feedback.notHelpful')}
                     onClick={() => vote(insight, -1)}
-                    className={cn('rounded p-1 hover:bg-hextech-elevated', insight.vote === -1 ? 'text-[#FF4655]' : 'text-hextech-text-dim')}
+                    className={cn('rounded p-1 hover:bg-hextech-elevated', insight.vote === -1 ? 'text-[#E24C3A]' : 'text-hextech-text-dim')}
                   >
                     <ThumbsDown className="h-3.5 w-3.5" />
                   </button>
@@ -260,7 +260,7 @@ export function AssistantCard({ moment, gameId, refreshKey, className }: Assista
                 <span className="text-hextech-text w-32 shrink-0 truncate">{t(`assistant.metrics.${ind.metric}`)}</span>
                 <span className="text-hextech-green">{formatMetricValue(ind.metric, ind.bestMean)}</span>
                 <span className="text-hextech-text-dim">{t('assistant.bestWorst.vs')}</span>
-                <span className="text-[#FF4655]">{formatMetricValue(ind.metric, ind.worstMean)}</span>
+                <span className="text-[#E24C3A]">{formatMetricValue(ind.metric, ind.worstMean)}</span>
               </div>
             ))}
             <p className="text-[11px] text-hextech-text-dim">

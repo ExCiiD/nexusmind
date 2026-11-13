@@ -71,7 +71,7 @@ export function DetailedStatsPage() {
           {t('detailedStats.back')}
         </Button>
         <Card>
-          <CardContent className="py-16 text-center text-[#FF4655]">
+          <CardContent className="py-16 text-center text-[#E24C3A]">
             {error ?? t('detailedStats.noData')}
           </CardContent>
         </Card>
@@ -113,7 +113,7 @@ export function DetailedStatsPage() {
       {/* Game header */}
       <div className={cn(
         'rounded-lg border p-4',
-        m.win ? 'border-hextech-green/30 bg-hextech-green/5' : 'border-[#FF4655]/30 bg-[#FF4655]/5',
+        m.win ? 'border-hextech-green/30 bg-hextech-green/5' : 'border-[#E24C3A]/30 bg-[#E24C3A]/5',
       )}>
         <div className="flex items-center gap-4 flex-wrap">
           <Badge variant={m.win ? 'success' : 'destructive'} className="text-sm px-3 py-1">
@@ -172,7 +172,7 @@ function DiffLegendBanner({ compareActive, opponentChampion }: { compareActive: 
               <span className="flex items-center gap-2">
                 <span className="text-hextech-green font-semibold">+</span>
                 <span>/</span>
-                <span className="text-[#FF4655] font-semibold">−</span>
+                <span className="text-[#E24C3A] font-semibold">−</span>
                 {t('detailedStats.diffLegend.title')}
               </span>
             </div>
@@ -180,7 +180,7 @@ function DiffLegendBanner({ compareActive, opponentChampion }: { compareActive: 
           <TooltipContent side="bottom" className="max-w-xs space-y-1.5 p-3">
             <p className="font-semibold text-xs text-hextech-text-bright">{t('detailedStats.diffLegend.title')}</p>
             <p className="text-xs text-hextech-green">{t('detailedStats.diffLegend.positive')}</p>
-            <p className="text-xs text-[#FF4655]">{t('detailedStats.diffLegend.negative')}</p>
+            <p className="text-xs text-[#E24C3A]">{t('detailedStats.diffLegend.negative')}</p>
             <p className="text-xs text-hextech-text-dim">{t('detailedStats.diffLegend.note')}</p>
           </TooltipContent>
         </Tooltip>
@@ -202,13 +202,13 @@ function DiffLegendBanner({ compareActive, opponentChampion }: { compareActive: 
 function DiffIndicator({ value }: { value: number | null }) {
   if (value === null) return <Minus className="h-3 w-3 text-hextech-text-dim" />
   if (value > 0) return <TrendingUp className="h-3 w-3 text-hextech-green" />
-  if (value < 0) return <TrendingDown className="h-3 w-3 text-[#FF4655]" />
+  if (value < 0) return <TrendingDown className="h-3 w-3 text-[#E24C3A]" />
   return <Minus className="h-3 w-3 text-hextech-text-dim" />
 }
 
 function DiffValue({ value, suffix = '' }: { value: number | null; suffix?: string }) {
   if (value === null) return <span className="text-hextech-text-dim">—</span>
-  const color = value > 0 ? 'text-hextech-green' : value < 0 ? 'text-[#FF4655]' : 'text-hextech-text'
+  const color = value > 0 ? 'text-hextech-green' : value < 0 ? 'text-[#E24C3A]' : 'text-hextech-text'
   return <span className={color}>{value > 0 ? '+' : ''}{value}{suffix}</span>
 }
 
@@ -269,7 +269,7 @@ function CompareRow({
 
   const diff = playerValue !== null ? playerValue - opponentValue : null
   const isAhead = diff !== null && diff !== 0 ? (higherIsBetter ? diff > 0 : diff < 0) : null
-  const diffColor = isAhead === true ? 'text-hextech-green' : isAhead === false ? 'text-[#FF4655]' : 'text-hextech-text-dim'
+  const diffColor = isAhead === true ? 'text-hextech-green' : isAhead === false ? 'text-[#E24C3A]' : 'text-hextech-text-dim'
 
   return (
     <div className="flex items-center justify-between py-1.5 gap-2">
@@ -390,7 +390,7 @@ function CombatCard({ stats, compareOpponent }: { stats: DetailedGameStats; comp
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Swords className="h-4 w-4 text-[#FF4655]" />
+          <Swords className="h-4 w-4 text-[#E24C3A]" />
           {t('detailedStats.combat.title')}
         </CardTitle>
       </CardHeader>

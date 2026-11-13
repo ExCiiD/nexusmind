@@ -123,7 +123,7 @@ export function CommentThread({ reviewId, playerId, groupId, gameId, myUserId, a
                     </button>
                   )}
                   {mine && (
-                    <button onClick={() => remove(c)} title={t('common.delete')} className="hover:text-[#FF4655]">
+                    <button onClick={() => remove(c)} title={t('common.delete')} className="hover:text-[#E24C3A]">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   )}

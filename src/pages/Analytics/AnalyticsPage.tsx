@@ -344,7 +344,7 @@ export function AnalyticsPage() {
                     {trendChanges.map((c) => (
                       <li key={c.id} className="flex justify-between gap-2">
                         <span className="truncate">{labelOf(c.id)}</span>
-                        <span className={c.delta > 0 ? 'text-hextech-green' : 'text-[#FF4655]'}>
+                        <span className={c.delta > 0 ? 'text-hextech-green' : 'text-[#E24C3A]'}>
                           {c.delta > 0 ? '+' : ''}{c.delta.toFixed(1)}
                         </span>
                       </li>

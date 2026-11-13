@@ -294,7 +294,7 @@ export function StatsLandingPage() {
                   { label: t('detailedStats.economy.teamGold'), value: `${averages.economy.teamGoldPercent}%` },
                   { label: t('detailedStats.economy.maxCsAdv'), value: averages.economy.maxCsAdvantage },
                 ]} />
-                <AvgCard icon={Swords} color="text-[#FF4655]" title={t('detailedStats.combat.title')} rows={[
+                <AvgCard icon={Swords} color="text-[#E24C3A]" title={t('detailedStats.combat.title')} rows={[
                   { label: t('detailedStats.combat.totalDamage'), value: averages.meta.avgDuration ? Math.round(averages.combat.damagePerMin * (averages.meta.avgDuration / 60)) : null },
                   { label: t('detailedStats.combat.kp'), value: `${averages.combat.killParticipation}%` },
                   { label: t('detailedStats.combat.dpm'), value: averages.combat.damagePerMin },
@@ -382,7 +382,7 @@ function AvgCard({ icon: Icon, color, title, rows }: {
             <span className="text-xs text-hextech-text">{row.label}</span>
             <span className={`text-sm font-semibold ${
               row.diff && row.value !== null
-                ? (row.value > 0 ? 'text-hextech-green' : row.value < 0 ? 'text-[#FF4655]' : 'text-hextech-text-bright')
+                ? (row.value > 0 ? 'text-hextech-green' : row.value < 0 ? 'text-[#E24C3A]' : 'text-hextech-text-bright')
                 : 'text-hextech-text-bright'
             }`}>
               {row.value !== null && row.value !== undefined
@@ -409,11 +409,11 @@ interface LineSeries {
 const LINE_SERIES: LineSeries[] = [
   { key: 'winRate',    label: 'Win Rate %',    category: 'general',    color: '#27AE60', get: (s) => s.stats.meta.winRate },
   { key: 'xpPerMin',   label: 'XP/min',        category: 'economy',    color: '#F08C2B', get: (s) => s.stats.economy.xpPerMin },
-  { key: 'csPerMin',   label: 'CS/min',        category: 'economy',    color: '#C8AA6E', get: (s) => s.stats.economy.csPerMin },
+  { key: 'csPerMin',   label: 'CS/min',        category: 'economy',    color: '#D4A24C', get: (s) => s.stats.economy.csPerMin },
   { key: 'goldPerMin', label: 'Gold/min',      category: 'economy',    color: '#F4C874', get: (s) => s.stats.economy.goldPerMin },
-  { key: 'kp',         label: 'Kill Part. %',  category: 'combat',     color: '#0AC8B9', get: (s) => s.stats.combat.killParticipation },
+  { key: 'kp',         label: 'Kill Part. %',  category: 'combat',     color: '#3E8E7E', get: (s) => s.stats.combat.killParticipation },
   { key: 'dpm',        label: 'DMG/min',       category: 'combat',     color: '#9D48E0', get: (s) => s.stats.combat.damagePerMin },
-  { key: 'teamDmg',    label: '% Team DMG',    category: 'combat',     color: '#FF4655', get: (s) => s.stats.combat.teamDamagePercent },
+  { key: 'teamDmg',    label: '% Team DMG',    category: 'combat',     color: '#E24C3A', get: (s) => s.stats.combat.teamDamagePercent },
   { key: 'damage15',   label: 'DMG @15',       category: 'laning',     color: '#D65DB1', get: (s) => s.stats.laning.damage15 },
   { key: 'dpm15',      label: 'DMG/min @15',   category: 'laning',     color: '#FF6F91', get: (s) => s.stats.laning.damagePerMin15 },
   { key: 'xpPerMin15', label: 'XP/min @15',    category: 'laning',     color: '#F08C2B', get: (s) => s.stats.laning.xpPerMin15 },
@@ -422,7 +422,7 @@ const LINE_SERIES: LineSeries[] = [
   { key: 'csDiff15',   label: 'CS Diff @15',   category: 'laning',     color: '#E0C874', get: (s) => s.stats.laning.csDiff15 },
   { key: 'plates15',   label: 'Plates @15',    category: 'laning',     color: '#C86DD7', get: (s) => s.stats.laning.turretPlates15 },
   { key: 'vsPerMin',   label: 'VS/min',         category: 'vision',    color: '#005A82', get: (s) => s.stats.vision.visionScorePerMin },
-  { key: 'epicMonsterDmg', label: 'Epic Monster DMG', category: 'objectives', color: '#0ACE83', get: (s) => s.stats.objectives.damageToEpicMonsters },
+  { key: 'epicMonsterDmg', label: 'Epic Monster DMG', category: 'objectives', color: '#6FA84A', get: (s) => s.stats.objectives.damageToEpicMonsters },
   { key: 'epicMonsterDmgPct', label: 'Epic Monster DMG %', category: 'objectives', color: '#23D5AB', get: (s) => s.stats.objectives.teamEpicMonsterDmgPercent },
 ]
 
@@ -561,10 +561,10 @@ function ProgressionLineChart({ snapshots, selectedSeries }: { snapshots: any[];
     <div className="space-y-1">
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1E2328" />
-          <XAxis dataKey="date" tick={{ fill: '#A09B8C', fontSize: 11 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#2A1D11" />
+          <XAxis dataKey="date" tick={{ fill: '#B5A68C', fontSize: 11 }} />
           <YAxis
-            tick={{ fill: '#A09B8C', fontSize: 11 }}
+            tick={{ fill: '#B5A68C', fontSize: 11 }}
             tickFormatter={(v) => `${v > 0 ? '+' : ''}${v}`}
           />
           <RTooltip content={<IndexedTooltip />} />
@@ -727,7 +727,7 @@ function ProgressionTab({ snapshots }: { snapshots: any[] }) {
                 <span className="text-right text-xs font-medium text-hextech-text-bright">{targetVal != null ? fmt(targetVal) : '—'}</span>
                 <span className={cn(
                   'text-right text-xs font-semibold flex items-center justify-end gap-1',
-                  isPositive ? 'text-hextech-green' : isNegative ? 'text-[#FF4655]' : 'text-hextech-text-dim',
+                  isPositive ? 'text-hextech-green' : isNegative ? 'text-[#E24C3A]' : 'text-hextech-text-dim',
                 )}>
                   {diff !== null ? (
                     <>

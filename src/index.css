@@ -23,10 +23,24 @@
     font-feature-settings: 'rlig' 1, 'calt' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #0a0f16;
-    /* A background illustration used to be referenced from a local Cursor
-       cache path that never shipped with the app; add one under
-       src/assets/ and import it here if a background image is wanted. */
+    background-color: #0d0a06;
+    position: relative;
+  }
+
+  /* Faint swirl texture behind every screen — fixed, low opacity, never
+     intercepts clicks (pointer-events: none) and sits behind all content
+     (negative z-index on a body pseudo-element, body itself is the
+     positioning context set above). */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: url('./assets/ascend-bg-swirl-1.jpg');
+    background-size: cover;
+    background-position: center;
+    opacity: 0.05;
   }
 
   ::-webkit-scrollbar {
@@ -61,23 +75,23 @@
 
   .hextech-border {
     border: 1px solid theme('colors.hextech.border');
-    box-shadow: 0 0 6px rgba(120, 90, 40, 0.15);
+    box-shadow: 0 0 6px rgba(138, 106, 52, 0.15);
   }
 
   .hextech-glow {
     box-shadow:
-      0 0 8px rgba(10, 200, 185, 0.2),
-      0 0 20px rgba(10, 200, 185, 0.1);
+      0 0 8px rgba(62, 142, 126, 0.2),
+      0 0 20px rgba(62, 142, 126, 0.1);
   }
 
   .gold-glow {
     box-shadow:
-      0 0 8px rgba(200, 170, 110, 0.3),
-      0 0 20px rgba(200, 170, 110, 0.15);
+      0 0 8px rgba(212, 162, 76, 0.3),
+      0 0 20px rgba(212, 162, 76, 0.15);
   }
 
   .text-gradient-gold {
-    background: linear-gradient(135deg, #c8aa6e 0%, #f0e6d2 50%, #c8aa6e 100%);
+    background: linear-gradient(135deg, #d4a24c 0%, #f5e3be 50%, #d4a24c 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

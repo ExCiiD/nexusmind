@@ -43,13 +43,13 @@ describe('Utility Functions', () => {
 
   describe('getRankColor', () => {
     it('should return correct colors for tiers', () => {
-      expect(getRankColor('GOLD')).toBe('#c8aa6e')
+      expect(getRankColor('GOLD')).toBe('#d4a24c')
       expect(getRankColor('DIAMOND')).toBe('#576cce')
       expect(getRankColor('CHALLENGER')).toBe('#f4c874')
     })
 
     it('should return default for unknown tiers', () => {
-      expect(getRankColor('UNKNOWN')).toBe('#a09b8c')
+      expect(getRankColor('UNKNOWN')).toBe('#b5a68c')
     })
   })
 

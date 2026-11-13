@@ -21,7 +21,7 @@ export function WinrateChart({ wins, losses }: WinrateChartProps) {
     { name: t('charts.wins'), value: wins },
     { name: t('charts.losses'), value: losses },
   ]
-  const colors = ['#0ACE83', '#FF4655']
+  const colors = ['#6FA84A', '#E24C3A']
   const winrate = Math.round((wins / total) * 100)
 
   return (
@@ -43,10 +43,10 @@ export function WinrateChart({ wins, losses }: WinrateChartProps) {
           </Pie>
           <Tooltip
             contentStyle={{
-              backgroundColor: '#0A1628',
-              border: '1px solid #3C3C41',
+              backgroundColor: '#1C140C',
+              border: '1px solid #4A3A24',
               borderRadius: '8px',
-              color: '#F0E6D2',
+              color: '#F5E3BE',
             }}
           />
         </PieChart>

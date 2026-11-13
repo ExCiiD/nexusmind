@@ -243,11 +243,11 @@ function ClipRow({ clip, onDelete }: { clip: ClipEntry; onDelete: () => void }) 
         )}
         {confirmDelete ? (
           <>
-            <button onClick={onDelete} className="text-[10px] text-[#FF4655] font-medium">✓</button>
+            <button onClick={onDelete} className="text-[10px] text-[#E24C3A] font-medium">✓</button>
             <button onClick={() => setConfirmDelete(false)} className="text-[10px] text-hextech-text-dim">✕</button>
           </>
         ) : (
-          <button onClick={() => setConfirmDelete(true)} className="text-hextech-text-dim/40 hover:text-[#FF4655] transition-colors">
+          <button onClick={() => setConfirmDelete(true)} className="text-hextech-text-dim/40 hover:text-[#E24C3A] transition-colors">
             <Trash2 className="h-3 w-3" />
           </button>
         )}
@@ -310,7 +310,7 @@ function ShareSection({ filePath, title, ytConnected, ytState, ytProgress, ytUrl
               </button>
             </div>
           )}
-          {ytState === 'error' && <span className="text-xs text-[#FF4655]">{ytError}</span>}
+          {ytState === 'error' && <span className="text-xs text-[#E24C3A]">{ytError}</span>}
         </div>
       )}
     </div>

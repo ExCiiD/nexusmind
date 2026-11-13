@@ -31,6 +31,7 @@ import i18n from '../../i18n/config'
 import { SyncIndicator } from '@/components/Cloud/SyncIndicator'
 import { FeedbackButton } from '@/components/Feedback/FeedbackDialog'
 import { NotificationBell } from '@/components/Notifications/NotificationBell'
+import logo from '@/assets/ascend-logo-mark.png'
 
 export function Sidebar() {
   const { t } = useTranslation()
@@ -144,9 +145,7 @@ export function Sidebar() {
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-hextech-border-dim bg-hextech-dark">
       <div className="app-drag-region flex h-14 items-center gap-3 border-b border-hextech-border-dim px-5">
-        <div className="h-8 w-8 rounded bg-gradient-to-br from-hextech-cyan to-hextech-teal flex items-center justify-center">
-          <span className="text-sm font-bold text-hextech-black">A</span>
-        </div>
+        <img src={logo} alt="" className="h-8 w-8 rounded-full object-cover" />
         <div className="flex-1 min-w-0">
           <span className="font-display text-lg font-bold text-hextech-gold-bright block leading-tight">Ascend</span>
           {appVersion && <span className="text-[10px] text-hextech-text-dim/60 leading-none">v{appVersion}</span>}
@@ -205,7 +204,7 @@ export function Sidebar() {
           {/* Fixed height avoids layout jump / “popup” flash when recording starts */}
           <div className="min-h-[22px] flex items-center">
             {isRecording ? (
-              <div className="flex items-center gap-1.5 text-xs text-[#FF4655]">
+              <div className="flex items-center gap-1.5 text-xs text-[#E24C3A]">
                 <Circle className="h-2 w-2 fill-current animate-pulse" />
                 <span className="font-medium">Recording</span>
               </div>
@@ -241,7 +240,7 @@ export function Sidebar() {
                 onClick={handleDisconnect}
                 disabled={disconnecting}
                 title={t('sidebar.disconnectTitle')}
-                className="rounded p-1 text-hextech-text-dim transition-colors hover:bg-hextech-elevated hover:text-[#FF4655] disabled:opacity-50"
+                className="rounded p-1 text-hextech-text-dim transition-colors hover:bg-hextech-elevated hover:text-[#E24C3A] disabled:opacity-50"
               >
                 <LogOut className="h-3.5 w-3.5" />
               </button>

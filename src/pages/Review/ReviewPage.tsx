@@ -670,7 +670,7 @@ export function ReviewPage() {
             <button
               onClick={handleRemoveOffRoleGame}
               disabled={removingGame}
-              className="rounded border border-[#FF4655]/50 bg-[#FF4655]/10 px-3 py-1 text-xs text-[#FF4655] hover:bg-[#FF4655]/20 transition-colors disabled:opacity-50"
+              className="rounded border border-[#E24C3A]/50 bg-[#E24C3A]/10 px-3 py-1 text-xs text-[#E24C3A] hover:bg-[#E24C3A]/20 transition-colors disabled:opacity-50"
             >
               {removingGame ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Remove from session'}
             </button>

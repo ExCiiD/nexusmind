@@ -334,7 +334,7 @@ export function ExternalReviewPage() {
           {/* File path + unlink */}
           <div className="flex items-center justify-between px-1">
             <span className="text-xs text-hextech-text-dim truncate max-w-[70%]">{review.filePath}</span>
-            <Button variant="ghost" size="sm" onClick={handleUnlinkFile} className="text-hextech-text-dim hover:text-[#FF4655] shrink-0">
+            <Button variant="ghost" size="sm" onClick={handleUnlinkFile} className="text-hextech-text-dim hover:text-[#E24C3A] shrink-0">
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>

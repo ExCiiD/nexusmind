@@ -30,15 +30,15 @@ export function getRankColor(tier: string): string {
     IRON: '#5e5e5e',
     BRONZE: '#8c6239',
     SILVER: '#8c8c8c',
-    GOLD: '#c8aa6e',
+    GOLD: '#d4a24c',
     PLATINUM: '#4e9996',
-    EMERALD: '#0ace83',
+    EMERALD: '#6fa84a',
     DIAMOND: '#576cce',
     MASTER: '#9d48e0',
     GRANDMASTER: '#e04848',
     CHALLENGER: '#f4c874',
   }
-  return colors[tier.toUpperCase()] ?? '#a09b8c'
+  return colors[tier.toUpperCase()] ?? '#b5a68c'
 }
 
 export function xpForLevel(level: number): number {

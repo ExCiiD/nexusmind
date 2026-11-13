@@ -461,7 +461,7 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
                   <Button variant="outline" size="sm" onClick={handleUnlink} className="gap-1.5">
                     <Unlink className="h-3.5 w-3.5" />Unlink
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={handleDeleteVideo} className="text-[#FF4655] hover:text-[#FF4655] gap-1.5">
+                  <Button variant="ghost" size="sm" onClick={handleDeleteVideo} className="text-[#E24C3A] hover:text-[#E24C3A] gap-1.5">
                     <Trash2 className="h-3.5 w-3.5" />Remove entry
                   </Button>
                 </div>
@@ -480,7 +480,7 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
                       </Button>
                       {confirmDeleteVideo ? (
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" onClick={handleDeleteVideo} className="text-[#FF4655] hover:text-[#FF4655] h-7 text-[10px] font-bold">
+                          <Button variant="ghost" size="sm" onClick={handleDeleteVideo} className="text-[#E24C3A] hover:text-[#E24C3A] h-7 text-[10px] font-bold">
                             {t('recording.confirmDeleteVideo')}
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteVideo(false)} className="text-hextech-text-dim h-7 text-[10px]">
@@ -488,7 +488,7 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
                           </Button>
                         </div>
                       ) : (
-                        <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteVideo(true)} className="text-[#FF4655] hover:text-[#FF4655] h-7" title={t('recording.deleteVideoButton')}>
+                        <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteVideo(true)} className="text-[#E24C3A] hover:text-[#E24C3A] h-7" title={t('recording.deleteVideoButton')}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
@@ -533,7 +533,7 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
                     <Button variant="ghost" size="sm" onClick={handleUnlink} className="text-hextech-text-dim hover:text-hextech-gold" title={t('recording.unlinkButton')}>
                       <Unlink className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={handleDeleteVideo} className="text-[#FF4655] hover:text-[#FF4655]" title={t('recording.deleteVideoButton')}>
+                    <Button variant="ghost" size="sm" onClick={handleDeleteVideo} className="text-[#E24C3A] hover:text-[#E24C3A]" title={t('recording.deleteVideoButton')}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -559,7 +559,7 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
                   <Button variant="ghost" size="sm" onClick={handleUnlink} className="text-hextech-text-dim hover:text-hextech-gold" title={t('recording.unlinkButton')}>
                     <Unlink className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={handleDeleteVideo} className="text-[#FF4655] hover:text-[#FF4655]" title={t('recording.deleteVideoButton')}>
+                  <Button variant="ghost" size="sm" onClick={handleDeleteVideo} className="text-[#E24C3A] hover:text-[#E24C3A]" title={t('recording.deleteVideoButton')}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>

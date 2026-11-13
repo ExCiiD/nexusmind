@@ -60,7 +60,7 @@ export function ProgressSummary({ latest, previous, labelOf, latestDate }: Props
           </div>
           {delta != null && (
             <div className={cn('mt-1 flex items-center gap-1 text-xs',
-              delta > 0.05 ? 'text-hextech-green' : delta < -0.05 ? 'text-[#FF4655]' : 'text-hextech-text-dim')}>
+              delta > 0.05 ? 'text-hextech-green' : delta < -0.05 ? 'text-[#E24C3A]' : 'text-hextech-text-dim')}>
               {delta > 0.05 ? <ArrowUpRight className="h-3.5 w-3.5" /> : delta < -0.05 ? <ArrowDownRight className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
               {t('analytics.summary.sincePrevious', { delta: `${delta > 0 ? '+' : ''}${fmt(delta)}` })}
             </div>
@@ -82,7 +82,7 @@ export function ProgressSummary({ latest, previous, labelOf, latestDate }: Props
                 <li key={m.id} className="flex justify-between gap-2"><span className="truncate">{labelOf(m.id)}</span><span className="text-hextech-green">+{fmt(m.d)}</span></li>
               ))}
               {down.map((m) => (
-                <li key={m.id} className="flex justify-between gap-2"><span className="truncate">{labelOf(m.id)}</span><span className="text-[#FF4655]">{fmt(m.d)}</span></li>
+                <li key={m.id} className="flex justify-between gap-2"><span className="truncate">{labelOf(m.id)}</span><span className="text-[#E24C3A]">{fmt(m.d)}</span></li>
               ))}
             </ul>
           )}
