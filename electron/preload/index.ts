@@ -332,6 +332,11 @@ const api = {
   // Coaching (deterministic, rule-based)
   getCoachingPatterns: () => ipcRenderer.invoke('coaching:get-patterns'),
 
+  // Assistant (Phase A — rule-based, local)
+  getAssistantReport: (moment: string, gameId?: string | null) => ipcRenderer.invoke('assistant:get-report', moment, gameId ?? null),
+  sendAssistantFeedback: (insightKey: string, ruleId: string, moment: string, vote: 1 | -1 | 0) =>
+    ipcRenderer.invoke('assistant:feedback', insightKey, ruleId, moment, vote),
+
   // Clips
   createClip: (opts: { recordingId: string; startMs: number; endMs: number; title?: string; linkedNoteText?: string }) =>
     ipcRenderer.invoke('clip:create', opts),

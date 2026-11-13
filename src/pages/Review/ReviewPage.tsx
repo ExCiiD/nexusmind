@@ -10,6 +10,7 @@ import { useUserStore } from '@/store/useUserStore'
 import { TimelineNoteInput, type TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
 import { DynamicKPIForm } from '@/components/ReviewForm/DynamicKPIForm'
 import { ReviewInsightPanel } from '@/components/Coaching/ReviewInsightPanel'
+import { AssistantCard } from '@/components/Assistant/AssistantCard'
 import { MatchHistoryPicker } from '@/components/Session/MatchHistoryPicker'
 import { AccountBadge } from '@/components/ui/AccountBadge'
 import { useLocalizedFundamental, useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
@@ -112,6 +113,8 @@ export function ReviewPage() {
   const [objectiveRespected, setObjectiveRespected] = useState<boolean | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  // The game the post-game assistant talks about (latestGame moves on after save).
+  const [savedGameId, setSavedGameId] = useState<string | null>(null)
   const [biasSignals, setBiasSignals] = useState<ReviewBiasSignal[]>([])
   const [draftAutoSaved, setDraftAutoSaved] = useState(false)
   const warnedBiasKeysRef = useRef<Set<string>>(new Set())
@@ -394,6 +397,8 @@ export function ReviewPage() {
           selectedKpiIds={selectedKpiIds}
         />
 
+        <AssistantCard moment="post_game" gameId={savedGameId} />
+
         <div className="flex gap-3">
           <Button onClick={() => { setSaved(false); setTimelineNotes([]); setKpiScores({}); setFreeText(''); setObjectiveRespected(null) }}>
             <Play className="h-4 w-4 mr-2" />
@@ -501,6 +506,7 @@ export function ReviewPage() {
         objectiveRespected,
       })
 
+      setSavedGameId(latestGame.id)
       setSaved(true)
       clearDraft()
       clearGameEndData()

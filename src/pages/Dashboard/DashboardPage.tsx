@@ -9,6 +9,7 @@ import { useGameStore } from '@/store/useGameStore'
 import { XPBar } from '@/components/Gamification/XPBar'
 import { StreakCounter } from '@/components/Gamification/StreakCounter'
 import { CoachingPatternCard } from '@/components/Coaching/CoachingPatternCard'
+import { AssistantCard } from '@/components/Assistant/AssistantCard'
 import { ProgressChart } from '@/components/Charts/ProgressChart'
 import {
   Target,
@@ -257,7 +258,8 @@ export function DashboardPage() {
             <StatDiffsCard diffs={statDiffs} onViewAll={() => navigate('/stats')} />
           )}
         </div>
-        <div>
+        <div className="space-y-4">
+          <AssistantCard moment="weekly" />
           <CoachingPatternCard />
         </div>
       </div>

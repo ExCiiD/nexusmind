@@ -1158,5 +1158,206 @@
       "desc": "{{count}} élément(s) mis à jour.",
       "refresh": "Actualiser"
     }
+  },
+  "assistant": {
+    "title": {
+      "post_game": "Assistant — 3 points à retenir",
+      "session": "Assistant — brief de session",
+      "weekly": "Assistant — bilan de la semaine"
+    },
+    "intro": {
+      "post_game": {
+        "v1": "GG {{name}}. Voici ce qui ressort de cette partie.",
+        "v2": "Partie enregistrée, {{name}}. Quelques points à garder en tête :",
+        "v3": "{{name}}, petit débrief avant la suivante :"
+      },
+      "session": {
+        "v1": "Avant de lancer, {{name}}, voici ce que disent vos dernières parties.",
+        "v2": "{{name}}, votre brief pour cette session :",
+        "v3": "Prêt, {{name}} ? Gardez ceci en tête pendant la session."
+      },
+      "weekly": {
+        "v1": "{{name}}, voici votre semaine en un coup d'œil.",
+        "v2": "Point hebdomadaire, {{name}} :",
+        "v3": "{{name}}, voici comment s'est passée votre semaine."
+      },
+      "notEnough": {
+        "v1": "{{name}}, jouez et importez encore quelques parties — je n'en ai que {{n}} pour l'instant.",
+        "v2": "Encore peu de données ({{n}} parties), {{name}}. Les conseils s'affinent à chaque partie.",
+        "v3": "{{name}}, il me faut un peu plus que {{n}} parties pour repérer de vrais schémas."
+      }
+    },
+    "empty": {
+      "post_game": "Rien d'inhabituel dans cette partie par rapport à votre niveau habituel — régulier.",
+      "session": "Aucun signal d'alerte dans vos dernières parties. Concentrez-vous sur votre objectif.",
+      "weekly": "Pas de tendance marquée cette semaine. Continuez à jouer et à faire vos reviews."
+    },
+    "why": {
+      "lastGames": "Basé sur vos {{n}} dernières parties.",
+      "thisGame": "Basé sur la timeline et les stats de cette partie.",
+      "thisSession": "Basé sur la session en cours.",
+      "lastSessions": "Basé sur vos {{n}} dernières sessions.",
+      "baseline": "Comparé à votre moyenne sur {{n}} parties.",
+      "reviews": "Basé sur vos auto-évaluations des {{n}} dernières reviews comparées à vos stats."
+    },
+    "feedback": {
+      "helpful": "Utile",
+      "notHelpful": "Pas utile"
+    },
+    "actions": {
+      "objective": "Objectif suggéré : {{objective}}",
+      "rewatch": "À revoir :",
+      "noRecording": "Pas d'enregistrement pour cette partie — ouvre la phase de lane à la place",
+      "lanePhase": "Ouvrir l'analyse de la phase de lane",
+      "break": "Faites une pause de {{minutes}} minutes loin de l'écran avant la prochaine partie.",
+      "review": "Faire les reviews en attente"
+    },
+    "drills": {
+      "last_hit": "Exercice : 5 minutes de last-hit dans l'outil d'entraînement (sans objets) avant votre première partie.",
+      "ward_timers": "Exercice : à chaque retour à la base, achetez une balise de contrôle et posez-la avant d'arriver en lane."
+    },
+    "weekly": {
+      "summary": "{{games}} parties cette semaine, {{wins}} victoires ({{winrate}} %), {{reviewed}} reviewées.",
+      "noGames": "Aucune partie cette semaine pour l'instant.",
+      "vsPrevious": "Semaine précédente : {{winrate}} % de victoires."
+    },
+    "drivers": {
+      "title": "Ce qui compte pour vous",
+      "higher": "plus → plus de victoires",
+      "lower": "moins → plus de victoires",
+      "explain": "Régression logistique locale sur vos {{n}} dernières parties : une corrélation, pas une garantie. Levier principal : {{objective}}."
+    },
+    "metrics": {
+      "csPerMin": "CS par minute",
+      "visionPerMin": "Vision par minute",
+      "deaths": "Morts",
+      "deathsBefore10": "Morts avant 10 min",
+      "kp": "Participation aux kills",
+      "goldDiff10": "Écart d'or à 10 min",
+      "laneScore": "Score de phase de lane",
+      "objectiveRespected": "Objectif respecté"
+    },
+    "rules": {
+      "early_deaths_pattern": {
+        "v1": "Votre phase de lane vous coûte des parties : {{count}} de vos {{n}} dernières parties avec 2 morts ou plus avant 10 minutes. Privilégiez les trades sûrs et revoyez ces morts.",
+        "v2": "Les morts précoces sont récurrentes — {{count}} parties sur {{n}} avec au moins 2 morts avant 10:00. Ne tradez que lorsque votre sort clé est disponible.",
+        "v3": "{{name}}, les 10 premières minutes tournent mal : {{count}}/{{n}} parties récentes avec 2 morts précoces ou plus. Regardons-les ensemble."
+      },
+      "pg_early_deaths": {
+        "v1": "{{deaths}} morts avant 10 minutes cette partie. Revoyez-les : qu'est-ce que vous n'avez pas vu venir ?",
+        "v2": "Le début de partie a fait mal — {{deaths}} morts avant 10:00. Vérifiez si le jungler adverse était visible sur la carte.",
+        "v3": "{{deaths}} morts précoces. Chacune est une leçon : revoyez les 10 secondes qui précèdent."
+      },
+      "high_deaths_trend": {
+        "v1": "Vous mourez en moyenne {{avg}} fois par partie ces derniers temps. Moins mourir est le moyen le plus rapide de grimper — travaillez la régulation des morts.",
+        "v2": "{{avg}} morts par partie récemment : avant chaque combat, demandez-vous si mourir ici en vaut la peine."
+      },
+      "pg_deaths_spike": {
+        "v1": "{{deaths}} morts cette partie, bien au-dessus de votre moyenne de {{avg}}. Quelque chose vous a sorti de votre jeu habituel.",
+        "v2": "Nombre de morts inhabituel ({{deaths}} contre {{avg}} en moyenne). Tilt, matchup difficile ou excès d'agressivité ?"
+      },
+      "lane_weak_pattern": {
+        "v1": "Votre phase de lane a été notée C ou moins dans {{count}} de vos {{n}} dernières parties. Travaillez vos schémas de trade.",
+        "v2": "La phase de lane est un point faible en ce moment ({{count}}/{{n}} notes faibles). Cherchez à gagner les trades, pas seulement à survivre."
+      },
+      "pg_lane_weak": {
+        "v1": "Phase de lane difficile. Ouvrez l'analyse pour voir où l'écart d'or et de CS s'est creusé.",
+        "v2": "Vous avez pris du retard en lane cette partie — l'analyse minute par minute montre à quel moment."
+      },
+      "pg_lane_strong": {
+        "v1": "Belle phase de lane — vous êtes sorti devant votre adversaire. C'est la base sur laquelle construire.",
+        "v2": "Lane gagnée. Regardez ce que vous avez bien fait pour pouvoir le reproduire.",
+        "v3": "Excellente phase de lane, {{name}}. Gardez cette même discipline."
+      },
+      "cs_trend_down": {
+        "v1": "Votre farm baisse : {{recent}} CS/min récemment contre {{base}} avant.",
+        "v2": "Le CS/min est en baisse ({{recent}} contre {{base}}). Quelques minutes d'entraînement au last-hit vous aideront."
+      },
+      "cs_trend_up": {
+        "v1": "Votre farm progresse : {{recent}} CS/min récemment contre {{base}} avant. Beau travail.",
+        "v2": "CS/min en hausse à {{recent}} (contre {{base}}). Le travail paie."
+      },
+      "cs10_low": {
+        "v1": "Environ {{cs}} CS à 10 minutes en moyenne récemment — l'objectif pour un laner est de 70 ou plus.",
+        "v2": "Votre CS à 10 min ({{cs}}) laisse de l'or sur la table. Concentrez-vous sur les last-hits sous la tour."
+      },
+      "pg_cs_low": {
+        "v1": "{{cs}} CS/min cette partie contre {{avg}} habituellement. Où sont passées les vagues ?",
+        "v2": "Farm plus faible que d'habitude ({{cs}} contre {{avg}} CS/min). Attention aux vagues laissées s'écraser."
+      },
+      "pg_cs_high": {
+        "v1": "{{cs}} CS/min — nettement au-dessus de votre moyenne de {{avg}}. Excellent farm.",
+        "v2": "Farm au rendez-vous : {{cs}} CS/min contre {{avg}} habituellement.",
+        "v3": "Excellent CS cette partie ({{cs}}/min). C'est le niveau à viser à chaque partie."
+      },
+      "vision_drop": {
+        "v1": "Votre vision baisse : {{recent}} vision/min récemment contre {{base}} avant.",
+        "v2": "Moins de vision que d'habitude ces derniers temps ({{recent}} contre {{base}} par minute). Achetez une balise de contrôle à chaque retour."
+      },
+      "pg_vision_low": {
+        "v1": "Vision faible cette partie : {{vision}}/min contre {{avg}} habituellement.",
+        "v2": "Vision en dessous de votre niveau ({{vision}} contre {{avg}} par minute). Utilisez votre trinket dès qu'il est disponible."
+      },
+      "pg_vision_high": {
+        "v1": "Bonne vision cette partie : {{vision}}/min contre {{avg}} en moyenne.",
+        "v2": "Vous avez éclairé la carte ({{vision}} vision/min). Continuez ainsi."
+      },
+      "low_kp": {
+        "v1": "Votre participation aux kills tourne autour de {{kp}} % récemment — vous êtes souvent absent quand les combats éclatent.",
+        "v2": "KP à {{kp}} % : surveillez la minimap et bougez en premier vers les combats."
+      },
+      "kpi_bias": {
+        "v1": "Vos auto-évaluations ont augmenté de {{delta}} points alors que vos stats baissent. Soyez exigeant dans vos reviews — c'est ainsi qu'on progresse.",
+        "v2": "Biais possible : vous vous notez plus haut (+{{delta}}) mais vos stats objectives sont sous votre moyenne.",
+        "v3": "{{name}}, vos reviews sont plus généreuses que vos stats ces derniers temps (+{{delta}} points). Revoyez avant de noter."
+      },
+      "pg_self_bias": {
+        "v1": "Vous vous êtes donné {{score}}/10 mais vos stats de cette partie sont sous votre niveau habituel. En êtes-vous sûr ?",
+        "v2": "Auto-évaluation à {{score}}/10, alors que les stats disent que c'était sous la moyenne. Revoyez un moment clé avant de valider."
+      },
+      "pg_harsh_self": {
+        "v1": "Seulement {{score}}/10 de votre part, mais vos stats étaient au-dessus de votre moyenne. Vous avez mieux joué que vous ne le pensez.",
+        "v2": "Vous êtes dur avec vous-même ({{score}}/10) — les chiffres disent que c'était une bonne partie pour vous."
+      },
+      "review_backlog": {
+        "v1": "{{count}} de vos 10 dernières parties ne sont pas reviewées. C'est dans les reviews que se fait la progression.",
+        "v2": "{{count}} parties attendent une review. Même 5 minutes de review valent mieux que rien."
+      },
+      "objective_stagnation": {
+        "v1": "{{sessions}} sessions d'affilée sur « {{objective}} » sans progrès net. Essayez un objectif voisin pendant un moment.",
+        "v2": "« {{objective}} » n'avance plus après {{sessions}} sessions. Un autre angle pourrait le débloquer."
+      },
+      "objective_progress": {
+        "v1": "Votre travail sur « {{objective}} » paie : progrès réguliers sur {{sessions}} sessions.",
+        "v2": "« {{objective}} » progresse de session en session ({{sessions}} jusqu'ici). Continuez."
+      },
+      "pg_objective_respected": {
+        "v1": "Objectif respecté cette partie. C'est comme ça que l'habitude se construit.",
+        "v2": "Vous avez tenu votre objectif — belle discipline.",
+        "v3": "Objectif respecté. Une brique de plus, {{name}}."
+      },
+      "recurring_mistake": {
+        "v1": "« {{tag}} » revient sans cesse : marquée dans {{count}} de vos {{n}} dernières parties. Revoyez-les à la suite.",
+        "v2": "Erreur récurrente : « {{tag}} » dans {{count}}/{{n}} parties récentes. Les regarder d'affilée rend le schéma évident."
+      },
+      "tilt_break": {
+        "v1": "{{losses}} défaites d'affilée après {{hours}} h de jeu. C'est le moment de faire une pause.",
+        "v2": "{{name}}, {{losses}} défaites de suite et {{hours}} h de session — votre concentration n'est plus la même. Faites une pause.",
+        "v3": "Session longue ({{hours}} h) et {{losses}} défaites d'affilée : la prochaine partie a plus de risques de mal tourner. Éloignez-vous un moment."
+      },
+      "loss_streak": {
+        "v1": "{{losses}} défaites d'affilée. Faites une courte pause et repartez à zéro avant de relancer.",
+        "v2": "Série de défaites ({{losses}}). Respirez, buvez un verre d'eau et revenez l'esprit clair."
+      },
+      "long_session": {
+        "v1": "Déjà {{games}} parties cette session. La fatigue s'installe — prévoyez une pause.",
+        "v2": "Cela fait {{games}} parties. La concentration baisse avec le temps : une courte pause vous aidera."
+      },
+      "win_streak": {
+        "v1": "{{wins}} victoires d'affilée ! Gardez la même routine.",
+        "v2": "Série de victoires : {{wins}}. Quoi que vous fassiez, continuez.",
+        "v3": "{{wins}} victoires de suite, {{name}}. Restez concentré sur votre objectif."
+      }
+    }
   }
 }

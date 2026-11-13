@@ -1,3 +1,5 @@
+import type { AssistantMoment, AssistantReport } from '../components/Assistant/types'
+
 export type GameEventType =
   | 'kill' | 'death' | 'assist'
   | 'dragon' | 'baron' | 'voidgrub' | 'herald' | 'atakhan'
@@ -624,6 +626,9 @@ export type NexusMindAPI = {
   onYoutubeUploadProgress: (cb: (data: { jobId: string; percent: number }) => void) => () => void
 
   getCoachingPatterns: () => Promise<CoachingPatterns | null>
+
+  getAssistantReport: (moment: AssistantMoment, gameId?: string | null) => Promise<AssistantReport | null>
+  sendAssistantFeedback: (insightKey: string, ruleId: string, moment: AssistantMoment, vote: 1 | -1 | 0) => Promise<{ ok: boolean }>
 }
 
 export interface DetailedGameStats {

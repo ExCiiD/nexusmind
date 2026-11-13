@@ -10,6 +10,7 @@ import { useSessionStore } from '@/store/useSessionStore'
 import { useUserStore } from '@/store/useUserStore'
 import { ObjectiveSuggestionPanel } from '@/components/Coaching/ObjectiveSuggestionPanel'
 import { SessionInsightPanel } from '@/components/Coaching/SessionInsightPanel'
+import { AssistantCard } from '@/components/Assistant/AssistantCard'
 import type { Fundamental, FundamentalCategory, KPI } from '@/lib/constants/fundamentals'
 import { FundamentalPickerDialog } from '@/components/Session/FundamentalPickerDialog'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
@@ -518,6 +519,8 @@ export function SessionPage() {
           />
         )}
 
+        <AssistantCard moment="session" refreshKey={activeSession.games.length} />
+
         {/* End session analysis dialog */}
         {endDialogOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -807,7 +810,8 @@ export function SessionPage() {
           )}
         </div>
 
-        <div>
+        <div className="space-y-4">
+          <AssistantCard moment="session" />
           <ObjectiveSuggestionPanel assessmentScores={assessmentScores} />
         </div>
       </div>

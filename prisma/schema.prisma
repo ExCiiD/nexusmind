@@ -47,6 +47,7 @@ model User {
   discordWebhooks    DiscordWebhook[]
   teams              Team[]
   drafts             DraftPrep[]
+  assistantFeedback  AssistantFeedback[]
 }
 
 model Account {
@@ -436,4 +437,26 @@ model DraftPrep {
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
+}
+
+// ── Assistant (Phase A) ──────────────────────────────────────────────────
+// Local thumbs up/down on rule-based insights (electron/main/assistant/).
+// Tallied per rule to re-weight what the assistant surfaces for this player.
+
+model AssistantFeedback {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ruleId     String
+  // Rule id + subject (game / session / week) — one vote per insight instance.
+  insightKey String
+  // post_game | session | weekly
+  moment     String
+  // 1 = helpful, -1 = not helpful
+  vote       Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, insightKey])
+  @@index([userId, ruleId])
 }

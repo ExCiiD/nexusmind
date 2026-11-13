@@ -54,6 +54,7 @@ import { registerCloudHandlers } from './ipc/cloud.ipc'
 import { isCloudConfigured } from './cloud/supabase'
 import { startAutoCloudBackup } from './cloud/cloudBackup'
 import { registerSyncHandlers } from './ipc/sync.ipc'
+import { registerAssistantHandlers } from './assistant/assistant.ipc'
 import { startSyncService } from './sync/syncService'
 import { seedBuiltInMistakeTags } from './seeds/mistakeTags'
 import { isMediaPathAllowed } from './mediaAccess'
@@ -392,6 +393,7 @@ async function bootstrap() {
   registerDataHandlers()
   registerCloudHandlers()
   registerSyncHandlers()
+  registerAssistantHandlers()
   if (isCloudConfigured()) {
     startAutoCloudBackup()
     startSyncService()
