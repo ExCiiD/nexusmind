@@ -3,6 +3,7 @@ import * as notifications from '@/lib/notificationsCore'
 import * as team from '@/lib/teamCore'
 import * as dashboardCore from '@/lib/staffDashboardCore'
 import * as devPlanCore from '@/lib/devPlanCore'
+import * as calendarCore from '@/lib/calendarCore'
 import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
@@ -145,6 +146,18 @@ export const webApi = {
   devPlanAddCheckin: (planId: string, note: string) => devPlanCore.addCheckin(sb, planId, note),
   devPlanSetProgress: (axisId: string, input: { playerMarkedDone?: boolean; playerNote?: string | null }) =>
     devPlanCore.setProgress(sb, axisId, input),
+
+  // ── E4: planning & presence ──
+  calendarListEvents: (groupId: string, fromISO: string, toISO: string) => calendarCore.listEvents(sb, groupId, fromISO, toISO),
+  calendarCreateEvent: (groupId: string, input: Parameters<typeof calendarCore.createEvent>[2]) => calendarCore.createEvent(sb, groupId, input),
+  calendarUpdateEvent: (id: string, input: Parameters<typeof calendarCore.updateEvent>[2]) => calendarCore.updateEvent(sb, id, input),
+  calendarDeleteEvent: (id: string) => calendarCore.deleteEvent(sb, id),
+  availabilityListRules: (groupId: string) => calendarCore.listAvailabilityRules(sb, groupId),
+  availabilitySetRule: (groupId: string, input: Parameters<typeof calendarCore.setAvailabilityRule>[2]) => calendarCore.setAvailabilityRule(sb, groupId, input),
+  availabilityDeleteRule: (id: string) => calendarCore.deleteAvailabilityRule(sb, id),
+  availabilityListExceptions: (groupId: string, fromDate: string, toDate: string) => calendarCore.listAvailabilityExceptions(sb, groupId, fromDate, toDate),
+  availabilitySetException: (groupId: string, input: Parameters<typeof calendarCore.setAvailabilityException>[2]) => calendarCore.setAvailabilityException(sb, groupId, input),
+  availabilityDeleteException: (id: string) => calendarCore.deleteAvailabilityException(sb, id),
 
   // ── W5: notifications ──
   notificationsList: async (onlyUnread?: boolean) =>

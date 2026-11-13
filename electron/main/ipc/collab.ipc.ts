@@ -67,4 +67,28 @@ export function registerCollabHandlers() {
     playerMarkedDone: z.boolean().optional(),
     playerNote: z.string().max(1000).nullable().optional(),
   })]), (_e, axisId, input) => collab.devPlanSetProgress(axisId, input))
+
+  const isoDate = z.string().datetime()
+  const dateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+  const timeOnly = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+  const eventKind = z.enum(['tournament', 'team_review', 'one_on_one', 'soloq_block', 'rest', 'other'])
+  const eventInput = z.object({ kind: eventKind, title: z.string().trim().min(1).max(120), startsAt: isoDate, endsAt: isoDate, notes: z.string().max(2000).nullable().optional() })
+
+  validatedHandle('calendar:list-events', z.tuple([uuid, isoDate, isoDate]), (_e, groupId, from, to) => collab.calendarListEvents(groupId, from, to))
+  validatedHandle('calendar:create-event', z.tuple([uuid, eventInput]), (_e, groupId, input) => collab.calendarCreateEvent(groupId, input))
+  validatedHandle('calendar:update-event', z.tuple([uuid, eventInput]), (_e, id, input) => collab.calendarUpdateEvent(id, input))
+  validatedHandle('calendar:delete-event', z.tuple([uuid]), (_e, id) => collab.calendarDeleteEvent(id))
+
+  const ruleInput = z.object({ weekday: z.number().int().min(0).max(6), startTime: timeOnly, endTime: timeOnly })
+  validatedHandle('availability:list-rules', z.tuple([uuid]), (_e, groupId) => collab.availabilityListRules(groupId))
+  validatedHandle('availability:set-rule', z.tuple([uuid, ruleInput]), (_e, groupId, input) => collab.availabilitySetRule(groupId, input))
+  validatedHandle('availability:delete-rule', z.tuple([uuid]), (_e, id) => collab.availabilityDeleteRule(id))
+
+  const exceptionInput = z.object({
+    date: dateOnly, available: z.boolean(), startTime: timeOnly.nullable().optional(), endTime: timeOnly.nullable().optional(),
+    note: z.string().max(500).nullable().optional(),
+  })
+  validatedHandle('availability:list-exceptions', z.tuple([uuid, dateOnly, dateOnly]), (_e, groupId, from, to) => collab.availabilityListExceptions(groupId, from, to))
+  validatedHandle('availability:set-exception', z.tuple([uuid, exceptionInput]), (_e, groupId, input) => collab.availabilitySetException(groupId, input))
+  validatedHandle('availability:delete-exception', z.tuple([uuid]), (_e, id) => collab.availabilityDeleteException(id))
 }

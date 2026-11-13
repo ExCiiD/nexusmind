@@ -151,6 +151,18 @@ const api = {
   devPlanSetProgress: (axisId: string, input: { playerMarkedDone?: boolean; playerNote?: string | null }) =>
     ipcRenderer.invoke('devplan:set-progress', axisId, input),
 
+  // E4: planning & presence
+  calendarListEvents: (groupId: string, fromISO: string, toISO: string) => ipcRenderer.invoke('calendar:list-events', groupId, fromISO, toISO),
+  calendarCreateEvent: (groupId: string, input: unknown) => ipcRenderer.invoke('calendar:create-event', groupId, input),
+  calendarUpdateEvent: (id: string, input: unknown) => ipcRenderer.invoke('calendar:update-event', id, input),
+  calendarDeleteEvent: (id: string) => ipcRenderer.invoke('calendar:delete-event', id),
+  availabilityListRules: (groupId: string) => ipcRenderer.invoke('availability:list-rules', groupId),
+  availabilitySetRule: (groupId: string, input: unknown) => ipcRenderer.invoke('availability:set-rule', groupId, input),
+  availabilityDeleteRule: (id: string) => ipcRenderer.invoke('availability:delete-rule', id),
+  availabilityListExceptions: (groupId: string, fromDate: string, toDate: string) => ipcRenderer.invoke('availability:list-exceptions', groupId, fromDate, toDate),
+  availabilitySetException: (groupId: string, input: unknown) => ipcRenderer.invoke('availability:set-exception', groupId, input),
+  availabilityDeleteException: (id: string) => ipcRenderer.invoke('availability:delete-exception', id),
+
   // Ascend cloud account & backups (tokens never leave the main process)
   cloudStatus: () => ipcRenderer.invoke('cloud:status'),
   cloudSendCode: (email: string, inviteCode?: string) => ipcRenderer.invoke('cloud:send-code', email, inviteCode ?? null),

@@ -52,11 +52,10 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
 - ✅ Web **et** desktop : le staff crée un plan par joueur (titre + 2-3 axes liés à un fondamental, texte d'objectif libre) depuis la fiche joueur (page Coaching) ; le joueur voit son plan et coche « je considère ceci comme fait » + une note visible du coach ; historique des 1:1 (note staff horodatée) partagé en lecture.
 - ⏳ Restant : lier les axes aux objectifs assignés (W3) et aux expériences de coaching (B1) plutôt qu'un texte libre, jalons/périodes (`period_start`/`period_end` déjà en base, non exposés en UI), verdict automatique (ex. progression mesurée sur les KPI liés), rappel/notification à l'approche de la fin de période.
 
-### E4 — Planning & présence ⭐⭐
-- Calendrier d'équipe : scrims (W4), tournois, review d'équipe, 1:1, soloQ block, repos ; vue semaine.
-- Disponibilités récurrentes de chaque joueur (créneaux habituels) + exceptions ; détection des créneaux où les 5 titulaires sont dispo.
-- Présence réelle : rattachement automatique des customs jouées au créneau (T5) → taux de présence.
-- Export iCal (abonnement Google/Apple Calendar).
+### E4 — Planning & présence 🟡 (v1 livré : calendrier + dispo récurrente + créneaux communs + export .ics ; présence réelle restante)
+- ✅ Tables serveur `calendar_events` (tournoi, review d'équipe, 1:1, soloQ block, repos, autre — les scrims gardent leur propre workflow W4, non dupliqué ici), `availability_rules` (créneaux hebdo récurrents) et `availability_exceptions` (jour précis indisponible), RLS par groupe (staff gère les événements ; chaque joueur gère sa propre disponibilité, le staff peut aussi la gérer pour un joueur pas encore inscrit).
+- ✅ Web **et** desktop : vue semaine sur la page Coaching (tous les membres), formulaire d'ajout d'événement (staff), éditeur de disponibilité récurrente + exceptions (chaque membre, pour soi), détection des créneaux où tous les titulaires liés à un compte sont dispo (staff), export `.ics` ponctuel (tous les événements des 60 prochains jours).
+- ⏳ Restant : fusionner les scrims (W4) dans cette même vue calendrier, présence réelle par rattachement automatique des customs jouées au créneau (T5 — dépend d'un auto-import des customs pas encore construit), abonnement iCal **live** (URL stable signée côté Edge Function, le v1 n'offre qu'un téléchargement ponctuel), export Google/Apple Calendar en un clic (webhook/handshake), vue mensuelle.
 
 ### E5 — Review collaborative de VOD ⭐⭐⭐
 - Session de review d'équipe sur un scrim : la VOD (lien YouTube/clip partagé), commentaires horodatés de chacun, tags d'erreur d'équipe (rotation, setup objectif, comm), actions à retenir.

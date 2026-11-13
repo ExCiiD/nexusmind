@@ -1735,6 +1735,31 @@
     "addAxis": "Ajouter un axe",
     "create": "Créer le plan"
   },
+  "planning": {
+    "title": "Planning",
+    "desc": "Calendrier d'équipe, disponibilités récurrentes et créneaux communs.",
+    "exportIcs": "Exporter en .ics",
+    "kind": {
+      "tournament": "Tournoi",
+      "team_review": "Review d'équipe",
+      "one_on_one": "1:1",
+      "soloq_block": "Créneau SoloQ",
+      "rest": "Repos",
+      "other": "Autre"
+    },
+    "commonFree": "Quand tous les titulaires sont dispo",
+    "noStarters": "Aucun titulaire avec un compte lié dans le roster publié pour l'instant.",
+    "noCommonSlot": "Aucun créneau commun cette semaine.",
+    "eventTitlePlaceholder": "Titre de l'événement…",
+    "starts": "Début",
+    "ends": "Fin",
+    "notesPlaceholder": "Notes (optionnel)…",
+    "addEvent": "Ajouter l'événement",
+    "myAvailability": "Mes disponibilités",
+    "addSlot": "Ajouter un créneau",
+    "unavailable": "indisponible",
+    "markUnavailable": "Marquer ce jour comme indisponible"
+  },
   "access": {
     "title": "Inviter sur Ascend",
     "desc": "L'accès est réservé aux personnes invitées. Chaque code sert une fois et expire après 14 jours.",

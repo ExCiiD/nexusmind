@@ -1735,6 +1735,31 @@
     "addAxis": "Add axis",
     "create": "Create plan"
   },
+  "planning": {
+    "title": "Planning",
+    "desc": "Team calendar, recurring availability, and common free slots.",
+    "exportIcs": "Export .ics",
+    "kind": {
+      "tournament": "Tournament",
+      "team_review": "Team review",
+      "one_on_one": "1:1",
+      "soloq_block": "SoloQ block",
+      "rest": "Rest",
+      "other": "Other"
+    },
+    "commonFree": "When all starters are free",
+    "noStarters": "No starters with a linked account in the published roster yet.",
+    "noCommonSlot": "No common free slot this week.",
+    "eventTitlePlaceholder": "Event title…",
+    "starts": "Starts",
+    "ends": "Ends",
+    "notesPlaceholder": "Notes (optional)…",
+    "addEvent": "Add event",
+    "myAvailability": "My availability",
+    "addSlot": "Add slot",
+    "unavailable": "unavailable",
+    "markUnavailable": "Mark that day as unavailable"
+  },
   "access": {
     "title": "Invite to Ascend",
     "desc": "Access is reserved to invited people. Each code works once and expires after 14 days.",

@@ -3,8 +3,10 @@ import { getPrisma } from '../database'
 import * as core from '../../../src/lib/collabCore'
 import * as dashboard from '../../../src/lib/staffDashboardCore'
 import * as devPlan from '../../../src/lib/devPlanCore'
+import * as calendar from '../../../src/lib/calendarCore'
 import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
 import type { AxisStatus, NewAxisInput } from '../../../src/lib/devPlan'
+import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput } from '../../../src/lib/calendar'
 
 /**
  * Desktop entry points for W3 collaboration. The data access itself lives in
@@ -64,3 +66,16 @@ export const devPlanSetAxisStatus = (axisId: string, status: AxisStatus) => devP
 export const devPlanAddCheckin = (planId: string, note: string) => devPlan.addCheckin(getSupabase(), planId, note)
 export const devPlanSetProgress = (axisId: string, input: { playerMarkedDone?: boolean; playerNote?: string | null }) =>
   devPlan.setProgress(getSupabase(), axisId, input)
+
+export const calendarListEvents = (groupId: string, fromISO: string, toISO: string) => calendar.listEvents(getSupabase(), groupId, fromISO, toISO)
+export const calendarCreateEvent = (groupId: string, input: NewEventInput) => calendar.createEvent(getSupabase(), groupId, input)
+export const calendarUpdateEvent = (id: string, input: NewEventInput) => calendar.updateEvent(getSupabase(), id, input)
+export const calendarDeleteEvent = (id: string) => calendar.deleteEvent(getSupabase(), id)
+export const availabilityListRules = (groupId: string) => calendar.listAvailabilityRules(getSupabase(), groupId)
+export const availabilitySetRule = (groupId: string, input: NewAvailabilityRuleInput) => calendar.setAvailabilityRule(getSupabase(), groupId, input)
+export const availabilityDeleteRule = (id: string) => calendar.deleteAvailabilityRule(getSupabase(), id)
+export const availabilityListExceptions = (groupId: string, fromDate: string, toDate: string) =>
+  calendar.listAvailabilityExceptions(getSupabase(), groupId, fromDate, toDate)
+export const availabilitySetException = (groupId: string, input: NewAvailabilityExceptionInput) =>
+  calendar.setAvailabilityException(getSupabase(), groupId, input)
+export const availabilityDeleteException = (id: string) => calendar.deleteAvailabilityException(getSupabase(), id)
