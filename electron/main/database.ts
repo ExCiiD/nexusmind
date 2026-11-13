@@ -4,6 +4,8 @@ import { join, dirname } from 'path'
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync } from 'fs'
 
 let prisma: PrismaClient | null = null
+/** The generated client's `Prisma` namespace (DMMF, error classes…). */
+let prismaNamespace: any = null
 
 /** Number of pre-migration snapshots kept in `<db dir>/backups`. */
 const MAX_MIGRATION_BACKUPS = 5
@@ -173,7 +175,8 @@ export async function initDatabase(): Promise<PrismaClient> {
 
   process.env.PRISMA_QUERY_ENGINE_LIBRARY = enginePath
 
-  const { PrismaClient: PC } = require(clientPath)
+  const { PrismaClient: PC, Prisma } = require(clientPath)
+  prismaNamespace = Prisma
   prisma = new PC({
     datasources: {
       db: {
@@ -192,6 +195,11 @@ export function getPrisma(): PrismaClient {
     throw new Error('Database not initialized. Call initDatabase() first.')
   }
   return prisma
+}
+
+export function getPrismaNamespace(): any {
+  if (!prismaNamespace) throw new Error('Database not initialized. Call initDatabase() first.')
+  return prismaNamespace
 }
 
 export async function closeDatabase(): Promise<void> {

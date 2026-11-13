@@ -9,7 +9,7 @@ import { z } from 'zod'
  *
  *   validatedHandle('bookmark:delete', z.tuple([ids.id]), async (_e, id) => …)
  */
-export function validatedHandle<Items extends [z.ZodTypeAny, ...z.ZodTypeAny[]], R>(
+export function validatedHandle<Items extends [] | [z.ZodTypeAny, ...z.ZodTypeAny[]], R>(
   channel: string,
   schema: z.ZodTuple<Items, null>,
   handler: (event: IpcMainInvokeEvent, ...args: z.infer<z.ZodTuple<Items, null>>) => R | Promise<R>,

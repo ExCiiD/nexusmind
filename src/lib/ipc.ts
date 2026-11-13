@@ -13,6 +13,29 @@ export interface GameEvent {
 }
 
 // ── Bookmarks ──────────────────────────────────────────────────────────────
+export interface CloudUser {
+  id: string
+  email: string | null
+}
+
+export interface CloudStatus {
+  /** False when the build has no Supabase URL/key (cloud features hidden). */
+  configured: boolean
+  user: CloudUser | null
+  /** How Riot calls are sent: via the NexusMind proxy, a local dev key, or not at all. */
+  riotMode: 'proxy' | 'direct' | 'none'
+  lastBackupAt: string | null
+}
+
+export interface CloudBackup {
+  id: string
+  created_at: string
+  size_bytes: number
+  app_version: string | null
+  device: string | null
+  counts: Record<string, number>
+}
+
 export interface Bookmark {
   id: string
   recordingId: string
@@ -394,6 +417,18 @@ export type NexusMindAPI = {
     | { canceled: true }
     | { canceled: false; summary: { sessionsAdded: number; gamesAdded: number; reviewsAdded: number; assessmentsAdded: number; snapshotsAdded: number; recordingsAdded: number; externalReviewsAdded: number; conflicts: number; skipped: number } }
   >
+
+  // NexusMind cloud account & backups
+  cloudStatus: () => Promise<CloudStatus>
+  cloudSendCode: (email: string) => Promise<{ sent: boolean }>
+  cloudVerifyCode: (email: string, code: string) => Promise<CloudUser | null>
+  cloudSignOut: () => Promise<{ signedOut: boolean }>
+  cloudBackupNow: () => Promise<CloudBackup>
+  cloudListBackups: () => Promise<CloudBackup[]>
+  cloudRestoreBackup: (id: string) => Promise<{ sessionsAdded: number; gamesAdded: number; reviewsAdded: number; assessmentsAdded: number; snapshotsAdded: number; recordingsAdded: number; externalReviewsAdded: number; conflicts: number; skipped: number }>
+  cloudDeleteBackup: (id: string) => Promise<{ deleted: boolean }>
+  cloudDeleteAccount: (confirm: 'DELETE') => Promise<{ deleted: boolean }>
+  onCloudAuthChanged: (cb: (user: CloudUser | null) => void) => () => void
 
   // Recording — library
   scanRecordings: () => Promise<{ scanned: number; matched: number; orphaned: number; dismissed: number; backfillLinked?: number; backfillNotFound?: number; paths: Array<{ source: string; dir: string; exists: boolean }> }>

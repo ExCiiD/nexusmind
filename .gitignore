@@ -12,3 +12,4 @@ prisma-client/
 test-results/
 resources/ffmpeg-bin/
 playwright-report/
+.wrangler/

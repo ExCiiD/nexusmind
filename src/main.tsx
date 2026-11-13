@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import { App } from './App'
+import { CloudGate } from './components/Cloud/CloudGate'
 import './i18n/config'
 import './index.css'
 
@@ -20,7 +21,9 @@ window.addEventListener('unhandledrejection', (event) => {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <HashRouter>
-      <App />
+      <CloudGate>
+        <App />
+      </CloudGate>
     </HashRouter>
   </React.StrictMode>
 )

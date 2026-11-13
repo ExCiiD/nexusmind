@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { CloudAccountCard } from '@/components/Cloud/CloudAccountCard'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
@@ -991,6 +992,9 @@ export function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── NexusMind account: cloud backups, sign-out, account deletion ──────── */}
+      <CloudAccountCard />
 
       {/* ── Backup & Sync (manual multi-PC) ──────────────────────────────────── */}
       <BackupCard />

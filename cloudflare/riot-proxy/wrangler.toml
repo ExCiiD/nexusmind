@@ -1,0 +1,19 @@
+name = "nexusmind-riot-proxy"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+# Public, non-secret settings.
+[vars]
+SUPABASE_URL = "https://zwubyzrfpelhxjjezvrh.supabase.co"
+
+# Per-player limit (Workers Rate Limiting binding). 300 calls/min ≈ 5 req/s,
+# well above normal use; long team scouts are paced by Riot's own key limits.
+[[ratelimits]]
+name = "USER_LIMITER"
+namespace_id = "1001"
+simple = { limit = 300, period = 60 }
+
+# Secrets — set once with:
+#   npx wrangler secret put RIOT_API_KEY
+#   (only if the Supabase project uses legacy HS256 JWTs)
+#   npx wrangler secret put SUPABASE_JWT_SECRET

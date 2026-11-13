@@ -13,6 +13,8 @@
 // Undici 7.x added a hard dependency on `webidl.util.markAsUncloneable`
 // (Node 23+) and crashed Electron 33 (Node 20); pinning to ^6.21 fixes
 // that, but the try/catch is the actual safety net.
+import { prepareRiotRequest, RiotAuthError } from './riotTransport'
+
 try {
   // Lazy require — keeps any import-time errors inside the try/catch
   // (top-level ESM imports throw before our handler sees them).
@@ -236,8 +238,8 @@ function endpointKeyFromUrl(url: string): string {
 }
 
 async function riotFetch(url: string, allowedFallbackStatus?: number[]): Promise<{ data: any; status: number }> {
-  const apiKey = (import.meta.env.MAIN_VITE_RIOT_API_KEY as string | undefined)?.trim()
-  if (!apiKey || apiKey.startsWith('RGAPI-xxx')) throw new Error('Riot API key not configured — set MAIN_VITE_RIOT_API_KEY in .env')
+  // Proxy (Supabase token) in builds, local dev key only under `npm run dev`.
+  const request = await prepareRiotRequest(url)
 
   const endpointKey = endpointKeyFromUrl(url)
   const methodLimiter = methodLimiterFor(endpointKey)
@@ -247,9 +249,7 @@ async function riotFetch(url: string, allowedFallbackStatus?: number[]): Promise
   await appLimiter.acquire()
   await methodLimiter.acquire()
 
-  const res = await fetch(url, {
-    headers: { 'X-Riot-Token': apiKey },
-  })
+  const res = await fetch(request.url, { headers: request.headers })
 
   // Auto-tune limiters from response headers. Riot returns:
   //   X-App-Rate-Limit: "100:120,1000:600"
@@ -272,6 +272,13 @@ async function riotFetch(url: string, allowedFallbackStatus?: number[]): Promise
   if (!res.ok) {
     if (allowedFallbackStatus?.includes(res.status)) {
       return { data: null, status: res.status }
+    }
+    // Statuses produced by the NexusMind proxy itself (never by Riot).
+    if (res.status === 401) {
+      throw new RiotAuthError('LOGIN_REQUIRED', 'Your NexusMind session expired — please sign in again.')
+    }
+    if (res.status === 502) {
+      throw new Error('NexusMind Riot service is temporarily unavailable. Please try again later.')
     }
     if (res.status === 403) {
       throw new Error('Riot API key is expired or invalid. Development keys expire every 24 hours — please regenerate at developer.riotgames.com')

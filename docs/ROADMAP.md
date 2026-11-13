@@ -20,7 +20,7 @@
 | # | Tâche | État | Détail |
 |---|-------|------|--------|
 | 1.0 | Retrait du code IA | ✅ | `openaiClient`, `ai.ipc`, `AIPanel/*`, dépendance `openai` supprimés. |
-| 1.1 | Sortir les secrets du bundle | ⏳ | Riot API via **Edge Function Supabase** (proxy authentifié + rate-limit par utilisateur). Google OAuth : flux PKCE desktop, sans `client_secret` embarqué. Supprimer `MAIN_VITE_*_KEY` de l'app. Se fait avec W1 (même projet Supabase). |
+| 1.1 | Sortir les secrets du bundle | 🟡 | Riot : **Cloudflare Worker** (`cloudflare/riot-proxy/`, JWT Supabase + rate-limit par joueur, endpoints en liste blanche) — code prêt, à déployer (voir `docs/CLOUD_SETUP.md`). La clé de dev n'est plus jamais incluse dans un build. Reste : Google OAuth en PKCE sans `client_secret` embarqué (YouTube). |
 | 1.2 | CSP | ✅ | `<meta>` injectée au build (`electron.vite.config.ts`) ; liens externes → navigateur, navigation hors app bloquée. |
 | 1.3 | `sandbox: true` | ✅ | Fenêtre principale + fenêtre WGC. |
 | 1.4 | Validation IPC | 🟡 | Helper `validatedHandle` + schémas sur les handlers sensibles (partage Discord/temp/YouTube, URLs, `user:update`, reviews externes, webhooks). Reste : migrer les ~90 autres handlers au fil de l'eau. |
@@ -54,10 +54,14 @@ Recommandation d'objectif par règles, résumé de review déterministe, pattern
 - **Vidéos : jamais uploadées par défaut** (coût de stockage). On synchronise les métadonnées, bookmarks et timestamps ; partage vidéo via YouTube/lien, ou upload explicite de clips courts avec quota.
 - **Bonus Riot** : une clé API *production* exige un produit enregistré avec site public, CGU et politique de confidentialité — le site web débloque cette demande.
 
-### W1 — Compte & sauvegarde cloud (≈ 1–2 sem.)
-- Connexion Supabase Auth (Discord / Google / e-mail) dans l'app, lien compte cloud ↔ `User` local.
-- Sauvegarde cloud chiffrée : réutilise `backup:export` → snapshot uploadé dans Storage, restauration sur un autre PC. Livre la promesse « zéro perte » rapidement, avant la vraie synchro.
-- Pages légales (CGU, confidentialité), suppression de compte et export des données (RGPD).
+### W1 — Compte & sauvegarde cloud 🟡 (code fait, mise en ligne à finir)
+- ✅ Compte **obligatoire**, connexion par **code e-mail** (Discord plus tard). Session chiffrée par le trousseau Windows, tokens jamais exposés au renderer.
+- ✅ Proxy Riot sur **Cloudflare Worker** (choix : la bande passante Supabase gratuite ne tiendrait pas les JSON de match).
+- ✅ Sauvegarde cloud : automatique chaque jour + manuelle, 10 dernières conservées, restauration par fusion. Bucket privé, RLS par utilisateur ; protection au repos par Supabase (pas de chiffrement côté client : le partage coach de W3 en aura besoin).
+- ✅ Moteur de sauvegarde unifié (fichier + cloud) : copie toutes les colonnes du schéma courant, inclut erreurs, tags, bookmarks, customs (oubliés avant), exclut le cache Riot du cloud et les webhooks Discord.
+- ✅ RGPD : suppression du compte (Edge Function `delete-account`), export via fichier `.nexusmind`, CGU + politique de confidentialité **brouillons** dans l'app (placeholders éditeur/contact à compléter, relecture juridique conseillée).
+- ⏳ À faire par toi : modèles d'e-mail avec `{{ .Token }}`, déploiement du Worker, `MAIN_VITE_RIOT_PROXY_URL`, SMTP avant la bêta publique (`docs/CLOUD_SETUP.md`).
+- ⏳ Nettoyer les anciennes tables Supabase vides (`synced_*`, `coach_*`) en W3.
 
 ### W2 — Synchronisation multi-appareils (≈ 3–4 sem.)
 - Schéma : ajouter `updatedAt`, `deletedAt` (tombstones) et `ownerId` aux modèles synchronisés ; les ids `cuid()` actuels sont déjà globalement uniques.

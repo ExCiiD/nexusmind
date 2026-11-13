@@ -1,7 +1,7 @@
 import { safeStorage } from 'electron'
 import { app } from 'electron'
 import { join } from 'path'
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs'
 
 const KEYCHAIN_DIR = 'keychain'
 
@@ -35,4 +35,9 @@ export function getSecret(service: string): string | null {
 
 export function hasSecret(service: string): boolean {
   return existsSync(getKeychainPath(service))
+}
+
+export function deleteSecret(service: string): void {
+  const path = getKeychainPath(service)
+  if (existsSync(path)) unlinkSync(path)
 }

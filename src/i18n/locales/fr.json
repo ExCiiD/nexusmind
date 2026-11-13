@@ -1087,5 +1087,55 @@
     "deleteFailed": "Impossible de supprimer l'erreur",
     "tagFailed": "Impossible d'enregistrer l'erreur",
     "tagged": "Erreur enregistrée"
+  },
+  "cloud": {
+    "title": "Compte NexusMind",
+    "desc": "Sauvegardes cloud de vos données de coaching et accès aux données Riot. Les vidéos restent sur ce PC.",
+    "errors": {
+      "title": "Erreur cloud"
+    },
+    "login": {
+      "title": "Connexion à NexusMind",
+      "subtitle": "Entrez votre e-mail : nous vous envoyons un code de connexion. Pas de mot de passe.",
+      "emailLabel": "E-mail",
+      "sendCode": "Recevoir un code",
+      "codeSent": "Un code a été envoyé à {{email}}. Il peut mettre une minute à arriver — pensez aux spams.",
+      "codeLabel": "Code de connexion",
+      "verify": "Se connecter",
+      "changeEmail": "Utiliser une autre adresse",
+      "why": "Pourquoi un compte ? Les données Riot passent par le serveur NexusMind (la clé d'API Riot ne peut pas être livrée dans l'app), et votre compte conserve des sauvegardes cloud de votre progression pour changer de PC sans rien perdre.",
+      "consent": "En vous connectant, vous acceptez les",
+      "errors": {
+        "rateLimited": "Trop de tentatives. Patientez une minute puis réessayez.",
+        "invalidCode": "Ce code est invalide ou expiré. Demandez-en un nouveau.",
+        "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
+        "generic": "La connexion a échoué. Vérifiez votre connexion internet et réessayez."
+      }
+    },
+    "legal": {
+      "privacy": "Politique de confidentialité",
+      "terms": "Conditions d'utilisation"
+    },
+    "account": {
+      "signedInAs": "Connecté en tant que",
+      "signOut": "Se déconnecter",
+      "delete": "Supprimer mon compte",
+      "deleteTitle": "Supprimer votre compte NexusMind ?",
+      "deleteDesc": "Votre compte et TOUTES vos sauvegardes cloud seront définitivement supprimés. Les données de ce PC sont conservées. Tapez DELETE pour confirmer.",
+      "deleteConfirm": "Supprimer définitivement",
+      "deleted": "Votre compte a été supprimé."
+    },
+    "backup": {
+      "now": "Sauvegarder maintenant",
+      "done": "Sauvegarde envoyée dans le cloud",
+      "last": "Dernière sauvegarde : {{date}}",
+      "never": "Aucune sauvegarde cloud pour l'instant",
+      "auto": "automatique chaque jour, 10 dernières conservées",
+      "counts": "{{games}} games, {{reviews}} reviews",
+      "restore": "Restaurer",
+      "restoreTitle": "Restaurer cette sauvegarde ?",
+      "restoreDesc": "Les sessions, games et reviews manquantes sont ajoutées sur ce PC. Rien de ce qui existe déjà n'est écrasé ni supprimé.",
+      "restored": "Sauvegarde restaurée"
+    }
   }
 }

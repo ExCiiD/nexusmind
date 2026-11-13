@@ -23,7 +23,7 @@ export function makeDataDir(): string {
  * Launches the *built* app (`npm run build` first) against an isolated data
  * folder. English UI is forced so assertions don't depend on the OS locale.
  */
-export async function launchApp(dir = makeDataDir()): Promise<LaunchedApp> {
+export async function launchApp(dir = makeDataDir(), opts: { cloud?: boolean } = {}): Promise<LaunchedApp> {
   const app = await electron.launch({
     args: [ROOT, '--lang=en-US'],
     cwd: ROOT,
@@ -32,6 +32,8 @@ export async function launchApp(dir = makeDataDir()): Promise<LaunchedApp> {
       NEXUSMIND_DB_PATH: join(dir, 'data', 'nexusmind.db'),
       NEXUSMIND_USER_DATA: join(dir, 'userData'),
       ELECTRON_RENDERER_URL: '',
+      // Most suites test the local app; the cloud gate has its own suite.
+      NEXUSMIND_CLOUD_DISABLED: opts.cloud ? '0' : '1',
     },
   })
   const page = await app.firstWindow()

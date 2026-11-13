@@ -23,6 +23,29 @@ test.describe('first launch (no account)', () => {
   })
 })
 
+test.describe('NexusMind account gate', () => {
+  let ctx: LaunchedApp
+
+  test.beforeAll(async () => { ctx = await launchApp(makeDataDir(), { cloud: true }) })
+  test.afterAll(async () => { await ctx.close(); cleanup(ctx.dir) })
+
+  test('asks to sign in before anything else when the build has a cloud backend', async () => {
+    const status = await ctx.page.evaluate(() => (window as any).api.cloudStatus())
+    test.skip(!status.configured, 'build without Supabase configuration (e.g. CI)')
+    await expect(ctx.page.getByText('Sign in to NexusMind')).toBeVisible()
+    await expect(ctx.page.getByLabel('E-mail')).toBeVisible()
+    // Onboarding is not reachable until signed in.
+    await expect(ctx.page.getByText('Connect Your Riot Account')).toHaveCount(0)
+  })
+
+  test('rejects a malformed e-mail without calling the backend', async () => {
+    const status = await ctx.page.evaluate(() => (window as any).api.cloudStatus())
+    test.skip(!status.configured, 'build without Supabase configuration (e.g. CI)')
+    const err = await ctx.page.evaluate(() => (window as any).api.cloudSendCode('not-an-email').then(() => null, (e: Error) => e.message))
+    expect(err).toMatch(/Invalid input/)
+  })
+})
+
 test.describe('security hardening', () => {
   let ctx: LaunchedApp
 

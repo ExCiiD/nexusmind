@@ -1087,5 +1087,55 @@
     "deleteFailed": "Failed to delete mistake",
     "tagFailed": "Failed to tag mistake",
     "tagged": "Mistake tagged"
+  },
+  "cloud": {
+    "title": "NexusMind account",
+    "desc": "Cloud backups of your coaching data and access to Riot data. Videos stay on this PC.",
+    "errors": {
+      "title": "Cloud error"
+    },
+    "login": {
+      "title": "Sign in to NexusMind",
+      "subtitle": "Enter your e-mail: we'll send you a sign-in code. No password needed.",
+      "emailLabel": "E-mail",
+      "sendCode": "Send me a code",
+      "codeSent": "A code was sent to {{email}}. It may take a minute — check your spam folder.",
+      "codeLabel": "Sign-in code",
+      "verify": "Sign in",
+      "changeEmail": "Use another e-mail",
+      "why": "Why an account? Riot data is loaded through the NexusMind server (the Riot API key can't be shipped inside the app), and your account keeps cloud backups of your progress so you can switch PCs without losing anything.",
+      "consent": "By signing in you accept the",
+      "errors": {
+        "rateLimited": "Too many attempts. Wait a minute and try again.",
+        "invalidCode": "This code is invalid or expired. Request a new one.",
+        "invalidEmail": "Please enter a valid e-mail address.",
+        "generic": "Sign-in failed. Check your connection and try again."
+      }
+    },
+    "legal": {
+      "privacy": "Privacy policy",
+      "terms": "Terms of use"
+    },
+    "account": {
+      "signedInAs": "Signed in as",
+      "signOut": "Sign out",
+      "delete": "Delete my account",
+      "deleteTitle": "Delete your NexusMind account?",
+      "deleteDesc": "Your account and ALL your cloud backups will be permanently deleted. Data on this PC is kept. Type DELETE to confirm.",
+      "deleteConfirm": "Delete permanently",
+      "deleted": "Your account has been deleted."
+    },
+    "backup": {
+      "now": "Back up now",
+      "done": "Backup saved to the cloud",
+      "last": "Last backup: {{date}}",
+      "never": "No cloud backup yet",
+      "auto": "automatic every day, last 10 kept",
+      "counts": "{{games}} games, {{reviews}} reviews",
+      "restore": "Restore",
+      "restoreTitle": "Restore this backup?",
+      "restoreDesc": "Missing sessions, games and reviews are added to this PC. Nothing already here is overwritten or deleted.",
+      "restored": "Backup restored"
+    }
   }
 }

@@ -103,6 +103,22 @@ const api = {
   getUser: () => ipcRenderer.invoke('user:get'),
   updateUser: (data: any) => ipcRenderer.invoke('user:update', data),
 
+  // NexusMind cloud account & backups (tokens never leave the main process)
+  cloudStatus: () => ipcRenderer.invoke('cloud:status'),
+  cloudSendCode: (email: string) => ipcRenderer.invoke('cloud:send-code', email),
+  cloudVerifyCode: (email: string, code: string) => ipcRenderer.invoke('cloud:verify-code', email, code),
+  cloudSignOut: () => ipcRenderer.invoke('cloud:sign-out'),
+  cloudBackupNow: () => ipcRenderer.invoke('cloud:backup-now'),
+  cloudListBackups: () => ipcRenderer.invoke('cloud:list-backups'),
+  cloudRestoreBackup: (id: string) => ipcRenderer.invoke('cloud:restore-backup', id),
+  cloudDeleteBackup: (id: string) => ipcRenderer.invoke('cloud:delete-backup', id),
+  cloudDeleteAccount: (confirm: 'DELETE') => ipcRenderer.invoke('cloud:delete-account', confirm),
+  onCloudAuthChanged: (cb: (user: { id: string; email: string | null } | null) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, user: { id: string; email: string | null } | null) => cb(user)
+    ipcRenderer.on('cloud:auth-changed', handler)
+    return () => { ipcRenderer.removeListener('cloud:auth-changed', handler) }
+  },
+
   onUpdateAvailable: (cb: (version?: string) => void) => {
     const handler = (_: Electron.IpcRendererEvent, version?: string) => cb(version)
     ipcRenderer.on('updater:update-available', handler)
