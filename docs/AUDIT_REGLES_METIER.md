@@ -81,6 +81,7 @@ Déclencheur commun : la timeline de la partie est disponible (après enrichisse
 | M16 | `walked-into-ward` | non détectable (pas de position des wards) | — | manuel |
 | M17 | `face-checked` | non détectable fiablement (pas de buissons) | — | manuel |
 | M18 | `wasted-summoner`, `whiff-skillshot`, `bad-kiting`, `bad-engage-angle`, `bad-dmg-maximisation`, `bad-threat-assessment`, `bad-wave-sync`, `bad-rune-choice` | non observables dans les données Riot | — | manuel (le joueur les tague en VOD) |
+| M19 | `behind-on-levels-death` *(nouveau, transcription vidéo 13/11)* | laners/jungle, mort entre 1:30 et 4:30, tué par un adversaire ayant **≥ 1 niveau d'avance** (fenêtre de transition niveau 2/3) ; ≥ 2 niveaux → sévérité 3 | 2-3 | ✅ |
 
 Règles transverses de la Mistake Library :
 - **MX1 — Déduplication** : une erreur auto par (tag, minute) ; les erreurs manuelles ne sont jamais touchées.
@@ -88,6 +89,12 @@ Règles transverses de la Mistake Library :
 - **MX3 — Apprentissage du seuil** : si le joueur supprime ≥ 3 fois un même tag auto, sa sévérité par défaut baisse de 1 pour ce joueur (✅ ; simplification : compteur cumulatif, jamais remis à zéro par une recréation manuelle — voir [MOTEUR_REGLES.md](MOTEUR_REGLES.md)).
 - **MX4 — Top erreurs → objectif** : un tag présent dans ≥ 40 % des 10 dernières games devient une suggestion d'objectif (assistant) (✅ règle `dominant_mistake`).
 - **MX5 — Clip auto** : erreur sévérité 3 avec vidéo liée → bookmark à `t − 15 s` (✅, seulement si le décalage vidéo de l'enregistrement est fiable).
+
+**Transcription vidéo de coaching (fournie le 13/11)** : un message mis en file d'attente vers la session qui développait les lots 1-5 ne lui est jamais parvenu (elle a terminé et tout commité avant que le message soit livré) — rien de la transcription n'était donc dans l'app telle que livrée. Après vérification de l'historique de cette session, le contenu a été repris directement :
+- **M19** (ci-dessus) : nouvelle règle, provable avec les données existantes (niveau au moment d'une mort, comparé à celui du tueur).
+- **« Or non dépensé »** : déjà couvert par M1 (`unused-gold`, non spécifique aux objectifs) — pas de doublon ajouté.
+- **« Mort juste avant un objectif perdu »** : déjà couvert par M5 — quasi identique au concept de la transcription.
+- **Non repris, volontairement** : gestion de vagues (slow push/freeze — non mesurable finement avec les données de timeline actuelles), tempo de roam (mesurable mais demande un nouveau découpage par vague, reporté), mapping champion → archétype (Hypercarry/Lane Bully/etc. — aucune source fiable pour ce mapping, inventer les classifications aurait violé la règle d'or du §1), protocole T-60s au niveau de l'équipe (nécessiterait l'or de **tous** les coéquipiers, pas seulement le joueur).
 
 ### 3.2 Sessions & objectifs
 

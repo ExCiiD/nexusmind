@@ -19,6 +19,7 @@ export type AdvancedTag =
   | 'bad-lane-opening'
   | 'cs-deficit'
   | 'xp-deficit'
+  | 'behind-on-levels-death'
 
 export interface AdvancedCandidate {
   tagSlug: AdvancedTag
@@ -270,6 +271,31 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
           severity: lv[0] - lv[1] <= -3 ? 3 : 2,
         })
         break // one xp-deficit flag per game is enough signal
+      }
+    }
+  }
+
+  // ── M19 behind-on-levels-death ──────────────────────────────────────
+  // Coaching reference: the level-2/3 transition fight (≈1:30–4:30) is won
+  // by whoever hits it first — an avoidable death to someone already ahead
+  // on level there is a provable, early signal, not just "got outplayed".
+  // Laners + jungle only: supports don't race levels the same way.
+  if (role === 'JUNGLE' || LANERS.has(role)) {
+    for (const d of myDeaths) {
+      const ts: number = d.timestamp
+      if (ts < 90 * SEC || ts > 270 * SEC) continue
+      const f = frameNear(ts)
+      const myLevel = levelOf(f, pid)
+      const killerLevel = typeof d.killerId === 'number' ? levelOf(f, d.killerId) : null
+      if (myLevel == null || killerLevel == null) continue
+      const gap = killerLevel - myLevel
+      if (gap >= 1) {
+        out.push({
+          tagSlug: 'behind-on-levels-death',
+          gameTimeSec: Math.floor(ts / SEC),
+          note: `Died at level ${myLevel} to a level-${killerLevel} ${champOf(d.killerId)} during the early level race`,
+          severity: gap >= 2 ? 3 : 2,
+        })
       }
     }
   }

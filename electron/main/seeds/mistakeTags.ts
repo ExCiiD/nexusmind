@@ -53,6 +53,7 @@ const BUILT_IN_TAGS: BuiltInTag[] = [
   { slug: 'unused-gold',        label: 'Died with unspent gold',  category: 'economy', color: '#C8AA6E' },
   { slug: 'cs-deficit',         label: 'CS deficit at 10 min',    category: 'economy', color: '#C8AA6E' },
   { slug: 'xp-deficit',         label: 'XP deficit vs opponent',  category: 'economy', color: '#C8AA6E' },
+  { slug: 'behind-on-levels-death', label: 'Died behind on levels', category: 'economy', color: '#C8AA6E' },
   // Draft
   { slug: 'bad-rune-choice',    label: 'Bad rune choice',         category: 'draft',   color: '#A78BFA' },
 ]

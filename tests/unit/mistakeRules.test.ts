@@ -167,4 +167,28 @@ describe('mistake rules M5–M13', () => {
     const m = detectAdvancedMistakes(laterGap, match(), PLAYER).find((o) => o.tagSlug === 'xp-deficit')
     expect(m).toMatchObject({ gameTimeSec: 900 })
   })
+
+  // M19: coaching-video reference (the level-2/3 transition fight, ~1:30-4:30)
+  it('M19: died to an opponent 1 level ahead during the early level race → severity 2, 2+ levels → severity 3', () => {
+    const death = { type: 'CHAMPION_KILL', timestamp: 3 * 60_000, victimId: 1, killerId: 6 }
+    const oneUp = timeline([{ minute: 3, level: { 1: 1, 6: 2 }, events: [death, ...steadyWards()] }])
+    const m = detectAdvancedMistakes(oneUp, match(), PLAYER).find((o) => o.tagSlug === 'behind-on-levels-death')
+    expect(m?.severity).toBe(2)
+    expect(m?.note).toMatch(/level 1 to a level-2/)
+
+    const twoUp = timeline([{ minute: 3, level: { 1: 1, 6: 3 }, events: [death, ...steadyWards()] }])
+    expect(detectAdvancedMistakes(twoUp, match(), PLAYER).find((o) => o.tagSlug === 'behind-on-levels-death')?.severity).toBe(3)
+  })
+
+  it('M19: no flag outside the early window, on an even level, or for supports', () => {
+    const even = timeline([{ minute: 3, level: { 1: 2, 6: 2 }, events: [{ type: 'CHAMPION_KILL', timestamp: 3 * 60_000, victimId: 1, killerId: 6 }, ...steadyWards()] }])
+    expect(tags(detectAdvancedMistakes(even, match(), PLAYER))).not.toContain('behind-on-levels-death')
+
+    const late = timeline([{ minute: 10, level: { 1: 6, 6: 8 }, events: [{ type: 'CHAMPION_KILL', timestamp: 10 * 60_000, victimId: 1, killerId: 6 }, ...steadyWards()] }])
+    expect(tags(detectAdvancedMistakes(late, match(), PLAYER))).not.toContain('behind-on-levels-death')
+
+    const supportTl = timeline([{ minute: 3, level: { 1: 1, 6: 2 }, events: [{ type: 'CHAMPION_KILL', timestamp: 3 * 60_000, victimId: 1, killerId: 6 }, ...steadyWards()] }])
+    const support = detectAdvancedMistakes(supportTl, match('UTILITY'), { ...PLAYER, position: 'UTILITY' })
+    expect(tags(support)).not.toContain('behind-on-levels-death')
+  })
 })
