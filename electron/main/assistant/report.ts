@@ -10,9 +10,13 @@
 
 import { FUNDAMENTALS } from '../../../src/lib/constants/fundamentals'
 import type { GameFeatures, PlayerContext } from './features'
+import { diagnose, pickFocus, type AdviceHistory, type Diagnosis } from './diagnosis'
+import { criterionForProblem, type ExperimentView, type ProblemOutcome } from './experiments'
+import { problemForTag } from './problems'
 import { rankWinDrivers, type WinDrivers } from './regression'
+import { pickPriorityGame } from './reviewPriority'
 import { evaluateRules, resolveParams, resolvePath, RULES, type Moment, type Rule, type RuleMatch, type Tone } from './rules'
-import { ruleMultiplier, seededRng, type RuleVotes } from './weights'
+import { seededRng, type RuleVotes } from './weights'
 
 export interface RewatchClip {
   gameId: string
@@ -28,7 +32,7 @@ export type InsightAction =
   | { type: 'lanePhase'; gameId: string }
   | { type: 'break'; minutes: number }
   | { type: 'drill'; drillId: string }
-  | { type: 'review' }
+  | { type: 'review'; gameId?: string }
 
 export interface Insight {
   /** Stable id of this insight instance (rule + subject) — feedback key. */
@@ -44,6 +48,16 @@ export interface Insight {
   score: number
   confidence: number
   vote: 1 | -1 | null
+  /** Coaching-engine problem this insight is about (problems.ts). */
+  problemId: string
+  /** Other rules that point to the same problem (shown as "confirmed by N signals"). */
+  support: number
+  /** The one thing to work on now (at most one per report). */
+  focus: boolean
+  /** Mistake tag behind the insight, if any (to start an experiment on it). */
+  tagSlug: string | null
+  /** A measurable experiment can be started from this insight. */
+  canExperiment: boolean
 }
 
 export interface WeeklySummary {
@@ -63,6 +77,8 @@ export interface AssistantReport {
   basisGames: number
   summary?: WeeklySummary
   drivers?: WinDrivers | null
+  /** Active experiment, or one that just ended (attached by the IPC layer). */
+  experiment?: ExperimentView | null
 }
 
 export interface BuildReportOptions {
@@ -75,6 +91,12 @@ export interface BuildReportOptions {
   /** Seed for the phrasing variant (defaults to the day). */
   seed?: string
   rules?: Rule[]
+  /** Advice already shown on previous days, per problem (anti-repetition). */
+  history?: Record<string, AdviceHistory>
+  /** Pre-computed win drivers (computed from ctx when omitted). */
+  drivers?: WinDrivers | null
+  /** Past experiment verdicts per problem (outcome-based learning). */
+  outcomes?: Record<string, ProblemOutcome>
 }
 
 const DEFAULT_LIMIT: Record<Moment, number> = { post_game: 3, session: 3, weekly: 4 }
@@ -126,7 +148,16 @@ function resolveAction(match: RuleMatch, ctx: PlayerContext, gameId: string | nu
     }
     case 'break': return { type: 'break', minutes: spec.minutes }
     case 'drill': return { type: 'drill', drillId: spec.drillId }
-    case 'review': return { type: 'review' }
+    case 'review': {
+      const unreviewed = ctx.games.filter((g) => !g.reviewed)
+      const priority = pickPriorityGame(unreviewed, ctx.games)
+      return { type: 'review', gameId: priority?.gameId }
+    }
+    case 'mistakeObjective': {
+      const tag = match.results.find((r) => r.tagSlug)?.tagSlug
+      const objectiveId = tag ? problemForTag(tag).fundamentalId : null
+      return objectiveId ? { type: 'objective', objectiveId } : null
+    }
     case 'lanePhase': {
       const id = gameId ?? matchGames(match)[0]?.gameId ?? ctx.games[0]?.gameId
       return id ? { type: 'lanePhase', gameId: id } : null
@@ -180,45 +211,66 @@ export function buildInsights(ctx: PlayerContext, opts: BuildReportOptions): Ins
   const gameId = opts.moment === 'post_game' ? (opts.gameId ?? ctx.games[0]?.gameId ?? null) : null
   const seed = opts.seed ?? dayKey(ctx.now)
   const matches = evaluateRules(rules, ctx, { moment: opts.moment, gameId })
+  const drivers = opts.drivers !== undefined ? opts.drivers : rankWinDrivers(ctx.games)
+  const diagnoses = diagnose(matches, ctx, { moment: opts.moment, votesByRule: opts.votesByRule, drivers, history: opts.history, outcomes: opts.outcomes })
+  const focus = pickFocus(diagnoses)
 
-  const scored = matches.map((m) => {
-    const multiplier = m.rule.fixedWeight ? 1 : ruleMultiplier(opts.votesByRule?.[m.rule.id])
-    return { m, score: (m.rule.priority / 100) * m.rule.confidence * multiplier }
-  })
-  scored.sort((a, b) => b.score - a.score || a.m.rule.id.localeCompare(b.m.rule.id))
-
+  const seenProblems = new Set<string>()
   const seenGroups = new Set<string>()
   const out: Insight[] = []
-  for (const { m, score } of scored) {
-    if (m.rule.group) {
-      if (seenGroups.has(m.rule.group)) continue
-      seenGroups.add(m.rule.group)
-    }
-    const key = `${m.rule.id}:${m.subject}`
-    const { params, paramKinds } = resolveParams(m)
-    if (opts.playerName) params.name = opts.playerName
-    const whyN = m.rule.why.n ? resolvePath(m.evidence, m.rule.why.n) : null
-    out.push({
-      key,
-      ruleId: m.rule.id,
-      tone: m.rule.tone,
-      messageKey: `assistant.rules.${m.rule.id}.v${pickVariant(`${key}:${seed}`, m.rule.variants)}`,
-      params,
-      paramKinds,
-      why: { key: `assistant.why.${m.rule.why.key}`, params: whyN != null ? { n: whyN } : {} },
-      action: resolveAction(m, ctx, gameId),
-      score: Number(score.toFixed(4)),
-      confidence: m.rule.confidence,
-      vote: opts.votesByKey?.[key] ?? null,
-    })
+  for (const d of diagnoses) {
+    // One message per problem (the best of its positive / negative readings) and per rule group.
+    const problemKey = d.problem.id === 'other-mistakes' ? `${d.problem.id}:${d.lead.match.rule.id}` : d.problem.id
+    if (seenProblems.has(problemKey)) continue
+    const group = d.lead.match.rule.group
+    if (group && seenGroups.has(group)) continue
+    seenProblems.add(problemKey)
+    if (group) seenGroups.add(group)
+    out.push(toInsight(d, d === focus, ctx, opts, gameId, seed))
     if (out.length >= (opts.limit ?? DEFAULT_LIMIT[opts.moment])) break
   }
   return out
 }
 
+function toInsight(d: Diagnosis, isFocus: boolean, ctx: PlayerContext, opts: BuildReportOptions, gameId: string | null, seed: string): Insight {
+  const m = d.lead.match
+  const key = `${m.rule.id}:${m.subject}`
+  const { params, paramKinds } = resolveParams(m)
+  if (opts.playerName) params.name = opts.playerName
+  const whyN = m.rule.why.n ? resolvePath(m.evidence, m.rule.why.n) : null
+  let action = resolveAction(m, ctx, gameId)
+  // The focus always comes with something to work on: its fundamental becomes the suggested objective,
+  // or, after two experiments without effect, a neighbouring fundamental (another angle).
+  if (isFocus && d.problem.fundamentalId) {
+    const next = d.stuck ? neighbourObjective(d.problem.fundamentalId) : null
+    if (next) action = { type: 'objective', objectiveId: next }
+    else if (!action) action = { type: 'objective', objectiveId: d.problem.fundamentalId }
+  }
+  const tagSlug = m.results.find((x) => x.tagSlug)?.tagSlug ?? null
+  return {
+    key,
+    ruleId: m.rule.id,
+    tone: m.rule.tone,
+    messageKey: `assistant.rules.${m.rule.id}.v${pickVariant(`${key}:${seed}`, m.rule.variants)}`,
+    params,
+    paramKinds,
+    why: { key: `assistant.why.${m.rule.why.key}`, params: whyN != null ? { n: whyN } : {} },
+    action,
+    score: Number(d.score.toFixed(4)),
+    confidence: Number(d.confidence.toFixed(3)),
+    vote: opts.votesByKey?.[key] ?? null,
+    problemId: d.problem.id,
+    support: new Set(d.support.map((s) => s.match.rule.id).filter((id) => id !== m.rule.id)).size,
+    focus: isFocus,
+    tagSlug,
+    canExperiment: d.polarity === 'negative' && !d.problem.unscored && criterionForProblem(d.problem, ctx, tagSlug) != null,
+  }
+}
+
 export function buildReport(ctx: PlayerContext, opts: BuildReportOptions): AssistantReport {
   const seed = opts.seed ?? dayKey(ctx.now)
-  const insights = buildInsights(ctx, { ...opts, seed })
+  const drivers = opts.drivers !== undefined ? opts.drivers : rankWinDrivers(ctx.games)
+  const insights = buildInsights(ctx, { ...opts, seed, drivers })
   const name = opts.playerName ?? ''
   const introBase = ctx.games.length < 3 ? 'assistant.intro.notEnough' : `assistant.intro.${opts.moment}`
   const report: AssistantReport = {
@@ -233,7 +285,7 @@ export function buildReport(ctx: PlayerContext, opts: BuildReportOptions): Assis
   }
   if (opts.moment === 'weekly') {
     report.summary = weeklySummary(ctx)
-    report.drivers = rankWinDrivers(ctx.games)
+    report.drivers = drivers
   }
   return report
 }

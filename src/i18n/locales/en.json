@@ -632,7 +632,9 @@
       "sessions_50_desc": "Complete 50 sessions",
       "rank_up": "Climber",
       "rank_up_desc": "Rank up while using NexusMind",
-      "locked": "Locked"
+      "locked": "Locked",
+      "fundamental_graduated": "Graduate",
+      "fundamental_graduated_desc": "Validate a fundamental in two experiments in a row"
     },
     "streak": {
       "noStreak": "Start a streak by reviewing games daily",
@@ -686,7 +688,8 @@
       "guideText": "Focus on decisions you made related to your session objective. What went right? What went wrong?",
       "timePlaceholder": "M:SS",
       "notePlaceholder": "What happened at this moment? What decision did you make?",
-      "addButton": "Add Timeline Note"
+      "addButton": "Add Timeline Note",
+      "autoBadge": "Pre-filled"
     }
   },
   "fundamentalsGrid": {
@@ -1519,8 +1522,16 @@
         "v1": "{{wins}} wins in a row! Keep the same routine.",
         "v2": "Win streak: {{wins}}. Whatever you're doing, keep doing it.",
         "v3": "{{wins}} straight wins, {{name}}. Stay focused on your objective."
+      },
+      "dominant_mistake": {
+        "v1": "\"{{tag}}\" is your main mistake: present in {{count}} of your last {{n}} games. Make it your objective.",
+        "v2": "Dominant mistake: \"{{tag}}\" in {{count}}/{{n}} recent games. It's the fundamental that will pay off most right now."
       }
-    }
+    },
+    "focus": "Focus",
+    "focusHint": "Top priority right now: what costs you the most wins.",
+    "support_one": "Confirmed by 1 other signal.",
+    "support_other": "Confirmed by {{count}} other signals."
   },
   "web": {
     "nav": {
@@ -1659,6 +1670,62 @@
       "used": "Used",
       "expired": "Expired",
       "revoked": "Revoked"
+    }
+  },
+  "coach": {
+    "problems": {
+      "laning": "Laning phase",
+      "deaths": "Avoidable deaths",
+      "farming": "Farming",
+      "vision": "Vision",
+      "objective-setup": "Objective setup",
+      "map-awareness": "Map awareness",
+      "gold-management": "Gold management",
+      "teamfight": "Teamfights",
+      "mechanics": "Mechanics",
+      "preparation": "Preparation (runes, matchup)",
+      "objective-progress": "Session objective",
+      "self-assessment": "Self-assessment",
+      "review-habit": "Reviews",
+      "tilt-fatigue": "Tilt and fatigue",
+      "momentum": "Momentum",
+      "other-mistakes": "Other mistakes"
+    },
+    "criterion": {
+      "max": {
+        "deathsBefore14": "At most {{target}} death(s) before 14 min",
+        "deathsBefore10": "At most {{target}} death(s) before 10 min",
+        "deaths": "At most {{target}} deaths in the game",
+        "generic": "{{metric}}: at most {{target}}"
+      },
+      "min": {
+        "csPerMin": "At least {{target}} CS/min",
+        "visionPerMin": "At least {{target}} vision/min",
+        "kp": "At least {{target}}% kill participation",
+        "generic": "{{metric}}: at least {{target}}"
+      },
+      "noMistake": "No \"{{tags}}\" mistake in the game"
+    },
+    "experiment": {
+      "activeTitle": "Experiment running",
+      "doneTitle": "Experiment result",
+      "progress": "{{passes}} passed out of {{counted}} · {{left}} game(s) to go.",
+      "fromSession": "Started automatically from the session objective.",
+      "abandon": "Abandon the experiment",
+      "start": "Test it over {{n}} games",
+      "startHint": "The app checks the criterion on each of your next 5 games, then gives a verdict.",
+      "verdict": {
+        "acquired": "Acquired: criterion met in {{rate}}% of games ({{passes}}/{{counted}}).",
+        "progressing": "Progressing: clearly better than your average, not consistent yet ({{passes}}/{{counted}}).",
+        "no_effect": "No effect so far ({{passes}}/{{counted}}): the next focus will try another angle."
+      },
+      "graduated": "{{objective}} validated twice in a row: fundamental acquired!",
+      "next": "Next: {{objective}}."
+    },
+    "review": {
+      "prefilled": "Pre-filled from the running experiment: {{criterion}} — {{result}}. You can change it.",
+      "passed": "met",
+      "failed": "not met"
     }
   }
 }

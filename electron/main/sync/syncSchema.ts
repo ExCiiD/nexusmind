@@ -43,6 +43,9 @@ export const SYNC_TABLES: SyncTableSpec[] = [
   { table: 'Mistake', fks: { gameId: 'Game', tagId: 'MistakeTag', recordingId: 'Recording' } },
   // Phase A: 👍/👎 on assistant insights (personal — never shared with a group).
   { table: 'AssistantFeedback', userColumns: ['userId'], naturalKey: ['userId', 'insightKey'] },
+  // Coaching engine: advice already shown (anti-repetition across devices).
+  { table: 'AdviceLog', userColumns: ['userId'], naturalKey: ['userId', 'problemId', 'day'] },
+  { table: 'CoachingExperiment', userColumns: ['userId'] },
 ]
 
 export const SYNC_TABLE_NAMES = SYNC_TABLES.map((t) => t.table)

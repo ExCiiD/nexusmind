@@ -257,6 +257,8 @@ const api = {
 
   // Game events (kills, dragons, towers…) for video player timeline markers
   getGameEvents: (gameId: string) => ipcRenderer.invoke('stats:get-game-events', gameId),
+  // R1: draft timestamped notes built from this game's own events + mistakes
+  getPrefilledNotes: (gameId: string) => ipcRenderer.invoke('review:prefilled-notes', gameId),
 
   // Lane Phase Comparator — lazy-computed + cached on the Game row.
   // `getLanePhase` is the read-through path, `refreshLanePhase` forces a
@@ -375,6 +377,8 @@ const api = {
     ipcRenderer.invoke('coach:start-experiment', problemId, tagSlug, ruleId),
   coachAbandonExperiment: (experimentId: string) => ipcRenderer.invoke('coach:abandon-experiment', experimentId),
   coachObjectiveCheck: (gameId: string) => ipcRenderer.invoke('coach:objective-check', gameId),
+  // R4/R5: which unreviewed game to review first, and the backlog size
+  reviewPriorityGame: () => ipcRenderer.invoke('review:priority-game'),
 
   // Clips
   createClip: (opts: { recordingId: string; startMs: number; endMs: number; title?: string; linkedNoteText?: string }) =>

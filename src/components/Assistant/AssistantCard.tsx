@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  AlertTriangle, CheckCircle2, Coffee, Dumbbell, Info, ListChecks, PlayCircle, Sparkles,
+  AlertTriangle, CheckCircle2, Coffee, Dumbbell, FlaskConical, Info, ListChecks, PlayCircle, Sparkles,
   Target, ThumbsDown, ThumbsUp, TrendingDown, Swords,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { cn } from '@/lib/utils'
+import { ExperimentPanel } from './ExperimentPanel'
 import type { AssistantAction, AssistantInsight, AssistantMoment, AssistantReport, AssistantTone } from './types'
 
 interface AssistantCardProps {
@@ -50,6 +51,8 @@ export function AssistantCard({ moment, gameId, refreshKey, className }: Assista
   const fundamentals = useLocalizedFundamentals()
   const [report, setReport] = useState<AssistantReport | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [reload, setReload] = useState(0)
+  const [starting, setStarting] = useState(false)
 
   const objectiveLabel = useCallback(
     (id: string) => fundamentals.flatMap((c) => c.fundamentals).find((f) => f.id === id)?.label ?? id,
@@ -64,7 +67,21 @@ export function AssistantCard({ moment, gameId, refreshKey, className }: Assista
       .catch(() => { if (alive) setReport(null) })
       .finally(() => { if (alive) setLoaded(true) })
     return () => { alive = false }
-  }, [moment, gameId, refreshKey])
+  }, [moment, gameId, refreshKey, reload])
+
+  const startExperiment = useCallback(async (insight: AssistantInsight) => {
+    setStarting(true)
+    try {
+      await window.api.coachStartExperiment(insight.problemId, insight.tagSlug, insight.ruleId)
+      setReload((n) => n + 1)
+    } catch { /* not measurable any more: the card simply stays as it is */ } finally {
+      setStarting(false)
+    }
+  }, [])
+
+  const abandonExperiment = useCallback(async (experimentId: string) => {
+    try { await window.api.coachAbandonExperiment(experimentId) } finally { setReload((n) => n + 1) }
+  }, [])
 
   const vote = useCallback(
     async (insight: AssistantInsight, v: 1 | -1) => {
@@ -124,6 +141,14 @@ export function AssistantCard({ moment, gameId, refreshKey, className }: Assista
           </p>
         )}
 
+        {report.experiment && moment !== 'weekly' && (
+          <ExperimentPanel
+            experiment={report.experiment}
+            objectiveLabel={objectiveLabel}
+            onAbandon={() => abandonExperiment(report.experiment!.id)}
+          />
+        )}
+
         {report.insights.length === 0 && (
           <p className="text-sm text-hextech-text-dim">{t(`assistant.empty.${moment}`)}</p>
         )}
@@ -131,12 +156,30 @@ export function AssistantCard({ moment, gameId, refreshKey, className }: Assista
         {report.insights.map((insight) => {
           const Icon = TONE_ICON[insight.tone]
           return (
-            <div key={insight.key} className="rounded-md bg-hextech-elevated/60 px-3 py-2 space-y-1.5" data-testid="assistant-insight" data-rule-id={insight.ruleId}>
+            <div
+              key={insight.key}
+              className={cn('rounded-md bg-hextech-elevated/60 px-3 py-2 space-y-1.5', insight.focus && 'ring-1 ring-hextech-gold/60')}
+              data-testid="assistant-insight"
+              data-rule-id={insight.ruleId}
+              data-problem-id={insight.problemId}
+              data-focus={insight.focus ? 'true' : undefined}
+            >
               <div className="flex items-start gap-2">
                 <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', TONE_COLOR[insight.tone])} />
                 <div className="min-w-0 flex-1">
+                  {insight.focus && (
+                    <span
+                      className="mb-1 inline-block rounded bg-hextech-gold/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-hextech-gold"
+                      title={t('assistant.focusHint')}
+                    >
+                      {t('assistant.focus')}
+                    </span>
+                  )}
                   <p className="text-sm text-hextech-text-bright">{text(insight)}</p>
-                  <p className="text-[11px] text-hextech-text-dim mt-0.5">{t(insight.why.key, insight.why.params)}</p>
+                  <p className="text-[11px] text-hextech-text-dim mt-0.5">
+                    {t(insight.why.key, insight.why.params)}
+                    {insight.support > 0 && <> {t('assistant.support', { count: insight.support })}</>}
+                  </p>
                 </div>
                 <div className="flex items-center gap-0.5 shrink-0">
                   <button
@@ -161,6 +204,22 @@ export function AssistantCard({ moment, gameId, refreshKey, className }: Assista
               </div>
               {insight.action && (
                 <ActionRow action={insight.action} objectiveLabel={objectiveLabel} navigate={navigate} />
+              )}
+              {insight.focus && insight.canExperiment && moment !== 'weekly'
+                && !(report.experiment?.status === 'active' && report.experiment.problemId === insight.problemId) && (
+                <div className="pl-6">
+                  <button
+                    type="button"
+                    disabled={starting}
+                    data-testid="coach-start-experiment"
+                    title={t('coach.experiment.startHint')}
+                    className="inline-flex items-center gap-1 rounded border border-hextech-gold/50 bg-hextech-gold/10 px-2 py-0.5 text-[11px] text-hextech-gold-bright hover:bg-hextech-gold/20 disabled:opacity-50"
+                    onClick={() => startExperiment(insight)}
+                  >
+                    <FlaskConical className="h-3 w-3" />
+                    {t('coach.experiment.start', { n: 5 })}
+                  </button>
+                </div>
               )}
             </div>
           )
@@ -255,7 +314,7 @@ function ActionRow({
     case 'review':
       return (
         <div className="pl-6">
-          <button type="button" className={chip} onClick={() => navigate('/review')}>
+          <button type="button" className={chip} onClick={() => navigate(action.gameId ? `/review?gameId=${action.gameId}` : '/review')}>
             <ListChecks className="h-3 w-3 text-hextech-cyan" />
             {t('assistant.actions.review')}
           </button>

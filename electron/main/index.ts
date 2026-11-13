@@ -53,6 +53,7 @@ import { registerDataHandlers } from './ipc/data.ipc'
 import { registerCloudHandlers } from './ipc/cloud.ipc'
 import { isCloudConfigured } from './cloud/supabase'
 import { startAutoCloudBackup } from './cloud/cloudBackup'
+import { startSessionAutoClose } from './sessionAutoClose'
 import { registerSyncHandlers } from './ipc/sync.ipc'
 import { registerAssistantHandlers } from './assistant/assistant.ipc'
 import { startSyncService } from './sync/syncService'
@@ -402,6 +403,8 @@ async function bootstrap() {
     startAutoCloudBackup()
     startSyncService()
   }
+  // S3: closes a session with no game for 45 min, local-only, no cloud needed.
+  startSessionAutoClose()
 
   // Idempotent — adds new built-in tags on app updates without ever
   // overwriting user-edited ones. Fire-and-forget; if it fails we still

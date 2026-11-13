@@ -116,6 +116,12 @@ const TABLES: TableSpec[] = [
     existing: (r, c) => ({ userId: c.localUserId, insightKey: r.insightKey }),
   },
   {
+    model: 'AdviceLog',
+    userField: 'userId',
+    existing: (r, c) => ({ userId: c.localUserId, problemId: r.problemId, day: r.day }),
+  },
+  { model: 'CoachingExperiment', userField: 'userId' },
+  {
     model: 'Mistake',
     parents: { gameId: 'Game', tagId: 'MistakeTag' },
     optionalParents: { recordingId: 'Recording' },

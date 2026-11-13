@@ -11,6 +11,8 @@ import { TimelineNoteInput, type TimelineNote } from '@/components/ReviewForm/Ti
 import { DynamicKPIForm } from '@/components/ReviewForm/DynamicKPIForm'
 import { ReviewInsightPanel } from '@/components/Coaching/ReviewInsightPanel'
 import { AssistantCard } from '@/components/Assistant/AssistantCard'
+import { criterionText } from '@/components/Assistant/ExperimentPanel'
+import type { CoachObjectiveCheck } from '@/components/Assistant/types'
 import { MatchHistoryPicker } from '@/components/Session/MatchHistoryPicker'
 import { AccountBadge } from '@/components/ui/AccountBadge'
 import { useLocalizedFundamental, useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
@@ -112,6 +114,8 @@ export function ReviewPage() {
   const [kpiNotes, setKpiNotes] = useState<Record<string, string>>({})
   const [freeText, setFreeText] = useState('')
   const [objectiveRespected, setObjectiveRespected] = useState<boolean | null>(null)
+  // R2: the running experiment already knows whether this game met its criterion.
+  const [autoCheck, setAutoCheck] = useState<CoachObjectiveCheck | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   // The game the post-game assistant talks about (latestGame moves on after save).
@@ -244,7 +248,39 @@ export function ReviewPage() {
     setKpiScores({})
     setFreeText('')
     setObjectiveRespected(null)
+
+    // R1: nothing saved and no draft — offer timestamped notes built from
+    // this game's own events + severity-3 mistakes. Never overwrites
+    // anything the player already typed (guarded by the game id below).
+    const gameId = latestGame?.id
+    if (gameId && window.api.getPrefilledNotes) {
+      let cancelled = false
+      window.api.getPrefilledNotes(gameId)
+        .then((notes) => {
+          if (cancelled || notes.length === 0) return
+          setTimelineNotes((cur) => (cur.length === 0 ? notes : cur))
+        })
+        .catch(() => {})
+      return () => { cancelled = true }
+    }
   }, [activeSession?.id, latestGame?.id])
+
+  // Pre-fill "objective respected" from the experiment (never over a saved review or a draft).
+  useEffect(() => {
+    setAutoCheck(null)
+    const gameId = latestGame?.id
+    if (!gameId || latestGame?.review || !window.api.coachObjectiveCheck) return
+    let alive = true
+    window.api.coachObjectiveCheck(gameId)
+      .then((c) => {
+        if (!alive || !c) return
+        setAutoCheck(c)
+        setObjectiveRespected((cur) => (cur === null ? c.passed : cur))
+      })
+      .catch(() => {})
+    return () => { alive = false }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latestGame?.id])
 
   // Auto-save draft on every change (debounced)
   useEffect(() => {
@@ -742,6 +778,14 @@ export function ReviewPage() {
               <X className="h-4 w-4 mr-2" /> {t('review.no')}
             </Button>
           </div>
+          {autoCheck && objectiveRespected === autoCheck.passed && (
+            <p className="mt-2 text-[11px] text-hextech-text-dim" data-testid="review-auto-objective">
+              {t('coach.review.prefilled', {
+                criterion: criterionText(t, autoCheck.criterion, autoCheck.problemId),
+                result: t(autoCheck.passed ? 'coach.review.passed' : 'coach.review.failed'),
+              })}
+            </p>
+          )}
         </CardContent>
       </Card>
 

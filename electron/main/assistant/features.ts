@@ -18,6 +18,8 @@ export interface MistakeRecord {
   tagLabel?: string
   gameTimeSec: number
   recordingId?: string | null
+  /** 1 = minor, 2 = standard, 3 = critical. Missing on older callers → treated as 2. */
+  severity?: number
 }
 
 /** Lane-phase numbers extracted from a cached LanePhaseReport. */
@@ -55,6 +57,8 @@ export interface GameRecord {
   deathTimesSec?: number[] | null
   /** Kill participation in percent (0–100), null = unknown. */
   killParticipation?: number | null
+  /** The player's team's total gold minus the enemy team's, at game end. */
+  finalGoldDiff?: number | null
   mistakes?: MistakeRecord[]
   recordingId?: string | null
 }
@@ -98,6 +102,8 @@ export interface GameFeatures {
   mistakeCounts: Record<string, number>
   /** Kept to resolve "re-watch" actions. */
   deathTimesSec: number[] | null
+  /** The player's team's total gold minus the enemy team's, at game end (null = unknown). */
+  finalGoldDiff: number | null
   mistakes: MistakeRecord[]
   recordingId: string | null
   kpiScores: Record<string, number>
@@ -186,6 +192,7 @@ export function computeGameFeatures(g: GameRecord): GameFeatures {
     values,
     mistakeCounts,
     deathTimesSec: deathTimes,
+    finalGoldDiff: g.finalGoldDiff ?? null,
     mistakes: g.mistakes ?? [],
     recordingId: g.recordingId ?? null,
     kpiScores: g.kpiScores ?? {},

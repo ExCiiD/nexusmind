@@ -48,6 +48,8 @@ model User {
   teams              Team[]
   drafts             DraftPrep[]
   assistantFeedback  AssistantFeedback[]
+  adviceLogs         AdviceLog[]
+  coachingExperiments CoachingExperiment[]
 }
 
 model Account {
@@ -459,4 +461,57 @@ model AssistantFeedback {
 
   @@unique([userId, insightKey])
   @@index([userId, ruleId])
+}
+
+// Coaching engine: which problem the assistant put forward, once per day
+// (anti-repetition and, later, outcome-based learning).
+model AdviceLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // problems.ts id, e.g. "farming"
+  problemId  String
+  // Lead insight shown for that problem (rule + subject)
+  insightKey String
+  // post_game | session | weekly
+  moment     String
+  // Local day, YYYY-MM-DD
+  day        String
+  shownAt    DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, problemId, day])
+  @@index([userId, shownAt])
+}
+
+// Coaching engine (lot 2): a prescription tested on the next N games, then a
+// verdict (acquired / progressing / no_effect). Criterion and baseline are JSON.
+model CoachingExperiment {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemId     String
+  fundamentalId String?
+  // Rule that prescribed it (outcome-based learning), if any
+  ruleId        String?
+  tagSlug       String?
+  // JSON: { kind: 'metric', metric, op, target } | { kind: 'noMistake', tags }
+  criterion     String
+  // JSON: { mean?, rate?, games }
+  baseline      String
+  windowGames   Int       @default(5)
+  // assistant | session | player | coach
+  source        String    @default("assistant")
+  // active | done | abandoned
+  status        String    @default("active")
+  // acquired | progressing | no_effect
+  verdict       String?
+  passRate      Float?
+  // JSON GameResult[] frozen at the verdict
+  results       String?
+  startedAt     DateTime  @default(now())
+  endedAt       DateTime?
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId, status])
 }
