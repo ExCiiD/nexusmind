@@ -1,3 +1,5 @@
+import type { CollabApi } from './collab'
+
 export type GameEventType =
   | 'kill' | 'death' | 'assist'
   | 'dragon' | 'baron' | 'voidgrub' | 'herald' | 'atakhan'
@@ -296,7 +298,7 @@ export interface SavedAccount {
   _count: { sessions: number }
 }
 
-export type NexusMindAPI = {
+export type NexusMindAPI = CollabApi & {
   connectRiot: (gameName: string, tagLine: string, region: string, displayName?: string) => Promise<any>
   disconnectRiot: () => Promise<void>
   reactivateAccount: (userId: string) => Promise<any>

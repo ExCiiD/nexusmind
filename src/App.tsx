@@ -20,6 +20,7 @@ import { ExternalReviewNewPage } from '@/pages/Review/ExternalReviewNewPage'
 import { PostGameCapturePage } from '@/pages/Review/PostGameCapturePage'
 import { HelpPage } from '@/pages/Help/HelpPage'
 import { TeamPage } from '@/pages/Team/TeamPage'
+import { CoachingPage } from '@/pages/Coaching/CoachingPage'
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
 import { GameEndNav } from '@/components/GameEndNav'
 import { DevToolbar } from '@/components/Dev/DevToolbar'
@@ -66,6 +67,7 @@ export function App() {
             <Route path="/assessment" element={<ReassessmentPage />} />
             <Route path="/team" element={<PanelErrorBoundary label="Team page"><TeamPage /></PanelErrorBoundary>} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/coaching" element={<PanelErrorBoundary label="Coaching page"><CoachingPage /></PanelErrorBoundary>} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

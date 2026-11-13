@@ -16,6 +16,7 @@ import {
   HelpCircle,
   Users,
   AlertTriangle,
+  GraduationCap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/useUserStore'
@@ -120,6 +121,7 @@ export function Sidebar() {
     { to: '/stats/mistakes', icon: AlertTriangle, label: t('nav.mistakes', { defaultValue: 'Mistakes' }) },
     { to: '/analytics', icon: TrendingUp, label: t('nav.analytics') },
     { to: '/team', icon: Users, label: t('nav.team', { defaultValue: 'Team' }) },
+    { to: '/coaching', icon: GraduationCap, label: t('nav.coaching') },
     { to: '/settings', icon: Settings, label: t('nav.settings') },
     { to: '/help', icon: HelpCircle, label: t('nav.help') },
   ]

@@ -72,12 +72,14 @@ Recommandation d'objectif par règles, résumé de review déterministe, pattern
 - ✅ Indicateur dans la sidebar (clic = synchro), synchro 5 s après une modification + toutes les 30 s, toast « Actualiser » quand un autre PC a envoyé des données.
 - ⏳ Limites connues : XP / streak / réglages non synchronisés ; une écriture locale pendant l'application d'un lot distant (< 1 s) peut ne pas être détectée ; pas d'écran de résolution manuelle (last-write-wins seulement).
 
-### W3 — Collaboration multi-joueurs (≈ 3 sem.)
-- Modèle : `organizations` (équipe/structure) → `memberships(role: owner | coach | analyst | player)` ; `coach_students` existant devient un cas particulier (coach ↔ joueur sans équipe).
-- Visibilité par entité : `private` · `coach` · `team`. Le joueur choisit ce qu'il partage (par défaut : reviews et sessions visibles par son coach, rien de plus).
-- RLS Postgres basée sur l'appartenance — toute la sécurité côté base, aucune confiance au client.
-- Invitations par lien/code (la policy `invite_claim` existe déjà).
-- Fonctionnalités : le coach commente une review (fil de commentaires sur un timestamp), assigne un objectif de session, voit le tableau de bord de ses joueurs ; l'équipe partage drafts, scouting et champion pools.
+### W3 — Collaboration multi-joueurs 🟡 (code fait, test à deux comptes à faire)
+- ✅ Serveur : `groups` (équipe ou groupe de coaching), `group_members` (owner · coach · analyst · player), `group_invites` (codes 10 caractères, 7 j, 10 usages), `group_sharing` (consentement du joueur par groupe : reviews · stats · données d'équipe). Toute la sécurité en RLS ; helpers en schéma `private` non exposé ; seules `create_group`, `create_group_invite`, `join_group` sont appelables.
+- ✅ Lecture partagée directement sur `sync_records` (pas de copie) : le staff lit sessions/games/reviews/erreurs et stats si le joueur partage ; les coéquipiers ne voient que les données d'équipe.
+- ✅ `review_comments` (fil coach ↔ joueur, horodatage vidéo, résolu) et `assigned_objectives` (1–3 objectifs, note, échéance, statut).
+- ✅ RLS testée en conditions réelles avec 4 comptes fictifs (transaction annulée) : 13 cas, dont retrait du partage.
+- ✅ App : page **Coaching** (créer/rejoindre/inviter/quitter, rôles, partage), vue coach des joueurs (sessions, reviews, commentaires, assignation), retours du coach sur la page Review, objectifs du coach en un clic à la création de session.
+- ✅ Anciennes tables du coaching pré-W1 (`profiles`, `coach_students`, `coach_comments`, `synced_*`) supprimées. Toutes les migrations serveur sont versionnées dans `supabase/migrations/`.
+- ⏳ À faire : modification à plusieurs des données d'équipe (aujourd'hui lecture seule pour les autres), notifications (W5).
 
 ### W4 — Application web (≈ 3–4 sem.)
 Lecture et actions légères pour qui n'a pas son PC :

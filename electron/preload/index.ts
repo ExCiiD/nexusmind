@@ -103,6 +103,28 @@ const api = {
   getUser: () => ipcRenderer.invoke('user:get'),
   updateUser: (data: any) => ipcRenderer.invoke('user:update', data),
 
+  // Collaboration (groups, coach comments, assigned objectives)
+  collabListGroups: () => ipcRenderer.invoke('collab:list-groups'),
+  collabCreateGroup: (name: string, kind: 'team' | 'coaching') => ipcRenderer.invoke('collab:create-group', name, kind),
+  collabCreateInvite: (groupId: string, role: 'coach' | 'analyst' | 'player', days: number) =>
+    ipcRenderer.invoke('collab:create-invite', groupId, role, days),
+  collabJoin: (code: string) => ipcRenderer.invoke('collab:join', code),
+  collabLeave: (groupId: string) => ipcRenderer.invoke('collab:leave', groupId),
+  collabDeleteGroup: (groupId: string, confirm: 'DELETE') => ipcRenderer.invoke('collab:delete-group', groupId, confirm),
+  collabRemoveMember: (groupId: string, userId: string) => ipcRenderer.invoke('collab:remove-member', groupId, userId),
+  collabSetSharing: (groupId: string, s: { shareReviews: boolean; shareStats: boolean; shareTeam: boolean }) =>
+    ipcRenderer.invoke('collab:set-sharing', groupId, s),
+  collabPlayerSessions: (playerId: string) => ipcRenderer.invoke('collab:player-sessions', playerId),
+  collabListComments: (reviewId: string, playerId?: string) => ipcRenderer.invoke('collab:list-comments', reviewId, playerId),
+  collabMyOpenComments: () => ipcRenderer.invoke('collab:my-open-comments'),
+  collabAddComment: (c: unknown) => ipcRenderer.invoke('collab:add-comment', c),
+  collabResolveComment: (id: string, resolved: boolean) => ipcRenderer.invoke('collab:resolve-comment', id, resolved),
+  collabDeleteComment: (id: string) => ipcRenderer.invoke('collab:delete-comment', id),
+  collabListAssignments: (playerId?: string, onlyOpen?: boolean) => ipcRenderer.invoke('collab:list-assignments', playerId, onlyOpen),
+  collabAssignObjective: (a: unknown) => ipcRenderer.invoke('collab:assign-objective', a),
+  collabSetAssignmentStatus: (id: string, status: 'open' | 'done' | 'dismissed') =>
+    ipcRenderer.invoke('collab:set-assignment-status', id, status),
+
   // NexusMind cloud account & backups (tokens never leave the main process)
   cloudStatus: () => ipcRenderer.invoke('cloud:status'),
   cloudSendCode: (email: string) => ipcRenderer.invoke('cloud:send-code', email),

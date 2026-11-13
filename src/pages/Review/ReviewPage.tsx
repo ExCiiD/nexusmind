@@ -36,6 +36,7 @@ import { ShareButton } from '@/components/Share/ShareButton'
 import { useToast } from '@/hooks/useToast'
 import { formatGameTime, formatKDA, formatCSPerMin, cn } from '@/lib/utils'
 import { GameRecordingPanel } from '@/components/Recording/GameRecordingPanel'
+import { CoachFeedbackPanel } from '@/components/Coaching/CoachFeedbackPanel'
 
 export function ReviewPage() {
   const { t } = useTranslation()
@@ -678,6 +679,9 @@ export function ReviewPage() {
           setTimelineNotes((prev) => prev.filter((_, i) => i !== index))
         }
       />
+
+      {/* Coach feedback on this review (hidden when not in a group / no comments) */}
+      {latestGame.review?.id && <CoachFeedbackPanel reviewId={latestGame.review.id} gameId={latestGame.id} />}
 
       {Object.keys(biasWarningsByObjective).length > 0 && (
         <Card className="border-orange-500/40 bg-orange-500/5">

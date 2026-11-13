@@ -55,6 +55,7 @@ import { isCloudConfigured } from './cloud/supabase'
 import { startAutoCloudBackup } from './cloud/cloudBackup'
 import { registerSyncHandlers } from './ipc/sync.ipc'
 import { startSyncService } from './sync/syncService'
+import { registerCollabHandlers } from './ipc/collab.ipc'
 import { seedBuiltInMistakeTags } from './seeds/mistakeTags'
 import { isMediaPathAllowed } from './mediaAccess'
 
@@ -392,6 +393,7 @@ async function bootstrap() {
   registerDataHandlers()
   registerCloudHandlers()
   registerSyncHandlers()
+  registerCollabHandlers()
   if (isCloudConfigured()) {
     startAutoCloudBackup()
     startSyncService()

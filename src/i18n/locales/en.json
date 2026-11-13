@@ -9,7 +9,8 @@
     "team": "Team",
     "settings": "Settings",
     "help": "Help",
-    "mistakes": "Mistakes"
+    "mistakes": "Mistakes",
+    "coaching": "Coaching"
   },
   "settings": {
     "title": "Settings",
@@ -1157,6 +1158,97 @@
       "title": "Synced from another PC",
       "desc": "{{count}} item(s) updated.",
       "refresh": "Refresh"
+    }
+  },
+  "coaching": {
+    "title": "Teams & coaching",
+    "subtitle": "Share your reviews with a coach or your team, get feedback and objectives.",
+    "unavailable": "Sign in to your NexusMind account to use teams and coaching.",
+    "roles": {
+      "owner": "Owner",
+      "coach": "Coach",
+      "analyst": "Analyst",
+      "player": "Player"
+    },
+    "kinds": {
+      "team": "Team",
+      "coaching": "Coaching group"
+    },
+    "groups": {
+      "title": "Your groups",
+      "desc": "Create a team or coaching group and invite people with a code, or join one.",
+      "create": "Create a group",
+      "namePlaceholder": "Group name",
+      "join": "Join with a code",
+      "joinButton": "Join",
+      "joined": "You joined the group",
+      "invite": "Create invite code",
+      "inviteHint": "Valid 7 days, up to 10 people.",
+      "copy": "Copy",
+      "copied": "Code copied",
+      "remove": "Remove from group",
+      "leave": "Leave group",
+      "delete": "Delete group",
+      "deleteConfirm": "Delete \"{{name}}\" for every member? Comments and assigned objectives will be deleted."
+    },
+    "sharing": {
+      "title": "What this group can see",
+      "reviews": "Sessions, games, reviews and mistakes (coaches/analysts)",
+      "stats": "Assessments and stats (coaches/analysts)",
+      "team": "Team data: rosters, champion pools, drafts (whole group)",
+      "hint": "Videos never leave your PC. You can change this at any time."
+    },
+    "players": {
+      "title": "Your players",
+      "desc": "Reviews your players share with you. Comment on them and assign objectives.",
+      "none": "No player in your groups yet. Invite them with a code.",
+      "noData": "Nothing shared yet (the player may not have synced, or disabled sharing).",
+      "games": "{{count}} game(s)",
+      "reviews": "{{count}} review(s)",
+      "win": "Win",
+      "loss": "Loss",
+      "noReview": "Not reviewed yet."
+    },
+    "assign": {
+      "title": "Assign an objective",
+      "pick": "Choose an objective",
+      "due": "Due date",
+      "notePlaceholder": "What should the player focus on?",
+      "send": "Assign",
+      "sent": "Objective assigned",
+      "status": {
+        "open": "open",
+        "done": "done",
+        "dismissed": "dismissed"
+      }
+    },
+    "assigned": {
+      "title": "Objectives from your coach",
+      "by": "by {{name}}",
+      "due": "due {{date}}",
+      "use": "Use for this session",
+      "done": "Done",
+      "dismiss": "Dismiss"
+    },
+    "feedback": {
+      "title": "Coach feedback"
+    },
+    "comments": {
+      "empty": "No comment yet.",
+      "you": "You",
+      "resolve": "Mark as resolved",
+      "placeholder": "Comment on this review…",
+      "replyPlaceholder": "Reply to your coach…",
+      "timeLabel": "Video time",
+      "timeHint": "optional (m:ss)",
+      "send": "Send"
+    },
+    "errors": {
+      "INVITE_INVALID": "This code is invalid or expired.",
+      "FORBIDDEN": "You don't have permission to do this.",
+      "TOO_MANY_GROUPS": "You already own the maximum number of groups (10).",
+      "LOGIN_REQUIRED": "Sign in to your NexusMind account first.",
+      "generic": "Something went wrong. Check your connection and try again."
     }
   }
 }

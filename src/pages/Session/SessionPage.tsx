@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next'
 import { MatchHistoryPicker } from '@/components/Session/MatchHistoryPicker'
 import { cn, formatKDA, formatGameTime } from '@/lib/utils'
 import { SESSION_TEMPLATES, type SessionTemplate } from '@/lib/constants/sessionTemplates'
+import { AssignedObjectivesCard } from '@/components/Coaching/AssignedObjectivesCard'
 
 type CreationStep = 'objectives' | 'kpis'
 type SessionType = 'live' | 'retroactive'
@@ -764,6 +765,19 @@ export function SessionPage() {
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Objectives assigned by a coach (W3) — one click pre-fills the session */}
+      {step === 'objectives' && (
+        <AssignedObjectivesCard
+          onUse={(objectiveIds, note) =>
+            // Same flow as a template; empty KPI list = all KPIs of the objectives.
+            handleApplyTemplate({
+              id: 'coach-assignment', name: '', nameFr: '', description: '', descriptionFr: '',
+              objectiveIds, selectedKpiIds: [], customNote: note ?? '',
+            })
+          }
+        />
       )}
 
       {/* Templates */}

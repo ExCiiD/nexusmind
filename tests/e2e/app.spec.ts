@@ -98,7 +98,7 @@ test.describe('security hardening', () => {
 test.describe('main UI with an onboarded user', () => {
   const MAIN_ROUTES = [
     '/', '/session', '/record', '/review', '/analytics', '/history',
-    '/stats', '/stats/mistakes', '/assessment', '/team', '/settings', '/help',
+    '/stats', '/stats/mistakes', '/assessment', '/team', '/coaching', '/settings', '/help',
   ]
   let ctx: LaunchedApp
   const dir = makeDataDir()
