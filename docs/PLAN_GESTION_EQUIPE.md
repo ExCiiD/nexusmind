@@ -47,9 +47,10 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
 - ✅ Alertes : **C1** joueur inactif (≥ 5 j), **review en retard** (> 3 games non reviewées), **objectif en échec** — simplifié : verdict `no_effect` sur la dernière expérience, pas encore « 2 fois sur le même objectif » (**C2** complet).
 - ⏳ Restant : perf index de l'assistant (colonne séparée), humeur (E6, pas construit), comparaison joueur vs moyenne d'équipe / historique perso, **C3–C6** (review en attente, disponibilités, scrim terminé, rapport pré-scrim).
 
-### E3 — Plans de développement individuels ⭐⭐⭐
-- Par joueur : 2-3 axes du trimestre (fondamentaux), objectifs liés (W3 assignés + B1 expériences), jalons, verdicts automatiques, historique des 1:1.
-- Le joueur voit son plan dans l'app, marque son avancement ; le coach voit l'effet mesuré.
+### E3 — Plans de développement individuels 🟡 (v1 livré : plan + avancement + 1:1 ; verdicts auto restants)
+- ✅ Tables serveur `dev_plans`, `dev_plan_axes`, `dev_plan_checkins`, `dev_plan_progress`, RLS par groupe (staff écrit le plan/axes/1:1 ; **le joueur écrit uniquement sa propre ligne de progression**, via une table séparée pour éviter un garde colonne par colonne).
+- ✅ Web **et** desktop : le staff crée un plan par joueur (titre + 2-3 axes liés à un fondamental, texte d'objectif libre) depuis la fiche joueur (page Coaching) ; le joueur voit son plan et coche « je considère ceci comme fait » + une note visible du coach ; historique des 1:1 (note staff horodatée) partagé en lecture.
+- ⏳ Restant : lier les axes aux objectifs assignés (W3) et aux expériences de coaching (B1) plutôt qu'un texte libre, jalons/périodes (`period_start`/`period_end` déjà en base, non exposés en UI), verdict automatique (ex. progression mesurée sur les KPI liés), rappel/notification à l'approche de la fin de période.
 
 ### E4 — Planning & présence ⭐⭐
 - Calendrier d'équipe : scrims (W4), tournois, review d'équipe, 1:1, soloQ block, repos ; vue semaine.

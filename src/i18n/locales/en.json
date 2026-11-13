@@ -1714,6 +1714,27 @@
       "duplicate": "duplicate"
     }
   },
+  "devPlan": {
+    "title": "Development plan",
+    "desc": "2-3 focus axes for the quarter, with progress and 1:1 notes.",
+    "none": "No development plan yet.",
+    "status": {
+      "active": "Active",
+      "done": "Done",
+      "dropped": "Dropped"
+    },
+    "markedDone": "I consider this done",
+    "notePlaceholder": "How is it going? (visible to your coach)",
+    "saveNote": "Save note",
+    "checkins": "1:1 check-ins",
+    "checkinPlaceholder": "Note from the 1:1…",
+    "created": "Plan created",
+    "titlePlaceholder": "e.g. Q1 2027 focus",
+    "pickFundamental": "Pick a fundamental",
+    "targetPlaceholder": "Target for this axis…",
+    "addAxis": "Add axis",
+    "create": "Create plan"
+  },
   "access": {
     "title": "Invite to Ascend",
     "desc": "Access is reserved to invited people. Each code works once and expires after 14 days.",

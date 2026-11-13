@@ -2,7 +2,9 @@ import { getSupabase, getAccessToken } from './supabase'
 import { getPrisma } from '../database'
 import * as core from '../../../src/lib/collabCore'
 import * as dashboard from '../../../src/lib/staffDashboardCore'
+import * as devPlan from '../../../src/lib/devPlanCore'
 import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
+import type { AxisStatus, NewAxisInput } from '../../../src/lib/devPlan'
 
 /**
  * Desktop entry points for W3 collaboration. The data access itself lives in
@@ -53,3 +55,12 @@ export const assignObjective = async (a: Parameters<typeof core.assignObjective>
 export const setAssignmentStatus = (id: string, status: AssignedObjective['status']) => core.setAssignmentStatus(getSupabase(), id, status)
 
 export const getStaffDashboard = (groupId: string) => dashboard.getStaffDashboard(getSupabase(), groupId)
+
+export const devPlanGetMine = async (groupId: string) => devPlan.getMyDevPlan(getSupabase(), groupId, await me())
+export const devPlanGetForPlayer = (groupId: string, playerId: string) => devPlan.getDevPlanForPlayer(getSupabase(), groupId, playerId)
+export const devPlanCreate = (groupId: string, playerId: string, title: string, axes: NewAxisInput[]) =>
+  devPlan.createDevPlan(getSupabase(), groupId, playerId, title, axes)
+export const devPlanSetAxisStatus = (axisId: string, status: AxisStatus) => devPlan.setAxisStatus(getSupabase(), axisId, status)
+export const devPlanAddCheckin = (planId: string, note: string) => devPlan.addCheckin(getSupabase(), planId, note)
+export const devPlanSetProgress = (axisId: string, input: { playerMarkedDone?: boolean; playerNote?: string | null }) =>
+  devPlan.setProgress(getSupabase(), axisId, input)

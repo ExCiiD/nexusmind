@@ -1,5 +1,6 @@
 /** Renderer-side mirror of electron/main/cloud/collab.ts types. */
 import type { PlayerDashboardRow } from './staffDashboard'
+import type { DevPlanApi } from './devPlan'
 
 export type GroupRole = 'owner' | 'coach' | 'analyst' | 'player'
 export type GroupKind = 'team' | 'coaching'
@@ -84,7 +85,7 @@ export interface PlayerSessionView {
   games: PlayerGameView[]
 }
 
-export interface CollabApi {
+export interface CollabApi extends DevPlanApi {
   collabListGroups: () => Promise<Group[]>
   collabCreateGroup: (name: string, kind: GroupKind) => Promise<string>
   collabCreateInvite: (groupId: string, role: Exclude<GroupRole, 'owner'>, days: number) => Promise<string>

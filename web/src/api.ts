@@ -2,6 +2,7 @@ import * as core from '@/lib/collabCore'
 import * as notifications from '@/lib/notificationsCore'
 import * as team from '@/lib/teamCore'
 import * as dashboardCore from '@/lib/staffDashboardCore'
+import * as devPlanCore from '@/lib/devPlanCore'
 import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
@@ -134,6 +135,16 @@ export const webApi = {
   collabAssignObjective: async (a: Parameters<typeof core.assignObjective>[2]) => core.assignObjective(sb, await currentUserId(), a),
   collabSetAssignmentStatus: (id: string, status: 'open' | 'done' | 'dismissed') => core.setAssignmentStatus(sb, id, status),
   collabStaffDashboard: (groupId: string) => dashboardCore.getStaffDashboard(sb, groupId),
+
+  // ── E3: individual development plans ──
+  devPlanGetMine: async (groupId: string) => devPlanCore.getMyDevPlan(sb, groupId, await currentUserId()),
+  devPlanGetForPlayer: (groupId: string, playerId: string) => devPlanCore.getDevPlanForPlayer(sb, groupId, playerId),
+  devPlanCreate: (groupId: string, playerId: string, title: string, axes: Parameters<typeof devPlanCore.createDevPlan>[4]) =>
+    devPlanCore.createDevPlan(sb, groupId, playerId, title, axes),
+  devPlanSetAxisStatus: (axisId: string, status: 'active' | 'done' | 'dropped') => devPlanCore.setAxisStatus(sb, axisId, status),
+  devPlanAddCheckin: (planId: string, note: string) => devPlanCore.addCheckin(sb, planId, note),
+  devPlanSetProgress: (axisId: string, input: { playerMarkedDone?: boolean; playerNote?: string | null }) =>
+    devPlanCore.setProgress(sb, axisId, input),
 
   // ── W5: notifications ──
   notificationsList: async (onlyUnread?: boolean) =>

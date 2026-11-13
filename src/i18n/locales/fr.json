@@ -1714,6 +1714,27 @@
       "duplicate": "doublon"
     }
   },
+  "devPlan": {
+    "title": "Plan de développement",
+    "desc": "2-3 axes du trimestre, avec avancement et notes de 1:1.",
+    "none": "Aucun plan de développement pour l'instant.",
+    "status": {
+      "active": "Actif",
+      "done": "Terminé",
+      "dropped": "Abandonné"
+    },
+    "markedDone": "Je considère ceci comme terminé",
+    "notePlaceholder": "Comment ça avance ? (visible par ton coach)",
+    "saveNote": "Enregistrer la note",
+    "checkins": "Points de suivi (1:1)",
+    "checkinPlaceholder": "Note du 1:1…",
+    "created": "Plan créé",
+    "titlePlaceholder": "ex. Focus Q1 2027",
+    "pickFundamental": "Choisir un fondamental",
+    "targetPlaceholder": "Objectif pour cet axe…",
+    "addAxis": "Ajouter un axe",
+    "create": "Créer le plan"
+  },
   "access": {
     "title": "Inviter sur Ascend",
     "desc": "L'accès est réservé aux personnes invitées. Chaque code sert une fois et expire après 14 jours.",

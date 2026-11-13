@@ -52,4 +52,19 @@ export function registerCollabHandlers() {
     (_e, id, status) => collab.setAssignmentStatus(id, status))
 
   validatedHandle('collab:staff-dashboard', z.tuple([uuid]), (_e, groupId) => collab.getStaffDashboard(groupId))
+
+  const fundamentalId = z.string().min(1).max(64)
+  const axisInput = z.object({ fundamentalId, targetText: z.string().trim().min(1).max(500), position: z.union([z.literal(1), z.literal(2), z.literal(3)]) })
+  const axisStatus = z.enum(['active', 'done', 'dropped'])
+
+  validatedHandle('devplan:get-mine', z.tuple([uuid]), (_e, groupId) => collab.devPlanGetMine(groupId))
+  validatedHandle('devplan:get-for-player', z.tuple([uuid, uuid]), (_e, groupId, playerId) => collab.devPlanGetForPlayer(groupId, playerId))
+  validatedHandle('devplan:create', z.tuple([uuid, uuid, z.string().trim().min(1).max(80), z.array(axisInput).min(1).max(3)]),
+    (_e, groupId, playerId, title, axes) => collab.devPlanCreate(groupId, playerId, title, axes))
+  validatedHandle('devplan:set-axis-status', z.tuple([uuid, axisStatus]), (_e, axisId, status) => collab.devPlanSetAxisStatus(axisId, status))
+  validatedHandle('devplan:add-checkin', z.tuple([uuid, z.string().trim().min(1).max(4000)]), (_e, planId, note) => collab.devPlanAddCheckin(planId, note))
+  validatedHandle('devplan:set-progress', z.tuple([uuid, z.object({
+    playerMarkedDone: z.boolean().optional(),
+    playerNote: z.string().max(1000).nullable().optional(),
+  })]), (_e, axisId, input) => collab.devPlanSetProgress(axisId, input))
 }

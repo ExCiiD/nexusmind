@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/useToast'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { cn } from '@/lib/utils'
 import { CommentThread } from '@/components/Coaching/CommentThread'
+import { DevPlanCard } from '@/components/Coaching/DevPlanCard'
 import { collabErrorKey, type AssignedObjective, type Group, type PlayerSessionView } from '@/lib/collab'
 
 interface Props {
@@ -122,6 +123,7 @@ function PlayerView({ player, myUserId, nameOf }: { player: PlayerRef; myUserId:
 
   return (
     <div className="space-y-4">
+      <DevPlanCard groupId={player.groupId} playerId={player.userId} mode="staff" />
       <div className="space-y-2 rounded-lg border border-hextech-border-dim p-3">
         <div className="flex items-center gap-2 text-sm font-medium text-hextech-text-bright">
           <Flag className="h-4 w-4 text-hextech-gold" />{t('coaching.assign.title')}

@@ -6,6 +6,7 @@ import { GroupsSection } from './GroupsSection'
 import { PlayersSection } from './PlayersSection'
 import { TeamWorkspaceSection } from './TeamWorkspaceSection'
 import { StaffDashboardSection } from './StaffDashboardSection'
+import { DevPlanCard } from '@/components/Coaching/DevPlanCard'
 
 /** Teams & coaching: groups, invitations, sharing, coach view of players. */
 export function CoachingPage() {
@@ -25,6 +26,9 @@ export function CoachingPage() {
       ) : (
         <>
           <AssignedObjectivesCard />
+          {groups.filter((g) => g.myRole === 'player').map((g) => (
+            <DevPlanCard key={g.id} groupId={g.id} playerId={myUserId} mode="player" />
+          ))}
           <StaffDashboardSection staffGroups={staffGroups} />
           {staffGroups.length > 0 && <PlayersSection staffGroups={staffGroups} myUserId={myUserId} nameOf={nameOf} />}
           <TeamWorkspaceSection staffGroups={staffGroups} />

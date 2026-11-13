@@ -140,6 +140,17 @@ const api = {
   teamPublishToGroup: (groupId: string, teamId: string) => ipcRenderer.invoke('team:publish-to-group', groupId, teamId),
   teamGetShared: (groupId: string) => ipcRenderer.invoke('team:get-shared', groupId),
 
+  // E3: individual development plans
+  devPlanGetMine: (groupId: string) => ipcRenderer.invoke('devplan:get-mine', groupId),
+  devPlanGetForPlayer: (groupId: string, playerId: string) => ipcRenderer.invoke('devplan:get-for-player', groupId, playerId),
+  devPlanCreate: (groupId: string, playerId: string, title: string, axes: unknown) =>
+    ipcRenderer.invoke('devplan:create', groupId, playerId, title, axes),
+  devPlanSetAxisStatus: (axisId: string, status: 'active' | 'done' | 'dropped') =>
+    ipcRenderer.invoke('devplan:set-axis-status', axisId, status),
+  devPlanAddCheckin: (planId: string, note: string) => ipcRenderer.invoke('devplan:add-checkin', planId, note),
+  devPlanSetProgress: (axisId: string, input: { playerMarkedDone?: boolean; playerNote?: string | null }) =>
+    ipcRenderer.invoke('devplan:set-progress', axisId, input),
+
   // Ascend cloud account & backups (tokens never leave the main process)
   cloudStatus: () => ipcRenderer.invoke('cloud:status'),
   cloudSendCode: (email: string, inviteCode?: string) => ipcRenderer.invoke('cloud:send-code', email, inviteCode ?? null),

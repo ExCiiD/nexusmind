@@ -15,5 +15,5 @@
     "composite": true,
     "types": ["electron-vite/node"]
   },
-  "include": ["electron/**/*", "src/lib/constants/fundamentals.ts", "src/lib/championRoles.ts", "src/lib/collab.ts", "src/lib/collabCore.ts", "src/lib/feedback.ts", "src/lib/accessCore.ts", "src/lib/notifications.ts", "src/lib/notificationsCore.ts", "src/lib/team.ts", "src/lib/teamCore.ts", "src/lib/staffDashboard.ts", "src/lib/staffDashboardCore.ts"]
+  "include": ["electron/**/*", "src/lib/constants/fundamentals.ts", "src/lib/championRoles.ts", "src/lib/collab.ts", "src/lib/collabCore.ts", "src/lib/feedback.ts", "src/lib/accessCore.ts", "src/lib/notifications.ts", "src/lib/notificationsCore.ts", "src/lib/team.ts", "src/lib/teamCore.ts", "src/lib/staffDashboard.ts", "src/lib/staffDashboardCore.ts", "src/lib/devPlan.ts", "src/lib/devPlanCore.ts"]
 }
