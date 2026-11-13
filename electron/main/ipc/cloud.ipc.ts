@@ -61,6 +61,21 @@ export function registerCloudHandlers() {
     return toCloudUser(data.session)
   })
 
+  const password = z.string().min(access.PASSWORD_MIN).max(access.PASSWORD_MAX)
+
+  validatedHandle('cloud:sign-in-password', z.tuple([email, password]), async (_e, address, pw) => {
+    const session = await access.signInWithPassword(getSupabase(), address, pw)
+    setTimeout(() => { syncNow().catch(() => {}) }, 500)
+    return toCloudUser(session)
+  })
+
+  validatedHandle('cloud:set-password', z.tuple([password]), async (_e, pw) => {
+    await me()
+    await access.setPassword(getSupabase(), pw)
+    const { data } = await getSupabase().auth.getSession()
+    return toCloudUser(data.session)
+  })
+
   // ── invite-only access (admins) ──
   validatedHandle('access:is-admin', z.tuple([]), async () => access.isAppAdmin(getSupabase(), await me()))
   validatedHandle('access:list-invites', z.tuple([]), async () => { await me(); return access.listAccessInvites(getSupabase()) })
@@ -101,7 +116,7 @@ export function registerCloudHandlers() {
   })
 
   validatedHandle('cloud:sign-out', z.tuple([]), async () => {
-    await getSupabase().auth.signOut()
+    await getSupabase().auth.signOut({ scope: 'local' }) // this device only: other PCs and the web stay signed in
     return { signedOut: true }
   })
 

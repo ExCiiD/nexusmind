@@ -63,12 +63,13 @@ export function getSupabase(): SupabaseClient {
 export interface CloudUser {
   id: string
   email: string | null
+  hasPassword?: boolean
 }
 
 export function toCloudUser(session: Session | null): CloudUser | null {
   const u = session?.user
   if (!u || u.is_anonymous) return null
-  return { id: u.id, email: u.email ?? null }
+  return { id: u.id, email: u.email ?? null, hasPassword: u.user_metadata?.has_password === true }
 }
 
 function broadcastAuth(session: Session | null): void {

@@ -32,8 +32,39 @@ export function authErrorCode(message: string | undefined): string {
   const m = (message ?? '').toLowerCase()
   if (m.includes('signups not allowed') || m.includes('signup is disabled') || m.includes('user not found')) return 'AUTH_NEEDS_INVITE'
   if (m.includes('rate limit') || m.includes('security purposes')) return 'AUTH_RATE_LIMITED'
+  if (m.includes('invalid login credentials')) return 'AUTH_BAD_PASSWORD'
+  if (m.includes('password') && (m.includes('weak') || m.includes('at least') || m.includes('characters'))) return 'AUTH_WEAK_PASSWORD'
   if (m.includes('expired') || m.includes('invalid')) return 'AUTH_INVALID_CODE'
   return message || 'AUTH_FAILED'
+}
+
+/**
+ * Optional password. The first sign-in always goes through the e-mail code
+ * (which proves the address); afterwards the user may set a password so a
+ * new browser / PC, or a sign-out, never needs another e-mail.
+ */
+export const PASSWORD_MIN = 8
+export const PASSWORD_MAX = 72 // bcrypt limit
+
+export function isAcceptablePassword(p: string): boolean {
+  return p.length >= PASSWORD_MIN && p.length <= PASSWORD_MAX && /[A-Za-z]/.test(p) && /\d/.test(p)
+}
+
+export async function signInWithPassword(sb: SupabaseClient, email: string, password: string) {
+  const { data, error } = await sb.auth.signInWithPassword({ email, password })
+  if (error) throw new Error(authErrorCode(error.message))
+  return data.session
+}
+
+/** Sets or changes the signed-in user's password; remembered in user metadata. */
+export async function setPassword(sb: SupabaseClient, password: string): Promise<void> {
+  if (!isAcceptablePassword(password)) throw new Error('AUTH_WEAK_PASSWORD')
+  const { error } = await sb.auth.updateUser({ password, data: { has_password: true } })
+  if (error) throw new Error(authErrorCode(error.message))
+}
+
+export function hasPassword(user: { user_metadata?: Record<string, unknown> } | null | undefined): boolean {
+  return user?.user_metadata?.has_password === true
 }
 
 /** Creates the account from an invite code. Does not sign in. */

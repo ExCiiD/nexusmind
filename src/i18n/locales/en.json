@@ -1141,7 +1141,7 @@
     },
     "login": {
       "title": "Sign in to NexusMind",
-      "subtitle": "Enter your e-mail: we'll send you a sign-in code. No password needed.",
+      "subtitle": "First sign-in: enter your e-mail and we send you a code. After that you stay signed in, and an optional password avoids codes on a new device.",
       "emailLabel": "E-mail",
       "sendCode": "Send me a code",
       "codeSent": "A code was sent to {{email}}. It may take a minute — check your spam folder.",
@@ -1156,11 +1156,22 @@
         "invalidEmail": "Please enter a valid e-mail address.",
         "generic": "Sign-in failed. Check your connection and try again.",
         "needsInvite": "This address has no account yet: NexusMind is invite-only. Enter your invite code.",
-        "inviteInvalid": "This invite code is invalid, expired, already used or reserved for another address."
+        "inviteInvalid": "This invite code is invalid, expired, already used or reserved for another address.",
+        "badPassword": "Wrong e-mail or password. No password yet? Get a code by e-mail.",
+        "weakPassword": "Password too weak: at least 8 characters, with a letter and a digit."
       },
       "inviteLabel": "Invite code",
       "inviteHint": "NexusMind is invite-only. The code is only needed the first time you sign in (a team or coaching invite code works too).",
-      "haveInvite": "I have an invite code"
+      "haveInvite": "I have an invite code",
+      "passwordLabel": "Password",
+      "signInPassword": "Sign in",
+      "usePasswordInstead": "I have a password",
+      "useCodeInstead": "Forgot your password or have none yet? Get a code by e-mail",
+      "setPasswordIntro": "You are signed in! Create a password to sign in on another PC or browser without an e-mail code. On this device you stay signed in automatically.",
+      "newPasswordLabel": "New password",
+      "passwordRules": "At least {{min}} characters, with at least one letter and one digit.",
+      "savePassword": "Save password",
+      "skipPassword": "Later (I will get an e-mail code on a new device)"
     },
     "legal": {
       "privacy": "Privacy policy",
@@ -1188,6 +1199,14 @@
       "restoreTitle": "Restore this backup?",
       "restoreDesc": "Missing sessions, games and reviews are added to this PC. Nothing already here is overwritten or deleted.",
       "restored": "Backup restored"
+    },
+    "password": {
+      "isSet": "Password set: sign in on any new device without e-mail",
+      "notSet": "No password",
+      "create": "Create a password",
+      "change": "Change",
+      "saved": "Password saved",
+      "why": "Optional: with a password, signing in on a new PC or browser no longer needs an e-mail code."
     }
   },
   "sync": {

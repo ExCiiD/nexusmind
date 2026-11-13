@@ -4,6 +4,7 @@ import { Bug, FileText, Lightbulb, LogOut } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { LegalDialog } from '@/components/Cloud/LegalDialog'
+import { PasswordSettings } from '@/components/Cloud/PasswordSettings'
 import { FeedbackDialog } from '@/components/Feedback/FeedbackDialog'
 import type { FeedbackKind } from '@/lib/feedback'
 import { AccessInvitesCard } from '@/components/Cloud/AccessInvitesCard'
@@ -32,6 +33,7 @@ export function AccountPage() {
               {i18n.language.startsWith('fr') ? 'English' : 'Français'}
             </Button>
           </div>
+          <PasswordSettings />
           <p className="text-xs text-hextech-text-dim">{t('web.account.deleteHint')}</p>
         </CardContent>
       </Card>

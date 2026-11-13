@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from '@/hooks/useToast'
 import type { CloudBackup, CloudStatus } from '@/lib/ipc'
 import { LegalDialog } from './LegalDialog'
+import { PasswordSettings } from './PasswordSettings'
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -109,6 +110,8 @@ export function CloudAccountCard() {
             </Button>
           </div>
         </div>
+
+        <PasswordSettings />
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs text-hextech-text-dim">

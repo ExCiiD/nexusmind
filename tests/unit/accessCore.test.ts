@@ -5,7 +5,36 @@ import {
   authErrorCode,
   sendSignInCode,
   redeemInvite,
+  isAcceptablePassword,
+  setPassword,
+  signInWithPassword,
+  hasPassword,
 } from '../../src/lib/accessCore'
+
+describe('password', () => {
+  it('requires 8+ chars with a letter and a digit', () => {
+    expect(isAcceptablePassword('abc12345')).toBe(true)
+    expect(isAcceptablePassword('abcdefgh')).toBe(false)
+    expect(isAcceptablePassword('12345678')).toBe(false)
+    expect(isAcceptablePassword('ab1')).toBe(false)
+    expect(isAcceptablePassword('a1'.repeat(40))).toBe(false) // > 72
+  })
+  it('maps wrong credentials', async () => {
+    const sb = { auth: { signInWithPassword: vi.fn().mockResolvedValue({ data: {}, error: { message: 'Invalid login credentials' } }) } } as never
+    await expect(signInWithPassword(sb, 'a@b.com', 'abc12345')).rejects.toThrow('AUTH_BAD_PASSWORD')
+  })
+  it('stores the password and flags it in metadata', async () => {
+    const updateUser = vi.fn().mockResolvedValue({ error: null })
+    await setPassword({ auth: { updateUser } } as never, 'abc12345')
+    expect(updateUser).toHaveBeenCalledWith({ password: 'abc12345', data: { has_password: true } })
+    await expect(setPassword({ auth: { updateUser } } as never, 'weak')).rejects.toThrow('AUTH_WEAK_PASSWORD')
+  })
+  it('reads the flag', () => {
+    expect(hasPassword({ user_metadata: { has_password: true } })).toBe(true)
+    expect(hasPassword({ user_metadata: {} })).toBe(false)
+    expect(hasPassword(null)).toBe(false)
+  })
+})
 
 describe('normaliseInviteCode', () => {
   it('strips spaces and dashes and upper-cases', () => {

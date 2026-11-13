@@ -21,6 +21,8 @@ export interface GameEvent {
 export interface CloudUser {
   id: string
   email: string | null
+  /** The user set a password (sign-in without an e-mail code). */
+  hasPassword?: boolean
 }
 
 export interface CloudStatus {
@@ -445,6 +447,10 @@ export type NexusMindAPI = CollabApi & FeedbackApi & {
   accessCreateInvite: (opts: { email?: string | null; days?: number; maxUses?: number; note?: string | null }) => Promise<string>
   accessRevokeInvite: (code: string) => Promise<{ revoked: boolean }>
   cloudVerifyCode: (email: string, code: string) => Promise<CloudUser | null>
+  /** Sign in with e-mail + password (only once the user has set one). */
+  cloudSignInPassword: (email: string, password: string) => Promise<CloudUser | null>
+  /** Sets / changes the password of the signed-in user. */
+  cloudSetPassword: (password: string) => Promise<CloudUser | null>
   cloudSignOut: () => Promise<{ signedOut: boolean }>
   cloudBackupNow: () => Promise<CloudBackup>
   cloudListBackups: () => Promise<CloudBackup[]>

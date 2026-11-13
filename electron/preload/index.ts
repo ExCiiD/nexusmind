@@ -132,6 +132,8 @@ const api = {
   // NexusMind cloud account & backups (tokens never leave the main process)
   cloudStatus: () => ipcRenderer.invoke('cloud:status'),
   cloudSendCode: (email: string, inviteCode?: string) => ipcRenderer.invoke('cloud:send-code', email, inviteCode ?? null),
+  cloudSignInPassword: (email: string, password: string) => ipcRenderer.invoke('cloud:sign-in-password', email, password),
+  cloudSetPassword: (password: string) => ipcRenderer.invoke('cloud:set-password', password),
   cloudOpenWeb: () => ipcRenderer.invoke('cloud:open-web'),
   accessIsAdmin: () => ipcRenderer.invoke('access:is-admin'),
   accessListInvites: () => ipcRenderer.invoke('access:list-invites'),
@@ -367,6 +369,12 @@ const api = {
   getAssistantReport: (moment: string, gameId?: string | null) => ipcRenderer.invoke('assistant:get-report', moment, gameId ?? null),
   sendAssistantFeedback: (insightKey: string, ruleId: string, moment: string, vote: 1 | -1 | 0) =>
     ipcRenderer.invoke('assistant:feedback', insightKey, ruleId, moment, vote),
+  // Coaching engine — experiments (closed loop)
+  coachExperiments: () => ipcRenderer.invoke('coach:experiments'),
+  coachStartExperiment: (problemId: string, tagSlug: string | null, ruleId: string | null) =>
+    ipcRenderer.invoke('coach:start-experiment', problemId, tagSlug, ruleId),
+  coachAbandonExperiment: (experimentId: string) => ipcRenderer.invoke('coach:abandon-experiment', experimentId),
+  coachObjectiveCheck: (gameId: string) => ipcRenderer.invoke('coach:objective-check', gameId),
 
   // Clips
   createClip: (opts: { recordingId: string; startMs: number; endMs: number; title?: string; linkedNoteText?: string }) =>

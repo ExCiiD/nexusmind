@@ -1141,7 +1141,7 @@
     },
     "login": {
       "title": "Connexion à NexusMind",
-      "subtitle": "Entrez votre e-mail : nous vous envoyons un code de connexion. Pas de mot de passe.",
+      "subtitle": "Première connexion : entrez votre e-mail, nous vous envoyons un code. Ensuite vous restez connecté, et un mot de passe optionnel évite les codes sur un nouvel appareil.",
       "emailLabel": "E-mail",
       "sendCode": "Recevoir un code",
       "codeSent": "Un code a été envoyé à {{email}}. Il peut mettre une minute à arriver — pensez aux spams.",
@@ -1156,11 +1156,22 @@
         "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
         "generic": "La connexion a échoué. Vérifiez votre connexion internet et réessayez.",
         "needsInvite": "Cette adresse n'a pas encore de compte : NexusMind est sur invitation. Entrez votre code d'invitation.",
-        "inviteInvalid": "Ce code d'invitation est invalide, expiré, déjà utilisé ou réservé à une autre adresse."
+        "inviteInvalid": "Ce code d'invitation est invalide, expiré, déjà utilisé ou réservé à une autre adresse.",
+        "badPassword": "E-mail ou mot de passe incorrect. Pas encore de mot de passe ? Reçois un code par e-mail.",
+        "weakPassword": "Mot de passe trop faible : au moins 8 caractères, avec une lettre et un chiffre."
       },
       "inviteLabel": "Code d'invitation",
       "inviteHint": "NexusMind est sur invitation. Le code n'est demandé qu'à la première connexion (un code d'équipe ou de coaching fonctionne aussi).",
-      "haveInvite": "J'ai un code d'invitation"
+      "haveInvite": "J'ai un code d'invitation",
+      "passwordLabel": "Mot de passe",
+      "signInPassword": "Se connecter",
+      "usePasswordInstead": "J'ai un mot de passe",
+      "useCodeInstead": "Mot de passe oublié ou pas encore créé ? Recevoir un code par e-mail",
+      "setPasswordIntro": "Connecté ! Crée un mot de passe pour te reconnecter sur un autre PC ou navigateur sans recevoir de code par e-mail. Sur cet appareil, tu restes connecté automatiquement.",
+      "newPasswordLabel": "Nouveau mot de passe",
+      "passwordRules": "Au moins {{min}} caractères, avec au moins une lettre et un chiffre.",
+      "savePassword": "Enregistrer le mot de passe",
+      "skipPassword": "Plus tard (je recevrai un code par e-mail sur un nouvel appareil)"
     },
     "legal": {
       "privacy": "Politique de confidentialité",
@@ -1188,6 +1199,14 @@
       "restoreTitle": "Restaurer cette sauvegarde ?",
       "restoreDesc": "Les sessions, games et reviews manquantes sont ajoutées sur ce PC. Rien de ce qui existe déjà n'est écrasé ni supprimé.",
       "restored": "Sauvegarde restaurée"
+    },
+    "password": {
+      "isSet": "Mot de passe défini : connexion sans e-mail sur tout nouvel appareil",
+      "notSet": "Pas de mot de passe",
+      "create": "Créer un mot de passe",
+      "change": "Changer",
+      "saved": "Mot de passe enregistré",
+      "why": "Optionnel : avec un mot de passe, te connecter sur un nouveau PC ou navigateur ne demande plus de code par e-mail."
     }
   },
   "sync": {

@@ -15,9 +15,9 @@ declare const __APP_VERSION__: string
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-function toUser(u: { id: string; email?: string | null; is_anonymous?: boolean } | null | undefined): CloudUser | null {
+function toUser(u: { id: string; email?: string | null; is_anonymous?: boolean; user_metadata?: Record<string, unknown> } | null | undefined): CloudUser | null {
   if (!u || u.is_anonymous) return null
-  return { id: u.id, email: u.email ?? null }
+  return { id: u.id, email: u.email ?? null, hasPassword: access.hasPassword(u) }
 }
 
 
@@ -77,8 +77,19 @@ export const webApi = {
     if (error) throw new Error(access.authErrorCode(error.message))
     return toUser(data.session?.user)
   },
+  async cloudSignInPassword(email: string, password: string) {
+    const address = email.trim().toLowerCase()
+    if (!EMAIL.test(address)) throw new Error('Invalid input for cloud:send-code')
+    const session = await access.signInWithPassword(sb, address, password)
+    return toUser(session?.user)
+  },
+  async cloudSetPassword(password: string) {
+    await access.setPassword(sb, password)
+    const { data } = await sb.auth.getUser()
+    return toUser(data.user)
+  },
   async cloudSignOut() {
-    await sb.auth.signOut()
+    await sb.auth.signOut({ scope: 'local' }) // this browser only
     return { signedOut: true }
   },
   onCloudAuthChanged(cb: (user: CloudUser | null) => void) {
