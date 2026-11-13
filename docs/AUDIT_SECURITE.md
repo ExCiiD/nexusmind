@@ -28,6 +28,19 @@
 
 En corrigeant les dépendances, `electron` a été réinstallé : npm a bloqué son script d'installation (téléchargement du binaire) via la liste blanche `allowScripts`. Les paquets de build légitimes et déjà utilisés (`electron`, `esbuild`, `ffmpeg-static`, `prisma`, `@prisma/client`, `@prisma/engines`) ont été explicitement approuvés et la liste est maintenant persistée dans `package.json` (`allowScripts`), pour que les futures installations ne rouvrent pas la question. Un zip d'Electron en cache a aussi été ré-extrait (`extract-zip`/`yauzl` s'arrêtait après la première entrée dans cet environnement) ; contourné avec l'extraction native Windows.
 
+## 3bis. Secret OAuth YouTube embarqué dans le build (même famille de bug que la clé Riot)
+
+`electron/main/ipc/youtube.ipc.ts` envoie `MAIN_VITE_GOOGLE_CLIENT_SECRET` à Google lors de l'échange de code et du rafraîchissement de token. Le préfixe `MAIN_VITE_` est inliné en clair dans `app.asar` à chaque build (c'est documenté comme tel dans `electron/env.d.ts` — « Secrets never use the MAIN_VITE_ prefix » — mais ce secret-ci y déroge). N'importe qui peut l'extraire d'un installeur publié.
+
+**Pas corrigé maintenant**, volontairement : la vraie solution (faire transiter l'échange de token par une Edge Function côté serveur, comme pour le proxy Riot) change un flux OAuth tiers déjà utilisé, impossible à valider de bout en bout sans un vrai compte Google en session interactive — un correctif à l'aveugle risquerait de casser le lien YouTube pour de vrai plutôt que de simplement rester vulnérable.
+
+**Plan recommandé** (à faire en présence de l'utilisateur, pas en autonome) :
+1. Ajouter PKCE (`code_verifier`/`code_challenge`, méthode `S256`) à la demande d'autorisation.
+2. Créer une Edge Function `youtube-oauth-exchange` (service role) : reçoit `{ code, codeVerifier, redirectUri }` ou `{ refreshToken }`, appelle l'endpoint token de Google avec le vrai secret (stocké en secret Supabase, jamais côté client), authentifie l'appelant via son JWT Ascend.
+3. Le desktop n'appelle plus Google directement pour l'échange — seulement pour l'autorisation (pas de secret nécessaire côté navigateur).
+4. Retirer `MAIN_VITE_GOOGLE_CLIENT_SECRET` de `.env`/`electron/env.d.ts` une fois le flux migré, et vérifier si le client OAuth Google doit passer en type « Application de bureau » (sans secret attendu par Google pour ce type).
+5. Tester avec un vrai compte Google avant de considérer que c'est fait.
+
 ## 4. Points déjà couverts ailleurs
 
 Auth, invitations, RLS des tables applicatives, durcissement Electron (sandbox, CSP, `nxm://`) : voir la checklist complète S1–S8 dans `ROADMAP.md`. Ce document ne couvre que ce qui a été vérifié dans cette passe (S2 partiel, S4 lu pour `react-router`) ; S4 (en-têtes), S5 (XSS), S7 (Electron) et le test d'intrusion manuel restent à faire avant publication.

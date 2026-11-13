@@ -99,10 +99,12 @@ Lecture et actions légères pour qui n'a pas son PC (`web/`, `npm run web:dev` 
 - ✅ Web : session persistante (localStorage, rafraîchie automatiquement) → pas de code à chaque ouverture ; bouton desktop **« Ouvrir l'app web »** (Edge Function `web-handoff` : jeton magic-link à usage unique dans le fragment d'URL, jamais envoyé par e-mail).
 - ⏳ Désactiver « Allow new users to sign up » dans Supabase Auth ; test bout en bout avec un compte invité.
 
-### W5 — Notifications (≈ 1–2 sem.)
-- Canaux : in-app (Realtime), Web Push (PWA), Discord (webhooks déjà gérés), e-mail en option.
-- Événements : review commentée par le coach, nouvel objectif assigné, scrim planifié / rappel J-1 et H-1, analyse de scrim disponible, joueur inactif depuis X jours (côté coach), rapport hebdomadaire prêt.
-- Préférences de notification par utilisateur et par type.
+### W5 — Notifications 🟡 (in-app livré, canaux supplémentaires restants)
+- ✅ Table `notifications` (RLS : chacun lit/marque-lu les siennes ; insertion uniquement par déclencheurs `SECURITY DEFINER`, jamais par le client — empêche l'usurpation). Cloche dans la sidebar (desktop) et le layout web (desktop + mobile), badge non-lus, panneau de liste, marquer tout comme lu.
+- ✅ Événements couverts : review commentée par le staff, nouvel objectif assigné, scrim créé/modifié (tous les membres du groupe), rappels de scrim **J-1 et H-1** (`pg_cron`, toutes les 15 min), joueur inactif depuis 5 jours (règle C1, alerte au staff, dédupliquée 7 j, respecte le partage du joueur).
+- ✅ Testé en SQL direct (transactions annulées) : chaque déclencheur, le rappel de scrim (fenêtres J-1/H-1), la déduplication de l'alerte d'inactivité ; un vrai bug trouvé et corrigé en testant (`auth.uid()` NULL excluait tout le monde au lieu de personne) et les fonctions verrouillées contre l'appel RPC direct (4 trouvées par `get_advisors`, corrigées).
+- ⏳ Canaux restants : push web (PWA, clés VAPID à générer), Discord (le webhook est aujourd'hui local au joueur, pas partagé côté serveur — architecture à revoir), e-mail. Notification « rapport hebdomadaire prêt » : en attente de la fonctionnalité de rapport elle-même (pas encore construite). Préférences par type : pas encore (tout est actif par défaut).
+- ⏳ Realtime (push instantané) : volontairement pas fait cette passe — poll 30 s + sur focus, cohérent avec le reste de l'app (`SyncIndicator`). Amélioration propre à faire séparément.
 
 ---
 

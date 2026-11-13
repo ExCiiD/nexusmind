@@ -1771,5 +1771,40 @@
       "progressing": "En progrès",
       "no_effect": "Sans effet"
     }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Tout marquer comme lu",
+    "empty": "Aucune notification pour l'instant.",
+    "types": {
+      "review_comment": {
+        "title": "Nouveau commentaire",
+        "body": "{{authorName}} a commenté une de tes reviews."
+      },
+      "objective_assigned": {
+        "title": "Objectif assigné",
+        "body": "{{assignedByName}} t'a assigné un nouvel objectif."
+      },
+      "scrim_created": {
+        "title": "Scrim planifié",
+        "body": "\"{{title}}\" — {{scheduledAt}}"
+      },
+      "scrim_updated": {
+        "title": "Scrim modifié",
+        "body": "\"{{title}}\" a changé — {{scheduledAt}}"
+      },
+      "scrim_reminder_24h": {
+        "title": "Scrim demain",
+        "body": "\"{{title}}\" dans ~24h — {{scheduledAt}}"
+      },
+      "scrim_reminder_1h": {
+        "title": "Scrim dans l'heure",
+        "body": "\"{{title}}\" dans ~1h — {{scheduledAt}}"
+      },
+      "player_inactive": {
+        "title": "Joueur inactif",
+        "body": "{{playerName}} n'a pas synchronisé de partie depuis {{days}} jours."
+      }
+    }
   }
 }

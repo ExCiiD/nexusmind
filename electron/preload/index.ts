@@ -129,6 +129,12 @@ const api = {
   collabSetAssignmentStatus: (id: string, status: 'open' | 'done' | 'dismissed') =>
     ipcRenderer.invoke('collab:set-assignment-status', id, status),
 
+  // W5: notifications
+  notificationsList: (onlyUnread?: boolean) => ipcRenderer.invoke('notifications:list', onlyUnread),
+  notificationsUnreadCount: () => ipcRenderer.invoke('notifications:unread-count'),
+  notificationsMarkRead: (id: string) => ipcRenderer.invoke('notifications:mark-read', id),
+  notificationsMarkAllRead: () => ipcRenderer.invoke('notifications:mark-all-read'),
+
   // Ascend cloud account & backups (tokens never leave the main process)
   cloudStatus: () => ipcRenderer.invoke('cloud:status'),
   cloudSendCode: (email: string, inviteCode?: string) => ipcRenderer.invoke('cloud:send-code', email, inviteCode ?? null),

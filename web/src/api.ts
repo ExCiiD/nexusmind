@@ -1,4 +1,5 @@
 import * as core from '@/lib/collabCore'
+import * as notifications from '@/lib/notificationsCore'
 import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
@@ -130,6 +131,19 @@ export const webApi = {
     core.listAssignments(sb, playerId ?? (await currentUserId()), onlyOpen ?? true),
   collabAssignObjective: async (a: Parameters<typeof core.assignObjective>[2]) => core.assignObjective(sb, await currentUserId(), a),
   collabSetAssignmentStatus: (id: string, status: 'open' | 'done' | 'dismissed') => core.setAssignmentStatus(sb, id, status),
+
+  // ── W5: notifications ──
+  notificationsList: async (onlyUnread?: boolean) =>
+    notifications.listNotifications(sb, await currentUserId(), { onlyUnread }),
+  notificationsUnreadCount: async () => notifications.countUnreadNotifications(sb, await currentUserId()),
+  async notificationsMarkRead(id: string) {
+    await notifications.markNotificationRead(sb, id)
+    return { ok: true }
+  },
+  async notificationsMarkAllRead() {
+    await notifications.markAllNotificationsRead(sb, await currentUserId())
+    return { ok: true }
+  },
 
   // ── bug reports / feature requests ──
   feedbackSend: async (report: FeedbackInput) =>

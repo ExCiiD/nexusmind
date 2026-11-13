@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next'
 import i18n from '../../i18n/config'
 import { SyncIndicator } from '@/components/Cloud/SyncIndicator'
 import { FeedbackButton } from '@/components/Feedback/FeedbackDialog'
+import { NotificationBell } from '@/components/Notifications/NotificationBell'
 
 export function Sidebar() {
   const { t } = useTranslation()
@@ -144,12 +145,13 @@ export function Sidebar() {
     <aside className="flex h-screen w-64 flex-col border-r border-hextech-border-dim bg-hextech-dark">
       <div className="app-drag-region flex h-14 items-center gap-3 border-b border-hextech-border-dim px-5">
         <div className="h-8 w-8 rounded bg-gradient-to-br from-hextech-cyan to-hextech-teal flex items-center justify-center">
-          <span className="text-sm font-bold text-hextech-black">N</span>
+          <span className="text-sm font-bold text-hextech-black">A</span>
         </div>
         <div className="flex-1 min-w-0">
           <span className="font-display text-lg font-bold text-hextech-gold-bright block leading-tight">Ascend</span>
           {appVersion && <span className="text-[10px] text-hextech-text-dim/60 leading-none">v{appVersion}</span>}
         </div>
+        <NotificationBell />
         <button
           onClick={handleCheckUpdates}
           disabled={checkingUpdate}
