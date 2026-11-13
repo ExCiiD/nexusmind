@@ -1451,5 +1451,80 @@
         "v3": "{{wins}} victoires de suite, {{name}}. Restez concentré sur votre objectif."
       }
     }
+  },
+  "web": {
+    "nav": {
+      "home": "Accueil",
+      "reviews": "Reviews",
+      "scrims": "Scrims",
+      "coaching": "Coaching",
+      "account": "Compte"
+    },
+    "desktopHint": "L'enregistrement, les reviews et les données Riot restent dans l'app desktop.",
+    "home": {
+      "title": "Bon retour",
+      "feedback": "Nouveaux retours de votre coach",
+      "noFeedback": "Aucun nouveau commentaire sur vos reviews.",
+      "nextScrims": "Prochains scrims",
+      "noScrims": "Aucun scrim prévu."
+    },
+    "reviews": {
+      "title": "Vos reviews",
+      "subtitle": "Synchronisées depuis votre PC. Modifiez-les dans l'app desktop ; répondez à votre coach ici.",
+      "empty": "Rien de synchronisé pour l'instant. Ouvrez NexusMind sur votre PC en étant connecté."
+    },
+    "account": {
+      "deleteHint": "Pour supprimer votre compte et vos données cloud : Réglages → Compte NexusMind dans l'app desktop.",
+      "desktop": "NexusMind pour Windows : enregistrement, détection des parties, reviews.",
+      "download": "Télécharger"
+    },
+    "scrims": {
+      "title": "Scrims",
+      "subtitle": "Planifiez les scrims, confirmez votre disponibilité, préparez et débriefez en équipe.",
+      "noGroup": "Rejoignez ou créez une équipe dans Coaching pour planifier des scrims.",
+      "new": "Planifier un scrim",
+      "list": "Scrims",
+      "showPast": "Afficher passés et annulés",
+      "hidePast": "À venir uniquement",
+      "none": "Aucun scrim à venir.",
+      "confirmed": "{{count}} confirmé(s)",
+      "titlePlaceholder": "Titre (ex. Bloc de scrims n°3)",
+      "opponentPlaceholder": "Adversaire",
+      "when": "Date et heure",
+      "duration": "Durée (minutes)",
+      "status": {
+        "planned": "prévu",
+        "done": "terminé",
+        "cancelled": "annulé"
+      },
+      "availability": "Disponibilités",
+      "avail": {
+        "yes": "Disponible",
+        "maybe": "Peut-être",
+        "no": "Indisponible"
+      },
+      "availComment": "Commentaire (optionnel, ex. retard 15 min)",
+      "prep": "Préparation",
+      "addItem": "Ajouter un point à la checklist",
+      "prepPlaceholder": "Plan de jeu, conditions de victoire, points de focus…",
+      "drafts": "Drafts préparées",
+      "noDraft": "Aucune draft liée pour l'instant.",
+      "linkDraft": "Lier une draft de l'équipe",
+      "unlink": "Retirer",
+      "blue": "Bleu",
+      "red": "Rouge",
+      "bans": "bans",
+      "review": "Analyse post-scrim",
+      "reviewPlaceholder": "Ce qui a marché, ce qu'il faut corriger, qui review quelle game…",
+      "noReview": "Pas encore d'analyse.",
+      "markDone": "Marquer terminé",
+      "cancel": "Annuler le scrim",
+      "deleteConfirm": "Supprimer ce scrim et les disponibilités de chacun ?",
+      "defaults": {
+        "draft": "Revoir le plan de draft",
+        "comms": "Test vocal 15 min avant",
+        "goals": "Fixer 1–2 objectifs d'équipe pour le bloc"
+      }
+    }
   }
 }

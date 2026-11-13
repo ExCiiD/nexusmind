@@ -13,3 +13,8 @@ test-results/
 resources/ffmpeg-bin/
 playwright-report/
 .wrangler/
+web/dist/
+
+.dev.vars*
+!.dev.vars.example
+!.env.example

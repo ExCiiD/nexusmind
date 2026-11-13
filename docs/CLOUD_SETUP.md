@@ -63,3 +63,19 @@ MAIN_VITE_RIOT_PROXY_URL=https://nexusmind-riot-proxy.<ton-compte>.workers.dev
 | `MAIN_VITE_RIOT_PROXY_URL` | `.env` | Oui |
 | `RIOT_DEV_API_KEY` | `.env` | **Non** — lue à l'exécution en dev uniquement |
 | `RIOT_API_KEY` | secret Cloudflare | **Non** |
+
+## 4. Site web (W4)
+
+En ligne : https://nexusmind-web.nexusmind-riot-proxy.workers.dev (Cloudflare Workers static assets).
+
+Redéployer après une modification :
+
+```bash
+npm run web:build
+```
+
+```bash
+cd web && npx wrangler deploy
+```
+
+Lance toujours `wrangler` depuis `web/` (ou `cloudflare/riot-proxy/`) : à la racine, sans configuration, wrangler 4 tente de « configurer » le projet tout seul (modifie `package.json`, ajoute des dépendances et un `vite.config.ts`).

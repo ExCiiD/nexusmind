@@ -12,7 +12,7 @@ import globals from 'globals'
 
 export default tseslint.config(
   {
-    ignores: ['out/**', 'release/**', 'dist/**', 'prisma-client/**', '**/node_modules/**', 'test-results/**', 'playwright-report/**', 'resources/**', '**/.wrangler/**'],
+    ignores: ['out/**', 'release/**', 'dist/**', 'web/dist/**', 'prisma-client/**', '**/node_modules/**', 'test-results/**', 'playwright-report/**', 'resources/**', '**/.wrangler/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -42,5 +42,15 @@ export default tseslint.config(
   {
     files: ['scripts/**/*.mjs', '*.config.{js,ts,mjs}'],
     languageOptions: { globals: globals.node },
+  },
+  // Must come last so these override the TypeScript presets above.
+  {
+    files: ['web/public/sw.js'],
+    languageOptions: { globals: globals.serviceworker },
+  },
+  {
+    files: ['**/*.cjs'],
+    languageOptions: { sourceType: 'commonjs', globals: globals.node },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
 )

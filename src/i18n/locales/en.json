@@ -1451,5 +1451,80 @@
         "v3": "{{wins}} straight wins, {{name}}. Stay focused on your objective."
       }
     }
+  },
+  "web": {
+    "nav": {
+      "home": "Home",
+      "reviews": "Reviews",
+      "scrims": "Scrims",
+      "coaching": "Coaching",
+      "account": "Account"
+    },
+    "desktopHint": "Recording, reviews and Riot data stay in the desktop app.",
+    "home": {
+      "title": "Welcome back",
+      "feedback": "New feedback from your coach",
+      "noFeedback": "No new comment on your reviews.",
+      "nextScrims": "Next scrims",
+      "noScrims": "No scrim planned."
+    },
+    "reviews": {
+      "title": "Your reviews",
+      "subtitle": "Synced from your PC. Edit them in the desktop app; reply to your coach here.",
+      "empty": "Nothing synced yet. Open NexusMind on your PC while signed in."
+    },
+    "account": {
+      "deleteHint": "To delete your account and cloud data, use Settings → NexusMind account in the desktop app.",
+      "desktop": "NexusMind for Windows: recording, live game detection, reviews.",
+      "download": "Download"
+    },
+    "scrims": {
+      "title": "Scrims",
+      "subtitle": "Plan scrims, confirm your availability, prepare and debrief as a team.",
+      "noGroup": "Join or create a team on the Coaching page to plan scrims.",
+      "new": "Plan a scrim",
+      "list": "Scrims",
+      "showPast": "Show past & cancelled",
+      "hidePast": "Upcoming only",
+      "none": "No upcoming scrim.",
+      "confirmed": "{{count}} confirmed",
+      "titlePlaceholder": "Title (e.g. Scrim block #3)",
+      "opponentPlaceholder": "Opponent",
+      "when": "Date and time",
+      "duration": "Duration (minutes)",
+      "status": {
+        "planned": "planned",
+        "done": "done",
+        "cancelled": "cancelled"
+      },
+      "availability": "Availability",
+      "avail": {
+        "yes": "Available",
+        "maybe": "Maybe",
+        "no": "Unavailable"
+      },
+      "availComment": "Comment (optional, e.g. late 15 min)",
+      "prep": "Preparation",
+      "addItem": "Add a checklist item",
+      "prepPlaceholder": "Game plan, win conditions, focus points…",
+      "drafts": "Draft plans",
+      "noDraft": "No draft linked yet.",
+      "linkDraft": "Link a team draft",
+      "unlink": "Unlink",
+      "blue": "Blue",
+      "red": "Red",
+      "bans": "bans",
+      "review": "Post-scrim analysis",
+      "reviewPlaceholder": "What worked, what to fix, who reviews which game…",
+      "noReview": "No analysis yet.",
+      "markDone": "Mark as done",
+      "cancel": "Cancel scrim",
+      "deleteConfirm": "Delete this scrim and everyone's availability?",
+      "defaults": {
+        "draft": "Review the draft plan",
+        "comms": "Voice check 15 min before",
+        "goals": "Set 1–2 team goals for the block"
+      }
+    }
   }
 }

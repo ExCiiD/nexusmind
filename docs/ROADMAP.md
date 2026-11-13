@@ -81,13 +81,15 @@ Recommandation d'objectif par règles, résumé de review déterministe, pattern
 - ✅ Anciennes tables du coaching pré-W1 (`profiles`, `coach_students`, `coach_comments`, `synced_*`) supprimées. Toutes les migrations serveur sont versionnées dans `supabase/migrations/`.
 - ⏳ À faire : modification à plusieurs des données d'équipe (aujourd'hui lecture seule pour les autres), notifications (W5).
 
-### W4 — Application web (≈ 3–4 sem.)
-Lecture et actions légères pour qui n'a pas son PC :
-- Lire les reviews (les siennes, celles du coach), commenter, répondre.
-- Tableau de bord progression / analytics (lecture).
-- Préparation de scrim : planning (calendrier + disponibilités), draft plans (`DraftPrep`), rapport de scouting adverse, checklist pré-scrim.
-- Analyse post-scrim : résumé des games custom (`CustomGame`), points à revoir assignés à chaque joueur.
-- PWA installable sur mobile.
+### W4 — Application web 🟡 (en ligne : https://nexusmind-web.nexusmind-riot-proxy.workers.dev — écrans connectés à tester)
+Lecture et actions légères pour qui n'a pas son PC (`web/`, `npm run web:dev` / `web:build`) :
+- ✅ Même code que le desktop : les écrans partagés (connexion, Coaching, fils de commentaires, objectifs assignés) tournent tels quels ; `window.api` est fourni par un adaptateur Supabase (`web/src/api.ts`). La logique collab est extraite dans `src/lib/collabCore.ts`, utilisée par les deux.
+- ✅ Accueil : retours du coach non lus, objectifs assignés, prochains scrims.
+- ✅ Mes reviews : sessions/games/reviews synchronisées (lecture), réponse au coach, lien direct depuis l'accueil.
+- ✅ Scrims (`scrims`, `scrim_availability`, RLS testée 9 cas) : planification par le staff, disponibilités de chaque membre, checklist de préparation, drafts d'équipe liées (`DraftPrep` partagées), analyse post-scrim, statut.
+- ✅ PWA installable (manifest, icône, service worker « coquille hors ligne »), en-têtes de sécurité (CSP, HSTS, X-Frame-Options), build dans la CI.
+- ✅ Déployé sur Cloudflare (Workers static assets, successeur de Pages) : `cd web && npx wrangler deploy` après `npm run web:build` (`web/wrangler.toml`).
+- ⏳ Tableau de bord progression / analytics (lecture) ; résumé des games custom (`CustomGame`) dans l'analyse post-scrim ; découpage du bundle (254 Ko gzip).
 - Pas d'enregistrement, pas de détection de partie : ça reste desktop.
 
 ### W5 — Notifications (≈ 1–2 sem.)

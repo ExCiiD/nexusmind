@@ -39,7 +39,7 @@ const walk = (dir) =>
 
 // Only plain literal keys: dynamic keys (`t(\`kpi.${id}\`)`) can't be checked statically.
 const USAGE = /(?:\bt|i18n\.t)\(\s*['"]([\w.-]+)['"]|i18nKey=["']([\w.-]+)["']/g
-for (const file of walk(join(root, 'src'))) {
+for (const file of [...walk(join(root, 'src')), ...walk(join(root, 'web', 'src'))]) {
   const src = readFileSync(file, 'utf-8')
   for (const m of src.matchAll(USAGE)) {
     const key = m[1] ?? m[2]

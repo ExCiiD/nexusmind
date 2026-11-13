@@ -54,6 +54,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Build web app
+        run: npm run web:build
+
       - name: E2E tests (Electron)
         run: npx playwright test
 
