@@ -1,6 +1,7 @@
 import type { AccessInvite } from './accessCore'
 import type { CalendarApi } from './calendar'
 import type { CollabApi } from './collab'
+import type { VodReviewApi } from './vodReview'
 import type { FeedbackApi } from './feedback'
 import type { NotificationsApi } from './notifications'
 import type { TeamShareApi } from './team'
@@ -312,7 +313,7 @@ export interface SavedAccount {
   _count: { sessions: number }
 }
 
-export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareApi & CalendarApi & {
+export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareApi & CalendarApi & VodReviewApi & {
   connectRiot: (gameName: string, tagLine: string, region: string, displayName?: string) => Promise<any>
   disconnectRiot: () => Promise<void>
   reactivateAccount: (userId: string) => Promise<any>

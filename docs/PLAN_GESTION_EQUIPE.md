@@ -57,10 +57,10 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
 - ✅ Web **et** desktop : vue semaine sur la page Coaching (tous les membres), formulaire d'ajout d'événement (staff), éditeur de disponibilité récurrente + exceptions (chaque membre, pour soi), détection des créneaux où tous les titulaires liés à un compte sont dispo (staff), export `.ics` ponctuel (tous les événements des 60 prochains jours).
 - ⏳ Restant : fusionner les scrims (W4) dans cette même vue calendrier, présence réelle par rattachement automatique des customs jouées au créneau (T5 — dépend d'un auto-import des customs pas encore construit), abonnement iCal **live** (URL stable signée côté Edge Function, le v1 n'offre qu'un téléchargement ponctuel), export Google/Apple Calendar en un clic (webhook/handshake), vue mensuelle.
 
-### E5 — Review collaborative de VOD ⭐⭐⭐
-- Session de review d'équipe sur un scrim : la VOD (lien YouTube/clip partagé), commentaires horodatés de chacun, tags d'erreur d'équipe (rotation, setup objectif, comm), actions à retenir.
-- Assignation : « Joueur X : revoir 14:30–15:10 » → apparaît dans son app, statut fait/non fait.
-- Résumé auto du scrim : customs importées (T5), stats par joueur, erreurs auto détectées.
+### E5 — Review collaborative de VOD 🟡 (v1 livré : session + commentaires + actions + assignations ; résumé auto restant)
+- ✅ Tables serveur `vod_review_sessions` (liée à un groupe et, optionnellement, à un scrim W4), `vod_review_comments` (horodatés, avec tag d'erreur d'équipe rotation/setup objectif/communication/autre), `vod_review_action_items` (à cocher), `vod_review_assignments` (joueur + créneau à revoir + statut), RLS par groupe (staff gère les sessions et assignations ; tout membre commente/coche une action ; chaque joueur marque sa propre assignation comme faite).
+- ✅ Web **et** desktop : nouvelle section « Review VOD » sur la page Coaching — le staff crée une session (titre + lien VOD), tout le monde ajoute des commentaires horodatés avec tag d'équipe, actions à retenir cochables, le staff assigne un créneau à un joueur qui voit son « à faire » et le marque fait depuis son app.
+- ⏳ Restant : lier explicitement une session à un scrim existant depuis l'UI (le champ `scrim_id` existe en base), résumé auto du scrim (customs importées + stats par joueur + erreurs auto détectées — dépend de T5, pas construit), lecteur vidéo synchronisé (aujourd'hui un simple lien externe), notification à l'assignation (dépend de E8).
 
 ### E6 — Bien-être & charge ⭐⭐
 - Check-in rapide avant session (énergie, humeur, sommeil, 1-5) — optionnel, visible du staff seulement si le joueur l'accepte.

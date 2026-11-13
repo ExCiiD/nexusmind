@@ -1760,6 +1760,37 @@
     "unavailable": "unavailable",
     "markUnavailable": "Mark that day as unavailable"
   },
+  "vodReview": {
+    "title": "VOD review",
+    "desc": "Review a scrim VOD together: timestamped comments, team mistakes, action items, and watch assignments.",
+    "none": "No review session yet.",
+    "sessionTitlePlaceholder": "e.g. Scrim vs Rival — game 2",
+    "vodUrlPlaceholder": "VOD link (YouTube, clip…)",
+    "newSession": "New session",
+    "comments": "Timestamped comments",
+    "seconds": "sec",
+    "tag": {
+      "none": "No tag",
+      "rotation": "Rotation",
+      "objective_setup": "Objective setup",
+      "communication": "Communication",
+      "other": "Other"
+    },
+    "commentPlaceholder": "Comment…",
+    "actionItems": "Actions to remember",
+    "actionPlaceholder": "New action item…",
+    "assignments": "Watch assignments",
+    "pickPlayer": "Pick a player",
+    "startSec": "start sec",
+    "endSec": "end sec",
+    "assign": "Assign",
+    "markPending": "Mark pending",
+    "markDone": "Mark done",
+    "status": {
+      "pending": "pending",
+      "done": "done"
+    }
+  },
   "access": {
     "title": "Invite to Ascend",
     "desc": "Access is reserved to invited people. Each code works once and expires after 14 days.",

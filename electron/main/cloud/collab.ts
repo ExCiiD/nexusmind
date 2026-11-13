@@ -4,9 +4,11 @@ import * as core from '../../../src/lib/collabCore'
 import * as dashboard from '../../../src/lib/staffDashboardCore'
 import * as devPlan from '../../../src/lib/devPlanCore'
 import * as calendar from '../../../src/lib/calendarCore'
+import * as vodReview from '../../../src/lib/vodReviewCore'
 import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
 import type { AxisStatus, NewAxisInput } from '../../../src/lib/devPlan'
 import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput } from '../../../src/lib/calendar'
+import type { AssignmentStatus, NewVodAssignmentInput, NewVodCommentInput, NewVodSessionInput } from '../../../src/lib/vodReview'
 
 /**
  * Desktop entry points for W3 collaboration. The data access itself lives in
@@ -79,3 +81,15 @@ export const availabilityListExceptions = (groupId: string, fromDate: string, to
 export const availabilitySetException = (groupId: string, input: NewAvailabilityExceptionInput) =>
   calendar.setAvailabilityException(getSupabase(), groupId, input)
 export const availabilityDeleteException = (id: string) => calendar.deleteAvailabilityException(getSupabase(), id)
+
+export const vodReviewListSessions = (groupId: string) => vodReview.listSessions(getSupabase(), groupId)
+export const vodReviewCreateSession = (groupId: string, input: NewVodSessionInput) => vodReview.createSession(getSupabase(), groupId, input)
+export const vodReviewDeleteSession = (id: string) => vodReview.deleteSession(getSupabase(), id)
+export const vodReviewAddComment = (sessionId: string, input: NewVodCommentInput) => vodReview.addComment(getSupabase(), sessionId, input)
+export const vodReviewDeleteComment = (id: string) => vodReview.deleteComment(getSupabase(), id)
+export const vodReviewAddActionItem = (sessionId: string, text: string) => vodReview.addActionItem(getSupabase(), sessionId, text)
+export const vodReviewSetActionItemDone = (id: string, done: boolean) => vodReview.setActionItemDone(getSupabase(), id, done)
+export const vodReviewDeleteActionItem = (id: string) => vodReview.deleteActionItem(getSupabase(), id)
+export const vodReviewSetAssignment = (sessionId: string, input: NewVodAssignmentInput) => vodReview.setAssignment(getSupabase(), sessionId, input)
+export const vodReviewSetAssignmentStatus = (id: string, status: AssignmentStatus) => vodReview.setAssignmentStatus(getSupabase(), id, status)
+export const vodReviewDeleteAssignment = (id: string) => vodReview.deleteAssignment(getSupabase(), id)

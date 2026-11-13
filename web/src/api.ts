@@ -4,6 +4,7 @@ import * as team from '@/lib/teamCore'
 import * as dashboardCore from '@/lib/staffDashboardCore'
 import * as devPlanCore from '@/lib/devPlanCore'
 import * as calendarCore from '@/lib/calendarCore'
+import * as vodReviewCore from '@/lib/vodReviewCore'
 import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
@@ -158,6 +159,19 @@ export const webApi = {
   availabilityListExceptions: (groupId: string, fromDate: string, toDate: string) => calendarCore.listAvailabilityExceptions(sb, groupId, fromDate, toDate),
   availabilitySetException: (groupId: string, input: Parameters<typeof calendarCore.setAvailabilityException>[2]) => calendarCore.setAvailabilityException(sb, groupId, input),
   availabilityDeleteException: (id: string) => calendarCore.deleteAvailabilityException(sb, id),
+
+  // ── E5: collaborative VOD review ──
+  vodReviewListSessions: (groupId: string) => vodReviewCore.listSessions(sb, groupId),
+  vodReviewCreateSession: (groupId: string, input: Parameters<typeof vodReviewCore.createSession>[2]) => vodReviewCore.createSession(sb, groupId, input),
+  vodReviewDeleteSession: (id: string) => vodReviewCore.deleteSession(sb, id),
+  vodReviewAddComment: (sessionId: string, input: Parameters<typeof vodReviewCore.addComment>[2]) => vodReviewCore.addComment(sb, sessionId, input),
+  vodReviewDeleteComment: (id: string) => vodReviewCore.deleteComment(sb, id),
+  vodReviewAddActionItem: (sessionId: string, text: string) => vodReviewCore.addActionItem(sb, sessionId, text),
+  vodReviewSetActionItemDone: (id: string, done: boolean) => vodReviewCore.setActionItemDone(sb, id, done),
+  vodReviewDeleteActionItem: (id: string) => vodReviewCore.deleteActionItem(sb, id),
+  vodReviewSetAssignment: (sessionId: string, input: Parameters<typeof vodReviewCore.setAssignment>[2]) => vodReviewCore.setAssignment(sb, sessionId, input),
+  vodReviewSetAssignmentStatus: (id: string, status: 'pending' | 'done') => vodReviewCore.setAssignmentStatus(sb, id, status),
+  vodReviewDeleteAssignment: (id: string) => vodReviewCore.deleteAssignment(sb, id),
 
   // ── W5: notifications ──
   notificationsList: async (onlyUnread?: boolean) =>

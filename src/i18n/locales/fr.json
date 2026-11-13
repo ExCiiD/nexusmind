@@ -1760,6 +1760,37 @@
     "unavailable": "indisponible",
     "markUnavailable": "Marquer ce jour comme indisponible"
   },
+  "vodReview": {
+    "title": "Review VOD",
+    "desc": "Review un VOD de scrim en équipe : commentaires horodatés, erreurs d'équipe, actions à retenir et créneaux de visionnage assignés.",
+    "none": "Aucune session de review pour l'instant.",
+    "sessionTitlePlaceholder": "ex. Scrim vs Rival — game 2",
+    "vodUrlPlaceholder": "Lien du VOD (YouTube, clip…)",
+    "newSession": "Nouvelle session",
+    "comments": "Commentaires horodatés",
+    "seconds": "sec",
+    "tag": {
+      "none": "Aucun tag",
+      "rotation": "Rotation",
+      "objective_setup": "Setup objectif",
+      "communication": "Communication",
+      "other": "Autre"
+    },
+    "commentPlaceholder": "Commentaire…",
+    "actionItems": "Actions à retenir",
+    "actionPlaceholder": "Nouvelle action…",
+    "assignments": "Créneaux de visionnage",
+    "pickPlayer": "Choisir un joueur",
+    "startSec": "début (sec)",
+    "endSec": "fin (sec)",
+    "assign": "Assigner",
+    "markPending": "Marquer non fait",
+    "markDone": "Marquer fait",
+    "status": {
+      "pending": "en attente",
+      "done": "fait"
+    }
+  },
   "access": {
     "title": "Inviter sur Ascend",
     "desc": "L'accès est réservé aux personnes invitées. Chaque code sert une fois et expire après 14 jours.",

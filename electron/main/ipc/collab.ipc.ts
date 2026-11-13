@@ -91,4 +91,23 @@ export function registerCollabHandlers() {
   validatedHandle('availability:list-exceptions', z.tuple([uuid, dateOnly, dateOnly]), (_e, groupId, from, to) => collab.availabilityListExceptions(groupId, from, to))
   validatedHandle('availability:set-exception', z.tuple([uuid, exceptionInput]), (_e, groupId, input) => collab.availabilitySetException(groupId, input))
   validatedHandle('availability:delete-exception', z.tuple([uuid]), (_e, id) => collab.availabilityDeleteException(id))
+
+  const vodUrl = z.string().trim().url().max(500)
+  const teamTag = z.enum(['rotation', 'objective_setup', 'communication', 'other'])
+  const sessionInput = z.object({ scrimId: uuid.nullable().optional(), title: z.string().trim().min(1).max(120), vodUrl })
+  const commentInput = z.object({ videoTimeSec: z.number().int().min(0).max(36000).nullable().optional(), teamTag: teamTag.nullable().optional(), body: z.string().trim().min(1).max(2000) })
+  const assignmentInput = z.object({ playerId: uuid, rangeStartSec: z.number().int().min(0), rangeEndSec: z.number().int().min(0) })
+  const assignmentStatus = z.enum(['pending', 'done'])
+
+  validatedHandle('vodreview:list-sessions', z.tuple([uuid]), (_e, groupId) => collab.vodReviewListSessions(groupId))
+  validatedHandle('vodreview:create-session', z.tuple([uuid, sessionInput]), (_e, groupId, input) => collab.vodReviewCreateSession(groupId, input))
+  validatedHandle('vodreview:delete-session', z.tuple([uuid]), (_e, id) => collab.vodReviewDeleteSession(id))
+  validatedHandle('vodreview:add-comment', z.tuple([uuid, commentInput]), (_e, sessionId, input) => collab.vodReviewAddComment(sessionId, input))
+  validatedHandle('vodreview:delete-comment', z.tuple([uuid]), (_e, id) => collab.vodReviewDeleteComment(id))
+  validatedHandle('vodreview:add-action-item', z.tuple([uuid, z.string().trim().min(1).max(500)]), (_e, sessionId, text) => collab.vodReviewAddActionItem(sessionId, text))
+  validatedHandle('vodreview:set-action-item-done', z.tuple([uuid, z.boolean()]), (_e, id, done) => collab.vodReviewSetActionItemDone(id, done))
+  validatedHandle('vodreview:delete-action-item', z.tuple([uuid]), (_e, id) => collab.vodReviewDeleteActionItem(id))
+  validatedHandle('vodreview:set-assignment', z.tuple([uuid, assignmentInput]), (_e, sessionId, input) => collab.vodReviewSetAssignment(sessionId, input))
+  validatedHandle('vodreview:set-assignment-status', z.tuple([uuid, assignmentStatus]), (_e, id, status) => collab.vodReviewSetAssignmentStatus(id, status))
+  validatedHandle('vodreview:delete-assignment', z.tuple([uuid]), (_e, id) => collab.vodReviewDeleteAssignment(id))
 }

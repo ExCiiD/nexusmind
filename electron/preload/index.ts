@@ -163,6 +163,19 @@ const api = {
   availabilitySetException: (groupId: string, input: unknown) => ipcRenderer.invoke('availability:set-exception', groupId, input),
   availabilityDeleteException: (id: string) => ipcRenderer.invoke('availability:delete-exception', id),
 
+  // E5: collaborative VOD review
+  vodReviewListSessions: (groupId: string) => ipcRenderer.invoke('vodreview:list-sessions', groupId),
+  vodReviewCreateSession: (groupId: string, input: unknown) => ipcRenderer.invoke('vodreview:create-session', groupId, input),
+  vodReviewDeleteSession: (id: string) => ipcRenderer.invoke('vodreview:delete-session', id),
+  vodReviewAddComment: (sessionId: string, input: unknown) => ipcRenderer.invoke('vodreview:add-comment', sessionId, input),
+  vodReviewDeleteComment: (id: string) => ipcRenderer.invoke('vodreview:delete-comment', id),
+  vodReviewAddActionItem: (sessionId: string, text: string) => ipcRenderer.invoke('vodreview:add-action-item', sessionId, text),
+  vodReviewSetActionItemDone: (id: string, done: boolean) => ipcRenderer.invoke('vodreview:set-action-item-done', id, done),
+  vodReviewDeleteActionItem: (id: string) => ipcRenderer.invoke('vodreview:delete-action-item', id),
+  vodReviewSetAssignment: (sessionId: string, input: unknown) => ipcRenderer.invoke('vodreview:set-assignment', sessionId, input),
+  vodReviewSetAssignmentStatus: (id: string, status: 'pending' | 'done') => ipcRenderer.invoke('vodreview:set-assignment-status', id, status),
+  vodReviewDeleteAssignment: (id: string) => ipcRenderer.invoke('vodreview:delete-assignment', id),
+
   // Ascend cloud account & backups (tokens never leave the main process)
   cloudStatus: () => ipcRenderer.invoke('cloud:status'),
   cloudSendCode: (email: string, inviteCode?: string) => ipcRenderer.invoke('cloud:send-code', email, inviteCode ?? null),
