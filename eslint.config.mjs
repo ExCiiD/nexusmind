@@ -40,7 +40,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['scripts/**/*.mjs', '*.config.{js,ts,mjs}'],
+    files: ['**/scripts/**/*.mjs', '*.config.{js,ts,mjs}'],
     languageOptions: { globals: globals.node },
   },
   // Must come last so these override the TypeScript presets above.

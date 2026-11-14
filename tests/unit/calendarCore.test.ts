@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
   listEvents, createEvent, deleteEvent, listAvailabilityRules, setAvailabilityRule,
-  listAvailabilityExceptions, setAvailabilityException, findCommonAvailability,
+  listAvailabilityExceptions, setAvailabilityException, findCommonAvailability, isUserAvailable,
 } from '../../src/lib/calendarCore'
 import type { AvailabilityException, AvailabilityRule } from '../../src/lib/calendar'
 
@@ -99,5 +99,32 @@ describe('findCommonAvailability', () => {
   it('a user with no rule for that weekday contributes no availability', () => {
     const out = findCommonAvailability(rules, [], ['u1', 'u3'], '2026-11-16')
     expect(out).toEqual([])
+  })
+})
+
+describe('isUserAvailable (E11: Discord bot sub-finding)', () => {
+  // 2026-11-16 is a Monday (getUTCDay() === 1).
+  const rules: AvailabilityRule[] = [{ id: 'r1', groupId: 'g1', userId: 'u1', weekday: 1, startTime: '18:00', endTime: '22:00' }]
+
+  it('is true when a recurring rule covers that weekday and there is no exception', () => {
+    expect(isUserAvailable(rules, [], 'u1', '2026-11-16')).toBe(true)
+  })
+
+  it('is false when there is no rule for that weekday and no exception', () => {
+    expect(isUserAvailable(rules, [], 'u1', '2026-11-17')).toBe(false) // Tuesday, no rule
+  })
+
+  it('an unavailable exception overrides a matching rule', () => {
+    const exceptions: AvailabilityException[] = [{ id: 'x1', groupId: 'g1', userId: 'u1', date: '2026-11-16', available: false, startTime: null, endTime: null, note: null }]
+    expect(isUserAvailable(rules, exceptions, 'u1', '2026-11-16')).toBe(false)
+  })
+
+  it('an available exception overrides the lack of a rule', () => {
+    const exceptions: AvailabilityException[] = [{ id: 'x1', groupId: 'g1', userId: 'u1', date: '2026-11-17', available: true, startTime: null, endTime: null, note: null }]
+    expect(isUserAvailable(rules, exceptions, 'u1', '2026-11-17')).toBe(true)
+  })
+
+  it('is false for a user with neither a rule nor an exception', () => {
+    expect(isUserAvailable([], [], 'u2', '2026-11-16')).toBe(false)
   })
 })

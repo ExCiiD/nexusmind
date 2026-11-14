@@ -1636,6 +1636,20 @@
       "title": "Team",
       "noGroup": "No team group yet — create or join one from the Coaching page's Groups tab."
     },
+    "discord": {
+      "title": "Discord bot",
+      "myAccount": "My Discord account",
+      "linked": "Linked — the bot recognizes you in any server it's added to.",
+      "unlink": "Unlink",
+      "linkMeHint": "Generate a code, then run \"/link-me <code>\" in your team's Discord server.",
+      "generateCode": "Generate code",
+      "expiresIn": "expires in {{n}} min",
+      "teamServer": "Link a team to a Discord server",
+      "linkTeamHint": "Generate a code for a group, then run \"/link-team <code>\" in the target Discord server (needs Manage Server there).",
+      "serverLinked": "Server linked",
+      "noChannel": "run /set-channel there",
+      "failed": "Discord action failed"
+    },
     "home": {
       "title": "Welcome back",
       "feedback": "New feedback from your coach",
@@ -1667,6 +1681,12 @@
       "opponentPlaceholder": "Opponent",
       "when": "Date and time",
       "duration": "Duration (minutes)",
+      "boFormat": "Bo format",
+      "boFormatNone": "No Bo format",
+      "linkScoutedTeam": "Link scouted team",
+      "linkScoutedTeamNone": "No scouted team linked",
+      "matchInfo": "Match info",
+      "scoutedVs": "vs {{name}} (scouted)",
       "status": {
         "planned": "planned",
         "done": "done",

@@ -18,6 +18,11 @@ export interface Scrim {
   draftIds: string[]
   reviewNotes: string | null
   createdBy: string
+  /** 'bo1' | 'bo3' | 'bo5', or null. Shown by the Discord bot (E11). */
+  boFormat: string | null
+  /** Links to the scouted opponent (team_scouting.id) so the Discord bot
+   *  can derive real OP.GG links from that team's roster. */
+  opponentScoutingId: string | null
 }
 
 export interface AvailabilityRow { scrimId: string; userId: string; status: Availability; comment: string | null }
@@ -38,6 +43,7 @@ const map = (r: any): Scrim => ({
   id: r.id, groupId: r.group_id, title: r.title, opponent: r.opponent, scheduledAt: r.scheduled_at,
   durationMin: r.duration_min, status: r.status, prepNotes: r.prep_notes, checklist: r.checklist ?? [],
   draftIds: r.draft_ids ?? [], reviewNotes: r.review_notes, createdBy: r.created_by,
+  boFormat: r.bo_format ?? null, opponentScoutingId: r.opponent_scouting_id ?? null,
 })
 
 function check(error: { message: string; code?: string } | null): void {
@@ -55,12 +61,13 @@ export async function listScrims(groupIds: string[]): Promise<Scrim[]> {
 
 export async function createScrim(s: {
   groupId: string; title: string; opponent?: string | null; scheduledAt: string; durationMin: number
-  prepNotes?: string | null; checklist?: ChecklistItem[]
+  prepNotes?: string | null; checklist?: ChecklistItem[]; boFormat?: string | null; opponentScoutingId?: string | null
 }): Promise<Scrim> {
   const { data: u } = await sb.auth.getUser()
   const { data, error } = await sb.from('scrims').insert({
     group_id: s.groupId, title: s.title.trim(), opponent: s.opponent?.trim() || null, scheduled_at: s.scheduledAt,
     duration_min: s.durationMin, prep_notes: s.prepNotes || null, checklist: s.checklist ?? [], created_by: u.user?.id,
+    bo_format: s.boFormat || null, opponent_scouting_id: s.opponentScoutingId || null,
   }).select('*').single()
   check(error)
   return map(data)
@@ -69,6 +76,7 @@ export async function createScrim(s: {
 export async function updateScrim(id: string, patch: Partial<{
   title: string; opponent: string | null; scheduledAt: string; durationMin: number; status: ScrimStatus
   prepNotes: string | null; checklist: ChecklistItem[]; draftIds: string[]; reviewNotes: string | null
+  boFormat: string | null; opponentScoutingId: string | null
 }>): Promise<void> {
   const row: Record<string, unknown> = {}
   if (patch.title !== undefined) row.title = patch.title
@@ -80,6 +88,8 @@ export async function updateScrim(id: string, patch: Partial<{
   if (patch.checklist !== undefined) row.checklist = patch.checklist
   if (patch.draftIds !== undefined) row.draft_ids = patch.draftIds
   if (patch.reviewNotes !== undefined) row.review_notes = patch.reviewNotes
+  if (patch.boFormat !== undefined) row.bo_format = patch.boFormat
+  if (patch.opponentScoutingId !== undefined) row.opponent_scouting_id = patch.opponentScoutingId
   const { error } = await sb.from('scrims').update(row).eq('id', id)
   check(error)
 }

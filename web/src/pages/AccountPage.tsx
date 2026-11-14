@@ -8,6 +8,7 @@ import { PasswordSettings } from '@/components/Cloud/PasswordSettings'
 import { FeedbackDialog } from '@/components/Feedback/FeedbackDialog'
 import type { FeedbackKind } from '@/lib/feedback'
 import { AccessInvitesCard } from '@/components/Cloud/AccessInvitesCard'
+import { DiscordLinkCard } from '../components/DiscordLinkCard'
 import { DownloadButton } from '../DownloadButton'
 
 export function AccountPage() {
@@ -38,6 +39,7 @@ export function AccountPage() {
         </CardContent>
       </Card>
       <AccessInvitesCard webUrl={window.location.origin} />
+      <DiscordLinkCard />
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6 text-sm">
           <span>{t('web.account.desktop')}</span>

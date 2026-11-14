@@ -1,0 +1,25 @@
+# Ascend team Discord bot (E11). Deploy (after `npm install` in this
+# folder, and once the secrets below are set):
+#   npx wrangler deploy
+name = "nexusmind-discord-bot"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+[vars]
+SUPABASE_URL = "https://zwubyzrfpelhxjjezvrh.supabase.co"
+
+# Every 15 minutes: posts upcoming-event/scrim reminders and newly-found
+# common-availability windows to each linked guild's notify channel.
+[triggers]
+crons = ["*/15 * * * *"]
+
+# Secrets — set once with `npx wrangler secret put <NAME>`, values come
+# from the Discord Developer Portal (see README.md) and Supabase's project
+# settings (Settings -> API -> service_role key, NOT the anon key):
+#   DISCORD_PUBLIC_KEY       (not secret, but kept here for simplicity — the
+#                              Application's "Public Key", used to verify
+#                              every interaction actually came from Discord)
+#   DISCORD_BOT_TOKEN        the bot's token (also used by register-commands)
+#   DISCORD_APPLICATION_ID   the Application's ID
+#   SUPABASE_SERVICE_ROLE_KEY bypasses RLS — this Worker enforces access
+#                              itself (see discordBotCore.ts's file comment)

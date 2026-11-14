@@ -1636,6 +1636,20 @@
       "title": "Équipe",
       "noGroup": "Pas encore de groupe d'équipe — créez-en un ou rejoignez-en un depuis l'onglet Groupes de la page Coaching."
     },
+    "discord": {
+      "title": "Bot Discord",
+      "myAccount": "Mon compte Discord",
+      "linked": "Lié — le bot vous reconnaît sur tout serveur où il est ajouté.",
+      "unlink": "Délier",
+      "linkMeHint": "Générez un code, puis lancez « /link-me <code> » sur le serveur Discord de votre équipe.",
+      "generateCode": "Générer un code",
+      "expiresIn": "expire dans {{n}} min",
+      "teamServer": "Lier une équipe à un serveur Discord",
+      "linkTeamHint": "Générez un code pour un groupe, puis lancez « /link-team <code> » sur le serveur Discord cible (nécessite Gérer le serveur là-bas).",
+      "serverLinked": "Serveur lié",
+      "noChannel": "lancez /set-channel là-bas",
+      "failed": "Échec de l'action Discord"
+    },
     "home": {
       "title": "Bon retour",
       "feedback": "Nouveaux retours de votre coach",
@@ -1667,6 +1681,12 @@
       "opponentPlaceholder": "Adversaire",
       "when": "Date et heure",
       "duration": "Durée (minutes)",
+      "boFormat": "Format Bo",
+      "boFormatNone": "Pas de format Bo",
+      "linkScoutedTeam": "Lier une équipe scoutée",
+      "linkScoutedTeamNone": "Aucune équipe scoutée liée",
+      "matchInfo": "Infos du match",
+      "scoutedVs": "vs {{name}} (scoutée)",
       "status": {
         "planned": "prévu",
         "done": "terminé",

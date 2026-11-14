@@ -6,6 +6,12 @@ export interface ScrimSummary {
   opponent: string | null
   scheduledAt: string
   durationMin: number
+  /** 'bo1' | 'bo3' | 'bo5', or null if not set. */
+  boFormat: string | null
+  /** The scouted opponent team (team_scouting.id) this scrim is against,
+   *  if linked — lets the Discord bot (E11) derive real OP.GG links from
+   *  that team's roster instead of the free-text `opponent` name. */
+  opponentScoutingId: string | null
 }
 
 /**

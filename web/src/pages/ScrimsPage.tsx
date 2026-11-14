@@ -127,7 +127,10 @@ function NewScrimForm({ groups, onCreated }: { groups: Group[]; onCreated: (s: S
   const [opponent, setOpponent] = useState('')
   const [when, setWhen] = useState('')
   const [duration, setDuration] = useState('120')
+  const [boFormat, setBoFormat] = useState('')
+  const [opponentScoutingId, setOpponentScoutingId] = useState('')
   const [busy, setBusy] = useState(false)
+  const scoutingOptions = useScoutedOpponents(groupId)
 
   const submit = async () => {
     if (!groupId || !title.trim() || !when) return
@@ -137,8 +140,9 @@ function NewScrimForm({ groups, onCreated }: { groups: Group[]; onCreated: (s: S
         groupId, title, opponent, scheduledAt: new Date(when).toISOString(),
         durationMin: Math.min(600, Math.max(15, Number(duration) || 120)),
         checklist: DEFAULT_CHECKLIST.map((k) => ({ label: t(k), done: false })),
+        boFormat: boFormat || null, opponentScoutingId: opponentScoutingId || null,
       })
-      setTitle(''); setOpponent(''); setWhen(''); setOpen(false)
+      setTitle(''); setOpponent(''); setWhen(''); setBoFormat(''); setOpponentScoutingId(''); setOpen(false)
       onCreated(s)
     } catch {
       toast({ title: t('coaching.errors.generic'), variant: 'destructive' })
@@ -162,6 +166,24 @@ function NewScrimForm({ groups, onCreated }: { groups: Group[]; onCreated: (s: S
           <Input value={opponent} onChange={(e) => setOpponent(e.target.value)} maxLength={120} placeholder={t('web.scrims.opponentPlaceholder')} />
           <Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} aria-label={t('web.scrims.when')} />
           <Input type="number" min={15} max={600} step={15} value={duration} onChange={(e) => setDuration(e.target.value)} aria-label={t('web.scrims.duration')} />
+          <Select value={boFormat || 'none'} onValueChange={(v) => setBoFormat(v === 'none' ? '' : v)}>
+            <SelectTrigger><SelectValue placeholder={t('web.scrims.boFormat')} /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{t('web.scrims.boFormatNone')}</SelectItem>
+              <SelectItem value="bo1">Bo1</SelectItem>
+              <SelectItem value="bo3">Bo3</SelectItem>
+              <SelectItem value="bo5">Bo5</SelectItem>
+            </SelectContent>
+          </Select>
+          {scoutingOptions.length > 0 && (
+            <Select value={opponentScoutingId || 'none'} onValueChange={(v) => setOpponentScoutingId(v === 'none' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder={t('web.scrims.linkScoutedTeam')} /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t('web.scrims.linkScoutedTeamNone')}</SelectItem>
+                {scoutingOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
         </div>
         <div className="flex gap-2">
           <Button onClick={submit} disabled={busy || !title.trim() || !when}>
@@ -172,6 +194,22 @@ function NewScrimForm({ groups, onCreated }: { groups: Group[]; onCreated: (s: S
       </CardContent>
     </Card>
   )
+}
+
+/** The group's scouted opponent teams (team_scouting, shared since E14),
+ *  for the "link this scrim to a scouted team" picker — lets the Discord
+ *  bot (E11) derive real OP.GG links from that team's roster. */
+function useScoutedOpponents(groupId: string): Array<{ id: string; name: string }> {
+  const [options, setOptions] = useState<Array<{ id: string; name: string }>>([])
+  useEffect(() => {
+    if (!groupId) { setOptions([]); return }
+    let cancelled = false
+    window.api.teamGetShared(groupId)
+      .then((shared) => { if (!cancelled) setOptions(shared.scouting.map((s) => ({ id: s.id, name: s.name }))) })
+      .catch(() => { if (!cancelled) setOptions([]) })
+    return () => { cancelled = true }
+  }, [groupId])
+  return options
 }
 
 function ScrimDetail({ scrim, group, myUserId, availability, nameOf, onChanged, onDeleted, onError }: {
@@ -185,6 +223,8 @@ function ScrimDetail({ scrim, group, myUserId, availability, nameOf, onChanged, 
   const [newItem, setNewItem] = useState('')
   const [comment, setComment] = useState(availability.find((a) => a.userId === myUserId)?.comment ?? '')
   const [drafts, setDrafts] = useState<TeamDraft[]>([])
+  const scoutingOptions = useScoutedOpponents(group.id)
+  const linkedScoutedTeam = scoutingOptions.find((o) => o.id === scrim.opponentScoutingId)
 
   useEffect(() => {
     listTeamDrafts(group.members.map((m) => m.userId)).then(setDrafts).catch(() => setDrafts([]))
@@ -204,6 +244,43 @@ function ScrimDetail({ scrim, group, myUserId, availability, nameOf, onChanged, 
         <CardTitle className="text-base">{scrim.title}{scrim.opponent && <span className="text-hextech-text-dim"> · {scrim.opponent}</span>}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5 text-sm">
+        {/* Match info — Bo format + scouted-opponent link, shown by the
+            Discord bot (E11) in /scrims. Staff-editable, read-only for
+            players. */}
+        {(staff || scrim.boFormat || linkedScoutedTeam) && (
+          <section className="space-y-2">
+            <h3 className="font-medium text-hextech-text-bright">{t('web.scrims.matchInfo')}</h3>
+            {staff ? (
+              <div className="flex flex-wrap gap-2">
+                <Select value={scrim.boFormat || 'none'} onValueChange={(v) => run(() => updateScrim(scrim.id, { boFormat: v === 'none' ? null : v }))}>
+                  <SelectTrigger className="w-28"><SelectValue placeholder={t('web.scrims.boFormat')} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('web.scrims.boFormatNone')}</SelectItem>
+                    <SelectItem value="bo1">Bo1</SelectItem>
+                    <SelectItem value="bo3">Bo3</SelectItem>
+                    <SelectItem value="bo5">Bo5</SelectItem>
+                  </SelectContent>
+                </Select>
+                {scoutingOptions.length > 0 && (
+                  <Select value={scrim.opponentScoutingId || 'none'} onValueChange={(v) => run(() => updateScrim(scrim.id, { opponentScoutingId: v === 'none' ? null : v }))}>
+                    <SelectTrigger className="w-56"><SelectValue placeholder={t('web.scrims.linkScoutedTeam')} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t('web.scrims.linkScoutedTeamNone')}</SelectItem>
+                      {scoutingOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-hextech-text-dim">
+                {scrim.boFormat ? scrim.boFormat.toUpperCase() : null}
+                {scrim.boFormat && linkedScoutedTeam ? ' · ' : null}
+                {linkedScoutedTeam ? t('web.scrims.scoutedVs', { name: linkedScoutedTeam.name }) : null}
+              </p>
+            )}
+          </section>
+        )}
+
         {/* Availability — every member */}
         <section className="space-y-2">
           <h3 className="font-medium text-hextech-text-bright">{t('web.scrims.availability')}</h3>

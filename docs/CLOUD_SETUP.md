@@ -62,7 +62,9 @@ MAIN_VITE_RIOT_PROXY_URL=https://nexusmind-riot-proxy.<ton-compte>.workers.dev
 | `MAIN_VITE_SUPABASE_ANON_KEY` | `.env` | Oui — clé publique, protégée par RLS |
 | `MAIN_VITE_RIOT_PROXY_URL` | `.env` | Oui |
 | `RIOT_DEV_API_KEY` | `.env` | **Non** — lue à l'exécution en dev uniquement |
-| `RIOT_API_KEY` | secret Cloudflare | **Non** |
+| `RIOT_API_KEY` | secret Cloudflare (riot-proxy) | **Non** |
+| `DISCORD_PUBLIC_KEY` / `DISCORD_BOT_TOKEN` / `DISCORD_APPLICATION_ID` | secrets Cloudflare (discord-bot) | **Non** |
+| `SUPABASE_SERVICE_ROLE_KEY` | secret Cloudflare (discord-bot) | **Non — contourne RLS** |
 
 ## 4. Site web (W4)
 
@@ -79,3 +81,51 @@ cd web && npx wrangler deploy
 ```
 
 Lance toujours `wrangler` depuis `web/` (ou `cloudflare/riot-proxy/`) : à la racine, sans configuration, wrangler 4 tente de « configurer » le projet tout seul (modifie `package.json`, ajoute des dépendances et un `vite.config.ts`).
+
+## 5. Bot Discord d'équipe (E11)
+
+Le code (Worker Cloudflare + handlers de commandes) est **fait et poussé**, mais contrairement au proxy Riot ou au site web, **je ne peux pas créer l'Application Discord à ta place** — ça se passe uniquement sur ton propre compte Discord. Voici les étapes, dans l'ordre.
+
+### 5.1 Créer l'Application Discord
+
+1. https://discord.com/developers/applications → **New Application**, donne-lui un nom (ex. « Ascend »).
+2. Onglet **General Information** : note l'**Application ID** et la **Public Key**.
+3. Onglet **Bot** → **Reset Token** (ou **Add Bot** si pas encore fait) : note le **Token** (affiché une seule fois — si tu le perds, il faudra en regénérer un).
+4. Toujours sur l'onglet **Bot** : décoche **Public Bot** si tu veux garder le contrôle de qui l'ajoute (pas obligatoire).
+
+### 5.2 Déployer le Worker
+
+Depuis `cloudflare/discord-bot/` :
+
+```bash
+npm install
+npx wrangler secret put DISCORD_PUBLIC_KEY
+npx wrangler secret put DISCORD_BOT_TOKEN
+npx wrangler secret put DISCORD_APPLICATION_ID
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+npx wrangler deploy
+```
+
+- Les 3 premiers secrets viennent de l'étape 5.1.
+- `SUPABASE_SERVICE_ROLE_KEY` vient de Supabase → **Project Settings → API → service_role key** (⚠️ pas la clé `anon` — celle-ci contourne toutes les règles RLS, elle ne doit **jamais** atterrir dans l'app desktop/web, seulement ici).
+- `wrangler deploy` affiche l'URL du Worker (`https://nexusmind-discord-bot.<ton-compte>.workers.dev`).
+
+### 5.3 Brancher Discord sur le Worker
+
+1. Developer Portal → ton Application → **General Information** → **Interactions Endpoint URL** : colle l'URL du Worker de l'étape précédente, puis **Save**. Discord lui envoie un ping de vérification immédiatement (le Worker y répond tout seul) — s'il refuse de sauvegarder, revérifie les 4 secrets.
+2. Enregistre les commandes slash (depuis `cloudflare/discord-bot/`) :
+   ```bash
+   DISCORD_BOT_TOKEN=... DISCORD_APPLICATION_ID=... node scripts/register-commands.mjs
+   ```
+   (Les commandes **globales** mettent jusqu'à 1h à apparaître la première fois — plus rapide pour une modification d'une commande existante.)
+3. Invite le bot sur le serveur Discord de l'équipe : Developer Portal → **OAuth2 → URL Generator**, coche **bot** et **applications.commands**, permission **Send Messages** (et **Use Slash Commands**), ouvre le lien généré et choisis le serveur.
+
+### 5.4 Lier une équipe + les joueurs (dans l'app)
+
+Tout se passe depuis la page **Compte** du site web (section « Bot Discord ») :
+
+- Le staff clique **Generate code** sous le nom du groupe → lance `/link-team <code>` sur le serveur Discord cible (code valable 15 min).
+- N'importe quel membre clique **Generate code** sous « My Discord account » → lance `/link-me <code>` sur le même serveur (code valable 10 min) — nécessaire pour `/availability`, pas pour `/calendar`/`/scrims`/`/common-availability` qui sont publiques.
+- Un staff lance `/set-channel` **dans le salon** où les rappels doivent apparaître (sinon le bot répond aux commandes mais n'envoie jamais d'alerte spontanée).
+
+À partir de là : `/calendar`, `/scrims`, `/common-availability`, `/availability away` / `/availability back` fonctionnent, et un cron (toutes les 15 min) poste les rappels d'événements/scrims à venir (24h avant) et les nouveaux créneaux de disponibilité commune.

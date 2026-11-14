@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "types": ["@cloudflare/workers-types"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts", "../../src/lib/discord.ts", "../../src/lib/discordBotCore.ts", "../../src/lib/calendar.ts", "../../src/lib/calendarCore.ts", "../../src/lib/scrims.ts", "../../src/lib/scrimsCore.ts", "../../src/lib/opgg.ts", "../../src/lib/championRoles.ts"]
+}

@@ -132,6 +132,21 @@ function intersectAll(perUser: Interval[][]): Interval[] {
 }
 
 /**
+ * Is `userId` free (per their rules/exceptions) on this single `date`
+ * ("YYYY-MM-DD")? Used by the Discord bot (E11) to suggest a same-role
+ * replacement when someone marks themselves away on a scrim day — unlike
+ * `findCommonAvailability`, this checks ONE user individually rather than
+ * intersecting several, so it can answer "who (if anyone) is free" rather
+ * than "when are all of these people free together".
+ */
+export function isUserAvailable(rules: AvailabilityRule[], exceptions: AvailabilityException[], userId: string, date: string): boolean {
+  const exception = exceptions.find((e) => e.userId === userId && e.date === date)
+  if (exception) return exception.available
+  const weekday = new Date(`${date}T00:00:00Z`).getUTCDay()
+  return rules.some((r) => r.userId === userId && r.weekday === weekday)
+}
+
+/**
  * For each of the 7 days starting at `weekStartDate` ("YYYY-MM-DD"), the
  * windows where every one of `starterUserIds` is free: a per-date exception
  * overrides that user's recurring rules for the day; with no exception, the
