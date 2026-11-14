@@ -1628,9 +1628,14 @@
       "reviews": "Reviews",
       "scrims": "Scrims",
       "coaching": "Coaching",
+      "team": "Team",
       "account": "Account"
     },
     "desktopHint": "Recording, reviews and Riot data stay in the desktop app.",
+    "team": {
+      "title": "Team",
+      "noGroup": "No team group yet — create or join one from the Coaching page's Groups tab."
+    },
     "home": {
       "title": "Welcome back",
       "feedback": "New feedback from your coach",

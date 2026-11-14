@@ -1,6 +1,7 @@
 import * as core from '@/lib/collabCore'
 import * as notifications from '@/lib/notificationsCore'
 import * as team from '@/lib/teamCore'
+import { scoutMemberWeb, autoFillPoolWeb } from './scoutingWeb'
 import * as dashboardCore from '@/lib/staffDashboardCore'
 import * as devPlanCore from '@/lib/devPlanCore'
 import * as calendarCore from '@/lib/calendarCore'
@@ -62,6 +63,26 @@ function consumeUrlFragment(): void {
     pendingHandoff = sb.auth.verifyOtp({ token_hash: handoff, type: 'magiclink' })
       .then(() => undefined, () => undefined)
   }
+}
+
+/**
+ * E14: the web Team page is group-scoped (one roster per group), but the
+ * desktop IPC methods it reuses (listTeams/addTeamMember/...) carry no
+ * group id at all — they're scoped to "the active local user" instead.
+ * The web Team page calls `teamSetActiveGroup` once when the user picks a
+ * group, and every team/draft method below reads it from here. A `teamId`
+ * argument then disambiguates "the group's own roster" (teamId ===
+ * activeGroupId) from "a scouted opponent's roster" (teamId === that
+ * opponent's team_scouting id) — see teamCore.ts's listGroupTeams.
+ */
+let activeGroupId: string | null = null
+function requireActiveGroup(): string {
+  if (!activeGroupId) throw new Error('No active group — open the Team page from a group first.')
+  return activeGroupId
+}
+/** null when `teamId` is the group's own roster, else the scouting_id. */
+function scoutingIdFor(teamId: string): string | null {
+  return teamId === activeGroupId ? null : teamId
 }
 
 export const webApi = {
@@ -227,8 +248,61 @@ export const webApi = {
   notificationPrefsSet: async (prefs: Parameters<typeof notifications.setNotificationPrefs>[2]) =>
     notifications.setNotificationPrefs(sb, await currentUserId(), prefs),
 
-  // ── E1: shared team workspace (read-only on the web for now) ──
+  // ── E1: shared team workspace (read-only snapshot view) ──
   teamGetShared: (groupId: string) => team.getSharedTeam(sb, groupId),
+
+  // ── E14: full Team page on the web (roster/pool/draft/scouting) ──
+  // Called by the real desktop tab components (RosterTab/ChampPoolTab/
+  // DraftTab/ScoutingTab, src/pages/Team/*.tsx) via the web Team page
+  // (web/src/pages/TeamPage.tsx), which calls teamSetActiveGroup first.
+  teamSetActiveGroup(groupId: string | null) { activeGroupId = groupId },
+  listTeams: (opts?: { isOpponent?: boolean }) => team.listGroupTeams(sb, requireActiveGroup(), opts ?? {}),
+  async createTeam(data: { name: string; tag?: string; notes?: string; isOpponent?: boolean }) {
+    if (!data.isOpponent) {
+      // The group's own roster always exists implicitly — nothing to
+      // create. Not actually reachable from the web Team page (it never
+      // shows a "create team" prompt for the own roster), kept defensive.
+      return (await team.listGroupTeams(sb, requireActiveGroup(), { isOpponent: false }))[0]
+    }
+    return team.createOpponentTeam(sb, requireActiveGroup(), { name: data.name, tag: data.tag ?? null, notes: data.notes ?? null })
+  },
+  async deleteTeam(id: string) {
+    if (id === activeGroupId) throw new Error('Cannot delete the group\'s own roster from here.')
+    await team.deleteOpponentTeam(sb, id)
+    return { ok: true as const }
+  },
+  addTeamMember: (teamId: string, data: Parameters<typeof team.addRosterMember>[3]) =>
+    team.addRosterMember(sb, requireActiveGroup(), scoutingIdFor(teamId), data),
+  updateTeamMember: (memberId: string, data: Parameters<typeof team.updateRosterMember>[2]) =>
+    team.updateRosterMember(sb, memberId, data),
+  async removeTeamMember(memberId: string) {
+    await team.removeRosterMember(sb, memberId)
+    return { ok: true as const }
+  },
+  dedupeTeamMembers: (teamId: string) => team.dedupeRosterMembers(sb, requireActiveGroup(), scoutingIdFor(teamId)),
+  listChampionPool: (memberId: string) => team.listPoolForMember(sb, memberId),
+  upsertChampionPool: (memberId: string, championKey: string, role: string, data: Parameters<typeof team.upsertPoolEntry>[4]) =>
+    team.upsertPoolEntry(sb, memberId, championKey, role, data),
+  async removeChampionPoolEntry(entryId: string) {
+    await team.removePoolEntry(sb, entryId)
+    return { ok: true as const }
+  },
+  async scoutMember(memberId: string, count?: number, opts?: { roleOnly?: boolean }) {
+    const member = await team.getRosterMember(sb, memberId)
+    return scoutMemberWeb(member, count, opts)
+  },
+  async autoFillPool(memberId: string, opts?: { matchCount?: number; masteryCount?: number; roleOnly?: boolean }) {
+    const member = await team.getRosterMember(sb, memberId)
+    return autoFillPoolWeb(member, opts)
+  },
+  listDrafts: () => team.listGroupDrafts(sb, requireActiveGroup()),
+  createDraft: (data: Parameters<typeof team.createGroupDraft>[2]) => team.createGroupDraft(sb, requireActiveGroup(), data),
+  updateDraft: (id: string, data: Parameters<typeof team.updateGroupDraft>[2]) => team.updateGroupDraft(sb, id, data),
+  async deleteDraft(id: string) {
+    await team.deleteGroupDraft(sb, id)
+    return { ok: true as const }
+  },
+  duplicateDraft: (id: string) => team.duplicateGroupDraft(sb, requireActiveGroup(), id),
 
   // ── bug reports / feature requests ──
   feedbackSend: async (report: FeedbackInput) =>

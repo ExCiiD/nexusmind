@@ -14,6 +14,7 @@ import { getMatchIds, getMatch, getAccountByRiotId, getChampionMasteries, getSea
 import { getChampionIdToKey } from '../dataDragon'
 import { championPlaysRole, type Role } from '../../../src/lib/championRoles'
 import { computeAutoTier } from '../../../src/lib/threatCore'
+import { normalizeSlots, groupDuplicates, normalizeRole } from '../../../src/lib/teamIdentity'
 
 async function getActiveUser() {
   const prisma = getPrisma()
@@ -117,54 +118,6 @@ async function getMatchesBulkCached(
 }
 
 /**
- * Map Riot's match-V5 position names to our internal role enum.
- *
- *   Riot         → Internal (used everywhere in our app: RosterTab,
- *                  ChampPoolTab, ScoutingTab, DraftTab, championRoles.ts)
- *   TOP          → TOP
- *   JUNGLE       → JUNGLE
- *   MIDDLE       → MID
- *   BOTTOM       → ADC
- *   UTILITY      → SUPPORT
- *
- * Without this normalization, the `roleOnly` filter in scout/auto-fill
- * would reject every MID/ADC/SUPPORT game (since "MIDDLE" !== "MID"), and
- * pool entries would be stored with Riot's names, which never match the
- * Draft Sim's PoolSidebar filter that compares against the internal role.
- */
-const RIOT_TO_INTERNAL: Record<string, string> = {
-  TOP: 'TOP',
-  JUNGLE: 'JUNGLE',
-  MIDDLE: 'MID',
-  BOTTOM: 'ADC',
-  UTILITY: 'SUPPORT',
-}
-function normalizeRole(role: string | null | undefined): string {
-  if (!role) return ''
-  const upper = role.toUpperCase()
-  return RIOT_TO_INTERNAL[upper] ?? upper
-}
-
-/**
- * All candidate identity keys for a member, in priority order. We use a
- * progressive matching strategy (puuid → riot id → ign → displayName) so we
- * catch duplicates created at different points in the workflow, e.g. a member
- * added manually without tagLine then re-imported with the full Riot ID.
- *
- * Mirrors the frontend logic in ChampPoolTab.tsx so the visible warning and
- * the cleanup action always agree on what counts as a duplicate.
- */
-function identityKeys(m: { id: string; puuid?: string | null; ign?: string | null; tagLine?: string | null; displayName?: string | null }): string[] {
-  const norm = (s?: string | null) => (s ?? '').toLowerCase().trim()
-  const keys: string[] = []
-  if (m.puuid) keys.push(`puuid:${m.puuid}`)
-  if (m.ign && m.tagLine) keys.push(`riot:${norm(m.ign)}#${norm(m.tagLine)}`)
-  if (m.ign) keys.push(`ign:${norm(m.ign)}`)
-  if (m.displayName) keys.push(`name:${norm(m.displayName)}`)
-  return keys
-}
-
-/**
  * Find an existing member in `teamId` that matches the candidate's Riot
  * identity. Used by `team:add-member` to make adds idempotent.
  */
@@ -196,26 +149,6 @@ async function findExistingMember(teamId: string, data: { puuid?: string; ign?: 
     if (match) return match
   }
   return null
-}
-
-/**
- * Normalize draft slot payloads to the canonical `string[][]` shape.
- * Accepts:
- *   - undefined        → []
- *   - string[]         (legacy single-pick) → [[c1], [c2], ...]
- *   - string[][]       (new multi-option)   → passed through
- *   - mixed array      → entries that are strings get wrapped
- *
- * Strips empty strings inside slot arrays. Returns ALL slots, even empty
- * ones, so downstream readers see consistent positional indices.
- */
-function normalizeSlots(input?: string[][] | string[]): string[][] {
-  if (!Array.isArray(input)) return []
-  return input.map((slot) => {
-    if (Array.isArray(slot)) return slot.filter((c): c is string => typeof c === 'string' && c.length > 0)
-    if (typeof slot === 'string') return slot.length > 0 ? [slot] : []
-    return []
-  })
 }
 
 export function registerTeamHandlers() {
@@ -324,28 +257,13 @@ export function registerTeamHandlers() {
       include: { champPool: true },
     })
 
-    // Group members by progressive identity matching — each member contributes
-    // multiple candidate keys (puuid, ign+tag, ign, displayName). We assign
-    // each member to the canonical group of the first earlier member it shares
-    // ANY key with; otherwise it starts a new group keyed by its top-priority
-    // candidate. This mirrors the frontend detection so the displayed
-    // duplicate count matches the cleanup result.
-    const keyToCanonical = new Map<string, string>()
-    const groups = new Map<string, typeof members>()
-    for (const m of members) {
-      const candidates = identityKeys(m)
-      if (candidates.length === 0) continue // truly anonymous — never merge
-      const existingCanonical = candidates.map((c) => keyToCanonical.get(c)).find(Boolean)
-      const canonical = existingCanonical ?? candidates[0]
-      for (const c of candidates) keyToCanonical.set(c, canonical)
-      const arr = groups.get(canonical) ?? []
-      arr.push(m)
-      groups.set(canonical, arr)
-    }
+    // Group members by progressive identity matching (shared with web team
+    // CRUD, src/lib/teamIdentity.ts) so the displayed duplicate count always
+    // matches the cleanup result on both platforms.
+    const groups = groupDuplicates(members)
 
     let removed = 0
-    for (const group of groups.values()) {
-      if (group.length < 2) continue
+    for (const group of groups) {
       const [keeper, ...dups] = group
       // Move pool entries from dups onto keeper, deduplicating champion+role
       const keeperKeys = new Set(keeper.champPool.map((e) => `${e.championKey}|${e.role}`))

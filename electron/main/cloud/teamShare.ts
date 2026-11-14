@@ -30,22 +30,27 @@ export async function publishTeamToGroup(groupId: string, teamId: string): Promi
   const draftRows = activeUser
     ? await prisma.draftPrep.findMany({ where: { userId: activeUser.id } })
     : []
-  const opponentTeams = await prisma.team.findMany({ where: { isOpponent: true, userId: team.userId } })
+  // Full opponent rosters + pools now travel with the publish (E14) — until
+  // now only name/tag/notes were sent, so scouting looked empty on the web.
+  const opponentTeams = await prisma.team.findMany({
+    where: { isOpponent: true, userId: team.userId },
+    include: { members: { include: { champPool: true } } },
+  })
+
+  const toSharedMember = (m: { displayName: string; ign: string | null; tagLine: string | null; region: string | null; role: string; puuid: string | null; champPool: { championKey: string; role: string; tier: string | null; notes: string | null; playRate: number | null; winRate: number | null; masteryPoints: number | null; kda: number | null }[] }) => ({
+    displayName: m.displayName, ign: m.ign, tagLine: m.tagLine, region: m.region,
+    role: m.role as TeamRole, puuid: m.puuid,
+    pool: m.champPool
+      .filter((p) => isTeamRole(p.role))
+      .map((p) => ({
+        championKey: p.championKey, role: p.role as TeamRole,
+        tier: (p.tier as PublishTeamInput['roster'][number]['pool'][number]['tier']) ?? 'comfort',
+        notes: p.notes, playRate: p.playRate, winRate: p.winRate, masteryPoints: p.masteryPoints, kda: p.kda,
+      })),
+  })
 
   const input: PublishTeamInput = {
-    roster: team.members
-      .filter((m) => isTeamRole(m.role))
-      .map((m) => ({
-        displayName: m.displayName, ign: m.ign, tagLine: m.tagLine, region: m.region,
-        role: m.role as TeamRole, puuid: m.puuid,
-        pool: m.champPool
-          .filter((p) => isTeamRole(p.role))
-          .map((p) => ({
-            championKey: p.championKey, role: p.role as TeamRole,
-            tier: (p.tier as PublishTeamInput['roster'][number]['pool'][number]['tier']) ?? 'comfort',
-            notes: p.notes, playRate: p.playRate, winRate: p.winRate, masteryPoints: p.masteryPoints,
-          })),
-      })),
+    roster: team.members.filter((m) => isTeamRole(m.role)).map(toSharedMember),
     // vs_scouting_id is left unset here — resolving it to a scouting row
     // created in the same publish would need two round trips; deferred.
     drafts: draftRows.map((d) => ({
@@ -55,7 +60,10 @@ export async function publishTeamToGroup(groupId: string, teamId: string): Promi
       myTeamSide: d.myTeamSide === 'red' ? 'red' : 'blue',
       notes: d.notes,
     })),
-    scouting: opponentTeams.map((t) => ({ name: t.name, tag: t.tag, scoutNotes: t.scoutNotes })),
+    scouting: opponentTeams.map((t) => ({
+      name: t.name, tag: t.tag, scoutNotes: t.scoutNotes,
+      roster: t.members.filter((m) => isTeamRole(m.role)).map(toSharedMember),
+    })),
   }
 
   return core.publishTeam(getSupabase(), groupId, input)

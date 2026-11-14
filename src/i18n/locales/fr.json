@@ -1628,9 +1628,14 @@
       "reviews": "Reviews",
       "scrims": "Scrims",
       "coaching": "Coaching",
+      "team": "Équipe",
       "account": "Compte"
     },
     "desktopHint": "L'enregistrement, les reviews et les données Riot restent dans l'app desktop.",
+    "team": {
+      "title": "Équipe",
+      "noGroup": "Pas encore de groupe d'équipe — créez-en un ou rejoignez-en un depuis l'onglet Groupes de la page Coaching."
+    },
     "home": {
       "title": "Bon retour",
       "feedback": "Nouveaux retours de votre coach",

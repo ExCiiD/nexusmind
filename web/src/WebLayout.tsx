@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CalendarDays, FileSearch, GraduationCap, Home, UserCircle } from 'lucide-react'
+import { CalendarDays, FileSearch, GraduationCap, Home, Swords, UserCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FeedbackButton } from '@/components/Feedback/FeedbackDialog'
 import { NotificationBell } from '@/components/Notifications/NotificationBell'
@@ -12,6 +12,7 @@ const NAV = [
   { to: '/reviews', icon: FileSearch, key: 'web.nav.reviews' },
   { to: '/scrims', icon: CalendarDays, key: 'web.nav.scrims' },
   { to: '/coaching', icon: GraduationCap, key: 'web.nav.coaching' },
+  { to: '/team', icon: Swords, key: 'web.nav.team' },
   { to: '/account', icon: UserCircle, key: 'web.nav.account' },
 ]
 

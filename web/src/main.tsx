@@ -11,6 +11,7 @@ import { WebLayout } from './WebLayout'
 import { HomePage } from './pages/HomePage'
 import { MyReviewsPage } from './pages/MyReviewsPage'
 import { ScrimsPage } from './pages/ScrimsPage'
+import { TeamPage } from './pages/TeamPage'
 import { AccountPage } from './pages/AccountPage'
 import { DownloadButton } from './DownloadButton'
 import { installDiagnostics } from '@/lib/diagnostics'
@@ -36,6 +37,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/reviews" element={<MyReviewsPage />} />
             <Route path="/scrims" element={<ScrimsPage />} />
             <Route path="/coaching" element={<CoachingPage />} />
+            <Route path="/team" element={<TeamPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

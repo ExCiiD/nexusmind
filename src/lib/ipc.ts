@@ -573,6 +573,11 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   getPrefilledNotes: (gameId: string) => Promise<Array<{ time: string; note: string; auto: true }>>
 
   // Team management
+  /** Web only (E14): scopes the group-less listTeams/addTeamMember/... IPC
+   *  surface below to one group, since the web Team page is group-scoped
+   *  and desktop has nothing equivalent to call this with. No-op on
+   *  desktop — never called there. */
+  teamSetActiveGroup?: (groupId: string | null) => void
   listTeams: (opts?: { isOpponent?: boolean }) => Promise<Team[]>
   getTeam: (id: string) => Promise<Team | null>
   createTeam: (data: { name: string; tag?: string; logo?: string; notes?: string; isOpponent?: boolean }) => Promise<Team>

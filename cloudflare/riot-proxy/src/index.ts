@@ -23,8 +23,22 @@ export interface Env {
   USER_LIMITER?: { limit: (opts: { key: string }) => Promise<{ success: boolean }> }
 }
 
+// CORS: the web app calls this proxy directly from the browser with a
+// Supabase bearer token (web/src/riotWeb.ts, E14) — the packaged desktop
+// app's main-process fetch isn't subject to CORS at all, so this only
+// matters for the browser caller. `*` is safe here because auth is a
+// bearer token, not a cookie: a third-party page reading the response
+// would still need the victim's token in hand to have sent the request in
+// the first place, which CORS alone can't give it.
+const CORS_HEADERS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET, OPTIONS',
+  'access-control-allow-headers': 'authorization',
+  'access-control-max-age': '600',
+}
+
 const json = (status: number, body: Record<string, unknown>, extra: HeadersInit = {}) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...extra } })
+  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...CORS_HEADERS, ...extra } })
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null
 
@@ -51,6 +65,8 @@ async function verifyUser(req: Request, env: Env): Promise<JWTPayload | null> {
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS })
+
     const url = new URL(req.url)
     if (url.pathname === '/health') return json(200, { ok: true })
 
@@ -68,7 +84,7 @@ export default {
 
     const upstream = await fetch(route.upstream, { headers: { 'X-Riot-Token': env.RIOT_API_KEY } })
 
-    const headers = new Headers()
+    const headers = new Headers(CORS_HEADERS)
     for (const h of FORWARDED_HEADERS) {
       const v = upstream.headers.get(h)
       if (v) headers.set(h, v)
