@@ -153,9 +153,12 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
   - Concurrence de fetch des corps de match (10) et rate-limiter **non touchés** — déjà bien réglés d'après les commentaires existants dans le code ; le vrai goulot était le listing d'ids, pas la concurrence de fetch.
 - **⏳ non fait, décision justifiée** : étendre la barre de progression par membre (`useBackgroundJobsStore`, déjà présente sur auto-fill/scout-all/scout-one) aux calculs de synergie/stats demanderait un nouveau canal IPC de streaming de progression pour un appel aujourd'hui monolithique — hors périmètre de cette passe ; ces actions devraient de toute façon finir sensiblement plus vite maintenant, ce qui réduit le besoin.
 
-### E16 — Vérification/consolidation des statistiques d'équipe + préparation clé Product Riot ⏳ planifié
-- Auditer `StatsFlexTab`/`StatsScrimTab`/`StatsTournoiTab` pour des trous ou incohérences de calcul.
-- **Contrainte transverse à tout ce chantier** : coder pour la clé de développement actuelle (quotas/endpoints limités), mais sans fermer la porte à une **clé Product** (plus de requêtes, plus de données par requête — ex. historique de match plus profond, endpoints supplémentaires). Concrètement : centraliser les limites/quotas dans un seul endroit (pas de magic numbers dispersés), pour qu'une montée en gamme de clé soit un changement de config, pas une réécriture (cohérent avec la note déjà présente dans `ROADMAP.md` W1 « Bonus Riot »).
+### E16 — Vérification/consolidation des statistiques d'équipe + préparation clé Product Riot 🟡 v1 livré (15/11/2026)
+- **Audit** : `StatsFlexTab` (`team:compute-synergy-stats`), le combo scrim/tournoi (`CustomGamesStatsTab`/`team:compute-custom-stats`/`team:compute-combined-stats`) et le dashboard adverse avaient chacun leur propre copie quasi-identique (~140 lignes) du calcul moyennes/parts/KDA par joueur — un vrai risque de dérive (un correctif sur l'un n'atteignait pas forcément les autres), exactement le genre d'« incohérence de calcul » que cette passe devait chercher.
+- **Livré** :
+  - `team:compute-synergy-stats` appelle maintenant `aggregateMatchLike`, déjà utilisé par `compute-custom-stats`/`compute-combined-stats` — vérifié comportementalement équivalent avant fusion (même filtre de rôle, mêmes formules de parts/KDA, même détection d'équipe) : une dédoublonnage, pas un changement de calcul. Il n'existe plus qu'une seule implémentation de « étant donné des matches + un roster, calculer les stats par joueur » sur toute la surface stats d'équipe.
+  - Nouveau `src/lib/riotLimits.ts` : tous les nombres magiques dispersés qui pilotaient le volume de fetch Riot (pages de listing d'ids, plafonds par requête, nombre de games par membre pour synergie/dashboard adverse, concurrence de fetch) sont maintenant des constantes nommées, chacune documentée comme limite **côté Riot** (pas la nôtre à augmenter) ou **réglage de débit propre à l'app** (le chemin de montée en gamme clé Product : augmenter ces constantes, pas réécrire). Partagé par le desktop (`riotClient.ts`, `team.ipc.ts`) **et** le web (`riotWeb.ts`, `scoutingWeb.ts`) — une seule source de vérité pour les deux plateformes.
+  - La fusion/tri des ids de saison (solo+flex+clash) dans `riotClient.ts` et `riotWeb.ts` réutilise `mergeMatchIdsByRecency` (E15) au lieu d'une 3e copie du même dédoublonnage+tri.
 
 ### E17 — Refonte UI/UX de la page Statistiques ⏳ planifié
 - Lisibilité et design graphique de la page Statistiques à revoir (capture fournie en référence par l'utilisateur).
@@ -174,10 +177,10 @@ E1 (fondation partagée) → E2 (tableau de bord staff) → E8 (notifications)
 Chantier §8 (14/11/2026) :
 E12 ✅ (tiers/menaces précis) → E14 ✅ (portage web, parité complète) ↘
                                                                         E13 ✅ (UX Coaching)
-E15 ✅ (perf fetch) + E16 (stats + prépa clé Product) → E17 (UX Stats)
+E15 ✅ (perf fetch) + E16 ✅ (stats + prépa clé Product) → E17 (UX Stats)
 E11 (bot Discord) — indépendant, peut démarrer en parallèle (s'appuie sur E4/W4 déjà livrés)
 ```
-E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 : E12, E13, E14 et E15 sont livrés (14/11/2026) ; restent E11, E16, E17.
+E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 : E12 à E16 sont livrés (14-15/11/2026) ; restent E11, E17.
 
 ## 6. Impacts techniques
 
