@@ -160,8 +160,14 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
   - Nouveau `src/lib/riotLimits.ts` : tous les nombres magiques dispersés qui pilotaient le volume de fetch Riot (pages de listing d'ids, plafonds par requête, nombre de games par membre pour synergie/dashboard adverse, concurrence de fetch) sont maintenant des constantes nommées, chacune documentée comme limite **côté Riot** (pas la nôtre à augmenter) ou **réglage de débit propre à l'app** (le chemin de montée en gamme clé Product : augmenter ces constantes, pas réécrire). Partagé par le desktop (`riotClient.ts`, `team.ipc.ts`) **et** le web (`riotWeb.ts`, `scoutingWeb.ts`) — une seule source de vérité pour les deux plateformes.
   - La fusion/tri des ids de saison (solo+flex+clash) dans `riotClient.ts` et `riotWeb.ts` réutilise `mergeMatchIdsByRecency` (E15) au lieu d'une 3e copie du même dédoublonnage+tri.
 
-### E17 — Refonte UI/UX de la page Statistiques ⏳ planifié
-- Lisibilité et design graphique de la page Statistiques à revoir (capture fournie en référence par l'utilisateur).
+### E17 — Refonte UI/UX de la page Statistiques 🟡 v1 livré (15/11/2026)
+- La capture de référence annoncée par l'utilisateur (« img3 ») n'est jamais arrivée ; après vérification (question posée), l'utilisateur a préféré que j'avance sur mon propre jugement UI/UX plutôt que d'attendre.
+- **Constat** : `DashboardLayout`'s `StatsTable` (partagé par l'onglet Dashboard et le dashboard adverse de Scouting) est un tableau de 24 colonnes sans aucun regroupement visuel — des abréviations cryptiques (CSM, GM, Dmgm, VS, WP, WK…) à plat, et la colonne nom de joueur qui défilait hors champ avec le reste sur une table aussi large.
+- **Livré** :
+  - `StatsTable` : nouvelle ligne d'en-tête groupée (Record / Combat / Economy / Impact / Vision) au-dessus des libellés abrégés existants, chaque colonne ayant désormais un `title` (tooltip) qui explicite l'abréviation. Colonne nom de joueur **sticky** (reste visible pendant le défilement horizontal des 23 autres colonnes), lignes zébrées pour rester traçable sur la largeur. Séparateurs fins aux mêmes frontières dans les deux lignes d'en-tête pour que le regroupement se lise comme un bloc.
+  - `SynergyPlayerCard` : séparateurs ajoutés entre les sections Moyennes/Parts d'équipe/Par champion (avant : juste un titre, aucune séparation visuelle), texte d'indice le plus petit agrandi d'un cran pour la lisibilité.
+  - Aucun changement au calcul des stats (déjà consolidé en E16) — purement présentation.
+- Vérification : relecture soigneuse (a débusqué et corrigé un bug d'alignement des séparateurs de colonnes avant commit) + un harnais HTML jetable chargeant le CSS Tailwind compilé pour un contrôle visuel rapide du tableau (groupes, sticky, zébrage) avant de le supprimer ; pas de compte de test disponible pour vérifier en conditions réelles dans l'app.
 
 ### Idée transverse — nourrir le moteur de règles avec du contenu externe 💡 (exploratoire, pas cadrée)
 - Idée formulée par l'utilisateur : alimenter occasionnellement le moteur de règles métier (voir [`MOTEUR_REGLES.md`](MOTEUR_REGLES.md)) avec des informations trouvées à droite à gauche (transcriptions de vidéos YouTube, analyses de pro games sur les réseaux…), pour qu'il se comporte davantage comme un assistant qui apprend de contenu externe — et à terme, un bot plus proche de l'IA.
@@ -177,10 +183,10 @@ E1 (fondation partagée) → E2 (tableau de bord staff) → E8 (notifications)
 Chantier §8 (14/11/2026) :
 E12 ✅ (tiers/menaces précis) → E14 ✅ (portage web, parité complète) ↘
                                                                         E13 ✅ (UX Coaching)
-E15 ✅ (perf fetch) + E16 ✅ (stats + prépa clé Product) → E17 (UX Stats)
+E15 ✅ (perf fetch) + E16 ✅ (stats + prépa clé Product) → E17 ✅ (UX Stats)
 E11 (bot Discord) — indépendant, peut démarrer en parallèle (s'appuie sur E4/W4 déjà livrés)
 ```
-E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 : E12 à E16 sont livrés (14-15/11/2026) ; restent E11, E17.
+E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 : E12 à E17 sont livrés (14-15/11/2026) ; ne reste plus que E11 (bot Discord).
 
 ## 6. Impacts techniques
 
