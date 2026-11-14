@@ -169,6 +169,7 @@ Plans détaillés liés : [moteur de coaching (design)](MOTEUR_REGLES.md), [cata
 - Export CSV/JSON des reviews et stats.
 - Rapport hebdomadaire partageable (Discord / lien web public).
 - Télémétrie anonyme opt-in pour mesurer les métriques du PRD §18.
+- Nourrir le moteur de règles avec du contenu externe (transcriptions YouTube, analyses pro) — voir [`PLAN_GESTION_EQUIPE.md` §8](PLAN_GESTION_EQUIPE.md#8-prochain-chantier--scouting-avancé-bot-discord-ux-ajouté-14112026-demandé-par-lutilisateur), pas cadrée (tension avec le choix 100 % règles/local de la Phase A).
 
 ## Phase S — Audit de sécurité avant publication du site ⏳
 

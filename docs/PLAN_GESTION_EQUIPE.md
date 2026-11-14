@@ -103,14 +103,58 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
 - **Édition de roster en direct** — E1 reste en mode « publier un instantané » ; E10 (promotion) et une partie d'E5/E7 (fils par scrim/draft) en dépendent indirectement.
 - Deux actions manuelles toujours en attente côté Supabase Auth (voir `ROADMAP.md`) : désactiver les inscriptions libres, activer la protection mots de passe compromis.
 
+## 8. Prochain chantier — scouting avancé, bot Discord, UX (ajouté 14/11/2026, demandé par l'utilisateur)
+
+**E1 à E10 ne sont pas "terminés" à 100 %** — chaque lot a son ⏳ documenté ci-dessus (édition de roster en direct, canaux de notif externes, fils par scrim/draft, etc., voir aussi §7). Ce qui suit est un nouveau chantier demandé le 14/11/2026, centré sur le scouting/draft (page Équipe locale) et la communication d'équipe. Rien n'est commencé.
+
+### E11 — Bot Discord d'équipe ⏳ planifié
+- **But** : porter une partie de la coordination d'équipe (aujourd'hui dans l'app) sur Discord, là où les joueurs sont déjà. S'appuie sur des tables qui existent déjà (`calendar_events`, `availability_rules`/`availability_exceptions` de E4, `scrims`/`scrim_availability` de W4) — le bot est surtout une nouvelle **surface de lecture/écriture + un canal de notification**, pas un nouveau modèle de données.
+- **Fonctions demandées** : afficher le calendrier d'équipe ; modifier sa disponibilité (« absent » / « plus de créneaux dispo ») — si absence sur un scrim prévu, chercher un remplaçant ; fusionner les disponibilités communes et notifier quand plusieurs personnes sont libres en même temps (pour caler un scrim ou une session de coaching) ; notifier les événements à venir ; afficher les infos d'un scrim (date/heure, format Bo, liens OP.GG de l'équipe adverse, rôle de chaque joueur : top/jgl/mid/adc/sup).
+- **Technique** : nécessite un service bot (Cloudflare Worker avec les Discord Interactions API, ou process Node `discord.js`) + OAuth d'installation sur le serveur Discord de l'équipe. Reprend/refond le canal « Discord » déjà identifié comme manquant en E8/W5 (webhook actuel = local au joueur, pas un canal d'équipe côté serveur). La détection de créneau commun existe déjà côté staff (E4) — à exposer en commande bot plutôt qu'à recoder.
+
+### E12 — Détection de tier & de menaces plus précise (Champion Pool + Scouting) ⏳ planifié
+- **Constat (code actuel)** : `team:auto-fill-pool` et `team:scout-member` (`electron/main/ipc/team.ipc.ts`) classent un champion **uniquement par seuils de nombre de games OU de mastery** (`main` = 5+ games ou mastery haute, `comfort` = 3+ ou mastery moyenne, `flex` = 1+ game, `learning` = mastery seule) — sans tenir compte du winrate ni du KDA. Le scouting réutilise **exactement les mêmes seuils** que son propre pool (« Use the same tier rules as auto-fill-pool » dans le code) — ce qui explique l'aspect « un peu aléatoire » : 2 games gagnées par chance classent aussi haut qu'un vrai pick de fond.
+- **Nouvelle règle de menace** : un champion adverse est une vraie menace si *(gros volume de games)* **et/ou** *(gros mastery)* **et/ou** *(winrate ou KDA élevé — signal utilisable seulement à partir de 20 games, sinon trop de bruit)*. Combiner les signaux plutôt que les seuils flous actuels.
+- **Nouveau tier « a été joué »** : un champion avec 1-2 games doit être visible (donnée présente) mais **sans** le traiter comme une menace réelle, sauf mastery élevée dessus.
+- **Nouveau tier « prio pick »** : champion à haute valeur **pour les deux équipes** — déclenché quand ≥ 2 joueurs, un par équipe, dépassent chacun individuellement le seuil de menace sur ce champion (mastery/winrate/KDA). Signal fort pour prioriser un ban/pick en draft.
+- **Nuance de role-swap** : la mastery/les games d'un joueur sur un rôle qu'il **ne joue plus** (ex. ancien one-trick top, aujourd'hui support) ne doivent pas compter comme menace sur le rôle scouté — filtrer mastery/games par le rôle effectivement observé, pas juste par champion.
+- **UI (retour des captures)** : les couleurs de surbrillance (jaune, etc.) n'ont leur place **que** dans la liste de menaces du milieu, pas dupliquées sur la grille du pool de champions ; et ne doivent pas s'allumer seulement parce que « plusieurs personnes le jouent » — il faut le signal par-personne ci-dessus.
+- Cette refonte doit être codée en `*Core.ts` partagé (comme le reste de l'app) puisqu'elle sert de base au portage web (voir E1 restant / E14 ci-dessous) : une seule logique de détection, pas une par plateforme.
+
+### E13 — Réagencement de la page Coaching ⏳ planifié
+- Réorganiser la disposition de la page Coaching pour l'usage réel du staff au quotidien (beaucoup de sections s'y sont empilées au fil de E2–E10). Disposition exacte à trancher à l'implémentation selon ce qui se teste le mieux (probablement : vue d'ensemble/alertes en priorité, sections secondaires en onglets plutôt qu'empilées).
+
+### E14 — Page Équipe (locale) accessible sur le web ⏳ planifié
+- Rejoint le point déjà identifié en **E1** (« réutilisation des onglets desktop complets `ChampPoolTab`/`DraftTab`/`ScoutingTab` côté web plutôt qu'une vue condensée ») — remonté ici en priorité explicite suite à la demande. À faire après/avec E12 pour ne pas porter la logique de tier actuelle (jugée imprécise) telle quelle sur le web.
+
+### E15 — Performance des actions de fetch Riot ⏳ planifié
+- Les boutons « Actualiser », auto-remplissage du pool, scouting et calcul de synergie (`StatsFlexTab`/`ScoutingTab`) refont aujourd'hui un balayage complet à chaque appel. Pistes : rafraîchissement incrémental (ne récupérer que les games postérieures au dernier scan au lieu de tout rescanner), revoir le parallélisme par rapport à la limite d'app Riot déjà documentée dans le code (100 req/120s), progression par membre déjà affichée (`useBackgroundJobsStore`) à étendre aux autres actions longues.
+
+### E16 — Vérification/consolidation des statistiques d'équipe + préparation clé Product Riot ⏳ planifié
+- Auditer `StatsFlexTab`/`StatsScrimTab`/`StatsTournoiTab` pour des trous ou incohérences de calcul.
+- **Contrainte transverse à tout ce chantier** : coder pour la clé de développement actuelle (quotas/endpoints limités), mais sans fermer la porte à une **clé Product** (plus de requêtes, plus de données par requête — ex. historique de match plus profond, endpoints supplémentaires). Concrètement : centraliser les limites/quotas dans un seul endroit (pas de magic numbers dispersés), pour qu'une montée en gamme de clé soit un changement de config, pas une réécriture (cohérent avec la note déjà présente dans `ROADMAP.md` W1 « Bonus Riot »).
+
+### E17 — Refonte UI/UX de la page Statistiques ⏳ planifié
+- Lisibilité et design graphique de la page Statistiques à revoir (capture fournie en référence par l'utilisateur).
+
+### Idée transverse — nourrir le moteur de règles avec du contenu externe 💡 (exploratoire, pas cadrée)
+- Idée formulée par l'utilisateur : alimenter occasionnellement le moteur de règles métier (voir [`MOTEUR_REGLES.md`](MOTEUR_REGLES.md)) avec des informations trouvées à droite à gauche (transcriptions de vidéos YouTube, analyses de pro games sur les réseaux…), pour qu'il se comporte davantage comme un assistant qui apprend de contenu externe — et à terme, un bot plus proche de l'IA.
+- Tension à trancler avant de cadrer : tout le moteur actuel (Phase A de `ROADMAP.md`) est **déterministe et 100 % local**, décision explicite pour ne pas payer d'IA (A5). Extraire des faits utiles d'une transcription ou d'un tweet non structuré est un problème de compréhension de texte libre — difficilement faisable en règles pures. Deux voies possibles, à décider plus tard : (a) un LLM **local** (Ollama, déjà noté comme piste 💡 en A4) uniquement pour transformer le texte libre en faits structurés, jamais pour décider ; ou (b) rester 100 % règles et faire saisir les faits par le staff via un formulaire structuré (pas de texte libre). Volontairement laissé en idée (pas en épic chiffré) tant que ce choix n'est pas fait.
+
 ## 5. Ordre recommandé
 
 ```
 E1 (fondation partagée) → E2 (tableau de bord staff) → E8 (notifications)
    → E3 (plans de dev) → E5 (review collaborative) → E4 (planning/présence)
    → E7 (comm & tâches) → E6 (bien-être) → E9 (rapports) → E10
+
+Chantier §8 (14/11/2026) :
+E12 (tiers/menaces précis) → E14 (portage web) ↘
+                                                  E13 (UX Coaching)
+E15 (perf fetch) + E16 (stats + prépa clé Product) → E17 (UX Stats)
+E11 (bot Discord) — indépendant, peut démarrer en parallèle (s'appuie sur E4/W4 déjà livrés)
 ```
-E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff.
+E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 : E12 avant E14 (ne pas porter sur le web une logique de tier qu'on sait déjà imprécise).
 
 ## 6. Impacts techniques
 
