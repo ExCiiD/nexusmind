@@ -199,6 +199,10 @@ export interface ChampionPoolEntry {
    *  dominant pick = red). `null` for legacy entries created before this
    *  column existed and for manual entries that never went through Riot. */
   masteryPoints?: number | null
+  /** Average (kills+assists)/max(1,deaths) across scouted games for this
+   *  champion+role. Feeds the "high winrate or KDA" threat signal — see
+   *  src/lib/threatCore.ts. Null for legacy/manual/mastery-only entries. */
+  kda?: number | null
   updatedAt: string
 }
 
@@ -596,7 +600,7 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   computeCombinedStats: (teamId: string, opts?: { minTogether?: number }) => Promise<TeamSynergyStats>
   computeOpponentDashboard: (teamId: string) => Promise<TeamSynergyStats>
   listChampionPool: (memberId: string) => Promise<ChampionPoolEntry[]>
-  upsertChampionPool: (memberId: string, championKey: string, role: string, data: Partial<{ tier: string; notes: string | null; playRate: number | null; winRate: number | null }>) => Promise<ChampionPoolEntry>
+  upsertChampionPool: (memberId: string, championKey: string, role: string, data: Partial<{ tier: string; notes: string | null; playRate: number | null; winRate: number | null; masteryPoints: number | null; kda: number | null }>) => Promise<ChampionPoolEntry>
   removeChampionPoolEntry: (entryId: string) => Promise<{ ok: true }>
   scoutMember: (
     memberId: string,

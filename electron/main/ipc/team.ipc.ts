@@ -13,6 +13,7 @@ import { getPrisma } from '../database'
 import { getMatchIds, getMatch, getAccountByRiotId, getChampionMasteries, getSeasonMatchIds } from '../riotClient'
 import { getChampionIdToKey } from '../dataDragon'
 import { championPlaysRole, type Role } from '../../../src/lib/championRoles'
+import { computeAutoTier } from '../../../src/lib/threatCore'
 
 async function getActiveUser() {
   const prisma = getPrisma()
@@ -399,6 +400,8 @@ export function registerTeamHandlers() {
     notes: string | null
     playRate: number | null
     winRate: number | null
+    masteryPoints: number | null
+    kda: number | null
   }>) => {
     const prisma = getPrisma()
     return prisma.championPoolEntry.upsert({
@@ -595,7 +598,7 @@ export function registerTeamHandlers() {
     }
     const fetchMs = Date.now() - fetchStart
     console.info(`[scout-member] ${member.displayName}: ${matchIds.length} matches, ${matches.size} resolved in ${(fetchMs / 1000).toFixed(1)}s (${(matches.size / (fetchMs / 1000)).toFixed(1)} req/s effective)`)
-    const playCount = new Map<string, { championKey: string; role: string; count: number; wins: number }>()
+    const playCount = new Map<string, { championKey: string; role: string; count: number; wins: number; kills: number; deaths: number; assists: number }>()
     let failed = 0
     for (const id of matchIds) {
       const match = matches.get(id)
@@ -611,12 +614,18 @@ export function registerTeamHandlers() {
       if (existing) {
         existing.count++
         if (participant.win) existing.wins++
+        existing.kills += participant.kills ?? 0
+        existing.deaths += participant.deaths ?? 0
+        existing.assists += participant.assists ?? 0
       } else {
         playCount.set(key, {
           championKey: participant.championName,
           role,
           count: 1,
           wins: participant.win ? 1 : 0,
+          kills: participant.kills ?? 0,
+          deaths: participant.deaths ?? 0,
+          assists: participant.assists ?? 0,
         })
       }
     }
@@ -649,14 +658,15 @@ export function registerTeamHandlers() {
 
     let upserted = 0
     for (const entry of playCount.values()) {
-      // Use the same tier rules as auto-fill-pool to keep scouting consistent
-      // with the player's own pool view in the Champion Pool tab.
-      const tier =
-        entry.count >= 5 ? 'main'
-        : entry.count >= 3 ? 'comfort'
-        : 'flex'
       const winRate = Math.round((entry.wins / entry.count) * 100)
       const masteryPoints = masteryByKey.get(entry.championKey) ?? null
+      const kda = entry.count > 0 ? (entry.kills + entry.assists) / Math.max(1, entry.deaths) : null
+      // Use the same combined-signal tier rule as auto-fill-pool (E12) to
+      // keep scouting consistent with the player's own pool view in the
+      // Champion Pool tab — no separate "top-5 in role" signal available
+      // here (scout-member doesn't rank across the whole pool), so it's
+      // approximated via mastery/games/winrate alone.
+      const tier = computeAutoTier({ games: entry.count, masteryPoints, winRate, isTop5InRole: false })
       await prisma.championPoolEntry.upsert({
         where: { memberId_championKey_role: { memberId, championKey: entry.championKey, role: entry.role } },
         create: {
@@ -667,8 +677,9 @@ export function registerTeamHandlers() {
           playRate: entry.count,
           winRate,
           masteryPoints,
+          kda,
         },
-        update: { playRate: entry.count, winRate, masteryPoints },
+        update: { playRate: entry.count, winRate, masteryPoints, kda },
       })
       upserted++
     }
@@ -683,11 +694,10 @@ export function registerTeamHandlers() {
    * season picks). Smarter than `scout-member` for your own roster since
    * it considers both lifetime mastery and current play patterns.
    *
-   * Tier classification (per champion+role):
-   *   main     = 5+ recent plays OR 500k+ mastery
-   *   comfort  = 3+ recent plays OR 100k+ mastery
-   *   flex     = 1+ recent play   OR 30k+ mastery
-   *   learning = mastery only, < 30k points
+   * Tier classification is delegated to the shared, combined-signal rule in
+   * src/lib/threatCore.ts (`computeAutoTier`) — see there for the exact
+   * games/mastery/winrate thresholds, kept in one place so scouting and
+   * auto-fill can never drift apart (E12).
    *
    * Mastery-only champions (no recent games) are bucketed into the member's
    * primary role since the API doesn't tie mastery to a role.
@@ -765,6 +775,9 @@ export function registerTeamHandlers() {
       count: number
       wins: number
       masteryPoints: number
+      kills: number
+      deaths: number
+      assists: number
     }
     const agg = new Map<string, Agg>()
 
@@ -786,6 +799,9 @@ export function registerTeamHandlers() {
         if (existing) {
           existing.count++
           if (participant.win) existing.wins++
+          existing.kills += participant.kills ?? 0
+          existing.deaths += participant.deaths ?? 0
+          existing.assists += participant.assists ?? 0
         } else {
           agg.set(key, {
             championKey: participant.championName,
@@ -793,6 +809,9 @@ export function registerTeamHandlers() {
             count: 1,
             wins: participant.win ? 1 : 0,
             masteryPoints: 0,
+            kills: participant.kills ?? 0,
+            deaths: participant.deaths ?? 0,
+            assists: participant.assists ?? 0,
           })
         }
       }
@@ -823,6 +842,9 @@ export function registerTeamHandlers() {
           count: 0,
           wins: 0,
           masteryPoints: m.championPoints,
+          kills: 0,
+          deaths: 0,
+          assists: 0,
         })
       }
     }
@@ -873,19 +895,19 @@ export function registerTeamHandlers() {
 
     let upserted = 0
     for (const entry of agg.values()) {
-      // Tier rules (per user spec):
-      //   main    : top-5 most-played in role OR mastery >= 300k
-      //   comfort : mastery >= 200k OR games >= 50 (SoloQ + Flex combined)
-      //   flex    : everything else (low mastery + low games)
-      // "learning" is kept as a manual-only tier; auto-fill never assigns it.
-      // Note: match history queries SoloQ (420) + Flex (440) already, so the
-      // "50 games" threshold covers both queues out of the box.
-      let tier: string
-      if (top5InRole.has(entry.championKey) || entry.masteryPoints >= 300_000) tier = 'main'
-      else if (entry.masteryPoints >= 200_000 || entry.count >= 50) tier = 'comfort'
-      else tier = 'flex'
-
       const winRate = entry.count > 0 ? Math.round((entry.wins / entry.count) * 100) : null
+      // Combined-signal tier rule (E12, src/lib/threatCore.ts): top-5 most-
+      // played in role OR mastery/games/winrate thresholds, instead of the
+      // old games-or-mastery-only rule that ignored performance entirely
+      // and made tiering feel random. "learning" is now auto-assigned to
+      // 0-game, low-mastery entries instead of silently defaulting to "flex".
+      const tier = computeAutoTier({
+        games: entry.count,
+        masteryPoints: entry.masteryPoints || null,
+        winRate,
+        isTop5InRole: top5InRole.has(entry.championKey),
+      })
+      const kda = entry.count > 0 ? (entry.kills + entry.assists) / Math.max(1, entry.deaths) : null
 
       // Find existing to preserve manual tier if overwriteTiers is false
       const existing = await prisma.championPoolEntry.findUnique({
@@ -908,12 +930,14 @@ export function registerTeamHandlers() {
           playRate: entry.count,
           winRate,
           masteryPoints,
+          kda,
         },
         update: {
           ...(overwriteTiers || !existing ? { tier } : {}),
           playRate: entry.count,
           winRate: winRate ?? existing?.winRate ?? null,
           masteryPoints,
+          kda,
         },
       })
       upserted++

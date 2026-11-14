@@ -973,9 +973,10 @@
       "noOpponentPool": "Aucun adversaire assigné à ce draft. Choisissez-en un dans la barre d'outils.",
       "noMembers": "Aucun membre dans cette équipe.",
       "threats": "Menaces adverses",
-      "threatRed": "100+ games & le plus joué",
+      "threatRed": "100+ games, pick dominant, ou 65%+ WR / 4+ KDA (20+ games)",
       "threatOrange": "300k+ mastery",
-      "threatYellow": "pick flex (2+ joueurs)"
+      "threatYellow": "menace flex — 2+ joueurs individuellement dangereux dessus",
+      "threatPrioPick": "pick/ban prioritaire — menace sur les deux équipes"
     },
     "dashboard": {
       "noTeam": "Sélectionnez ou créez une équipe d'abord.",

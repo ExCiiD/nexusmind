@@ -362,6 +362,13 @@ model ChampionPoolEntry {
   // overlap = yellow). Nullable for legacy entries created before this
   // column existed and for manual entries that never went through auto-fill.
   masteryPoints Int?
+  // Average (kills+assists)/max(1,deaths) across the scouted/filled games
+  // for this champion+role, aggregated for free from match participant data
+  // already fetched during scout/auto-fill (no extra Riot calls). Feeds the
+  // "high win rate or KDA" threat signal (src/lib/threatCore.ts), gated by a
+  // 20-game minimum so a 2-game sample can't fake a 10.0 KDA. Null for
+  // legacy/manual entries or mastery-only entries with 0 games.
+  kda         Float?
   updatedAt   DateTime @updatedAt
 
   @@index([memberId, role])

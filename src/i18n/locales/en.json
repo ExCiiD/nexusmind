@@ -973,9 +973,10 @@
       "noOpponentPool": "No opponent assigned to this draft. Pick one in the toolbar.",
       "noMembers": "No members on this team yet.",
       "threats": "Opponent threats",
-      "threatRed": "100+ games & most-played",
+      "threatRed": "100+ games, dominant pick, or 65%+ WR / 4+ KDA (20+ games)",
       "threatOrange": "300k+ mastery",
-      "threatYellow": "flex pick (2+ players)"
+      "threatYellow": "flex threat — 2+ players individually dangerous on it",
+      "threatPrioPick": "priority pick/ban — a threat on both teams"
     },
     "dashboard": {
       "noTeam": "Select or create a team first.",

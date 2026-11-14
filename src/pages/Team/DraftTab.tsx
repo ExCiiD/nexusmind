@@ -3,189 +3,76 @@ import { useTranslation } from 'react-i18next'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
-import { Save, Copy, Plus, Trash2, Search, X, Ban, Users, Target, ChevronRight, AlertTriangle, Flame, Crown } from 'lucide-react'
+import { Save, Copy, Plus, Trash2, Search, X, Ban, Users, Target, ChevronRight, AlertTriangle, Flame, Crown, Crosshair } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAllChampions, type ChampionMeta } from '@/hooks/useAllChampions'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
 import type { DraftPrep, Team, TeamMember, ChampionPoolEntry } from '@/lib/ipc'
 import { championPlaysRole, getChampionRoles, ROLES, ROLE_LABEL_SHORT, type Role } from '@/lib/championRoles'
+import {
+  buildTeamThreatMap as buildTeamThreatMapCore,
+  buildPrioPickMap,
+  withPrioPicks,
+  type ThreatLevel,
+  type ChampionThreat,
+  type ThreatPoolMember,
+} from '@/lib/threatCore'
+
+export type { ThreatLevel, ChampionThreat }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Threat analysis — surfaces "dangerous" opponent picks in the draft grid
-// and pool sidebar. Computed entirely from cached pool entries (no extra
-// Riot calls) so it updates instantly when the user switches opponent or
-// re-scouts.
-//
-//   RED    : 100+ games on this champion AND it's the member's most-played
-//            champion this season → unmistakable comfort pick, expect it.
-//   ORANGE : 300k+ mastery points  → long-term comfort pick even if recent
-//            play count is low (think otp's who main-swapped).
-//   YELLOW : 2+ different members have this champion in their pool → flex
-//            threat; the opponent can dodge target bans by giving it to
-//            another teammate.
-//
-// Priority is RED > ORANGE > YELLOW when a champion qualifies for several.
+// Threat analysis — surfaces "dangerous" opponent picks in the draft grid.
+// The actual tier/threat rules (what counts as red/orange/yellow/prioPick,
+// the role-swap guard, the per-player gate on "flex threat") live in the
+// shared, pure src/lib/threatCore.ts (E12) so scouting, auto-fill and this
+// grid can never drift apart. This file only adapts TeamMember → the
+// narrow shape threatCore needs, and renders the result.
 // ──────────────────────────────────────────────────────────────────────────
 
-export type ThreatLevel = 'red' | 'orange' | 'yellow'
-
-/** Threat assessment for a champion played by a *specific* member.
- *  `null` = no threat. */
-interface MemberThreat {
-  level: 'red' | 'orange' | null
-  // Human-readable reason shown in tooltips (e.g. "120 games · main pick").
-  reason: string
-}
-
-/** Threat assessment for a champion across an entire team. Combines the
- *  per-member highest threat with the team-level flex (yellow) check. */
-interface ChampionThreat {
-  level: ThreatLevel
-  reason: string
-  /** Names of every member who plays this champion in the team's pool. */
-  members: string[]
-}
-
-const MASTERY_ORANGE_THRESHOLD = 300_000
-// Two ways a champion qualifies as "red threat" — either reached works:
-//   1. Absolute   : 100+ games on it (the user's original spec — only
-//                   reachable in "Complete" scope, where we can see the
-//                   full season count).
-//   2. Relative   : it's clearly the dominant pick — most-played in role
-//                   AND accounts for >=25% of the player's role games AND
-//                   has at least MIN_DOMINANT_GAMES games to avoid red
-//                   firing on a 2-game sample. Works in "Quick" scope.
-// The relative rule was added after testing showed Quick-scoped scouts
-// (100 games total) could never reach 100+ on a single champion — so red
-// never lit up even on clear one-tricks.
-const GAMES_RED_ABSOLUTE = 100
-const DOMINANT_SHARE_THRESHOLD = 0.25
-const MIN_DOMINANT_GAMES = 10
-
-/**
- * Per-member threat lookup. Pre-computes each member's #1 most-played
- * champion per role so the red-tier check ("dominant pick") is O(1) at
- * render time. Independent of which other opponents exist — used by the
- * sidebar's per-member icons.
- */
-function buildMemberThreatMap(member: TeamMember): Map<string, MemberThreat> {
-  const out = new Map<string, MemberThreat>()
-  const pool = member.champPool ?? []
-  if (pool.length === 0) return out
-
-  // Identify the most-played champion per role + total games per role.
-  // Mastery-only entries (playRate = 0) can't be the "dominant pick" —
-  // that distinction is about recent activity, not lifetime points.
-  const topByRole = new Map<string, { championKey: string; playRate: number }>()
-  const totalByRole = new Map<string, number>()
-  for (const e of pool) {
-    const games = e.playRate ?? 0
-    if (games <= 0) continue
-    totalByRole.set(e.role, (totalByRole.get(e.role) ?? 0) + games)
-    const cur = topByRole.get(e.role)
-    if (!cur || games > cur.playRate) topByRole.set(e.role, { championKey: e.championKey, playRate: games })
+/** Adapts a desktop TeamMember (with its ChampionPoolEntry[] pool) to the
+ *  narrow ThreatPoolMember shape threatCore operates on. */
+function toThreatMember(member: TeamMember): ThreatPoolMember {
+  return {
+    displayName: member.displayName,
+    role: member.role,
+    champPool: (member.champPool ?? []).map((e) => ({
+      championKey: e.championKey,
+      role: e.role,
+      games: e.playRate ?? 0,
+      winRate: e.winRate ?? null,
+      masteryPoints: e.masteryPoints ?? null,
+      kda: e.kda ?? null,
+    })),
   }
-
-  for (const e of pool) {
-    const games = e.playRate ?? 0
-    const mastery = e.masteryPoints ?? 0
-    const top = topByRole.get(e.role)
-    const isDominant = top?.championKey === e.championKey
-    const totalInRole = totalByRole.get(e.role) ?? 0
-    const share = totalInRole > 0 ? games / totalInRole : 0
-
-    // Red: absolute (100+ games) OR relative dominance (top of role +
-    // meaningful sample + >=25% of role games). Both signals matter:
-    // absolute catches one-tricks, relative catches "this is THE comfort
-    // pick" even with a smaller scouted sample.
-    const isRedAbsolute = games >= GAMES_RED_ABSOLUTE
-    const isRedRelative = isDominant && games >= MIN_DOMINANT_GAMES && share >= DOMINANT_SHARE_THRESHOLD
-
-    if (isRedAbsolute || isRedRelative) {
-      const reason = isRedAbsolute
-        ? `${games}g · most-played ${e.role}`
-        : `${games}g (${Math.round(share * 100)}% of ${e.role}) · most-played`
-      out.set(e.championKey, { level: 'red', reason })
-    } else if (mastery >= MASTERY_ORANGE_THRESHOLD) {
-      out.set(e.championKey, {
-        level: 'orange',
-        reason: `${Math.round(mastery / 1000)}k mastery`,
-      })
-    }
-    // Yellow is team-scoped, not per-member.
-  }
-  return out
 }
 
-/**
- * Team-wide threat lookup, keyed by champion. Aggregates per-member
- * threats (taking the strongest) and adds yellow flags for any champion
- * appearing in 2+ members' pools.
- */
 function buildTeamThreatMap(team: Team | null): Map<string, ChampionThreat> {
-  const out = new Map<string, ChampionThreat>()
-  if (!team?.members) return out
-
-  // championKey → set of member display names (Set for cheap dedup when a
-  // member has the same champion across multiple roles).
-  const memberSets = new Map<string, Set<string>>()
-  // championKey → strongest per-member threat across all members
-  const memberThreats = new Map<string, MemberThreat>()
-
-  for (const m of team.members) {
-    const memberMap = buildMemberThreatMap(m)
-    for (const e of (m.champPool ?? [])) {
-      const setExisting = memberSets.get(e.championKey) ?? new Set<string>()
-      setExisting.add(m.displayName)
-      memberSets.set(e.championKey, setExisting)
-    }
-    for (const [key, threat] of memberMap) {
-      if (!threat.level) continue
-      const cur = memberThreats.get(key)
-      // red > orange — keep the strongest signal across the team.
-      if (!cur || (cur.level !== 'red' && threat.level === 'red')) {
-        memberThreats.set(key, threat)
-      }
-    }
-  }
-
-  for (const [key, set] of memberSets) {
-    const members = Array.from(set)
-    const memberThreat = memberThreats.get(key)
-    if (memberThreat?.level === 'red') {
-      out.set(key, { level: 'red', reason: memberThreat.reason, members })
-    } else if (memberThreat?.level === 'orange') {
-      out.set(key, { level: 'orange', reason: memberThreat.reason, members })
-    } else if (set.size >= 2) {
-      // Yellow only kicks in when there's no stronger signal — a champion
-      // that's both a dominant pick AND a flex threat stays red, because
-      // we want the user's eye drawn to the more individually-threatening
-      // signal first.
-      out.set(key, {
-        level: 'yellow',
-        reason: `flex threat — ${set.size} players play it`,
-        members,
-      })
-    }
-  }
-  return out
+  if (!team?.members) return new Map()
+  return buildTeamThreatMapCore({ members: team.members.map(toThreatMember) })
 }
 
 /** Tailwind classes for each threat tier — applied as the border ring on
- *  champion icons. Kept side-by-side so the visual identity is easy to
- *  tweak (and Tailwind's purge picks up every class). */
+ *  champion icons. "played" intentionally has no ring: it's explicitly
+ *  "not a real threat yet", so it must not visually compete with the real
+ *  signals. Kept side-by-side so the visual identity is easy to tweak (and
+ *  Tailwind's purge picks up every class). */
 const THREAT_RING: Record<ThreatLevel, string> = {
-  red:    'ring-2 ring-red-500 shadow-[0_0_10px_rgba(239,68,68,0.7)]',
-  orange: 'ring-2 ring-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.55)]',
-  yellow: 'ring-2 ring-yellow-300/90 shadow-[0_0_8px_rgba(253,224,71,0.5)]',
+  prioPick: 'ring-2 ring-fuchsia-400 shadow-[0_0_12px_rgba(232,121,249,0.8)]',
+  red:      'ring-2 ring-red-500 shadow-[0_0_10px_rgba(239,68,68,0.7)]',
+  orange:   'ring-2 ring-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.55)]',
+  yellow:   'ring-2 ring-yellow-300/90 shadow-[0_0_8px_rgba(253,224,71,0.5)]',
+  played:   '',
 }
 
 /** Inline icon used inside threat tooltips. Saves duplicating the icon
- *  switch in three different render functions. */
+ *  switch in three different render functions. `null` for "played" — no
+ *  badge, see THREAT_RING comment above. */
 function ThreatBadge({ level }: { level: ThreatLevel }) {
+  if (level === 'prioPick') return <Crosshair className="h-3 w-3 text-fuchsia-300" />
   if (level === 'red') return <Flame className="h-3 w-3 text-red-400" />
   if (level === 'orange') return <Crown className="h-3 w-3 text-orange-300" />
-  return <AlertTriangle className="h-3 w-3 text-yellow-300" />
+  if (level === 'yellow') return <AlertTriangle className="h-3 w-3 text-yellow-300" />
+  return null
 }
 
 // Pro draft order — flat 20-slot sequence used to label each slot (B1..B20)
@@ -497,21 +384,32 @@ export function DraftTab({ myTeam }: Props) {
   const vsTeam = opponentTeams.find((t) => t.id === vsTeamId) ?? null
   const poolTeam = poolView === 'mine' ? myTeam : vsTeam
 
-  // Threat map for the OPPONENT team — used to highlight dangerous picks
-  // in the main champion grid regardless of which pool the sidebar
-  // currently shows. Recomputed only when the opponent's data actually
-  // changes (memo key on team id + member count + first updatedAt) to
-  // avoid re-walking the pool on every keystroke in the search box.
+  // Threat map for the OPPONENT team — used to highlight dangerous picks in
+  // the main champion grid (and ONLY there — the champion-pool sidebar on
+  // the right shows tiers, not threat colors, per user feedback: highlight
+  // noise belongs in the grid you're drafting against, not in your own/the
+  // opponent's pool browser). Recomputed only when the opponent's data
+  // actually changes.
   const opponentThreats = useMemo(
     () => buildTeamThreatMap(vsTeam),
     [vsTeam],
   )
-  // A second map computed against the team currently displayed in the
-  // sidebar — so when the user switches to "My team" view the icons
-  // there also light up for their own dominant picks.
-  const sidebarThreats = useMemo(
-    () => buildTeamThreatMap(poolTeam),
-    [poolTeam],
+  // My own team's threats — needed only to cross-reference against the
+  // opponent's for "prio pick" detection (a champion strong on both sides).
+  const myTeamThreats = useMemo(
+    () => buildTeamThreatMap(myTeam),
+    [myTeam],
+  )
+  const prioPicks = useMemo(
+    () => buildPrioPickMap(myTeamThreats, opponentThreats),
+    [myTeamThreats, opponentThreats],
+  )
+  // Prio picks override the plain opponent-threat level in the grid since
+  // they're the strongest signal — a champion good for both teams is worth
+  // banning/picking over a champion that's merely good for the opponent.
+  const gridThreats = useMemo(
+    () => withPrioPicks(opponentThreats, prioPicks),
+    [opponentThreats, prioPicks],
   )
 
   // Role distribution per side. Each side is mapped against either MY team
@@ -691,8 +589,11 @@ export function DraftTab({ myTeam }: Props) {
             )}
             {/* Threat legend — shown once at the top of the grid so users
                 immediately know what the colored rings mean. Compact, no
-                visual noise when no opponent is selected. */}
-            {vsTeam && opponentThreats.size > 0 && (
+                visual noise when no opponent is selected, and "played"
+                entries (seen but not a real threat) don't count — they
+                render with no ring at all, so a legend for them would be
+                pointless. */}
+            {vsTeam && Array.from(gridThreats.values()).some((t) => t.level !== 'played') && (
               <ThreatLegend />
             )}
             <div className="grid grid-cols-[repeat(auto-fill,minmax(58px,1fr))] gap-1.5">
@@ -703,7 +604,7 @@ export function DraftTab({ myTeam }: Props) {
                   // Only the LEADING pick locks a champion. Alternatives don't.
                   used={usedAsLeading.has(c.key)}
                   disabled={!activeSlot}
-                  threat={opponentThreats.get(c.key) ?? null}
+                  threat={gridThreats.get(c.key) ?? null}
                   onClick={() => addToActiveSlot(c.key)}
                 />
               ))}
@@ -733,7 +634,6 @@ export function DraftTab({ myTeam }: Props) {
         hasOpponent={!!vsTeam}
         myTeamName={myTeam?.name}
         opponentName={vsTeam?.name}
-        threats={sidebarThreats}
         usedChampions={usedAnywhere}
       />
     </div>
@@ -1049,7 +949,8 @@ function ChampionPickButton({ champion, used, disabled, threat, onClick }: {
   // Tooltip text — appended to the champion name so the user gets context
   // on hover without an extra UI element.
   const tooltipParts: string[] = [used ? `${champion.name} (already leading pick)` : champion.name]
-  if (threat) tooltipParts.push(`THREAT: ${threat.reason} — ${threat.members.join(', ')}`)
+  if (threat?.level === 'played') tooltipParts.push(`Seen in pool (${threat.members.join(', ')}) — not yet a threat`)
+  else if (threat) tooltipParts.push(`THREAT: ${threat.reason} — ${threat.members.join(', ')}`)
   return (
     <button
       onClick={onClick}
@@ -1068,7 +969,7 @@ function ChampionPickButton({ champion, used, disabled, threat, onClick }: {
       )}
     >
       {iconUrl && <img src={iconUrl} alt={champion.name} className="w-full h-full object-cover" />}
-      {threat && (
+      {threat && threat.level !== 'played' && (
         // Tiny corner badge — purely redundant with the ring, but useful
         // for colorblind users who'd otherwise miss the orange vs red
         // distinction.
@@ -1105,7 +1006,12 @@ function ThreatLegend() {
       <span className="flex items-center gap-1">
         <span className="h-3 w-3 rounded ring-2 ring-yellow-300/90" />
         <AlertTriangle className="h-3 w-3 text-yellow-300" />
-        {t('team.draft.threatYellow', { defaultValue: 'flex pick (2+ players)' })}
+        {t('team.draft.threatYellow', { defaultValue: 'flex threat — 2+ players individually dangerous on it' })}
+      </span>
+      <span className="flex items-center gap-1">
+        <span className="h-3 w-3 rounded ring-2 ring-fuchsia-400" />
+        <Crosshair className="h-3 w-3 text-fuchsia-300" />
+        {t('team.draft.threatPrioPick', { defaultValue: 'priority pick/ban — a threat on both teams' })}
       </span>
     </div>
   )
@@ -1115,7 +1021,7 @@ function ThreatLegend() {
 // Right sidebar: champion pool, switchable between My team and Opponent
 // ──────────────────────────────────────────────────────────────────────────
 function PoolSidebar({
-  poolTeam, poolView, onSwitch, hasOpponent, myTeamName, opponentName, threats, usedChampions,
+  poolTeam, poolView, onSwitch, hasOpponent, myTeamName, opponentName, usedChampions,
 }: {
   poolTeam: Team | null
   poolView: 'mine' | 'opponent'
@@ -1123,9 +1029,6 @@ function PoolSidebar({
   hasOpponent: boolean
   myTeamName?: string
   opponentName?: string
-  /** Threat lookup matching the team currently displayed in the sidebar.
-   *  Empty map = no threat highlights (e.g. no opponent scouted yet). */
-  threats: Map<string, ChampionThreat>
   /** Champions already picked/banned anywhere in the current draft —
    *  rendered with a greyscale + opacity treatment in the sidebar so the
    *  user can tell what's still on the board at a glance. */
@@ -1182,7 +1085,7 @@ function PoolSidebar({
             .slice() // avoid in-place sort of the original array reference
             .sort((a, b) => roleOrder(a.role) - roleOrder(b.role))
             .map((m) => (
-              <MemberPoolBlock key={m.id} member={m} threats={threats} usedChampions={usedChampions} />
+              <MemberPoolBlock key={m.id} member={m} usedChampions={usedChampions} />
             ))}
         </div>
       )}
@@ -1203,9 +1106,8 @@ const TIER_BG: Record<string, string> = {
   learning: 'border-zinc-500/70',
 }
 
-function MemberPoolBlock({ member, threats, usedChampions }: {
+function MemberPoolBlock({ member, usedChampions }: {
   member: TeamMember
-  threats: Map<string, ChampionThreat>
   /** Champions already in the draft — greyed out in the displayed pool. */
   usedChampions: Set<string>
 }) {
@@ -1234,11 +1136,6 @@ function MemberPoolBlock({ member, threats, usedChampions }: {
     return out
   }, [pool, memberRole])
 
-  // Per-member threat assessment — combined with the team-level map so an
-  // individual icon shows the player-specific "100g + most-played" signal
-  // even when the same champion isn't on multiple members.
-  const memberThreats = useMemo(() => buildMemberThreatMap({ ...member, champPool: pool }), [member, pool])
-
   return (
     <div className="rounded border border-hextech-border-dim overflow-hidden">
       <button
@@ -1265,32 +1162,18 @@ function MemberPoolBlock({ member, threats, usedChampions }: {
                     {tier} ({items.length})
                   </p>
                   <div className="flex flex-wrap gap-1">
-                    {items.map((e) => {
-                      // Resolve the strongest threat available for this
-                      // icon: prefer the per-member signal (red/orange);
-                      // fall back to the team-wide map (which can supply
-                      // yellow for flex threats).
-                      const personal = memberThreats.get(e.championKey)
-                      const teamWide = threats.get(e.championKey)
-                      const threat: ThreatLevel | null =
-                        personal?.level
-                        ?? teamWide?.level
-                        ?? null
-                      const reason = personal?.reason ?? teamWide?.reason ?? ''
-                      return (
-                        <PoolMiniIcon
-                          key={e.id}
-                          championKey={e.championKey}
-                          tier={e.tier}
-                          winRate={e.winRate ?? undefined}
-                          playRate={e.playRate ?? undefined}
-                          masteryPoints={e.masteryPoints ?? undefined}
-                          threat={threat}
-                          threatReason={reason}
-                          used={usedChampions.has(e.championKey)}
-                        />
-                      )
-                    })}
+                    {items.map((e) => (
+                      <PoolMiniIcon
+                        key={e.id}
+                        championKey={e.championKey}
+                        tier={e.tier}
+                        winRate={e.winRate ?? undefined}
+                        playRate={e.playRate ?? undefined}
+                        masteryPoints={e.masteryPoints ?? undefined}
+                        kda={e.kda ?? undefined}
+                        used={usedChampions.has(e.championKey)}
+                      />
+                    ))}
                   </div>
                 </div>
               )
@@ -1302,14 +1185,13 @@ function MemberPoolBlock({ member, threats, usedChampions }: {
   )
 }
 
-function PoolMiniIcon({ championKey, tier, winRate, playRate, masteryPoints, threat, threatReason, used }: {
+function PoolMiniIcon({ championKey, tier, winRate, playRate, masteryPoints, kda, used }: {
   championKey: string
   tier: string
   winRate?: number
   playRate?: number
   masteryPoints?: number
-  threat?: ThreatLevel | null
-  threatReason?: string
+  kda?: number
   /** True when this champion is already used somewhere in the active draft
    *  — applies a grayscale + reduced opacity treatment so the user can
    *  scan a player's pool for what's still pickable. */
@@ -1317,13 +1199,16 @@ function PoolMiniIcon({ championKey, tier, winRate, playRate, masteryPoints, thr
 }) {
   const iconUrl = useChampionIconUrl(championKey)
   // Tooltip aggregates everything we know — game count, win rate, mastery,
-  // and the threat reason if one applies. Multi-line so it stays readable.
+  // KDA. No threat info here on purpose: threat highlighting only belongs
+  // in the central draft grid (see ThreatLegend/ChampionPickButton above),
+  // never in this own/opponent pool browser — showing it twice just made
+  // the sidebar noisy without adding information.
   const lines = [
     championKey,
     playRate ? `${playRate}g` : null,
     winRate !== undefined ? `${winRate}% WR` : null,
+    kda !== undefined ? `${kda.toFixed(1)} KDA` : null,
     masteryPoints ? `${Math.round(masteryPoints / 1000)}k mastery` : null,
-    threat ? `THREAT (${threat}): ${threatReason}` : null,
     used ? 'Already in current draft' : null,
   ].filter(Boolean) as string[]
   return (
@@ -1335,11 +1220,6 @@ function PoolMiniIcon({ championKey, tier, winRate, playRate, masteryPoints, thr
         // even at this size.
         'relative h-10 w-10 rounded overflow-hidden border-2 bg-black/30 group/icon transition-all',
         TIER_BG[tier] ?? 'border-hextech-border-dim',
-        // Threat ring layers on top of the tier border — we keep both so
-        // the user can read tier AND threat at a glance. Suppressed when
-        // used (the icon is already deprioritized; ring + grayscale fight
-        // for attention).
-        threat && !used && THREAT_RING[threat],
         // Greyed-out treatment for champions already in the draft. We
         // grayscale + dim instead of hiding so the user can still see
         // they're there (and use the WR/mastery info to compare).
@@ -1352,12 +1232,6 @@ function PoolMiniIcon({ championKey, tier, winRate, playRate, masteryPoints, thr
       {winRate !== undefined && playRate !== undefined && (
         <span className="absolute bottom-0 inset-x-0 bg-black/75 text-[8px] font-bold text-white text-center leading-tight py-px">
           {winRate}%
-        </span>
-      )}
-      {/* Threat badge (top-left) — colorblind-safe secondary signal. */}
-      {threat && !used && (
-        <span className="absolute top-0 left-0 bg-black/80 rounded-br px-px">
-          <ThreatBadge level={threat} />
         </span>
       )}
       {/* "Used" marker — small check-style overlay so the eye can spot
