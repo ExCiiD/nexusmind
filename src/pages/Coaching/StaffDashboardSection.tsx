@@ -54,6 +54,7 @@ export function StaffDashboardSection({ staffGroups }: { staffGroups: Group[] })
                   <th className="py-2 pr-3">{t('team.dashboard.col.player', { defaultValue: 'Player' })}</th>
                   <th className="py-2 pr-3">{t('team.dashboard.col.form', { defaultValue: 'Form (10)' })}</th>
                   <th className="py-2 pr-3">{t('team.dashboard.col.mood', { defaultValue: 'Mood' })}</th>
+                  <th className="py-2 pr-3">{t('team.dashboard.col.perfIndex', { defaultValue: 'Perf index' })}</th>
                   <th className="py-2 pr-3">{t('team.dashboard.col.week', { defaultValue: 'This week' })}</th>
                   <th className="py-2 pr-3">{t('team.dashboard.col.reviews', { defaultValue: 'Reviews' })}</th>
                   <th className="py-2 pr-3">{t('team.dashboard.col.mistake', { defaultValue: 'Dominant mistake' })}</th>
@@ -75,6 +76,9 @@ export function StaffDashboardSection({ staffGroups }: { staffGroups: Group[] })
                     </td>
                     <td className="py-2 pr-3 text-hextech-text">
                       {r.recentMood === null ? '—' : r.recentMood}
+                    </td>
+                    <td className="py-2 pr-3 text-hextech-text">
+                      {r.perfIndex === null ? '—' : r.perfIndex}
                     </td>
                     <td className="py-2 pr-3 text-hextech-text">{t('team.dashboard.games', { count: r.gamesThisWeek, defaultValue: '{{count}} games' })}</td>
                     <td className="py-2 pr-3 text-hextech-text">

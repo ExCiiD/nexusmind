@@ -17,4 +17,6 @@ export interface PlayerDashboardRow {
   recentMood: number | null
   /** winrateLast10 minus the team's own average over players who have one; null if either side is unavailable. */
   winrateVsTeamAvg: number | null
+  /** The player's latest self-assessment (fundamental scores, 1-10 each) averaged and scaled to ~0-100; null if they've never run one. */
+  perfIndex: number | null
 }

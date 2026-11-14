@@ -17,6 +17,9 @@ import type { DashboardAlert, PlayerDashboardRow } from './staffDashboard'
  * - "comparaison vs moyenne d'équipe" is winrateLast10 minus the team's own
  *   average over players who have one — not a historical trend, just the
  *   current snapshot.
+ * - "perf index de l'assistant" is the player's most recent self-assessment
+ *   (`Assessment`/`AssessmentScore`, 1-10 per fundamental) averaged and
+ *   scaled by 10 to read roughly 0-100; null if they've never run one.
  */
 
 const DAY = 86_400_000
@@ -37,7 +40,7 @@ export async function getStaffDashboard(sb: SupabaseClient, groupId: string): Pr
       .select('user_id, table_name, record_id, data')
       .in('user_id', playerIds)
       .eq('deleted', false)
-      .in('table_name', ['Game', 'Review', 'Mistake', 'MistakeTag', 'CoachingExperiment'])
+      .in('table_name', ['Game', 'Review', 'Mistake', 'MistakeTag', 'CoachingExperiment', 'Assessment', 'AssessmentScore'])
       .limit(20000),
     // RLS-filtered: only players who opted in via `share_wellbeing` (E6) are returned here.
     sb.from('wellbeing_checkins').select('user_id, mood, created_at').in('user_id', playerIds).order('created_at', { ascending: false }).limit(500),
@@ -111,10 +114,20 @@ export async function getStaffDashboard(sb: SupabaseClient, groupId: string): Pr
     const moods = moodsByUser.get(p.user_id) ?? []
     const recentMood = moods.length > 0 ? Math.round((moods.reduce((a, b) => a + b, 0) / moods.length) * 10) / 10 : null
 
+    const assessments = userRows.filter((r) => r.table_name === 'Assessment').map((r) => r.data as any)
+      .sort((a, b) => ts(b.createdAt) - ts(a.createdAt))
+    const latestAssessmentId = assessments[0]?.id
+    const latestScores = latestAssessmentId
+      ? userRows.filter((r) => r.table_name === 'AssessmentScore' && (r.data as any).assessmentId === latestAssessmentId).map((r) => (r.data as any).score as number)
+      : []
+    const perfIndex = latestScores.length > 0
+      ? Math.round((latestScores.reduce((a, b) => a + b, 0) / latestScores.length) * 10)
+      : null
+
     return {
       playerId: p.user_id, displayName: p.display_name ?? '?',
       gamesThisWeek, winrateLast10, reviewsDone, reviewsPending,
-      dominantMistake, currentObjective, daysSinceLastGame, alerts, recentMood,
+      dominantMistake, currentObjective, daysSinceLastGame, alerts, recentMood, perfIndex,
       winrateVsTeamAvg: null, // filled in below, once every row's winrate is known
     }
   })

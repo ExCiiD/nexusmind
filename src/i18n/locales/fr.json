@@ -995,6 +995,7 @@
         "player": "Joueur",
         "form": "Forme (10)",
         "mood": "Humeur",
+        "perfIndex": "Indice de perf",
         "week": "Cette semaine",
         "reviews": "Reviews",
         "mistake": "Erreur dominante",

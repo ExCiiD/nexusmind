@@ -98,6 +98,35 @@ describe('getStaffDashboard', () => {
     expect(jg.winrateVsTeamAvg).toBe(-50) // 0 - team avg(50)
   })
 
+  it('computes perfIndex from the most recent self-assessment, ignoring older ones', async () => {
+    const now = Date.now()
+    const members = chain({ data: [{ user_id: 'p1', display_name: 'Top' }], error: null })
+    const syncRows = [
+      { user_id: 'p1', table_name: 'Assessment', data: { id: 'a-old', createdAt: new Date(now - 30 * DAY).toISOString() } },
+      { user_id: 'p1', table_name: 'AssessmentScore', data: { assessmentId: 'a-old', fundamentalId: 'mastery', score: 1 } },
+      { user_id: 'p1', table_name: 'Assessment', data: { id: 'a-new', createdAt: new Date(now).toISOString() } },
+      { user_id: 'p1', table_name: 'AssessmentScore', data: { assessmentId: 'a-new', fundamentalId: 'mastery', score: 8 } },
+      { user_id: 'p1', table_name: 'AssessmentScore', data: { assessmentId: 'a-new', fundamentalId: 'tempo', score: 6 } },
+    ]
+    const records = chain({ data: syncRows, error: null })
+    const checkins = chain({ data: [], error: null })
+    const sb = { from: vi.fn((t: string) => ({ group_members: members, sync_records: records, wellbeing_checkins: checkins }[t])) } as never
+
+    const [row] = await getStaffDashboard(sb, 'g1')
+    expect(row.perfIndex).toBe(70) // avg(8, 6) = 7, scaled by 10
+  })
+
+  it('returns a null perfIndex for a player who has never run a self-assessment', async () => {
+    const now = Date.now()
+    const members = chain({ data: [{ user_id: 'p1', display_name: 'Top' }], error: null })
+    const records = chain({ data: [{ user_id: 'p1', table_name: 'Game', data: { id: 'g1', win: true, gameEndAt: now } }], error: null })
+    const checkins = chain({ data: [], error: null })
+    const sb = { from: vi.fn((t: string) => ({ group_members: members, sync_records: records, wellbeing_checkins: checkins }[t])) } as never
+
+    const [row] = await getStaffDashboard(sb, 'g1')
+    expect(row.perfIndex).toBeNull()
+  })
+
   it('throws when the members query errors', async () => {
     const sb = { from: vi.fn(() => chain({ data: null, error: { message: 'boom' } })) } as never
     await expect(getStaffDashboard(sb, 'g1')).rejects.toThrow('boom')
