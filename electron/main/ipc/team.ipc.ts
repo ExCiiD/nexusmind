@@ -16,6 +16,7 @@ import { championPlaysRole, type Role } from '../../../src/lib/championRoles'
 import { computeAutoTier } from '../../../src/lib/threatCore'
 import { normalizeSlots, groupDuplicates, normalizeRole } from '../../../src/lib/teamIdentity'
 import { mergeMatchIdsByRecency } from '../../../src/lib/scoutingCore'
+import { RIOT_LIMITS } from '../../../src/lib/riotLimits'
 
 async function getActiveUser() {
   const prisma = getPrisma()
@@ -63,7 +64,7 @@ async function getMatchesBulkCached(
   // Bumping this number above 10 doesn't make scouts any faster on a
   // Personal key (it's already gated by the long-window 100/120s rule)
   // and just risks more 429s if the limiter has a bug.
-  concurrency = 10,
+  concurrency = RIOT_LIMITS.MATCH_FETCH_CONCURRENCY,
 ): Promise<Map<string, any>> {
   if (matchIds.length === 0) return new Map()
   const prisma = getPrisma()
@@ -533,10 +534,10 @@ export function registerTeamHandlers() {
     //                              returns (~30 min worst case on Personal,
     //                              fast on Production). Used by the "Complete"
     //                              scope dialog option.
-    // We still apply a sanity ceiling at 2500 (~max season-list payload from
+    // We still apply a sanity ceiling (~max season-list payload from
     // getSeasonMatchIds: 1000 solo + 1000 flex + 500 clash) so a runaway
     // caller can't accidentally allocate forever.
-    const noCap = !Number.isFinite(count) || count <= 0 || count > 2500
+    const noCap = !Number.isFinite(count) || count <= 0 || count > RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL
     const scoutStart = Date.now()
     // E15: incremental — a repeat "quick" scout only asks Riot for games
     // since the last one; "Complete" (noCap) always relists from scratch.
@@ -556,7 +557,7 @@ export function registerTeamHandlers() {
     const idToKey = await getChampionIdToKey().catch(() => ({} as Record<number, string>))
     const [matches, masteries] = await Promise.all([
       getMatchesBulkCached(matchIds, region),
-      getChampionMasteries(puuid, region, 50).catch((err) => {
+      getChampionMasteries(puuid, region, RIOT_LIMITS.MAX_MASTERY_COUNT).catch((err) => {
         console.warn('[scout-member] mastery fetch failed:', (err as Error)?.message)
         return [] as Awaited<ReturnType<typeof getChampionMasteries>>
       }),
@@ -693,15 +694,14 @@ export function registerTeamHandlers() {
     //   - 500  ("deep")               : ~10 min on Personal key
     //   - <= 0 or huge ("complete")   : no cap, every season game Riot has
     //                                   (~30 min on Personal, fast on Prod)
-    // The tier thresholds (main = 5+ plays, comfort = 3+ plays) saturate
-    // quickly so the default of 100 is enough for accurate tiering on most
-    // ranked accounts. The hard ceiling of 2500 matches the worst-case
-    // payload from getSeasonMatchIds (1000 solo + 1000 flex + 500 clash)
-    // and prevents accidental runaway allocations.
-    const rawMatchCount = opts.matchCount ?? 100
-    const matchCountNoCap = !Number.isFinite(rawMatchCount) || rawMatchCount <= 0 || rawMatchCount > 2500
-    const matchCount = matchCountNoCap ? 2500 : Math.max(1, Math.min(rawMatchCount, 2500))
-    const masteryCount = Math.min(opts.masteryCount ?? 30, 50)
+    // The tier thresholds saturate quickly so the default of 100 is enough
+    // for accurate tiering on most ranked accounts. The hard ceiling
+    // matches the worst-case payload from getSeasonMatchIds (1000 solo +
+    // 1000 flex + 500 clash) and prevents accidental runaway allocations.
+    const rawMatchCount = opts.matchCount ?? RIOT_LIMITS.QUICK_SCOUT_MATCH_COUNT
+    const matchCountNoCap = !Number.isFinite(rawMatchCount) || rawMatchCount <= 0 || rawMatchCount > RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL
+    const matchCount = matchCountNoCap ? RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL : Math.max(1, Math.min(rawMatchCount, RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL))
+    const masteryCount = Math.min(opts.masteryCount ?? RIOT_LIMITS.DEFAULT_MASTERY_COUNT, RIOT_LIMITS.MAX_MASTERY_COUNT)
     const overwriteTiers = opts.overwriteTiers ?? true
 
     const prisma = getPrisma()
@@ -951,7 +951,7 @@ export function registerTeamHandlers() {
     matchesPerMember?: number
     minTogether?: number
   } = {}) => {
-    const matchesPerMember = Math.min(opts.matchesPerMember ?? 100, 100)
+    const matchesPerMember = Math.min(opts.matchesPerMember ?? RIOT_LIMITS.SYNERGY_MATCHES_PER_MEMBER, RIOT_LIMITS.MAX_IDS_PER_REQUEST)
     const minTogether = Math.max(2, opts.minTogether ?? 3)
 
     const prisma = getPrisma()
@@ -1021,42 +1021,13 @@ export function registerTeamHandlers() {
       }
     }
 
-    // Step 3 + 4 — fetch each match (via cache) and confirm same-team synergy
-    // Per-member accumulators
-    interface Accum {
-      memberId: string
-      displayName: string
-      role: string
-      games: number
-      wins: number
-      sums: {
-        kills: number; deaths: number; assists: number
-        cs: number; durationMin: number
-        damage: number; damageTaken: number
-        ccTime: number; visionScore: number
-        wardsPlaced: number; wardsKilled: number; controlWards: number
-        gold: number; xp: number
-      }
-      // Kept separate because shares require per-match relative arithmetic
-      // (each game's share, averaged) rather than a sum-then-divide.
-      shareSums: { dmg: number; gold: number; vision: number; dmgTaken: number; cc: number; kp: number }
-      // championKey → { games, wins }
-      byChampion: Map<string, { games: number; wins: number }>
-    }
-    const accums = new Map<string, Accum>()
-    for (const m of resolvedMembers) {
-      accums.set(m.puuid, {
-        memberId: m.id,
-        displayName: m.displayName,
-        role: m.role,
-        games: 0,
-        wins: 0,
-        sums: { kills: 0, deaths: 0, assists: 0, cs: 0, durationMin: 0, damage: 0, damageTaken: 0, ccTime: 0, visionScore: 0, wardsPlaced: 0, wardsKilled: 0, controlWards: 0, gold: 0, xp: 0 },
-        shareSums: { dmg: 0, gold: 0, vision: 0, dmgTaken: 0, cc: 0, kp: 0 },
-        byChampion: new Map(),
-      })
-    }
-
+    // Step 3 + 4 — fetch each match (via cache), then hand off to the same
+    // aggregator the custom-game/combined-stats handlers use (E16: this
+    // used to be a ~140-line copy of aggregateMatchLike's logic, duplicated
+    // well enough to drift — now there's exactly one implementation of
+    // "given match-like objects + a roster, compute averages/shares/
+    // byChampion", so a future fix to one stats tab lands on all of them).
+    //
     // Group candidate matches by the region of a seeder member so the bulk
     // fetcher can pull each match from the right routing cluster. Different
     // regions live on different Riot endpoints, so we can't mix them in one
@@ -1076,157 +1047,16 @@ export function registerTeamHandlers() {
       for (const [id, m] of fetched) allMatches.set(id, m)
     }
 
-    let confirmedMatchCount = 0
-    for (const matchId of candidateMatchIds) {
-      const matchData = allMatches.get(matchId)
-      if (!matchData) continue
-
-      const participants: any[] = matchData?.info?.participants ?? []
-      const durationSec: number = matchData?.info?.gameDuration ?? 0
-      if (!participants.length || durationSec <= 0) continue
-      const durationMin = durationSec / 60
-
-      // Group participants by team (100 = blue, 200 = red), then find the
-      // team containing the majority of our roster PUUIDs.
-      const byTeam: Record<number, any[]> = { 100: [], 200: [] }
-      for (const p of participants) {
-        if (p.teamId === 100 || p.teamId === 200) byTeam[p.teamId].push(p)
-      }
-      const ourTeamId = ([100, 200] as const).find((tid) => {
-        const ours = byTeam[tid].filter((p) => puuidToMember.has(p.puuid)).length
-        return ours >= minTogether
-      })
-      if (!ourTeamId) continue // members were present but on opposite teams — not synergy
-
-      const ourSide = byTeam[ourTeamId]
-      const ourMembersInGame = ourSide.filter((p) => puuidToMember.has(p.puuid))
-
-      // Team totals for share calculations. teamKills powers kill-participation
-      // (KP = (player kills + assists) / team kills), the others are simple
-      // % shares of the team's resource pie.
-      const teamTotals = {
-        dmg: ourSide.reduce((s, p) => s + (p.totalDamageDealtToChampions ?? 0), 0),
-        gold: ourSide.reduce((s, p) => s + (p.goldEarned ?? 0), 0),
-        vision: ourSide.reduce((s, p) => s + (p.visionScore ?? 0), 0),
-        dmgTaken: ourSide.reduce((s, p) => s + (p.totalDamageTaken ?? 0), 0),
-        // CC score = the number shown on the end-of-game screen.
-        // Riot's match-V5 exposes it as `timeCCingOthers` (an integer
-        // number of "CC seconds dealt to enemy champions"). Fall back to
-        // `totalTimeCCDealt` for backwards compat with custom games
-        // imported before we standardised on the post-game label.
-        cc: ourSide.reduce((s, p) => s + (p.timeCCingOthers ?? p.totalTimeCCDealt ?? 0), 0),
-        kills: ourSide.reduce((s, p) => s + (p.kills ?? 0), 0),
-      }
-
-      confirmedMatchCount++
-      for (const p of ourMembersInGame) {
-        const acc = accums.get(p.puuid)!
-        // Per-role filter: skip this player's contribution when they played
-        // off-role in this match. The match still counts as a synergy game
-        // (so other on-role teammates' stats are accumulated), but Ayura's
-        // SUPPORT games don't pollute her MID averages, etc. We normalize
-        // Riot's MIDDLE/BOTTOM/UTILITY to match our internal role enum.
-        const playedRole = normalizeRole(p.teamPosition || p.individualPosition)
-        const assignedRole = (acc.role || '').toUpperCase()
-        if (assignedRole && playedRole && playedRole !== assignedRole) continue
-        acc.games++
-        if (p.win) acc.wins++
-        const cs = (p.totalMinionsKilled ?? 0) + (p.neutralMinionsKilled ?? 0)
-        acc.sums.kills += p.kills ?? 0
-        acc.sums.deaths += p.deaths ?? 0
-        acc.sums.assists += p.assists ?? 0
-        acc.sums.cs += cs
-        acc.sums.durationMin += durationMin
-        acc.sums.damage += p.totalDamageDealtToChampions ?? 0
-        acc.sums.damageTaken += p.totalDamageTaken ?? 0
-        acc.sums.ccTime += p.timeCCingOthers ?? p.totalTimeCCDealt ?? 0
-        acc.sums.visionScore += p.visionScore ?? 0
-        acc.sums.wardsPlaced += p.wardsPlaced ?? 0
-        acc.sums.wardsKilled += p.wardsKilled ?? 0
-        acc.sums.controlWards += p.detectorWardsPurchased ?? p.visionWardsBoughtInGame ?? 0
-        acc.sums.gold += p.goldEarned ?? 0
-        acc.sums.xp += p.champExperience ?? 0
-        // Shares (clamped to avoid div-by-zero pollution). KP is computed
-        // against teamKills + 1 instead of teamKills alone so a player with
-        // 0 kills/assists in a 0-kill team gets 0 KP, not NaN.
-        acc.shareSums.dmg += teamTotals.dmg > 0 ? (p.totalDamageDealtToChampions ?? 0) / teamTotals.dmg : 0
-        acc.shareSums.gold += teamTotals.gold > 0 ? (p.goldEarned ?? 0) / teamTotals.gold : 0
-        acc.shareSums.vision += teamTotals.vision > 0 ? (p.visionScore ?? 0) / teamTotals.vision : 0
-        acc.shareSums.dmgTaken += teamTotals.dmgTaken > 0 ? (p.totalDamageTaken ?? 0) / teamTotals.dmgTaken : 0
-        acc.shareSums.cc += teamTotals.cc > 0 ? ((p.timeCCingOthers ?? p.totalTimeCCDealt ?? 0)) / teamTotals.cc : 0
-        acc.shareSums.kp += teamTotals.kills > 0 ? ((p.kills ?? 0) + (p.assists ?? 0)) / teamTotals.kills : 0
-        // Per-champion breakdown
-        const champKey = p.championName ?? 'Unknown'
-        const champ = acc.byChampion.get(champKey) ?? { games: 0, wins: 0 }
-        champ.games++
-        if (p.win) champ.wins++
-        acc.byChampion.set(champKey, champ)
-      }
-    }
-
-    // Step 5 — finalize: averages over each player's own participation count
-    const players = Array.from(accums.values())
-      .filter((a) => a.games > 0)
-      .map((a) => {
-        const g = a.games
-        const dmin = Math.max(0.001, a.sums.durationMin)
-        return {
-          memberId: a.memberId,
-          displayName: a.displayName,
-          role: a.role,
-          gamesPlayed: a.games,
-          wins: a.wins,
-          winRate: Math.round((a.wins / g) * 100),
-          averages: {
-            kda: a.sums.deaths > 0 ? (a.sums.kills + a.sums.assists) / a.sums.deaths : a.sums.kills + a.sums.assists,
-            kills: a.sums.kills / g,
-            deaths: a.sums.deaths / g,
-            assists: a.sums.assists / g,
-            cs: a.sums.cs / g,
-            csPerMin: a.sums.cs / dmin,
-            damage: a.sums.damage / g,
-            damagePerMin: a.sums.damage / dmin,
-            damageTaken: a.sums.damageTaken / g,
-            ccTime: a.sums.ccTime / g,
-            visionScore: a.sums.visionScore / g,
-            wardsPlaced: a.sums.wardsPlaced / g,
-            wardsKilled: a.sums.wardsKilled / g,
-            controlWards: a.sums.controlWards / g,
-            gold: a.sums.gold / g,
-            goldPerMin: a.sums.gold / dmin,
-            xpPerMin: a.sums.xp / dmin,
-            // Efficiency: damage produced per gold earned. Gives a quick
-            // read on how cost-effective a player's damage output is —
-            // typically higher for casters/ADCs, lower for tanks.
-            damagePerGold: a.sums.gold > 0 ? a.sums.damage / a.sums.gold : 0,
-          },
-          shares: {
-            damagePct: (a.shareSums.dmg / g) * 100,
-            goldPct: (a.shareSums.gold / g) * 100,
-            visionPct: (a.shareSums.vision / g) * 100,
-            damageTakenPct: (a.shareSums.dmgTaken / g) * 100,
-            ccPct: (a.shareSums.cc / g) * 100,
-            kpPct: (a.shareSums.kp / g) * 100,
-          },
-          byChampion: Array.from(a.byChampion.entries())
-            .map(([championKey, v]) => ({
-              championKey,
-              games: v.games,
-              wins: v.wins,
-              winRate: Math.round((v.wins / v.games) * 100),
-            }))
-            .sort((x, y) => y.games - x.games),
-        }
-      })
-
-    return {
-      matchCount: confirmedMatchCount,
-      candidateCount: candidateMatchIds.length,
-      membersResolved: resolvedMembers.length,
-      membersWithGames: players.length,
-      players,
-      fetchedAt: Date.now(),
-    }
+    // Keep one entry per candidate (even unresolved ones, as an empty
+    // match-like placeholder) so `candidateCount` below still reflects the
+    // true number of candidates scanned, matching this handler's previous
+    // behavior — aggregateMatchLike already skips empty/zero-duration
+    // entries on its own.
+    const matchLike = candidateMatchIds.map((id) => {
+      const m = allMatches.get(id)
+      return { durationSec: m?.info?.gameDuration ?? 0, participants: m?.info?.participants ?? [] }
+    })
+    return aggregateMatchLike(team, matchLike, minTogether)
   })
 
   // ── Custom games (scrim / tournament CSV imports) ───────────────────────
@@ -1478,7 +1308,7 @@ export function registerTeamHandlers() {
     await Promise.all(resolvedMembers.map(async (m) => {
       if (!m.puuid || !m.region) return
       try {
-        const ids = await getMatchIds(m.puuid, m.region, 100, 0, 'flex')
+        const ids = await getMatchIds(m.puuid, m.region, RIOT_LIMITS.SYNERGY_MATCHES_PER_MEMBER, 0, 'flex')
         for (const id of ids) {
           const set = matchToPuuids.get(id) ?? new Set<string>()
           set.add(m.puuid)
@@ -1545,7 +1375,7 @@ export function registerTeamHandlers() {
     })
     if (!team) throw new Error('Team not found')
 
-    const MAX_GAMES_PER_MEMBER = 100
+    const MAX_GAMES_PER_MEMBER = RIOT_LIMITS.OPPONENT_DASHBOARD_MAX_GAMES_PER_MEMBER
 
     interface Accum {
       memberId: string; displayName: string; role: string
@@ -1603,7 +1433,7 @@ export function registerTeamHandlers() {
       // Bound how many of the season's matches we hydrate per opponent.
       // 3x MAX_GAMES_PER_MEMBER reflects the typical ~30% same-role hit
       // rate; we'll usually stop early once we've collected enough.
-      const candidateIds = matchIds.slice(0, MAX_GAMES_PER_MEMBER * 3)
+      const candidateIds = matchIds.slice(0, MAX_GAMES_PER_MEMBER * RIOT_LIMITS.OPPONENT_DASHBOARD_CANDIDATE_MULTIPLIER)
       const matches = await getMatchesBulkCached(candidateIds, region)
       let collected = 0
       for (const id of candidateIds) {

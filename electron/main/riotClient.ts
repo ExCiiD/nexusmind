@@ -14,6 +14,8 @@
 // (Node 23+) and crashed Electron 33 (Node 20); pinning to ^6.21 fixes
 // that, but the try/catch is the actual safety net.
 import { prepareRiotRequest, RiotAuthError } from './riotTransport'
+import { RIOT_LIMITS } from '../../src/lib/riotLimits'
+import { mergeMatchIdsByRecency } from '../../src/lib/scoutingCore'
 
 try {
   // Lazy require — keeps any import-time errors inside the try/catch
@@ -359,7 +361,7 @@ export async function getChampionMasteries(
 }>> {
   const base = PLATFORM_URLS[region]
   if (!base) throw new Error(`Unknown region: ${region}`)
-  return riotFetchJson(`${base}/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=${Math.min(count, 50)}`)
+  return riotFetchJson(`${base}/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=${Math.min(count, RIOT_LIMITS.MAX_MASTERY_COUNT)}`)
 }
 
 export async function getRankedStats(
@@ -462,18 +464,19 @@ export async function getMatchIdsInRange(
   region: string,
   queueId: 420 | 440 | 700,
   startTimestampSec: number,
-  maxPages = 10,
+  maxPages: number = RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED,
 ): Promise<string[]> {
   const routing = REGION_TO_ROUTING[region] || 'europe'
+  const pageSize = RIOT_LIMITS.MAX_IDS_PER_REQUEST
   const out: string[] = []
   for (let page = 0; page < maxPages; page++) {
     const ids: string[] = await riotFetchWithRoutingFallback(
-      `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queueId}&startTime=${startTimestampSec}&start=${page * 100}&count=100`,
+      `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queueId}&startTime=${startTimestampSec}&start=${page * pageSize}&count=${pageSize}`,
       routing,
     )
     if (!Array.isArray(ids) || ids.length === 0) break
     out.push(...ids)
-    if (ids.length < 100) break
+    if (ids.length < pageSize) break
   }
   return out
 }
@@ -495,26 +498,20 @@ export async function getSeasonMatchIds(
 ): Promise<string[]> {
   const ts = Math.floor(since.getTime() / 1000)
   const [solo, flex, clash] = await Promise.all([
-    getMatchIdsInRange(puuid, region, 420, ts, 10).catch((err) => {
+    getMatchIdsInRange(puuid, region, 420, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED).catch((err) => {
       console.warn('[getSeasonMatchIds] soloq failed:', err?.message)
       return [] as string[]
     }),
-    getMatchIdsInRange(puuid, region, 440, ts, 10).catch((err) => {
+    getMatchIdsInRange(puuid, region, 440, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED).catch((err) => {
       console.warn('[getSeasonMatchIds] flex failed:', err?.message)
       return [] as string[]
     }),
-    getMatchIdsInRange(puuid, region, 700, ts, 5).catch((err) => {
+    getMatchIdsInRange(puuid, region, 700, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_CLASH).catch((err) => {
       console.warn('[getSeasonMatchIds] clash failed:', err?.message)
       return [] as string[]
     }),
   ])
-  const merged = [...new Set([...solo, ...flex, ...clash])]
-  merged.sort((a, b) => {
-    const tsA = parseInt(a.split('_')[1] ?? '0', 10)
-    const tsB = parseInt(b.split('_')[1] ?? '0', 10)
-    return tsB - tsA
-  })
-  return merged
+  return mergeMatchIdsByRecency(mergeMatchIdsByRecency(solo, flex), clash)
 }
 
 export async function getMatch(

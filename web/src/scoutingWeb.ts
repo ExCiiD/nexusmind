@@ -4,6 +4,7 @@ import { aggregateChampionPlays, winRateOf, kdaOf } from '@/lib/scoutingCore'
 import { computeAutoTier } from '@/lib/threatCore'
 import { championPlaysRole, type Role } from '@/lib/championRoles'
 import { updateRosterMember, upsertPoolEntry, listPoolForMember, removePoolEntry } from '@/lib/teamCore'
+import { RIOT_LIMITS } from '@/lib/riotLimits'
 
 /**
  * Web equivalents of team.ipc.ts's `team:scout-member` / `team:auto-fill-pool`
@@ -35,13 +36,13 @@ async function resolvePuuid(member: RosterLike): Promise<{ puuid: string; region
 
 export async function scoutMemberWeb(
   member: RosterLike,
-  count = 100,
+  count: number = RIOT_LIMITS.QUICK_SCOUT_MATCH_COUNT,
   opts: { roleOnly?: boolean } = {},
 ): Promise<{ upserted: number; totalMatches: number; sameRoleCount: number }> {
   const roleOnly = opts.roleOnly ?? false
   const { puuid, region } = await resolvePuuid(member)
 
-  const noCap = !Number.isFinite(count) || count <= 0 || count > 2500
+  const noCap = !Number.isFinite(count) || count <= 0 || count > RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL
   const allSeasonIds = await riot.getSeasonMatchIds(puuid, region)
   const matchIds = noCap ? allSeasonIds : allSeasonIds.slice(0, Math.max(1, count))
   if (matchIds.length === 0) return { upserted: 0, totalMatches: 0, sameRoleCount: 0 }
@@ -49,7 +50,7 @@ export async function scoutMemberWeb(
   const [matches, idToKey, masteries] = await Promise.all([
     riot.getMatchesBulk(matchIds, region),
     riot.getChampionIdToKey().catch(() => ({}) as Record<number, string>),
-    riot.getChampionMasteries(puuid, region, 50).catch(() => [] as Array<{ championId: number; championPoints: number }>),
+    riot.getChampionMasteries(puuid, region, RIOT_LIMITS.MAX_MASTERY_COUNT).catch(() => [] as Array<{ championId: number; championPoints: number }>),
   ])
   const masteryByKey = new Map<string, number>()
   for (const m of masteries) {
@@ -88,10 +89,10 @@ export async function autoFillPoolWeb(
   opts: { matchCount?: number; masteryCount?: number; roleOnly?: boolean } = {},
 ): Promise<{ upserted: number; matchesUsed: number; masteriesUsed: number }> {
   const roleOnly = opts.roleOnly ?? true
-  const rawMatchCount = opts.matchCount ?? 100
-  const matchCountNoCap = !Number.isFinite(rawMatchCount) || rawMatchCount <= 0 || rawMatchCount > 2500
-  const matchCount = matchCountNoCap ? 2500 : Math.max(1, Math.min(rawMatchCount, 2500))
-  const masteryCount = Math.min(opts.masteryCount ?? 30, 50)
+  const rawMatchCount = opts.matchCount ?? RIOT_LIMITS.QUICK_SCOUT_MATCH_COUNT
+  const matchCountNoCap = !Number.isFinite(rawMatchCount) || rawMatchCount <= 0 || rawMatchCount > RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL
+  const matchCount = matchCountNoCap ? RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL : Math.max(1, Math.min(rawMatchCount, RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL))
+  const masteryCount = Math.min(opts.masteryCount ?? RIOT_LIMITS.DEFAULT_MASTERY_COUNT, RIOT_LIMITS.MAX_MASTERY_COUNT)
 
   const { puuid, region } = await resolvePuuid(member)
   const primaryRole = (member.role || 'MID').toUpperCase() as Role

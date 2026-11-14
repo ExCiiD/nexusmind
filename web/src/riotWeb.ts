@@ -1,4 +1,6 @@
 import { sb } from './supabase'
+import { RIOT_LIMITS } from '@/lib/riotLimits'
+import { mergeMatchIdsByRecency } from '@/lib/scoutingCore'
 
 /**
  * Browser-side Riot client for the web Team page (E14: scouting/auto-fill
@@ -75,7 +77,7 @@ export async function getAccountByRiotId(gameName: string, tagLine: string, regi
 export async function getChampionMasteries(puuid: string, region: string, count = 20): Promise<Array<{ championId: number; championPoints: number }>> {
   const host = PLATFORM_HOSTS[region]
   if (!host) throw new RiotWebError(`Unknown region: ${region}`)
-  const { data } = await proxyFetch(host, `/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=${Math.min(count, 50)}`)
+  const { data } = await proxyFetch(host, `/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=${Math.min(count, RIOT_LIMITS.MAX_MASTERY_COUNT)}`)
   return (data ?? []) as Array<{ championId: number; championPoints: number }>
 }
 
@@ -85,12 +87,13 @@ function currentSeasonStart(): Date {
 }
 
 async function getMatchIdsInRange(puuid: string, routing: string, queueId: 420 | 440 | 700, startTimestampSec: number, maxPages: number): Promise<string[]> {
+  const pageSize = RIOT_LIMITS.MAX_IDS_PER_REQUEST
   const out: string[] = []
   for (let page = 0; page < maxPages; page++) {
-    const ids = await regionalFetch(routing, `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queueId}&startTime=${startTimestampSec}&start=${page * 100}&count=100`)
+    const ids = await regionalFetch(routing, `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queueId}&startTime=${startTimestampSec}&start=${page * pageSize}&count=${pageSize}`)
     if (!Array.isArray(ids) || ids.length === 0) break
     out.push(...ids)
-    if (ids.length < 100) break
+    if (ids.length < pageSize) break
   }
   return out
 }
@@ -100,13 +103,11 @@ export async function getSeasonMatchIds(puuid: string, region: string, since: Da
   const routing = REGION_TO_ROUTING[region] || 'europe'
   const ts = Math.floor(since.getTime() / 1000)
   const [solo, flex, clash] = await Promise.all([
-    getMatchIdsInRange(puuid, routing, 420, ts, 10).catch(() => [] as string[]),
-    getMatchIdsInRange(puuid, routing, 440, ts, 10).catch(() => [] as string[]),
-    getMatchIdsInRange(puuid, routing, 700, ts, 5).catch(() => [] as string[]),
+    getMatchIdsInRange(puuid, routing, 420, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED).catch(() => [] as string[]),
+    getMatchIdsInRange(puuid, routing, 440, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED).catch(() => [] as string[]),
+    getMatchIdsInRange(puuid, routing, 700, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_CLASH).catch(() => [] as string[]),
   ])
-  const merged = [...new Set([...solo, ...flex, ...clash])]
-  merged.sort((a, b) => parseInt(b.split('_')[1] ?? '0', 10) - parseInt(a.split('_')[1] ?? '0', 10))
-  return merged
+  return mergeMatchIdsByRecency(mergeMatchIdsByRecency(solo, flex), clash)
 }
 
 export async function getMatch(matchId: string, region: string): Promise<any> {
@@ -121,7 +122,7 @@ export async function getMatch(matchId: string, region: string): Promise<any> {
  * re-fetches; capped concurrency keeps this under the proxy's per-user
  * rate limit (300/min) instead of firing hundreds of requests at once.
  */
-export async function getMatchesBulk(matchIds: string[], region: string, concurrency = 8): Promise<Map<string, any>> {
+export async function getMatchesBulk(matchIds: string[], region: string, concurrency: number = RIOT_LIMITS.MATCH_FETCH_CONCURRENCY): Promise<Map<string, any>> {
   const out = new Map<string, any>()
   let next = 0
   async function worker() {
