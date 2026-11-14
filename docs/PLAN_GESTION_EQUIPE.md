@@ -124,7 +124,7 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
   - Tiering du pool propre (`main`/`comfort`/`flex`/`learning`) passé sur le même signal combiné (`computeAutoTier`) ; `learning` est enfin auto-assigné aux entrées mastery-only faibles au lieu de retomber sur `flex` par défaut.
   - UI : les couleurs de menace ont été retirées de la barre latérale « pool de champions » du Draft Sim (ne restent que les couleurs de tier) — elles n'apparaissent plus que dans la grille centrale de draft, suite au retour sur la capture d'écran.
   - Tests : `tests/unit/threatCore.test.ts` (21 cas — seuils red/orange/played, garde-fou role-swap, gate par-personne du flex, prioPick, tiering).
-- **⏳ restant** : KDA/menaces non encore propagés au sync web (`src/lib/team.ts`/`teamCore.ts`/table Supabase `team_pool_entries`) — différé à **E14** (portage web) pour ne pas migrer un schéma Supabase avant que la page web n'existe. Tuning fin des seuils (65% WR, 4.0 KDA, 300k mastery) à ajuster sur retour terrain plutôt que théorique.
+- **⏳ restant** : *(mis à jour par E14)* le KDA est maintenant propagé au web (`team_pool_entries.kda`, migration `e14_team_scouting_rosters`) — seul le tuning fin des seuils (65% WR, 4.0 KDA, 300k mastery) reste à ajuster sur retour terrain plutôt que théorique.
 
 ### E13 — Réagencement de la page Coaching 🟡 v1 livré (14/11/2026)
 - **Livré** : `CoachingPage.tsx` passe d'une pile verticale de 13 sections (une empilée par épopée E2–E10) à un layout en onglets, même pattern que la page Équipe (barre d'onglets horizontale) :
@@ -133,8 +133,17 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
   - Un onglet est masqué (pas affiché vide) quand sa section n'a rien à montrer pour le rôle/les groupes actuels de l'utilisateur — reprend exactement les gardes déjà présentes dans chaque section (`staffGroups.length === 0`, etc.), aucun comportement interne aux sections n'a changé.
 - **⏳ limite connue** : aucune infrastructure e2e existante ne simule un utilisateur connecté avec des groupes/rôles staff (le backend collab est basé sur Supabase réel, pas mocké) — la bascule d'onglets n'a donc pu être vérifiée que par relecture du code (gardes de visibilité reproduites fidèlement) et par le test de fumée existant (`/coaching renders without crashing`, état "cloud désactivé"), pas par un test automatisé bout-en-bout avec données réelles. À couvrir si une infra de mock collab est construite plus tard.
 
-### E14 — Page Équipe (locale) accessible sur le web ⏳ planifié
-- Rejoint le point déjà identifié en **E1** (« réutilisation des onglets desktop complets `ChampPoolTab`/`DraftTab`/`ScoutingTab` côté web plutôt qu'une vue condensée ») — remonté ici en priorité explicite suite à la demande. À faire après/avec E12 pour ne pas porter la logique de tier actuelle (jugée imprécise) telle quelle sur le web.
+### E14 — Page Équipe accessible sur le web, lecture **et écriture** 🟡 v1 livré (14/11/2026)
+- Portée choisie par l'utilisateur sur 3 options (lecture seule / + pool perso éditable / parité complète lecture+écriture) : **parité complète**.
+- **Livré** :
+  - Réutilise les vrais composants desktop (`RosterTab`/`ChampPoolTab`/`DraftTab`/`ScoutingTab`, `src/pages/Team/*.tsx`) sur le web, inchangés — seule la source de données change (tables Supabase du groupe au lieu du SQLite local), exactement le point resté ouvert depuis **E1**.
+  - Schéma : `team_rosters.scouting_id` relie une ligne de roster à un adversaire scouté (`team_scouting`) au lieu du roster du groupe — avant E14, un adversaire scouté n'avait qu'un nom/des notes, aucun roster. `team_pool_entries.kda` en parité avec la colonne desktop d'E12. **Aucun changement RLS nécessaire** : les policies d'écriture existantes (staff = tout sur le groupe, joueur = son propre pool) sont déjà indexées sur `group_id`/`roster_id`, pas sur le fait qu'une ligne soit un adversaire ou non.
+  - `teamCore.ts` : CRUD complet (roster add/update/remove/dedupe, création/suppression d'équipe adverse, pool upsert/remove, draft create/update/duplicate/delete), qui renvoie exactement les mêmes formes `Team`/`TeamMember`/`ChampionPoolEntry`/`DraftPrep` que l'IPC desktop — c'est ce qui permet aux composants partagés de tourner sans modification.
+  - La publication desktop (« Publier vers un groupe ») envoie maintenant aussi les rosters + pools des équipes adverses scoutées (avant : seulement nom/tag/notes — les adversaires remontaient vides sur le web).
+  - Extraction de `src/lib/teamIdentity.ts` (matching d'identité + normalisation des slots de draft) et ajout de `src/lib/scoutingCore.ts` (agrégation des games) comme logique pure partagée ; `team.ipc.ts` refactoré dessus sans changement de comportement (vérifié par les tests existants).
+  - Client Riot web dédié (`web/src/riotWeb.ts`) + scouting/auto-fill web (`web/src/scoutingWeb.ts`) : appellent le proxy Cloudflare existant (`cloudflare/riot-proxy`) directement depuis le navigateur avec le token Supabase de l'utilisateur. Volontairement plus simple que le client desktop (pas de cache persistant, pas de rate-limiter multi-fenêtre) — voir les commentaires de `riotWeb.ts`. CORS ajouté au proxy (OPTIONS + `Access-Control-Allow-Origin`) pour permettre l'appel navigateur, déployé.
+  - Nouvelle page Équipe web + entrée de nav, un roster par groupe (groupes de type « team » uniquement).
+- **⏳ hors périmètre pour cette passe** (voir discussion ci-dessus) : onglets Stats/Dashboard, import CSV de parties personnalisées, `computeTeamSynergyStats` — toutes des fonctionnalités qui reposent sur l'historique de matches local et dépassent le périmètre choisi (roster/pool/draft/scouting). Tuning du client Riot web (pas de cache, concurrence fixe à 8) à revoir avec **E15**.
 
 ### E15 — Performance des actions de fetch Riot ⏳ planifié
 - Les boutons « Actualiser », auto-remplissage du pool, scouting et calcul de synergie (`StatsFlexTab`/`ScoutingTab`) refont aujourd'hui un balayage complet à chaque appel. Pistes : rafraîchissement incrémental (ne récupérer que les games postérieures au dernier scan au lieu de tout rescanner), revoir le parallélisme par rapport à la limite d'app Riot déjà documentée dans le code (100 req/120s), progression par membre déjà affichée (`useBackgroundJobsStore`) à étendre aux autres actions longues.
@@ -158,12 +167,12 @@ E1 (fondation partagée) → E2 (tableau de bord staff) → E8 (notifications)
    → E7 (comm & tâches) → E6 (bien-être) → E9 (rapports) → E10
 
 Chantier §8 (14/11/2026) :
-E12 (tiers/menaces précis) → E14 (portage web) ↘
-                                                  E13 (UX Coaching)
+E12 ✅ (tiers/menaces précis) → E14 ✅ (portage web, parité complète) ↘
+                                                                        E13 ✅ (UX Coaching)
 E15 (perf fetch) + E16 (stats + prépa clé Product) → E17 (UX Stats)
 E11 (bot Discord) — indépendant, peut démarrer en parallèle (s'appuie sur E4/W4 déjà livrés)
 ```
-E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 : E12 avant E14 (ne pas porter sur le web une logique de tier qu'on sait déjà imprécise).
+E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 : E12, E13 et E14 sont livrés (14/11/2026) ; restent E11, E15, E16, E17.
 
 ## 6. Impacts techniques
 
