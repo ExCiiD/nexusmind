@@ -46,7 +46,7 @@ import { registerShareHandlers } from './ipc/share.ipc'
 import { registerCoachingHandlers } from './ipc/coaching.ipc'
 import { registerYoutubeHandlers } from './ipc/youtube.ipc'
 import { registerBackupHandlers } from './ipc/backup.ipc'
-import { registerTeamHandlers } from './ipc/team.ipc'
+import { registerTeamHandlers, retierLowSampleFlexEntries } from './ipc/team.ipc'
 import { registerMistakeHandlers } from './ipc/mistakes.ipc'
 import { registerBookmarkHandlers } from './ipc/bookmarks.ipc'
 import { registerDataHandlers } from './ipc/data.ipc'
@@ -414,6 +414,9 @@ async function bootstrap() {
   // overwriting user-edited ones. Fire-and-forget; if it fails we still
   // boot the UI (the user can manually add tags).
   seedBuiltInMistakeTags().catch((err) => console.warn('[seed] mistake tags failed:', err))
+  // One-time cleanup: re-tier pre-existing "flex" pool entries that are
+  // really just 1-9 game noise under the revised flex threshold.
+  retierLowSampleFlexEntries().catch((err) => console.warn('[seed] flex retiering failed:', err))
 
   createWindow()
   registerDevHandlers(mainWindow!)

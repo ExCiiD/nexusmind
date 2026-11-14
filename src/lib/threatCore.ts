@@ -42,6 +42,11 @@ export const PLAYED_MIN_GAMES = 1
 export const TIER_MASTERY_MAIN = 300_000
 export const TIER_MASTERY_COMFORT = 200_000
 export const TIER_GAMES_COMFORT = 50
+// A champion played fewer than this many times this season is a one-off,
+// not a real flex pick — below this it's "learning" (noise, hidden from the
+// Draft Sim pool browser) instead of cluttering "flex" with every champion
+// that's ever been touched 1-2 times.
+export const MIN_GAMES_FOR_FLEX = 10
 
 export interface MemberThreatContext {
   /** True when this entry is the member's #1 most-played champion in this role. */
@@ -236,9 +241,11 @@ export interface AutoTierInput {
  * Combined-signal auto-tier for a member's OWN champion pool (main/comfort/
  * flex/learning) — replaces the games-or-mastery-only thresholds that made
  * tiering feel "random": now a strong recent winrate on a moderate sample
- * can also earn "main"/"comfort", and a 0-game mastery-only entry below the
- * comfort mastery bar is tagged "learning" instead of silently defaulting
- * to "flex".
+ * can also earn "main"/"comfort", and anything below MIN_GAMES_FOR_FLEX
+ * games (and below the comfort mastery bar) is tagged "learning" instead of
+ * silently defaulting to "flex" — a champion seen 1-2 times is noise, not a
+ * real flex pick, and "learning" entries are hidden from the Draft Sim pool
+ * browser (still visible/editable in the full Champion Pool tab).
  */
 export function computeAutoTier(stat: AutoTierInput): Tier {
   const mastery = stat.masteryPoints ?? 0
@@ -250,7 +257,7 @@ export function computeAutoTier(stat: AutoTierInput): Tier {
   const decentRate = hasRateSignal && (stat.winRate ?? 0) >= 55
   if (mastery >= TIER_MASTERY_COMFORT || stat.games >= TIER_GAMES_COMFORT || decentRate) return 'comfort'
 
-  if (stat.games === 0 && mastery < TIER_MASTERY_COMFORT) return 'learning'
+  if (stat.games < MIN_GAMES_FOR_FLEX && mastery < TIER_MASTERY_COMFORT) return 'learning'
 
   return 'flex'
 }

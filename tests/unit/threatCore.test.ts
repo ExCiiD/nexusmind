@@ -181,7 +181,11 @@ describe('computeAutoTier', () => {
     expect(computeAutoTier({ games: 0, masteryPoints: 15_000, winRate: null, isTop5InRole: false })).toBe('learning')
   })
 
-  it('falls back to flex for everything else', () => {
-    expect(computeAutoTier({ games: 4, masteryPoints: 1000, winRate: 40, isTop5InRole: false })).toBe('flex')
+  it('assigns learning instead of flex for a one-off, low-sample champion (noise, not a real pick)', () => {
+    expect(computeAutoTier({ games: 2, masteryPoints: 1000, winRate: 50, isTop5InRole: false })).toBe('learning')
+  })
+
+  it('falls back to flex once a champion has enough games to be a real (if occasional) pick', () => {
+    expect(computeAutoTier({ games: 12, masteryPoints: 1000, winRate: 40, isTop5InRole: false })).toBe('flex')
   })
 })

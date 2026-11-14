@@ -13,7 +13,7 @@ import { getPrisma } from '../database'
 import { getMatchIds, getMatch, getAccountByRiotId, getChampionMasteries, getSeasonMatchIds } from '../riotClient'
 import { getChampionIdToKey } from '../dataDragon'
 import { championPlaysRole, type Role } from '../../../src/lib/championRoles'
-import { computeAutoTier } from '../../../src/lib/threatCore'
+import { computeAutoTier, MIN_GAMES_FOR_FLEX, TIER_MASTERY_COMFORT } from '../../../src/lib/threatCore'
 import { normalizeSlots, groupDuplicates, normalizeRole } from '../../../src/lib/teamIdentity'
 import { mergeMatchIdsByRecency } from '../../../src/lib/scoutingCore'
 import { RIOT_LIMITS } from '../../../src/lib/riotLimits'
@@ -200,6 +200,29 @@ async function findExistingMember(teamId: string, data: { puuid?: string; ign?: 
     if (match) return match
   }
   return null
+}
+
+/**
+ * One-time backfill: re-tiers already-auto-filled pool entries that were
+ * classified "flex" under the old games>0-only rule but are really just
+ * noise (a champion touched 1-9 times) under the revised MIN_GAMES_FOR_FLEX
+ * rule in threatCore.ts. Only touches auto-filled rows (playRate stored,
+ * not null — manual entries are never auto-retiered) and only rows already
+ * sitting in "flex", so a champion correctly in "main"/"comfort" is never
+ * touched. Idempotent: a row already "learning" never matches the where
+ * clause again, so this is cheap to call on every app start.
+ */
+export async function retierLowSampleFlexEntries(): Promise<number> {
+  const prisma = getPrisma()
+  const result = await prisma.championPoolEntry.updateMany({
+    where: {
+      tier: 'flex',
+      playRate: { not: null, lt: MIN_GAMES_FOR_FLEX },
+      OR: [{ masteryPoints: null }, { masteryPoints: { lt: TIER_MASTERY_COMFORT } }],
+    },
+    data: { tier: 'learning' },
+  })
+  return result.count
 }
 
 export function registerTeamHandlers() {
