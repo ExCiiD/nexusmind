@@ -1983,5 +1983,23 @@
     "to": "To",
     "save": "Save preferences",
     "saved": "Preferences saved"
+  },
+  "weeklyReport": {
+    "title": "Weekly report",
+    "desc": "Volume, form, objectives, experiment verdicts, and mistake trends — computed on demand, not stored.",
+    "noPlayers": "No players in this group yet.",
+    "teamSummary": "{{games}} games, {{rate}}% average winrate",
+    "copy": "Copy as text",
+    "copied": "Report copied — paste it in Discord or a message",
+    "inProgress": "in progress",
+    "col": {
+      "player": "Player",
+      "games": "Games",
+      "winrate": "Winrate",
+      "reviews": "Reviews",
+      "topMistake": "Top mistake",
+      "objectives": "Objectives",
+      "experiments": "Experiments"
+    }
   }
 }

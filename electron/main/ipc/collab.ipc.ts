@@ -135,4 +135,6 @@ export function registerCollabHandlers() {
   validatedHandle('staffnotes:list', z.tuple([uuid, uuid]), (_e, groupId, playerId) => collab.staffNotesList(groupId, playerId))
   validatedHandle('staffnotes:add', z.tuple([uuid, uuid, z.string().trim().min(1).max(4000)]), (_e, groupId, playerId, body) => collab.staffNotesAdd(groupId, playerId, body))
   validatedHandle('staffnotes:delete', z.tuple([uuid]), (_e, id) => collab.staffNotesDelete(id))
+
+  validatedHandle('report:get-weekly', z.tuple([uuid, dateOnly]), (_e, groupId, weekStart) => collab.reportGetWeekly(groupId, weekStart))
 }

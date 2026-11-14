@@ -196,6 +196,9 @@ const api = {
   staffNotesAdd: (groupId: string, playerId: string, body: string) => ipcRenderer.invoke('staffnotes:add', groupId, playerId, body),
   staffNotesDelete: (id: string) => ipcRenderer.invoke('staffnotes:delete', id),
 
+  // E9: weekly reports
+  reportGetWeekly: (groupId: string, weekStart: string) => ipcRenderer.invoke('report:get-weekly', groupId, weekStart),
+
   // Ascend cloud account & backups (tokens never leave the main process)
   cloudStatus: () => ipcRenderer.invoke('cloud:status'),
   cloudSendCode: (email: string, inviteCode?: string) => ipcRenderer.invoke('cloud:send-code', email, inviteCode ?? null),

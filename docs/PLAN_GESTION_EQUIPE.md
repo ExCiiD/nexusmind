@@ -78,9 +78,10 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
 - ✅ Web **et** desktop : nouvelle carte « Préférences de notification » (page Coaching) — couper un type en un clic, définir un créneau d'heures calmes (UTC) ; vérifié par un test RLS/trigger end-to-end (mute bloque bien l'insertion, les événements existants passent toujours par le même garde).
 - ⏳ Restant : Web Push, Discord (le webhook actuel est local au joueur, pas un canal d'équipe côté serveur — refonte nécessaire), e-mail digest, notification « dispo manquante » (nécessite de croiser calendrier/disponibilités E4 avec les événements à venir), rapport hebdo (bloqué sur E9, pas construit), Realtime (toujours en polling, choix déjà assumé pour W5).
 
-### E9 — Rapports ⭐⭐
-- Rapport hebdo par joueur et par équipe (auto, partageable Discord / lien) : volume, forme, objectifs, verdicts, erreurs en hausse/baisse.
-- Rapport post-tournoi.
+### E9 — Rapports 🟡 (v1 livré : rapport hebdo joueur + équipe, export texte ; rapport post-tournoi restant)
+- ✅ Aucune nouvelle table : un rapport est calculé à la demande côté client depuis les données déjà partagées (`sync_records`, `assigned_objectives`), même principe que le tableau de bord staff (E2). Par semaine (lundi→dimanche, navigable) et par groupe : volume de jeu, winrate, reviews faites/en retard, tendance des erreurs (cette semaine vs la précédente, avec direction ↑/↓/→), objectifs assignés/complétés, verdicts d'expérience de coaching.
+- ✅ Web **et** desktop : nouvelle section « Rapport hebdomadaire » sur la page Coaching (staff), agrégat équipe + tableau par joueur, bouton « Copier en texte » (résumé brut à coller dans Discord ou un message — pas de lien live, ça demanderait une Edge Function).
+- ⏳ Restant : rapport post-tournoi (nécessite de rattacher des games/scrims à un `calendar_event` de type tournoi, E4), lien partageable persistant, notification « rapport prêt » (maintenant déclenchable via E8 mais pas câblée — un rapport n'étant pas stocké, il n'y a rien à « finir » à notifier sans d'abord snapshotter le calcul).
 
 ### E10 — Recrutement / essais (optionnel) ⭐
 - Profils « en essai » avec période et grille d'évaluation, comparaison avec le titulaire du rôle, décision.

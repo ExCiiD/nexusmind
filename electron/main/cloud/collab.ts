@@ -7,6 +7,7 @@ import * as calendar from '../../../src/lib/calendarCore'
 import * as vodReview from '../../../src/lib/vodReviewCore'
 import * as wellbeing from '../../../src/lib/wellbeingCore'
 import * as teamOps from '../../../src/lib/teamOpsCore'
+import * as report from '../../../src/lib/reportCore'
 import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
 import type { AxisStatus, NewAxisInput } from '../../../src/lib/devPlan'
 import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput } from '../../../src/lib/calendar'
@@ -115,3 +116,5 @@ export const tasksDelete = (id: string) => teamOps.deleteTask(getSupabase(), id)
 export const staffNotesList = (groupId: string, playerId: string) => teamOps.listStaffNotes(getSupabase(), groupId, playerId)
 export const staffNotesAdd = (groupId: string, playerId: string, body: string) => teamOps.addStaffNote(getSupabase(), groupId, playerId, body)
 export const staffNotesDelete = (id: string) => teamOps.deleteStaffNote(getSupabase(), id)
+
+export const reportGetWeekly = (groupId: string, weekStart: string) => report.computeTeamWeeklyReport(getSupabase(), groupId, weekStart)

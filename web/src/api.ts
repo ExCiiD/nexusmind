@@ -7,6 +7,7 @@ import * as calendarCore from '@/lib/calendarCore'
 import * as vodReviewCore from '@/lib/vodReviewCore'
 import * as wellbeingCore from '@/lib/wellbeingCore'
 import * as teamOpsCore from '@/lib/teamOpsCore'
+import * as reportCore from '@/lib/reportCore'
 import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
@@ -192,6 +193,9 @@ export const webApi = {
   staffNotesList: (groupId: string, playerId: string) => teamOpsCore.listStaffNotes(sb, groupId, playerId),
   staffNotesAdd: (groupId: string, playerId: string, body: string) => teamOpsCore.addStaffNote(sb, groupId, playerId, body),
   staffNotesDelete: (id: string) => teamOpsCore.deleteStaffNote(sb, id),
+
+  // ── E9: weekly reports ──
+  reportGetWeekly: (groupId: string, weekStart: string) => reportCore.computeTeamWeeklyReport(sb, groupId, weekStart),
 
   // ── W5: notifications ──
   notificationsList: async (onlyUnread?: boolean) =>

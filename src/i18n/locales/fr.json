@@ -1983,5 +1983,23 @@
     "to": "À",
     "save": "Enregistrer les préférences",
     "saved": "Préférences enregistrées"
+  },
+  "weeklyReport": {
+    "title": "Rapport hebdomadaire",
+    "desc": "Volume, forme, objectifs, verdicts d'expériences et tendances d'erreurs — calculé à la demande, non stocké.",
+    "noPlayers": "Aucun joueur dans ce groupe pour l'instant.",
+    "teamSummary": "{{games}} games, {{rate}}% de victoires en moyenne",
+    "copy": "Copier en texte",
+    "copied": "Rapport copié — colle-le sur Discord ou dans un message",
+    "inProgress": "en cours",
+    "col": {
+      "player": "Joueur",
+      "games": "Games",
+      "winrate": "Winrate",
+      "reviews": "Reviews",
+      "topMistake": "Erreur principale",
+      "objectives": "Objectifs",
+      "experiments": "Expériences"
+    }
   }
 }
