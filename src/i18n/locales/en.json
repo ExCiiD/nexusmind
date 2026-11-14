@@ -1286,6 +1286,21 @@
     "title": "Teams & coaching",
     "subtitle": "Share your reviews with a coach or your team, get feedback and objectives.",
     "unavailable": "Sign in to your Ascend account to use teams and coaching.",
+    "tabs": {
+      "overview": "Overview",
+      "planning": "Planning",
+      "vod": "VOD review",
+      "wellbeing": "Wellbeing",
+      "teamOps": "Announcements & tasks",
+      "reports": "Weekly report",
+      "trials": "Trials",
+      "players": "Players",
+      "workspace": "Team workspace",
+      "groups": "Groups"
+    },
+    "overview": {
+      "noGroups": "No groups yet — create or join one in the Groups tab to get started."
+    },
     "roles": {
       "owner": "Owner",
       "coach": "Coach",
