@@ -135,6 +135,8 @@ const api = {
   notificationsUnreadCount: () => ipcRenderer.invoke('notifications:unread-count'),
   notificationsMarkRead: (id: string) => ipcRenderer.invoke('notifications:mark-read', id),
   notificationsMarkAllRead: () => ipcRenderer.invoke('notifications:mark-all-read'),
+  notificationPrefsGet: () => ipcRenderer.invoke('notifications:prefs-get'),
+  notificationPrefsSet: (prefs: unknown) => ipcRenderer.invoke('notifications:prefs-set', prefs),
 
   // E1: shared team workspace
   teamPublishToGroup: (groupId: string, teamId: string) => ipcRenderer.invoke('team:publish-to-group', groupId, teamId),

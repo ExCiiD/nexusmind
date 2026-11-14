@@ -72,10 +72,11 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
 - ✅ Web **et** desktop : nouvelle section « Annonces & tâches » sur la page Coaching (tout le monde lit, le staff publie/épingle/assigne) ; carte « Notes privées du staff » ajoutée à la fiche joueur existante (visible uniquement du staff qui consulte ce joueur).
 - ⏳ Restant : fil de discussion par scrim / par draft (le système de commentaires horodatés par review existe déjà pour les games individuelles ; un fil dédié scrim/draft est un suivi séparé), mentions `@joueur` (nécessite la tuyauterie de notifications — dépend de E8).
 
-### E8 — Notifications (W5 recentré équipe) ⭐⭐⭐
-- In-app (temps réel), Web Push (PWA), Discord (webhook d'équipe), e-mail digest quotidien.
-- Événements : commentaire coach, objectif assigné/échu, scrim créé/modifié, rappel J-1 / H-1, dispo manquante, tâche assignée, alerte bien-être (staff), rapport hebdo prêt.
-- Préférences par utilisateur et heures calmes.
+### E8 — Notifications (W5 recentré équipe) 🟡 (v1 livré : 3 nouveaux événements + préférences/heures calmes appliquées à TOUS les types ; canaux et dispo manquante restants)
+- ✅ Table `notification_prefs` (types coupés + créneau d'heures calmes par utilisateur) et un nouveau garde unique `private.should_notify` / `private.notify`, par lequel passent désormais **tous** les points de création de notification — y compris les 7 types W5 existants (`review_comment`, `objectif assigné`, scrims, rappels, joueur inactif), pas seulement les nouveaux, pour que les préférences soient réellement valables pour tout.
+- ✅ 3 nouveaux événements : tâche assignée (E7, déclenché par trigger), objectif échu (nouveau check quotidien), alerte bien-être au staff (E6 — humeur en baisse sur les 3 derniers check-ins partagés, calculée côté serveur, dédupliquée sur 3 jours).
+- ✅ Web **et** desktop : nouvelle carte « Préférences de notification » (page Coaching) — couper un type en un clic, définir un créneau d'heures calmes (UTC) ; vérifié par un test RLS/trigger end-to-end (mute bloque bien l'insertion, les événements existants passent toujours par le même garde).
+- ⏳ Restant : Web Push, Discord (le webhook actuel est local au joueur, pas un canal d'équipe côté serveur — refonte nécessaire), e-mail digest, notification « dispo manquante » (nécessite de croiser calendrier/disponibilités E4 avec les événements à venir), rapport hebdo (bloqué sur E9, pas construit), Realtime (toujours en polling, choix déjà assumé pour W5).
 
 ### E9 — Rapports ⭐⭐
 - Rapport hebdo par joueur et par équipe (auto, partageable Discord / lien) : volume, forme, objectifs, verdicts, erreurs en hausse/baisse.

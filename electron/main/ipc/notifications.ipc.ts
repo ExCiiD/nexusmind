@@ -18,6 +18,13 @@ async function me(): Promise<string> {
 }
 
 const uuid = z.string().uuid()
+const notificationType = z.enum([
+  'review_comment', 'objective_assigned', 'scrim_created', 'scrim_updated',
+  'scrim_reminder_24h', 'scrim_reminder_1h', 'player_inactive',
+  'task_assigned', 'objective_overdue', 'wellbeing_alert',
+])
+const timeOnly = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+const prefsInput = z.object({ mutedTypes: z.array(notificationType), quietStart: timeOnly.nullable(), quietEnd: timeOnly.nullable() })
 
 export function registerNotificationsHandlers() {
   validatedHandle('notifications:list', z.tuple([z.boolean().optional()]),
@@ -28,4 +35,8 @@ export function registerNotificationsHandlers() {
     async (_e, id) => { await core.markNotificationRead(getSupabase(), id); return { ok: true } })
   validatedHandle('notifications:mark-all-read', z.tuple([]),
     async () => { await core.markAllNotificationsRead(getSupabase(), await me()); return { ok: true } })
+  validatedHandle('notifications:prefs-get', z.tuple([]),
+    async () => core.getNotificationPrefs(getSupabase(), await me()))
+  validatedHandle('notifications:prefs-set', z.tuple([prefsInput]),
+    async (_e, prefs) => { await core.setNotificationPrefs(getSupabase(), await me(), prefs) })
 }

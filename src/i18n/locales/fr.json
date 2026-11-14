@@ -1958,7 +1958,30 @@
       "player_inactive": {
         "title": "Joueur inactif",
         "body": "{{playerName}} n'a pas synchronisé de partie depuis {{days}} jours."
+      },
+      "task_assigned": {
+        "title": "Tâche assignée",
+        "body": "{{assignedByName}} t'a assigné une tâche : « {{title}} »"
+      },
+      "objective_overdue": {
+        "title": "Objectif en retard",
+        "body": "Un objectif qui t'a été assigné est en retard (échéance {{dueDate}})."
+      },
+      "wellbeing_alert": {
+        "title": "Alerte bien-être",
+        "body": "L'humeur d'un joueur est en baisse sur les 3 derniers check-ins."
       }
     }
+  },
+  "notificationPrefs": {
+    "title": "Préférences de notification",
+    "muteByType": "Couper par type",
+    "quietHours": "Heures calmes",
+    "quietHoursDesc": "Aucune notification n'est créée pour toi pendant ce créneau (UTC).",
+    "quietHoursDisabled": "Désactivé",
+    "from": "De",
+    "to": "À",
+    "save": "Enregistrer les préférences",
+    "saved": "Préférences enregistrées"
   }
 }

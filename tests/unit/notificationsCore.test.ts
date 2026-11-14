@@ -4,6 +4,8 @@ import {
   countUnreadNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  getNotificationPrefs,
+  setNotificationPrefs,
 } from '../../src/lib/notificationsCore'
 
 function chainable(result: { data?: unknown; error?: unknown; count?: number }) {
@@ -68,5 +70,28 @@ describe('markNotificationRead / markAllNotificationsRead', () => {
     expect(chain.update).toHaveBeenCalledWith({ read: true })
     expect(chain.eq).toHaveBeenCalledWith('user_id', 'u1')
     expect(chain.eq).toHaveBeenCalledWith('read', false)
+  })
+})
+
+describe('getNotificationPrefs / setNotificationPrefs', () => {
+  it('defaults to no mutes and no quiet hours when the user has no row yet', async () => {
+    const chain: Record<string, unknown> = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis() }
+    chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null })
+    const sb = { from: vi.fn().mockReturnValue(chain) } as never
+    await expect(getNotificationPrefs(sb, 'u1')).resolves.toEqual({ mutedTypes: [], quietStart: null, quietEnd: null })
+  })
+
+  it('maps an existing row and trims seconds from the time columns', async () => {
+    const chain: Record<string, unknown> = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis() }
+    chain.maybeSingle = vi.fn().mockResolvedValue({ data: { muted_types: ['task_assigned'], quiet_start: '22:00:00', quiet_end: '07:00:00' }, error: null })
+    const sb = { from: vi.fn().mockReturnValue(chain) } as never
+    await expect(getNotificationPrefs(sb, 'u1')).resolves.toEqual({ mutedTypes: ['task_assigned'], quietStart: '22:00', quietEnd: '07:00' })
+  })
+
+  it('setNotificationPrefs upserts the given fields', async () => {
+    const upsert = vi.fn().mockResolvedValue({ error: null })
+    const sb = { from: vi.fn().mockReturnValue({ upsert }) } as never
+    await setNotificationPrefs(sb, 'u1', { mutedTypes: ['wellbeing_alert'], quietStart: '22:00', quietEnd: null })
+    expect(upsert).toHaveBeenCalledWith({ user_id: 'u1', muted_types: ['wellbeing_alert'], quiet_start: '22:00', quiet_end: null })
   })
 })

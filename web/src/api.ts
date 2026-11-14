@@ -205,6 +205,9 @@ export const webApi = {
     await notifications.markAllNotificationsRead(sb, await currentUserId())
     return { ok: true }
   },
+  notificationPrefsGet: async () => notifications.getNotificationPrefs(sb, await currentUserId()),
+  notificationPrefsSet: async (prefs: Parameters<typeof notifications.setNotificationPrefs>[2]) =>
+    notifications.setNotificationPrefs(sb, await currentUserId(), prefs),
 
   // ── E1: shared team workspace (read-only on the web for now) ──
   teamGetShared: (groupId: string) => team.getSharedTeam(sb, groupId),

@@ -1958,7 +1958,30 @@
       "player_inactive": {
         "title": "Inactive player",
         "body": "{{playerName}} has not synced a game in {{days}} days."
+      },
+      "task_assigned": {
+        "title": "Task assigned",
+        "body": "{{assignedByName}} assigned you a task: \"{{title}}\""
+      },
+      "objective_overdue": {
+        "title": "Objective overdue",
+        "body": "An objective assigned to you is overdue (due {{dueDate}})."
+      },
+      "wellbeing_alert": {
+        "title": "Wellbeing alert",
+        "body": "A player's mood has been declining over the last 3 check-ins."
       }
     }
+  },
+  "notificationPrefs": {
+    "title": "Notification preferences",
+    "muteByType": "Mute by type",
+    "quietHours": "Quiet hours",
+    "quietHoursDesc": "No notifications are created for you during this window (UTC).",
+    "quietHoursDisabled": "Disabled",
+    "from": "From",
+    "to": "To",
+    "save": "Save preferences",
+    "saved": "Preferences saved"
   }
 }
