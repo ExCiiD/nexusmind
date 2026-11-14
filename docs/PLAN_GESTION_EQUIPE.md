@@ -126,8 +126,12 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
   - Tests : `tests/unit/threatCore.test.ts` (21 cas — seuils red/orange/played, garde-fou role-swap, gate par-personne du flex, prioPick, tiering).
 - **⏳ restant** : KDA/menaces non encore propagés au sync web (`src/lib/team.ts`/`teamCore.ts`/table Supabase `team_pool_entries`) — différé à **E14** (portage web) pour ne pas migrer un schéma Supabase avant que la page web n'existe. Tuning fin des seuils (65% WR, 4.0 KDA, 300k mastery) à ajuster sur retour terrain plutôt que théorique.
 
-### E13 — Réagencement de la page Coaching ⏳ planifié
-- Réorganiser la disposition de la page Coaching pour l'usage réel du staff au quotidien (beaucoup de sections s'y sont empilées au fil de E2–E10). Disposition exacte à trancher à l'implémentation selon ce qui se teste le mieux (probablement : vue d'ensemble/alertes en priorité, sections secondaires en onglets plutôt qu'empilées).
+### E13 — Réagencement de la page Coaching 🟡 v1 livré (14/11/2026)
+- **Livré** : `CoachingPage.tsx` passe d'une pile verticale de 13 sections (une empilée par épopée E2–E10) à un layout en onglets, même pattern que la page Équipe (barre d'onglets horizontale) :
+  - **Vue d'ensemble** (par défaut) : tableau d'alertes par joueur (`StaffDashboardSection`), objectifs assignés et plans de dev du joueur — ce qu'on vient chercher en ouvrant la page.
+  - **Onglets secondaires** : Planning, Review VOD, Bien-être, Annonces & tâches, Rapport hebdo, Essais, Joueurs, Espace d'équipe, Groupes.
+  - Un onglet est masqué (pas affiché vide) quand sa section n'a rien à montrer pour le rôle/les groupes actuels de l'utilisateur — reprend exactement les gardes déjà présentes dans chaque section (`staffGroups.length === 0`, etc.), aucun comportement interne aux sections n'a changé.
+- **⏳ limite connue** : aucune infrastructure e2e existante ne simule un utilisateur connecté avec des groupes/rôles staff (le backend collab est basé sur Supabase réel, pas mocké) — la bascule d'onglets n'a donc pu être vérifiée que par relecture du code (gardes de visibilité reproduites fidèlement) et par le test de fumée existant (`/coaching renders without crashing`, état "cloud désactivé"), pas par un test automatisé bout-en-bout avec données réelles. À couvrir si une infra de mock collab est construite plus tard.
 
 ### E14 — Page Équipe (locale) accessible sur le web ⏳ planifié
 - Rejoint le point déjà identifié en **E1** (« réutilisation des onglets desktop complets `ChampPoolTab`/`DraftTab`/`ScoutingTab` côté web plutôt qu'une vue condensée ») — remonté ici en priorité explicite suite à la demande. À faire après/avec E12 pour ne pas porter la logique de tier actuelle (jugée imprécise) telle quelle sur le web.
