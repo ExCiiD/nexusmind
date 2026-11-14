@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckSquare, Film, Loader2, Plus, Square, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,6 +14,10 @@ import type { ScrimSummary } from '@/lib/scrims'
 const TEAM_TAGS: TeamMistakeTag[] = ['rotation', 'objective_setup', 'communication', 'other']
 
 const fmtTime = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
+
+/** Same extraction as RecordPlayerPage.tsx — supports youtu.be, watch, embed and shorts links. */
+const extractYouTubeId = (url: string): string | null =>
+  url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^&?/\s]+)/)?.[1] ?? null
 
 interface Props { groups: Group[]; myUserId: string; nameOf: (userId: string) => string }
 
@@ -141,8 +145,14 @@ function SessionDetail({ session, group, isStaff, myUserId, nameOf, scrims, onCh
   const { toast } = useToast()
   const members = useMemo(() => group.members, [group])
   const linkedScrim = session.scrimId ? scrims.find((s) => s.id === session.scrimId) : null
+  const youtubeId = extractYouTubeId(session.vodUrl)
+  const playerRef = useRef<HTMLIFrameElement>(null)
 
   const err = (e: unknown) => toast({ title: t(collabErrorKey(e)), variant: 'destructive' })
+
+  const seekTo = (sec: number) => {
+    playerRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'seekTo', args: [sec, true] }), 'https://www.youtube.com')
+  }
 
   // comments
   const [commentTime, setCommentTime] = useState('')
@@ -200,19 +210,32 @@ function SessionDetail({ session, group, isStaff, myUserId, nameOf, scrims, onCh
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between rounded-lg border border-hextech-border-dim p-3">
-        <div>
-          <a href={session.vodUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-hextech-gold underline">{session.vodUrl}</a>
-          {linkedScrim && (
-            <p className="text-xs text-hextech-text-dim">
-              {t('vodReview.linkedScrim', { defaultValue: 'Scrim: {{title}}', title: linkedScrim.title })}
-            </p>
+      <div className="rounded-lg border border-hextech-border-dim p-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <a href={session.vodUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-hextech-gold underline">{session.vodUrl}</a>
+            {linkedScrim && (
+              <p className="text-xs text-hextech-text-dim">
+                {t('vodReview.linkedScrim', { defaultValue: 'Scrim: {{title}}', title: linkedScrim.title })}
+              </p>
+            )}
+          </div>
+          {isStaff && (
+            <Button size="sm" variant="ghost" onClick={async () => { try { await window.api.vodReviewDeleteSession(session.id); onChanged() } catch (e) { err(e) } }}>
+              <Trash2 className="h-3.5 w-3.5 text-hextech-text-dim" />
+            </Button>
           )}
         </div>
-        {isStaff && (
-          <Button size="sm" variant="ghost" onClick={async () => { try { await window.api.vodReviewDeleteSession(session.id); onChanged() } catch (e) { err(e) } }}>
-            <Trash2 className="h-3.5 w-3.5 text-hextech-text-dim" />
-          </Button>
+        {youtubeId && (
+          <div className="mt-2 aspect-video overflow-hidden rounded-lg bg-black">
+            <iframe
+              ref={playerRef}
+              src={`https://www.youtube.com/embed/${youtubeId}?enablejsapi=1`}
+              className="h-full w-full"
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+            />
+          </div>
         )}
       </div>
 
@@ -222,7 +245,15 @@ function SessionDetail({ session, group, isStaff, myUserId, nameOf, scrims, onCh
           <ul className="space-y-1">
             {session.comments.map((c) => (
               <li key={c.id} className="rounded bg-hextech-elevated/30 px-2 py-1 text-sm text-hextech-text">
-                {c.videoTimeSec != null && <span className="mr-1 font-mono text-hextech-gold">{fmtTime(c.videoTimeSec)}</span>}
+                {c.videoTimeSec != null && (
+                  youtubeId ? (
+                    <button type="button" onClick={() => seekTo(c.videoTimeSec!)} className="mr-1 font-mono text-hextech-gold underline decoration-dotted">
+                      {fmtTime(c.videoTimeSec)}
+                    </button>
+                  ) : (
+                    <span className="mr-1 font-mono text-hextech-gold">{fmtTime(c.videoTimeSec)}</span>
+                  )
+                )}
                 {c.teamTag && <span className="mr-1 rounded bg-hextech-gold/10 px-1.5 py-0.5 text-[10px] text-hextech-gold">{t(`vodReview.tag.${c.teamTag}`)}</span>}
                 <span className="text-xs text-hextech-text-dim">{nameOf(c.authorId)}:</span> {c.body}
               </li>
