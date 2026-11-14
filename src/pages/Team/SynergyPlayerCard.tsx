@@ -89,7 +89,7 @@ export function SynergyPlayerCard({ player, matchCount }: { player: SynergyPlaye
         </div>
       </Section>
 
-      <Section title={t('team.stats.shares', { defaultValue: 'Team share' })} hint={t('team.stats.sharesHint', { defaultValue: 'Your % of the team total per match (averaged)' })}>
+      <Section title={t('team.stats.shares', { defaultValue: 'Team share' })} hint={t('team.stats.sharesHint', { defaultValue: 'Your % of the team total per match (averaged)' })} divider>
         <div className="space-y-1">
           <ShareBar label={t('team.stats.damagePct', { defaultValue: 'Damage' })} pct={player.shares.damagePct} color="bg-red-500" />
           <ShareBar label={t('team.stats.damageTakenPct', { defaultValue: 'Damage taken' })} pct={player.shares.damageTakenPct} color="bg-blue-500" />
@@ -99,7 +99,7 @@ export function SynergyPlayerCard({ player, matchCount }: { player: SynergyPlaye
         </div>
       </Section>
 
-      <Section title={t('team.stats.byChampion', { defaultValue: 'By champion' })}>
+      <Section title={t('team.stats.byChampion', { defaultValue: 'By champion' })} divider>
         {player.byChampion.length === 0 ? (
           <p className="text-[10px] text-hextech-text-dim italic">No champion data.</p>
         ) : (
@@ -117,9 +117,9 @@ export function SynergyPlayerCard({ player, matchCount }: { player: SynergyPlaye
   )
 }
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function Section({ title, hint, divider, children }: { title: string; hint?: string; divider?: boolean; children: React.ReactNode }) {
   return (
-    <div>
+    <div className={cn(divider && 'pt-3 border-t border-hextech-border-dim/40')}>
       <div className="flex items-baseline justify-between mb-1.5">
         <h4 className="text-[10px] uppercase tracking-wider text-hextech-text-dim font-semibold">{title}</h4>
         {hint && <span className="text-[9px] text-hextech-text-dim italic">{hint}</span>}
@@ -142,7 +142,7 @@ function StatTile({ icon, label, value, hint }: {
         <span className="truncate">{label}</span>
       </div>
       <p className="text-sm font-bold text-hextech-text-bright tabular-nums leading-tight">{value}</p>
-      {hint && <p className="text-[8px] text-hextech-text-dim truncate" title={hint}>{hint}</p>}
+      {hint && <p className="text-[9px] text-hextech-text-dim truncate" title={hint}>{hint}</p>}
     </div>
   )
 }

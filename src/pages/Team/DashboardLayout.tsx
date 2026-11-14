@@ -43,6 +43,47 @@ export function DashboardLayout({ players, matchCount, basedOnLabel }: Props) {
   )
 }
 
+// Column groups (E17: readability pass). Same 24 columns, same order as
+// before — this only adds a labeled group header row above them (so
+// "which cluster of stats am I looking at" doesn't require memorizing
+// abbreviations) and a legend of what each abbreviation means. `span`
+// must add up to the exact column count in each group below.
+const COLUMN_GROUPS: Array<{ label: string; span: number; cls?: string }> = [
+  { label: '', span: 1 }, // player (sticky, no group label needed)
+  { label: 'Record', span: 2 },
+  { label: 'Combat', span: 4 },
+  { label: 'Economy', span: 6 },
+  { label: 'Impact', span: 7, cls: 'text-hextech-gold-bright/80' },
+  { label: 'Vision', span: 4 },
+]
+
+const COLUMNS = [
+  ['player', 'Joueur', 'text-left pl-3', undefined],
+  ['games', 'Games', 'text-right', 'Games played'],
+  ['wr', 'WR%', 'text-right', 'Win rate'],
+  ['k', 'K', 'text-right', 'Kills per game'],
+  ['d', 'D', 'text-right', 'Deaths per game'],
+  ['a', 'A', 'text-right', 'Assists per game'],
+  ['kda', 'KDA', 'text-right text-hextech-gold-bright', '(Kills + Assists) / Deaths'],
+  ['cs', 'CS', 'text-right', 'Creep score per game'],
+  ['csm', 'CS/M', 'text-right', 'Creep score per minute'],
+  ['gold', 'Gold', 'text-right', 'Gold earned per game'],
+  ['gm', 'G/M', 'text-right', 'Gold per minute'],
+  ['dmg', 'Dmg', 'text-right', 'Damage to champions per game'],
+  ['dmgm', 'Dmg/M', 'text-right', 'Damage to champions per minute'],
+  ['tank', 'Tank', 'text-right', 'Damage taken per game'],
+  ['tankpct', '%Tank', 'text-right text-blue-300', 'Share of the team\'s total damage taken'],
+  ['kp', 'KP%', 'text-right text-emerald-300', 'Kill participation — share of the team\'s kills you got a kill or assist on'],
+  ['goldpct', '%Gold', 'text-right text-yellow-300', 'Share of the team\'s total gold'],
+  ['dmgpct', '%Dmg', 'text-right text-red-300', 'Share of the team\'s total damage to champions'],
+  ['eff', 'Eff.', 'text-right', 'Damage per gold — higher = more cost-efficient'],
+  ['xpm', 'XP/M', 'text-right', 'Experience per minute'],
+  ['vs', 'VS', 'text-right', 'Vision score per game'],
+  ['wp', 'WP', 'text-right', 'Wards placed per game'],
+  ['wk', 'WK', 'text-right', 'Wards killed per game'],
+  ['pink', 'Pink', 'text-right pr-3', 'Control wards bought per game'],
+] as const
+
 function StatsTable({ players, matchCount, basedOnLabel }: { players: SynergyPlayerStats[]; matchCount: number; basedOnLabel?: string }) {
   const { t } = useTranslation()
   return (
@@ -55,65 +96,74 @@ function StatsTable({ players, matchCount, basedOnLabel }: { players: SynergyPla
           {basedOnLabel ?? t('team.dashboard.basedOn', { defaultValue: 'Averages from {{n}} games', n: matchCount })}
         </span>
       </div>
+      {/* Horizontal scroll for the 24-column spreadsheet; the player column
+          stays pinned (sticky left-0) so you never lose track of which row
+          is whose while scrolling through the stat clusters. */}
       <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="bg-hextech-dark/50 text-hextech-text-dim sticky top-0">
+        <table className="w-full text-xs border-separate border-spacing-0">
+          <thead className="bg-hextech-dark/70 text-hextech-text-dim sticky top-0 z-20">
+            {/* Group header row — purely organizational, tells you which
+                cluster (Record/Combat/Economy/Impact/Vision) you're
+                reading before you get lost in abbreviations below. */}
             <tr>
-              {([
-                ['player', 'Joueur', 'text-left pl-3'],
-                ['games', 'Games', 'text-right'],
-                ['wr', 'WR%', 'text-right'],
-                ['k', 'K', 'text-right'],
-                ['d', 'D', 'text-right'],
-                ['a', 'A', 'text-right'],
-                ['kda', 'KDA', 'text-right text-hextech-gold-bright'],
-                ['cs', 'CS', 'text-right'],
-                ['csm', 'CS/M', 'text-right'],
-                ['gold', 'Gold', 'text-right'],
-                ['gm', 'G/M', 'text-right'],
-                ['dmg', 'Dmg', 'text-right'],
-                ['dmgm', 'Dmg/M', 'text-right'],
-                ['tank', 'Tank', 'text-right'],
-                ['tankpct', '%Tank', 'text-right text-blue-300'],
-                ['kp', 'KP%', 'text-right text-emerald-300'],
-                ['goldpct', '%Gold', 'text-right text-yellow-300'],
-                ['dmgpct', '%Dmg', 'text-right text-red-300'],
-                ['eff', 'Eff.', 'text-right'],
-                ['xpm', 'XP/M', 'text-right'],
-                ['vs', 'VS', 'text-right'],
-                ['wp', 'WP', 'text-right'],
-                ['wk', 'WK', 'text-right'],
-                ['pink', 'Pink', 'text-right pr-3'],
-              ] as const).map(([k, label, cls]) => (
-                <th key={k} className={cn('px-1.5 py-1.5 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap', cls)}>
+              {COLUMN_GROUPS.map((g, i) => (
+                <th
+                  key={i}
+                  colSpan={g.span}
+                  className={cn(
+                    'px-1.5 py-1 text-[9px] font-bold uppercase tracking-wider text-center border-b border-hextech-border-dim/60',
+                    i > 0 && 'border-l border-hextech-border-dim/40',
+                    g.cls,
+                  )}
+                >
+                  {g.label}
+                </th>
+              ))}
+            </tr>
+            <tr>
+              {COLUMNS.map(([k, label, cls, title], i) => (
+                <th
+                  key={k}
+                  title={title}
+                  className={cn(
+                    'px-1.5 py-1.5 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap',
+                    cls,
+                    k === 'player' && 'sticky left-0 z-10 bg-hextech-dark',
+                    // Thin separators at the same boundaries as the group
+                    // header above, so the grouping reads as one column
+                    // block even without re-reading the header row.
+                    isGroupStart(i) && i > 0 && 'border-l border-hextech-border-dim/40',
+                  )}
+                >
                   {label}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-hextech-border-dim/40">
-            {players.map((p) => {
+            {players.map((p, rowIdx) => {
               const a = p.averages
               const s = p.shares
+              const zebra = rowIdx % 2 === 1 ? 'bg-white/[0.02]' : ''
               return (
-                <tr key={p.memberId} className="hover:bg-hextech-dark/30 transition-colors">
-                  <td className="px-1.5 py-1.5 pl-3 whitespace-nowrap">
+                <tr key={p.memberId} className={cn('hover:bg-hextech-dark/30 transition-colors group', zebra)}>
+                  <td className={cn('px-1.5 py-1.5 pl-3 whitespace-nowrap sticky left-0 z-10 bg-hextech-dark group-hover:bg-hextech-elevated', zebra)}>
                     <span className="font-semibold text-hextech-text-bright">{p.displayName}</span>
-                    <span className="ml-1.5 text-[9px] text-hextech-text-dim">{p.role}</span>
+                    <span className="ml-1.5 text-[9px] text-hextech-text-dim">· {p.role}</span>
                   </td>
-                  <td className="px-1.5 py-1.5 text-right tabular-nums">{p.gamesPlayed}</td>
+                  <td className="px-1.5 py-1.5 text-right tabular-nums border-l border-hextech-border-dim/30">{p.gamesPlayed}</td>
                   <td className={cn('px-1.5 py-1.5 text-right tabular-nums font-semibold', wrColor(p.winRate))}>{p.winRate}%</td>
-                  <td className="px-1.5 py-1.5 text-right tabular-nums">{a.kills.toFixed(1)}</td>
+                  <td className="px-1.5 py-1.5 text-right tabular-nums border-l border-hextech-border-dim/30">{a.kills.toFixed(1)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{a.deaths.toFixed(1)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{a.assists.toFixed(1)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums font-semibold text-hextech-gold-bright">{a.kda.toFixed(2)}</td>
-                  <td className="px-1.5 py-1.5 text-right tabular-nums">{Math.round(a.cs)}</td>
+                  <td className="px-1.5 py-1.5 text-right tabular-nums border-l border-hextech-border-dim/30">{Math.round(a.cs)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{a.csPerMin.toFixed(1)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{Math.round(a.gold).toLocaleString()}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{Math.round(a.goldPerMin)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{formatK(a.damage)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{Math.round(a.damagePerMin)}</td>
-                  <td className="px-1.5 py-1.5 text-right tabular-nums">{formatK(a.damageTaken)}</td>
+                  <td className="px-1.5 py-1.5 text-right tabular-nums border-l border-hextech-border-dim/30">{formatK(a.damageTaken)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums text-blue-300">{s.damageTakenPct.toFixed(1)}%</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums text-emerald-300 font-semibold">{Math.round(s.kpPct)}%</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums text-yellow-300">{s.goldPct.toFixed(1)}%</td>
@@ -122,7 +172,7 @@ function StatsTable({ players, matchCount, basedOnLabel }: { players: SynergyPla
                     {a.damagePerGold.toFixed(1)}
                   </td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{Math.round(a.xpPerMin)}</td>
-                  <td className="px-1.5 py-1.5 text-right tabular-nums">{a.visionScore.toFixed(1)}</td>
+                  <td className="px-1.5 py-1.5 text-right tabular-nums border-l border-hextech-border-dim/30">{a.visionScore.toFixed(1)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{a.wardsPlaced.toFixed(1)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{a.wardsKilled.toFixed(1)}</td>
                   <td className="px-1.5 py-1.5 pr-3 text-right tabular-nums">{a.controlWards.toFixed(1)}</td>
@@ -134,6 +184,18 @@ function StatsTable({ players, matchCount, basedOnLabel }: { players: SynergyPla
       </div>
     </Card>
   )
+}
+
+/** True when column index `i` is the first column of a group (per
+ *  COLUMN_GROUPS' spans) — used to draw the sub-header's separators at
+ *  the same boundaries as the group header above it. */
+function isGroupStart(i: number): boolean {
+  let acc = 0
+  for (const g of COLUMN_GROUPS) {
+    if (i === acc) return true
+    acc += g.span
+  }
+  return false
 }
 
 function ShareDonut({ titleKey, defaultTitle, players, valueFn }: {
