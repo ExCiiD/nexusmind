@@ -198,6 +198,7 @@ export const webApi = {
 
   // ── E9: weekly reports ──
   reportGetWeekly: (groupId: string, weekStart: string) => reportCore.computeTeamWeeklyReport(sb, groupId, weekStart),
+  reportGetForEvent: (groupId: string, eventId: string) => reportCore.computeTeamReportForEvent(sb, groupId, eventId),
 
   // ── E10: recruitment trials ──
   trialsList: (groupId: string) => trialsCore.listCandidates(sb, groupId),

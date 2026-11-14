@@ -139,6 +139,7 @@ export function registerCollabHandlers() {
   validatedHandle('staffnotes:delete', z.tuple([uuid]), (_e, id) => collab.staffNotesDelete(id))
 
   validatedHandle('report:get-weekly', z.tuple([uuid, dateOnly]), (_e, groupId, weekStart) => collab.reportGetWeekly(groupId, weekStart))
+  validatedHandle('report:get-for-event', z.tuple([uuid, uuid]), (_e, groupId, eventId) => collab.reportGetForEvent(groupId, eventId))
 
   const trialRole = z.enum(['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'])
   const trialStatus = z.enum(['trialing', 'kept', 'rejected'])

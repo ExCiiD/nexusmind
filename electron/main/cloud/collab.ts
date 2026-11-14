@@ -121,6 +121,7 @@ export const staffNotesAdd = (groupId: string, playerId: string, body: string) =
 export const staffNotesDelete = (id: string) => teamOps.deleteStaffNote(getSupabase(), id)
 
 export const reportGetWeekly = (groupId: string, weekStart: string) => report.computeTeamWeeklyReport(getSupabase(), groupId, weekStart)
+export const reportGetForEvent = (groupId: string, eventId: string) => report.computeTeamReportForEvent(getSupabase(), groupId, eventId)
 
 export const trialsList = (groupId: string) => trials.listCandidates(getSupabase(), groupId)
 export const trialsCreate = (groupId: string, input: NewTrialCandidateInput) => trials.createCandidate(getSupabase(), groupId, input)

@@ -198,6 +198,7 @@ const api = {
 
   // E9: weekly reports
   reportGetWeekly: (groupId: string, weekStart: string) => ipcRenderer.invoke('report:get-weekly', groupId, weekStart),
+  reportGetForEvent: (groupId: string, eventId: string) => ipcRenderer.invoke('report:get-for-event', groupId, eventId),
 
   // E10: recruitment trials
   trialsList: (groupId: string) => ipcRenderer.invoke('trials:list', groupId),

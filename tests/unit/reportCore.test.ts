@@ -1,10 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
-import { computeTeamWeeklyReport, reportToText } from '../../src/lib/reportCore'
+import { computeTeamWeeklyReport, computeTeamReportForEvent, reportToText } from '../../src/lib/reportCore'
 import type { TeamWeeklyReport } from '../../src/lib/report'
 
 function chain(result: unknown) {
   const c: Record<string, unknown> = {}
   for (const m of ['select', 'eq', 'in', 'limit']) c[m] = vi.fn().mockReturnValue(c)
+  c.single = vi.fn().mockResolvedValue(result)
   c.then = (resolve: (v: unknown) => void) => resolve(result)
   return c
 }
@@ -66,6 +67,29 @@ describe('computeTeamWeeklyReport', () => {
   })
 })
 
+describe('computeTeamReportForEvent', () => {
+  it('uses the calendar_events row\'s own window, and the equal-length period before it for mistake trends', async () => {
+    const tournamentStart = new Date('2026-12-01T00:00:00Z').getTime()
+    const tournamentEnd = new Date('2026-12-03T00:00:00Z').getTime() // 2-day tournament
+    const event = chain({ data: { starts_at: '2026-12-01T00:00:00Z', ends_at: '2026-12-03T00:00:00Z' }, error: null })
+    const members = chain({ data: [{ user_id: 'p1', display_name: 'Top' }], error: null })
+    const syncRows = [
+      { user_id: 'p1', table_name: 'Game', data: { id: 'g1', win: true, gameEndAt: tournamentStart + 1 * DAY } },
+      // one game in the equal-length (2-day) window right before the tournament
+      { user_id: 'p1', table_name: 'Game', data: { id: 'g0', win: false, gameEndAt: tournamentStart - 1 * DAY } },
+    ]
+    const records = chain({ data: syncRows, error: null })
+    const objectives = chain({ data: [], error: null })
+    const sb = { from: vi.fn((t: string) => ({ calendar_events: event, group_members: members, sync_records: records, assigned_objectives: objectives }[t])) } as never
+
+    const report = await computeTeamReportForEvent(sb, 'g1', 'evt1')
+    expect(report.weekStart).toBe('2026-12-01')
+    expect(report.weekEnd).toBe('2026-12-03')
+    expect(report.totalGames).toBe(1)
+    expect(tournamentEnd - tournamentStart).toBe(2 * DAY)
+  })
+})
+
 describe('reportToText', () => {
   it('renders a plain-text summary with the top mistake trend arrow', () => {
     const report: TeamWeeklyReport = {
@@ -77,7 +101,7 @@ describe('reportToText', () => {
       }],
     }
     const text = reportToText(report, 'My Team')
-    expect(text).toContain('My Team — weekly report (2026-11-16 → 2026-11-23)')
+    expect(text).toContain('My Team — report (2026-11-16 → 2026-11-23)')
     expect(text).toContain('Team: 2 games, 50% average winrate')
     expect(text).toContain('Top: 2 games, 50% winrate, 1/2 reviewed')
     expect(text).toContain('top mistake: Overstay ↑ (1 → 2)')

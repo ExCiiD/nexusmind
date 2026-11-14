@@ -3,10 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { ClipboardCopy, FileBarChart, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
 import { reportToText } from '@/lib/reportCore'
 import type { TeamWeeklyReport } from '@/lib/report'
+import type { CalendarEvent } from '@/lib/calendar'
 
 function startOfWeek(d: Date): Date {
   const out = new Date(d)
@@ -24,14 +26,34 @@ export function WeeklyReportSection({ staffGroups }: { staffGroups: Group[] }) {
   const [groupId, setGroupId] = useState(staffGroups[0]?.id ?? null)
   const group = staffGroups.find((g) => g.id === groupId)
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()).toISOString().slice(0, 10))
+  const [mode, setMode] = useState<'week' | 'tournament'>('week')
+  const [tournaments, setTournaments] = useState<CalendarEvent[]>([])
+  const [tournamentId, setTournamentId] = useState('')
   const [report, setReport] = useState<TeamWeeklyReport | null>(null)
+
+  useEffect(() => {
+    if (!groupId) return
+    const from = new Date(); from.setDate(from.getDate() - 180)
+    const to = new Date(); to.setDate(to.getDate() + 180)
+    window.api.calendarListEvents(groupId, from.toISOString(), to.toISOString())
+      .then((evs) => {
+        const list = evs.filter((e) => e.kind === 'tournament')
+        setTournaments(list)
+        setTournamentId((prev) => (prev && list.some((e) => e.id === prev)) ? prev : (list[0]?.id ?? ''))
+      })
+      .catch(() => setTournaments([]))
+  }, [groupId])
 
   const load = useCallback(async () => {
     if (!groupId) return
+    if (mode === 'tournament' && !tournamentId) { setReport(null); return }
     setReport(null)
-    try { setReport(await window.api.reportGetWeekly(groupId, weekStart)) }
-    catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
-  }, [groupId, weekStart, t, toast])
+    try {
+      setReport(mode === 'week' ? await window.api.reportGetWeekly(groupId, weekStart) : await window.api.reportGetForEvent(groupId, tournamentId))
+    } catch (err) {
+      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
+    }
+  }, [groupId, weekStart, mode, tournamentId, t, toast])
 
   useEffect(() => { load() }, [load])
 
@@ -66,13 +88,34 @@ export function WeeklyReportSection({ staffGroups }: { staffGroups: Group[] }) {
         <CardDescription>{t('weeklyReport.desc', { defaultValue: 'Volume, form, objectives, experiment verdicts, and mistake trends — computed on demand, not stored.' })}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Button size="sm" variant="outline" onClick={() => shiftWeek(-7)}>←</Button>
-          <span className="text-sm text-hextech-text-dim">
-            {new Date(`${weekStart}T00:00:00Z`).toLocaleDateString(i18n.language)} – {report ? new Date(`${report.weekEnd}T00:00:00Z`).toLocaleDateString(i18n.language) : '…'}
-          </span>
-          <Button size="sm" variant="outline" onClick={() => shiftWeek(7)}>→</Button>
-        </div>
+        <Select value={mode} onValueChange={(v) => setMode(v as 'week' | 'tournament')}>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="week">{t('weeklyReport.modeWeek', { defaultValue: 'Weekly' })}</SelectItem>
+            <SelectItem value="tournament">{t('weeklyReport.modeTournament', { defaultValue: 'Post-tournament' })}</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {mode === 'week' ? (
+          <div className="flex items-center justify-between">
+            <Button size="sm" variant="outline" onClick={() => shiftWeek(-7)}>←</Button>
+            <span className="text-sm text-hextech-text-dim">
+              {new Date(`${weekStart}T00:00:00Z`).toLocaleDateString(i18n.language)} – {report ? new Date(`${report.weekEnd}T00:00:00Z`).toLocaleDateString(i18n.language) : '…'}
+            </span>
+            <Button size="sm" variant="outline" onClick={() => shiftWeek(7)}>→</Button>
+          </div>
+        ) : tournaments.length === 0 ? (
+          <p className="text-sm text-hextech-text-dim">{t('weeklyReport.noTournaments', { defaultValue: 'No tournament on the calendar yet — add one as an event in Planning.' })}</p>
+        ) : (
+          <Select value={tournamentId} onValueChange={setTournamentId}>
+            <SelectTrigger className="w-full md:w-96"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {tournaments.map((ev) => (
+                <SelectItem key={ev.id} value={ev.id}>{ev.title} — {new Date(ev.startsAt).toLocaleDateString(i18n.language)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         {report === null ? (
           <Loader2 className="h-5 w-5 animate-spin text-hextech-gold" />

@@ -37,4 +37,6 @@ export interface TeamWeeklyReport {
  */
 export interface ReportApi {
   reportGetWeekly: (groupId: string, weekStart: string) => Promise<TeamWeeklyReport>
+  /** Post-tournament report: the `calendar_events` row's own start/end defines the window. */
+  reportGetForEvent: (groupId: string, eventId: string) => Promise<TeamWeeklyReport>
 }
