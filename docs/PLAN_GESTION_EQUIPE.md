@@ -45,7 +45,8 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
 ### E2 — Tableau de bord staff (web d'abord) 🟡 (v1 livré, voir ce qui reste ci-dessous)
 - ✅ Une ligne par joueur, agrégée côté client depuis `sync_records` (même RLS par consentement que le reste) : forme récente (winrate sur les 10 dernières), volume de jeu de la semaine, reviews faites/en retard, erreur dominante (Mistake Library, 10 dernières games), objectif en cours et son verdict (lit directement `CoachingExperiment`, le moteur de coaching — nouvelle règle d'accès ajoutée à `private.can_read_player_table`).
 - ✅ Alertes : **C1** joueur inactif (≥ 5 j), **review en retard** (> 3 games non reviewées), **objectif en échec** — simplifié : verdict `no_effect` sur la dernière expérience, pas encore « 2 fois sur le même objectif » (**C2** complet).
-- ⏳ Restant : perf index de l'assistant (colonne séparée), humeur (E6, pas construit), comparaison joueur vs moyenne d'équipe / historique perso, **C3–C6** (review en attente, disponibilités, scrim terminé, rapport pré-scrim).
+- ✅ *(ajouté le 14/11/2026, après la v1)* humeur (moyenne des 3 derniers check-ins E6, uniquement pour les joueurs ayant partagé) et comparaison vs moyenne d'équipe (écart du winrate du joueur par rapport à la moyenne du groupe sur les joueurs ayant un winrate).
+- ⏳ Restant : perf index de l'assistant (colonne séparée), historique perso (tendance dans le temps, pas juste l'instantané courant), **C3–C6** (review en attente, disponibilités, scrim terminé, rapport pré-scrim).
 
 ### E3 — Plans de développement individuels 🟡 (v1 livré : plan + avancement + 1:1 ; verdicts auto restants)
 - ✅ Tables serveur `dev_plans`, `dev_plan_axes`, `dev_plan_checkins`, `dev_plan_progress`, RLS par groupe (staff écrit le plan/axes/1:1 ; **le joueur écrit uniquement sa propre ligne de progression**, via une table séparée pour éviter un garde colonne par colonne).
@@ -91,7 +92,7 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
 ## 7. État d'ensemble (14/11/2026)
 
 **E1 à E10 sont tous livrés en v1**, chacun avec un périmètre volontairement réduit et les manques documentés dans leur section ci-dessus plutôt que silencieusement laissés de côté. Résumé des plus gros points en suspens, communs à plusieurs lots :
-- **T5** (auto-import des customs + rattachement à un créneau) bloque la présence réelle (E4) et le résumé auto de scrim (E5) — pas construit, dépendance explicite des deux.
+- **T5** (auto-import des customs + rattachement à un créneau) bloque la présence réelle (E4) et le résumé auto de scrim (E5) — mis de côté volontairement (décision du 14/11/2026) jusqu'à une montée en gamme de la clé API Riot (la clé de développement actuelle ne permet pas un import fiable à l'échelle d'une équipe).
 - **Canaux de notification externes** (Web Push, Discord serveur, e-mail) — zéro infrastructure, seul l'in-app (polling) existe (E8).
 - **Édition de roster en direct** — E1 reste en mode « publier un instantané » ; E10 (promotion) et une partie d'E5/E7 (fils par scrim/draft) en dépendent indirectement.
 - Deux actions manuelles toujours en attente côté Supabase Auth (voir `ROADMAP.md`) : désactiver les inscriptions libres, activer la protection mots de passe compromis.

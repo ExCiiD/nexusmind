@@ -53,6 +53,7 @@ export function StaffDashboardSection({ staffGroups }: { staffGroups: Group[] })
                 <tr className="border-b border-hextech-border-dim text-left text-xs uppercase tracking-wide text-hextech-text-dim">
                   <th className="py-2 pr-3">{t('team.dashboard.col.player', { defaultValue: 'Player' })}</th>
                   <th className="py-2 pr-3">{t('team.dashboard.col.form', { defaultValue: 'Form (10)' })}</th>
+                  <th className="py-2 pr-3">{t('team.dashboard.col.mood', { defaultValue: 'Mood' })}</th>
                   <th className="py-2 pr-3">{t('team.dashboard.col.week', { defaultValue: 'This week' })}</th>
                   <th className="py-2 pr-3">{t('team.dashboard.col.reviews', { defaultValue: 'Reviews' })}</th>
                   <th className="py-2 pr-3">{t('team.dashboard.col.mistake', { defaultValue: 'Dominant mistake' })}</th>
@@ -66,6 +67,14 @@ export function StaffDashboardSection({ staffGroups }: { staffGroups: Group[] })
                     <td className="py-2 pr-3 font-medium text-hextech-text-bright">{r.displayName}</td>
                     <td className="py-2 pr-3 text-hextech-text">
                       {r.winrateLast10 === null ? '—' : `${r.winrateLast10}%`}
+                      {r.winrateVsTeamAvg !== null && r.winrateVsTeamAvg !== 0 && (
+                        <span className={cn('ml-1 text-[10px]', r.winrateVsTeamAvg > 0 ? 'text-hextech-green' : 'text-[#E24C3A]')}>
+                          ({r.winrateVsTeamAvg > 0 ? '+' : ''}{r.winrateVsTeamAvg} {t('team.dashboard.vsTeam', { defaultValue: 'vs team' })})
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-3 text-hextech-text">
+                      {r.recentMood === null ? '—' : r.recentMood}
                     </td>
                     <td className="py-2 pr-3 text-hextech-text">{t('team.dashboard.games', { count: r.gamesThisWeek, defaultValue: '{{count}} games' })}</td>
                     <td className="py-2 pr-3 text-hextech-text">

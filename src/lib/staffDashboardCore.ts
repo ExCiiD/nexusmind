@@ -12,7 +12,11 @@ import type { DashboardAlert, PlayerDashboardRow } from './staffDashboard'
  * - the C2 alert ("verdict sans effet 2 fois sur le même objectif") is
  *   simplified to "the latest experiment's verdict is no_effect" — true
  *   same-objective-twice tracking is a follow-up.
- * - "humeur" (E6, wellbeing check-ins) isn't built yet, so it's omitted.
+ * - "humeur" (E6) is the average of the player's last 3 wellbeing
+ *   check-ins; null unless they opted in to `share_wellbeing` for this group.
+ * - "comparaison vs moyenne d'équipe" is winrateLast10 minus the team's own
+ *   average over players who have one — not a historical trend, just the
+ *   current snapshot.
  */
 
 const DAY = 86_400_000
@@ -28,13 +32,19 @@ export async function getStaffDashboard(sb: SupabaseClient, groupId: string): Pr
   if (players.length === 0) return []
 
   const playerIds = players.map((p) => p.user_id)
-  const { data: rows, error } = await sb.from('sync_records')
-    .select('user_id, table_name, record_id, data')
-    .in('user_id', playerIds)
-    .eq('deleted', false)
-    .in('table_name', ['Game', 'Review', 'Mistake', 'MistakeTag', 'CoachingExperiment'])
-    .limit(20000)
-  if (error) throw new Error(error.message)
+  const [syncRes, checkinsRes] = await Promise.all([
+    sb.from('sync_records')
+      .select('user_id, table_name, record_id, data')
+      .in('user_id', playerIds)
+      .eq('deleted', false)
+      .in('table_name', ['Game', 'Review', 'Mistake', 'MistakeTag', 'CoachingExperiment'])
+      .limit(20000),
+    // RLS-filtered: only players who opted in via `share_wellbeing` (E6) are returned here.
+    sb.from('wellbeing_checkins').select('user_id, mood, created_at').in('user_id', playerIds).order('created_at', { ascending: false }).limit(500),
+  ])
+  if (syncRes.error) throw new Error(syncRes.error.message)
+  if (checkinsRes.error) throw new Error(checkinsRes.error.message)
+  const rows = syncRes.data
 
   const byUser = new Map<string, typeof rows>()
   for (const r of rows ?? []) {
@@ -43,10 +53,17 @@ export async function getStaffDashboard(sb: SupabaseClient, groupId: string): Pr
     byUser.set(r.user_id, list)
   }
 
+  const moodsByUser = new Map<string, number[]>()
+  for (const c of checkinsRes.data ?? []) {
+    const list = moodsByUser.get(c.user_id) ?? []
+    if (list.length < 3) list.push(c.mood)
+    moodsByUser.set(c.user_id, list)
+  }
+
   const now = Date.now()
   const ts = (v: unknown) => (typeof v === 'number' ? v : Date.parse(String(v ?? '')) || 0)
 
-  return players.map((p): PlayerDashboardRow => {
+  const playerRows = players.map((p): PlayerDashboardRow => {
     const userRows = byUser.get(p.user_id) ?? []
     const games = userRows.filter((r) => r.table_name === 'Game').map((r) => r.data as any)
       .sort((a, b) => ts(b.gameEndAt) - ts(a.gameEndAt))
@@ -91,10 +108,25 @@ export async function getStaffDashboard(sb: SupabaseClient, groupId: string): Pr
     if (reviewsPending > BACKLOG_THRESHOLD) alerts.push('review_backlog')
     if (currentObjective?.verdict === 'no_effect') alerts.push('objective_failing')
 
+    const moods = moodsByUser.get(p.user_id) ?? []
+    const recentMood = moods.length > 0 ? Math.round((moods.reduce((a, b) => a + b, 0) / moods.length) * 10) / 10 : null
+
     return {
       playerId: p.user_id, displayName: p.display_name ?? '?',
       gamesThisWeek, winrateLast10, reviewsDone, reviewsPending,
-      dominantMistake, currentObjective, daysSinceLastGame, alerts,
+      dominantMistake, currentObjective, daysSinceLastGame, alerts, recentMood,
+      winrateVsTeamAvg: null, // filled in below, once every row's winrate is known
     }
   })
+
+  const withWinrate = playerRows.filter((r) => r.winrateLast10 !== null)
+  const teamAvg = withWinrate.length > 0
+    ? withWinrate.reduce((sum, r) => sum + (r.winrateLast10 ?? 0), 0) / withWinrate.length
+    : null
+  if (teamAvg !== null) {
+    for (const r of playerRows) {
+      if (r.winrateLast10 !== null) r.winrateVsTeamAvg = Math.round(r.winrateLast10 - teamAvg)
+    }
+  }
+  return playerRows
 }

@@ -13,4 +13,8 @@ export interface PlayerDashboardRow {
   currentObjective: { problemId: string; status: string; verdict: string | null; passRate: number | null } | null
   daysSinceLastGame: number | null
   alerts: DashboardAlert[]
+  /** Average mood (1-5) over the player's last 3 check-ins; null if they haven't shared wellbeing (E6) with this group. */
+  recentMood: number | null
+  /** winrateLast10 minus the team's own average over players who have one; null if either side is unavailable. */
+  winrateVsTeamAvg: number | null
 }

@@ -994,12 +994,14 @@
       "col": {
         "player": "Player",
         "form": "Form (10)",
+        "mood": "Mood",
         "week": "This week",
         "reviews": "Reviews",
         "mistake": "Dominant mistake",
         "objective": "Objective",
         "alerts": "Alerts"
       },
+      "vsTeam": "vs team",
       "games": "{{count}} games",
       "pending": "pending",
       "verdict": {

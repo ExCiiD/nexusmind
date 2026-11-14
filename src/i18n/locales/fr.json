@@ -994,12 +994,14 @@
       "col": {
         "player": "Joueur",
         "form": "Forme (10)",
+        "mood": "Humeur",
         "week": "Cette semaine",
         "reviews": "Reviews",
         "mistake": "Erreur dominante",
         "objective": "Objectif",
         "alerts": "Alertes"
       },
+      "vsTeam": "vs équipe",
       "games": "{{count}} partie(s)",
       "pending": "en attente",
       "verdict": {
