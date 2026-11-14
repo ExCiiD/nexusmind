@@ -62,6 +62,17 @@ describe('createDevPlan', () => {
     expect(id).toBe('plan1')
     expect(calls).toEqual(['insert-plan', 'insert-axes'])
   })
+
+  it('passes the period dates through when given, and null when omitted', async () => {
+    const insert = vi.fn(() => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'plan1' }, error: null }) }) }))
+    const sb = { from: vi.fn((t: string) => (t === 'dev_plans' ? { insert } : { insert: () => Promise.resolve({ error: null }) })) } as never
+
+    await createDevPlan(sb, 'g1', 'p1', 'Q1 focus', [], { periodStart: '2027-01-01', periodEnd: '2027-03-31' })
+    expect(insert).toHaveBeenCalledWith({ group_id: 'g1', player_id: 'p1', title: 'Q1 focus', period_start: '2027-01-01', period_end: '2027-03-31' })
+
+    await createDevPlan(sb, 'g1', 'p1', 'Q1 focus', [])
+    expect(insert).toHaveBeenCalledWith({ group_id: 'g1', player_id: 'p1', title: 'Q1 focus', period_start: null, period_end: null })
+  })
 })
 
 describe('setAxisStatus / addCheckin / setProgress', () => {

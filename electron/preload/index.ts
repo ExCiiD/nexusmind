@@ -145,8 +145,8 @@ const api = {
   // E3: individual development plans
   devPlanGetMine: (groupId: string) => ipcRenderer.invoke('devplan:get-mine', groupId),
   devPlanGetForPlayer: (groupId: string, playerId: string) => ipcRenderer.invoke('devplan:get-for-player', groupId, playerId),
-  devPlanCreate: (groupId: string, playerId: string, title: string, axes: unknown) =>
-    ipcRenderer.invoke('devplan:create', groupId, playerId, title, axes),
+  devPlanCreate: (groupId: string, playerId: string, title: string, axes: unknown, period?: unknown) =>
+    ipcRenderer.invoke('devplan:create', groupId, playerId, title, axes, period),
   devPlanSetAxisStatus: (axisId: string, status: 'active' | 'done' | 'dropped') =>
     ipcRenderer.invoke('devplan:set-axis-status', axisId, status),
   devPlanAddCheckin: (planId: string, note: string) => ipcRenderer.invoke('devplan:add-checkin', planId, note),

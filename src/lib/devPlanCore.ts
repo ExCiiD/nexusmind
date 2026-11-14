@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { AxisStatus, DevPlan, DevPlanAxis, DevPlanCheckin, NewAxisInput } from './devPlan'
+import type { AxisStatus, DevPlan, DevPlanAxis, DevPlanCheckin, NewAxisInput, NewDevPlanPeriod } from './devPlan'
 
 /**
  * Individual development plans (E3), same pattern as teamCore.ts/
@@ -70,9 +70,12 @@ async function getPlan(sb: SupabaseClient, groupId: string, playerId: string): P
 export const getMyDevPlan = (sb: SupabaseClient, groupId: string, myUserId: string) => getPlan(sb, groupId, myUserId)
 export const getDevPlanForPlayer = getPlan
 
-export async function createDevPlan(sb: SupabaseClient, groupId: string, playerId: string, title: string, axes: NewAxisInput[]): Promise<string> {
+export async function createDevPlan(
+  sb: SupabaseClient, groupId: string, playerId: string, title: string, axes: NewAxisInput[], period?: NewDevPlanPeriod,
+): Promise<string> {
   const { data: plan, error } = await sb.from('dev_plans')
-    .insert({ group_id: groupId, player_id: playerId, title }).select('id').single()
+    .insert({ group_id: groupId, player_id: playerId, title, period_start: period?.periodStart ?? null, period_end: period?.periodEnd ?? null })
+    .select('id').single()
   if (error) fail(error, 'create plan')
   if (axes.length > 0) {
     const { error: axesErr } = await sb.from('dev_plan_axes').insert(

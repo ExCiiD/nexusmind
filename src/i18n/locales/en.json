@@ -1738,6 +1738,8 @@
     "checkinPlaceholder": "Note from the 1:1…",
     "created": "Plan created",
     "titlePlaceholder": "e.g. Q1 2027 focus",
+    "periodStart": "Period start",
+    "periodEnd": "Period end",
     "pickFundamental": "Pick a fundamental",
     "targetPlaceholder": "Target for this axis…",
     "addAxis": "Add axis",

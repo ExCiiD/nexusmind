@@ -47,6 +47,11 @@ export interface NewAxisInput {
   position: 1 | 2 | 3
 }
 
+export interface NewDevPlanPeriod {
+  periodStart?: string | null
+  periodEnd?: string | null
+}
+
 /**
  * All of this is server-only (no local Prisma data involved, unlike the
  * team-publish flow), so desktop and web implement every method the same
@@ -57,7 +62,7 @@ export interface DevPlanApi {
   devPlanGetMine: (groupId: string) => Promise<DevPlan | null>
   /** Staff only (RLS-enforced); returns null if no plan exists yet for that player. */
   devPlanGetForPlayer: (groupId: string, playerId: string) => Promise<DevPlan | null>
-  devPlanCreate: (groupId: string, playerId: string, title: string, axes: NewAxisInput[]) => Promise<string>
+  devPlanCreate: (groupId: string, playerId: string, title: string, axes: NewAxisInput[], period?: NewDevPlanPeriod) => Promise<string>
   devPlanSetAxisStatus: (axisId: string, status: AxisStatus) => Promise<void>
   devPlanAddCheckin: (planId: string, note: string) => Promise<void>
   /** The player marking their own progress — RLS enforces "own plan only", so this is safe to expose to every role. */

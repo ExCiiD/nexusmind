@@ -146,8 +146,8 @@ export const webApi = {
   // ── E3: individual development plans ──
   devPlanGetMine: async (groupId: string) => devPlanCore.getMyDevPlan(sb, groupId, await currentUserId()),
   devPlanGetForPlayer: (groupId: string, playerId: string) => devPlanCore.getDevPlanForPlayer(sb, groupId, playerId),
-  devPlanCreate: (groupId: string, playerId: string, title: string, axes: Parameters<typeof devPlanCore.createDevPlan>[4]) =>
-    devPlanCore.createDevPlan(sb, groupId, playerId, title, axes),
+  devPlanCreate: (groupId: string, playerId: string, title: string, axes: Parameters<typeof devPlanCore.createDevPlan>[4], period?: Parameters<typeof devPlanCore.createDevPlan>[5]) =>
+    devPlanCore.createDevPlan(sb, groupId, playerId, title, axes, period),
   devPlanSetAxisStatus: (axisId: string, status: 'active' | 'done' | 'dropped') => devPlanCore.setAxisStatus(sb, axisId, status),
   devPlanAddCheckin: (planId: string, note: string) => devPlanCore.addCheckin(sb, planId, note),
   devPlanSetProgress: (axisId: string, input: { playerMarkedDone?: boolean; playerNote?: string | null }) =>

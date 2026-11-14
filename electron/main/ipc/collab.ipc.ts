@@ -59,8 +59,10 @@ export function registerCollabHandlers() {
 
   validatedHandle('devplan:get-mine', z.tuple([uuid]), (_e, groupId) => collab.devPlanGetMine(groupId))
   validatedHandle('devplan:get-for-player', z.tuple([uuid, uuid]), (_e, groupId, playerId) => collab.devPlanGetForPlayer(groupId, playerId))
-  validatedHandle('devplan:create', z.tuple([uuid, uuid, z.string().trim().min(1).max(80), z.array(axisInput).min(1).max(3)]),
-    (_e, groupId, playerId, title, axes) => collab.devPlanCreate(groupId, playerId, title, axes))
+  const devPlanDateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+  const devPlanPeriod = z.object({ periodStart: devPlanDateOnly.nullable().optional(), periodEnd: devPlanDateOnly.nullable().optional() }).optional()
+  validatedHandle('devplan:create', z.tuple([uuid, uuid, z.string().trim().min(1).max(80), z.array(axisInput).min(1).max(3), devPlanPeriod]),
+    (_e, groupId, playerId, title, axes, period) => collab.devPlanCreate(groupId, playerId, title, axes, period))
   validatedHandle('devplan:set-axis-status', z.tuple([uuid, axisStatus]), (_e, axisId, status) => collab.devPlanSetAxisStatus(axisId, status))
   validatedHandle('devplan:add-checkin', z.tuple([uuid, z.string().trim().min(1).max(4000)]), (_e, planId, note) => collab.devPlanAddCheckin(planId, note))
   validatedHandle('devplan:set-progress', z.tuple([uuid, z.object({

@@ -11,7 +11,7 @@ import * as report from '../../../src/lib/reportCore'
 import * as trials from '../../../src/lib/trialsCore'
 import * as scrimsRead from '../../../src/lib/scrimsCore'
 import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
-import type { AxisStatus, NewAxisInput } from '../../../src/lib/devPlan'
+import type { AxisStatus, NewAxisInput, NewDevPlanPeriod } from '../../../src/lib/devPlan'
 import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput } from '../../../src/lib/calendar'
 import type { AssignmentStatus, NewVodAssignmentInput, NewVodCommentInput, NewVodSessionInput } from '../../../src/lib/vodReview'
 import type { NewWellbeingCheckinInput } from '../../../src/lib/wellbeing'
@@ -70,8 +70,8 @@ export const getStaffDashboard = (groupId: string) => dashboard.getStaffDashboar
 
 export const devPlanGetMine = async (groupId: string) => devPlan.getMyDevPlan(getSupabase(), groupId, await me())
 export const devPlanGetForPlayer = (groupId: string, playerId: string) => devPlan.getDevPlanForPlayer(getSupabase(), groupId, playerId)
-export const devPlanCreate = (groupId: string, playerId: string, title: string, axes: NewAxisInput[]) =>
-  devPlan.createDevPlan(getSupabase(), groupId, playerId, title, axes)
+export const devPlanCreate = (groupId: string, playerId: string, title: string, axes: NewAxisInput[], period?: NewDevPlanPeriod) =>
+  devPlan.createDevPlan(getSupabase(), groupId, playerId, title, axes, period)
 export const devPlanSetAxisStatus = (axisId: string, status: AxisStatus) => devPlan.setAxisStatus(getSupabase(), axisId, status)
 export const devPlanAddCheckin = (planId: string, note: string) => devPlan.addCheckin(getSupabase(), planId, note)
 export const devPlanSetProgress = (axisId: string, input: { playerMarkedDone?: boolean; playerNote?: string | null }) =>

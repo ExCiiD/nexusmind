@@ -207,6 +207,8 @@ function CreatePlanForm({ groupId, playerId, allFundamentals, onCreated }: {
   const { toast } = useToast()
   const [title, setTitle] = useState('')
   const [axes, setAxes] = useState<NewAxisInput[]>([{ fundamentalId: '', targetText: '', position: 1 }])
+  const [periodStart, setPeriodStart] = useState('')
+  const [periodEnd, setPeriodEnd] = useState('')
   const [creating, setCreating] = useState(false)
 
   const setAxis = (i: number, patch: Partial<NewAxisInput>) =>
@@ -219,7 +221,8 @@ function CreatePlanForm({ groupId, playerId, allFundamentals, onCreated }: {
   const create = async () => {
     setCreating(true)
     try {
-      await window.api.devPlanCreate(groupId, playerId, title.trim(), axes.map((a) => ({ ...a, targetText: a.targetText.trim() })))
+      await window.api.devPlanCreate(groupId, playerId, title.trim(), axes.map((a) => ({ ...a, targetText: a.targetText.trim() })),
+        { periodStart: periodStart || null, periodEnd: periodEnd || null })
       toast({ title: t('devPlan.created', { defaultValue: 'Plan created' }), variant: 'gold' })
       onCreated()
     } catch (err) {
@@ -231,7 +234,11 @@ function CreatePlanForm({ groupId, playerId, allFundamentals, onCreated }: {
 
   return (
     <div className="space-y-3">
-      <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} placeholder={t('devPlan.titlePlaceholder', { defaultValue: 'e.g. Q1 2027 focus' })} />
+      <div className="flex flex-wrap gap-2">
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} className="flex-1 min-w-[12rem]" placeholder={t('devPlan.titlePlaceholder', { defaultValue: 'e.g. Q1 2027 focus' })} />
+        <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} className="w-40" aria-label={t('devPlan.periodStart', { defaultValue: 'Period start' })} />
+        <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} className="w-40" aria-label={t('devPlan.periodEnd', { defaultValue: 'Period end' })} />
+      </div>
       {axes.map((axis, i) => (
         <div key={i} className="flex flex-wrap gap-2">
           <Select value={axis.fundamentalId} onValueChange={(v) => setAxis(i, { fundamentalId: v })}>

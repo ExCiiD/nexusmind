@@ -1738,6 +1738,8 @@
     "checkinPlaceholder": "Note du 1:1…",
     "created": "Plan créé",
     "titlePlaceholder": "ex. Focus Q1 2027",
+    "periodStart": "Début de période",
+    "periodEnd": "Fin de période",
     "pickFundamental": "Choisir un fondamental",
     "targetPlaceholder": "Objectif pour cet axe…",
     "addAxis": "Ajouter un axe",
