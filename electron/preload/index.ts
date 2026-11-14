@@ -207,6 +207,9 @@ const api = {
   trialsAddEvaluation: (candidateId: string, input: unknown) => ipcRenderer.invoke('trials:add-evaluation', candidateId, input),
   trialsDeleteEvaluation: (id: string) => ipcRenderer.invoke('trials:delete-evaluation', id),
 
+  // E5 follow-up: read-only scrims list (for "link to a scrim" pickers)
+  scrimsListForGroup: (groupId: string) => ipcRenderer.invoke('scrims:list-for-group', groupId),
+
   // Ascend cloud account & backups (tokens never leave the main process)
   cloudStatus: () => ipcRenderer.invoke('cloud:status'),
   cloudSendCode: (email: string, inviteCode?: string) => ipcRenderer.invoke('cloud:send-code', email, inviteCode ?? null),

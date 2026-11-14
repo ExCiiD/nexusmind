@@ -9,6 +9,7 @@ import * as wellbeing from '../../../src/lib/wellbeingCore'
 import * as teamOps from '../../../src/lib/teamOpsCore'
 import * as report from '../../../src/lib/reportCore'
 import * as trials from '../../../src/lib/trialsCore'
+import * as scrimsRead from '../../../src/lib/scrimsCore'
 import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
 import type { AxisStatus, NewAxisInput } from '../../../src/lib/devPlan'
 import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput } from '../../../src/lib/calendar'
@@ -127,3 +128,5 @@ export const trialsSetStatus = (id: string, status: TrialStatus) => trials.setCa
 export const trialsDelete = (id: string) => trials.deleteCandidate(getSupabase(), id)
 export const trialsAddEvaluation = (candidateId: string, input: NewTrialEvaluationInput) => trials.addEvaluation(getSupabase(), candidateId, input)
 export const trialsDeleteEvaluation = (id: string) => trials.deleteEvaluation(getSupabase(), id)
+
+export const scrimsListForGroup = (groupId: string) => scrimsRead.listScrimsForGroup(getSupabase(), groupId)

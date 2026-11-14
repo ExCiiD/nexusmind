@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
 import type { NewVodAssignmentInput, TeamMistakeTag, VodReviewSession } from '@/lib/vodReview'
+import type { ScrimSummary } from '@/lib/scrims'
 
 const TEAM_TAGS: TeamMistakeTag[] = ['rotation', 'objective_setup', 'communication', 'other']
 
@@ -26,13 +27,15 @@ export function VodReviewSection({ groups, myUserId, nameOf }: Props) {
 
   const [sessions, setSessions] = useState<VodReviewSession[] | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [scrims, setScrims] = useState<ScrimSummary[]>([])
 
   const load = useCallback(async () => {
     if (!groupId) return
     setSessions(null)
     try {
-      const s = await window.api.vodReviewListSessions(groupId)
+      const [s, sc] = await Promise.all([window.api.vodReviewListSessions(groupId), window.api.scrimsListForGroup(groupId).catch(() => [])])
       setSessions(s)
+      setScrims(sc)
       setSelectedId((prev) => (prev && s.some((x) => x.id === prev)) ? prev : (s[0]?.id ?? null))
     } catch (err) {
       setSessions([])
@@ -62,7 +65,7 @@ export function VodReviewSection({ groups, myUserId, nameOf }: Props) {
         <CardDescription>{t('vodReview.desc', { defaultValue: 'Review a scrim VOD together: timestamped comments, team mistakes, action items, and watch assignments.' })}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {isStaff && groupId && <NewSessionForm groupId={groupId} onCreated={load} />}
+        {isStaff && groupId && <NewSessionForm groupId={groupId} scrims={scrims} onCreated={load} />}
 
         {sessions === null ? (
           <Loader2 className="h-5 w-5 animate-spin text-hextech-text-dim" />
@@ -79,7 +82,7 @@ export function VodReviewSection({ groups, myUserId, nameOf }: Props) {
               </SelectContent>
             </Select>
             {session && (
-              <SessionDetail key={session.id} session={session} group={group!} isStaff={isStaff} myUserId={myUserId} nameOf={nameOf} onChanged={load} />
+              <SessionDetail key={session.id} session={session} group={group!} isStaff={isStaff} myUserId={myUserId} nameOf={nameOf} scrims={scrims} onChanged={load} />
             )}
           </>
         )}
@@ -88,19 +91,20 @@ export function VodReviewSection({ groups, myUserId, nameOf }: Props) {
   )
 }
 
-function NewSessionForm({ groupId, onCreated }: { groupId: string; onCreated: () => void }) {
-  const { t } = useTranslation()
+function NewSessionForm({ groupId, scrims, onCreated }: { groupId: string; scrims: ScrimSummary[]; onCreated: () => void }) {
+  const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const [title, setTitle] = useState('')
   const [vodUrl, setVodUrl] = useState('')
+  const [scrimId, setScrimId] = useState('')
   const [creating, setCreating] = useState(false)
 
   const create = async () => {
     if (!title.trim() || !vodUrl.trim()) return
     setCreating(true)
     try {
-      await window.api.vodReviewCreateSession(groupId, { title: title.trim(), vodUrl: vodUrl.trim() })
-      setTitle(''); setVodUrl('')
+      await window.api.vodReviewCreateSession(groupId, { title: title.trim(), vodUrl: vodUrl.trim(), scrimId: scrimId || null })
+      setTitle(''); setVodUrl(''); setScrimId('')
       onCreated()
     } catch (err) {
       toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
@@ -113,6 +117,16 @@ function NewSessionForm({ groupId, onCreated }: { groupId: string; onCreated: ()
     <div className="flex flex-wrap gap-2 rounded-lg border border-hextech-border-dim p-3">
       <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} className="flex-1 min-w-[10rem]" placeholder={t('vodReview.sessionTitlePlaceholder', { defaultValue: 'e.g. Scrim vs Rival — game 2' })} />
       <Input value={vodUrl} onChange={(e) => setVodUrl(e.target.value)} maxLength={500} className="flex-1 min-w-[12rem]" placeholder={t('vodReview.vodUrlPlaceholder', { defaultValue: 'VOD link (YouTube, clip…)' })} />
+      {scrims.length > 0 && (
+        <Select value={scrimId} onValueChange={setScrimId}>
+          <SelectTrigger className="w-56"><SelectValue placeholder={t('vodReview.linkScrim', { defaultValue: 'Link to a scrim (optional)' })} /></SelectTrigger>
+          <SelectContent>
+            {scrims.map((s) => (
+              <SelectItem key={s.id} value={s.id}>{s.title}{s.opponent ? ` vs ${s.opponent}` : ''} — {new Date(s.scheduledAt).toLocaleDateString(i18n.language)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
       <Button size="sm" onClick={create} disabled={!title.trim() || !vodUrl.trim() || creating}>
         {creating && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}{t('vodReview.newSession', { defaultValue: 'New session' })}
       </Button>
@@ -120,12 +134,13 @@ function NewSessionForm({ groupId, onCreated }: { groupId: string; onCreated: ()
   )
 }
 
-function SessionDetail({ session, group, isStaff, myUserId, nameOf, onChanged }: {
-  session: VodReviewSession; group: Group; isStaff: boolean; myUserId: string; nameOf: (id: string) => string; onChanged: () => void
+function SessionDetail({ session, group, isStaff, myUserId, nameOf, scrims, onChanged }: {
+  session: VodReviewSession; group: Group; isStaff: boolean; myUserId: string; nameOf: (id: string) => string; scrims: ScrimSummary[]; onChanged: () => void
 }) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const members = useMemo(() => group.members, [group])
+  const linkedScrim = session.scrimId ? scrims.find((s) => s.id === session.scrimId) : null
 
   const err = (e: unknown) => toast({ title: t(collabErrorKey(e)), variant: 'destructive' })
 
@@ -186,7 +201,14 @@ function SessionDetail({ session, group, isStaff, myUserId, nameOf, onChanged }:
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between rounded-lg border border-hextech-border-dim p-3">
-        <a href={session.vodUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-hextech-gold underline">{session.vodUrl}</a>
+        <div>
+          <a href={session.vodUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-hextech-gold underline">{session.vodUrl}</a>
+          {linkedScrim && (
+            <p className="text-xs text-hextech-text-dim">
+              {t('vodReview.linkedScrim', { defaultValue: 'Scrim: {{title}}', title: linkedScrim.title })}
+            </p>
+          )}
+        </div>
         {isStaff && (
           <Button size="sm" variant="ghost" onClick={async () => { try { await window.api.vodReviewDeleteSession(session.id); onChanged() } catch (e) { err(e) } }}>
             <Trash2 className="h-3.5 w-3.5 text-hextech-text-dim" />

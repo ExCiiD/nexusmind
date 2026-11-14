@@ -6,6 +6,7 @@ import type { WellbeingApi } from './wellbeing'
 import type { TeamOpsApi } from './teamOps'
 import type { ReportApi } from './report'
 import type { TrialsApi } from './trials'
+import type { ScrimsReadApi } from './scrims'
 import type { FeedbackApi } from './feedback'
 import type { NotificationsApi } from './notifications'
 import type { TeamShareApi } from './team'
@@ -317,7 +318,7 @@ export interface SavedAccount {
   _count: { sessions: number }
 }
 
-export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareApi & CalendarApi & VodReviewApi & WellbeingApi & TeamOpsApi & ReportApi & TrialsApi & {
+export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareApi & CalendarApi & VodReviewApi & WellbeingApi & TeamOpsApi & ReportApi & TrialsApi & ScrimsReadApi & {
   connectRiot: (gameName: string, tagLine: string, region: string, displayName?: string) => Promise<any>
   disconnectRiot: () => Promise<void>
   reactivateAccount: (userId: string) => Promise<any>

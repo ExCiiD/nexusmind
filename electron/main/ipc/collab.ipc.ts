@@ -152,4 +152,6 @@ export function registerCollabHandlers() {
   validatedHandle('trials:delete', z.tuple([uuid]), (_e, id) => collab.trialsDelete(id))
   validatedHandle('trials:add-evaluation', z.tuple([uuid, evaluationInput]), (_e, candidateId, input) => collab.trialsAddEvaluation(candidateId, input))
   validatedHandle('trials:delete-evaluation', z.tuple([uuid]), (_e, id) => collab.trialsDeleteEvaluation(id))
+
+  validatedHandle('scrims:list-for-group', z.tuple([uuid]), (_e, groupId) => collab.scrimsListForGroup(groupId))
 }

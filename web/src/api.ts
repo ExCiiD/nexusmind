@@ -9,6 +9,7 @@ import * as wellbeingCore from '@/lib/wellbeingCore'
 import * as teamOpsCore from '@/lib/teamOpsCore'
 import * as reportCore from '@/lib/reportCore'
 import * as trialsCore from '@/lib/trialsCore'
+import * as scrimsReadCore from '@/lib/scrimsCore'
 import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
@@ -205,6 +206,9 @@ export const webApi = {
   trialsDelete: (id: string) => trialsCore.deleteCandidate(sb, id),
   trialsAddEvaluation: (candidateId: string, input: Parameters<typeof trialsCore.addEvaluation>[2]) => trialsCore.addEvaluation(sb, candidateId, input),
   trialsDeleteEvaluation: (id: string) => trialsCore.deleteEvaluation(sb, id),
+
+  // ── E5 follow-up: read-only scrims list ──
+  scrimsListForGroup: (groupId: string) => scrimsReadCore.listScrimsForGroup(sb, groupId),
 
   // ── W5: notifications ──
   notificationsList: async (onlyUnread?: boolean) =>
