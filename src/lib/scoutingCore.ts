@@ -86,6 +86,21 @@ export function aggregateChampionPlays(
   return { agg, sameRoleCount, failed }
 }
 
+/**
+ * Merges two match-id lists (e.g. "already known" + "fetched since last
+ * scout"), deduplicated and sorted most-recent-first using the timestamp
+ * Riot embeds in a match id's second segment (`EUW1_7123456789`). Used by
+ * the desktop's incremental scout/auto-fill (E15,
+ * electron/main/ipc/team.ipc.ts's getSeasonMatchIdsIncremental) to combine
+ * a cached season list with freshly-listed new games without re-listing
+ * the whole season.
+ */
+export function mergeMatchIdsByRecency(a: string[], b: string[]): string[] {
+  const merged = [...new Set([...a, ...b])]
+  merged.sort((x, y) => parseInt(y.split('_')[1] ?? '0', 10) - parseInt(x.split('_')[1] ?? '0', 10))
+  return merged
+}
+
 export function winRateOf(a: { wins: number; count: number }): number {
   return a.count > 0 ? Math.round((a.wins / a.count) * 100) : 0
 }

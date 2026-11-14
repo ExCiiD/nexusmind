@@ -342,6 +342,17 @@ model TeamMember {
   // Riot puuid if known — used for scouting auto-fetch (optional, manual entry OK)
   puuid       String?
   champPool   ChampionPoolEntry[]
+  // E15 incremental scout/auto-fill: the season match-id list as of the
+  // last scout, so a repeat scout only has to ask Riot for games played
+  // AFTER this instead of re-listing the whole season every time (ids are
+  // cheap individually but the full season is up to ~25 paginated list
+  // calls; most repeat scouts find 0-5 new games). Full-season re-walk of
+  // the (now mostly cached) match bodies still happens — this only saves
+  // the id-listing round trips, so tiering math is unaffected. Null until
+  // the first scout/auto-fill; a "Complete" scope rescan always ignores
+  // these and relists from scratch.
+  lastScoutedAt     DateTime?
+  seasonMatchIdsJson String?
 
   @@index([teamId])
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { participantFor, aggregateChampionPlays, winRateOf, kdaOf } from '../../src/lib/scoutingCore'
+import { participantFor, aggregateChampionPlays, winRateOf, kdaOf, mergeMatchIdsByRecency } from '../../src/lib/scoutingCore'
 
 function match(puuid: string, championName: string, teamPosition: string, win: boolean, k = 0, d = 0, a = 0) {
   return { info: { participants: [{ puuid, championName, teamPosition, win, kills: k, deaths: d, assists: a }] } }
@@ -47,6 +47,19 @@ describe('aggregateChampionPlays', () => {
     const { agg, failed } = aggregateChampionPlays(matches, ['m1'], 'P1')
     expect(agg.size).toBe(0)
     expect(failed).toBe(1)
+  })
+})
+
+describe('mergeMatchIdsByRecency (E15 incremental scout)', () => {
+  it('dedupes overlapping ids and sorts most-recent-first by the embedded timestamp', () => {
+    const previous = ['EUW1_100', 'EUW1_300']
+    const freshlyListed = ['EUW1_300', 'EUW1_500']
+    expect(mergeMatchIdsByRecency(freshlyListed, previous)).toEqual(['EUW1_500', 'EUW1_300', 'EUW1_100'])
+  })
+
+  it('returns the other list unchanged when one side is empty', () => {
+    expect(mergeMatchIdsByRecency([], ['EUW1_100'])).toEqual(['EUW1_100'])
+    expect(mergeMatchIdsByRecency(['EUW1_100'], [])).toEqual(['EUW1_100'])
   })
 })
 

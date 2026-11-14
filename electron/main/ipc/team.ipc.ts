@@ -15,6 +15,7 @@ import { getChampionIdToKey } from '../dataDragon'
 import { championPlaysRole, type Role } from '../../../src/lib/championRoles'
 import { computeAutoTier } from '../../../src/lib/threatCore'
 import { normalizeSlots, groupDuplicates, normalizeRole } from '../../../src/lib/teamIdentity'
+import { mergeMatchIdsByRecency } from '../../../src/lib/scoutingCore'
 
 async function getActiveUser() {
   const prisma = getPrisma()
@@ -115,6 +116,55 @@ async function getMatchesBulkCached(
   }
   await Promise.all(Array.from({ length: Math.min(concurrency, missing.length) }, () => worker()))
   return out
+}
+
+function safeIdArray(raw: string | null): string[] {
+  if (!raw) return []
+  try {
+    const v = JSON.parse(raw)
+    return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * E15: the incrementally-updated equivalent of `getSeasonMatchIds` — the
+ * full season list is still what gets returned (tiering stays a full-
+ * season re-walk, same math as before), but a repeat scout only has to
+ * ask Riot for games played after the member's last scout instead of
+ * re-listing the whole season (up to ~25 paginated calls; most repeats
+ * find 0-5 new games). `forceFull` (the "Complete" scope option) always
+ * relists from scratch — that mode's whole point is a thorough, from-
+ * scratch rescan, not a trust-the-cache shortcut.
+ *
+ * Callers must persist the result via `saveScoutCache` once they've
+ * finished using the ids (not here — some callers filter/slice first).
+ */
+async function getSeasonMatchIdsIncremental(
+  member: { lastScoutedAt: Date | null; seasonMatchIdsJson: string | null },
+  puuid: string,
+  region: string,
+  forceFull: boolean,
+): Promise<string[]> {
+  if (forceFull || !member.lastScoutedAt) {
+    return getSeasonMatchIds(puuid, region)
+  }
+  const newIds = await getSeasonMatchIds(puuid, region, member.lastScoutedAt)
+  const previousIds = safeIdArray(member.seasonMatchIdsJson)
+  return mergeMatchIdsByRecency(newIds, previousIds)
+}
+
+async function saveScoutCache(memberId: string, matchIds: string[]): Promise<void> {
+  try {
+    const prisma = getPrisma()
+    await prisma.teamMember.update({
+      where: { id: memberId },
+      data: { lastScoutedAt: new Date(), seasonMatchIdsJson: JSON.stringify(matchIds) },
+    })
+  } catch (err) {
+    console.warn('[team] failed to save scout cache for', memberId, (err as Error)?.message)
+  }
 }
 
 /**
@@ -488,7 +538,9 @@ export function registerTeamHandlers() {
     // caller can't accidentally allocate forever.
     const noCap = !Number.isFinite(count) || count <= 0 || count > 2500
     const scoutStart = Date.now()
-    const allSeasonIds = await getSeasonMatchIds(puuid, region)
+    // E15: incremental — a repeat "quick" scout only asks Riot for games
+    // since the last one; "Complete" (noCap) always relists from scratch.
+    const allSeasonIds = await getSeasonMatchIdsIncremental(member, puuid, region, noCap)
     const matchIds = noCap ? allSeasonIds : allSeasonIds.slice(0, Math.max(1, count))
     if (matchIds.length === 0) return { upserted: 0, totalMatches: 0, sameRoleCount: 0 }
 
@@ -602,6 +654,7 @@ export function registerTeamHandlers() {
       upserted++
     }
 
+    await saveScoutCache(memberId, allSeasonIds)
     console.info(`[scout-member] ${member.displayName}: total ${((Date.now() - scoutStart) / 1000).toFixed(1)}s · ${upserted} pool entries`)
     return { upserted, totalMatches: matchIds.length, sameRoleCount }
   })
@@ -673,8 +726,11 @@ export function registerTeamHandlers() {
     // Fetch mastery + season match list in parallel. The match list now
     // covers the full current split (SoloQ + Flex + Clash, paginated) so
     // play-counts shown in the Champion Pool tab reflect the real season.
+    // E15: incremental listing (see getSeasonMatchIdsIncremental) — a
+    // repeat "quick"/"deep" auto-fill only asks Riot for games since the
+    // last one; "Complete" (matchCountNoCap) always relists from scratch.
     const [allSeasonIds, masteries, idToKey] = await Promise.all([
-      getSeasonMatchIds(puuid, region).catch((err) => {
+      getSeasonMatchIdsIncremental(member, puuid, region, matchCountNoCap).catch((err) => {
         console.warn('[auto-fill] match list failed:', err.message)
         return [] as string[]
       }),
@@ -768,6 +824,7 @@ export function registerTeamHandlers() {
     }
 
     if (agg.size === 0) {
+      await saveScoutCache(memberId, allSeasonIds)
       return { upserted: 0, matchesUsed: matchIds.length, masteriesUsed: masteries.length }
     }
 
@@ -861,6 +918,7 @@ export function registerTeamHandlers() {
       upserted++
     }
 
+    await saveScoutCache(memberId, allSeasonIds)
     return {
       upserted,
       matchesUsed: matchIds.length,
@@ -903,9 +961,12 @@ export function registerTeamHandlers() {
     })
     if (!team) throw new Error('Team not found')
 
-    // Step 1 — resolve PUUIDs for every member possible
-    const resolvedMembers: Array<{ id: string; displayName: string; role: string; puuid: string; region: string }> = []
-    for (const m of team.members) {
+    // Step 1 — resolve PUUIDs for every member possible. E15: parallelized
+    // (was a sequential for-loop) — each member's resolution is
+    // independent, so a 5-member team no longer pays 5x the round-trip
+    // latency just to get started. The shared rate limiter still bounds
+    // total Riot throughput; this only removes needless serialization.
+    const resolvedMembersRaw = await Promise.all(team.members.map(async (m) => {
       let puuid = m.puuid
       const region = m.region
       if (!puuid && m.ign && m.tagLine && region) {
@@ -919,18 +980,20 @@ export function registerTeamHandlers() {
           console.warn('[synergy] could not resolve puuid for', m.displayName, err)
         }
       }
-      if (puuid && region) {
-        resolvedMembers.push({ id: m.id, displayName: m.displayName, role: m.role, puuid, region })
-      }
-    }
+      return puuid && region ? { id: m.id, displayName: m.displayName, role: m.role, puuid, region } : null
+    }))
+    const resolvedMembers = resolvedMembersRaw.filter((m): m is NonNullable<typeof m> => m !== null)
     if (resolvedMembers.length < minTogether) {
       throw new Error(`Need at least ${minTogether} members with a resolved Riot ID — currently ${resolvedMembers.length}.`)
     }
 
-    // Step 2 — fetch every member's flex match list (queue 440 only)
+    // Step 2 — fetch every member's flex match list (queue 440 only).
+    // Parallelized for the same reason as step 1; map mutations below are
+    // safe since each `await` resolves into its own synchronous callback
+    // (no real concurrency in JS's single-threaded event loop).
     const puuidToMember = new Map(resolvedMembers.map((m) => [m.puuid, m]))
     const matchToPuuids = new Map<string, Set<string>>()
-    for (const m of resolvedMembers) {
+    await Promise.all(resolvedMembers.map(async (m) => {
       try {
         const ids = await getMatchIds(m.puuid, m.region, matchesPerMember, 0, 'flex')
         for (const id of ids) {
@@ -941,7 +1004,7 @@ export function registerTeamHandlers() {
       } catch (err) {
         console.warn('[synergy] match list failed for', m.displayName, err)
       }
-    }
+    }))
 
     // Pre-filter on appearances. Match-list presence is cheap; we still need a
     // full fetch to confirm same-team and get stats, but this trims by ~70%.
@@ -1406,9 +1469,14 @@ export function registerTeamHandlers() {
 
     // Flex side — fetch in the same way as compute-synergy-stats but
     // collect raw match data instead of aggregating immediately.
+    // E15: match-id listing parallelized (was sequential per member), and
+    // match bodies now go through the shared `getMatchesBulkCached` helper
+    // (concurrent + cached) instead of this handler's own one-at-a-time
+    // cache-then-fetch loop, which never used the match cache's bulk path
+    // at all.
     const matchToPuuids = new Map<string, Set<string>>()
-    for (const m of resolvedMembers) {
-      if (!m.puuid || !m.region) continue
+    await Promise.all(resolvedMembers.map(async (m) => {
+      if (!m.puuid || !m.region) return
       try {
         const ids = await getMatchIds(m.puuid, m.region, 100, 0, 'flex')
         for (const id of ids) {
@@ -1419,38 +1487,34 @@ export function registerTeamHandlers() {
       } catch (err) {
         console.warn('[combined] match list failed for', m.displayName, err)
       }
-    }
+    }))
     const candidates = Array.from(matchToPuuids.entries())
       .filter(([, p]) => p.size >= minTogether)
       .map(([id]) => id)
 
+    const idsByRegion = new Map<string, string[]>()
+    for (const matchId of candidates) {
+      const seederPuuid = Array.from(matchToPuuids.get(matchId)!)[0]
+      const seeder = resolvedMembers.find((m) => m.puuid === seederPuuid)
+      if (!seeder?.region) continue
+      const arr = idsByRegion.get(seeder.region) ?? []
+      arr.push(matchId)
+      idsByRegion.set(seeder.region, arr)
+    }
+    const allMatches = new Map<string, any>()
+    for (const [region, ids] of idsByRegion) {
+      const fetched = await getMatchesBulkCached(ids, region)
+      for (const [id, m] of fetched) allMatches.set(id, m)
+    }
+
     const flexMatchLike: Array<{ durationSec: number; participants: any[] }> = []
     for (const matchId of candidates) {
-      try {
-        const cached = await prisma.matchCache.findUnique({ where: { matchId } })
-        let matchData: any
-        if (cached?.matchJson) {
-          matchData = JSON.parse(cached.matchJson)
-        } else {
-          const seederPuuid = Array.from(matchToPuuids.get(matchId)!)[0]
-          const seeder = resolvedMembers.find((m) => m.puuid === seederPuuid)
-          if (!seeder?.region) continue
-          matchData = await getMatch(matchId, seeder.region)
-          if (matchData) {
-            await prisma.matchCache.upsert({
-              where: { matchId },
-              create: { matchId, matchJson: JSON.stringify(matchData) },
-              update: { matchJson: JSON.stringify(matchData) },
-            })
-          }
-        }
-        const participants: any[] = matchData?.info?.participants ?? []
-        const durationSec: number = matchData?.info?.gameDuration ?? 0
-        if (participants.length && durationSec > 0) {
-          flexMatchLike.push({ durationSec, participants })
-        }
-      } catch (err) {
-        console.warn('[combined] match fetch failed for', matchId, err)
+      const matchData = allMatches.get(matchId)
+      if (!matchData) continue
+      const participants: any[] = matchData?.info?.participants ?? []
+      const durationSec: number = matchData?.info?.gameDuration ?? 0
+      if (participants.length && durationSec > 0) {
+        flexMatchLike.push({ durationSec, participants })
       }
     }
 
@@ -1495,7 +1559,13 @@ export function registerTeamHandlers() {
     let totalMatchesUsed = 0
     let membersResolved = 0
 
-    for (const member of team.members) {
+    // E15: members processed in parallel (was a sequential for-loop — a
+    // 5-member opponent dashboard paid 5x the wall-clock latency for no
+    // reason, since each member's data is independent) and season match
+    // ids come from the incremental cache (getSeasonMatchIdsIncremental)
+    // instead of a full relist every time — shared with scout/auto-fill,
+    // so whichever action ran most recently for a member benefits here too.
+    const perMember = await Promise.all(team.members.map(async (member): Promise<Accum | null> => {
       let puuid = member.puuid
       const region = member.region
       if (!puuid && member.ign && member.tagLine && region) {
@@ -1509,7 +1579,7 @@ export function registerTeamHandlers() {
           console.warn('[opponent-dashboard] could not resolve', member.displayName, (err as Error).message)
         }
       }
-      if (!puuid || !region) continue
+      if (!puuid || !region) return null
       membersResolved++
 
       const acc: Accum = {
@@ -1521,15 +1591,13 @@ export function registerTeamHandlers() {
 
       let matchIds: string[] = []
       try {
-        matchIds = await getSeasonMatchIds(puuid, region)
+        matchIds = await getSeasonMatchIdsIncremental(member, puuid, region, false)
       } catch (err) {
         console.warn('[opponent-dashboard] match list failed for', member.displayName, (err as Error).message)
       }
       totalCandidateMatches += matchIds.length
-      if (matchIds.length === 0) {
-        accums.push(acc)
-        continue
-      }
+      if (matchIds.length === 0) return acc
+      await saveScoutCache(member.id, matchIds)
 
       const assignedRole = (member.role || '').toUpperCase()
       // Bound how many of the season's matches we hydrate per opponent.
@@ -1575,8 +1643,9 @@ export function registerTeamHandlers() {
         if (p.win) champ.wins++
         acc.byChampion.set(champKey, champ)
       }
-      accums.push(acc)
-    }
+      return acc
+    }))
+    for (const acc of perMember) if (acc) accums.push(acc)
 
     // First pass: compute per-player averages (the absolute values).
     const baseStats = accums.map((a) => {
