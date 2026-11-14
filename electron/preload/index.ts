@@ -199,6 +199,14 @@ const api = {
   // E9: weekly reports
   reportGetWeekly: (groupId: string, weekStart: string) => ipcRenderer.invoke('report:get-weekly', groupId, weekStart),
 
+  // E10: recruitment trials
+  trialsList: (groupId: string) => ipcRenderer.invoke('trials:list', groupId),
+  trialsCreate: (groupId: string, input: unknown) => ipcRenderer.invoke('trials:create', groupId, input),
+  trialsSetStatus: (id: string, status: 'trialing' | 'kept' | 'rejected') => ipcRenderer.invoke('trials:set-status', id, status),
+  trialsDelete: (id: string) => ipcRenderer.invoke('trials:delete', id),
+  trialsAddEvaluation: (candidateId: string, input: unknown) => ipcRenderer.invoke('trials:add-evaluation', candidateId, input),
+  trialsDeleteEvaluation: (id: string) => ipcRenderer.invoke('trials:delete-evaluation', id),
+
   // Ascend cloud account & backups (tokens never leave the main process)
   cloudStatus: () => ipcRenderer.invoke('cloud:status'),
   cloudSendCode: (email: string, inviteCode?: string) => ipcRenderer.invoke('cloud:send-code', email, inviteCode ?? null),

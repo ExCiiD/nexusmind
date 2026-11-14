@@ -2001,5 +2001,22 @@
       "objectives": "Objectives",
       "experiments": "Experiments"
     }
+  },
+  "trials": {
+    "title": "Trials",
+    "desc": "Candidates on trial, with a 1-5 evaluation grid and the current starter for that role as reference.",
+    "none": "No trial candidates yet.",
+    "namePlaceholder": "Candidate name…",
+    "periodStart": "Trial start",
+    "periodEnd": "Trial end",
+    "addCandidate": "Add candidate",
+    "avgScore": "avg {{score}}/5",
+    "status": {
+      "trialing": "Trialing",
+      "kept": "Kept",
+      "rejected": "Rejected"
+    },
+    "currentStarter": "Current starter for {{role}}: {{names}}",
+    "criterionPlaceholder": "e.g. Macro, Communication…"
   }
 }

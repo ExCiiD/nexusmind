@@ -2001,5 +2001,22 @@
       "objectives": "Objectifs",
       "experiments": "Expériences"
     }
+  },
+  "trials": {
+    "title": "Essais",
+    "desc": "Candidats à l'essai, avec une grille d'évaluation 1-5 et le titulaire actuel du rôle comme référence.",
+    "none": "Aucun candidat à l'essai pour l'instant.",
+    "namePlaceholder": "Nom du candidat…",
+    "periodStart": "Début de l'essai",
+    "periodEnd": "Fin de l'essai",
+    "addCandidate": "Ajouter un candidat",
+    "avgScore": "moy. {{score}}/5",
+    "status": {
+      "trialing": "À l'essai",
+      "kept": "Retenu",
+      "rejected": "Refusé"
+    },
+    "currentStarter": "Titulaire actuel pour {{role}} : {{names}}",
+    "criterionPlaceholder": "ex. Macro, Communication…"
   }
 }

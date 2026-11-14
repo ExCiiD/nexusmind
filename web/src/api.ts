@@ -8,6 +8,7 @@ import * as vodReviewCore from '@/lib/vodReviewCore'
 import * as wellbeingCore from '@/lib/wellbeingCore'
 import * as teamOpsCore from '@/lib/teamOpsCore'
 import * as reportCore from '@/lib/reportCore'
+import * as trialsCore from '@/lib/trialsCore'
 import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
@@ -196,6 +197,14 @@ export const webApi = {
 
   // ── E9: weekly reports ──
   reportGetWeekly: (groupId: string, weekStart: string) => reportCore.computeTeamWeeklyReport(sb, groupId, weekStart),
+
+  // ── E10: recruitment trials ──
+  trialsList: (groupId: string) => trialsCore.listCandidates(sb, groupId),
+  trialsCreate: (groupId: string, input: Parameters<typeof trialsCore.createCandidate>[2]) => trialsCore.createCandidate(sb, groupId, input),
+  trialsSetStatus: (id: string, status: 'trialing' | 'kept' | 'rejected') => trialsCore.setCandidateStatus(sb, id, status),
+  trialsDelete: (id: string) => trialsCore.deleteCandidate(sb, id),
+  trialsAddEvaluation: (candidateId: string, input: Parameters<typeof trialsCore.addEvaluation>[2]) => trialsCore.addEvaluation(sb, candidateId, input),
+  trialsDeleteEvaluation: (id: string) => trialsCore.deleteEvaluation(sb, id),
 
   // ── W5: notifications ──
   notificationsList: async (onlyUnread?: boolean) =>

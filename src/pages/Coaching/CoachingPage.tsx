@@ -13,6 +13,7 @@ import { WellbeingSection } from './WellbeingSection'
 import { TeamOpsSection } from './TeamOpsSection'
 import { NotificationPrefsCard } from '@/components/Notifications/NotificationPrefsCard'
 import { WeeklyReportSection } from './WeeklyReportSection'
+import { TrialsSection } from './TrialsSection'
 
 /** Teams & coaching: groups, invitations, sharing, coach view of players. */
 export function CoachingPage() {
@@ -37,6 +38,7 @@ export function CoachingPage() {
           ))}
           <StaffDashboardSection staffGroups={staffGroups} />
           <WeeklyReportSection staffGroups={staffGroups} />
+          <TrialsSection staffGroups={staffGroups} />
           <PlanningSection groups={groups} myUserId={myUserId} />
           <VodReviewSection groups={groups} myUserId={myUserId} nameOf={nameOf} />
           <WellbeingSection groups={groups} myUserId={myUserId} nameOf={nameOf} />

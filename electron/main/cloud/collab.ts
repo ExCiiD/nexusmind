@@ -8,12 +8,14 @@ import * as vodReview from '../../../src/lib/vodReviewCore'
 import * as wellbeing from '../../../src/lib/wellbeingCore'
 import * as teamOps from '../../../src/lib/teamOpsCore'
 import * as report from '../../../src/lib/reportCore'
+import * as trials from '../../../src/lib/trialsCore'
 import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
 import type { AxisStatus, NewAxisInput } from '../../../src/lib/devPlan'
 import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput } from '../../../src/lib/calendar'
 import type { AssignmentStatus, NewVodAssignmentInput, NewVodCommentInput, NewVodSessionInput } from '../../../src/lib/vodReview'
 import type { NewWellbeingCheckinInput } from '../../../src/lib/wellbeing'
 import type { NewAnnouncementInput, NewTaskInput, TaskStatus } from '../../../src/lib/teamOps'
+import type { NewTrialCandidateInput, NewTrialEvaluationInput, TrialStatus } from '../../../src/lib/trials'
 
 /**
  * Desktop entry points for W3 collaboration. The data access itself lives in
@@ -118,3 +120,10 @@ export const staffNotesAdd = (groupId: string, playerId: string, body: string) =
 export const staffNotesDelete = (id: string) => teamOps.deleteStaffNote(getSupabase(), id)
 
 export const reportGetWeekly = (groupId: string, weekStart: string) => report.computeTeamWeeklyReport(getSupabase(), groupId, weekStart)
+
+export const trialsList = (groupId: string) => trials.listCandidates(getSupabase(), groupId)
+export const trialsCreate = (groupId: string, input: NewTrialCandidateInput) => trials.createCandidate(getSupabase(), groupId, input)
+export const trialsSetStatus = (id: string, status: TrialStatus) => trials.setCandidateStatus(getSupabase(), id, status)
+export const trialsDelete = (id: string) => trials.deleteCandidate(getSupabase(), id)
+export const trialsAddEvaluation = (candidateId: string, input: NewTrialEvaluationInput) => trials.addEvaluation(getSupabase(), candidateId, input)
+export const trialsDeleteEvaluation = (id: string) => trials.deleteEvaluation(getSupabase(), id)

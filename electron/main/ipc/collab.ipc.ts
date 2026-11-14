@@ -137,4 +137,19 @@ export function registerCollabHandlers() {
   validatedHandle('staffnotes:delete', z.tuple([uuid]), (_e, id) => collab.staffNotesDelete(id))
 
   validatedHandle('report:get-weekly', z.tuple([uuid, dateOnly]), (_e, groupId, weekStart) => collab.reportGetWeekly(groupId, weekStart))
+
+  const trialRole = z.enum(['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'])
+  const trialStatus = z.enum(['trialing', 'kept', 'rejected'])
+  const candidateInput = z.object({
+    displayName: z.string().trim().min(1).max(64), role: trialRole,
+    periodStart: dateOnly.nullable().optional(), periodEnd: dateOnly.nullable().optional(), notes: z.string().max(4000).nullable().optional(),
+  })
+  const evaluationInput = z.object({ criterion: z.string().trim().min(1).max(80), score: z.number().int().min(1).max(5), note: z.string().max(1000).nullable().optional() })
+
+  validatedHandle('trials:list', z.tuple([uuid]), (_e, groupId) => collab.trialsList(groupId))
+  validatedHandle('trials:create', z.tuple([uuid, candidateInput]), (_e, groupId, input) => collab.trialsCreate(groupId, input))
+  validatedHandle('trials:set-status', z.tuple([uuid, trialStatus]), (_e, id, status) => collab.trialsSetStatus(id, status))
+  validatedHandle('trials:delete', z.tuple([uuid]), (_e, id) => collab.trialsDelete(id))
+  validatedHandle('trials:add-evaluation', z.tuple([uuid, evaluationInput]), (_e, candidateId, input) => collab.trialsAddEvaluation(candidateId, input))
+  validatedHandle('trials:delete-evaluation', z.tuple([uuid]), (_e, id) => collab.trialsDeleteEvaluation(id))
 }

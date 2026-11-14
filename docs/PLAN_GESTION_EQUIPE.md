@@ -83,8 +83,18 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
 - ✅ Web **et** desktop : nouvelle section « Rapport hebdomadaire » sur la page Coaching (staff), agrégat équipe + tableau par joueur, bouton « Copier en texte » (résumé brut à coller dans Discord ou un message — pas de lien live, ça demanderait une Edge Function).
 - ⏳ Restant : rapport post-tournoi (nécessite de rattacher des games/scrims à un `calendar_event` de type tournoi, E4), lien partageable persistant, notification « rapport prêt » (maintenant déclenchable via E8 mais pas câblée — un rapport n'étant pas stocké, il n'y a rien à « finir » à notifier sans d'abord snapshotter le calcul).
 
-### E10 — Recrutement / essais (optionnel) ⭐
-- Profils « en essai » avec période et grille d'évaluation, comparaison avec le titulaire du rôle, décision.
+### E10 — Recrutement / essais (optionnel) 🟡 (v1 livré : candidats + grille d'évaluation + référence titulaire + décision)
+- ✅ Tables `trial_candidates` (nom, rôle, période, statut trialing/kept/rejected) et `trial_evaluations` (critère libre + note 1-5), **volontairement indépendantes de `team_rosters`** : publier l'équipe (E1) supprime et réinsère tout le roster, donc une évaluation liée à un `roster_id` aurait été effacée au prochain « Publier vers un groupe… ». RLS 100% staff (le candidat, pas forcément inscrit, n'a jamais besoin d'y accéder).
+- ✅ Web **et** desktop : nouvelle section « Essais » sur la page Coaching (staff) — ajout d'un candidat (nom, rôle, période), grille d'évaluation libre avec note moyenne, rappel du ou des titulaires actuels du rôle (tirés du roster publié) comme référence de comparaison, changement de statut (à l'essai / retenu / refusé).
+- ⏳ Restant : promotion automatique vers le roster live (il n'y a pas encore d'édition de roster en direct, voir le reste d'E1), vrai diff de performance contre le titulaire (demanderait les stats partagées du titulaire sous consentement, pas juste son nom/pool).
+
+## 7. État d'ensemble (14/11/2026)
+
+**E1 à E10 sont tous livrés en v1**, chacun avec un périmètre volontairement réduit et les manques documentés dans leur section ci-dessus plutôt que silencieusement laissés de côté. Résumé des plus gros points en suspens, communs à plusieurs lots :
+- **T5** (auto-import des customs + rattachement à un créneau) bloque la présence réelle (E4) et le résumé auto de scrim (E5) — pas construit, dépendance explicite des deux.
+- **Canaux de notification externes** (Web Push, Discord serveur, e-mail) — zéro infrastructure, seul l'in-app (polling) existe (E8).
+- **Édition de roster en direct** — E1 reste en mode « publier un instantané » ; E10 (promotion) et une partie d'E5/E7 (fils par scrim/draft) en dépendent indirectement.
+- Deux actions manuelles toujours en attente côté Supabase Auth (voir `ROADMAP.md`) : désactiver les inscriptions libres, activer la protection mots de passe compromis.
 
 ## 5. Ordre recommandé
 
