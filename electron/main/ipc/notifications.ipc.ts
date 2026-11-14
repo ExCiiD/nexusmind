@@ -21,7 +21,7 @@ const uuid = z.string().uuid()
 const notificationType = z.enum([
   'review_comment', 'objective_assigned', 'scrim_created', 'scrim_updated',
   'scrim_reminder_24h', 'scrim_reminder_1h', 'player_inactive',
-  'task_assigned', 'objective_overdue', 'wellbeing_alert',
+  'task_assigned', 'objective_overdue', 'wellbeing_alert', 'mention',
 ])
 const timeOnly = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
 const prefsInput = z.object({ mutedTypes: z.array(notificationType), quietStart: timeOnly.nullable(), quietEnd: timeOnly.nullable() })

@@ -1972,6 +1972,10 @@
       "wellbeing_alert": {
         "title": "Alerte bien-être",
         "body": "L'humeur d'un joueur est en baisse sur les 3 derniers check-ins."
+      },
+      "mention": {
+        "title": "Tu as été mentionné",
+        "body": "{{mentionedByName}} t'a mentionné dans « {{title}} »"
       }
     }
   },

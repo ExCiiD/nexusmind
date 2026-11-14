@@ -11,11 +11,12 @@ export type NotificationType =
   | 'task_assigned'
   | 'objective_overdue'
   | 'wellbeing_alert'
+  | 'mention'
 
 export const NOTIFICATION_TYPES: NotificationType[] = [
   'review_comment', 'objective_assigned', 'scrim_created', 'scrim_updated',
   'scrim_reminder_24h', 'scrim_reminder_1h', 'player_inactive',
-  'task_assigned', 'objective_overdue', 'wellbeing_alert',
+  'task_assigned', 'objective_overdue', 'wellbeing_alert', 'mention',
 ]
 
 export interface AppNotification {

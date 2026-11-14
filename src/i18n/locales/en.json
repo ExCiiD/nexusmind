@@ -1972,6 +1972,10 @@
       "wellbeing_alert": {
         "title": "Wellbeing alert",
         "body": "A player's mood has been declining over the last 3 check-ins."
+      },
+      "mention": {
+        "title": "You were mentioned",
+        "body": "{{mentionedByName}} mentioned you in \"{{title}}\""
       }
     }
   },
