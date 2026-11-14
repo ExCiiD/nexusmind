@@ -67,10 +67,28 @@ test.describe('security hardening', () => {
     expect(env).toEqual({ api: 'object', require: 'undefined', process: 'undefined' })
   })
 
-  test('window.open never creates a new Electron window', async () => {
+  test('window.open never creates a new Electron window, and hands the url to the OS browser', async () => {
+    // Stub shell.openExternal in the main process for this one check, so the
+    // assertion doesn't actually pop a tab in the developer's real browser.
+    await ctx.app.evaluate(({ shell }) => {
+      ;(shell as any).__original = shell.openExternal
+      ;(shell as any).__captured = null
+      shell.openExternal = (async (url: string) => { (shell as any).__captured = url }) as typeof shell.openExternal
+    })
+
     await ctx.page.evaluate(() => window.open('https://example.com', '_blank'))
     await ctx.page.waitForTimeout(500)
+
+    const captured = await ctx.app.evaluate(({ shell }) => {
+      const c = (shell as any).__captured
+      shell.openExternal = (shell as any).__original
+      delete (shell as any).__original
+      delete (shell as any).__captured
+      return c
+    })
+
     expect(ctx.app.windows()).toHaveLength(1)
+    expect(captured).toBe('https://example.com/')
   })
 
   test('inline scripts are blocked by the CSP', async () => {
