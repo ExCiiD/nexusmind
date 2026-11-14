@@ -145,8 +145,13 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
   - Nouvelle page Équipe web + entrée de nav, un roster par groupe (groupes de type « team » uniquement).
 - **⏳ hors périmètre pour cette passe** (voir discussion ci-dessus) : onglets Stats/Dashboard, import CSV de parties personnalisées, `computeTeamSynergyStats` — toutes des fonctionnalités qui reposent sur l'historique de matches local et dépassent le périmètre choisi (roster/pool/draft/scouting). Tuning du client Riot web (pas de cache, concurrence fixe à 8) à revoir avec **E15**.
 
-### E15 — Performance des actions de fetch Riot ⏳ planifié
-- Les boutons « Actualiser », auto-remplissage du pool, scouting et calcul de synergie (`StatsFlexTab`/`ScoutingTab`) refont aujourd'hui un balayage complet à chaque appel. Pistes : rafraîchissement incrémental (ne récupérer que les games postérieures au dernier scan au lieu de tout rescanner), revoir le parallélisme par rapport à la limite d'app Riot déjà documentée dans le code (100 req/120s), progression par membre déjà affichée (`useBackgroundJobsStore`) à étendre aux autres actions longues.
+### E15 — Performance des actions de fetch Riot 🟡 v1 livré (14/11/2026)
+- **Constat réel (pas juste supposé)** : les corps de match sont déjà mis en cache (`MatchCache`, un fetch par match pour toute la durée de vie de l'install) — le vrai coût répété à chaque scout/auto-fill n'était pas le re-fetch des matches mais le **re-listing** de tous les ids de la saison à chaque appel (`getSeasonMatchIds` : jusqu'à ~25 requêtes paginées par membre, solo+flex+clash), même quand rien n'avait changé.
+- **Livré** :
+  - Nouvelles colonnes `TeamMember.lastScoutedAt`/`seasonMatchIdsJson` : un scout/auto-fill « quick » répété ne redemande à Riot que les games postérieures au dernier scan (`getSeasonMatchIdsIncremental`) et fusionne avec la liste déjà connue (`mergeMatchIdsByRecency`, partagé + testé) — typiquement 1 à 3 requêtes au lieu de ~25. Le scope « Complete » continue de tout relister depuis zéro (c'est son but). Le cache est partagé entre scout-member/auto-fill-pool/**opponent-dashboard** : peu importe lequel a tourné en dernier pour un membre, les autres en profitent.
+  - `team:compute-synergy-stats`, `team:compute-combined-stats`, `team:compute-opponent-dashboard` : la résolution de puuid et le listing des ids par membre étaient des boucles séquentielles malgré un travail indépendant par membre — parallélisées (`Promise.all`). `compute-combined-stats` avait en plus sa propre boucle de fetch de match un par un (cache-check puis fetch) qui n'utilisait jamais le fetcher concurrent déjà existant (`getMatchesBulkCached`) — corrigé.
+  - Concurrence de fetch des corps de match (10) et rate-limiter **non touchés** — déjà bien réglés d'après les commentaires existants dans le code ; le vrai goulot était le listing d'ids, pas la concurrence de fetch.
+- **⏳ non fait, décision justifiée** : étendre la barre de progression par membre (`useBackgroundJobsStore`, déjà présente sur auto-fill/scout-all/scout-one) aux calculs de synergie/stats demanderait un nouveau canal IPC de streaming de progression pour un appel aujourd'hui monolithique — hors périmètre de cette passe ; ces actions devraient de toute façon finir sensiblement plus vite maintenant, ce qui réduit le besoin.
 
 ### E16 — Vérification/consolidation des statistiques d'équipe + préparation clé Product Riot ⏳ planifié
 - Auditer `StatsFlexTab`/`StatsScrimTab`/`StatsTournoiTab` pour des trous ou incohérences de calcul.
@@ -169,10 +174,10 @@ E1 (fondation partagée) → E2 (tableau de bord staff) → E8 (notifications)
 Chantier §8 (14/11/2026) :
 E12 ✅ (tiers/menaces précis) → E14 ✅ (portage web, parité complète) ↘
                                                                         E13 ✅ (UX Coaching)
-E15 (perf fetch) + E16 (stats + prépa clé Product) → E17 (UX Stats)
+E15 ✅ (perf fetch) + E16 (stats + prépa clé Product) → E17 (UX Stats)
 E11 (bot Discord) — indépendant, peut démarrer en parallèle (s'appuie sur E4/W4 déjà livrés)
 ```
-E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 : E12, E13 et E14 sont livrés (14/11/2026) ; restent E11, E15, E16, E17.
+E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 : E12, E13, E14 et E15 sont livrés (14/11/2026) ; restent E11, E16, E17.
 
 ## 6. Impacts techniques
 
