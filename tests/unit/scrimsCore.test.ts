@@ -11,11 +11,11 @@ function chain(result: unknown) {
 describe('listScrimsForGroup', () => {
   it('maps rows to ScrimSummary', async () => {
     const sb = { from: vi.fn(() => chain({
-      data: [{ id: 's1', title: 'Scrim night', opponent: 'Rival', scheduled_at: '2026-11-20T18:00:00Z' }],
+      data: [{ id: 's1', title: 'Scrim night', opponent: 'Rival', scheduled_at: '2026-11-20T18:00:00Z', duration_min: 120 }],
       error: null,
     })) } as never
     const out = await listScrimsForGroup(sb, 'g1')
-    expect(out).toEqual([{ id: 's1', title: 'Scrim night', opponent: 'Rival', scheduledAt: '2026-11-20T18:00:00Z' }])
+    expect(out).toEqual([{ id: 's1', title: 'Scrim night', opponent: 'Rival', scheduledAt: '2026-11-20T18:00:00Z', durationMin: 120 }])
   })
 
   it('throws on a read error', async () => {

@@ -1755,7 +1755,8 @@
       "one_on_one": "1:1",
       "soloq_block": "SoloQ block",
       "rest": "Rest",
-      "other": "Other"
+      "other": "Other",
+      "scrim": "Scrim"
     },
     "commonFree": "When all starters are free",
     "noStarters": "No starters with a linked account in the published roster yet.",

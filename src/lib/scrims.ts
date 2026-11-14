@@ -5,6 +5,7 @@ export interface ScrimSummary {
   title: string
   opponent: string | null
   scheduledAt: string
+  durationMin: number
 }
 
 /**

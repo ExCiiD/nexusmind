@@ -1755,7 +1755,8 @@
       "one_on_one": "1:1",
       "soloq_block": "Créneau SoloQ",
       "rest": "Repos",
-      "other": "Autre"
+      "other": "Autre",
+      "scrim": "Scrim"
     },
     "commonFree": "Quand tous les titulaires sont dispo",
     "noStarters": "Aucun titulaire avec un compte lié dans le roster publié pour l'instant.",

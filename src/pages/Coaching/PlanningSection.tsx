@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
 import { eventsToICS, type AvailabilityException, type AvailabilityRule, type CalendarEvent, type CalendarEventKind, type CommonFreeWindow } from '@/lib/calendar'
 import { findCommonAvailability } from '@/lib/calendarCore'
+import type { ScrimSummary } from '@/lib/scrims'
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6]
 const KINDS: CalendarEventKind[] = ['tournament', 'team_review', 'one_on_one', 'soloq_block', 'rest', 'other']
@@ -36,6 +37,7 @@ export function PlanningSection({ groups, myUserId }: Props) {
 
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const [events, setEvents] = useState<CalendarEvent[] | null>(null)
+  const [scrims, setScrims] = useState<ScrimSummary[]>([])
   const [rules, setRules] = useState<AvailabilityRule[]>([])
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([])
   const [starterIds, setStarterIds] = useState<string[]>([])
@@ -46,13 +48,15 @@ export function PlanningSection({ groups, myUserId }: Props) {
     if (!groupId) return
     setEvents(null)
     try {
-      const [ev, r, ex, shared] = await Promise.all([
+      const [ev, sc, r, ex, shared] = await Promise.all([
         window.api.calendarListEvents(groupId, weekStart.toISOString(), weekEnd.toISOString()),
+        window.api.scrimsListForGroup(groupId).catch(() => []),
         window.api.availabilityListRules(groupId),
         window.api.availabilityListExceptions(groupId, toDateKey(weekStart), toDateKey(weekEnd)),
         window.api.teamGetShared(groupId).catch(() => ({ roster: [] as { userId: string | null; status: string }[] })),
       ])
       setEvents(ev)
+      setScrims(sc)
       setRules(r)
       setExceptions(ex)
       setStarterIds(shared.roster.filter((m) => m.status === 'starter' && m.userId).map((m) => m.userId as string))
@@ -74,8 +78,18 @@ export function PlanningSection({ groups, myUserId }: Props) {
     try {
       const from = new Date()
       const to = new Date(); to.setDate(to.getDate() + 60)
-      const upcoming = await window.api.calendarListEvents(groupId, from.toISOString(), to.toISOString())
-      const ics = eventsToICS(upcoming, group?.name ?? 'Ascend')
+      const [upcoming, upcomingScrims] = await Promise.all([
+        window.api.calendarListEvents(groupId, from.toISOString(), to.toISOString()),
+        window.api.scrimsListForGroup(groupId).catch(() => []),
+      ])
+      const scrimEvents: CalendarEvent[] = upcomingScrims
+        .filter((s) => new Date(s.scheduledAt) >= from && new Date(s.scheduledAt) < to)
+        .map((s) => ({
+          id: s.id, groupId: groupId!, kind: 'other', title: s.opponent ? `${s.title} vs ${s.opponent}` : s.title,
+          startsAt: s.scheduledAt, endsAt: new Date(new Date(s.scheduledAt).getTime() + s.durationMin * 60000).toISOString(),
+          notes: null, createdBy: '', createdAt: s.scheduledAt, updatedAt: s.scheduledAt,
+        }))
+      const ics = eventsToICS([...upcoming, ...scrimEvents], group?.name ?? 'Ascend')
       const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -127,15 +141,23 @@ export function PlanningSection({ groups, myUserId }: Props) {
             {days.map((d) => {
               const key = toDateKey(d)
               const dayEvents = events.filter((e) => e.startsAt.slice(0, 10) === key)
+              const dayScrims = scrims.filter((s) => s.scheduledAt.slice(0, 10) === key)
               return (
                 <div key={key} className="rounded-lg border border-hextech-border-dim p-2">
                   <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-hextech-text-dim">
                     {d.toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' })}
                   </div>
-                  {dayEvents.length === 0 ? (
+                  {dayEvents.length === 0 && dayScrims.length === 0 ? (
                     <p className="text-[11px] text-hextech-text-dim">—</p>
                   ) : (
                     <ul className="space-y-1">
+                      {dayScrims.map((s) => (
+                        <li key={s.id} className="rounded bg-hextech-green/10 px-1.5 py-1 text-[11px] text-hextech-text">
+                          <span className="text-hextech-green">{new Date(s.scheduledAt).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })}</span>
+                          {' '}{s.title}{s.opponent ? ` vs ${s.opponent}` : ''}
+                          <div className="text-[10px] text-hextech-text-dim">{t('planning.kind.scrim', { defaultValue: 'Scrim' })}</div>
+                        </li>
+                      ))}
                       {dayEvents.map((e) => (
                         <li key={e.id} className="rounded bg-hextech-elevated/40 px-1.5 py-1 text-[11px] text-hextech-text">
                           <span className="text-hextech-gold">{new Date(e.startsAt).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })}</span>
