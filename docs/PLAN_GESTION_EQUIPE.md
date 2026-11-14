@@ -107,10 +107,16 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
 
 **E1 à E10 ne sont pas "terminés" à 100 %** — chaque lot a son ⏳ documenté ci-dessus (édition de roster en direct, canaux de notif externes, fils par scrim/draft, etc., voir aussi §7). Ce qui suit est un nouveau chantier demandé le 14/11/2026, centré sur le scouting/draft (page Équipe locale) et la communication d'équipe. Rien n'est commencé.
 
-### E11 — Bot Discord d'équipe ⏳ planifié
+### E11 — Bot Discord d'équipe 🟡 code livré, déploiement en attente (15/11/2026)
 - **But** : porter une partie de la coordination d'équipe (aujourd'hui dans l'app) sur Discord, là où les joueurs sont déjà. S'appuie sur des tables qui existent déjà (`calendar_events`, `availability_rules`/`availability_exceptions` de E4, `scrims`/`scrim_availability` de W4) — le bot est surtout une nouvelle **surface de lecture/écriture + un canal de notification**, pas un nouveau modèle de données.
-- **Fonctions demandées** : afficher le calendrier d'équipe ; modifier sa disponibilité (« absent » / « plus de créneaux dispo ») — si absence sur un scrim prévu, chercher un remplaçant ; fusionner les disponibilités communes et notifier quand plusieurs personnes sont libres en même temps (pour caler un scrim ou une session de coaching) ; notifier les événements à venir ; afficher les infos d'un scrim (date/heure, format Bo, liens OP.GG de l'équipe adverse, rôle de chaque joueur : top/jgl/mid/adc/sup).
-- **Technique** : nécessite un service bot (Cloudflare Worker avec les Discord Interactions API, ou process Node `discord.js`) + OAuth d'installation sur le serveur Discord de l'équipe. Reprend/refond le canal « Discord » déjà identifié comme manquant en E8/W5 (webhook actuel = local au joueur, pas un canal d'équipe côté serveur). La détection de créneau commun existe déjà côté staff (E4) — à exposer en commande bot plutôt qu'à recoder.
+- **Livré** (`cloudflare/discord-bot/`, Worker Cloudflare + API Discord Interactions) :
+  - Liaison par code (généré dans l'app, page Compte du web) plutôt que réutilisation de `group_invites`/`join_group` (qui créent un nouveau membre humain — mauvaise forme pour « relier ce serveur/cette identité Discord à un groupe/compte déjà existant ») : `/link-team <code>` (staff), `/link-me <code>` (n'importe quel membre), `/set-channel`.
+  - `/calendar`, `/scrims` (date, format Bo, liens OP.GG de l'adversaire **dérivés** du roster scouté plutôt que saisis à la main, rôles de notre roster), `/common-availability` (réutilise `findCommonAvailability` d'E4, pas recodé).
+  - `/availability away|back` — et quand l'absence tombe sur un scrim prévu, le bot cherche et propose un remplaçant au même rôle, disponible ce jour-là, dans le roster.
+  - Rappels automatiques (cron Cloudflare, toutes les 15 min) : événements/scrims dans les 24h, nouveaux créneaux de disponibilité commune — avec déduplication pour ne jamais annoncer deux fois la même chose.
+  - Le bot n'a aucune session Supabase par requête (une interaction Discord ne porte aucune auth Ascend) — il tourne avec la clé service-role et vérifie lui-même « qui a le droit d'agir en tant que qui » après résolution guild→groupe et discord-user→compte, plutôt que de compter sur RLS (contournée par le service-role). Détaillé dans `src/lib/discordBotCore.ts`.
+  - Extension du schéma : `scrims.bo_format` + `scrims.opponent_scouting_id` (lien vers l'équipe scoutée, pour dériver les OP.GG), éditables depuis la page Scrims du web.
+- **⏳ restant — pas un choix technique, un blocage légitime** : je ne peux pas créer l'Application Discord moi-même (ça se passe sur le compte Discord de l'utilisateur, pas le mien). Le code est fait, testé (typecheck + lint + tests unitaires + dry-run de bundle Wrangler) et poussé, mais **pas déployé** — `docs/CLOUD_SETUP.md` §5 a la checklist exacte (créer l'app, poser 4 secrets, déployer le Worker, pointer l'endpoint d'interactions, enregistrer les commandes, inviter le bot).
 
 ### E12 — Détection de tier & de menaces plus précise (Champion Pool + Scouting) 🟡 v1 livré (14/11/2026)
 - **Constat (code d'avant)** : `team:auto-fill-pool` et `team:scout-member` classaient un champion uniquement par seuils de games OU de mastery, sans winrate ni KDA — le scouting réutilisait les mêmes seuils que le pool propre, d'où l'aspect « aléatoire ».
@@ -184,9 +190,9 @@ Chantier §8 (14/11/2026) :
 E12 ✅ (tiers/menaces précis) → E14 ✅ (portage web, parité complète) ↘
                                                                         E13 ✅ (UX Coaching)
 E15 ✅ (perf fetch) + E16 ✅ (stats + prépa clé Product) → E17 ✅ (UX Stats)
-E11 (bot Discord) — indépendant, peut démarrer en parallèle (s'appuie sur E4/W4 déjà livrés)
+E11 🟡 (bot Discord) — code livré, déploiement bloqué sur la création de l'app Discord (utilisateur)
 ```
-E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 : E12 à E17 sont livrés (14-15/11/2026) ; ne reste plus que E11 (bot Discord).
+E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 (14-15/11/2026) : E12 à E17 livrés, E11 codé mais pas déployé (blocage légitime — création de l'app Discord nécessite le compte de l'utilisateur, voir `CLOUD_SETUP.md` §5). Le chantier §8 est donc fonctionnellement terminé côté code.
 
 ## 6. Impacts techniques
 
