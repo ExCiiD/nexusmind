@@ -1352,6 +1352,11 @@
     "feedback": {
       "title": "Coach feedback"
     },
+    "staffNotes": {
+      "title": "Private staff notes",
+      "hint": "Only visible to this group's staff — the player never sees these.",
+      "placeholder": "Private note…"
+    },
     "comments": {
       "empty": "No comment yet.",
       "you": "You",
@@ -1810,6 +1815,19 @@
     "team": "Team wellbeing",
     "noShared": "No player has shared their wellbeing check-ins in this group yet.",
     "moodDeclining": "Mood declining"
+  },
+  "teamOps": {
+    "title": "Announcements & tasks",
+    "desc": "Pinned announcements and assignable to-do tasks for the group.",
+    "announcements": "Announcements",
+    "announcementTitlePlaceholder": "Title…",
+    "announcementBodyPlaceholder": "Message…",
+    "post": "Post",
+    "noAnnouncements": "No announcements yet.",
+    "tasks": "Tasks",
+    "taskTitlePlaceholder": "e.g. Prep scouting for Rival",
+    "unassigned": "Unassigned",
+    "noTasks": "No tasks yet."
   },
   "access": {
     "title": "Invite to Ascend",

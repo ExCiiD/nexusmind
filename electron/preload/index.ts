@@ -181,6 +181,19 @@ const api = {
   wellbeingListMine: (limit?: number) => ipcRenderer.invoke('wellbeing:list-mine', limit),
   wellbeingListForGroup: (playerIds: string[]) => ipcRenderer.invoke('wellbeing:list-for-group', playerIds),
 
+  // E7: communication & tasks
+  announcementsList: (groupId: string) => ipcRenderer.invoke('announcements:list', groupId),
+  announcementsCreate: (groupId: string, input: unknown) => ipcRenderer.invoke('announcements:create', groupId, input),
+  announcementsSetPinned: (id: string, pinned: boolean) => ipcRenderer.invoke('announcements:set-pinned', id, pinned),
+  announcementsDelete: (id: string) => ipcRenderer.invoke('announcements:delete', id),
+  tasksList: (groupId: string) => ipcRenderer.invoke('tasks:list', groupId),
+  tasksCreate: (groupId: string, input: unknown) => ipcRenderer.invoke('tasks:create', groupId, input),
+  tasksSetStatus: (id: string, status: 'open' | 'done') => ipcRenderer.invoke('tasks:set-status', id, status),
+  tasksDelete: (id: string) => ipcRenderer.invoke('tasks:delete', id),
+  staffNotesList: (groupId: string, playerId: string) => ipcRenderer.invoke('staffnotes:list', groupId, playerId),
+  staffNotesAdd: (groupId: string, playerId: string, body: string) => ipcRenderer.invoke('staffnotes:add', groupId, playerId, body),
+  staffNotesDelete: (id: string) => ipcRenderer.invoke('staffnotes:delete', id),
+
   // Ascend cloud account & backups (tokens never leave the main process)
   cloudStatus: () => ipcRenderer.invoke('cloud:status'),
   cloudSendCode: (email: string, inviteCode?: string) => ipcRenderer.invoke('cloud:send-code', email, inviteCode ?? null),

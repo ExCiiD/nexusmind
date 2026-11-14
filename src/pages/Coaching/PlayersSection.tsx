@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, ChevronRight, Flag, GraduationCap, Loader2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Flag, GraduationCap, Loader2, Lock, Plus, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { CommentThread } from '@/components/Coaching/CommentThread'
 import { DevPlanCard } from '@/components/Coaching/DevPlanCard'
 import { collabErrorKey, type AssignedObjective, type Group, type PlayerSessionView } from '@/lib/collab'
+import type { StaffNote } from '@/lib/teamOps'
 
 interface Props {
   staffGroups: Group[]
@@ -124,6 +125,7 @@ function PlayerView({ player, myUserId, nameOf }: { player: PlayerRef; myUserId:
   return (
     <div className="space-y-4">
       <DevPlanCard groupId={player.groupId} playerId={player.userId} mode="staff" />
+      <StaffNotesCard groupId={player.groupId} playerId={player.userId} />
       <div className="space-y-2 rounded-lg border border-hextech-border-dim p-3">
         <div className="flex items-center gap-2 text-sm font-medium text-hextech-text-bright">
           <Flag className="h-4 w-4 text-hextech-gold" />{t('coaching.assign.title')}
@@ -215,6 +217,64 @@ function PlayerView({ player, myUserId, nameOf }: { player: PlayerRef; myUserId:
           ))}
         </ul>
       )}
+    </div>
+  )
+}
+
+/** Staff-private notes (RLS-enforced: the player this is about can never read these). */
+function StaffNotesCard({ groupId, playerId }: { groupId: string; playerId: string }) {
+  const { t, i18n } = useTranslation()
+  const { toast } = useToast()
+  const [notes, setNotes] = useState<StaffNote[] | null>(null)
+  const [body, setBody] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  const load = useCallback(async () => {
+    try { setNotes(await window.api.staffNotesList(groupId, playerId)) }
+    catch (err) { setNotes([]); toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
+  }, [groupId, playerId, t, toast])
+
+  useEffect(() => { load() }, [load])
+
+  const add = async () => {
+    if (!body.trim()) return
+    setAdding(true)
+    try { await window.api.staffNotesAdd(groupId, playerId, body.trim()); setBody(''); await load() }
+    catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
+    finally { setAdding(false) }
+  }
+  const remove = async (id: string) => {
+    try { await window.api.staffNotesDelete(id); await load() }
+    catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
+  }
+
+  return (
+    <div className="space-y-2 rounded-lg border border-hextech-border-dim p-3">
+      <div className="flex items-center gap-2 text-sm font-medium text-hextech-text-bright">
+        <Lock className="h-4 w-4 text-hextech-gold" />{t('coaching.staffNotes.title', { defaultValue: 'Private staff notes' })}
+      </div>
+      <p className="text-xs text-hextech-text-dim">{t('coaching.staffNotes.hint', { defaultValue: 'Only visible to this group\'s staff — the player never sees these.' })}</p>
+      {notes === null ? (
+        <Loader2 className="h-4 w-4 animate-spin text-hextech-text-dim" />
+      ) : notes.length > 0 && (
+        <ul className="space-y-1">
+          {notes.map((n) => (
+            <li key={n.id} className="flex items-start justify-between gap-2 rounded bg-hextech-elevated/30 p-2 text-sm text-hextech-text">
+              <div>
+                <p>{n.body}</p>
+                <p className="text-[11px] text-hextech-text-dim">{new Date(n.createdAt).toLocaleDateString(i18n.language)}</p>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => remove(n.id)}><Trash2 className="h-3.5 w-3.5 text-hextech-text-dim" /></Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex gap-2">
+        <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={1} maxLength={4000} className="flex-1" placeholder={t('coaching.staffNotes.placeholder', { defaultValue: 'Private note…' })} />
+        <Button size="sm" variant="outline" onClick={add} disabled={!body.trim() || adding}>
+          {adding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+        </Button>
+      </div>
     </div>
   )
 }

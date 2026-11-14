@@ -3,6 +3,7 @@ import type { CalendarApi } from './calendar'
 import type { CollabApi } from './collab'
 import type { VodReviewApi } from './vodReview'
 import type { WellbeingApi } from './wellbeing'
+import type { TeamOpsApi } from './teamOps'
 import type { FeedbackApi } from './feedback'
 import type { NotificationsApi } from './notifications'
 import type { TeamShareApi } from './team'
@@ -314,7 +315,7 @@ export interface SavedAccount {
   _count: { sessions: number }
 }
 
-export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareApi & CalendarApi & VodReviewApi & WellbeingApi & {
+export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareApi & CalendarApi & VodReviewApi & WellbeingApi & TeamOpsApi & {
   connectRiot: (gameName: string, tagLine: string, region: string, displayName?: string) => Promise<any>
   disconnectRiot: () => Promise<void>
   reactivateAccount: (userId: string) => Promise<any>

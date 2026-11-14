@@ -67,10 +67,10 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
 - ✅ Web **et** desktop : check-in rapide sur la page Coaching (tout le monde), historique perso, corrélation « tes games un jour de basse énergie (≤2) : X % de victoires » calculée à partir de ses propres games (aucun souci de consentement, ce sont ses données) ; côté staff, vue « Bien-être de l'équipe » (uniquement les joueurs ayant partagé) avec alerte si l'humeur baisse strictement sur les 3 derniers jours avec check-in.
 - ⏳ Restant : la règle complète « charge de jeu hebdo > X h + humeur en baisse » (demande de croiser avec les stats de jeu sous un **second** consentement, `share_stats` — volontairement non fait dans cette v1 pour ne pas mélanger deux consentements dans une seule alerte), alerte poussée au staff (dépend de E8), réglage du seuil X par le staff.
 
-### E7 — Communication & tâches ⭐⭐
-- Annonces d'équipe (épinglées), fil par scrim / par draft, mentions.
-- Tâches (to-do) assignables : « préparer le scouting de X », « revoir la draft 2 » ; échéance ; statut.
-- Notes privées du staff par joueur (jamais visibles du joueur).
+### E7 — Communication & tâches 🟡 (v1 livré : annonces + tâches + notes privées ; fils par scrim/draft et mentions restants)
+- ✅ Tables serveur `announcements` (épinglables), `tasks` (assignable, échéance, statut ouvert/fait), `staff_notes` (jamais lisibles par le joueur concerné — aucune policy de lecture pour lui), RLS par groupe (staff gère annonces/tâches/notes ; un joueur peut aussi basculer le statut de **sa propre** tâche assignée).
+- ✅ Web **et** desktop : nouvelle section « Annonces & tâches » sur la page Coaching (tout le monde lit, le staff publie/épingle/assigne) ; carte « Notes privées du staff » ajoutée à la fiche joueur existante (visible uniquement du staff qui consulte ce joueur).
+- ⏳ Restant : fil de discussion par scrim / par draft (le système de commentaires horodatés par review existe déjà pour les games individuelles ; un fil dédié scrim/draft est un suivi séparé), mentions `@joueur` (nécessite la tuyauterie de notifications — dépend de E8).
 
 ### E8 — Notifications (W5 recentré équipe) ⭐⭐⭐
 - In-app (temps réel), Web Push (PWA), Discord (webhook d'équipe), e-mail digest quotidien.

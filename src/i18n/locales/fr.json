@@ -1352,6 +1352,11 @@
     "feedback": {
       "title": "Retours du coach"
     },
+    "staffNotes": {
+      "title": "Notes privées du staff",
+      "hint": "Visibles uniquement par le staff de ce groupe — le joueur ne les voit jamais.",
+      "placeholder": "Note privée…"
+    },
     "comments": {
       "empty": "Aucun commentaire pour l'instant.",
       "you": "Vous",
@@ -1810,6 +1815,19 @@
     "team": "Bien-être de l'équipe",
     "noShared": "Aucun joueur n'a partagé son bien-être dans ce groupe pour l'instant.",
     "moodDeclining": "Humeur en baisse"
+  },
+  "teamOps": {
+    "title": "Annonces & tâches",
+    "desc": "Annonces épinglées et tâches assignables pour le groupe.",
+    "announcements": "Annonces",
+    "announcementTitlePlaceholder": "Titre…",
+    "announcementBodyPlaceholder": "Message…",
+    "post": "Publier",
+    "noAnnouncements": "Aucune annonce pour l'instant.",
+    "tasks": "Tâches",
+    "taskTitlePlaceholder": "ex. Préparer le scouting de Rival",
+    "unassigned": "Non assignée",
+    "noTasks": "Aucune tâche pour l'instant."
   },
   "access": {
     "title": "Inviter sur Ascend",

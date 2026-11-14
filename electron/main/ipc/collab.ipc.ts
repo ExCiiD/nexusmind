@@ -118,4 +118,21 @@ export function registerCollabHandlers() {
   validatedHandle('wellbeing:add-checkin', z.tuple([checkinInput]), (_e, input) => collab.wellbeingAddCheckin(input))
   validatedHandle('wellbeing:list-mine', z.tuple([z.number().int().min(1).max(200).optional()]), (_e, limit) => collab.wellbeingListMine(limit))
   validatedHandle('wellbeing:list-for-group', z.tuple([z.array(uuid).max(50)]), (_e, playerIds) => collab.wellbeingListForGroup(playerIds))
+
+  const announcementInput = z.object({ title: z.string().trim().min(1).max(120), body: z.string().trim().min(1).max(4000), pinned: z.boolean().optional() })
+  validatedHandle('announcements:list', z.tuple([uuid]), (_e, groupId) => collab.announcementsList(groupId))
+  validatedHandle('announcements:create', z.tuple([uuid, announcementInput]), (_e, groupId, input) => collab.announcementsCreate(groupId, input))
+  validatedHandle('announcements:set-pinned', z.tuple([uuid, z.boolean()]), (_e, id, pinned) => collab.announcementsSetPinned(id, pinned))
+  validatedHandle('announcements:delete', z.tuple([uuid]), (_e, id) => collab.announcementsDelete(id))
+
+  const taskInput = z.object({ title: z.string().trim().min(1).max(200), assigneeId: uuid.nullable().optional(), dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional() })
+  const taskStatus = z.enum(['open', 'done'])
+  validatedHandle('tasks:list', z.tuple([uuid]), (_e, groupId) => collab.tasksList(groupId))
+  validatedHandle('tasks:create', z.tuple([uuid, taskInput]), (_e, groupId, input) => collab.tasksCreate(groupId, input))
+  validatedHandle('tasks:set-status', z.tuple([uuid, taskStatus]), (_e, id, status) => collab.tasksSetStatus(id, status))
+  validatedHandle('tasks:delete', z.tuple([uuid]), (_e, id) => collab.tasksDelete(id))
+
+  validatedHandle('staffnotes:list', z.tuple([uuid, uuid]), (_e, groupId, playerId) => collab.staffNotesList(groupId, playerId))
+  validatedHandle('staffnotes:add', z.tuple([uuid, uuid, z.string().trim().min(1).max(4000)]), (_e, groupId, playerId, body) => collab.staffNotesAdd(groupId, playerId, body))
+  validatedHandle('staffnotes:delete', z.tuple([uuid]), (_e, id) => collab.staffNotesDelete(id))
 }

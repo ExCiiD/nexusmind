@@ -6,11 +6,13 @@ import * as devPlan from '../../../src/lib/devPlanCore'
 import * as calendar from '../../../src/lib/calendarCore'
 import * as vodReview from '../../../src/lib/vodReviewCore'
 import * as wellbeing from '../../../src/lib/wellbeingCore'
+import * as teamOps from '../../../src/lib/teamOpsCore'
 import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
 import type { AxisStatus, NewAxisInput } from '../../../src/lib/devPlan'
 import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput } from '../../../src/lib/calendar'
 import type { AssignmentStatus, NewVodAssignmentInput, NewVodCommentInput, NewVodSessionInput } from '../../../src/lib/vodReview'
 import type { NewWellbeingCheckinInput } from '../../../src/lib/wellbeing'
+import type { NewAnnouncementInput, NewTaskInput, TaskStatus } from '../../../src/lib/teamOps'
 
 /**
  * Desktop entry points for W3 collaboration. The data access itself lives in
@@ -99,3 +101,17 @@ export const vodReviewDeleteAssignment = (id: string) => vodReview.deleteAssignm
 export const wellbeingAddCheckin = (input: NewWellbeingCheckinInput) => wellbeing.addCheckin(getSupabase(), input)
 export const wellbeingListMine = async (limit?: number) => wellbeing.listMine(getSupabase(), await me(), limit)
 export const wellbeingListForGroup = (playerIds: string[]) => wellbeing.listForGroup(getSupabase(), playerIds)
+
+export const announcementsList = (groupId: string) => teamOps.listAnnouncements(getSupabase(), groupId)
+export const announcementsCreate = (groupId: string, input: NewAnnouncementInput) => teamOps.createAnnouncement(getSupabase(), groupId, input)
+export const announcementsSetPinned = (id: string, pinned: boolean) => teamOps.setAnnouncementPinned(getSupabase(), id, pinned)
+export const announcementsDelete = (id: string) => teamOps.deleteAnnouncement(getSupabase(), id)
+
+export const tasksList = (groupId: string) => teamOps.listTasks(getSupabase(), groupId)
+export const tasksCreate = (groupId: string, input: NewTaskInput) => teamOps.createTask(getSupabase(), groupId, input)
+export const tasksSetStatus = (id: string, status: TaskStatus) => teamOps.setTaskStatus(getSupabase(), id, status)
+export const tasksDelete = (id: string) => teamOps.deleteTask(getSupabase(), id)
+
+export const staffNotesList = (groupId: string, playerId: string) => teamOps.listStaffNotes(getSupabase(), groupId, playerId)
+export const staffNotesAdd = (groupId: string, playerId: string, body: string) => teamOps.addStaffNote(getSupabase(), groupId, playerId, body)
+export const staffNotesDelete = (id: string) => teamOps.deleteStaffNote(getSupabase(), id)

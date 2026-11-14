@@ -6,6 +6,7 @@ import * as devPlanCore from '@/lib/devPlanCore'
 import * as calendarCore from '@/lib/calendarCore'
 import * as vodReviewCore from '@/lib/vodReviewCore'
 import * as wellbeingCore from '@/lib/wellbeingCore'
+import * as teamOpsCore from '@/lib/teamOpsCore'
 import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
@@ -178,6 +179,19 @@ export const webApi = {
   wellbeingAddCheckin: (input: Parameters<typeof wellbeingCore.addCheckin>[1]) => wellbeingCore.addCheckin(sb, input),
   wellbeingListMine: async (limit?: number) => wellbeingCore.listMine(sb, await currentUserId(), limit),
   wellbeingListForGroup: (playerIds: string[]) => wellbeingCore.listForGroup(sb, playerIds),
+
+  // ── E7: communication & tasks ──
+  announcementsList: (groupId: string) => teamOpsCore.listAnnouncements(sb, groupId),
+  announcementsCreate: (groupId: string, input: Parameters<typeof teamOpsCore.createAnnouncement>[2]) => teamOpsCore.createAnnouncement(sb, groupId, input),
+  announcementsSetPinned: (id: string, pinned: boolean) => teamOpsCore.setAnnouncementPinned(sb, id, pinned),
+  announcementsDelete: (id: string) => teamOpsCore.deleteAnnouncement(sb, id),
+  tasksList: (groupId: string) => teamOpsCore.listTasks(sb, groupId),
+  tasksCreate: (groupId: string, input: Parameters<typeof teamOpsCore.createTask>[2]) => teamOpsCore.createTask(sb, groupId, input),
+  tasksSetStatus: (id: string, status: 'open' | 'done') => teamOpsCore.setTaskStatus(sb, id, status),
+  tasksDelete: (id: string) => teamOpsCore.deleteTask(sb, id),
+  staffNotesList: (groupId: string, playerId: string) => teamOpsCore.listStaffNotes(sb, groupId, playerId),
+  staffNotesAdd: (groupId: string, playerId: string, body: string) => teamOpsCore.addStaffNote(sb, groupId, playerId, body),
+  staffNotesDelete: (id: string) => teamOpsCore.deleteStaffNote(sb, id),
 
   // ── W5: notifications ──
   notificationsList: async (onlyUnread?: boolean) =>
