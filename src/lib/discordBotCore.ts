@@ -145,19 +145,29 @@ export async function setAvailabilityExceptionAs(sb: SupabaseClient, groupId: st
   if (error) fail(error, 'set availability')
 }
 
+export type RelayedNotificationType =
+  | 'task_assigned' | 'objective_overdue' | 'mention'
+  | 'review_pending' | 'scrim_low_availability' | 'scrim_availability_missing'
+
 export interface TeamNotification {
   id: string
-  type: 'task_assigned' | 'objective_overdue' | 'mention'
+  type: RelayedNotificationType
   userId: string
   data: Record<string, unknown>
   createdAt: string
 }
 
+const RELAYED_TYPES: RelayedNotificationType[] = [
+  'task_assigned', 'objective_overdue', 'mention',
+  'review_pending', 'scrim_low_availability', 'scrim_availability_missing',
+]
+
 /**
  * Team-relevant in-app notifications from the last `sinceIso` worth of
  * history, for the cron to relay into the linked Discord channel. Scoped to
  * types that are already routine, team-visible information in-app (a task
- * was assigned, an objective is overdue, someone was @mentioned) — NOT
+ * was assigned, an objective/review is overdue, someone was @mentioned, a
+ * scrim needs more confirmations — E2 v2's C3/C4 alerts) — NOT
  * `wellbeing_alert`: that one is opt-in-shared with staff only (E6,
  * `group_sharing.share_wellbeing`) and broadcasting a player's declining
  * mood to a Discord channel (which may have a wider audience than the
@@ -166,7 +176,7 @@ export interface TeamNotification {
 export async function listRecentTeamNotifications(sb: SupabaseClient, groupId: string, sinceIso: string): Promise<TeamNotification[]> {
   const { data, error } = await sb.from('notifications')
     .select('id, type, user_id, data, created_at')
-    .in('type', ['task_assigned', 'objective_overdue', 'mention'])
+    .in('type', RELAYED_TYPES)
     .filter('data->>groupId', 'eq', groupId)
     .gte('created_at', sinceIso)
   if (error) fail(error, 'list team notifications')

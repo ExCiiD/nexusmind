@@ -2033,6 +2033,18 @@
       "mention": {
         "title": "You were mentioned",
         "body": "{{mentionedByName}} mentioned you in \"{{title}}\""
+      },
+      "review_pending": {
+        "title": "Coach comment waiting",
+        "body": "A coach comment on one of your reviews has been waiting 3+ days."
+      },
+      "scrim_low_availability": {
+        "title": "Scrim needs confirmations",
+        "body": "\"{{title}}\" has only {{yesCount}}/5 confirmed and is within 48h."
+      },
+      "scrim_availability_missing": {
+        "title": "Scrim availability needed",
+        "body": "You haven't responded to \"{{title}}\" yet (within 48h)."
       }
     }
   },

@@ -2033,6 +2033,18 @@
       "mention": {
         "title": "Tu as été mentionné",
         "body": "{{mentionedByName}} t'a mentionné dans « {{title}} »"
+      },
+      "review_pending": {
+        "title": "Commentaire coach en attente",
+        "body": "Un commentaire coach sur une de tes reviews attend depuis 3+ jours."
+      },
+      "scrim_low_availability": {
+        "title": "Scrim à confirmer",
+        "body": "« {{title}} » n'a que {{yesCount}}/5 confirmations et a lieu dans moins de 48h."
+      },
+      "scrim_availability_missing": {
+        "title": "Disponibilité scrim manquante",
+        "body": "Tu n'as pas encore répondu pour « {{title}} » (dans moins de 48h)."
       }
     }
   },

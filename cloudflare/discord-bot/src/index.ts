@@ -99,13 +99,15 @@ export default {
           }
         }
 
-        // Relay routine team notifications (task assigned, objective
-        // overdue, @mention) into the same channel — see
-        // listRecentTeamNotifications for why wellbeing_alert is excluded.
+        // Relay routine team notifications (task assigned, objective/review
+        // overdue, @mention, scrim availability — E2 v2's C3/C4 alerts) into
+        // the same channel — see listRecentTeamNotifications for why
+        // wellbeing_alert is excluded.
         const teamNotifications = await listRecentTeamNotifications(sb, guild.groupId, dayAgo.toISOString())
         if (teamNotifications.length > 0) {
           const names = await resolveDisplayNames(sb, guild.groupId, Array.from(new Set(teamNotifications.map((n) => n.userId))))
           const seenMentionAnnouncements = new Set<string>()
+          const seenLowAvailabilityScrims = new Set<string>()
           for (const n of teamNotifications) {
             if (n.type === 'mention') {
               // Fans out one notification row per mentioned teammate — collapse
@@ -118,6 +120,17 @@ export default {
                 `📣 **${n.data.mentionedByName ?? '?'}** posted an announcement mentioning a teammate: "${n.data.title ?? ''}"`)
               continue
             }
+            if (n.type === 'scrim_low_availability') {
+              // Fans out one notification row per staff member — collapse to
+              // a single Discord post per scrim.
+              const scrimId = String(n.data.scrimId ?? n.id)
+              if (seenLowAvailabilityScrims.has(scrimId)) continue
+              seenLowAvailabilityScrims.add(scrimId)
+              if (!(await markNotifiedOnce(sb, guild.guildId, 'notification', `scrim_low_availability:${scrimId}`))) continue
+              await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
+                `⚠️ **Low availability** for "${n.data.title ?? ''}" — only ${n.data.yesCount ?? '?'}/5 confirmed, scrim is within 48h.`)
+              continue
+            }
             if (!(await markNotifiedOnce(sb, guild.guildId, 'notification', `${n.type}:${n.id}`))) continue
             const recipientName = names.get(n.userId) ?? '?'
             if (n.type === 'task_assigned') {
@@ -126,6 +139,12 @@ export default {
             } else if (n.type === 'objective_overdue') {
               await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
                 `⏰ **Objective overdue for ${recipientName}** — was due ${n.data.dueDate ?? '?'}`)
+            } else if (n.type === 'review_pending') {
+              await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
+                `💬 **${recipientName}** has an unanswered coach comment waiting (3+ days).`)
+            } else if (n.type === 'scrim_availability_missing') {
+              await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
+                `❓ **${recipientName}** hasn't responded yet to "${n.data.title ?? ''}" (within 48h).`)
             }
           }
         }
