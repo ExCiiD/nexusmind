@@ -1180,6 +1180,11 @@
     "delete": "Supprimer",
     "loading": "Chargement…"
   },
+  "discussion": {
+    "title": "Discussion",
+    "empty": "Aucun commentaire pour l'instant.",
+    "placeholder": "Écrire un commentaire…"
+  },
   "mistakes": {
     "deleteFailed": "Impossible de supprimer l'erreur",
     "tagFailed": "Impossible d'enregistrer l'erreur",

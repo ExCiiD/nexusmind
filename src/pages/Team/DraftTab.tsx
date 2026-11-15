@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
-import { Save, Copy, Plus, Trash2, Search, X, Ban, Users, Target, ChevronRight, AlertTriangle, Flame, Crown, Crosshair } from 'lucide-react'
+import { Save, Copy, Plus, Trash2, Search, X, Ban, Users, Target, ChevronRight, AlertTriangle, Flame, Crown, Crosshair, MessageSquare } from 'lucide-react'
+import { DiscussionThread } from '@/components/team/DiscussionThread'
 import { cn } from '@/lib/utils'
 import { useAllChampions, type ChampionMeta } from '@/hooks/useAllChampions'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
@@ -161,9 +162,17 @@ function fromDb(d: DraftPrep): DraftState {
 
 interface Props {
   myTeam: Team | null
+  /** Web-only (E7 v2): a draft only has a stable, cross-user id once it's a
+   *  server-side `team_drafts` row within a group — on desktop a draft's id
+   *  is a local-only SQLite row with no group, so these stay undefined
+   *  there and the Discussion button never renders. */
+  groupId?: string
+  myUserId?: string
+  nameOf?: (userId: string) => string
+  isStaff?: boolean
 }
 
-export function DraftTab({ myTeam }: Props) {
+export function DraftTab({ myTeam, groupId, myUserId, nameOf, isStaff }: Props) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const { champions } = useAllChampions()
@@ -177,6 +186,7 @@ export function DraftTab({ myTeam }: Props) {
   const [draft, setDraft] = useState<DraftState>(emptyDraft())
   const [activeSlot, setActiveSlot] = useState<DraftSlot | null>(DRAFT_SEQUENCE[0])
   const [search, setSearch] = useState('')
+  const [discussionOpen, setDiscussionOpen] = useState(false)
   // Role filter: 'ALL' or one of the 5 canonical roles. Drives the grid
   // (only show champions that play this role).
   const [roleFilter, setRoleFilter] = useState<'ALL' | Role>('ALL')
@@ -514,6 +524,20 @@ export function DraftTab({ myTeam }: Props) {
           <Button size="sm" variant="outline" onClick={deleteDraft} disabled={!activeId}>
             <Trash2 className="h-3 w-3" />
           </Button>
+          {/* Web-only (E7 v2) — see the Props comment for why desktop never
+              gets groupId/myUserId/nameOf and this stays hidden there. */}
+          {groupId && myUserId && nameOf && (
+            <div className="relative">
+              <Button size="sm" variant="outline" onClick={() => setDiscussionOpen((v) => !v)} disabled={!activeId}>
+                <MessageSquare className="h-3 w-3 mr-1" />{t('discussion.title', { defaultValue: 'Discussion' })}
+              </Button>
+              {discussionOpen && activeId && (
+                <div className="absolute right-0 top-full z-30 mt-1 w-96 max-h-[70vh] overflow-y-auto rounded-lg border border-hextech-border-dim bg-hextech-elevated p-3 shadow-lg">
+                  <DiscussionThread groupId={groupId} subjectType="draft" subjectId={activeId} myUserId={myUserId} nameOf={nameOf} isStaff={!!isStaff} />
+                </div>
+              )}
+            </div>
+          )}
         </Card>
 
         <div className="grid grid-cols-[1fr_1.4fr_1fr] gap-3 min-w-0 flex-1 min-h-0">

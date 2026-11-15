@@ -98,6 +98,12 @@ export function registerCollabHandlers() {
   validatedHandle('calendar:create-subscription', z.tuple([uuid]), (_e, groupId) => collab.calendarCreateSubscription(groupId))
   validatedHandle('calendar:revoke-subscription', z.tuple([uuid]), (_e, id) => collab.calendarRevokeSubscription(id))
 
+  const discussionSubjectType = z.enum(['scrim', 'draft'])
+  validatedHandle('discussion:list', z.tuple([discussionSubjectType, uuid]), (_e, subjectType, subjectId) => collab.discussionList(subjectType, subjectId))
+  validatedHandle('discussion:add', z.tuple([uuid, discussionSubjectType, uuid, z.string().trim().min(1).max(2000)]),
+    (_e, groupId, subjectType, subjectId, body) => collab.discussionAdd(groupId, subjectType, subjectId, body))
+  validatedHandle('discussion:delete', z.tuple([uuid]), (_e, id) => collab.discussionDelete(id))
+
   const vodUrl = z.string().trim().url().max(500)
   const teamTag = z.enum(['rotation', 'objective_setup', 'communication', 'other'])
   const sessionInput = z.object({ scrimId: uuid.nullable().optional(), title: z.string().trim().min(1).max(120), vodUrl })

@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { useCollab } from '@/hooks/useCollab'
+import { DiscussionThread } from '@/components/team/DiscussionThread'
 import { cn } from '@/lib/utils'
 import type { Group } from '@/lib/collab'
 import {
@@ -375,6 +376,8 @@ function ScrimDetail({ scrim, group, myUserId, availability, nameOf, onChanged, 
               onBlur={() => review !== (scrim.reviewNotes ?? '') && run(() => updateScrim(scrim.id, { reviewNotes: review || null }))} />
           ) : scrim.reviewNotes ? <p className="whitespace-pre-wrap">{scrim.reviewNotes}</p> : <p className="text-xs text-hextech-text-dim">{t('web.scrims.noReview')}</p>}
         </section>
+
+        <DiscussionThread groupId={group.id} subjectType="scrim" subjectId={scrim.id} myUserId={myUserId} nameOf={nameOf} isStaff={staff} />
 
         {staff && (
           <div className="flex flex-wrap gap-2 border-t border-hextech-border-dim pt-3">

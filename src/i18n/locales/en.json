@@ -1180,6 +1180,11 @@
     "delete": "Delete",
     "loading": "Loading…"
   },
+  "discussion": {
+    "title": "Discussion",
+    "empty": "No comments yet.",
+    "placeholder": "Write a comment…"
+  },
   "mistakes": {
     "deleteFailed": "Failed to delete mistake",
     "tagFailed": "Failed to tag mistake",

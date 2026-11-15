@@ -33,9 +33,10 @@ type TabId = 'roster' | 'pool' | 'draft' | 'scouting'
  */
 export function TeamPage() {
   const { t } = useTranslation()
-  const { loading: collabLoading, groups } = useCollab()
+  const { loading: collabLoading, groups, myUserId, nameOf } = useCollab()
   const teamGroups = useMemo(() => groups.filter((g) => g.kind === 'team'), [groups])
   const [groupId, setGroupId] = useState<string | null>(null)
+  const activeGroup = teamGroups.find((g) => g.id === groupId)
   const [myTeam, setMyTeam] = useState<Team | null>(null)
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState<TabId>('roster')
@@ -127,7 +128,7 @@ export function TeamPage() {
         )}
         {tab === 'draft' && (
           <PanelErrorBoundary key="draft" label="Draft sim">
-            <DraftTab myTeam={myTeam} />
+            <DraftTab myTeam={myTeam} groupId={groupId ?? undefined} myUserId={myUserId ?? undefined} nameOf={nameOf} isStaff={activeGroup?.myRole !== 'player'} />
           </PanelErrorBoundary>
         )}
         {tab === 'scouting' && (

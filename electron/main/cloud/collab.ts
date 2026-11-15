@@ -10,6 +10,8 @@ import * as teamOps from '../../../src/lib/teamOpsCore'
 import * as report from '../../../src/lib/reportCore'
 import * as trials from '../../../src/lib/trialsCore'
 import * as scrimsRead from '../../../src/lib/scrimsCore'
+import * as discussion from '../../../src/lib/discussionCore'
+import type { DiscussionSubjectType } from '../../../src/lib/discussion'
 import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
 import type { AxisStatus, NewAxisInput, NewDevPlanPeriod } from '../../../src/lib/devPlan'
 import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput } from '../../../src/lib/calendar'
@@ -92,6 +94,11 @@ export const availabilityDeleteException = (id: string) => calendar.deleteAvaila
 export const calendarGetSubscription = (groupId: string) => calendar.getCalendarSubscription(getSupabase(), groupId, getSupabaseUrl())
 export const calendarCreateSubscription = (groupId: string) => calendar.createCalendarSubscription(getSupabase(), groupId, getSupabaseUrl())
 export const calendarRevokeSubscription = (id: string) => calendar.revokeCalendarSubscription(getSupabase(), id)
+
+export const discussionList = (subjectType: DiscussionSubjectType, subjectId: string) => discussion.listDiscussion(getSupabase(), subjectType, subjectId)
+export const discussionAdd = (groupId: string, subjectType: DiscussionSubjectType, subjectId: string, body: string) =>
+  discussion.addDiscussionComment(getSupabase(), groupId, subjectType, subjectId, body)
+export const discussionDelete = (id: string) => discussion.deleteDiscussionComment(getSupabase(), id)
 
 export const vodReviewListSessions = (groupId: string) => vodReview.listSessions(getSupabase(), groupId)
 export const vodReviewCreateSession = (groupId: string, input: NewVodSessionInput) => vodReview.createSession(getSupabase(), groupId, input)

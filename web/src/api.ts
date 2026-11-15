@@ -11,6 +11,7 @@ import * as teamOpsCore from '@/lib/teamOpsCore'
 import * as reportCore from '@/lib/reportCore'
 import * as trialsCore from '@/lib/trialsCore'
 import * as scrimsReadCore from '@/lib/scrimsCore'
+import * as discussionCore from '@/lib/discussionCore'
 import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
@@ -188,6 +189,12 @@ export const webApi = {
   calendarGetSubscription: (groupId: string) => calendarCore.getCalendarSubscription(sb, groupId, supabaseUrl),
   calendarCreateSubscription: (groupId: string) => calendarCore.createCalendarSubscription(sb, groupId, supabaseUrl),
   calendarRevokeSubscription: (id: string) => calendarCore.revokeCalendarSubscription(sb, id),
+
+  // ── E7 v2: discussion threads (scrim/draft) ──
+  discussionList: (subjectType: Parameters<typeof discussionCore.listDiscussion>[1], subjectId: string) => discussionCore.listDiscussion(sb, subjectType, subjectId),
+  discussionAdd: (groupId: string, subjectType: Parameters<typeof discussionCore.addDiscussionComment>[2], subjectId: string, body: string) =>
+    discussionCore.addDiscussionComment(sb, groupId, subjectType, subjectId, body),
+  discussionDelete: (id: string) => discussionCore.deleteDiscussionComment(sb, id),
 
   // ── E5: collaborative VOD review ──
   vodReviewListSessions: (groupId: string) => vodReviewCore.listSessions(sb, groupId),

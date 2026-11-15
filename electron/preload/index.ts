@@ -167,6 +167,9 @@ const api = {
   calendarGetSubscription: (groupId: string) => ipcRenderer.invoke('calendar:get-subscription', groupId),
   calendarCreateSubscription: (groupId: string) => ipcRenderer.invoke('calendar:create-subscription', groupId),
   calendarRevokeSubscription: (id: string) => ipcRenderer.invoke('calendar:revoke-subscription', id),
+  discussionList: (subjectType: string, subjectId: string) => ipcRenderer.invoke('discussion:list', subjectType, subjectId),
+  discussionAdd: (groupId: string, subjectType: string, subjectId: string, body: string) => ipcRenderer.invoke('discussion:add', groupId, subjectType, subjectId, body),
+  discussionDelete: (id: string) => ipcRenderer.invoke('discussion:delete', id),
 
   // E5: collaborative VOD review
   vodReviewListSessions: (groupId: string) => ipcRenderer.invoke('vodreview:list-sessions', groupId),
