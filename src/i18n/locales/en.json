@@ -1873,7 +1873,9 @@
     "correlationOther": "Other days: {{rate}}% winrate ({{count}} games)",
     "team": "Team wellbeing",
     "noShared": "No player has shared their wellbeing check-ins in this group yet.",
-    "moodDeclining": "Mood declining"
+    "moodDeclining": "Mood declining",
+    "loadThresholdLabel": "Alert staff when a player (sharing both stats & wellbeing) plays more than",
+    "loadThresholdSuffix": "h/week with a declining mood."
   },
   "teamOps": {
     "title": "Announcements & tasks",
@@ -2049,6 +2051,10 @@
       "dev_plan_period_ending": {
         "title": "Dev plan period ending soon",
         "body": "\"{{title}}\" ends {{periodEnd}}."
+      },
+      "weekly_load_alert": {
+        "title": "Weekly load + mood alert",
+        "body": "A player has played {{hours}}h this week (threshold {{thresholdHours}}h) with a declining mood."
       }
     }
   },

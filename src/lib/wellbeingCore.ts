@@ -43,6 +43,26 @@ export async function listForGroup(sb: SupabaseClient, playerIds: string[], limi
   return (data as CheckinRow[]).map(toCheckin)
 }
 
+// ── Weekly load threshold (E6 v2) ───────────────────────────────────────
+// The combined "weekly play load > X h + declining mood" alert
+// (run_weekly_load_check, pg_cron) is server-side and gated on BOTH
+// share_stats AND share_wellbeing — a player with only one of the two
+// consents never triggers it. X itself is a per-group staff setting.
+
+export async function getWeeklyLoadThreshold(sb: SupabaseClient, groupId: string): Promise<number> {
+  const { data, error } = await sb.from('groups').select('weekly_load_threshold_hours').eq('id', groupId).single()
+  if (error) fail(error, 'get weekly load threshold')
+  return data.weekly_load_threshold_hours
+}
+
+/** Narrow RPC (not a direct table update) so coach/analyst can tune this
+ *  one operational setting without the general `groups` UPDATE policy
+ *  (owner-only, for name/kind) being widened for them. */
+export async function setWeeklyLoadThreshold(sb: SupabaseClient, groupId: string, hours: number): Promise<void> {
+  const { error } = await sb.rpc('set_weekly_load_threshold', { p_group: groupId, p_hours: hours })
+  if (error) fail(error, 'set weekly load threshold')
+}
+
 // ── pure helpers (no I/O) ───────────────────────────────────────────────
 
 /** True when the daily-average mood has strictly declined for the last 3 days that have a check-in. */

@@ -1873,7 +1873,9 @@
     "correlationOther": "Les autres jours : {{rate}}% de victoires ({{count}} games)",
     "team": "Bien-être de l'équipe",
     "noShared": "Aucun joueur n'a partagé son bien-être dans ce groupe pour l'instant.",
-    "moodDeclining": "Humeur en baisse"
+    "moodDeclining": "Humeur en baisse",
+    "loadThresholdLabel": "Alerter le staff quand un joueur (partageant stats et bien-être) joue plus de",
+    "loadThresholdSuffix": "h/semaine avec une humeur en baisse."
   },
   "teamOps": {
     "title": "Annonces & tâches",
@@ -2049,6 +2051,10 @@
       "dev_plan_period_ending": {
         "title": "Fin de période du plan de dev proche",
         "body": "« {{title}} » se termine le {{periodEnd}}."
+      },
+      "weekly_load_alert": {
+        "title": "Alerte charge de jeu + humeur",
+        "body": "Un joueur a joué {{hours}}h cette semaine (seuil {{thresholdHours}}h) avec une humeur en baisse."
       }
     }
   },

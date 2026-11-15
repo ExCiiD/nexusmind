@@ -130,6 +130,8 @@ export function registerCollabHandlers() {
   validatedHandle('wellbeing:add-checkin', z.tuple([checkinInput]), (_e, input) => collab.wellbeingAddCheckin(input))
   validatedHandle('wellbeing:list-mine', z.tuple([z.number().int().min(1).max(200).optional()]), (_e, limit) => collab.wellbeingListMine(limit))
   validatedHandle('wellbeing:list-for-group', z.tuple([z.array(uuid).max(50)]), (_e, playerIds) => collab.wellbeingListForGroup(playerIds))
+  validatedHandle('wellbeing:get-load-threshold', z.tuple([uuid]), (_e, groupId) => collab.wellbeingGetLoadThreshold(groupId))
+  validatedHandle('wellbeing:set-load-threshold', z.tuple([uuid, z.number().int().min(1).max(100)]), (_e, groupId, hours) => collab.wellbeingSetLoadThreshold(groupId, hours))
 
   const announcementInput = z.object({ title: z.string().trim().min(1).max(120), body: z.string().trim().min(1).max(4000), pinned: z.boolean().optional() })
   validatedHandle('announcements:list', z.tuple([uuid]), (_e, groupId) => collab.announcementsList(groupId))

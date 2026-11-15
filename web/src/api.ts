@@ -213,6 +213,8 @@ export const webApi = {
   wellbeingAddCheckin: (input: Parameters<typeof wellbeingCore.addCheckin>[1]) => wellbeingCore.addCheckin(sb, input),
   wellbeingListMine: async (limit?: number) => wellbeingCore.listMine(sb, await currentUserId(), limit),
   wellbeingListForGroup: (playerIds: string[]) => wellbeingCore.listForGroup(sb, playerIds),
+  wellbeingGetLoadThreshold: (groupId: string) => wellbeingCore.getWeeklyLoadThreshold(sb, groupId),
+  wellbeingSetLoadThreshold: (groupId: string, hours: number) => wellbeingCore.setWeeklyLoadThreshold(sb, groupId, hours),
 
   // ── E7: communication & tasks ──
   announcementsList: (groupId: string) => teamOpsCore.listAnnouncements(sb, groupId),

@@ -37,4 +37,7 @@ export interface WellbeingApi {
   wellbeingListMine: (limit?: number) => Promise<WellbeingCheckin[]>
   /** RLS-filtered: only players who opted in (`share_wellbeing`) for this group are returned. */
   wellbeingListForGroup: (playerIds: string[]) => Promise<WellbeingCheckin[]>
+  /** The per-group threshold (hours/week) for the combined load+mood alert (E6 v2). */
+  wellbeingGetLoadThreshold: (groupId: string) => Promise<number>
+  wellbeingSetLoadThreshold: (groupId: string, hours: number) => Promise<void>
 }

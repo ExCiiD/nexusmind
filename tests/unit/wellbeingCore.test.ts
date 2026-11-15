@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
-import { addCheckin, listMine, listForGroup, computeMoodDeclineAlert, computeEnergyWinrateCorrelation } from '../../src/lib/wellbeingCore'
+import { addCheckin, listMine, listForGroup, computeMoodDeclineAlert, computeEnergyWinrateCorrelation, getWeeklyLoadThreshold, setWeeklyLoadThreshold } from '../../src/lib/wellbeingCore'
 import type { WellbeingCheckin } from '../../src/lib/wellbeing'
 
 function chain(result: unknown) {
   const c: Record<string, unknown> = {}
-  for (const m of ['select', 'eq', 'in', 'order', 'limit']) c[m] = vi.fn().mockReturnValue(c)
+  for (const m of ['select', 'eq', 'in', 'order', 'limit', 'single']) c[m] = vi.fn().mockReturnValue(c)
   c.then = (resolve: (v: unknown) => void) => resolve(result)
   return c
 }
@@ -73,5 +73,25 @@ describe('computeEnergyWinrateCorrelation', () => {
 
   it('returns nulls when there is no matching data', () => {
     expect(computeEnergyWinrateCorrelation([], [])).toEqual({ lowEnergyGames: 0, lowEnergyWinrate: null, otherGames: 0, otherWinrate: null })
+  })
+})
+
+describe('getWeeklyLoadThreshold / setWeeklyLoadThreshold', () => {
+  it('getWeeklyLoadThreshold reads the group column', async () => {
+    const sb = { from: vi.fn(() => chain({ data: { weekly_load_threshold_hours: 25 }, error: null })) } as never
+    await expect(getWeeklyLoadThreshold(sb, 'g1')).resolves.toBe(25)
+  })
+
+  it('setWeeklyLoadThreshold calls the dedicated RPC, not a direct table update', async () => {
+    const rpc = vi.fn().mockResolvedValue({ error: null })
+    const sb = { rpc } as never
+    await setWeeklyLoadThreshold(sb, 'g1', 30)
+    expect(rpc).toHaveBeenCalledWith('set_weekly_load_threshold', { p_group: 'g1', p_hours: 30 })
+  })
+
+  it('setWeeklyLoadThreshold maps a forbidden error to FORBIDDEN', async () => {
+    const rpc = vi.fn().mockResolvedValue({ error: { message: 'FORBIDDEN' } })
+    const sb = { rpc } as never
+    await expect(setWeeklyLoadThreshold(sb, 'g1', 30)).rejects.toThrow('FORBIDDEN')
   })
 })

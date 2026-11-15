@@ -134,6 +134,8 @@ function TeamWellbeing({ staffGroups, nameOf }: { staffGroups: Group[]; nameOf: 
   const [groupId, setGroupId] = useState(staffGroups[0]?.id ?? null)
   const group = staffGroups.find((g) => g.id === groupId)
   const [byPlayer, setByPlayer] = useState<Map<string, WellbeingCheckin[]> | null>(null)
+  const [loadThreshold, setLoadThreshold] = useState<number | null>(null)
+  const [savingThreshold, setSavingThreshold] = useState(false)
 
   useEffect(() => {
     if (!group) return
@@ -146,9 +148,23 @@ function TeamWellbeing({ staffGroups, nameOf }: { staffGroups: Group[]; nameOf: 
         setByPlayer(map)
       })
       .catch((err) => { setByPlayer(new Map()); toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) })
+    window.api.wellbeingGetLoadThreshold(group.id).then(setLoadThreshold).catch(() => setLoadThreshold(null))
   }, [group, t, toast])
 
   if (!group) return null
+
+  const saveThreshold = async (hours: number) => {
+    if (!group || hours < 1 || hours > 100) return
+    setSavingThreshold(true)
+    try {
+      await window.api.wellbeingSetLoadThreshold(group.id, hours)
+      setLoadThreshold(hours)
+    } catch (err) {
+      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
+    } finally {
+      setSavingThreshold(false)
+    }
+  }
 
   return (
     <div className="space-y-2 rounded-lg border border-hextech-border-dim p-3">
@@ -161,6 +177,18 @@ function TeamWellbeing({ staffGroups, nameOf }: { staffGroups: Group[]; nameOf: 
           </select>
         )}
       </div>
+      {loadThreshold !== null && (
+        <label className="flex items-center gap-2 text-xs text-hextech-text-dim">
+          {t('wellbeing.loadThresholdLabel', { defaultValue: 'Alert staff when a player (sharing both stats & wellbeing) plays more than' })}
+          <input
+            type="number" min={1} max={100} value={loadThreshold} disabled={savingThreshold}
+            onChange={(e) => setLoadThreshold(Number(e.target.value))}
+            onBlur={(e) => saveThreshold(Number(e.target.value))}
+            className="w-16 rounded border border-hextech-border-dim bg-hextech-elevated px-1.5 py-0.5 text-center text-hextech-text"
+          />
+          {t('wellbeing.loadThresholdSuffix', { defaultValue: 'h/week with a declining mood.' })}
+        </label>
+      )}
       {byPlayer === null ? (
         <Loader2 className="h-4 w-4 animate-spin text-hextech-text-dim" />
       ) : byPlayer.size === 0 ? (

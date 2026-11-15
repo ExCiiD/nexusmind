@@ -188,6 +188,8 @@ const api = {
   wellbeingAddCheckin: (input: unknown) => ipcRenderer.invoke('wellbeing:add-checkin', input),
   wellbeingListMine: (limit?: number) => ipcRenderer.invoke('wellbeing:list-mine', limit),
   wellbeingListForGroup: (playerIds: string[]) => ipcRenderer.invoke('wellbeing:list-for-group', playerIds),
+  wellbeingGetLoadThreshold: (groupId: string) => ipcRenderer.invoke('wellbeing:get-load-threshold', groupId),
+  wellbeingSetLoadThreshold: (groupId: string, hours: number) => ipcRenderer.invoke('wellbeing:set-load-threshold', groupId, hours),
 
   // E7: communication & tasks
   announcementsList: (groupId: string) => ipcRenderer.invoke('announcements:list', groupId),

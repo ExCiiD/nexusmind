@@ -116,6 +116,8 @@ export const vodReviewDeleteAssignment = (id: string) => vodReview.deleteAssignm
 export const wellbeingAddCheckin = (input: NewWellbeingCheckinInput) => wellbeing.addCheckin(getSupabase(), input)
 export const wellbeingListMine = async (limit?: number) => wellbeing.listMine(getSupabase(), await me(), limit)
 export const wellbeingListForGroup = (playerIds: string[]) => wellbeing.listForGroup(getSupabase(), playerIds)
+export const wellbeingGetLoadThreshold = (groupId: string) => wellbeing.getWeeklyLoadThreshold(getSupabase(), groupId)
+export const wellbeingSetLoadThreshold = (groupId: string, hours: number) => wellbeing.setWeeklyLoadThreshold(getSupabase(), groupId, hours)
 
 export const announcementsList = (groupId: string) => teamOps.listAnnouncements(getSupabase(), groupId)
 export const announcementsCreate = (groupId: string, input: NewAnnouncementInput) => teamOps.createAnnouncement(getSupabase(), groupId, input)
