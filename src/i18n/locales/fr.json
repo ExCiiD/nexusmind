@@ -2045,6 +2045,10 @@
       "scrim_availability_missing": {
         "title": "Disponibilité scrim manquante",
         "body": "Tu n'as pas encore répondu pour « {{title}} » (dans moins de 48h)."
+      },
+      "dev_plan_period_ending": {
+        "title": "Fin de période du plan de dev proche",
+        "body": "« {{title}} » se termine le {{periodEnd}}."
       }
     }
   },

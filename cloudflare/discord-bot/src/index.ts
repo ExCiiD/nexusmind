@@ -108,6 +108,7 @@ export default {
           const names = await resolveDisplayNames(sb, guild.groupId, Array.from(new Set(teamNotifications.map((n) => n.userId))))
           const seenMentionAnnouncements = new Set<string>()
           const seenLowAvailabilityScrims = new Set<string>()
+          const seenEndingPlans = new Set<string>()
           for (const n of teamNotifications) {
             if (n.type === 'mention') {
               // Fans out one notification row per mentioned teammate — collapse
@@ -129,6 +130,17 @@ export default {
               if (!(await markNotifiedOnce(sb, guild.guildId, 'notification', `scrim_low_availability:${scrimId}`))) continue
               await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
                 `⚠️ **Low availability** for "${n.data.title ?? ''}" — only ${n.data.yesCount ?? '?'}/5 confirmed, scrim is within 48h.`)
+              continue
+            }
+            if (n.type === 'dev_plan_period_ending') {
+              // Fans out to the player + every staff member — collapse to a
+              // single Discord post per plan.
+              const planId = String(n.data.planId ?? n.id)
+              if (seenEndingPlans.has(planId)) continue
+              seenEndingPlans.add(planId)
+              if (!(await markNotifiedOnce(sb, guild.guildId, 'notification', `dev_plan_period_ending:${planId}`))) continue
+              await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
+                `🎯 **Dev plan period ending soon:** "${n.data.title ?? ''}" — ends ${n.data.periodEnd ?? '?'}.`)
               continue
             }
             if (!(await markNotifiedOnce(sb, guild.guildId, 'notification', `${n.type}:${n.id}`))) continue

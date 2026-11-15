@@ -2045,6 +2045,10 @@
       "scrim_availability_missing": {
         "title": "Scrim availability needed",
         "body": "You haven't responded to \"{{title}}\" yet (within 48h)."
+      },
+      "dev_plan_period_ending": {
+        "title": "Dev plan period ending soon",
+        "body": "\"{{title}}\" ends {{periodEnd}}."
       }
     }
   },

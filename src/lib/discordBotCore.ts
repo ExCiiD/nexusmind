@@ -148,6 +148,7 @@ export async function setAvailabilityExceptionAs(sb: SupabaseClient, groupId: st
 export type RelayedNotificationType =
   | 'task_assigned' | 'objective_overdue' | 'mention'
   | 'review_pending' | 'scrim_low_availability' | 'scrim_availability_missing'
+  | 'dev_plan_period_ending'
 
 export interface TeamNotification {
   id: string
@@ -160,6 +161,7 @@ export interface TeamNotification {
 const RELAYED_TYPES: RelayedNotificationType[] = [
   'task_assigned', 'objective_overdue', 'mention',
   'review_pending', 'scrim_low_availability', 'scrim_availability_missing',
+  'dev_plan_period_ending',
 ]
 
 /**
