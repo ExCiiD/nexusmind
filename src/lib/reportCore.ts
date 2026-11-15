@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { MistakeTrend, PlayerWeeklyReport, TeamWeeklyReport } from './report'
+import type { MistakeTrend, PlayerWeeklyReport, ReportShare, TeamWeeklyReport } from './report'
+import { generateReportShareToken } from './report'
 
 /**
  * Weekly (and, since 14/11/2026, tournament-period) team/player report
@@ -10,6 +11,12 @@ import type { MistakeTrend, PlayerWeeklyReport, TeamWeeklyReport } from './repor
  */
 
 const RECENT_WINDOW = 10
+
+function fail(error: { message: string; code?: string } | null, fallback: string): never {
+  const msg = error?.message ?? fallback
+  if (/permission|forbidden/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
+  throw new Error(msg)
+}
 
 function ts(v: unknown): number {
   return typeof v === 'number' ? v : Date.parse(String(v ?? '')) || 0
@@ -140,6 +147,33 @@ export async function computeTeamReportForEvent(sb: SupabaseClient, groupId: str
   const rangeEnd = new Date(event.ends_at)
   const prevRangeStart = new Date(rangeStart.getTime() - (rangeEnd.getTime() - rangeStart.getTime()))
   return computeTeamReportForRange(sb, groupId, rangeStart, rangeEnd, prevRangeStart)
+}
+
+interface ReportShareRow { id: string; group_id: string; token: string; group_name: string; report: TeamWeeklyReport; created_at: string }
+const toReportShare = (r: ReportShareRow, baseUrl: string): ReportShare => ({
+  id: r.id, groupId: r.group_id, token: r.token, groupName: r.group_name, report: r.report, createdAt: r.created_at,
+  url: `${baseUrl}/functions/v1/team-report/${r.token}`,
+})
+
+/**
+ * Snapshots `report` (already computed through the caller's own RLS-gated
+ * session — the exact same data "Copy as text" would have pasted) behind a
+ * stable, revocable link served by the `team-report` Edge Function. Not a
+ * live recomputation: the point-in-time snapshot is the whole privacy
+ * story here, see report.ts's ReportShare doc comment.
+ */
+export async function createReportShare(sb: SupabaseClient, groupId: string, groupName: string, report: TeamWeeklyReport, baseUrl: string): Promise<ReportShare> {
+  const token = generateReportShareToken()
+  const { data, error } = await sb.from('report_shares')
+    .insert({ group_id: groupId, token, group_name: groupName, report })
+    .select('id, group_id, token, group_name, report, created_at').single()
+  if (error) fail(error, 'create report share')
+  return toReportShare(data as ReportShareRow, baseUrl)
+}
+
+export async function revokeReportShare(sb: SupabaseClient, id: string): Promise<void> {
+  const { error } = await sb.from('report_shares').delete().eq('id', id)
+  if (error) fail(error, 'revoke report share')
 }
 
 /** A plain-text summary a staff member can paste into Discord or a message — no live link (that would need an Edge Function). */

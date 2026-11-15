@@ -2073,6 +2073,9 @@
     "teamSummary": "{{games}} games, {{rate}}% de victoires en moyenne",
     "copy": "Copier en texte",
     "copied": "Rapport copié — colle-le sur Discord ou dans un message",
+    "share": "Lien de partage",
+    "linkCopied": "Lien copié",
+    "revokeLink": "Révoquer",
     "inProgress": "en cours",
     "col": {
       "player": "Joueur",

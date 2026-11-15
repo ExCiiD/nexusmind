@@ -8,6 +8,7 @@ import * as vodReview from '../../../src/lib/vodReviewCore'
 import * as wellbeing from '../../../src/lib/wellbeingCore'
 import * as teamOps from '../../../src/lib/teamOpsCore'
 import * as report from '../../../src/lib/reportCore'
+import type { TeamWeeklyReport } from '../../../src/lib/report'
 import * as trials from '../../../src/lib/trialsCore'
 import * as scrimsRead from '../../../src/lib/scrimsCore'
 import * as discussion from '../../../src/lib/discussionCore'
@@ -132,6 +133,9 @@ export const staffNotesDelete = (id: string) => teamOps.deleteStaffNote(getSupab
 
 export const reportGetWeekly = (groupId: string, weekStart: string) => report.computeTeamWeeklyReport(getSupabase(), groupId, weekStart)
 export const reportGetForEvent = (groupId: string, eventId: string) => report.computeTeamReportForEvent(getSupabase(), groupId, eventId)
+export const reportCreateShare = (groupId: string, groupName: string, r: TeamWeeklyReport) =>
+  report.createReportShare(getSupabase(), groupId, groupName, r, getSupabaseUrl())
+export const reportRevokeShare = (id: string) => report.revokeReportShare(getSupabase(), id)
 
 export const trialsList = (groupId: string) => trials.listCandidates(getSupabase(), groupId)
 export const trialsCreate = (groupId: string, input: NewTrialCandidateInput) => trials.createCandidate(getSupabase(), groupId, input)

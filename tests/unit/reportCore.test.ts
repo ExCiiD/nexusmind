@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { computeTeamWeeklyReport, computeTeamReportForEvent, reportToText } from '../../src/lib/reportCore'
+import { computeTeamWeeklyReport, computeTeamReportForEvent, reportToText, createReportShare, revokeReportShare } from '../../src/lib/reportCore'
 import type { TeamWeeklyReport } from '../../src/lib/report'
 
 function chain(result: unknown) {
@@ -107,5 +107,40 @@ describe('reportToText', () => {
     expect(text).toContain('top mistake: Overstay ↑ (1 → 2)')
     expect(text).toContain('objectives: 1/1 completed')
     expect(text).toContain('experiment "vision": improved')
+  })
+})
+
+describe('createReportShare / revokeReportShare', () => {
+  const report: TeamWeeklyReport = {
+    groupId: 'g1', weekStart: '2026-11-16', weekEnd: '2026-11-23', totalGames: 2, avgWinrate: 50,
+    players: [],
+  }
+
+  it('createReportShare inserts a snapshot and computes the share URL from the token', async () => {
+    const insert = vi.fn((row: { group_id: string; token: string; group_name: string; report: unknown }) => {
+      expect(row.group_id).toBe('g1')
+      expect(row.group_name).toBe('My Team')
+      expect(row.report).toEqual(report)
+      return {
+        select: () => ({
+          single: () => Promise.resolve({
+            data: { id: 's1', group_id: row.group_id, token: row.token, group_name: row.group_name, report: row.report, created_at: 't' },
+            error: null,
+          }),
+        }),
+      }
+    })
+    const sb = { from: vi.fn(() => ({ insert })) } as never
+    const share = await createReportShare(sb, 'g1', 'My Team', report, 'https://proj.supabase.co')
+    expect(share.groupId).toBe('g1')
+    expect(share.token).toMatch(/^[a-f0-9]{40}$/)
+    expect(share.url).toBe(`https://proj.supabase.co/functions/v1/team-report/${share.token}`)
+  })
+
+  it('revokeReportShare deletes by id', async () => {
+    const del = vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) }))
+    const sb = { from: vi.fn(() => ({ delete: del })) } as never
+    await revokeReportShare(sb, 's1')
+    expect(del).toHaveBeenCalled()
   })
 })

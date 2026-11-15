@@ -151,6 +151,21 @@ export function registerCollabHandlers() {
   validatedHandle('report:get-weekly', z.tuple([uuid, dateOnly]), (_e, groupId, weekStart) => collab.reportGetWeekly(groupId, weekStart))
   validatedHandle('report:get-for-event', z.tuple([uuid, uuid]), (_e, groupId, eventId) => collab.reportGetForEvent(groupId, eventId))
 
+  const mistakeTrend = z.object({ label: z.string(), thisWeek: z.number(), lastWeek: z.number(), direction: z.enum(['up', 'down', 'flat']) })
+  const playerWeeklyReport = z.object({
+    playerId: z.string(), displayName: z.string(), gamesPlayed: z.number(), winrate: z.number().nullable(),
+    reviewsDone: z.number(), reviewsPending: z.number(), mistakeTrends: z.array(mistakeTrend),
+    objectivesAssigned: z.number(), objectivesCompleted: z.number(),
+    experimentVerdicts: z.array(z.object({ problemId: z.string(), verdict: z.string().nullable() })),
+  })
+  const teamWeeklyReport = z.object({
+    groupId: z.string(), weekStart: z.string(), weekEnd: z.string(),
+    players: z.array(playerWeeklyReport), totalGames: z.number(), avgWinrate: z.number().nullable(),
+  })
+  validatedHandle('report:create-share', z.tuple([uuid, z.string().trim().min(1).max(80), teamWeeklyReport]),
+    (_e, groupId, groupName, r) => collab.reportCreateShare(groupId, groupName, r))
+  validatedHandle('report:revoke-share', z.tuple([uuid]), (_e, id) => collab.reportRevokeShare(id))
+
   const trialRole = z.enum(['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'])
   const trialStatus = z.enum(['trialing', 'kept', 'rejected'])
   const candidateInput = z.object({

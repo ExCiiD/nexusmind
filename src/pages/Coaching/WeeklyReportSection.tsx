@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ClipboardCopy, FileBarChart, Loader2 } from 'lucide-react'
+import { ClipboardCopy, FileBarChart, Link2, Loader2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
 import { reportToText } from '@/lib/reportCore'
-import type { TeamWeeklyReport } from '@/lib/report'
+import type { ReportShare, TeamWeeklyReport } from '@/lib/report'
 import type { CalendarEvent } from '@/lib/calendar'
 
 function startOfWeek(d: Date): Date {
@@ -30,6 +31,8 @@ export function WeeklyReportSection({ staffGroups }: { staffGroups: Group[] }) {
   const [tournaments, setTournaments] = useState<CalendarEvent[]>([])
   const [tournamentId, setTournamentId] = useState('')
   const [report, setReport] = useState<TeamWeeklyReport | null>(null)
+  const [share, setShare] = useState<ReportShare | null>(null)
+  const [sharing, setSharing] = useState(false)
 
   useEffect(() => {
     if (!groupId) return
@@ -48,6 +51,7 @@ export function WeeklyReportSection({ staffGroups }: { staffGroups: Group[] }) {
     if (!groupId) return
     if (mode === 'tournament' && !tournamentId) { setReport(null); return }
     setReport(null)
+    setShare(null)
     try {
       setReport(mode === 'week' ? await window.api.reportGetWeekly(groupId, weekStart) : await window.api.reportGetForEvent(groupId, tournamentId))
     } catch (err) {
@@ -63,6 +67,30 @@ export function WeeklyReportSection({ staffGroups }: { staffGroups: Group[] }) {
     if (!report || !group) return
     navigator.clipboard.writeText(reportToText(report, group.name))
     toast({ title: t('weeklyReport.copied', { defaultValue: 'Report copied — paste it in Discord or a message' }), variant: 'gold' })
+  }
+
+  const shareLink = async () => {
+    if (!report || !group) return
+    setSharing(true)
+    try {
+      setShare(await window.api.reportCreateShare(group.id, group.name, report))
+    } catch (err) {
+      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
+    } finally {
+      setSharing(false)
+    }
+  }
+
+  const copyShareUrl = async () => {
+    if (!share) return
+    await navigator.clipboard.writeText(share.url).catch(() => {})
+    toast({ title: t('weeklyReport.linkCopied', { defaultValue: 'Link copied' }), variant: 'gold' })
+  }
+
+  const revokeShare = async () => {
+    if (!share) return
+    try { await window.api.reportRevokeShare(share.id); setShare(null) }
+    catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
   }
 
   const shiftWeek = (deltaDays: number) => {
@@ -127,10 +155,23 @@ export function WeeklyReportSection({ staffGroups }: { staffGroups: Group[] }) {
               <span className="text-hextech-text">
                 {t('weeklyReport.teamSummary', { defaultValue: '{{games}} games, {{rate}}% average winrate', games: report.totalGames, rate: report.avgWinrate ?? '—' })}
               </span>
-              <Button size="sm" variant="outline" onClick={copyText}>
-                <ClipboardCopy className="mr-1 h-3.5 w-3.5" />{t('weeklyReport.copy', { defaultValue: 'Copy as text' })}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={copyText}>
+                  <ClipboardCopy className="mr-1 h-3.5 w-3.5" />{t('weeklyReport.copy', { defaultValue: 'Copy as text' })}
+                </Button>
+                <Button size="sm" variant="outline" onClick={shareLink} disabled={sharing}>
+                  {sharing ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Link2 className="mr-1 h-3.5 w-3.5" />}
+                  {t('weeklyReport.share', { defaultValue: 'Share link' })}
+                </Button>
+              </div>
             </div>
+            {share && (
+              <div className="flex items-center gap-2 rounded-lg border border-hextech-border-dim p-2">
+                <Input readOnly value={share.url} className="flex-1 text-xs" onFocus={(e) => e.currentTarget.select()} />
+                <Button size="sm" variant="outline" onClick={copyShareUrl}><ClipboardCopy className="h-3.5 w-3.5" /></Button>
+                <Button size="sm" variant="ghost" onClick={revokeShare} className="text-hextech-text-dim">{t('weeklyReport.revokeLink', { defaultValue: 'Revoke' })}</Button>
+              </div>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

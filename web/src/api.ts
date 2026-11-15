@@ -230,6 +230,9 @@ export const webApi = {
   // ── E9: weekly reports ──
   reportGetWeekly: (groupId: string, weekStart: string) => reportCore.computeTeamWeeklyReport(sb, groupId, weekStart),
   reportGetForEvent: (groupId: string, eventId: string) => reportCore.computeTeamReportForEvent(sb, groupId, eventId),
+  reportCreateShare: (groupId: string, groupName: string, report: Parameters<typeof reportCore.createReportShare>[3]) =>
+    reportCore.createReportShare(sb, groupId, groupName, report, supabaseUrl),
+  reportRevokeShare: (id: string) => reportCore.revokeReportShare(sb, id),
 
   // ── E10: recruitment trials ──
   trialsList: (groupId: string) => trialsCore.listCandidates(sb, groupId),

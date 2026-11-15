@@ -2073,6 +2073,9 @@
     "teamSummary": "{{games}} games, {{rate}}% average winrate",
     "copy": "Copy as text",
     "copied": "Report copied — paste it in Discord or a message",
+    "share": "Share link",
+    "linkCopied": "Link copied",
+    "revokeLink": "Revoke",
     "inProgress": "in progress",
     "col": {
       "player": "Player",
