@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Group } from '@/lib/collab'
+import { isLegacyStaff } from '@/lib/permissions'
 
 /**
  * Current cloud user + their groups, and a name resolver for comment authors.
@@ -36,7 +37,10 @@ export function useCollab() {
     return (userId: string) => names.get(userId) ?? 'Coach'
   }, [groups])
 
-  const staffGroups = groups.filter((g) => g.myRole !== 'player')
+  // "Legacy" staff (owner/coach/analyst) — dev plans, staff dashboard, weekly
+  // reports, trials, player management: none of this is calendar/session
+  // scoped, so `manager` deliberately does NOT get it (see src/lib/permissions.ts).
+  const staffGroups = groups.filter((g) => isLegacyStaff(g.myRole))
 
   return { available, loading, myUserId, groups, staffGroups, nameOf, reload }
 }

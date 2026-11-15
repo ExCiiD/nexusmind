@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
+import { isLegacyStaff } from '@/lib/permissions'
 import { computeEnergyWinrateCorrelation, computeMoodDeclineAlert } from '@/lib/wellbeingCore'
 import type { WellbeingCheckin } from '@/lib/wellbeing'
 
@@ -17,7 +18,7 @@ interface Props { groups: Group[]; myUserId: string; nameOf: (userId: string) =>
 /** E6 (docs/PLAN_GESTION_EQUIPE.md): optional energy/mood/sleep check-in, private unless the player opts in per group. */
 export function WellbeingSection({ groups, myUserId, nameOf }: Props) {
   const { t } = useTranslation()
-  const staffGroups = groups.filter((g) => g.myRole !== 'player')
+  const staffGroups = groups.filter((g) => isLegacyStaff(g.myRole))
 
   return (
     <Card>

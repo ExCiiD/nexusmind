@@ -4,6 +4,7 @@ import { Users, ListTree, Swords, Target, Loader2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { useCollab } from '@/hooks/useCollab'
+import { isLegacyStaff } from '@/lib/permissions'
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
 import type { Team } from '@/lib/ipc'
 import { RosterTab } from '@/pages/Team/RosterTab'
@@ -128,7 +129,7 @@ export function TeamPage() {
         )}
         {tab === 'draft' && (
           <PanelErrorBoundary key="draft" label="Draft sim">
-            <DraftTab myTeam={myTeam} groupId={groupId ?? undefined} myUserId={myUserId ?? undefined} nameOf={nameOf} isStaff={activeGroup?.myRole !== 'player'} />
+            <DraftTab myTeam={myTeam} groupId={groupId ?? undefined} myUserId={myUserId ?? undefined} nameOf={nameOf} isStaff={!!activeGroup && isLegacyStaff(activeGroup.myRole)} />
           </PanelErrorBoundary>
         )}
         {tab === 'scouting' && (

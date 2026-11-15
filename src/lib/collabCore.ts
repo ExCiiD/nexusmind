@@ -43,7 +43,7 @@ export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Gro
 
   const [groups, members, sharing] = await Promise.all([
     sb.from('groups').select('id, name, kind').in('id', ids),
-    sb.from('group_members').select('group_id, user_id, role, display_name, riot_id, joined_at').in('group_id', ids),
+    sb.from('group_members').select('group_id, user_id, role, is_captain, display_name, riot_id, joined_at').in('group_id', ids),
     sb.from('group_sharing').select('group_id, share_reviews, share_stats, share_team, share_wellbeing').eq('user_id', uid).in('group_id', ids),
   ])
   if (groups.error) fail(groups.error, 'list groups failed')
@@ -58,7 +58,7 @@ export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Gro
       myRole: memberships!.find((m) => m.group_id === g.id)!.role as GroupRole,
       members: (members.data ?? [])
         .filter((m) => m.group_id === g.id)
-        .map((m) => ({ userId: m.user_id, role: m.role as GroupRole, displayName: m.display_name, riotId: m.riot_id, joinedAt: m.joined_at })),
+        .map((m) => ({ userId: m.user_id, role: m.role as GroupRole, isCaptain: !!m.is_captain, displayName: m.display_name, riotId: m.riot_id, joinedAt: m.joined_at })),
       sharing: {
         shareReviews: share?.share_reviews ?? true,
         shareStats: share?.share_stats ?? true,
@@ -89,6 +89,14 @@ export async function joinGroup(sb: SupabaseClient, code: string, id: MemberIden
   const { data, error } = await sb.rpc('join_group', { p_code: code, p_display_name: id.displayName, p_riot_id: id.riotId })
   if (error) fail(error, 'join failed')
   return data as string
+}
+
+/** Owner-only (enforced by the `set_captain` RPC, not by this function) —
+ *  flags/unflags one roster player as "captain" (session-management rights,
+ *  additive to whatever role they already have; see src/lib/permissions.ts). */
+export async function setCaptain(sb: SupabaseClient, groupId: string, userId: string, isCaptain: boolean): Promise<void> {
+  const { error } = await sb.rpc('set_captain', { p_group: groupId, p_user: userId, p_value: isCaptain })
+  if (error) fail(error, 'set captain failed')
 }
 
 export async function leaveGroup(sb: SupabaseClient, uid: string, groupId: string): Promise<void> {

@@ -4,7 +4,7 @@ import * as collab from '../cloud/collab'
 
 const uuid = z.string().uuid()
 const recordId = z.string().min(1).max(128)
-const role = z.enum(['coach', 'analyst', 'player'])
+const role = z.enum(['coach', 'manager', 'analyst', 'player'])
 const objectiveId = z.string().min(1).max(64)
 
 export function registerCollabHandlers() {
@@ -18,6 +18,7 @@ export function registerCollabHandlers() {
   validatedHandle('collab:leave', z.tuple([uuid]), (_e, groupId) => collab.leaveGroup(groupId))
   validatedHandle('collab:delete-group', z.tuple([uuid, z.literal('DELETE')]), (_e, groupId) => collab.deleteGroup(groupId))
   validatedHandle('collab:remove-member', z.tuple([uuid, uuid]), (_e, groupId, userId) => collab.removeMember(groupId, userId))
+  validatedHandle('collab:set-captain', z.tuple([uuid, uuid, z.boolean()]), (_e, groupId, userId, isCaptain) => collab.setCaptain(groupId, userId, isCaptain))
   validatedHandle('collab:set-sharing', z.tuple([uuid, z.object({ shareReviews: z.boolean(), shareStats: z.boolean(), shareTeam: z.boolean(), shareWellbeing: z.boolean() })]),
     (_e, groupId, s) => collab.setSharing(groupId, s))
 

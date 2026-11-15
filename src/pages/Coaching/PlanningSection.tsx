@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
+import { isLegacyStaff } from '@/lib/permissions'
 import { eventsToICS, type AvailabilityException, type AvailabilityRule, type CalendarEvent, type CalendarEventKind, type CalendarSubscription, type CommonFreeWindow } from '@/lib/calendar'
 import { findCommonAvailability } from '@/lib/calendarCore'
 import type { ScrimSummary } from '@/lib/scrims'
@@ -33,7 +34,11 @@ export function PlanningSection({ groups, myUserId }: Props) {
   const { toast } = useToast()
   const [groupId, setGroupId] = useState(groups[0]?.id ?? null)
   const group = groups.find((g) => g.id === groupId)
-  const isStaff = group?.myRole !== 'player'
+  // Temporary: calendar RLS is still is_group_staff-gated until the Planning
+  // grid rework (Phase 1) switches it to can_edit_calendar (owner/coach/manager,
+  // analyst loses write). Using isLegacyStaff here just avoids a manager
+  // seeing edit UI that would currently 403.
+  const isStaff = !!group && isLegacyStaff(group.myRole)
 
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const [events, setEvents] = useState<CalendarEvent[] | null>(null)

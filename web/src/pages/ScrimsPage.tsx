@@ -12,12 +12,15 @@ import { useCollab } from '@/hooks/useCollab'
 import { DiscussionThread } from '@/components/team/DiscussionThread'
 import { cn } from '@/lib/utils'
 import type { Group } from '@/lib/collab'
+import { isLegacyStaff } from '@/lib/permissions'
 import {
   createScrim, deleteScrim, listAvailability, listScrims, listTeamDrafts, setAvailability, updateScrim,
   type Availability, type AvailabilityRow, type Scrim, type TeamDraft,
 } from '../scrims'
 
-const isStaff = (g?: Group) => !!g && g.myRole !== 'player'
+// scrims RLS (insert/update/delete) is is_group_staff-gated — a manager
+// would see this UI but get a server-side 403 otherwise.
+const isStaff = (g?: Group) => !!g && isLegacyStaff(g.myRole)
 const DEFAULT_CHECKLIST = ['web.scrims.defaults.draft', 'web.scrims.defaults.comms', 'web.scrims.defaults.goals']
 
 export function ScrimsPage() {

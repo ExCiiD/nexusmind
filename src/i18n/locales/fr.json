@@ -1309,6 +1309,7 @@
     "roles": {
       "owner": "Propriétaire",
       "coach": "Coach",
+      "manager": "Manager",
       "analyst": "Analyste",
       "player": "Joueur"
     },
@@ -1329,6 +1330,8 @@
       "copy": "Copier",
       "copied": "Code copié",
       "remove": "Retirer du groupe",
+      "setCaptain": "Nommer capitaine (droits de gestion de session)",
+      "unsetCaptain": "Retirer le statut de capitaine",
       "leave": "Quitter le groupe",
       "delete": "Supprimer le groupe",
       "deleteConfirm": "Supprimer « {{name}} » pour tous les membres ? Les commentaires et objectifs assignés seront supprimés."

@@ -116,6 +116,7 @@ const api = {
   collabLeave: (groupId: string) => ipcRenderer.invoke('collab:leave', groupId),
   collabDeleteGroup: (groupId: string, confirm: 'DELETE') => ipcRenderer.invoke('collab:delete-group', groupId, confirm),
   collabRemoveMember: (groupId: string, userId: string) => ipcRenderer.invoke('collab:remove-member', groupId, userId),
+  collabSetCaptain: (groupId: string, userId: string, isCaptain: boolean) => ipcRenderer.invoke('collab:set-captain', groupId, userId, isCaptain),
   collabSetSharing: (groupId: string, s: { shareReviews: boolean; shareStats: boolean; shareTeam: boolean; shareWellbeing: boolean }) =>
     ipcRenderer.invoke('collab:set-sharing', groupId, s),
   collabPlayerSessions: (playerId: string) => ipcRenderer.invoke('collab:player-sessions', playerId),

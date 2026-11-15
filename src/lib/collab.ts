@@ -2,12 +2,16 @@
 import type { PlayerDashboardRow } from './staffDashboard'
 import type { DevPlanApi } from './devPlan'
 
-export type GroupRole = 'owner' | 'coach' | 'analyst' | 'player'
+export type GroupRole = 'owner' | 'coach' | 'manager' | 'analyst' | 'player'
 export type GroupKind = 'team' | 'coaching'
 
 export interface GroupMember {
   userId: string
   role: GroupRole
+  /** Session-management rights (set objectives, run the review flow) on top
+   *  of whatever `role` already grants — owner-settable only, see
+   *  `src/lib/permissions.ts`. */
+  isCaptain: boolean
   displayName: string | null
   riotId: string | null
   joinedAt: string
@@ -95,6 +99,8 @@ export interface CollabApi extends DevPlanApi {
   collabLeave: (groupId: string) => Promise<void>
   collabDeleteGroup: (groupId: string, confirm: 'DELETE') => Promise<void>
   collabRemoveMember: (groupId: string, userId: string) => Promise<void>
+  /** Owner-only; see src/lib/permissions.ts for what the flag grants. */
+  collabSetCaptain: (groupId: string, userId: string, isCaptain: boolean) => Promise<void>
   collabSetSharing: (groupId: string, s: GroupSharing) => Promise<void>
   collabPlayerSessions: (playerId: string) => Promise<PlayerSessionView[]>
   collabListComments: (reviewId: string, playerId?: string) => Promise<ReviewComment[]>

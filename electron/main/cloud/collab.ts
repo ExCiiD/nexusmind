@@ -56,6 +56,7 @@ export const joinGroup = async (code: string) => core.joinGroup(getSupabase(), c
 export const leaveGroup = async (groupId: string) => core.leaveGroup(getSupabase(), await me(), groupId)
 export const deleteGroup = (groupId: string) => core.deleteGroup(getSupabase(), groupId)
 export const removeMember = (groupId: string, userId: string) => core.removeMember(getSupabase(), groupId, userId)
+export const setCaptain = (groupId: string, userId: string, isCaptain: boolean) => core.setCaptain(getSupabase(), groupId, userId, isCaptain)
 export const setSharing = async (groupId: string, s: GroupSharing) => core.setSharing(getSupabase(), await me(), groupId, s)
 export const getPlayerSessions = (playerId: string) => core.getPlayerSessions(getSupabase(), playerId)
 export const listComments = async (reviewId: string, playerId?: string) =>

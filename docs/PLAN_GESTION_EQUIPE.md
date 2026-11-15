@@ -182,6 +182,30 @@ Nouveau rôle proposé : **manager** (logistique, planning, sans accès aux note
   - Aucun changement au calcul des stats (déjà consolidé en E16) — purement présentation.
 - Vérification : relecture soigneuse (a débusqué et corrigé un bug d'alignement des séparateurs de colonnes avant commit) + un harnais HTML jetable chargeant le CSS Tailwind compilé pour un contrôle visuel rapide du tableau (groupes, sticky, zébrage) avant de le supprimer ; pas de compte de test disponible pour vérifier en conditions réelles dans l'app.
 
+## 9. Nouveau chantier — Planning façon Google Calendar + Sessions d'équipe (16/11/2026, demandé par l'utilisateur)
+
+Chantier à 6 phases (0 à 5), livrées une par une (comme §8) : refonte du Planning en grille horaire cliquable, rôle `manager` + flag `captain`, annonces fondues dans le Planning, puis la grosse pièce — des « sessions d'équipe » qui s'ouvrent automatiquement depuis le calendrier, suivent les games en direct (stats par match, comparaison de duels par rôle), et pour les reviews/réunions : enregistrement écran+voix, transcription locale (Whisper), publication YouTube automatique. Plan complet dans `luminous-wobbling-sketch.md` (session Claude du 16/11/2026) ; décisions déjà actées : synchro par polling rapide (pas de Realtime), transcription locale (pas d'API cloud), capitaine = flag joueur posé par le owner.
+
+### Phase 0 — Fondation permissions : rôle `manager` + flag `captain` 🟡 v1 livré (16/11/2026)
+- **Livré** : `group_members.role` et `group_invites.role` acceptent désormais `manager` (inviter en tant que coach **ou** manager reste owner-only, même garde-fou que coach avant). Nouveau `group_members.is_captain` (bool, settable uniquement par le owner via la RPC `set_captain`, jamais directement en colonne pour qu'un capitaine ne puisse pas se retirer/ajouter le flag lui-même). Deux nouvelles fonctions SQL **volontairement séparées** de `private.is_group_staff` (qui reste owner/coach/analyst, inchangée pour plans de dev, review VOD, trials, notes privées, invites) : `private.can_edit_calendar` (owner/coach/manager — pour le Planning, Phase 1+) et `private.can_manage_session` (owner/coach/manager, ou capitaine — pour les sessions d'équipe, Phase 3+).
+- Côté app : `GroupRole`/`GroupMember.isCaptain` étendus, nouveau `src/lib/permissions.ts` (3 prédicats purs : `isLegacyStaff`/`canEditCalendar`/`canManageSession`) comme source unique de vérité. Audit complet de tous les écrans qui faisaient un `myRole !== 'player'` approximatif (GroupsSection, TeamOpsSection, VodReviewSection, WellbeingSection, PlanningSection, ScrimsPage web, TeamPage web, `useCollab`) — chacun repointé sur `isLegacyStaff` pour rester fidèle à son RLS réel (toujours `is_group_staff` pour l'instant) : sans ça, un manager aurait vu des boutons d'action qui échouaient silencieusement en 403 côté serveur. UI : nouvelle étoile « capitaine » (owner-only) dans la liste des membres de groupe, option « Manager » dans le menu d'invitation (owner-only, comme coach).
+- **⏳ restant** : rien côté Phase 0 elle-même — c'est la fondation des phases 1 à 5 ci-dessous (pas encore commencées).
+
+### Phase 1 — Grille de planning façon Google Calendar ⏳ pas commencé
+Grille horaire cliquable/glissable (événements + disponibilités comme deux calques distincts), popup de création avec sélecteur de type (tournoi/review/soloQ/scrim/flex/1:1/repos/réunion/autre), personnes concernées (toute l'équipe / tous les joueurs / tout le staff), scrims liés au vrai module Scrims (visible Équipe **et** Coaching), et une fonction « demander un événement » pour qui n'a pas les droits d'édition.
+
+### Phase 2 — Annonces fondues dans le Planning ⏳ pas commencé
+Suppression de la page « Annonces & tâches » côté annonces (les tâches restent), bulle de notification persistante (fermée uniquement par clic explicite, jamais ré-empilée sur un cycle de poll) sur app + web, relais Discord **immédiat** (pas le cron de 15 min existant).
+
+### Phase 3 — Sessions d'équipe : cycle de vie, synchro rapide, objectifs ⏳ pas commencé
+Une session s'ouvre automatiquement pour chaque événement scrim/flex/tournoi/réunion, compte à rebour sur app/web/Discord, synchro via le système de sync existant accéléré (~7,5s au lieu de 30s pendant une session active — pas de nouvelle infra Realtime). Les responsables (coach/manager/capitaine) choisissent les objectifs de session, avec un bouton « + Ajouter un fondamental » pour des fondamentaux propres à l'équipe.
+
+### Phase 4 — Stats par game et comparaison de duels ⏳ pas commencé
+Un seul fetch Riot match-v5 par game suffit (les 5 joueurs d'un côté partagent le même matchId) — pas besoin de clé Product Riot. En-tête « Équipe A vs Équipe B » (KDA/Gold/Vision/durée), tableau complet réutilisant `StatsTable` (exporté depuis `DashboardLayout.tsx`), comparaison par rôle (Top vs Top, Jungle vs Jungle…) sous forme de tableau (pas de radar chart).
+
+### Phase 5 — Enregistrement, transcription locale, YouTube, review de fin de session, réunions ⏳ pas commencé
+Whisper embarqué (local, pas d'API cloud) pour transcrire les reviews coach et les réunions ; réutilisation complète du pipeline YouTube déjà existant (OAuth + upload resumable, construit pour le partage solo) pour la publication automatique (par défaut non répertoriée) ; garde-fou avant une session enregistrée (chaîne YouTube connectée obligatoire, dérogation possible en cas de mauvaise connexion).
+
 ### Idée transverse — nourrir le moteur de règles avec du contenu externe 💡 (exploratoire, pas cadrée)
 - Idée formulée par l'utilisateur : alimenter occasionnellement le moteur de règles métier (voir [`MOTEUR_REGLES.md`](MOTEUR_REGLES.md)) avec des informations trouvées à droite à gauche (transcriptions de vidéos YouTube, analyses de pro games sur les réseaux…), pour qu'il se comporte davantage comme un assistant qui apprend de contenu externe — et à terme, un bot plus proche de l'IA.
 - Tension à trancler avant de cadrer : tout le moteur actuel (Phase A de `ROADMAP.md`) est **déterministe et 100 % local**, décision explicite pour ne pas payer d'IA (A5). Extraire des faits utiles d'une transcription ou d'un tweet non structuré est un problème de compréhension de texte libre — difficilement faisable en règles pures. Deux voies possibles, à décider plus tard : (a) un LLM **local** (Ollama, déjà noté comme piste 💡 en A4) uniquement pour transformer le texte libre en faits structurés, jamais pour décider ; ou (b) rester 100 % règles et faire saisir les faits par le staff via un formulaire structuré (pas de texte libre). Volontairement laissé en idée (pas en épic chiffré) tant que ce choix n'est pas fait.
@@ -198,8 +222,12 @@ E12 ✅ (tiers/menaces précis) → E14 ✅ (portage web, parité complète) ↘
                                                                         E13 ✅ (UX Coaching)
 E15 ✅ (perf fetch) + E16 ✅ (stats + prépa clé Product) → E17 ✅ (UX Stats)
 E11 🟡 (bot Discord) — code livré, déploiement bloqué sur la création de l'app Discord (utilisateur)
+
+Chantier §9 (16/11/2026) :
+Phase 0 ✅ (rôle manager + capitaine) → Phase 1 (grille Planning) → Phase 2 (annonces)
+   → Phase 3 (sessions d'équipe, cycle de vie) → Phase 4 (stats par game) → Phase 5 (recording/transcription/YouTube)
 ```
-E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 (14-15/11/2026) : E12 à E17 livrés, E11 codé mais pas déployé (blocage légitime — création de l'app Discord nécessite le compte de l'utilisateur, voir `CLOUD_SETUP.md` §5). Le chantier §8 est donc fonctionnellement terminé côté code.
+E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 (14-15/11/2026) : E12 à E17 livrés, E11 codé mais pas déployé (blocage légitime — création de l'app Discord nécessite le compte de l'utilisateur, voir `CLOUD_SETUP.md` §5). Le chantier §8 est donc fonctionnellement terminé côté code. Le chantier §9 (16/11/2026) vient de démarrer : Phase 0 livrée, Phases 1-5 à venir dans l'ordre.
 
 ## 6. Impacts techniques
 

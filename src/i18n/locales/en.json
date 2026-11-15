@@ -1309,6 +1309,7 @@
     "roles": {
       "owner": "Owner",
       "coach": "Coach",
+      "manager": "Manager",
       "analyst": "Analyst",
       "player": "Player"
     },
@@ -1329,6 +1330,8 @@
       "copy": "Copy",
       "copied": "Code copied",
       "remove": "Remove from group",
+      "setCaptain": "Make captain (session management rights)",
+      "unsetCaptain": "Remove captain",
       "leave": "Leave group",
       "delete": "Delete group",
       "deleteConfirm": "Delete \"{{name}}\" for every member? Comments and assigned objectives will be deleted."

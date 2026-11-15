@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Copy, Loader2, LogOut, Plus, Trash2, UserMinus, Users } from 'lucide-react'
+import { Copy, Loader2, LogOut, Plus, Star, Trash2, UserMinus, Users } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,8 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group, type GroupKind, type GroupRole } from '@/lib/collab'
+import { cn } from '@/lib/utils'
+import { isLegacyStaff } from '@/lib/permissions'
 
 interface Props {
   groups: Group[]
@@ -96,7 +98,9 @@ export function GroupsSection({ groups, myUserId, reload }: Props) {
       </Card>
 
       {groups.map((g) => {
-        const staff = g.myRole !== 'player'
+        // Inviting (create_group_invite RPC) is still is_group_staff-gated —
+        // a manager would see this UI but get a server-side 403 otherwise.
+        const staff = isLegacyStaff(g.myRole)
         return (
           <Card key={g.id}>
             <CardHeader className="pb-2">
@@ -116,6 +120,16 @@ export function GroupsSection({ groups, myUserId, reload }: Props) {
                     </span>
                     <span className="flex items-center gap-2 text-xs text-hextech-text-dim">
                       {roleLabel(m.role)}
+                      {g.myRole === 'owner' ? (
+                        <button
+                          title={m.isCaptain ? t('coaching.groups.unsetCaptain') : t('coaching.groups.setCaptain')}
+                          onClick={() => run(`captain-${m.userId}`, async () => { await window.api.collabSetCaptain(g.id, m.userId, !m.isCaptain); await reload() })}
+                        >
+                          <Star className={cn('h-3.5 w-3.5', m.isCaptain ? 'fill-hextech-gold text-hextech-gold' : 'hover:text-hextech-gold')} />
+                        </button>
+                      ) : m.isCaptain && (
+                        <Star className="h-3.5 w-3.5 fill-hextech-gold text-hextech-gold" />
+                      )}
                       {g.myRole === 'owner' && m.userId !== myUserId && (
                         <button title={t('coaching.groups.remove')} onClick={() => run(`rm-${m.userId}`, async () => { await window.api.collabRemoveMember(g.id, m.userId); await reload() })}>
                           <UserMinus className="h-3.5 w-3.5 hover:text-[#E24C3A]" />
@@ -134,6 +148,7 @@ export function GroupsSection({ groups, myUserId, reload }: Props) {
                       <SelectItem value="player">{roleLabel('player')}</SelectItem>
                       <SelectItem value="analyst">{roleLabel('analyst')}</SelectItem>
                       {g.myRole === 'owner' && <SelectItem value="coach">{roleLabel('coach')}</SelectItem>}
+                      {g.myRole === 'owner' && <SelectItem value="manager">{roleLabel('manager')}</SelectItem>}
                     </SelectContent>
                   </Select>
                   <Button size="sm" variant="outline" onClick={() => invite(g)} disabled={busy !== null}>

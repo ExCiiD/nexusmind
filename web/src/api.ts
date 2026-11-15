@@ -151,6 +151,7 @@ export const webApi = {
   collabLeave: async (groupId: string) => core.leaveGroup(sb, await currentUserId(), groupId),
   collabDeleteGroup: (groupId: string) => core.deleteGroup(sb, groupId),
   collabRemoveMember: (groupId: string, userId: string) => core.removeMember(sb, groupId, userId),
+  collabSetCaptain: (groupId: string, userId: string, isCaptain: boolean) => core.setCaptain(sb, groupId, userId, isCaptain),
   collabSetSharing: async (groupId: string, s: { shareReviews: boolean; shareStats: boolean; shareTeam: boolean; shareWellbeing: boolean }) =>
     core.setSharing(sb, await currentUserId(), groupId, s),
   collabPlayerSessions: (playerId: string) => core.getPlayerSessions(sb, playerId),

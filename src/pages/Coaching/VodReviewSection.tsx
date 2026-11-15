@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
+import { isLegacyStaff } from '@/lib/permissions'
 import type { NewVodAssignmentInput, TeamMistakeTag, VodReviewSession } from '@/lib/vodReview'
 import type { ScrimSummary } from '@/lib/scrims'
 
@@ -27,7 +28,7 @@ export function VodReviewSection({ groups, myUserId, nameOf }: Props) {
   const { toast } = useToast()
   const [groupId, setGroupId] = useState(groups[0]?.id ?? null)
   const group = groups.find((g) => g.id === groupId)
-  const isStaff = group?.myRole !== 'player'
+  const isStaff = !!group && isLegacyStaff(group.myRole)
 
   const [sessions, setSessions] = useState<VodReviewSession[] | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)

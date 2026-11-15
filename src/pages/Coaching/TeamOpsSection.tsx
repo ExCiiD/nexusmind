@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
+import { isLegacyStaff } from '@/lib/permissions'
 import type { Announcement, Task } from '@/lib/teamOps'
 
 interface Props { groups: Group[]; myUserId: string; nameOf: (userId: string) => string }
@@ -17,7 +18,9 @@ export function TeamOpsSection({ groups, myUserId, nameOf }: Props) {
   const { t } = useTranslation()
   const [groupId, setGroupId] = useState(groups[0]?.id ?? null)
   const group = groups.find((g) => g.id === groupId)
-  const isStaff = group?.myRole !== 'player'
+  // Tasks AND Announcements are both still is_group_staff-gated today;
+  // Announcements move to canEditCalendar (Phase 2, folded into Planning).
+  const isStaff = !!group && isLegacyStaff(group.myRole)
 
   if (groups.length === 0) return null
 
