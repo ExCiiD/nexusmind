@@ -191,8 +191,10 @@ Chantier à 6 phases (0 à 5), livrées une par une (comme §8) : refonte du Pla
 - Côté app : `GroupRole`/`GroupMember.isCaptain` étendus, nouveau `src/lib/permissions.ts` (3 prédicats purs : `isLegacyStaff`/`canEditCalendar`/`canManageSession`) comme source unique de vérité. Audit complet de tous les écrans qui faisaient un `myRole !== 'player'` approximatif (GroupsSection, TeamOpsSection, VodReviewSection, WellbeingSection, PlanningSection, ScrimsPage web, TeamPage web, `useCollab`) — chacun repointé sur `isLegacyStaff` pour rester fidèle à son RLS réel (toujours `is_group_staff` pour l'instant) : sans ça, un manager aurait vu des boutons d'action qui échouaient silencieusement en 403 côté serveur. UI : nouvelle étoile « capitaine » (owner-only) dans la liste des membres de groupe, option « Manager » dans le menu d'invitation (owner-only, comme coach).
 - **⏳ restant** : rien côté Phase 0 elle-même — c'est la fondation des phases 1 à 5 ci-dessous (pas encore commencées).
 
-### Phase 1 — Grille de planning façon Google Calendar ⏳ pas commencé
-Grille horaire cliquable/glissable (événements + disponibilités comme deux calques distincts), popup de création avec sélecteur de type (tournoi/review/soloQ/scrim/flex/1:1/repos/réunion/autre), personnes concernées (toute l'équipe / tous les joueurs / tout le staff), scrims liés au vrai module Scrims (visible Équipe **et** Coaching), et une fonction « demander un événement » pour qui n'a pas les droits d'édition.
+### Phase 1 — Grille de planning façon Google Calendar 🟡 v1 livré (16/11/2026)
+- **Livré** : `WeekGrid.tsx` — grille horaire (8h-24h) avec deux surfaces de drag indépendantes par jour : la voie principale (événements d'équipe) et un rail étroit sur le bord (disponibilité personnelle, click-glisser crée une `availability_exceptions` pour cette date précise ; cliquer un bloc existant le supprime). Popup de création (`EventPopup.tsx`) avec le sélecteur de type demandé (tournoi/review/soloQ/scrim/flex/1:1/repos/réunion/« autre » en texte libre), personnes concernées (boutons toute l'équipe/tous les joueurs/tout le staff + sélection individuelle), et un lien optionnel vers un scrim existant (`linked_scrim_id`) quand le type est scrim/flex. Nouvelle fonction « demander un événement » (`RequestEventDialog.tsx`, popup : nom + personnes concernées + date/heure préférée, purement informatif) et sa file côté staff (`EventRequestsQueue.tsx`), avec notification (in-app + relais Discord) à la création d'une demande.
+- Permissions : RLS de `calendar_events`/`availability_rules`/`availability_exceptions` basculée de `is_group_staff` vers `can_edit_calendar` (Phase 0) — l'analyste perd l'édition du planning, le manager l'obtient, exactement la matrice demandée.
+- **⏳ restant** : lier formellement le popup à la **création** d'un nouveau scrim depuis le calendrier (aujourd'hui : lien vers un scrim déjà créé sur la page Scrims web uniquement — créer un scrim est encore une action web-only, `scrims.ts` n'est pas branché sur `window.api` côté desktop) ; rendre le module Scrims visible/réutilisable depuis la page Équipe en plus de Coaching (extraction d'un `ScrimsPanel` partagé, pas encore fait) ; pas de compte de test disponible pour une vérification interactive complète (drag réel, clic sur un événement) en conditions réelles.
 
 ### Phase 2 — Annonces fondues dans le Planning ⏳ pas commencé
 Suppression de la page « Annonces & tâches » côté annonces (les tâches restent), bulle de notification persistante (fermée uniquement par clic explicite, jamais ré-empilée sur un cycle de poll) sur app + web, relais Discord **immédiat** (pas le cron de 15 min existant).
@@ -224,10 +226,10 @@ E15 ✅ (perf fetch) + E16 ✅ (stats + prépa clé Product) → E17 ✅ (UX Sta
 E11 🟡 (bot Discord) — code livré, déploiement bloqué sur la création de l'app Discord (utilisateur)
 
 Chantier §9 (16/11/2026) :
-Phase 0 ✅ (rôle manager + capitaine) → Phase 1 (grille Planning) → Phase 2 (annonces)
+Phase 0 ✅ (rôle manager + capitaine) → Phase 1 ✅ (grille Planning) → Phase 2 (annonces)
    → Phase 3 (sessions d'équipe, cycle de vie) → Phase 4 (stats par game) → Phase 5 (recording/transcription/YouTube)
 ```
-E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 (14-15/11/2026) : E12 à E17 livrés, E11 codé mais pas déployé (blocage légitime — création de l'app Discord nécessite le compte de l'utilisateur, voir `CLOUD_SETUP.md` §5). Le chantier §8 est donc fonctionnellement terminé côté code. Le chantier §9 (16/11/2026) vient de démarrer : Phase 0 livrée, Phases 1-5 à venir dans l'ordre.
+E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 (14-15/11/2026) : E12 à E17 livrés, E11 codé mais pas déployé (blocage légitime — création de l'app Discord nécessite le compte de l'utilisateur, voir `CLOUD_SETUP.md` §5). Le chantier §8 est donc fonctionnellement terminé côté code. Le chantier §9 (16/11/2026) : Phases 0 et 1 livrées, Phases 2-5 à venir dans l'ordre.
 
 ## 6. Impacts techniques
 

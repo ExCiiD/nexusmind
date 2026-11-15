@@ -1,9 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
-  AvailabilityException, AvailabilityRule, CalendarEvent, CalendarSubscription, CommonFreeWindow,
-  NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput,
+  AttendeeScope, AvailabilityException, AvailabilityRule, CalendarEvent, CalendarEventRequest, CalendarSubscription,
+  CommonFreeWindow, EventRequestStatus, NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput, NewEventRequestInput,
 } from './calendar'
 import { generateCalendarSubscriptionToken } from './calendar'
+import type { GroupMember } from './collab'
 
 /**
  * Planning & presence (E4), same pattern as teamCore.ts/devPlanCore.ts.
@@ -16,13 +17,28 @@ function fail(error: { message: string; code?: string } | null, fallback: string
   throw new Error(msg)
 }
 
-interface EventRow { id: string; group_id: string; kind: CalendarEvent['kind']; title: string; starts_at: string; ends_at: string; notes: string | null; created_by: string; created_at: string; updated_at: string }
+interface EventRow {
+  id: string; group_id: string; kind: CalendarEvent['kind']; title: string; starts_at: string; ends_at: string
+  notes: string | null; linked_scrim_id: string | null; attendee_scope: AttendeeScope
+  created_by: string; created_at: string; updated_at: string
+}
 interface RuleRow { id: string; group_id: string; user_id: string; weekday: number; start_time: string; end_time: string }
 interface ExceptionRow { id: string; group_id: string; user_id: string; date: string; available: boolean; start_time: string | null; end_time: string | null; note: string | null }
+interface EventRequestRow {
+  id: string; group_id: string; requested_by: string; event_name: string; people_concerned: string[]
+  preferred_start: string | null; preferred_end: string | null; status: EventRequestStatus; created_at: string
+}
 
-const toEvent = (r: EventRow): CalendarEvent => ({
+const EVENT_SELECT = 'id, group_id, kind, title, starts_at, ends_at, notes, linked_scrim_id, attendee_scope, created_by, created_at, updated_at'
+
+const toEvent = (r: EventRow, attendeeUserIds: string[]): CalendarEvent => ({
   id: r.id, groupId: r.group_id, kind: r.kind, title: r.title, startsAt: r.starts_at, endsAt: r.ends_at,
-  notes: r.notes, createdBy: r.created_by, createdAt: r.created_at, updatedAt: r.updated_at,
+  notes: r.notes, linkedScrimId: r.linked_scrim_id, attendeeScope: r.attendee_scope, attendeeUserIds,
+  createdBy: r.created_by, createdAt: r.created_at, updatedAt: r.updated_at,
+})
+const toEventRequest = (r: EventRequestRow): CalendarEventRequest => ({
+  id: r.id, groupId: r.group_id, requestedBy: r.requested_by, eventName: r.event_name, peopleConcerned: r.people_concerned,
+  preferredStart: r.preferred_start, preferredEnd: r.preferred_end, status: r.status, createdAt: r.created_at,
 })
 const toRule = (r: RuleRow): AvailabilityRule => ({
   id: r.id, groupId: r.group_id, userId: r.user_id, weekday: r.weekday,
@@ -33,33 +49,104 @@ const toException = (r: ExceptionRow): AvailabilityException => ({
   startTime: r.start_time?.slice(0, 5) ?? null, endTime: r.end_time?.slice(0, 5) ?? null, note: r.note,
 })
 
+/** Bulk-fetches attendees for a batch of event ids, grouped by event. Split
+ *  out of `listEvents` so `getEvent` (single-event) can reuse it too. */
+async function attendeesByEvent(sb: SupabaseClient, eventIds: string[]): Promise<Map<string, string[]>> {
+  const byEvent = new Map<string, string[]>()
+  if (eventIds.length === 0) return byEvent
+  const { data, error } = await sb.from('calendar_event_attendees').select('event_id, user_id').in('event_id', eventIds)
+  if (error) fail(error, 'list event attendees')
+  for (const r of data ?? []) byEvent.set(r.event_id, [...(byEvent.get(r.event_id) ?? []), r.user_id])
+  return byEvent
+}
+
 export async function listEvents(sb: SupabaseClient, groupId: string, fromISO: string, toISO: string): Promise<CalendarEvent[]> {
   const { data, error } = await sb.from('calendar_events')
-    .select('id, group_id, kind, title, starts_at, ends_at, notes, created_by, created_at, updated_at')
-    .eq('group_id', groupId).gte('starts_at', fromISO).lt('starts_at', toISO).order('starts_at')
+    .select(EVENT_SELECT).eq('group_id', groupId).gte('starts_at', fromISO).lt('starts_at', toISO).order('starts_at')
   if (error) fail(error, 'list events')
-  return (data as EventRow[]).map(toEvent)
+  const rows = data as EventRow[]
+  const byEvent = await attendeesByEvent(sb, rows.map((r) => r.id))
+  return rows.map((r) => toEvent(r, byEvent.get(r.id) ?? []))
 }
 
 export async function createEvent(sb: SupabaseClient, groupId: string, input: NewEventInput): Promise<string> {
   const { data, error } = await sb.from('calendar_events').insert({
     group_id: groupId, kind: input.kind, title: input.title, starts_at: input.startsAt, ends_at: input.endsAt,
-    notes: input.notes ?? null,
+    notes: input.notes ?? null, linked_scrim_id: input.linkedScrimId ?? null, attendee_scope: input.attendeeScope ?? 'custom',
   }).select('id').single()
   if (error) fail(error, 'create event')
+  const attendeeUserIds = input.attendeeUserIds ?? []
+  if (attendeeUserIds.length > 0) {
+    const { error: attErr } = await sb.from('calendar_event_attendees').insert(attendeeUserIds.map((userId) => ({ event_id: data.id, user_id: userId })))
+    if (attErr) fail(attErr, 'set event attendees')
+  }
   return data.id
 }
 
 export async function updateEvent(sb: SupabaseClient, id: string, input: NewEventInput): Promise<void> {
   const { error } = await sb.from('calendar_events').update({
     kind: input.kind, title: input.title, starts_at: input.startsAt, ends_at: input.endsAt, notes: input.notes ?? null,
+    linked_scrim_id: input.linkedScrimId ?? null, attendee_scope: input.attendeeScope ?? 'custom',
   }).eq('id', id)
   if (error) fail(error, 'update event')
+  // Attendees aren't part of this row — replace the snapshot wholesale when
+  // the caller provides one (omitting attendeeUserIds leaves it untouched).
+  if (input.attendeeUserIds) {
+    const { error: delErr } = await sb.from('calendar_event_attendees').delete().eq('event_id', id)
+    if (delErr) fail(delErr, 'clear event attendees')
+    if (input.attendeeUserIds.length > 0) {
+      const { error: attErr } = await sb.from('calendar_event_attendees').insert(input.attendeeUserIds.map((userId) => ({ event_id: id, user_id: userId })))
+      if (attErr) fail(attErr, 'set event attendees')
+    }
+  }
 }
 
 export async function deleteEvent(sb: SupabaseClient, id: string): Promise<void> {
   const { error } = await sb.from('calendar_events').delete().eq('id', id)
   if (error) fail(error, 'delete event')
+}
+
+/** Resolves an attendee quick-select scope against the group's current
+ *  roster into a concrete user-id list — the result is what actually gets
+ *  written (a snapshot), the scope itself is kept only for display/re-editing
+ *  (see CalendarEvent.attendeeScope's doc comment in calendar.ts). */
+export function resolveAttendeeScope(scope: AttendeeScope, members: GroupMember[], customUserIds: string[] = []): string[] {
+  switch (scope) {
+    case 'whole_team': return members.map((m) => m.userId)
+    case 'all_players': return members.filter((m) => m.role === 'player').map((m) => m.userId)
+    case 'all_staff': return members.filter((m) => m.role !== 'player').map((m) => m.userId)
+    case 'custom': return customUserIds
+  }
+}
+
+// ── "Request an event" (Phase 1) — informational only, never writes a real
+// calendar_events row. ───────────────────────────────────────────────────
+
+export async function createEventRequest(sb: SupabaseClient, groupId: string, input: NewEventRequestInput): Promise<string> {
+  const { data, error } = await sb.from('calendar_event_requests').insert({
+    group_id: groupId, event_name: input.eventName, people_concerned: input.peopleConcerned,
+    preferred_start: input.preferredStart ?? null, preferred_end: input.preferredEnd ?? null,
+  }).select('id').single()
+  if (error) fail(error, 'create event request')
+  return data.id
+}
+
+export async function listEventRequests(sb: SupabaseClient, groupId: string): Promise<CalendarEventRequest[]> {
+  const { data, error } = await sb.from('calendar_event_requests')
+    .select('id, group_id, requested_by, event_name, people_concerned, preferred_start, preferred_end, status, created_at')
+    .eq('group_id', groupId).order('created_at', { ascending: false })
+  if (error) fail(error, 'list event requests')
+  return (data as EventRequestRow[]).map(toEventRequest)
+}
+
+export async function setEventRequestStatus(sb: SupabaseClient, id: string, status: Exclude<EventRequestStatus, 'pending'>): Promise<void> {
+  const { error } = await sb.from('calendar_event_requests').update({ status }).eq('id', id)
+  if (error) fail(error, 'set event request status')
+}
+
+export async function deleteEventRequest(sb: SupabaseClient, id: string): Promise<void> {
+  const { error } = await sb.from('calendar_event_requests').delete().eq('id', id)
+  if (error) fail(error, 'delete event request')
 }
 
 export async function listAvailabilityRules(sb: SupabaseClient, groupId: string): Promise<AvailabilityRule[]> {

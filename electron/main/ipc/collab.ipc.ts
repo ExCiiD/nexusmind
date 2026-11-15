@@ -74,13 +74,26 @@ export function registerCollabHandlers() {
   const isoDate = z.string().datetime()
   const dateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
   const timeOnly = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
-  const eventKind = z.enum(['tournament', 'team_review', 'one_on_one', 'soloq_block', 'rest', 'other'])
-  const eventInput = z.object({ kind: eventKind, title: z.string().trim().min(1).max(120), startsAt: isoDate, endsAt: isoDate, notes: z.string().max(2000).nullable().optional() })
+  const eventKind = z.enum(['tournament', 'team_review', 'one_on_one', 'soloq_block', 'rest', 'other', 'scrim', 'flex', 'meeting'])
+  const attendeeScope = z.enum(['whole_team', 'all_players', 'all_staff', 'custom'])
+  const eventInput = z.object({
+    kind: eventKind, title: z.string().trim().min(1).max(120), startsAt: isoDate, endsAt: isoDate, notes: z.string().max(2000).nullable().optional(),
+    linkedScrimId: uuid.nullable().optional(), attendeeScope: attendeeScope.optional(), attendeeUserIds: z.array(uuid).max(50).optional(),
+  })
 
   validatedHandle('calendar:list-events', z.tuple([uuid, isoDate, isoDate]), (_e, groupId, from, to) => collab.calendarListEvents(groupId, from, to))
   validatedHandle('calendar:create-event', z.tuple([uuid, eventInput]), (_e, groupId, input) => collab.calendarCreateEvent(groupId, input))
   validatedHandle('calendar:update-event', z.tuple([uuid, eventInput]), (_e, id, input) => collab.calendarUpdateEvent(id, input))
   validatedHandle('calendar:delete-event', z.tuple([uuid]), (_e, id) => collab.calendarDeleteEvent(id))
+
+  const eventRequestInput = z.object({
+    eventName: z.string().trim().min(1).max(120), peopleConcerned: z.array(z.string().trim().min(1).max(80)).max(30),
+    preferredStart: isoDate.nullable().optional(), preferredEnd: isoDate.nullable().optional(),
+  })
+  validatedHandle('calendar:create-request', z.tuple([uuid, eventRequestInput]), (_e, groupId, input) => collab.calendarCreateRequest(groupId, input))
+  validatedHandle('calendar:list-requests', z.tuple([uuid]), (_e, groupId) => collab.calendarListRequests(groupId))
+  validatedHandle('calendar:set-request-status', z.tuple([uuid, z.enum(['accepted', 'declined'])]), (_e, id, status) => collab.calendarSetRequestStatus(id, status))
+  validatedHandle('calendar:delete-request', z.tuple([uuid]), (_e, id) => collab.calendarDeleteRequest(id))
 
   const ruleInput = z.object({ weekday: z.number().int().min(0).max(6), startTime: timeOnly, endTime: timeOnly })
   validatedHandle('availability:list-rules', z.tuple([uuid]), (_e, groupId) => collab.availabilityListRules(groupId))

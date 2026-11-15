@@ -1,20 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CalendarDays, Copy, Download, Link2, Loader2, Plus, RotateCw, Trash2, Users } from 'lucide-react'
+import { CalendarDays, Copy, Download, Link2, Loader2, RotateCw, Users } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
-import { isLegacyStaff } from '@/lib/permissions'
-import { eventsToICS, type AvailabilityException, type AvailabilityRule, type CalendarEvent, type CalendarEventKind, type CalendarSubscription, type CommonFreeWindow } from '@/lib/calendar'
+import { canEditCalendar as canEditCalendarRole } from '@/lib/permissions'
+import { eventsToICS, type AvailabilityException, type AvailabilityRule, type CalendarEvent, type CalendarSubscription, type CommonFreeWindow } from '@/lib/calendar'
 import { findCommonAvailability } from '@/lib/calendarCore'
 import type { ScrimSummary } from '@/lib/scrims'
-
-const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6]
-const KINDS: CalendarEventKind[] = ['tournament', 'team_review', 'one_on_one', 'soloq_block', 'rest', 'other']
+import { WeekGrid, type HourRange } from '@/components/Planning/WeekGrid'
+import { EventPopup } from '@/components/Planning/EventPopup'
+import { RequestEventDialog } from '@/components/Planning/RequestEventDialog'
+import { EventRequestsQueue } from '@/components/Planning/EventRequestsQueue'
 
 function startOfWeek(d: Date): Date {
   const out = new Date(d)
@@ -25,20 +24,19 @@ function startOfWeek(d: Date): Date {
   return out
 }
 const toDateKey = (d: Date) => d.toISOString().slice(0, 10)
+const toTimeKey = (h: number) => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`
 
 interface Props { groups: Group[]; myUserId: string }
 
-/** E4 (docs/PLAN_GESTION_EQUIPE.md): week calendar, recurring availability, common free slots, .ics export. */
+/** E4/Phase 1 (docs/PLAN_GESTION_EQUIPE.md §9): Google-Calendar-style week
+ *  grid — click/drag to create events, a per-day rail to click/drag your own
+ *  availability, event requests for non-editors. */
 export function PlanningSection({ groups, myUserId }: Props) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const [groupId, setGroupId] = useState(groups[0]?.id ?? null)
   const group = groups.find((g) => g.id === groupId)
-  // Temporary: calendar RLS is still is_group_staff-gated until the Planning
-  // grid rework (Phase 1) switches it to can_edit_calendar (owner/coach/manager,
-  // analyst loses write). Using isLegacyStaff here just avoids a manager
-  // seeing edit UI that would currently 403.
-  const isStaff = !!group && isLegacyStaff(group.myRole)
+  const canEdit = !!group && canEditCalendarRole(group.myRole)
 
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const [events, setEvents] = useState<CalendarEvent[] | null>(null)
@@ -46,8 +44,11 @@ export function PlanningSection({ groups, myUserId }: Props) {
   const [rules, setRules] = useState<AvailabilityRule[]>([])
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([])
   const [starterIds, setStarterIds] = useState<string[]>([])
+  const [creatingRange, setCreatingRange] = useState<HourRange | null>(null)
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
 
   const weekEnd = useMemo(() => { const d = new Date(weekStart); d.setDate(d.getDate() + 7); return d }, [weekStart])
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d }), [weekStart])
 
   const load = useCallback(async () => {
     if (!groupId) return
@@ -61,7 +62,9 @@ export function PlanningSection({ groups, myUserId }: Props) {
         window.api.teamGetShared(groupId).catch(() => ({ roster: [] as { userId: string | null; status: string }[] })),
       ])
       setEvents(ev)
-      setScrims(sc)
+      // Only standalone scrims not yet linked to a calendar event — linked
+      // ones already render as their own event block.
+      setScrims(sc.filter((s) => !ev.some((e) => e.linkedScrimId === s.id)))
       setRules(r)
       setExceptions(ex)
       setStarterIds(shared.roster.filter((m) => m.status === 'starter' && m.userId).map((m) => m.userId as string))
@@ -75,8 +78,24 @@ export function PlanningSection({ groups, myUserId }: Props) {
 
   if (groups.length === 0) return null
 
-  const days = WEEKDAYS.map((_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d })
   const commonFree: CommonFreeWindow[] = starterIds.length > 0 ? findCommonAvailability(rules, exceptions, starterIds, toDateKey(weekStart)) : []
+  const myExceptions = exceptions.filter((e) => e.userId === myUserId)
+
+  const selectAvailabilityRange = async (range: HourRange) => {
+    try {
+      await window.api.availabilitySetException(groupId!, {
+        date: toDateKey(range.day), available: true, startTime: toTimeKey(range.startHour), endTime: toTimeKey(range.endHour),
+      })
+      load()
+    } catch (err) {
+      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
+    }
+  }
+
+  const removeAvailabilityException = async (id: string) => {
+    try { await window.api.availabilityDeleteException(id); load() }
+    catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
+  }
 
   const downloadICS = async () => {
     if (!groupId) return
@@ -88,11 +107,13 @@ export function PlanningSection({ groups, myUserId }: Props) {
         window.api.scrimsListForGroup(groupId).catch(() => []),
       ])
       const scrimEvents: CalendarEvent[] = upcomingScrims
+        .filter((s) => !upcoming.some((e) => e.linkedScrimId === s.id))
         .filter((s) => new Date(s.scheduledAt) >= from && new Date(s.scheduledAt) < to)
         .map((s) => ({
           id: s.id, groupId: groupId!, kind: 'other', title: s.opponent ? `${s.title} vs ${s.opponent}` : s.title,
           startsAt: s.scheduledAt, endsAt: new Date(new Date(s.scheduledAt).getTime() + s.durationMin * 60000).toISOString(),
-          notes: null, createdBy: '', createdAt: s.scheduledAt, updatedAt: s.scheduledAt,
+          notes: null, linkedScrimId: s.id, attendeeScope: 'whole_team', attendeeUserIds: [],
+          createdBy: '', createdAt: s.scheduledAt, updatedAt: s.scheduledAt,
         }))
       const ics = eventsToICS([...upcoming, ...scrimEvents], group?.name ?? 'Ascend')
       const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
@@ -121,10 +142,11 @@ export function PlanningSection({ groups, myUserId }: Props) {
                 {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             )}
+            {!canEdit && groupId && <RequestEventDialog groupId={groupId} onSent={load} />}
             <Button size="sm" variant="outline" onClick={downloadICS}>
               <Download className="mr-1 h-3.5 w-3.5" />{t('planning.exportIcs', { defaultValue: 'Export .ics' })}
             </Button>
-            {isStaff && groupId && <LiveSyncButton groupId={groupId} />}
+            {canEdit && groupId && <LiveSyncButton groupId={groupId} />}
           </div>
         </div>
         <CardDescription>{t('planning.desc', { defaultValue: 'Team calendar, recurring availability, and common free slots.' })}</CardDescription>
@@ -138,69 +160,56 @@ export function PlanningSection({ groups, myUserId }: Props) {
           <Button size="sm" variant="outline" onClick={() => setWeekStart((w) => { const d = new Date(w); d.setDate(d.getDate() + 7); return d })}>→</Button>
         </div>
 
-        {isStaff && groupId && <NewEventForm groupId={groupId} onCreated={load} />}
+        {canEdit && groupId && <EventRequestsQueue groupId={groupId} nameOf={(id) => group?.members.find((m) => m.userId === id)?.displayName ?? '?'} />}
 
         {events === null ? (
           <Loader2 className="h-5 w-5 animate-spin text-hextech-text-dim" />
         ) : (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7">
-            {days.map((d) => {
-              const key = toDateKey(d)
-              const dayEvents = events.filter((e) => e.startsAt.slice(0, 10) === key)
-              const dayScrims = scrims.filter((s) => s.scheduledAt.slice(0, 10) === key)
-              return (
-                <div key={key} className="rounded-lg border border-hextech-border-dim p-2">
-                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-hextech-text-dim">
-                    {d.toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' })}
-                  </div>
-                  {dayEvents.length === 0 && dayScrims.length === 0 ? (
-                    <p className="text-[11px] text-hextech-text-dim">—</p>
-                  ) : (
-                    <ul className="space-y-1">
-                      {dayScrims.map((s) => (
-                        <li key={s.id} className="rounded bg-hextech-green/10 px-1.5 py-1 text-[11px] text-hextech-text">
-                          <span className="text-hextech-green">{new Date(s.scheduledAt).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })}</span>
-                          {' '}{s.title}{s.opponent ? ` vs ${s.opponent}` : ''}
-                          <div className="text-[10px] text-hextech-text-dim">{t('planning.kind.scrim', { defaultValue: 'Scrim' })}</div>
-                        </li>
-                      ))}
-                      {dayEvents.map((e) => (
-                        <li key={e.id} className="rounded bg-hextech-elevated/40 px-1.5 py-1 text-[11px] text-hextech-text">
-                          <span className="text-hextech-gold">{new Date(e.startsAt).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })}</span>
-                          {' '}{e.title}
-                          <div className="text-[10px] text-hextech-text-dim">{t(`planning.kind.${e.kind}`)}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          <WeekGrid
+            days={days}
+            events={events}
+            scrims={scrims}
+            myAvailabilityExceptions={myExceptions}
+            canEditCalendar={canEdit}
+            onSelectEventRange={setCreatingRange}
+            onSelectAvailabilityRange={selectAvailabilityRange}
+            onRemoveAvailabilityException={removeAvailabilityException}
+            onEventClick={setEditingEvent}
+          />
         )}
 
-        {isStaff && (
-          <div className="rounded-lg border border-hextech-border-dim p-3">
-            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-hextech-text-bright">
-              <Users className="h-4 w-4 text-hextech-gold" />{t('planning.commonFree', { defaultValue: 'When all starters are free' })}
-            </div>
-            {starterIds.length === 0 ? (
-              <p className="text-xs text-hextech-text-dim">{t('planning.noStarters', { defaultValue: 'No starters with a linked account in the published roster yet.' })}</p>
-            ) : commonFree.length === 0 ? (
-              <p className="text-xs text-hextech-text-dim">{t('planning.noCommonSlot', { defaultValue: 'No common free slot this week.' })}</p>
-            ) : (
-              <ul className="flex flex-wrap gap-1.5 text-xs">
-                {commonFree.map((w, i) => (
-                  <li key={i} className="rounded bg-hextech-green/10 px-2 py-0.5 text-hextech-green">
-                    {new Date(w.date).toLocaleDateString(i18n.language, { weekday: 'short' })} {w.startTime}–{w.endTime}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+        {groupId && (
+          <EventPopup
+            groupId={groupId}
+            members={group?.members ?? []}
+            myUserId={myUserId}
+            scrims={scrims}
+            initialRange={creatingRange}
+            editingEvent={editingEvent}
+            canDelete={canEdit}
+            onClose={() => { setCreatingRange(null); setEditingEvent(null) }}
+            onSaved={load}
+          />
         )}
 
-        {groupId && <AvailabilityEditor groupId={groupId} myUserId={myUserId} rules={rules.filter((r) => r.userId === myUserId)} exceptions={exceptions.filter((e) => e.userId === myUserId)} onChanged={load} />}
+        <div className="rounded-lg border border-hextech-border-dim p-3">
+          <div className="mb-2 flex items-center gap-2 text-sm font-medium text-hextech-text-bright">
+            <Users className="h-4 w-4 text-hextech-gold" />{t('planning.commonFree', { defaultValue: 'When all starters are free' })}
+          </div>
+          {starterIds.length === 0 ? (
+            <p className="text-xs text-hextech-text-dim">{t('planning.noStarters', { defaultValue: 'No starters with a linked account in the published roster yet.' })}</p>
+          ) : commonFree.length === 0 ? (
+            <p className="text-xs text-hextech-text-dim">{t('planning.noCommonSlot', { defaultValue: 'No common free slot this week.' })}</p>
+          ) : (
+            <ul className="flex flex-wrap gap-1.5 text-xs">
+              {commonFree.map((w, i) => (
+                <li key={i} className="rounded bg-hextech-green/10 px-2 py-0.5 text-hextech-green">
+                  {new Date(w.date).toLocaleDateString(i18n.language, { weekday: 'short' })} {w.startTime}–{w.endTime}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </CardContent>
     </Card>
   )
@@ -283,151 +292,6 @@ function LiveSyncButton({ groupId }: { groupId: string }) {
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function NewEventForm({ groupId, onCreated }: { groupId: string; onCreated: () => void }) {
-  const { t } = useTranslation()
-  const { toast } = useToast()
-  const [kind, setKind] = useState<CalendarEventKind>('team_review')
-  const [title, setTitle] = useState('')
-  const [startsAt, setStartsAt] = useState('')
-  const [endsAt, setEndsAt] = useState('')
-  const [notes, setNotes] = useState('')
-  const [creating, setCreating] = useState(false)
-
-  const canCreate = title.trim().length > 0 && startsAt && endsAt && new Date(endsAt) > new Date(startsAt)
-
-  const create = async () => {
-    setCreating(true)
-    try {
-      await window.api.calendarCreateEvent(groupId, {
-        kind, title: title.trim(), startsAt: new Date(startsAt).toISOString(), endsAt: new Date(endsAt).toISOString(),
-        notes: notes.trim() || null,
-      })
-      setTitle(''); setStartsAt(''); setEndsAt(''); setNotes('')
-      onCreated()
-    } catch (err) {
-      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
-    } finally {
-      setCreating(false)
-    }
-  }
-
-  return (
-    <div className="space-y-2 rounded-lg border border-hextech-border-dim p-3">
-      <div className="flex flex-wrap gap-2">
-        <Select value={kind} onValueChange={(v) => setKind(v as CalendarEventKind)}>
-          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {KINDS.map((k) => <SelectItem key={k} value={k}>{t(`planning.kind.${k}`)}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} className="flex-1 min-w-[10rem]" placeholder={t('planning.eventTitlePlaceholder', { defaultValue: 'Event title…' })} />
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className="w-56" aria-label={t('planning.starts', { defaultValue: 'Starts' })} />
-        <Input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} className="w-56" aria-label={t('planning.ends', { defaultValue: 'Ends' })} />
-      </div>
-      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={1} maxLength={2000} placeholder={t('planning.notesPlaceholder', { defaultValue: 'Notes (optional)…' })} />
-      <Button size="sm" onClick={create} disabled={!canCreate || creating}>
-        {creating && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}{t('planning.addEvent', { defaultValue: 'Add event' })}
-      </Button>
-    </div>
-  )
-}
-
-function AvailabilityEditor({ groupId, rules, exceptions, onChanged }: {
-  groupId: string; myUserId: string; rules: AvailabilityRule[]; exceptions: AvailabilityException[]; onChanged: () => void
-}) {
-  const { t, i18n } = useTranslation()
-  const { toast } = useToast()
-  const [weekday, setWeekday] = useState('1')
-  const [start, setStart] = useState('18:00')
-  const [end, setEnd] = useState('22:00')
-  const [adding, setAdding] = useState(false)
-  const [exceptionDate, setExceptionDate] = useState('')
-
-  const weekdayLabel = (w: number) => new Date(2024, 0, 7 + w).toLocaleDateString(i18n.language, { weekday: 'long' })
-
-  const addRule = async () => {
-    if (start >= end) return
-    setAdding(true)
-    try {
-      await window.api.availabilitySetRule(groupId, { weekday: Number(weekday), startTime: start, endTime: end })
-      onChanged()
-    } catch (err) {
-      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
-    } finally {
-      setAdding(false)
-    }
-  }
-
-  const removeRule = async (id: string) => {
-    try { await window.api.availabilityDeleteRule(id); onChanged() }
-    catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
-  }
-
-  const addExceptionUnavailable = async () => {
-    if (!exceptionDate) return
-    try {
-      await window.api.availabilitySetException(groupId, { date: exceptionDate, available: false })
-      setExceptionDate('')
-      onChanged()
-    } catch (err) {
-      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
-    }
-  }
-
-  const removeException = async (id: string) => {
-    try { await window.api.availabilityDeleteException(id); onChanged() }
-    catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
-  }
-
-  return (
-    <div className="space-y-3 rounded-lg border border-hextech-border-dim p-3">
-      <h4 className="text-sm font-medium text-hextech-text-bright">{t('planning.myAvailability', { defaultValue: 'My availability' })}</h4>
-      {rules.length > 0 && (
-        <ul className="space-y-1">
-          {rules.map((r) => (
-            <li key={r.id} className="flex items-center justify-between text-sm text-hextech-text">
-              <span>{weekdayLabel(r.weekday)} {r.startTime}–{r.endTime}</span>
-              <Button size="sm" variant="ghost" onClick={() => removeRule(r.id)}><Trash2 className="h-3.5 w-3.5 text-hextech-text-dim" /></Button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="flex flex-wrap items-center gap-2">
-        <Select value={weekday} onValueChange={setWeekday}>
-          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {WEEKDAYS.map((w) => <SelectItem key={w} value={String(w)}>{weekdayLabel(w)}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="w-28" />
-        <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="w-28" />
-        <Button size="sm" variant="outline" onClick={addRule} disabled={adding}>
-          <Plus className="mr-1 h-3.5 w-3.5" />{t('planning.addSlot', { defaultValue: 'Add slot' })}
-        </Button>
-      </div>
-
-      {exceptions.length > 0 && (
-        <ul className="space-y-1 pt-1">
-          {exceptions.map((e) => (
-            <li key={e.id} className="flex items-center justify-between text-xs text-hextech-text-dim">
-              <span>{new Date(e.date).toLocaleDateString(i18n.language)} — {t('planning.unavailable', { defaultValue: 'unavailable' })}</span>
-              <Button size="sm" variant="ghost" onClick={() => removeException(e.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="flex items-center gap-2">
-        <Input type="date" value={exceptionDate} onChange={(e) => setExceptionDate(e.target.value)} className="w-44" />
-        <Button size="sm" variant="outline" onClick={addExceptionUnavailable} disabled={!exceptionDate}>
-          {t('planning.markUnavailable', { defaultValue: "Mark that day as unavailable" })}
-        </Button>
-      </div>
     </div>
   )
 }

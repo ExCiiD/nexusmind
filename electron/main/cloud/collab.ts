@@ -15,7 +15,7 @@ import * as discussion from '../../../src/lib/discussionCore'
 import type { DiscussionSubjectType } from '../../../src/lib/discussion'
 import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
 import type { AxisStatus, NewAxisInput, NewDevPlanPeriod } from '../../../src/lib/devPlan'
-import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput } from '../../../src/lib/calendar'
+import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput, NewEventRequestInput, EventRequestStatus } from '../../../src/lib/calendar'
 import type { AssignmentStatus, NewVodAssignmentInput, NewVodCommentInput, NewVodSessionInput } from '../../../src/lib/vodReview'
 import type { NewWellbeingCheckinInput } from '../../../src/lib/wellbeing'
 import type { NewAnnouncementInput, NewTaskInput, TaskStatus } from '../../../src/lib/teamOps'
@@ -92,6 +92,10 @@ export const availabilityListExceptions = (groupId: string, fromDate: string, to
   calendar.listAvailabilityExceptions(getSupabase(), groupId, fromDate, toDate)
 export const availabilitySetException = (groupId: string, input: NewAvailabilityExceptionInput) =>
   calendar.setAvailabilityException(getSupabase(), groupId, input)
+export const calendarCreateRequest = (groupId: string, input: NewEventRequestInput) => calendar.createEventRequest(getSupabase(), groupId, input)
+export const calendarListRequests = (groupId: string) => calendar.listEventRequests(getSupabase(), groupId)
+export const calendarSetRequestStatus = (id: string, status: Exclude<EventRequestStatus, 'pending'>) => calendar.setEventRequestStatus(getSupabase(), id, status)
+export const calendarDeleteRequest = (id: string) => calendar.deleteEventRequest(getSupabase(), id)
 export const availabilityDeleteException = (id: string) => calendar.deleteAvailabilityException(getSupabase(), id)
 export const calendarGetSubscription = (groupId: string) => calendar.getCalendarSubscription(getSupabase(), groupId, getSupabaseUrl())
 export const calendarCreateSubscription = (groupId: string) => calendar.createCalendarSubscription(getSupabase(), groupId, getSupabaseUrl())

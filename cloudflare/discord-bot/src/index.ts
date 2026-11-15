@@ -109,6 +109,7 @@ export default {
           const seenMentionAnnouncements = new Set<string>()
           const seenLowAvailabilityScrims = new Set<string>()
           const seenEndingPlans = new Set<string>()
+          const seenEventRequests = new Set<string>()
           for (const n of teamNotifications) {
             if (n.type === 'mention') {
               // Fans out one notification row per mentioned teammate — collapse
@@ -141,6 +142,17 @@ export default {
               if (!(await markNotifiedOnce(sb, guild.guildId, 'notification', `dev_plan_period_ending:${planId}`))) continue
               await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
                 `🎯 **Dev plan period ending soon:** "${n.data.title ?? ''}" — ends ${n.data.periodEnd ?? '?'}.`)
+              continue
+            }
+            if (n.type === 'calendar_event_request') {
+              // Fans out to every staff member — collapse to a single
+              // Discord post per request.
+              const requestId = String(n.data.requestId ?? n.id)
+              if (seenEventRequests.has(requestId)) continue
+              seenEventRequests.add(requestId)
+              if (!(await markNotifiedOnce(sb, guild.guildId, 'notification', `calendar_event_request:${requestId}`))) continue
+              await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
+                `🗓️ **${n.data.requestedByName ?? '?'}** requested an event: "${n.data.eventName ?? ''}"`)
               continue
             }
             if (!(await markNotifiedOnce(sb, guild.guildId, 'notification', `${n.type}:${n.id}`))) continue

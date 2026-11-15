@@ -1806,7 +1806,9 @@
       "soloq_block": "SoloQ block",
       "rest": "Rest",
       "other": "Other",
-      "scrim": "Scrim"
+      "scrim": "Scrim",
+      "flex": "Flex",
+      "meeting": "Meeting"
     },
     "commonFree": "When all starters are free",
     "noStarters": "No starters with a linked account in the published roster yet.",
@@ -1816,10 +1818,28 @@
     "ends": "Ends",
     "notesPlaceholder": "Notes (optional)…",
     "addEvent": "Add event",
-    "myAvailability": "My availability",
-    "addSlot": "Add slot",
-    "unavailable": "unavailable",
-    "markUnavailable": "Mark that day as unavailable",
+    "editEvent": "Edit event",
+    "saveEvent": "Save",
+    "linkScrim": "Link to an existing scrim (optional)",
+    "linkScrimNone": "— No linked scrim —",
+    "attendees": "People concerned",
+    "attendeeScope": {
+      "whole_team": "Whole team",
+      "all_players": "All players",
+      "all_staff": "All staff",
+      "custom": "Custom"
+    },
+    "requestEvent": "Request an event",
+    "requestNamePlaceholder": "Event name…",
+    "requestPeoplePlaceholder": "People concerned (comma-separated)…",
+    "requestPreferredStart": "Preferred start",
+    "requestPreferredEnd": "Preferred end",
+    "requestHint": "Informational only — staff will arrange the actual event.",
+    "requestSend": "Send request",
+    "requestSent": "Request sent to staff",
+    "requestsQueue": "Event requests",
+    "requestAccept": "Accept",
+    "requestDecline": "Decline",
     "enableLiveSync": "Enable live sync",
     "liveSync": "Live sync",
     "liveSyncHint": "Paste this URL into Google/Apple/Outlook \"subscribe by URL\" — it updates on its own.",
@@ -2058,6 +2078,10 @@
       "weekly_load_alert": {
         "title": "Weekly load + mood alert",
         "body": "A player has played {{hours}}h this week (threshold {{thresholdHours}}h) with a declining mood."
+      },
+      "calendar_event_request": {
+        "title": "Event request",
+        "body": "{{requestedByName}} requested an event: \"{{eventName}}\""
       }
     }
   },

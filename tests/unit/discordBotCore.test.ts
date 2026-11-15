@@ -94,7 +94,7 @@ describe('listRecentTeamNotifications', () => {
     const sb = { from: vi.fn(() => c) } as never
     const result = await listRecentTeamNotifications(sb, 'g1', '2026-11-14T00:00:00Z')
     expect(result).toEqual([{ id: 'n1', type: 'task_assigned', userId: 'u1', data: { groupId: 'g1', title: 'Do X' }, createdAt: '2026-11-15T00:00:00Z' }])
-    expect(inSpy).toHaveBeenCalledWith('type', ['task_assigned', 'objective_overdue', 'mention', 'review_pending', 'scrim_low_availability', 'scrim_availability_missing', 'dev_plan_period_ending'])
+    expect(inSpy).toHaveBeenCalledWith('type', ['task_assigned', 'objective_overdue', 'mention', 'review_pending', 'scrim_low_availability', 'scrim_availability_missing', 'dev_plan_period_ending', 'calendar_event_request'])
     expect(filterSpy).toHaveBeenCalledWith('data->>groupId', 'eq', 'g1')
   })
 })

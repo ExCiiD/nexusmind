@@ -1,6 +1,16 @@
-/** Renderer-side mirror of the shared planning tables (E4). */
+/** Renderer-side mirror of the shared planning tables (E4, extended in the
+ *  Planning rework — see docs/PLAN_GESTION_EQUIPE.md §9 Phase 1). */
 
-export type CalendarEventKind = 'tournament' | 'team_review' | 'one_on_one' | 'soloq_block' | 'rest' | 'other'
+export type CalendarEventKind =
+  | 'tournament' | 'team_review' | 'one_on_one' | 'soloq_block' | 'rest' | 'other'
+  | 'scrim' | 'flex' | 'meeting'
+
+/** Quick-select for "people concerned" on event creation — `custom` means
+ *  the explicit `attendeeUserIds` list is authoritative; the other three are
+ *  resolved once at creation time (see `resolveAttendeeScope` in
+ *  calendarCore.ts) into a snapshot, not re-evaluated against the live
+ *  roster later. */
+export type AttendeeScope = 'whole_team' | 'all_players' | 'all_staff' | 'custom'
 
 export interface CalendarEvent {
   id: string
@@ -10,6 +20,11 @@ export interface CalendarEvent {
   startsAt: string
   endsAt: string
   notes: string | null
+  /** Set when kind is 'scrim'/'flex' and the event is tied to a real `scrims` row. */
+  linkedScrimId: string | null
+  attendeeScope: AttendeeScope
+  /** The resolved, snapshotted attendee list (see AttendeeScope doc above). */
+  attendeeUserIds: string[]
   createdBy: string
   createdAt: string
   updatedAt: string
@@ -21,6 +36,11 @@ export interface NewEventInput {
   startsAt: string
   endsAt: string
   notes?: string | null
+  linkedScrimId?: string | null
+  attendeeScope?: AttendeeScope
+  /** Required when attendeeScope is 'custom' (or omitted); ignored otherwise
+   *  since the other three scopes are resolved server-side from the roster. */
+  attendeeUserIds?: string[]
 }
 
 /** "HH:MM" (24h). */
@@ -67,6 +87,32 @@ export interface CommonFreeWindow {
   date: string
   startTime: TimeString
   endTime: TimeString
+}
+
+export type EventRequestStatus = 'pending' | 'accepted' | 'declined'
+
+/** "Request an event" (Phase 1) — purely informational: it never writes a
+ *  real CalendarEvent, it's a queue a calendar editor reads and acts on by
+ *  hand (e.g. by creating the real event themselves). */
+export interface CalendarEventRequest {
+  id: string
+  groupId: string
+  requestedBy: string
+  eventName: string
+  /** Free-text names/labels the requester typed — not resolved user ids,
+   *  since this is informational only. */
+  peopleConcerned: string[]
+  preferredStart: string | null
+  preferredEnd: string | null
+  status: EventRequestStatus
+  createdAt: string
+}
+
+export interface NewEventRequestInput {
+  eventName: string
+  peopleConcerned: string[]
+  preferredStart?: string | null
+  preferredEnd?: string | null
 }
 
 /**
@@ -137,4 +183,8 @@ export interface CalendarApi {
   calendarGetSubscription: (groupId: string) => Promise<CalendarSubscription | null>
   calendarCreateSubscription: (groupId: string) => Promise<CalendarSubscription>
   calendarRevokeSubscription: (id: string) => Promise<void>
+  calendarCreateRequest: (groupId: string, input: NewEventRequestInput) => Promise<string>
+  calendarListRequests: (groupId: string) => Promise<CalendarEventRequest[]>
+  calendarSetRequestStatus: (id: string, status: Exclude<EventRequestStatus, 'pending'>) => Promise<void>
+  calendarDeleteRequest: (id: string) => Promise<void>
 }

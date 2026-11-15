@@ -190,6 +190,10 @@ export const webApi = {
   calendarGetSubscription: (groupId: string) => calendarCore.getCalendarSubscription(sb, groupId, supabaseUrl),
   calendarCreateSubscription: (groupId: string) => calendarCore.createCalendarSubscription(sb, groupId, supabaseUrl),
   calendarRevokeSubscription: (id: string) => calendarCore.revokeCalendarSubscription(sb, id),
+  calendarCreateRequest: (groupId: string, input: Parameters<typeof calendarCore.createEventRequest>[2]) => calendarCore.createEventRequest(sb, groupId, input),
+  calendarListRequests: (groupId: string) => calendarCore.listEventRequests(sb, groupId),
+  calendarSetRequestStatus: (id: string, status: Parameters<typeof calendarCore.setEventRequestStatus>[2]) => calendarCore.setEventRequestStatus(sb, id, status),
+  calendarDeleteRequest: (id: string) => calendarCore.deleteEventRequest(sb, id),
 
   // ── E7 v2: discussion threads (scrim/draft) ──
   discussionList: (subjectType: Parameters<typeof discussionCore.listDiscussion>[1], subjectId: string) => discussionCore.listDiscussion(sb, subjectType, subjectId),
