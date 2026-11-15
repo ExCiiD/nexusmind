@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { redeemGuildLinkCode, redeemUserLinkCode, markNotifiedOnce, findRoleReplacements } from '../../src/lib/discordBotCore'
+import { redeemGuildLinkCode, redeemUserLinkCode, markNotifiedOnce, findRoleReplacements, listRecentTeamNotifications, resolveDisplayNames } from '../../src/lib/discordBotCore'
 
 function chain(result: unknown) {
   const c: Record<string, unknown> = {}
-  for (const m of ['select', 'eq', 'is', 'maybeSingle', 'delete', 'insert']) c[m] = vi.fn().mockReturnValue(c)
+  for (const m of ['select', 'eq', 'is', 'maybeSingle', 'delete', 'insert', 'in', 'filter', 'gte']) c[m] = vi.fn().mockReturnValue(c)
   c.then = (resolve: (v: unknown) => void) => resolve(result)
   return c
 }
@@ -76,6 +76,43 @@ describe('markNotifiedOnce', () => {
   it('still throws on a real error', async () => {
     const sb = { from: vi.fn(() => ({ insert: () => Promise.resolve({ error: { message: 'boom', code: '500' } }) })) } as never
     await expect(markNotifiedOnce(sb, 'g1', 'event', 'e1')).rejects.toThrow('boom')
+  })
+})
+
+describe('listRecentTeamNotifications', () => {
+  it('maps rows and never queries wellbeing_alert', async () => {
+    const filterSpy = vi.fn()
+    const inSpy = vi.fn()
+    const rows = [{ id: 'n1', type: 'task_assigned', user_id: 'u1', data: { groupId: 'g1', title: 'Do X' }, created_at: '2026-11-15T00:00:00Z' }]
+    const c: Record<string, unknown> = {
+      select: vi.fn().mockReturnThis(),
+      in: inSpy.mockReturnThis(),
+      filter: filterSpy.mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+    }
+    c.then = (resolve: (v: unknown) => void) => resolve({ data: rows, error: null })
+    const sb = { from: vi.fn(() => c) } as never
+    const result = await listRecentTeamNotifications(sb, 'g1', '2026-11-14T00:00:00Z')
+    expect(result).toEqual([{ id: 'n1', type: 'task_assigned', userId: 'u1', data: { groupId: 'g1', title: 'Do X' }, createdAt: '2026-11-15T00:00:00Z' }])
+    expect(inSpy).toHaveBeenCalledWith('type', ['task_assigned', 'objective_overdue', 'mention'])
+    expect(filterSpy).toHaveBeenCalledWith('data->>groupId', 'eq', 'g1')
+  })
+})
+
+describe('resolveDisplayNames', () => {
+  it('returns an empty map without querying when given no ids', async () => {
+    const sb = { from: vi.fn() } as never
+    expect(await resolveDisplayNames(sb, 'g1', [])).toEqual(new Map())
+  })
+
+  it('maps userId to display name, defaulting to "?" when missing', async () => {
+    const tables: Record<string, any> = {
+      group_members: chain({ data: [{ user_id: 'u1', display_name: 'Alice' }, { user_id: 'u2', display_name: null }], error: null }),
+    }
+    const sb = { from: vi.fn((t: string) => tables[t]) } as never
+    const result = await resolveDisplayNames(sb, 'g1', ['u1', 'u2'])
+    expect(result.get('u1')).toBe('Alice')
+    expect(result.get('u2')).toBe('?')
   })
 })
 

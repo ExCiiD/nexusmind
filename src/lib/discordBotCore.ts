@@ -145,13 +145,52 @@ export async function setAvailabilityExceptionAs(sb: SupabaseClient, groupId: st
   if (error) fail(error, 'set availability')
 }
 
+export interface TeamNotification {
+  id: string
+  type: 'task_assigned' | 'objective_overdue' | 'mention'
+  userId: string
+  data: Record<string, unknown>
+  createdAt: string
+}
+
+/**
+ * Team-relevant in-app notifications from the last `sinceIso` worth of
+ * history, for the cron to relay into the linked Discord channel. Scoped to
+ * types that are already routine, team-visible information in-app (a task
+ * was assigned, an objective is overdue, someone was @mentioned) — NOT
+ * `wellbeing_alert`: that one is opt-in-shared with staff only (E6,
+ * `group_sharing.share_wellbeing`) and broadcasting a player's declining
+ * mood to a Discord channel (which may have a wider audience than the
+ * staff who can see it in-app) would exceed that consent. Stays in-app.
+ */
+export async function listRecentTeamNotifications(sb: SupabaseClient, groupId: string, sinceIso: string): Promise<TeamNotification[]> {
+  const { data, error } = await sb.from('notifications')
+    .select('id, type, user_id, data, created_at')
+    .in('type', ['task_assigned', 'objective_overdue', 'mention'])
+    .filter('data->>groupId', 'eq', groupId)
+    .gte('created_at', sinceIso)
+  if (error) fail(error, 'list team notifications')
+  return (data ?? []).map((r) => ({ id: r.id, type: r.type, userId: r.user_id, data: r.data as Record<string, unknown>, createdAt: r.created_at }))
+}
+
+/** Bulk display-name lookup for a group's members — used to name the
+ *  notified player in a relayed Discord message (the notification payload
+ *  itself only carries the ACTOR's name, e.g. who assigned the task, not
+ *  the recipient's). */
+export async function resolveDisplayNames(sb: SupabaseClient, groupId: string, userIds: string[]): Promise<Map<string, string>> {
+  if (userIds.length === 0) return new Map()
+  const { data, error } = await sb.from('group_members').select('user_id, display_name').eq('group_id', groupId).in('user_id', userIds)
+  if (error) fail(error, 'resolve display names')
+  return new Map((data ?? []).map((r) => [r.user_id as string, (r.display_name as string | null) ?? '?']))
+}
+
 /**
  * Marks a calendar item as announced, returning false if it was already
  * sent (so the cron can skip it) — the dedupe primary key does the actual
  * work, this just turns the unique-violation into a clean boolean instead
  * of a thrown error the caller has to special-case.
  */
-export async function markNotifiedOnce(sb: SupabaseClient, guildId: string, itemType: 'event' | 'scrim' | 'common_availability', itemId: string): Promise<boolean> {
+export async function markNotifiedOnce(sb: SupabaseClient, guildId: string, itemType: 'event' | 'scrim' | 'common_availability' | 'notification', itemId: string): Promise<boolean> {
   const { error } = await sb.from('discord_notifications_sent').insert({ guild_id: guildId, item_type: itemType, item_id: itemId })
   if (!error) return true
   if (error.code === '23505') return false // already notified

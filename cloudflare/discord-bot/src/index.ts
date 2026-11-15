@@ -5,7 +5,7 @@ import {
   handleLinkTeam, handleLinkMe, handleSetChannel, handleCalendar, handleScrims, handleCommonAvailability, handleAvailability,
   type Interaction,
 } from './handlers'
-import { listGuildsWithNotifyChannel, markNotifiedOnce } from '../../../src/lib/discordBotCore'
+import { listGuildsWithNotifyChannel, markNotifiedOnce, listRecentTeamNotifications, resolveDisplayNames } from '../../../src/lib/discordBotCore'
 import { listEvents, listAvailabilityRules, listAvailabilityExceptions, findCommonAvailability } from '../../../src/lib/calendarCore'
 import { listScrimsForGroup } from '../../../src/lib/scrimsCore'
 import { getSharedTeam } from '../../../src/lib/teamCore'
@@ -60,6 +60,7 @@ export default {
     const now = new Date()
     const in24h = new Date(now.getTime() + 24 * 3_600_000)
     const weekAhead = new Date(now.getTime() + 7 * 86_400_000)
+    const dayAgo = new Date(now.getTime() - 24 * 3_600_000)
 
     for (const guild of guilds) {
       if (!guild.notifyChannelId) continue
@@ -95,6 +96,37 @@ export default {
             if (!(await markNotifiedOnce(sb, guild.guildId, 'common_availability', key))) continue
             await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
               `🟢 **Common availability found:** ${w.date} ${w.startTime}–${w.endTime} — everyone linked is free.`)
+          }
+        }
+
+        // Relay routine team notifications (task assigned, objective
+        // overdue, @mention) into the same channel — see
+        // listRecentTeamNotifications for why wellbeing_alert is excluded.
+        const teamNotifications = await listRecentTeamNotifications(sb, guild.groupId, dayAgo.toISOString())
+        if (teamNotifications.length > 0) {
+          const names = await resolveDisplayNames(sb, guild.groupId, Array.from(new Set(teamNotifications.map((n) => n.userId))))
+          const seenMentionAnnouncements = new Set<string>()
+          for (const n of teamNotifications) {
+            if (n.type === 'mention') {
+              // Fans out one notification row per mentioned teammate — collapse
+              // to a single Discord post per announcement.
+              const announcementId = String(n.data.announcementId ?? n.id)
+              if (seenMentionAnnouncements.has(announcementId)) continue
+              seenMentionAnnouncements.add(announcementId)
+              if (!(await markNotifiedOnce(sb, guild.guildId, 'notification', `mention:${announcementId}`))) continue
+              await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
+                `📣 **${n.data.mentionedByName ?? '?'}** posted an announcement mentioning a teammate: "${n.data.title ?? ''}"`)
+              continue
+            }
+            if (!(await markNotifiedOnce(sb, guild.guildId, 'notification', `${n.type}:${n.id}`))) continue
+            const recipientName = names.get(n.userId) ?? '?'
+            if (n.type === 'task_assigned') {
+              await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
+                `📋 **Task assigned to ${recipientName}:** ${n.data.title ?? ''} (by ${n.data.assignedByName ?? '?'})`)
+            } else if (n.type === 'objective_overdue') {
+              await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
+                `⏰ **Objective overdue for ${recipientName}** — was due ${n.data.dueDate ?? '?'}`)
+            }
           }
         }
       } catch (err) {
