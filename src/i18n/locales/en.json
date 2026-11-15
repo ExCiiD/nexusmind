@@ -1811,7 +1811,12 @@
     "myAvailability": "My availability",
     "addSlot": "Add slot",
     "unavailable": "unavailable",
-    "markUnavailable": "Mark that day as unavailable"
+    "markUnavailable": "Mark that day as unavailable",
+    "enableLiveSync": "Enable live sync",
+    "liveSync": "Live sync",
+    "liveSyncHint": "Paste this URL into Google/Apple/Outlook \"subscribe by URL\" — it updates on its own.",
+    "liveSyncCopied": "Link copied",
+    "regenerateLiveSync": "Revoke & regenerate"
   },
   "vodReview": {
     "title": "VOD review",

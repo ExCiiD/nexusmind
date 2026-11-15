@@ -1,4 +1,4 @@
-import { getSupabase, getAccessToken } from './supabase'
+import { getSupabase, getAccessToken, getSupabaseUrl } from './supabase'
 import { getPrisma } from '../database'
 import * as core from '../../../src/lib/collabCore'
 import * as dashboard from '../../../src/lib/staffDashboardCore'
@@ -89,6 +89,9 @@ export const availabilityListExceptions = (groupId: string, fromDate: string, to
 export const availabilitySetException = (groupId: string, input: NewAvailabilityExceptionInput) =>
   calendar.setAvailabilityException(getSupabase(), groupId, input)
 export const availabilityDeleteException = (id: string) => calendar.deleteAvailabilityException(getSupabase(), id)
+export const calendarGetSubscription = (groupId: string) => calendar.getCalendarSubscription(getSupabase(), groupId, getSupabaseUrl())
+export const calendarCreateSubscription = (groupId: string) => calendar.createCalendarSubscription(getSupabase(), groupId, getSupabaseUrl())
+export const calendarRevokeSubscription = (id: string) => calendar.revokeCalendarSubscription(getSupabase(), id)
 
 export const vodReviewListSessions = (groupId: string) => vodReview.listSessions(getSupabase(), groupId)
 export const vodReviewCreateSession = (groupId: string, input: NewVodSessionInput) => vodReview.createSession(getSupabase(), groupId, input)

@@ -1,8 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
-  AvailabilityException, AvailabilityRule, CalendarEvent, CommonFreeWindow,
+  AvailabilityException, AvailabilityRule, CalendarEvent, CalendarSubscription, CommonFreeWindow,
   NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput,
 } from './calendar'
+import { generateCalendarSubscriptionToken } from './calendar'
 
 /**
  * Planning & presence (E4), same pattern as teamCore.ts/devPlanCore.ts.
@@ -101,6 +102,45 @@ export async function setAvailabilityException(sb: SupabaseClient, groupId: stri
 export async function deleteAvailabilityException(sb: SupabaseClient, id: string): Promise<void> {
   const { error } = await sb.from('availability_exceptions').delete().eq('id', id)
   if (error) fail(error, 'delete exception')
+}
+
+// ── Live calendar subscription (E4 v2) ──────────────────────────────────
+
+interface SubscriptionRow { id: string; group_id: string; token: string; created_by: string; created_at: string }
+/** `baseUrl` is the project's own Supabase URL (`https://<ref>.supabase.co`)
+ *  — desktop/web each know their own (electron/main/cloud/supabase.ts's
+ *  `getSupabaseUrl()`, web/src/supabase.ts's `supabaseUrl`), so the ICS URL
+ *  is computed here rather than stored (it's deterministic from the token
+ *  and never changes independently of it). */
+const toSubscription = (r: SubscriptionRow, baseUrl: string): CalendarSubscription => ({
+  id: r.id, groupId: r.group_id, token: r.token, createdBy: r.created_by, createdAt: r.created_at,
+  icsUrl: `${baseUrl}/functions/v1/team-calendar-ics/${r.token}.ics`,
+})
+
+/** The group's current live-subscription link, or null if none was
+ *  generated yet. At most one per group (callers regenerate by deleting
+ *  then creating, not by keeping several live). */
+export async function getCalendarSubscription(sb: SupabaseClient, groupId: string, baseUrl: string): Promise<CalendarSubscription | null> {
+  const { data, error } = await sb.from('calendar_subscriptions')
+    .select('id, group_id, token, created_by, created_at').eq('group_id', groupId).maybeSingle()
+  if (error) fail(error, 'get calendar subscription')
+  return data ? toSubscription(data as SubscriptionRow, baseUrl) : null
+}
+
+export async function createCalendarSubscription(sb: SupabaseClient, groupId: string, baseUrl: string): Promise<CalendarSubscription> {
+  const token = generateCalendarSubscriptionToken()
+  const { data, error } = await sb.from('calendar_subscriptions')
+    .insert({ group_id: groupId, token }).select('id, group_id, token, created_by, created_at').single()
+  if (error) fail(error, 'create calendar subscription')
+  return toSubscription(data as SubscriptionRow, baseUrl)
+}
+
+/** Revokes (deletes) the group's subscription — any calendar app still
+ *  polling the old URL gets a 404 from then on. Callers generate a new one
+ *  with `createCalendarSubscription` if they want live sync again. */
+export async function revokeCalendarSubscription(sb: SupabaseClient, id: string): Promise<void> {
+  const { error } = await sb.from('calendar_subscriptions').delete().eq('id', id)
+  if (error) fail(error, 'revoke calendar subscription')
 }
 
 // ── pure scheduling helper (no I/O) ─────────────────────────────────────

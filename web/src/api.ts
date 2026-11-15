@@ -14,7 +14,7 @@ import * as scrimsReadCore from '@/lib/scrimsCore'
 import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
-import { sb, currentUserId, supabaseConfigured } from './supabase'
+import { sb, currentUserId, supabaseConfigured, supabaseUrl } from './supabase'
 
 declare const __APP_VERSION__: string
 
@@ -185,6 +185,9 @@ export const webApi = {
   availabilityListExceptions: (groupId: string, fromDate: string, toDate: string) => calendarCore.listAvailabilityExceptions(sb, groupId, fromDate, toDate),
   availabilitySetException: (groupId: string, input: Parameters<typeof calendarCore.setAvailabilityException>[2]) => calendarCore.setAvailabilityException(sb, groupId, input),
   availabilityDeleteException: (id: string) => calendarCore.deleteAvailabilityException(sb, id),
+  calendarGetSubscription: (groupId: string) => calendarCore.getCalendarSubscription(sb, groupId, supabaseUrl),
+  calendarCreateSubscription: (groupId: string) => calendarCore.createCalendarSubscription(sb, groupId, supabaseUrl),
+  calendarRevokeSubscription: (id: string) => calendarCore.revokeCalendarSubscription(sb, id),
 
   // ── E5: collaborative VOD review ──
   vodReviewListSessions: (groupId: string) => vodReviewCore.listSessions(sb, groupId),

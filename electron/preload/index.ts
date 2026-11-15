@@ -164,6 +164,9 @@ const api = {
   availabilityListExceptions: (groupId: string, fromDate: string, toDate: string) => ipcRenderer.invoke('availability:list-exceptions', groupId, fromDate, toDate),
   availabilitySetException: (groupId: string, input: unknown) => ipcRenderer.invoke('availability:set-exception', groupId, input),
   availabilityDeleteException: (id: string) => ipcRenderer.invoke('availability:delete-exception', id),
+  calendarGetSubscription: (groupId: string) => ipcRenderer.invoke('calendar:get-subscription', groupId),
+  calendarCreateSubscription: (groupId: string) => ipcRenderer.invoke('calendar:create-subscription', groupId),
+  calendarRevokeSubscription: (id: string) => ipcRenderer.invoke('calendar:revoke-subscription', id),
 
   // E5: collaborative VOD review
   vodReviewListSessions: (groupId: string) => ipcRenderer.invoke('vodreview:list-sessions', groupId),

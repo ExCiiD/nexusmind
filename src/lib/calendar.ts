@@ -99,6 +99,30 @@ export function eventsToICS(events: CalendarEvent[], calendarName: string): stri
   return lines.join('\r\n')
 }
 
+/** Live calendar subscription (E4 v2) — the stable token a calendar app
+ *  (Google/Apple/Outlook) polls on its own schedule, unlike the v1
+ *  point-in-time "Export .ics" download. Served by the `team-calendar-ics`
+ *  Edge Function (supabase/functions/team-calendar-ics), which has no
+ *  Ascend session to check — the token itself is the only secret. */
+export interface CalendarSubscription {
+  id: string
+  groupId: string
+  token: string
+  createdBy: string
+  createdAt: string
+  /** Full URL to paste into Google/Apple/Outlook "subscribe by URL". */
+  icsUrl: string
+}
+
+/** 40 hex chars (160 bits) via Web Crypto — long-lived and unguessable,
+ *  unlike the short human-typed codes in discord.ts (short TTL, one-time
+ *  use is enough security there; this token has neither). */
+export function generateCalendarSubscriptionToken(): string {
+  const bytes = new Uint8Array(20)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 export interface CalendarApi {
   calendarListEvents: (groupId: string, fromISO: string, toISO: string) => Promise<CalendarEvent[]>
   calendarCreateEvent: (groupId: string, input: NewEventInput) => Promise<string>
@@ -110,4 +134,7 @@ export interface CalendarApi {
   availabilityListExceptions: (groupId: string, fromDate: string, toDate: string) => Promise<AvailabilityException[]>
   availabilitySetException: (groupId: string, input: NewAvailabilityExceptionInput) => Promise<string>
   availabilityDeleteException: (id: string) => Promise<void>
+  calendarGetSubscription: (groupId: string) => Promise<CalendarSubscription | null>
+  calendarCreateSubscription: (groupId: string) => Promise<CalendarSubscription>
+  calendarRevokeSubscription: (id: string) => Promise<void>
 }

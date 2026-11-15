@@ -1811,7 +1811,12 @@
     "myAvailability": "Mes disponibilités",
     "addSlot": "Ajouter un créneau",
     "unavailable": "indisponible",
-    "markUnavailable": "Marquer ce jour comme indisponible"
+    "markUnavailable": "Marquer ce jour comme indisponible",
+    "enableLiveSync": "Activer la synchro live",
+    "liveSync": "Synchro live",
+    "liveSyncHint": "Colle cette URL dans Google/Apple/Outlook « s'abonner par URL » — elle se met à jour toute seule.",
+    "liveSyncCopied": "Lien copié",
+    "regenerateLiveSync": "Révoquer et régénérer"
   },
   "vodReview": {
     "title": "Review VOD",

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CalendarDays, Download, Loader2, Plus, Trash2, Users } from 'lucide-react'
+import { CalendarDays, Copy, Download, Link2, Loader2, Plus, RotateCw, Trash2, Users } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
-import { eventsToICS, type AvailabilityException, type AvailabilityRule, type CalendarEvent, type CalendarEventKind, type CommonFreeWindow } from '@/lib/calendar'
+import { eventsToICS, type AvailabilityException, type AvailabilityRule, type CalendarEvent, type CalendarEventKind, type CalendarSubscription, type CommonFreeWindow } from '@/lib/calendar'
 import { findCommonAvailability } from '@/lib/calendarCore'
 import type { ScrimSummary } from '@/lib/scrims'
 
@@ -119,6 +119,7 @@ export function PlanningSection({ groups, myUserId }: Props) {
             <Button size="sm" variant="outline" onClick={downloadICS}>
               <Download className="mr-1 h-3.5 w-3.5" />{t('planning.exportIcs', { defaultValue: 'Export .ics' })}
             </Button>
+            {isStaff && groupId && <LiveSyncButton groupId={groupId} />}
           </div>
         </div>
         <CardDescription>{t('planning.desc', { defaultValue: 'Team calendar, recurring availability, and common free slots.' })}</CardDescription>
@@ -197,6 +198,87 @@ export function PlanningSection({ groups, myUserId }: Props) {
         {groupId && <AvailabilityEditor groupId={groupId} myUserId={myUserId} rules={rules.filter((r) => r.userId === myUserId)} exceptions={exceptions.filter((e) => e.userId === myUserId)} onChanged={load} />}
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * E4 v2: live calendar subscription — unlike "Export .ics" (a one-off
+ * download), this is a stable URL a calendar app re-fetches on its own
+ * schedule (served by the `team-calendar-ics` Edge Function). Staff-only:
+ * revoking it breaks the feed for everyone who subscribed, so generating
+ * it is a team-wide decision, not a personal export.
+ */
+function LiveSyncButton({ groupId }: { groupId: string }) {
+  const { t } = useTranslation()
+  const { toast } = useToast()
+  const [sub, setSub] = useState<CalendarSubscription | null | undefined>(undefined)
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    setSub(undefined)
+    window.api.calendarGetSubscription(groupId).then(setSub).catch(() => setSub(null))
+  }, [groupId])
+
+  const enable = async () => {
+    setBusy(true)
+    try { setSub(await window.api.calendarCreateSubscription(groupId)); setOpen(true) }
+    catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
+    finally { setBusy(false) }
+  }
+
+  const regenerate = async () => {
+    if (!sub) return
+    setBusy(true)
+    try {
+      await window.api.calendarRevokeSubscription(sub.id)
+      setSub(await window.api.calendarCreateSubscription(groupId))
+    } catch (err) {
+      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const copy = async () => {
+    if (!sub) return
+    await navigator.clipboard.writeText(sub.icsUrl).catch(() => {})
+    toast({ title: t('planning.liveSyncCopied', { defaultValue: 'Link copied' }), variant: 'gold' })
+  }
+
+  if (sub === undefined) return null
+
+  if (!sub) {
+    return (
+      <Button size="sm" variant="outline" onClick={enable} disabled={busy}>
+        {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Link2 className="mr-1 h-3.5 w-3.5" />}
+        {t('planning.enableLiveSync', { defaultValue: 'Enable live sync' })}
+      </Button>
+    )
+  }
+
+  return (
+    <div className="relative">
+      <Button size="sm" variant="outline" onClick={() => setOpen((v) => !v)}>
+        <Link2 className="mr-1 h-3.5 w-3.5" />{t('planning.liveSync', { defaultValue: 'Live sync' })}
+      </Button>
+      {open && (
+        <div className="absolute right-0 top-full z-20 mt-1 w-80 rounded-lg border border-hextech-border-dim bg-hextech-elevated p-3 shadow-lg">
+          <p className="mb-2 text-xs text-hextech-text-dim">
+            {t('planning.liveSyncHint', { defaultValue: 'Paste this URL into Google/Apple/Outlook "subscribe by URL" — it updates on its own.' })}
+          </p>
+          <div className="flex items-center gap-1">
+            <Input readOnly value={sub.icsUrl} className="flex-1 text-xs" onFocus={(e) => e.currentTarget.select()} />
+            <Button size="sm" variant="outline" onClick={copy}><Copy className="h-3.5 w-3.5" /></Button>
+          </div>
+          <div className="mt-2 flex justify-end">
+            <Button size="sm" variant="ghost" onClick={regenerate} disabled={busy} className="text-hextech-text-dim">
+              <RotateCw className="mr-1 h-3.5 w-3.5" />{t('planning.regenerateLiveSync', { defaultValue: 'Revoke & regenerate' })}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 

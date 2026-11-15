@@ -2,12 +2,13 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   listEvents, createEvent, deleteEvent, listAvailabilityRules, setAvailabilityRule,
   listAvailabilityExceptions, setAvailabilityException, findCommonAvailability, isUserAvailable,
+  getCalendarSubscription, createCalendarSubscription, revokeCalendarSubscription,
 } from '../../src/lib/calendarCore'
 import type { AvailabilityException, AvailabilityRule } from '../../src/lib/calendar'
 
 function chain(result: unknown) {
   const c: Record<string, unknown> = {}
-  for (const m of ['select', 'eq', 'gte', 'lt', 'lte', 'order']) c[m] = vi.fn().mockReturnValue(c)
+  for (const m of ['select', 'eq', 'gte', 'lt', 'lte', 'order', 'maybeSingle']) c[m] = vi.fn().mockReturnValue(c)
   c.then = (resolve: (v: unknown) => void) => resolve(result)
   return c
 }
@@ -126,5 +127,39 @@ describe('isUserAvailable (E11: Discord bot sub-finding)', () => {
 
   it('is false for a user with neither a rule nor an exception', () => {
     expect(isUserAvailable([], [], 'u2', '2026-11-16')).toBe(false)
+  })
+})
+
+describe('calendar subscription (E4 v2 — live iCal)', () => {
+  it('getCalendarSubscription maps a row and computes the ics URL from the token', async () => {
+    const sb = { from: vi.fn(() => chain({ data: { id: 's1', group_id: 'g1', token: 'deadbeef', created_by: 'u1', created_at: 't' }, error: null })) } as never
+    const out = await getCalendarSubscription(sb, 'g1', 'https://proj.supabase.co')
+    expect(out).toEqual({
+      id: 's1', groupId: 'g1', token: 'deadbeef', createdBy: 'u1', createdAt: 't',
+      icsUrl: 'https://proj.supabase.co/functions/v1/team-calendar-ics/deadbeef.ics',
+    })
+  })
+
+  it('getCalendarSubscription returns null when none exists yet', async () => {
+    const sb = { from: vi.fn(() => chain({ data: null, error: null })) } as never
+    expect(await getCalendarSubscription(sb, 'g1', 'https://proj.supabase.co')).toBeNull()
+  })
+
+  it('createCalendarSubscription inserts a fresh random token and returns the computed URL', async () => {
+    const insert = vi.fn((row: { group_id: string; token: string }) => ({
+      select: () => ({ single: () => Promise.resolve({ data: { id: 's1', group_id: row.group_id, token: row.token, created_by: 'u1', created_at: 't' }, error: null }) }),
+    }))
+    const sb = { from: vi.fn(() => ({ insert })) } as never
+    const out = await createCalendarSubscription(sb, 'g1', 'https://proj.supabase.co')
+    expect(out.groupId).toBe('g1')
+    expect(out.token).toMatch(/^[a-f0-9]{40}$/)
+    expect(out.icsUrl).toBe(`https://proj.supabase.co/functions/v1/team-calendar-ics/${out.token}.ics`)
+  })
+
+  it('revokeCalendarSubscription deletes by id', async () => {
+    const del = vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) }))
+    const sb = { from: vi.fn(() => ({ delete: del })) } as never
+    await revokeCalendarSubscription(sb, 's1')
+    expect(del).toHaveBeenCalled()
   })
 })

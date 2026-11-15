@@ -94,6 +94,10 @@ export function registerCollabHandlers() {
   validatedHandle('availability:set-exception', z.tuple([uuid, exceptionInput]), (_e, groupId, input) => collab.availabilitySetException(groupId, input))
   validatedHandle('availability:delete-exception', z.tuple([uuid]), (_e, id) => collab.availabilityDeleteException(id))
 
+  validatedHandle('calendar:get-subscription', z.tuple([uuid]), (_e, groupId) => collab.calendarGetSubscription(groupId))
+  validatedHandle('calendar:create-subscription', z.tuple([uuid]), (_e, groupId) => collab.calendarCreateSubscription(groupId))
+  validatedHandle('calendar:revoke-subscription', z.tuple([uuid]), (_e, id) => collab.calendarRevokeSubscription(id))
+
   const vodUrl = z.string().trim().url().max(500)
   const teamTag = z.enum(['rotation', 'objective_setup', 'communication', 'other'])
   const sessionInput = z.object({ scrimId: uuid.nullable().optional(), title: z.string().trim().min(1).max(120), vodUrl })
