@@ -87,7 +87,7 @@ export function getSyncStatus(): SyncStatus {
   return status
 }
 
-async function currentUserId(): Promise<string | null> {
+export async function currentUserId(): Promise<string | null> {
   const token = await getAccessToken()
   if (!token) return null
   const { data } = await getSupabase().auth.getUser(token)

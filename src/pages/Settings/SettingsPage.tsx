@@ -11,7 +11,8 @@ import { useUserStore } from '@/store/useUserStore'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 import { useDiscordWebhooks, type DiscordWebhook } from '@/hooks/useDiscordWebhooks'
-import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Target, Video, Circle, FolderOpen, X, Pencil, Check, FlaskConical, Youtube, Volume2, Mic, AlertTriangle, ExternalLink } from 'lucide-react'
+import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Target, Video, Circle, FolderOpen, X, Pencil, Check, FlaskConical, Youtube, Volume2, Mic, AlertTriangle, ExternalLink, Palette } from 'lucide-react'
+import { COLOR_THEMES, applyTheme, getStoredTheme, type ColorTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 import type { AudioDevicesSummary } from '@/lib/ipc'
 
@@ -196,6 +197,9 @@ export function SettingsPage() {
         <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('settings.title')}</h1>
         <p className="text-sm text-hextech-text mt-1">{t('settings.subtitle')}</p>
       </div>
+
+      {/* Appearance */}
+      <AppearanceCard />
 
       {/* Main role for stats */}
       <Card>
@@ -1019,6 +1023,11 @@ function DangerZoneCard() {
   // Recent-window cleanup: which day-range is pending confirmation (null = idle).
   const [pendingDays, setPendingDays] = useState<number | null>(null)
   const [clearingRecent, setClearingRecent] = useState(false)
+  // Sync-leak cleanup (beta.104): null = not checked yet.
+  const [foreignAudit, setForeignAudit] = useState<Record<string, number> | null>(null)
+  const [auditingForeign, setAuditingForeign] = useState(false)
+  const [confirmRemoveForeign, setConfirmRemoveForeign] = useState(false)
+  const [removingForeign, setRemovingForeign] = useState(false)
 
   const RECENT_OPTIONS = [
     { days: 1, label: '24h' },
@@ -1060,6 +1069,39 @@ function DangerZoneCard() {
       toast({ title: 'Clear failed', description: err?.message ?? 'Unknown error', variant: 'destructive' })
     } finally {
       setClearing(false)
+    }
+  }
+
+  const handleAuditForeign = async () => {
+    setAuditingForeign(true)
+    setConfirmRemoveForeign(false)
+    try {
+      setForeignAudit(await window.api.syncAuditForeignRows())
+    } catch (err: any) {
+      toast({ title: 'Check failed', description: err?.message ?? 'Unknown error', variant: 'destructive' })
+    } finally {
+      setAuditingForeign(false)
+    }
+  }
+
+  const handleRemoveForeign = async () => {
+    setRemovingForeign(true)
+    try {
+      const deleted = await window.api.syncDeleteForeignRows()
+      const total = Object.values(deleted).reduce((a, b) => a + b, 0)
+      toast({
+        title: 'Cleaned up',
+        description: total > 0
+          ? `Removed ${total} row(s) that belonged to a teammate: ${Object.entries(deleted).map(([t, n]) => `${n} ${t}`).join(', ')}.`
+          : 'Nothing left to remove.',
+        variant: 'success',
+      })
+      setForeignAudit(null)
+      setConfirmRemoveForeign(false)
+    } catch (err: any) {
+      toast({ title: 'Cleanup failed', description: err?.message ?? 'Unknown error', variant: 'destructive' })
+    } finally {
+      setRemovingForeign(false)
     }
   }
 
@@ -1155,6 +1197,47 @@ function DangerZoneCard() {
           )}
         </div>
 
+        {/* Sync-leak cleanup (beta.104) */}
+        <div className="flex items-start justify-between gap-3 flex-wrap rounded-lg border border-hextech-border-dim bg-hextech-elevated px-3 py-2.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-hextech-text-bright">Check for teammates&apos; data</p>
+            <p className="text-xs text-hextech-text-dim mt-0.5">
+              A sync bug (fixed in beta.104) could let a coach/analyst&apos;s own device absorb a shared teammate&apos;s sessions,
+              assessments or reviews into their own local history. This checks your database against the server and tells you
+              if any of your data actually belongs to someone else.
+            </p>
+            {foreignAudit && (
+              Object.keys(foreignAudit).length === 0 ? (
+                <p className="text-xs text-hextech-green mt-1.5">No contaminated data found.</p>
+              ) : (
+                <p className="text-xs text-orange-300 mt-1.5">
+                  Found {Object.values(foreignAudit).reduce((a, b) => a + b, 0)} row(s) across{' '}
+                  {Object.entries(foreignAudit).map(([t, n]) => `${t} (${n})`).join(', ')} that belong to a teammate.
+                </p>
+              )
+            )}
+          </div>
+          {confirmRemoveForeign ? (
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="destructive" size="sm" disabled={removingForeign} onClick={handleRemoveForeign} className="gap-1.5">
+                {removingForeign ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                Confirm removal
+              </Button>
+              <Button variant="ghost" size="sm" disabled={removingForeign} onClick={() => setConfirmRemoveForeign(false)}>Cancel</Button>
+            </div>
+          ) : foreignAudit && Object.keys(foreignAudit).length > 0 ? (
+            <Button variant="destructive" size="sm" onClick={() => setConfirmRemoveForeign(true)} className="shrink-0 gap-1.5">
+              <Trash2 className="h-3.5 w-3.5" />
+              Remove it
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" disabled={auditingForeign} onClick={handleAuditForeign} className="shrink-0 gap-1.5">
+              {auditingForeign ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Check
+            </Button>
+          )}
+        </div>
+
         {/* Full reset */}
         <div className="flex items-start justify-between gap-3 flex-wrap rounded-lg border border-[#E24C3A]/30 bg-[#E24C3A]/5 px-3 py-2.5">
           <div className="min-w-0 flex-1">
@@ -1178,6 +1261,65 @@ function DangerZoneCard() {
               Reset everything
             </Button>
           )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ── Appearance sub-component ─────────────────────────────────────────────────
+
+const THEME_PREVIEW: Record<ColorTheme, { label: string; desc: string; swatches: [string, string, string] }> = {
+  hextech: { label: 'Hextech Gold', desc: 'The default look.', swatches: ['#0D0A06', '#D4A24C', '#3E8E7E'] },
+  piltover: { label: 'Piltover Blue', desc: 'Cool cyan & blue.', swatches: ['#060B10', '#4C9ED4', '#3EC2D4'] },
+  noxus: { label: 'Noxus Crimson', desc: 'Warm red & iron.', swatches: ['#100607', '#C23B3B', '#D4753E'] },
+  void: { label: 'Void Purple', desc: 'Violet & arcane.', swatches: ['#0A0610', '#A24CD4', '#8E6AD4'] },
+}
+
+function AppearanceCard() {
+  const [theme, setTheme] = useState<ColorTheme>(() => getStoredTheme())
+
+  const choose = (t: ColorTheme) => {
+    applyTheme(t)
+    setTheme(t)
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Palette className="h-5 w-5 text-hextech-gold" />
+          Appearance
+        </CardTitle>
+        <CardDescription>Pick a color theme for the whole app — applies instantly, no restart needed.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {COLOR_THEMES.map((id) => {
+            const preview = THEME_PREVIEW[id]
+            const active = theme === id
+            return (
+              <button
+                key={id}
+                onClick={() => choose(id)}
+                className={cn(
+                  'flex flex-col items-start gap-2 rounded-lg border p-3 text-left transition-all',
+                  active ? 'border-hextech-gold bg-hextech-gold/10' : 'border-hextech-border-dim hover:border-hextech-border',
+                )}
+              >
+                <div className="flex items-center gap-1.5">
+                  {preview.swatches.map((c, i) => (
+                    <span key={i} className="h-4 w-4 rounded-full border border-white/10" style={{ backgroundColor: c }} />
+                  ))}
+                  {active && <Check className="ml-auto h-4 w-4 text-hextech-gold" />}
+                </div>
+                <div>
+                  <p className={cn('text-sm font-medium', active ? 'text-hextech-gold-bright' : 'text-hextech-text-bright')}>{preview.label}</p>
+                  <p className="text-[11px] text-hextech-text-dim">{preview.desc}</p>
+                </div>
+              </button>
+            )
+          })}
         </div>
       </CardContent>
     </Card>

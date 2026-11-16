@@ -2,6 +2,90 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Color themes (Settings → Appearance, src/lib/theme.ts). `:root` is the
+ * default "Hextech Gold" theme — every other theme only overrides the
+ * tokens it needs to change. `--hextech-red`/`--hextech-green` are never
+ * redefined per theme: they carry a fixed semantic meaning (loss/danger,
+ * win/success) across the whole app, independent of the cosmetic theme.
+ */
+:root {
+  --hextech-black: #0D0A06;
+  --hextech-dark: #1C140C;
+  --hextech-elevated: #2A1D11;
+  --hextech-panel: #2A1D11;
+  --hextech-border: #8A6A34;
+  --hextech-border-dim: #4A3A24;
+  --hextech-cyan: #3E8E7E;
+  --hextech-teal: #2B6358;
+  --hextech-gold: #D4A24C;
+  --hextech-gold-bright: #F5E3BE;
+  --hextech-red: #E24C3A;
+  --hextech-green: #6FA84A;
+  --hextech-text: #B5A68C;
+  --hextech-text-bright: #F5E3BE;
+  --hextech-text-dim: #6B5C44;
+  --hextech-blue: #241A10;
+  --hextech-blue-bright: #E8B86B;
+}
+
+/* Piltover Blue — cool cyan/blue accent. */
+:root[data-theme="piltover"] {
+  --hextech-black: #060B10;
+  --hextech-dark: #0C1620;
+  --hextech-elevated: #132233;
+  --hextech-panel: #132233;
+  --hextech-border: #3E6E8A;
+  --hextech-border-dim: #223C4A;
+  --hextech-cyan: #3EC2D4;
+  --hextech-teal: #2B7E8E;
+  --hextech-gold: #4C9ED4;
+  --hextech-gold-bright: #BEE3F5;
+  --hextech-text: #8CA8B5;
+  --hextech-text-bright: #BEE3F5;
+  --hextech-text-dim: #44606B;
+  --hextech-blue: #10202E;
+  --hextech-blue-bright: #6BC2E8;
+}
+
+/* Noxus Crimson — warm red/iron accent. */
+:root[data-theme="noxus"] {
+  --hextech-black: #100607;
+  --hextech-dark: #200C0D;
+  --hextech-elevated: #331316;
+  --hextech-panel: #331316;
+  --hextech-border: #8A3E3E;
+  --hextech-border-dim: #4A2224;
+  --hextech-cyan: #D4753E;
+  --hextech-teal: #8E4A2B;
+  --hextech-gold: #C23B3B;
+  --hextech-gold-bright: #F5C4BE;
+  --hextech-text: #B58C8C;
+  --hextech-text-bright: #F5C4BE;
+  --hextech-text-dim: #6B4444;
+  --hextech-blue: #241010;
+  --hextech-blue-bright: #E88A6B;
+}
+
+/* Void Purple — violet/arcane accent. */
+:root[data-theme="void"] {
+  --hextech-black: #0A0610;
+  --hextech-dark: #160C20;
+  --hextech-elevated: #221333;
+  --hextech-panel: #221333;
+  --hextech-border: #6A3E8A;
+  --hextech-border-dim: #3A224A;
+  --hextech-cyan: #8E6AD4;
+  --hextech-teal: #58428E;
+  --hextech-gold: #A24CD4;
+  --hextech-gold-bright: #E3BEF5;
+  --hextech-text: #A68CB5;
+  --hextech-text-bright: #E3BEF5;
+  --hextech-text-dim: #5C446B;
+  --hextech-blue: #1A1024;
+  --hextech-blue-bright: #B86BE8;
+}
+
 /* Faint swirl texture — put this on the layout's own root container, never
    on `body`: the layout root paints an opaque background over the whole
    viewport once React mounts, so a body-level background disappears right
@@ -34,7 +118,7 @@
     font-feature-settings: 'rlig' 1, 'calt' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #0d0a06;
+    background-color: var(--hextech-black);
   }
 
   ::-webkit-scrollbar {

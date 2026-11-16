@@ -16,11 +16,14 @@ import { TeamPage } from './pages/TeamPage'
 import { AccountPage } from './pages/AccountPage'
 import { DownloadButton } from './DownloadButton'
 import { installDiagnostics } from '@/lib/diagnostics'
+import { applyTheme, getStoredTheme } from '@/lib/theme'
 
 // Must run before any shared component calls window.api.
 installWebApi()
 // Last client errors, attached to bug reports only if the user agrees.
 installDiagnostics()
+// Before the first paint, so there's no flash of the default theme.
+applyTheme(getStoredTheme())
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {

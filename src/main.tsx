@@ -4,11 +4,15 @@ import { HashRouter } from 'react-router-dom'
 import { App } from './App'
 import { CloudGate } from './components/Cloud/CloudGate'
 import { installDiagnostics } from './lib/diagnostics'
+import { applyTheme, getStoredTheme } from './lib/theme'
 import './i18n/config'
 import './index.css'
 
 // Keeps the last renderer errors in memory for bug reports (opt-in at send time).
 installDiagnostics()
+
+// Before the first paint, so there's no flash of the default theme.
+applyTheme(getStoredTheme())
 
 // Global crash diagnostics — without these, render exceptions that
 // somehow escape every error boundary in the tree just produce a black

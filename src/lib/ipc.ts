@@ -485,6 +485,10 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   // Multi-device sync
   syncStatus: () => Promise<SyncStatus>
   syncNow: () => Promise<SyncStatus>
+  /** Cleanup for the sync-leak fixed in beta.104 (desktop-only — see
+   *  electron/main/sync/syncAudit.ts). Maps table name -> row count. */
+  syncAuditForeignRows: () => Promise<Record<string, number>>
+  syncDeleteForeignRows: () => Promise<Record<string, number>>
   onSyncStatus: (cb: (status: SyncStatus) => void) => () => void
   onSyncApplied: (cb: (info: { tables: string[]; count: number }) => void) => () => void
 

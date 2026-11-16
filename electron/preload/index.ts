@@ -263,6 +263,8 @@ const api = {
   cloudDeleteAccount: (confirm: 'DELETE') => ipcRenderer.invoke('cloud:delete-account', confirm),
   syncStatus: () => ipcRenderer.invoke('sync:status'),
   syncNow: () => ipcRenderer.invoke('sync:now'),
+  syncAuditForeignRows: () => ipcRenderer.invoke('sync:audit-foreign-rows'),
+  syncDeleteForeignRows: () => ipcRenderer.invoke('sync:delete-foreign-rows'),
   onSyncStatus: (cb: (status: unknown) => void) => {
     const handler = (_: Electron.IpcRendererEvent, s: unknown) => cb(s)
     ipcRenderer.on('sync:status', handler)
