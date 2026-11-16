@@ -193,7 +193,7 @@ function PlayerView({ player, myUserId, nameOf }: { player: PlayerRef; myUserId:
                           {Object.keys(g.review.kpiScores).length > 0 && (
                             <div className="flex flex-wrap gap-1 text-xs">
                               {Object.entries(g.review.kpiScores).map(([k, v]) => (
-                                <span key={k} className="rounded bg-hextech-dark px-1.5 py-0.5 text-hextech-text-dim">{k}: {v}/5</span>
+                                <span key={k} className="rounded bg-hextech-dark px-1.5 py-0.5 text-hextech-text-dim">{k}: {v}/10</span>
                               ))}
                             </div>
                           )}

@@ -4,8 +4,27 @@ import { getSupabase, getAccessToken, isCloudConfigured } from '../cloud/supabas
 import { SyncEngine, SyncError, type PushRecord, type RemoteRecord, type SyncRemote, type SyncStatus } from './syncEngine'
 import { hasLiveSessionForUser } from '../../../src/lib/teamSessionsCore'
 
-/** sync_records / sync_push over the signed-in Supabase session (RLS-scoped). */
+/**
+ * sync_records / sync_push over the signed-in Supabase session.
+ *
+ * `sync_records` carries a SELECT policy (`sync_records_read_shared`,
+ * `private.can_read_player_table`) that also lets a coach/owner/analyst
+ * read a *shared* teammate's own rows — that's intentional and required
+ * for the staff dashboard / "shared player stats" feature (there's no
+ * separate cloud table for session/assessment data; it only ever exists
+ * as opaque JSON inside `sync_records.data`, read directly from the web
+ * or desktop UI for that one feature). This class is for a different
+ * job: keeping *this device's own* local SQLite mirror in sync with the
+ * signed-in user's *own* other devices. Without an explicit `user_id`
+ * filter here, that RLS-granted read would leak straight into this
+ * mechanism too — a coach's own desktop sync would silently pull a
+ * shared player's Session/Assessment rows and merge them into the
+ * coach's own local tables, corrupting their personal Analytics with
+ * someone else's data. Never rely on RLS alone for this invariant.
+ */
 class SupabaseSyncRemote implements SyncRemote {
+  constructor(private readonly uid: string) {}
+
   async push(records: PushRecord[]): Promise<void> {
     for (let i = 0; i < records.length; i += 500) {
       const { error } = await getSupabase().rpc('sync_push', { p_records: records.slice(i, i + 500) })
@@ -16,6 +35,7 @@ class SupabaseSyncRemote implements SyncRemote {
     const { data, error } = await getSupabase()
       .from('sync_records')
       .select('table_name, record_id, data, deleted, updated_at, device_id, seq')
+      .eq('user_id', this.uid)
       .gt('seq', afterSeq)
       .order('seq', { ascending: true })
       .limit(limit)
@@ -26,6 +46,7 @@ class SupabaseSyncRemote implements SyncRemote {
     const { data, error } = await getSupabase()
       .from('sync_records')
       .select('table_name, record_id, data, deleted, updated_at, device_id, seq')
+      .eq('user_id', this.uid)
       .eq('table_name', table)
       .eq('record_id', id)
       .maybeSingle()
@@ -82,7 +103,7 @@ export function syncNow(): Promise<void> {
       setStatus({ phase: 'idle', error: 'SIGNED_OUT' })
       return
     }
-    const engine = new SyncEngine(getPrisma() as any, new SupabaseSyncRemote(), uid)
+    const engine = new SyncEngine(getPrisma() as any, new SupabaseSyncRemote(uid), uid)
     setStatus({ phase: 'syncing', error: null })
     try {
       const res = await engine.syncOnce()

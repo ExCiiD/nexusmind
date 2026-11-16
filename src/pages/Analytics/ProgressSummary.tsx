@@ -56,7 +56,7 @@ export function ProgressSummary({ latest, previous, labelOf, latestDate }: Props
           <div className="text-xs text-hextech-text-dim">{t('analytics.summary.average')}</div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-3xl font-bold text-hextech-gold-bright">{fmt(mean)}</span>
-            <span className="text-sm text-hextech-text-dim">/ 5</span>
+            <span className="text-sm text-hextech-text-dim">/ 10</span>
           </div>
           {delta != null && (
             <div className={cn('mt-1 flex items-center gap-1 text-xs',
