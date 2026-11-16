@@ -6,6 +6,7 @@ import type { WellbeingApi } from './wellbeing'
 import type { TeamOpsApi } from './teamOps'
 import type { AnnouncementsApi } from './announcements'
 import type { TeamSessionApi } from './teamSessions'
+import type { TeamSessionReviewApi } from './teamSessionReviews'
 import type { ReportApi } from './report'
 import type { TrialsApi } from './trials'
 import type { ScrimsReadApi } from './scrims'
@@ -325,7 +326,7 @@ export interface SavedAccount {
   _count: { sessions: number }
 }
 
-export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareApi & CalendarApi & VodReviewApi & WellbeingApi & TeamOpsApi & AnnouncementsApi & ReportApi & TrialsApi & ScrimsReadApi & DiscussionApi & TeamSessionApi & {
+export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareApi & CalendarApi & VodReviewApi & WellbeingApi & TeamOpsApi & AnnouncementsApi & ReportApi & TrialsApi & ScrimsReadApi & DiscussionApi & TeamSessionApi & TeamSessionReviewApi & {
   connectRiot: (gameName: string, tagLine: string, region: string, displayName?: string) => Promise<any>
   disconnectRiot: () => Promise<void>
   reactivateAccount: (userId: string) => Promise<any>
@@ -671,6 +672,10 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   youtubeDisconnect: () => Promise<{ success: boolean }>
   youtubeUpload: (opts: { filePath: string; title: string; description?: string; visibility?: string }) => Promise<{ jobId: string }>
   onYoutubeUploadProgress: (cb: (data: { jobId: string; percent: number }) => void) => () => void
+
+  /** Local Whisper transcription (Phase 5, Planning rework). Desktop-only —
+   *  the model (ONNX Runtime) runs in the Electron main process. */
+  transcriptionRun: (filePath: string, language: string) => Promise<{ text: string }>
 
   getCoachingPatterns: () => Promise<CoachingPatterns | null>
 

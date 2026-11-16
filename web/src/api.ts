@@ -10,6 +10,7 @@ import * as wellbeingCore from '@/lib/wellbeingCore'
 import * as teamOpsCore from '@/lib/teamOpsCore'
 import * as announcementsCore from '@/lib/announcementsCore'
 import * as teamSessionsCore from '@/lib/teamSessionsCore'
+import * as teamSessionReviewsCore from '@/lib/teamSessionReviewsCore'
 import { getMatch as getMatchWeb } from './riotWeb'
 import * as reportCore from '@/lib/reportCore'
 import * as trialsCore from '@/lib/trialsCore'
@@ -182,6 +183,17 @@ export const webApi = {
   },
   teamSessionSetOurTeamId: (gameId: string, ourTeamId: 100 | 200) => teamSessionsCore.setOurTeamId(sb, gameId, ourTeamId),
   teamSessionSetEnemyTeamName: (gameId: string, name: string | null) => teamSessionsCore.setEnemyTeamName(sb, gameId, name),
+
+  // ── Phase 5: team session reviews (CRUD only — recording/transcription/
+  // YouTube upload are desktop-only, see src/components/TeamSession) ──
+  teamSessionReviewsListForSession: (sessionId: string) => teamSessionReviewsCore.listReviewsForSession(sb, sessionId),
+  teamSessionReviewGetForGame: (gameId: string) => teamSessionReviewsCore.getReviewForGame(sb, gameId),
+  teamSessionReviewGetForScope: (sessionId: string, scope: 'session' | 'meeting') => teamSessionReviewsCore.getReviewForScope(sb, sessionId, scope),
+  teamSessionReviewCreate: (sessionId: string, gameId: string | null, scope: Parameters<typeof teamSessionReviewsCore.createReview>[3], status: Parameters<typeof teamSessionReviewsCore.createReview>[4]) =>
+    teamSessionReviewsCore.createReview(sb, sessionId, gameId, scope, status),
+  teamSessionReviewUpdate: (id: string, patch: Parameters<typeof teamSessionReviewsCore.updateReview>[2]) => teamSessionReviewsCore.updateReview(sb, id, patch),
+  teamSessionFeedbackList: (sessionId: string) => teamSessionReviewsCore.listFeedbackForSession(sb, sessionId),
+  teamSessionFeedbackSubmit: (sessionId: string, body: string, transcript?: string | null) => teamSessionReviewsCore.submitFeedback(sb, sessionId, body, transcript ?? null),
   collabSetSharing: async (groupId: string, s: { shareReviews: boolean; shareStats: boolean; shareTeam: boolean; shareWellbeing: boolean }) =>
     core.setSharing(sb, await currentUserId(), groupId, s),
   collabPlayerSessions: (playerId: string) => core.getPlayerSessions(sb, playerId),

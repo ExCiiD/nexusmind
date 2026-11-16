@@ -1910,6 +1910,38 @@
       "mid": "Mid",
       "adc": "ADC",
       "support": "Support"
+    },
+    "gameLabel": "Game {{n}}",
+    "review": {
+      "quickReviewFor": "Quick review — {{game}}",
+      "record": "Record",
+      "skip": "Skip",
+      "stop": "Stop & transcribe",
+      "transcriptPlaceholder": "Transcript (editable)…",
+      "summaryPlaceholder": "Summary / key takeaways (optional, manual)…",
+      "save": "Save",
+      "saved": "Saved",
+      "transcribed": "Transcribed",
+      "uploaded": "Uploaded to YouTube",
+      "uploadToYoutube": "Upload to YouTube",
+      "viewOnYoutube": "View on YouTube",
+      "youtubeNotConnected": "Connect a YouTube channel in Settings to publish.",
+      "desktopOnly": "Recording a review is only available in the desktop app.",
+      "status": {
+        "pending": "Pending",
+        "recording": "Recording",
+        "processing": "Processing",
+        "done": "Done",
+        "deferred": "Deferred"
+      },
+      "sessionPerformance": "Session performance",
+      "sessionReview": "Session review",
+      "meetingReview": "Meeting recording",
+      "waitingForMeetingRecord": "Waiting for a responsible to record this meeting.",
+      "feedback": "Player feedback",
+      "feedbackPlaceholder": "Optional — how did this session go for you?",
+      "feedbackSend": "Send feedback",
+      "feedbackSent": "Feedback sent"
     }
   },
   "vodReview": {

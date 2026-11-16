@@ -197,3 +197,60 @@ export function buildDuelRows(ourSide: SynergyPlayerStats[], enemySide: SynergyP
     enemy: enemySide.find((p) => p.role === role) ?? null,
   }))
 }
+
+export interface SessionPerformance {
+  gamesCounted: number
+  wins: number
+  losses: number
+  avgDurationSec: number
+  our: { kills: number; deaths: number; assists: number; gold: number; vision: number; damage: number }
+  enemy: { kills: number; deaths: number; assists: number; gold: number; vision: number; damage: number }
+}
+
+/** Minimal shape-check — `game.matchJson` is `unknown` on the wire (jsonb
+ *  column), this is the one spot that trusts it's actually a RiotMatch. */
+function asRiotMatch(value: unknown): RiotMatch | null {
+  const v = value as { info?: { participants?: unknown; gameDuration?: unknown } } | null
+  if (v?.info && Array.isArray(v.info.participants) && typeof v.info.gameDuration === 'number') return v as RiotMatch
+  return null
+}
+
+/**
+ * "Session performance" (Phase 5, Planning rework) — sums Phase 4's
+ * per-game header summary across every game whose stats have already been
+ * loaded at least once (so this never triggers extra Riot fetches itself;
+ * it reads the `match_json`/`our_team_id` already cached on each game row).
+ * Returns null when no game has been resolved yet.
+ */
+export function buildSessionPerformance(games: Array<{ matchJson: unknown; ourTeamId: 100 | 200 | null }>): SessionPerformance | null {
+  const zero = { kills: 0, deaths: 0, assists: 0, gold: 0, vision: 0, damage: 0 }
+  let gamesCounted = 0, wins = 0, losses = 0, totalDurationSec = 0
+  const our = { ...zero }
+  const enemy = { ...zero }
+
+  for (const g of games) {
+    if (!g.ourTeamId) continue
+    const match = asRiotMatch(g.matchJson)
+    if (!match) continue
+    const durationSec = match.info.gameDuration
+    const ourParticipants = match.info.participants.filter((p) => p.teamId === g.ourTeamId)
+    const enemyParticipants = match.info.participants.filter((p) => p.teamId !== g.ourTeamId && (p.teamId === 100 || p.teamId === 200))
+    if (ourParticipants.length === 0) continue
+
+    gamesCounted++
+    totalDurationSec += durationSec
+    if (ourParticipants[0].win) wins++; else losses++
+
+    for (const p of ourParticipants) {
+      our.kills += p.kills; our.deaths += p.deaths; our.assists += p.assists
+      our.gold += p.goldEarned ?? 0; our.vision += p.visionScore ?? 0; our.damage += p.totalDamageDealtToChampions ?? 0
+    }
+    for (const p of enemyParticipants) {
+      enemy.kills += p.kills; enemy.deaths += p.deaths; enemy.assists += p.assists
+      enemy.gold += p.goldEarned ?? 0; enemy.vision += p.visionScore ?? 0; enemy.damage += p.totalDamageDealtToChampions ?? 0
+    }
+  }
+
+  if (gamesCounted === 0) return null
+  return { gamesCounted, wins, losses, avgDurationSec: totalDurationSec / gamesCounted, our, enemy }
+}

@@ -526,6 +526,16 @@ const api = {
   youtubeDisconnect: () => ipcRenderer.invoke('youtube:disconnect'),
   youtubeUpload: (opts: { filePath: string; title: string; description?: string; visibility?: string }) =>
     ipcRenderer.invoke('youtube:upload', opts),
+  transcriptionRun: (filePath: string, language: string) => ipcRenderer.invoke('transcription:run', filePath, language),
+  teamSessionReviewsListForSession: (sessionId: string) => ipcRenderer.invoke('team-session-review:list-for-session', sessionId),
+  teamSessionReviewGetForGame: (gameId: string) => ipcRenderer.invoke('team-session-review:get-for-game', gameId),
+  teamSessionReviewGetForScope: (sessionId: string, scope: 'session' | 'meeting') => ipcRenderer.invoke('team-session-review:get-for-scope', sessionId, scope),
+  teamSessionReviewCreate: (sessionId: string, gameId: string | null, scope: string, status: string) =>
+    ipcRenderer.invoke('team-session-review:create', sessionId, gameId, scope, status),
+  teamSessionReviewUpdate: (id: string, patch: unknown) => ipcRenderer.invoke('team-session-review:update', id, patch),
+  teamSessionFeedbackList: (sessionId: string) => ipcRenderer.invoke('team-session-review:feedback-list', sessionId),
+  teamSessionFeedbackSubmit: (sessionId: string, body: string, transcript?: string | null) =>
+    ipcRenderer.invoke('team-session-review:feedback-submit', sessionId, body, transcript),
   onYoutubeUploadProgress: (cb: (data: { jobId: string; percent: number }) => void) => {
     const handler = (_e: Electron.IpcRendererEvent, data: any) => cb(data)
     ipcRenderer.on('youtube:upload-progress', handler)

@@ -60,6 +60,8 @@ import { registerAssistantHandlers } from './assistant/assistant.ipc'
 import { startSyncService } from './sync/syncService'
 import { registerCollabHandlers } from './ipc/collab.ipc'
 import { registerTeamSessionHandlers } from './ipc/teamSession.ipc'
+import { registerTeamSessionReviewHandlers } from './ipc/teamSessionReview.ipc'
+import { registerTranscriptionHandlers } from './ipc/transcription.ipc'
 import { registerFeedbackHandlers } from './ipc/feedback.ipc'
 import { registerNotificationsHandlers } from './ipc/notifications.ipc'
 import { registerTeamShareHandlers } from './ipc/teamShare.ipc'
@@ -431,6 +433,8 @@ async function bootstrap() {
   registerSyncHandlers()
   registerCollabHandlers()
   registerTeamSessionHandlers()
+  registerTeamSessionReviewHandlers()
+  registerTranscriptionHandlers()
   registerAssistantHandlers()
   registerFeedbackHandlers()
   registerNotificationsHandlers()

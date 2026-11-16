@@ -16,9 +16,14 @@ import { canManageSession } from '@/lib/permissions'
 import { FundamentalPickerDialog } from '@/components/Session/FundamentalPickerDialog'
 import { mergedFundamentalCategories, getAllFundamentalsForGroup } from '@/lib/fundamentals'
 import { countdownState } from '@/lib/teamSessionsCore'
+import { gamesNeedingReviewPrompt } from '@/lib/teamSessionReviewsCore'
 import { TeamSessionGameCard } from '@/components/TeamSession/TeamSessionGameCard'
+import { PostGameReviewPrompt } from '@/components/TeamSession/PostGameReviewPrompt'
+import { SessionReviewPanel } from '@/components/TeamSession/SessionReviewPanel'
+import { MeetingReviewPanel } from '@/components/TeamSession/MeetingReviewPanel'
 import type { CalendarEvent } from '@/lib/calendar'
 import type { GroupFundamental, SessionQueueFilter, TeamSession, TeamSessionGame, TeamSessionObjectives } from '@/lib/teamSessions'
+import type { TeamSessionReview } from '@/lib/teamSessionReviews'
 import { cn } from '@/lib/utils'
 
 const QUEUE_FILTERS: SessionQueueFilter[] = ['flex', 'scrim', 'ranked5', 'all']
@@ -37,13 +42,14 @@ export function TeamSessionPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { toast } = useToast()
-  const { myUserId, groups, loading: collabLoading } = useCollab()
+  const { myUserId, groups, nameOf, loading: collabLoading } = useCollab()
 
   const [event, setEvent] = useState<CalendarEvent | null | undefined>(undefined)
   const [session, setSession] = useState<TeamSession | null | undefined>(undefined)
   const [objectives, setObjectives] = useState<TeamSessionObjectives | null>(null)
   const [fundamentals, setFundamentals] = useState<GroupFundamental[]>([])
   const [games, setGames] = useState<TeamSessionGame[]>([])
+  const [reviews, setReviews] = useState<TeamSessionReview[]>([])
   const [now, setNow] = useState(() => new Date())
 
   const load = useCallback(async () => {
@@ -56,14 +62,16 @@ export function TeamSessionPage() {
       setEvent(ev)
       setSession(sess)
       if (sess) {
-        const [obj, funds, gms] = await Promise.all([
+        const [obj, funds, gms, revs] = await Promise.all([
           window.api.teamSessionGetObjectives(sess.id),
           window.api.groupFundamentalsList(sess.groupId),
           window.api.teamSessionListGames(sess.id),
+          window.api.teamSessionReviewsListForSession(sess.id),
         ])
         setObjectives(obj)
         setFundamentals(funds)
         setGames(gms)
+        setReviews(revs)
       }
     } catch (err) {
       toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
@@ -125,6 +133,8 @@ export function TeamSessionPage() {
       setResponsibleIds([myUserId])
     }
   }, [myUserId, eligibleResponsibles, responsibleIds.length])
+
+  const gamesNeedingPrompt = useMemo(() => gamesNeedingReviewPrompt(games, reviews), [games, reviews])
 
   const kpiGroups = useMemo(
     () => selectedObjectives
@@ -400,7 +410,25 @@ export function TeamSessionPage() {
         </Button>
       )}
 
-      {session.status !== 'scheduled' && games.length > 0 && (
+      {event.kind === 'meeting' && session.status !== 'scheduled' && (
+        <MeetingReviewPanel sessionId={session.id} canManage={canManage} />
+      )}
+
+      {event.kind !== 'meeting' && session.status !== 'scheduled' && canManage && gamesNeedingPrompt.length > 0 && (
+        <div className="space-y-3">
+          {gamesNeedingPrompt.map((g, i) => (
+            <PostGameReviewPrompt
+              key={g.id}
+              sessionId={session.id}
+              gameId={g.id}
+              gameLabel={t('teamSession.gameLabel', { defaultValue: 'Game {{n}}', n: games.indexOf(g) + 1 || i + 1 })}
+              onDecided={load}
+            />
+          ))}
+        </div>
+      )}
+
+      {event.kind !== 'meeting' && session.status !== 'scheduled' && games.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-sm font-bold text-hextech-text-bright">
             {t('teamSession.games', { defaultValue: 'Games', count: games.length })}
@@ -415,6 +443,10 @@ export function TeamSessionPage() {
             />
           ))}
         </div>
+      )}
+
+      {session.status === 'ended' && (
+        <SessionReviewPanel sessionId={session.id} games={games} canManage={canManage} myUserId={myUserId ?? ''} nameOf={nameOf} />
       )}
 
       <Dialog open={addFundamentalOpen} onOpenChange={setAddFundamentalOpen}>

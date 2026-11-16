@@ -24,6 +24,11 @@ asarUnpack:
   - node_modules/@prisma/engines/**/*
   - node_modules/prisma/**/*
   - node_modules/ffmpeg-static/**/*
+  # onnxruntime-node ships a prebuilt native .node binary per platform (used
+  # by @huggingface/transformers for local Whisper transcription, Phase 5)
+  # — native binaries can't load from inside an asar archive.
+  - node_modules/onnxruntime-node/**/*
+  - node_modules/onnxruntime-common/**/*
 
 publish:
   provider: github

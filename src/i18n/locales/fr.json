@@ -1910,6 +1910,38 @@
       "mid": "Mid",
       "adc": "ADC",
       "support": "Support"
+    },
+    "gameLabel": "Game {{n}}",
+    "review": {
+      "quickReviewFor": "Review rapide — {{game}}",
+      "record": "Enregistrer",
+      "skip": "Passer",
+      "stop": "Arrêter et transcrire",
+      "transcriptPlaceholder": "Transcription (modifiable)…",
+      "summaryPlaceholder": "Résumé / points clés (optionnel, manuel)…",
+      "save": "Enregistrer",
+      "saved": "Enregistré",
+      "transcribed": "Transcrit",
+      "uploaded": "Publié sur YouTube",
+      "uploadToYoutube": "Publier sur YouTube",
+      "viewOnYoutube": "Voir sur YouTube",
+      "youtubeNotConnected": "Connecte une chaîne YouTube dans Réglages pour publier.",
+      "desktopOnly": "L'enregistrement d'une review n'est disponible que dans l'application desktop.",
+      "status": {
+        "pending": "En attente",
+        "recording": "Enregistrement",
+        "processing": "Traitement",
+        "done": "Terminé",
+        "deferred": "Reporté"
+      },
+      "sessionPerformance": "Performance de la session",
+      "sessionReview": "Review de session",
+      "meetingReview": "Enregistrement de la réunion",
+      "waitingForMeetingRecord": "En attente qu'un responsable enregistre cette réunion.",
+      "feedback": "Retours des joueurs",
+      "feedbackPlaceholder": "Optionnel — comment s'est passée cette session pour toi ?",
+      "feedbackSend": "Envoyer le retour",
+      "feedbackSent": "Retour envoyé"
     }
   },
   "vodReview": {

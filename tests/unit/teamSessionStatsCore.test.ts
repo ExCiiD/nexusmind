@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  resolveOurTeamId, buildSideStats, buildHeaderSummary, buildDuelRows, matchParticipantToMember,
+  resolveOurTeamId, buildSideStats, buildHeaderSummary, buildDuelRows, matchParticipantToMember, buildSessionPerformance,
   type RiotMatchParticipant,
 } from '../../src/lib/teamSessionStatsCore'
 
@@ -121,5 +121,39 @@ describe('buildDuelRows', () => {
     expect(jungle.enemy).toBeNull()
     expect(support.our).toBeNull()
     expect(support.enemy).toBeNull()
+  })
+})
+
+function match(participants: RiotMatchParticipant[], gameDuration = 1800) {
+  return { matchJson: { info: { gameDuration, participants } } }
+}
+
+describe('buildSessionPerformance', () => {
+  it('returns null when no game has a resolved side yet', () => {
+    expect(buildSessionPerformance([{ matchJson: null, ourTeamId: null }])).toBeNull()
+    expect(buildSessionPerformance([{ ...match([participant({})]), ourTeamId: null }])).toBeNull()
+  })
+
+  it('sums wins/losses and per-side totals across resolved games only', () => {
+    const win = match([
+      participant({ teamId: 100, win: true, kills: 5, goldEarned: 10000 }),
+      participant({ teamId: 200, win: false, kills: 2, goldEarned: 8000 }),
+    ])
+    const loss = match([
+      participant({ teamId: 100, win: false, kills: 1, goldEarned: 7000 }),
+      participant({ teamId: 200, win: true, kills: 6, goldEarned: 11000 }),
+    ])
+    const unresolved = { matchJson: { info: { gameDuration: 1800, participants: [] } }, ourTeamId: null }
+    const perf = buildSessionPerformance([
+      { ...win, ourTeamId: 100 },
+      { ...loss, ourTeamId: 100 },
+      unresolved,
+    ])
+    expect(perf?.gamesCounted).toBe(2)
+    expect(perf?.wins).toBe(1)
+    expect(perf?.losses).toBe(1)
+    expect(perf?.our.kills).toBe(6)
+    expect(perf?.enemy.kills).toBe(8)
+    expect(perf?.our.gold).toBe(17000)
   })
 })
