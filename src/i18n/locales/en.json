@@ -1852,7 +1852,45 @@
     "liveSync": "Live sync",
     "liveSyncHint": "Paste this URL into Google/Apple/Outlook \"subscribe by URL\" — it updates on its own.",
     "liveSyncCopied": "Link copied",
-    "regenerateLiveSync": "Revoke & regenerate"
+    "regenerateLiveSync": "Revoke & regenerate",
+    "openTeamSession": "Open team session"
+  },
+  "teamSession": {
+    "notFound": "No team session found for this event — open it from Planning.",
+    "backToPlanning": "Back to Planning",
+    "status": {
+      "scheduled": "Scheduled",
+      "live": "Live",
+      "ended": "Ended"
+    },
+    "countdownStartsIn": "Starts in {{label}}",
+    "countdownPast": "Starting now",
+    "endedNote": "This session has ended.",
+    "waitingForResponsible": "Waiting for a responsible (coach/manager/captain) to start the session.",
+    "objectives": "Objectives",
+    "objectivesDesc": "Pick up to 3 objectives for this session.",
+    "noObjectivesYet": "No objectives set yet.",
+    "addFundamental": "+ Add a fundamental",
+    "addFundamentalTitle": "Add a team fundamental",
+    "addFundamentalLabel": "Label",
+    "addFundamentalDesc": "Description (optional)",
+    "addFundamentalSave": "Add",
+    "setObjectives": "Save objectives",
+    "objectivesSaved": "Objectives saved",
+    "beforeStart": "Before starting",
+    "queueFilter": {
+      "title": "Queue",
+      "flex": "Flex",
+      "scrim": "Scrim (custom)",
+      "ranked5": "Ranked 5-stack",
+      "all": "All queues"
+    },
+    "responsibles": "Responsibles",
+    "startSession": "Start session",
+    "started": "Session started",
+    "endSession": "End session",
+    "ended": "Session ended",
+    "liveBanner": "Team session live — join"
   },
   "vodReview": {
     "title": "VOD review",

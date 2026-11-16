@@ -7,6 +7,7 @@ import { installWebApi } from './api'
 import { CloudGate } from '@/components/Cloud/CloudGate'
 import { Toaster } from '@/components/ui/toaster'
 import { CoachingPage } from '@/pages/Coaching/CoachingPage'
+import { TeamSessionPage } from '@/pages/TeamSession/TeamSessionPage'
 import { WebLayout } from './WebLayout'
 import { HomePage } from './pages/HomePage'
 import { MyReviewsPage } from './pages/MyReviewsPage'
@@ -37,6 +38,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/reviews" element={<MyReviewsPage />} />
             <Route path="/scrims" element={<ScrimsPage />} />
             <Route path="/coaching" element={<CoachingPage />} />
+            <Route path="/team-session/:calendarEventId" element={<TeamSessionPage />} />
             <Route path="/team" element={<TeamPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

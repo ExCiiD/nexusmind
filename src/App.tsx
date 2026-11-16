@@ -22,6 +22,7 @@ import { PostGameCapturePage } from '@/pages/Review/PostGameCapturePage'
 import { HelpPage } from '@/pages/Help/HelpPage'
 import { TeamPage } from '@/pages/Team/TeamPage'
 import { CoachingPage } from '@/pages/Coaching/CoachingPage'
+import { TeamSessionPage } from '@/pages/TeamSession/TeamSessionPage'
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
 import { GameEndNav } from '@/components/GameEndNav'
 import { DevToolbar } from '@/components/Dev/DevToolbar'
@@ -29,6 +30,7 @@ import { UpdateBanner } from '@/components/UpdateBanner'
 import { Toaster } from '@/components/ui/toaster'
 import { BackgroundJobsIndicator } from '@/components/BackgroundJobsIndicator'
 import { AnnouncementBubbleStack } from '@/components/Announcements/AnnouncementBubbleStack'
+import { TeamSessionBanner } from '@/components/TeamSession/TeamSessionBanner'
 import { useEffect } from 'react'
 
 export function App() {
@@ -71,6 +73,7 @@ export function App() {
             <Route path="/team" element={<PanelErrorBoundary label="Team page"><TeamPage /></PanelErrorBoundary>} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/coaching" element={<PanelErrorBoundary label="Coaching page"><CoachingPage /></PanelErrorBoundary>} />
+            <Route path="/team-session/:calendarEventId" element={<PanelErrorBoundary label="Team session"><TeamSessionPage /></PanelErrorBoundary>} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
@@ -83,6 +86,7 @@ export function App() {
           stacked toasts. Hidden when no jobs are active. */}
       {user && <BackgroundJobsIndicator />}
       {user && <AnnouncementBubbleStack />}
+      {user && <TeamSessionBanner />}
       <Toaster />
     </>
   )

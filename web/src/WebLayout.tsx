@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { FeedbackButton } from '@/components/Feedback/FeedbackDialog'
 import { NotificationBell } from '@/components/Notifications/NotificationBell'
 import { AnnouncementBubbleStack } from '@/components/Announcements/AnnouncementBubbleStack'
+import { TeamSessionBanner } from '@/components/TeamSession/TeamSessionBanner'
 import { DownloadButton } from './DownloadButton'
 import logo from '@/assets/ascend-logo-mark.png'
 
@@ -74,6 +75,7 @@ export function WebLayout() {
         ))}
       </nav>
       <AnnouncementBubbleStack />
+      <TeamSessionBanner />
     </div>
   )
 }

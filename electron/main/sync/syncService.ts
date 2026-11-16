@@ -2,6 +2,7 @@ import { BrowserWindow } from 'electron'
 import { getPrisma } from '../database'
 import { getSupabase, getAccessToken, isCloudConfigured } from '../cloud/supabase'
 import { SyncEngine, SyncError, type PushRecord, type RemoteRecord, type SyncRemote, type SyncStatus } from './syncEngine'
+import { hasLiveSessionForUser } from '../../../src/lib/teamSessionsCore'
 
 /** sync_records / sync_push over the signed-in Supabase session (RLS-scoped). */
 class SupabaseSyncRemote implements SyncRemote {
@@ -34,6 +35,12 @@ class SupabaseSyncRemote implements SyncRemote {
 }
 
 const INTERVAL_MS = 30_000
+/** While any of the user's groups has a live team session (Phase 3,
+ *  Planning rework) — fast enough to feel "live" across devices without
+ *  building a Realtime/websocket transport (a deliberate decision: this
+ *  app has no Realtime infra anywhere, and the confirmed design is to
+ *  reuse the existing poll/push sync, just shortened while it matters). */
+const FAST_INTERVAL_MS = 7_500
 /** After a local change, sync soon but not on every keystroke. */
 const DEBOUNCE_MS = 5_000
 
@@ -42,6 +49,7 @@ let running: Promise<void> | null = null
 let timer: NodeJS.Timeout | null = null
 let watcher: NodeJS.Timeout | null = null
 let lastPending = 0
+let hasLiveSession = false
 
 function broadcast(channel: string, payload: unknown): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -91,11 +99,26 @@ export function syncNow(): Promise<void> {
   return running
 }
 
+/** Re-schedules itself after every cycle (rather than a fixed
+ *  `setInterval`) so the interval can shorten/lengthen between runs —
+ *  shortened while any of the user's groups has a live team session. */
+function scheduleNextSync(): void {
+  const delay = hasLiveSession ? FAST_INTERVAL_MS : INTERVAL_MS
+  timer = setTimeout(async () => {
+    await syncNow().catch(() => {})
+    try {
+      const sb = getSupabase()
+      hasLiveSession = await hasLiveSessionForUser(sb)
+    } catch { /* keep the previous value; next cycle retries */ }
+    scheduleNextSync()
+  }, delay)
+}
+
 /** Periodic sync + a cheap outbox watcher that triggers a sync shortly after local edits. */
 export function startSyncService(): void {
   if (!isCloudConfigured() || timer) return
   setTimeout(() => { syncNow().catch(() => {}) }, 3_000)
-  timer = setInterval(() => { syncNow().catch(() => {}) }, INTERVAL_MS)
+  scheduleNextSync()
 
   let dueAt = 0
   watcher = setInterval(async () => {
@@ -116,7 +139,7 @@ export function startSyncService(): void {
 }
 
 export function stopSyncService(): void {
-  if (timer) clearInterval(timer)
+  if (timer) clearTimeout(timer)
   if (watcher) clearInterval(watcher)
   timer = watcher = null
 }

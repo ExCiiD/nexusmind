@@ -117,6 +117,17 @@ const api = {
   collabDeleteGroup: (groupId: string, confirm: 'DELETE') => ipcRenderer.invoke('collab:delete-group', groupId, confirm),
   collabRemoveMember: (groupId: string, userId: string) => ipcRenderer.invoke('collab:remove-member', groupId, userId),
   collabSetCaptain: (groupId: string, userId: string, isCaptain: boolean) => ipcRenderer.invoke('collab:set-captain', groupId, userId, isCaptain),
+  teamSessionsListForGroup: (groupId: string) => ipcRenderer.invoke('team-session:list-for-group', groupId),
+  teamSessionGetByEvent: (calendarEventId: string) => ipcRenderer.invoke('team-session:get-by-event', calendarEventId),
+  teamSessionStart: (id: string, responsibleUserIds: string[], queueFilter: string | null) => ipcRenderer.invoke('team-session:start', id, responsibleUserIds, queueFilter),
+  teamSessionEnd: (id: string) => ipcRenderer.invoke('team-session:end', id),
+  teamSessionGetObjectives: (sessionId: string) => ipcRenderer.invoke('team-session:get-objectives', sessionId),
+  teamSessionSetObjectives: (sessionId: string, objectiveIds: string[], kpiIds: string[]) => ipcRenderer.invoke('team-session:set-objectives', sessionId, objectiveIds, kpiIds),
+  teamSessionHasLive: () => ipcRenderer.invoke('team-session:has-live'),
+  teamSessionListMyLive: () => ipcRenderer.invoke('team-session:list-my-live'),
+  teamSessionReportGame: (sessionId: string, matchId: string) => ipcRenderer.invoke('team-session:report-game', sessionId, matchId),
+  groupFundamentalsList: (groupId: string) => ipcRenderer.invoke('group-fundamentals:list', groupId),
+  groupFundamentalsAdd: (groupId: string, input: unknown) => ipcRenderer.invoke('group-fundamentals:add', groupId, input),
   collabSetSharing: (groupId: string, s: { shareReviews: boolean; shareStats: boolean; shareTeam: boolean; shareWellbeing: boolean }) =>
     ipcRenderer.invoke('collab:set-sharing', groupId, s),
   collabPlayerSessions: (playerId: string) => ipcRenderer.invoke('collab:player-sessions', playerId),
@@ -156,6 +167,7 @@ const api = {
 
   // E4: planning & presence
   calendarListEvents: (groupId: string, fromISO: string, toISO: string) => ipcRenderer.invoke('calendar:list-events', groupId, fromISO, toISO),
+  calendarGetEvent: (id: string) => ipcRenderer.invoke('calendar:get-event', id),
   calendarCreateEvent: (groupId: string, input: unknown) => ipcRenderer.invoke('calendar:create-event', groupId, input),
   calendarUpdateEvent: (id: string, input: unknown) => ipcRenderer.invoke('calendar:update-event', id, input),
   calendarDeleteEvent: (id: string) => ipcRenderer.invoke('calendar:delete-event', id),

@@ -1852,7 +1852,45 @@
     "liveSync": "Synchro live",
     "liveSyncHint": "Colle cette URL dans Google/Apple/Outlook « s'abonner par URL » — elle se met à jour toute seule.",
     "liveSyncCopied": "Lien copié",
-    "regenerateLiveSync": "Révoquer et régénérer"
+    "regenerateLiveSync": "Révoquer et régénérer",
+    "openTeamSession": "Ouvrir la session d'équipe"
+  },
+  "teamSession": {
+    "notFound": "Aucune session d'équipe trouvée pour cet événement — ouvre-la depuis Planning.",
+    "backToPlanning": "Retour à Planning",
+    "status": {
+      "scheduled": "Prévue",
+      "live": "En direct",
+      "ended": "Terminée"
+    },
+    "countdownStartsIn": "Commence dans {{label}}",
+    "countdownPast": "Démarre maintenant",
+    "endedNote": "Cette session est terminée.",
+    "waitingForResponsible": "En attente qu'un responsable (coach/manager/capitaine) démarre la session.",
+    "objectives": "Objectifs",
+    "objectivesDesc": "Choisis jusqu'à 3 objectifs pour cette session.",
+    "noObjectivesYet": "Aucun objectif défini pour l'instant.",
+    "addFundamental": "+ Ajouter un fondamental",
+    "addFundamentalTitle": "Ajouter un fondamental d'équipe",
+    "addFundamentalLabel": "Intitulé",
+    "addFundamentalDesc": "Description (optionnel)",
+    "addFundamentalSave": "Ajouter",
+    "setObjectives": "Enregistrer les objectifs",
+    "objectivesSaved": "Objectifs enregistrés",
+    "beforeStart": "Avant de démarrer",
+    "queueFilter": {
+      "title": "File",
+      "flex": "Flex",
+      "scrim": "Scrim (perso)",
+      "ranked5": "Ranked 5-stack",
+      "all": "Toutes les files"
+    },
+    "responsibles": "Responsables",
+    "startSession": "Démarrer la session",
+    "started": "Session démarrée",
+    "endSession": "Terminer la session",
+    "ended": "Session terminée",
+    "liveBanner": "Session d'équipe en direct — rejoindre"
   },
   "vodReview": {
     "title": "Review VOD",

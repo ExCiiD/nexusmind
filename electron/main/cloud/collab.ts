@@ -84,6 +84,7 @@ export const devPlanSetProgress = (axisId: string, input: { playerMarkedDone?: b
   devPlan.setProgress(getSupabase(), axisId, input)
 
 export const calendarListEvents = (groupId: string, fromISO: string, toISO: string) => calendar.listEvents(getSupabase(), groupId, fromISO, toISO)
+export const calendarGetEvent = (id: string) => calendar.getEvent(getSupabase(), id)
 export const calendarCreateEvent = (groupId: string, input: NewEventInput) => calendar.createEvent(getSupabase(), groupId, input)
 export const calendarUpdateEvent = (id: string, input: NewEventInput) => calendar.updateEvent(getSupabase(), id, input)
 export const calendarDeleteEvent = (id: string) => calendar.deleteEvent(getSupabase(), id)

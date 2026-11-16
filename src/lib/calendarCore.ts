@@ -69,6 +69,17 @@ export async function listEvents(sb: SupabaseClient, groupId: string, fromISO: s
   return rows.map((r) => toEvent(r, byEvent.get(r.id) ?? []))
 }
 
+/** Single-event lookup — the one caller that doesn't already have a date
+ *  range in hand (TeamSessionPage, opened by calendarEventId alone, e.g.
+ *  from a direct link or after a page reload). */
+export async function getEvent(sb: SupabaseClient, id: string): Promise<CalendarEvent | null> {
+  const { data, error } = await sb.from('calendar_events').select(EVENT_SELECT).eq('id', id).maybeSingle()
+  if (error) fail(error, 'get event')
+  if (!data) return null
+  const byEvent = await attendeesByEvent(sb, [data.id])
+  return toEvent(data as EventRow, byEvent.get(data.id) ?? [])
+}
+
 export async function createEvent(sb: SupabaseClient, groupId: string, input: NewEventInput): Promise<string> {
   const { data, error } = await sb.from('calendar_events').insert({
     group_id: groupId, kind: input.kind, title: input.title, starts_at: input.startsAt, ends_at: input.endsAt,

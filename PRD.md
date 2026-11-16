@@ -415,7 +415,7 @@ GH_TOKEN="github_pat_..."           # optional, release/publish only
 
 - `MAIN_VITE_*` variables are injected into the Electron main process at build time by electron-vite
 - They are **never** exposed to the renderer process
-- Riot development keys expire every 24 hours — regenerate at [developer.riotgames.com](https://developer.riotgames.com)
+- Riot development is a permanent dev key [developer.riotgames.com](https://developer.riotgames.com)
 - AI credentials are optional and must never gate the core coaching workflow
 
 ---

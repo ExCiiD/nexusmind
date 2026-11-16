@@ -171,6 +171,7 @@ export function generateCalendarSubscriptionToken(): string {
 
 export interface CalendarApi {
   calendarListEvents: (groupId: string, fromISO: string, toISO: string) => Promise<CalendarEvent[]>
+  calendarGetEvent: (id: string) => Promise<CalendarEvent | null>
   calendarCreateEvent: (groupId: string, input: NewEventInput) => Promise<string>
   calendarUpdateEvent: (id: string, input: NewEventInput) => Promise<void>
   calendarDeleteEvent: (id: string) => Promise<void>

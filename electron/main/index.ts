@@ -51,13 +51,15 @@ import { registerMistakeHandlers } from './ipc/mistakes.ipc'
 import { registerBookmarkHandlers } from './ipc/bookmarks.ipc'
 import { registerDataHandlers } from './ipc/data.ipc'
 import { registerCloudHandlers } from './ipc/cloud.ipc'
-import { isCloudConfigured } from './cloud/supabase'
+import { isCloudConfigured, getSupabase } from './cloud/supabase'
+import { listMyLiveSessions, reportSessionGame } from '../../src/lib/teamSessionsCore'
 import { startAutoCloudBackup } from './cloud/cloudBackup'
 import { startSessionAutoClose } from './sessionAutoClose'
 import { registerSyncHandlers } from './ipc/sync.ipc'
 import { registerAssistantHandlers } from './assistant/assistant.ipc'
 import { startSyncService } from './sync/syncService'
 import { registerCollabHandlers } from './ipc/collab.ipc'
+import { registerTeamSessionHandlers } from './ipc/teamSession.ipc'
 import { registerFeedbackHandlers } from './ipc/feedback.ipc'
 import { registerNotificationsHandlers } from './ipc/notifications.ipc'
 import { registerTeamShareHandlers } from './ipc/teamShare.ipc'
@@ -200,6 +202,35 @@ async function stopSystemAudioCapture(): Promise<SystemAudioResult | null> {
   _sysAudioChunks = []
   _sysAudioMeta = null
   return result
+}
+
+/** GameDetector's onGameEnriched fires once match-v5 enrichment of a
+ *  locally-finished game completes. If the signed-in user currently has a
+ *  live team session (Phase 3, Planning rework), report the matchId into it
+ *  — deduped server-side by `team_session_games`'s unique(session_id,
+ *  match_id), so every concerned teammate's own client reporting the same
+ *  game independently never creates duplicates. Only the queue-type-level
+ *  filter check is done here (scrim ↔ custom, flex/ranked5 ↔ flex) —
+ *  distinguishing a 5-stack ranked game from a solo flex game needs
+ *  roster-overlap against the full match participants, which Phase 4's
+ *  per-game stats fetch already does and can re-validate against.
+ */
+async function reportGameToLiveTeamSessions(info: { matchId: string; queueType: string }): Promise<void> {
+  if (!isCloudConfigured()) return
+  try {
+    const sb = getSupabase()
+    const liveSessions = await listMyLiveSessions(sb)
+    for (const session of liveSessions) {
+      const filter = session.queueFilter
+      if (filter === 'scrim' && info.queueType !== 'custom') continue
+      if ((filter === 'flex' || filter === 'ranked5') && info.queueType !== 'flex') continue
+      await reportSessionGame(sb, session.id, info.matchId).catch((err) => {
+        console.warn('[main] reportSessionGame failed:', (err as Error)?.message)
+      })
+    }
+  } catch (err) {
+    console.warn('[main] reportGameToLiveTeamSessions failed:', (err as Error)?.message)
+  }
 }
 
 function createWindow() {
@@ -399,6 +430,7 @@ async function bootstrap() {
   registerCloudHandlers()
   registerSyncHandlers()
   registerCollabHandlers()
+  registerTeamSessionHandlers()
   registerAssistantHandlers()
   registerFeedbackHandlers()
   registerNotificationsHandlers()
@@ -750,6 +782,8 @@ async function bootstrap() {
       }
       // Timeline + automatic mistake detection, without waiting for the review.
       prefetchGameAnalysis(info.gameId).catch((err) => console.warn('[main] post-game analysis failed:', (err as Error)?.message))
+      // Team sessions (Phase 3): if this user has a live session, link this matchId into it.
+      reportGameToLiveTeamSessions(info).catch((err) => console.warn('[main] reportGameToLiveTeamSessions failed:', (err as Error)?.message))
     },
   )
 

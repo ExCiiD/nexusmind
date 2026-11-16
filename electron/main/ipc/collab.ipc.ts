@@ -82,6 +82,7 @@ export function registerCollabHandlers() {
   })
 
   validatedHandle('calendar:list-events', z.tuple([uuid, isoDate, isoDate]), (_e, groupId, from, to) => collab.calendarListEvents(groupId, from, to))
+  validatedHandle('calendar:get-event', z.tuple([uuid]), (_e, id) => collab.calendarGetEvent(id))
   validatedHandle('calendar:create-event', z.tuple([uuid, eventInput]), (_e, groupId, input) => collab.calendarCreateEvent(groupId, input))
   validatedHandle('calendar:update-event', z.tuple([uuid, eventInput]), (_e, id, input) => collab.calendarUpdateEvent(id, input))
   validatedHandle('calendar:delete-event', z.tuple([uuid]), (_e, id) => collab.calendarDeleteEvent(id))

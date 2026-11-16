@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Trash2 } from 'lucide-react'
+import { Trash2, CalendarClock } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +17,10 @@ import type { HourRange } from './WeekGrid'
 
 const KINDS: CalendarEventKind[] = ['tournament', 'team_review', 'one_on_one', 'soloq_block', 'scrim', 'flex', 'rest', 'meeting', 'other']
 const SCRIM_KINDS: CalendarEventKind[] = ['scrim', 'flex']
+/** Kinds the `auto_create_team_session` DB trigger turns into a
+ *  `team_sessions` row (e_phase3_team_sessions migration) — mirrored here
+ *  purely to decide whether to show the "Open team session" link. */
+const SESSION_KINDS: CalendarEventKind[] = ['scrim', 'flex', 'tournament', 'meeting']
 
 function toLocalInput(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -41,6 +46,7 @@ interface Props {
 export function EventPopup({ groupId, members, myUserId, scrims, initialRange, editingEvent, canDelete, onClose, onSaved }: Props) {
   const { t } = useTranslation()
   const { toast } = useToast()
+  const navigate = useNavigate()
   const open = !!initialRange || !!editingEvent
 
   const [kind, setKind] = useState<CalendarEventKind>('team_review')
@@ -208,6 +214,17 @@ export function EventPopup({ groupId, members, myUserId, scrims, initialRange, e
           </div>
 
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} maxLength={2000} placeholder={t('planning.notesPlaceholder', { defaultValue: 'Notes (optional)…' })} />
+
+          {editingEvent && SESSION_KINDS.includes(editingEvent.kind) && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate(`/team-session/${editingEvent.id}`)}
+            >
+              <CalendarClock className="mr-2 h-4 w-4" />{t('planning.openTeamSession', { defaultValue: 'Open team session' })}
+            </Button>
+          )}
         </div>
         <DialogFooter className="flex items-center !justify-between">
           {editingEvent && canDelete ? (

@@ -9,6 +9,7 @@ import * as vodReviewCore from '@/lib/vodReviewCore'
 import * as wellbeingCore from '@/lib/wellbeingCore'
 import * as teamOpsCore from '@/lib/teamOpsCore'
 import * as announcementsCore from '@/lib/announcementsCore'
+import * as teamSessionsCore from '@/lib/teamSessionsCore'
 import * as reportCore from '@/lib/reportCore'
 import * as trialsCore from '@/lib/trialsCore'
 import * as scrimsReadCore from '@/lib/scrimsCore'
@@ -153,6 +154,20 @@ export const webApi = {
   collabDeleteGroup: (groupId: string) => core.deleteGroup(sb, groupId),
   collabRemoveMember: (groupId: string, userId: string) => core.removeMember(sb, groupId, userId),
   collabSetCaptain: (groupId: string, userId: string, isCaptain: boolean) => core.setCaptain(sb, groupId, userId, isCaptain),
+
+  // ── Phase 3: team sessions ──
+  teamSessionsListForGroup: (groupId: string) => teamSessionsCore.listSessionsForGroup(sb, groupId),
+  teamSessionGetByEvent: (calendarEventId: string) => teamSessionsCore.getSessionByEvent(sb, calendarEventId),
+  teamSessionStart: (id: string, responsibleUserIds: string[], queueFilter: Parameters<typeof teamSessionsCore.startSession>[3]) =>
+    teamSessionsCore.startSession(sb, id, responsibleUserIds, queueFilter),
+  teamSessionEnd: (id: string) => teamSessionsCore.endSession(sb, id),
+  teamSessionGetObjectives: (sessionId: string) => teamSessionsCore.getObjectives(sb, sessionId),
+  teamSessionSetObjectives: (sessionId: string, objectiveIds: string[], kpiIds: string[]) => teamSessionsCore.setObjectives(sb, sessionId, objectiveIds, kpiIds),
+  teamSessionHasLive: () => teamSessionsCore.hasLiveSessionForUser(sb),
+  teamSessionListMyLive: () => teamSessionsCore.listMyLiveSessions(sb),
+  teamSessionReportGame: (sessionId: string, matchId: string) => teamSessionsCore.reportSessionGame(sb, sessionId, matchId),
+  groupFundamentalsList: (groupId: string) => teamSessionsCore.listGroupFundamentals(sb, groupId),
+  groupFundamentalsAdd: (groupId: string, input: Parameters<typeof teamSessionsCore.addGroupFundamental>[2]) => teamSessionsCore.addGroupFundamental(sb, groupId, input),
   collabSetSharing: async (groupId: string, s: { shareReviews: boolean; shareStats: boolean; shareTeam: boolean; shareWellbeing: boolean }) =>
     core.setSharing(sb, await currentUserId(), groupId, s),
   collabPlayerSessions: (playerId: string) => core.getPlayerSessions(sb, playerId),
@@ -179,6 +194,7 @@ export const webApi = {
 
   // ── E4: planning & presence ──
   calendarListEvents: (groupId: string, fromISO: string, toISO: string) => calendarCore.listEvents(sb, groupId, fromISO, toISO),
+  calendarGetEvent: (id: string) => calendarCore.getEvent(sb, id),
   calendarCreateEvent: (groupId: string, input: Parameters<typeof calendarCore.createEvent>[2]) => calendarCore.createEvent(sb, groupId, input),
   calendarUpdateEvent: (id: string, input: Parameters<typeof calendarCore.updateEvent>[2]) => calendarCore.updateEvent(sb, id, input),
   calendarDeleteEvent: (id: string) => calendarCore.deleteEvent(sb, id),
