@@ -84,7 +84,10 @@ const COLUMNS = [
   ['pink', 'Pink', 'text-right pr-3', 'Control wards bought per game'],
 ] as const
 
-function StatsTable({ players, matchCount, basedOnLabel }: { players: SynergyPlayerStats[]; matchCount: number; basedOnLabel?: string }) {
+/** Exported for TeamSessionStatsTable.tsx (Phase 4, Planning rework) — the
+ *  per-game team-vs-team stats table reuses this 24-column layout twice
+ *  (our 5 rows, enemy 5 rows) instead of rebuilding it. */
+export function StatsTable({ players, matchCount, basedOnLabel }: { players: SynergyPlayerStats[]; matchCount: number; basedOnLabel?: string }) {
   const { t } = useTranslation()
   return (
     <Card className="p-0 overflow-hidden">

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
-  GroupFundamental, NewGroupFundamentalInput, SessionQueueFilter, TeamSession, TeamSessionObjectives,
+  GroupFundamental, NewGroupFundamentalInput, SessionQueueFilter, TeamSession, TeamSessionGame, TeamSessionObjectives,
 } from './teamSessions'
 
 /**
@@ -22,6 +22,10 @@ interface SessionRow {
 }
 interface ObjectivesRow { session_id: string; objective_ids: string[]; kpi_ids: string[]; set_by: string | null; set_at: string }
 interface FundamentalRow { id: string; group_id: string; label: string; description: string | null; created_by: string; created_at: string }
+interface GameRow {
+  id: string; session_id: string; match_id: string; reported_by: string | null; status: TeamSessionGame['status']; created_at: string
+  match_json: unknown | null; our_team_id: 100 | 200 | null; enemy_team_name: string | null
+}
 
 const SESSION_SELECT = 'id, group_id, calendar_event_id, status, responsible_user_ids, queue_filter, started_at, ended_at, created_at'
 
@@ -36,6 +40,11 @@ const toObjectives = (r: ObjectivesRow): TeamSessionObjectives => ({
 const toFundamental = (r: FundamentalRow): GroupFundamental => ({
   id: r.id, groupId: r.group_id, label: r.label, description: r.description, createdBy: r.created_by, createdAt: r.created_at,
 })
+const toGame = (r: GameRow): TeamSessionGame => ({
+  id: r.id, sessionId: r.session_id, matchId: r.match_id, reportedBy: r.reported_by, status: r.status, createdAt: r.created_at,
+  matchJson: r.match_json, ourTeamId: r.our_team_id, enemyTeamName: r.enemy_team_name,
+})
+const GAME_SELECT = 'id, session_id, match_id, reported_by, status, created_at, match_json, our_team_id, enemy_team_name'
 
 export async function listSessionsForGroup(sb: SupabaseClient, groupId: string): Promise<TeamSession[]> {
   const { data, error } = await sb.from('team_sessions').select(SESSION_SELECT).eq('group_id', groupId).order('created_at', { ascending: false })
@@ -120,6 +129,38 @@ export async function addGroupFundamental(sb: SupabaseClient, groupId: string, i
 export async function reportSessionGame(sb: SupabaseClient, sessionId: string, matchId: string): Promise<void> {
   const { error } = await sb.from('team_session_games').insert({ session_id: sessionId, match_id: matchId })
   if (error && error.code !== '23505') fail(error, 'report session game')
+}
+
+export async function listGames(sb: SupabaseClient, sessionId: string): Promise<TeamSessionGame[]> {
+  const { data, error } = await sb.from('team_session_games').select(GAME_SELECT).eq('session_id', sessionId).order('created_at')
+  if (error) fail(error, 'list session games')
+  return (data as GameRow[]).map(toGame)
+}
+
+export async function getGame(sb: SupabaseClient, id: string): Promise<TeamSessionGame | null> {
+  const { data, error } = await sb.from('team_session_games').select(GAME_SELECT).eq('id', id).maybeSingle()
+  if (error) fail(error, 'get session game')
+  return data ? toGame(data as GameRow) : null
+}
+
+/** Called once per game, right after the Riot fetch that only happens on
+ *  the first viewer (Phase 4) — every later viewer reads this cached copy
+ *  instead of re-hitting the Riot API. */
+export async function cacheGameMatch(sb: SupabaseClient, gameId: string, matchJson: unknown): Promise<void> {
+  const { error } = await sb.from('team_session_games').update({ match_json: matchJson, status: 'fetched' }).eq('id', gameId)
+  if (error) fail(error, 'cache match')
+}
+
+/** Set once resolved client-side (needs the group's roster, which the core
+ *  layer doesn't have) from `resolveOurTeamId` in teamSessionStatsCore.ts. */
+export async function setOurTeamId(sb: SupabaseClient, gameId: string, ourTeamId: 100 | 200): Promise<void> {
+  const { error } = await sb.from('team_session_games').update({ our_team_id: ourTeamId }).eq('id', gameId)
+  if (error) fail(error, 'set our team id')
+}
+
+export async function setEnemyTeamName(sb: SupabaseClient, gameId: string, name: string | null): Promise<void> {
+  const { error } = await sb.from('team_session_games').update({ enemy_team_name: name }).eq('id', gameId)
+  if (error) fail(error, 'set enemy team name')
 }
 
 // ── pure helpers (no I/O) ───────────────────────────────────────────────

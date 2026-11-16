@@ -16,8 +16,9 @@ import { canManageSession } from '@/lib/permissions'
 import { FundamentalPickerDialog } from '@/components/Session/FundamentalPickerDialog'
 import { mergedFundamentalCategories, getAllFundamentalsForGroup } from '@/lib/fundamentals'
 import { countdownState } from '@/lib/teamSessionsCore'
+import { TeamSessionGameCard } from '@/components/TeamSession/TeamSessionGameCard'
 import type { CalendarEvent } from '@/lib/calendar'
-import type { GroupFundamental, SessionQueueFilter, TeamSession, TeamSessionObjectives } from '@/lib/teamSessions'
+import type { GroupFundamental, SessionQueueFilter, TeamSession, TeamSessionGame, TeamSessionObjectives } from '@/lib/teamSessions'
 import { cn } from '@/lib/utils'
 
 const QUEUE_FILTERS: SessionQueueFilter[] = ['flex', 'scrim', 'ranked5', 'all']
@@ -42,6 +43,7 @@ export function TeamSessionPage() {
   const [session, setSession] = useState<TeamSession | null | undefined>(undefined)
   const [objectives, setObjectives] = useState<TeamSessionObjectives | null>(null)
   const [fundamentals, setFundamentals] = useState<GroupFundamental[]>([])
+  const [games, setGames] = useState<TeamSessionGame[]>([])
   const [now, setNow] = useState(() => new Date())
 
   const load = useCallback(async () => {
@@ -54,12 +56,14 @@ export function TeamSessionPage() {
       setEvent(ev)
       setSession(sess)
       if (sess) {
-        const [obj, funds] = await Promise.all([
+        const [obj, funds, gms] = await Promise.all([
           window.api.teamSessionGetObjectives(sess.id),
           window.api.groupFundamentalsList(sess.groupId),
+          window.api.teamSessionListGames(sess.id),
         ])
         setObjectives(obj)
         setFundamentals(funds)
+        setGames(gms)
       }
     } catch (err) {
       toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
@@ -394,6 +398,23 @@ export function TeamSessionPage() {
           {ending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Square className="mr-2 h-4 w-4" />}
           {t('teamSession.endSession', { defaultValue: 'End session' })}
         </Button>
+      )}
+
+      {session.status !== 'scheduled' && games.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-sm font-bold text-hextech-text-bright">
+            {t('teamSession.games', { defaultValue: 'Games', count: games.length })}
+          </h2>
+          {games.map((g) => (
+            <TeamSessionGameCard
+              key={g.id}
+              game={g}
+              group={group}
+              canManage={canManage}
+              onOurTeamIdResolved={load}
+            />
+          ))}
+        </div>
       )}
 
       <Dialog open={addFundamentalOpen} onOpenChange={setAddFundamentalOpen}>

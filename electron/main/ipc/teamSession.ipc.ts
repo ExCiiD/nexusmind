@@ -22,6 +22,12 @@ export function registerTeamSessionHandlers() {
   validatedHandle('team-session:has-live', z.tuple([]), () => teamSessions.teamSessionHasLive())
   validatedHandle('team-session:list-my-live', z.tuple([]), () => teamSessions.teamSessionListMyLive())
   validatedHandle('team-session:report-game', z.tuple([uuid, z.string().min(1).max(64)]), (_e, sessionId, matchId) => teamSessions.teamSessionReportGame(sessionId, matchId))
+  validatedHandle('team-session:list-games', z.tuple([uuid]), (_e, sessionId) => teamSessions.teamSessionListGames(sessionId))
+  validatedHandle('team-session:fetch-match', z.tuple([uuid]), (_e, gameId) => teamSessions.teamSessionFetchMatch(gameId))
+  validatedHandle('team-session:set-our-team-id', z.tuple([uuid, z.union([z.literal(100), z.literal(200)])]),
+    (_e, gameId, ourTeamId) => teamSessions.teamSessionSetOurTeamId(gameId, ourTeamId))
+  validatedHandle('team-session:set-enemy-team-name', z.tuple([uuid, z.string().trim().max(80).nullable()]),
+    (_e, gameId, name) => teamSessions.teamSessionSetEnemyTeamName(gameId, name))
 
   const fundamentalInput = z.object({ label: z.string().trim().min(1).max(80), description: z.string().max(500).nullable().optional() })
   validatedHandle('group-fundamentals:list', z.tuple([uuid]), (_e, groupId) => teamSessions.groupFundamentalsList(groupId))

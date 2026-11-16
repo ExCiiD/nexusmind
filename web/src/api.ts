@@ -10,6 +10,7 @@ import * as wellbeingCore from '@/lib/wellbeingCore'
 import * as teamOpsCore from '@/lib/teamOpsCore'
 import * as announcementsCore from '@/lib/announcementsCore'
 import * as teamSessionsCore from '@/lib/teamSessionsCore'
+import { getMatch as getMatchWeb } from './riotWeb'
 import * as reportCore from '@/lib/reportCore'
 import * as trialsCore from '@/lib/trialsCore'
 import * as scrimsReadCore from '@/lib/scrimsCore'
@@ -168,6 +169,19 @@ export const webApi = {
   teamSessionReportGame: (sessionId: string, matchId: string) => teamSessionsCore.reportSessionGame(sb, sessionId, matchId),
   groupFundamentalsList: (groupId: string) => teamSessionsCore.listGroupFundamentals(sb, groupId),
   groupFundamentalsAdd: (groupId: string, input: Parameters<typeof teamSessionsCore.addGroupFundamental>[2]) => teamSessionsCore.addGroupFundamental(sb, groupId, input),
+
+  // ── Phase 4: per-game stats ──
+  teamSessionListGames: (sessionId: string) => teamSessionsCore.listGames(sb, sessionId),
+  teamSessionFetchMatch: async (gameId: string) => {
+    const game = await teamSessionsCore.getGame(sb, gameId)
+    if (!game) throw new Error('Game not found')
+    if (game.matchJson) return game.matchJson
+    const matchJson = await getMatchWeb(game.matchId, 'EUW1')
+    await teamSessionsCore.cacheGameMatch(sb, gameId, matchJson)
+    return matchJson
+  },
+  teamSessionSetOurTeamId: (gameId: string, ourTeamId: 100 | 200) => teamSessionsCore.setOurTeamId(sb, gameId, ourTeamId),
+  teamSessionSetEnemyTeamName: (gameId: string, name: string | null) => teamSessionsCore.setEnemyTeamName(sb, gameId, name),
   collabSetSharing: async (groupId: string, s: { shareReviews: boolean; shareStats: boolean; shareTeam: boolean; shareWellbeing: boolean }) =>
     core.setSharing(sb, await currentUserId(), groupId, s),
   collabPlayerSessions: (playerId: string) => core.getPlayerSessions(sb, playerId),

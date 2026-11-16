@@ -50,6 +50,17 @@ export interface TeamSessionGame {
   reportedBy: string | null
   status: 'pending_fetch' | 'fetched' | 'error'
   createdAt: string
+  /** Raw Riot match-v5 payload, cached on first fetch (Phase 4) so every
+   *  later viewer skips the Riot API round-trip — see `teamSessionFetchMatch`. */
+  matchJson: unknown | null
+  /** Which Riot `teamId` (100/200) is "ours" — resolved client-side (needs
+   *  the group's roster) once `matchJson` is in hand, then cached here so
+   *  it's consistent across viewers even if a roster Riot ID changes later. */
+  ourTeamId: 100 | 200 | null
+  /** Free-text opponent name for the header ("Our team vs X") — set by a
+   *  responsible when the session is scrim/tournament; null falls back to
+   *  a generic "Ennemy" label. */
+  enemyTeamName: string | null
 }
 
 /**
@@ -68,4 +79,11 @@ export interface TeamSessionApi {
   groupFundamentalsList: (groupId: string) => Promise<GroupFundamental[]>
   groupFundamentalsAdd: (groupId: string, input: NewGroupFundamentalInput) => Promise<string>
   teamSessionReportGame: (sessionId: string, matchId: string) => Promise<void>
+  teamSessionListGames: (sessionId: string) => Promise<TeamSessionGame[]>
+  /** Returns the cached raw match if already fetched, otherwise fetches it
+   *  from Riot (platform-specific — desktop's riotClient vs web's
+   *  riot-proxy fetch) and caches it before returning. */
+  teamSessionFetchMatch: (gameId: string) => Promise<unknown>
+  teamSessionSetOurTeamId: (gameId: string, ourTeamId: 100 | 200) => Promise<void>
+  teamSessionSetEnemyTeamName: (gameId: string, name: string | null) => Promise<void>
 }

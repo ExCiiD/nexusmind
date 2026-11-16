@@ -1890,7 +1890,27 @@
     "started": "Session démarrée",
     "endSession": "Terminer la session",
     "ended": "Session terminée",
-    "liveBanner": "Session d'équipe en direct — rejoindre"
+    "liveBanner": "Session d'équipe en direct — rejoindre",
+    "games": "Games ({{count}})",
+    "loadingGame": "Chargement des stats de la game…",
+    "cantIdentifySide": "Impossible de déterminer quel côté est le vôtre pour cette game — vérifie que les Riot ID du groupe sont renseignés.",
+    "noStatsYet": "Aucune stat à afficher pour cette game pour l'instant.",
+    "enemyDefault": "Ennemi",
+    "vs": "vs",
+    "statKda": "KDA",
+    "statGold": "Or",
+    "statVision": "Vision",
+    "duels": "Duels de lane",
+    "lane": "Lane",
+    "ourPlayer": "Notre joueur",
+    "enemyPlayer": "Adversaire",
+    "role": {
+      "top": "Top",
+      "jungle": "Jungle",
+      "mid": "Mid",
+      "adc": "ADC",
+      "support": "Support"
+    }
   },
   "vodReview": {
     "title": "Review VOD",
