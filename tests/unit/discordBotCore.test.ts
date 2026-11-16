@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { redeemGuildLinkCode, redeemUserLinkCode, markNotifiedOnce, findRoleReplacements, listRecentTeamNotifications, resolveDisplayNames } from '../../src/lib/discordBotCore'
+import { redeemGuildLinkCode, redeemUserLinkCode, markNotifiedOnce, findRoleReplacements, listRecentTeamNotifications, resolveDisplayNames, listRecentAnnouncements } from '../../src/lib/discordBotCore'
 
 function chain(result: unknown) {
   const c: Record<string, unknown> = {}
@@ -135,5 +135,22 @@ describe('findRoleReplacements', () => {
     // 2026-11-16 is a Monday (weekday 1).
     const candidates = await findRoleReplacements(sb, 'g1', 'TOP', '2026-11-16', 'away-user')
     expect(candidates).toEqual([{ rosterId: 'r2', userId: 'free-user', displayName: 'Free Player' }])
+  })
+})
+
+describe('listRecentAnnouncements', () => {
+  it('queries announcements directly (not the generic notifications table) and maps rows', async () => {
+    const eqSpy = vi.fn().mockReturnThis()
+    const gteSpy = vi.fn().mockReturnThis()
+    const c: Record<string, unknown> = { select: vi.fn().mockReturnThis(), eq: eqSpy, gte: gteSpy }
+    c.then = (resolve: (v: unknown) => void) => resolve({
+      data: [{ id: 'a1', group_id: 'g1', title: 'Hi', body: 'Welcome', pinned: false, created_by: 'u1', created_at: 't', updated_at: 't' }],
+      error: null,
+    })
+    const sb = { from: vi.fn((t: string) => { expect(t).toBe('announcements'); return c }) } as never
+    const out = await listRecentAnnouncements(sb, 'g1', '2026-11-15T00:00:00Z')
+    expect(out).toEqual([{ id: 'a1', groupId: 'g1', title: 'Hi', body: 'Welcome', pinned: false, createdBy: 'u1', createdAt: 't', updatedAt: 't' }])
+    expect(eqSpy).toHaveBeenCalledWith('group_id', 'g1')
+    expect(gteSpy).toHaveBeenCalledWith('created_at', '2026-11-15T00:00:00Z')
   })
 })

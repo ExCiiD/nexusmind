@@ -1185,6 +1185,14 @@
     "empty": "No comments yet.",
     "placeholder": "Write a comment…"
   },
+  "announcements": {
+    "title": "Announcements",
+    "titlePlaceholder": "Title…",
+    "bodyPlaceholder": "Message…",
+    "post": "Post",
+    "none": "No announcements yet.",
+    "close": "Close"
+  },
   "mistakes": {
     "deleteFailed": "Failed to delete mistake",
     "tagFailed": "Failed to tag mistake",
@@ -1296,7 +1304,7 @@
       "planning": "Planning",
       "vod": "VOD review",
       "wellbeing": "Wellbeing",
-      "teamOps": "Announcements & tasks",
+      "teamOps": "Tasks",
       "reports": "Weekly report",
       "trials": "Trials",
       "players": "Players",
@@ -1901,13 +1909,8 @@
     "loadThresholdSuffix": "h/week with a declining mood."
   },
   "teamOps": {
-    "title": "Announcements & tasks",
-    "desc": "Pinned announcements and assignable to-do tasks for the group.",
-    "announcements": "Announcements",
-    "announcementTitlePlaceholder": "Title…",
-    "announcementBodyPlaceholder": "Message…",
-    "post": "Post",
-    "noAnnouncements": "No announcements yet.",
+    "title": "Tasks",
+    "desc": "Assignable to-do tasks for the group.",
     "tasks": "Tasks",
     "taskTitlePlaceholder": "e.g. Prep scouting for Rival",
     "unassigned": "Unassigned",

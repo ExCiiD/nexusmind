@@ -7,6 +7,7 @@ import * as calendar from '../../../src/lib/calendarCore'
 import * as vodReview from '../../../src/lib/vodReviewCore'
 import * as wellbeing from '../../../src/lib/wellbeingCore'
 import * as teamOps from '../../../src/lib/teamOpsCore'
+import * as announcements from '../../../src/lib/announcementsCore'
 import * as report from '../../../src/lib/reportCore'
 import type { TeamWeeklyReport } from '../../../src/lib/report'
 import * as trials from '../../../src/lib/trialsCore'
@@ -18,7 +19,8 @@ import type { AxisStatus, NewAxisInput, NewDevPlanPeriod } from '../../../src/li
 import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput, NewEventRequestInput, EventRequestStatus } from '../../../src/lib/calendar'
 import type { AssignmentStatus, NewVodAssignmentInput, NewVodCommentInput, NewVodSessionInput } from '../../../src/lib/vodReview'
 import type { NewWellbeingCheckinInput } from '../../../src/lib/wellbeing'
-import type { NewAnnouncementInput, NewTaskInput, TaskStatus } from '../../../src/lib/teamOps'
+import type { NewTaskInput, TaskStatus } from '../../../src/lib/teamOps'
+import type { NewAnnouncementInput } from '../../../src/lib/announcements'
 import type { NewTrialCandidateInput, NewTrialEvaluationInput, TrialStatus } from '../../../src/lib/trials'
 
 /**
@@ -124,10 +126,12 @@ export const wellbeingListForGroup = (playerIds: string[]) => wellbeing.listForG
 export const wellbeingGetLoadThreshold = (groupId: string) => wellbeing.getWeeklyLoadThreshold(getSupabase(), groupId)
 export const wellbeingSetLoadThreshold = (groupId: string, hours: number) => wellbeing.setWeeklyLoadThreshold(getSupabase(), groupId, hours)
 
-export const announcementsList = (groupId: string) => teamOps.listAnnouncements(getSupabase(), groupId)
-export const announcementsCreate = (groupId: string, input: NewAnnouncementInput) => teamOps.createAnnouncement(getSupabase(), groupId, input)
-export const announcementsSetPinned = (id: string, pinned: boolean) => teamOps.setAnnouncementPinned(getSupabase(), id, pinned)
-export const announcementsDelete = (id: string) => teamOps.deleteAnnouncement(getSupabase(), id)
+export const announcementsList = (groupId: string) => announcements.listAnnouncements(getSupabase(), groupId)
+export const announcementsCreate = (groupId: string, input: NewAnnouncementInput) => announcements.createAnnouncement(getSupabase(), groupId, input)
+export const announcementsSetPinned = (id: string, pinned: boolean) => announcements.setAnnouncementPinned(getSupabase(), id, pinned)
+export const announcementsDelete = (id: string) => announcements.deleteAnnouncement(getSupabase(), id)
+export const announcementsListMyDismissals = () => announcements.listMyDismissals(getSupabase())
+export const announcementsDismiss = (announcementId: string) => announcements.dismissAnnouncement(getSupabase(), announcementId)
 
 export const tasksList = (groupId: string) => teamOps.listTasks(getSupabase(), groupId)
 export const tasksCreate = (groupId: string, input: NewTaskInput) => teamOps.createTask(getSupabase(), groupId, input)

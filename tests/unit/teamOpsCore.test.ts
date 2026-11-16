@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
-  listAnnouncements, createAnnouncement, setAnnouncementPinned, listTasks, createTask, setTaskStatus,
+  listTasks, createTask, setTaskStatus,
   listStaffNotes, addStaffNote,
 } from '../../src/lib/teamOpsCore'
 
@@ -10,37 +10,6 @@ function chain(result: unknown) {
   c.then = (resolve: (v: unknown) => void) => resolve(result)
   return c
 }
-
-describe('announcements', () => {
-  it('listAnnouncements maps rows', async () => {
-    const sb = { from: vi.fn(() => chain({
-      data: [{ id: 'a1', group_id: 'g1', title: 'Hi', body: 'Welcome', pinned: true, created_by: 'u1', created_at: 't', updated_at: 't' }],
-      error: null,
-    })) } as never
-    const out = await listAnnouncements(sb, 'g1')
-    expect(out).toEqual([{ id: 'a1', groupId: 'g1', title: 'Hi', body: 'Welcome', pinned: true, createdBy: 'u1', createdAt: 't', updatedAt: 't' }])
-  })
-
-  it('createAnnouncement inserts with pinned defaulting to false', async () => {
-    const insert = vi.fn(() => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'a1' }, error: null }) }) }))
-    const sb = { from: vi.fn(() => ({ insert })) } as never
-    const id = await createAnnouncement(sb, 'g1', { title: 'Hi', body: 'Welcome' })
-    expect(id).toBe('a1')
-    expect(insert).toHaveBeenCalledWith({ group_id: 'g1', title: 'Hi', body: 'Welcome', pinned: false })
-  })
-
-  it('setAnnouncementPinned updates the pinned flag', async () => {
-    const update = vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) }))
-    const sb = { from: vi.fn(() => ({ update })) } as never
-    await setAnnouncementPinned(sb, 'a1', true)
-    expect(update).toHaveBeenCalledWith({ pinned: true })
-  })
-
-  it('throws on a read error', async () => {
-    const sb = { from: vi.fn(() => chain({ data: null, error: { message: 'boom' } })) } as never
-    await expect(listAnnouncements(sb, 'g1')).rejects.toThrow('boom')
-  })
-})
 
 describe('tasks', () => {
   it('listTasks maps rows', async () => {

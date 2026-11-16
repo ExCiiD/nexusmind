@@ -5,7 +5,7 @@ import {
   handleLinkTeam, handleLinkMe, handleSetChannel, handleCalendar, handleScrims, handleCommonAvailability, handleAvailability,
   type Interaction,
 } from './handlers'
-import { listGuildsWithNotifyChannel, markNotifiedOnce, listRecentTeamNotifications, resolveDisplayNames } from '../../../src/lib/discordBotCore'
+import { listGuildsWithNotifyChannel, markNotifiedOnce, listRecentTeamNotifications, resolveDisplayNames, listRecentAnnouncements } from '../../../src/lib/discordBotCore'
 import { listEvents, listAvailabilityRules, listAvailabilityExceptions, findCommonAvailability } from '../../../src/lib/calendarCore'
 import { listScrimsForGroup } from '../../../src/lib/scrimsCore'
 import { getSharedTeam } from '../../../src/lib/teamCore'
@@ -80,6 +80,15 @@ export default {
           if (!(await markNotifiedOnce(sb, guild.guildId, 'scrim', s.id))) continue
           await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
             `⚔️ **Scrim starting soon**${s.opponent ? ` vs ${s.opponent}` : ''} — ${new Date(s.scheduledAt).toLocaleString('en-US', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC. Run /scrims for details.`)
+        }
+
+        // Announcements (Phase 2, Planning rework) — broadcast, not tied to
+        // a specific recipient, so queried directly like events/scrims
+        // above rather than through listRecentTeamNotifications.
+        const announcements = await listRecentAnnouncements(sb, guild.groupId, dayAgo.toISOString())
+        for (const a of announcements) {
+          if (!(await markNotifiedOnce(sb, guild.guildId, 'notification', `announcement:${a.id}`))) continue
+          await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId, `📣 **${a.title}**\n${a.body}`)
         }
 
         const shared = await getSharedTeam(sb, guild.groupId)

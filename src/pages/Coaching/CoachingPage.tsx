@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  Loader2, LayoutDashboard, CalendarDays, Film, HeartPulse, Megaphone,
+  Loader2, LayoutDashboard, CalendarDays, Film, HeartPulse, ListTodo,
   FileBarChart, UserPlus, GraduationCap, Users, Shield,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -49,7 +49,7 @@ export function CoachingPage() {
     { id: 'planning' as const, label: t('coaching.tabs.planning', { defaultValue: 'Planning' }), icon: CalendarDays, show: hasGroups },
     { id: 'vod' as const, label: t('coaching.tabs.vod', { defaultValue: 'VOD review' }), icon: Film, show: hasGroups },
     { id: 'wellbeing' as const, label: t('coaching.tabs.wellbeing', { defaultValue: 'Wellbeing' }), icon: HeartPulse, show: hasGroups },
-    { id: 'teamOps' as const, label: t('coaching.tabs.teamOps', { defaultValue: 'Announcements & tasks' }), icon: Megaphone, show: hasGroups },
+    { id: 'teamOps' as const, label: t('coaching.tabs.teamOps', { defaultValue: 'Tasks' }), icon: ListTodo, show: hasGroups },
     { id: 'reports' as const, label: t('coaching.tabs.reports', { defaultValue: 'Weekly report' }), icon: FileBarChart, show: isStaff },
     { id: 'trials' as const, label: t('coaching.tabs.trials', { defaultValue: 'Trials' }), icon: UserPlus, show: isStaff },
     { id: 'players' as const, label: t('coaching.tabs.players', { defaultValue: 'Players' }), icon: GraduationCap, show: isStaff },
@@ -117,7 +117,7 @@ export function CoachingPage() {
             )}
             {tab === 'planning' && (
               <PanelErrorBoundary key="planning" label="Planning">
-                <PlanningSection groups={groups} myUserId={myUserId} />
+                <PlanningSection groups={groups} myUserId={myUserId} nameOf={nameOf} />
               </PanelErrorBoundary>
             )}
             {tab === 'vod' && (
@@ -131,7 +131,7 @@ export function CoachingPage() {
               </PanelErrorBoundary>
             )}
             {tab === 'teamOps' && (
-              <PanelErrorBoundary key="teamOps" label="Announcements & tasks">
+              <PanelErrorBoundary key="teamOps" label="Tasks">
                 <TeamOpsSection groups={groups} myUserId={myUserId} nameOf={nameOf} />
               </PanelErrorBoundary>
             )}

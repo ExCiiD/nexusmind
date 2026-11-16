@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { DiscordGuildLink, DiscordUserLink } from './discord'
 import { generateLinkCode } from './discord'
 import type { NewAvailabilityExceptionInput } from './calendar'
+import type { Announcement } from './announcements'
 
 /**
  * Discord bot integration (E11), same pure-function-over-a-client pattern
@@ -183,6 +184,27 @@ export async function listRecentTeamNotifications(sb: SupabaseClient, groupId: s
     .gte('created_at', sinceIso)
   if (error) fail(error, 'list team notifications')
   return (data ?? []).map((r) => ({ id: r.id, type: r.type, userId: r.user_id, data: r.data as Record<string, unknown>, createdAt: r.created_at }))
+}
+
+/**
+ * New announcements for a group since `sinceIso` (Phase 2, Planning
+ * rework). Unlike `listRecentTeamNotifications`, announcements aren't
+ * per-recipient rows in `notifications` — they're broadcast, team-wide —
+ * so this queries `announcements` directly, the same way the cron already
+ * queries `calendar_events`/`scrims` rather than going through a
+ * per-user notification. Same ~15-min cadence as everything else this
+ * cron relays; "instant" in the product sense refers to in-app/web
+ * publishing (no scheduling, a persistent bubble), not Discord delivery.
+ */
+export async function listRecentAnnouncements(sb: SupabaseClient, groupId: string, sinceIso: string): Promise<Announcement[]> {
+  const { data, error } = await sb.from('announcements')
+    .select('id, group_id, title, body, pinned, created_by, created_at, updated_at')
+    .eq('group_id', groupId).gte('created_at', sinceIso)
+  if (error) fail(error, 'list recent announcements')
+  return (data ?? []).map((r) => ({
+    id: r.id, groupId: r.group_id, title: r.title, body: r.body, pinned: r.pinned,
+    createdBy: r.created_by, createdAt: r.created_at, updatedAt: r.updated_at,
+  }))
 }
 
 /** Bulk display-name lookup for a group's members — used to name the

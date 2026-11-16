@@ -196,8 +196,11 @@ Chantier à 6 phases (0 à 5), livrées une par une (comme §8) : refonte du Pla
 - Permissions : RLS de `calendar_events`/`availability_rules`/`availability_exceptions` basculée de `is_group_staff` vers `can_edit_calendar` (Phase 0) — l'analyste perd l'édition du planning, le manager l'obtient, exactement la matrice demandée.
 - **⏳ restant** : lier formellement le popup à la **création** d'un nouveau scrim depuis le calendrier (aujourd'hui : lien vers un scrim déjà créé sur la page Scrims web uniquement — créer un scrim est encore une action web-only, `scrims.ts` n'est pas branché sur `window.api` côté desktop) ; rendre le module Scrims visible/réutilisable depuis la page Équipe en plus de Coaching (extraction d'un `ScrimsPanel` partagé, pas encore fait) ; pas de compte de test disponible pour une vérification interactive complète (drag réel, clic sur un événement) en conditions réelles.
 
-### Phase 2 — Annonces fondues dans le Planning ⏳ pas commencé
-Suppression de la page « Annonces & tâches » côté annonces (les tâches restent), bulle de notification persistante (fermée uniquement par clic explicite, jamais ré-empilée sur un cycle de poll) sur app + web, relais Discord **immédiat** (pas le cron de 15 min existant).
+### Phase 2 — Annonces fondues dans le Planning 🟡 v1 livré (16/11/2026)
+- **Livré** : `src/lib/announcements.ts`/`announcementsCore.ts` (extrait de `teamOps.ts` — les tâches et notes privées restent là, inchangées). La page « Annonces & tâches » devient juste « Tâches » (`TeamOpsSection.tsx`, `CoachingPage.tsx`) ; les annonces sont maintenant une carte dans Planning (`AnnouncementsCard.tsx`), avec écriture gérée par `can_edit_calendar` (Phase 0) au lieu de `is_group_staff`.
+- Nouvelle table `announcement_dismissals` (une ligne par annonce+utilisateur une fois explicitement fermée) et `AnnouncementBubbleStack.tsx` — une bulle persistante par annonce non fermée, montée une seule fois au niveau de l'app (desktop `App.tsx`, web `WebLayout.tsx`), donc visible depuis n'importe quel écran, pas seulement l'onglet Planning. Conçu explicitement contre les trois risques cités par l'utilisateur : jamais de doublon sur un cycle de poll (la seule source de vérité pour « cacher » est l'état de fermeture, jamais un drapeau local « déjà vu »), fermeture persistée côté serveur (survit à un redémarrage), jamais de blocage de l'UI (`pointer-events-none` sur le conteneur, seules les cartes elles-mêmes sont cliquables).
+- Relais Discord : le cron existant (15 min) interroge maintenant aussi `announcements` directement (comme pour les événements/scrims), pas via la table `notifications` générique — une annonce est diffusée à toute l'équipe, pas adressée à quelqu'un en particulier.
+- **Note de correction** : la demande initiale disait « instantanées » pour Discord — après vérification de l'architecture (le bot ne peut pas être appelé directement par l'app, son URL dépend du compte Cloudflare de l'utilisateur et n'est connue nulle part dans le code), le relais Discord suit la même cadence ~15 min que tout le reste déjà relayé par ce cron. « Instantané » s'applique à la publication app/web (pas de programmation, bulle immédiate), pas à Discord — changement de plan assumé et documenté plutôt que fait silencieusement.
 
 ### Phase 3 — Sessions d'équipe : cycle de vie, synchro rapide, objectifs ⏳ pas commencé
 Une session s'ouvre automatiquement pour chaque événement scrim/flex/tournoi/réunion, compte à rebour sur app/web/Discord, synchro via le système de sync existant accéléré (~7,5s au lieu de 30s pendant une session active — pas de nouvelle infra Realtime). Les responsables (coach/manager/capitaine) choisissent les objectifs de session, avec un bouton « + Ajouter un fondamental » pour des fondamentaux propres à l'équipe.
@@ -226,10 +229,10 @@ E15 ✅ (perf fetch) + E16 ✅ (stats + prépa clé Product) → E17 ✅ (UX Sta
 E11 🟡 (bot Discord) — code livré, déploiement bloqué sur la création de l'app Discord (utilisateur)
 
 Chantier §9 (16/11/2026) :
-Phase 0 ✅ (rôle manager + capitaine) → Phase 1 ✅ (grille Planning) → Phase 2 (annonces)
+Phase 0 ✅ (rôle manager + capitaine) → Phase 1 ✅ (grille Planning) → Phase 2 ✅ (annonces)
    → Phase 3 (sessions d'équipe, cycle de vie) → Phase 4 (stats par game) → Phase 5 (recording/transcription/YouTube)
 ```
-E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 (14-15/11/2026) : E12 à E17 livrés, E11 codé mais pas déployé (blocage légitime — création de l'app Discord nécessite le compte de l'utilisateur, voir `CLOUD_SETUP.md` §5). Le chantier §8 est donc fonctionnellement terminé côté code. Le chantier §9 (16/11/2026) : Phases 0 et 1 livrées, Phases 2-5 à venir dans l'ordre.
+E1 conditionne tout ; E2 + E8 rendent le web immédiatement utile au staff. Pour le chantier §8 (14-15/11/2026) : E12 à E17 livrés, E11 codé mais pas déployé (blocage légitime — création de l'app Discord nécessite le compte de l'utilisateur, voir `CLOUD_SETUP.md` §5). Le chantier §8 est donc fonctionnellement terminé côté code. Le chantier §9 (16/11/2026) : Phases 0-2 livrées, Phases 3-5 à venir dans l'ordre — ce sont les plus grosses (sessions d'équipe, stats par game, pipeline recording/transcription/YouTube).
 
 ## 6. Impacts techniques
 

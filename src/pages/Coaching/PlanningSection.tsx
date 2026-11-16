@@ -14,6 +14,7 @@ import { WeekGrid, type HourRange } from '@/components/Planning/WeekGrid'
 import { EventPopup } from '@/components/Planning/EventPopup'
 import { RequestEventDialog } from '@/components/Planning/RequestEventDialog'
 import { EventRequestsQueue } from '@/components/Planning/EventRequestsQueue'
+import { AnnouncementsCard } from '@/components/Planning/AnnouncementsCard'
 
 function startOfWeek(d: Date): Date {
   const out = new Date(d)
@@ -26,12 +27,12 @@ function startOfWeek(d: Date): Date {
 const toDateKey = (d: Date) => d.toISOString().slice(0, 10)
 const toTimeKey = (h: number) => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`
 
-interface Props { groups: Group[]; myUserId: string }
+interface Props { groups: Group[]; myUserId: string; nameOf: (userId: string) => string }
 
 /** E4/Phase 1 (docs/PLAN_GESTION_EQUIPE.md §9): Google-Calendar-style week
  *  grid — click/drag to create events, a per-day rail to click/drag your own
  *  availability, event requests for non-editors. */
-export function PlanningSection({ groups, myUserId }: Props) {
+export function PlanningSection({ groups, myUserId, nameOf }: Props) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const [groupId, setGroupId] = useState(groups[0]?.id ?? null)
@@ -152,6 +153,8 @@ export function PlanningSection({ groups, myUserId }: Props) {
         <CardDescription>{t('planning.desc', { defaultValue: 'Team calendar, recurring availability, and common free slots.' })}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {groupId && <AnnouncementsCard groupId={groupId} canEdit={canEdit} nameOf={nameOf} />}
+
         <div className="flex items-center justify-between">
           <Button size="sm" variant="outline" onClick={() => setWeekStart((w) => { const d = new Date(w); d.setDate(d.getDate() - 7); return d })}>←</Button>
           <span className="text-sm text-hextech-text-dim">
@@ -160,7 +163,7 @@ export function PlanningSection({ groups, myUserId }: Props) {
           <Button size="sm" variant="outline" onClick={() => setWeekStart((w) => { const d = new Date(w); d.setDate(d.getDate() + 7); return d })}>→</Button>
         </div>
 
-        {canEdit && groupId && <EventRequestsQueue groupId={groupId} nameOf={(id) => group?.members.find((m) => m.userId === id)?.displayName ?? '?'} />}
+        {canEdit && groupId && <EventRequestsQueue groupId={groupId} nameOf={nameOf} />}
 
         {events === null ? (
           <Loader2 className="h-5 w-5 animate-spin text-hextech-text-dim" />

@@ -1,23 +1,8 @@
-/** Renderer-side mirror of the shared team-ops tables (E7). */
+/** Renderer-side mirror of the shared team-ops tables (E7). Announcements
+ *  moved to src/lib/announcements.ts in Phase 2 of the Planning rework
+ *  (docs/PLAN_GESTION_EQUIPE.md §9) — Tasks and StaffNotes stay here. */
 
 export type TaskStatus = 'open' | 'done'
-
-export interface Announcement {
-  id: string
-  groupId: string
-  title: string
-  body: string
-  pinned: boolean
-  createdBy: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface NewAnnouncementInput {
-  title: string
-  body: string
-  pinned?: boolean
-}
 
 export interface Task {
   id: string
@@ -52,11 +37,6 @@ export interface StaffNote {
  * implement every method the same way — same pattern as devPlan.ts.
  */
 export interface TeamOpsApi {
-  announcementsList: (groupId: string) => Promise<Announcement[]>
-  announcementsCreate: (groupId: string, input: NewAnnouncementInput) => Promise<string>
-  announcementsSetPinned: (id: string, pinned: boolean) => Promise<void>
-  announcementsDelete: (id: string) => Promise<void>
-
   tasksList: (groupId: string) => Promise<Task[]>
   tasksCreate: (groupId: string, input: NewTaskInput) => Promise<string>
   tasksSetStatus: (id: string, status: TaskStatus) => Promise<void>

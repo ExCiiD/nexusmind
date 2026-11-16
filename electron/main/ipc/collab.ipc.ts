@@ -152,6 +152,8 @@ export function registerCollabHandlers() {
   validatedHandle('announcements:create', z.tuple([uuid, announcementInput]), (_e, groupId, input) => collab.announcementsCreate(groupId, input))
   validatedHandle('announcements:set-pinned', z.tuple([uuid, z.boolean()]), (_e, id, pinned) => collab.announcementsSetPinned(id, pinned))
   validatedHandle('announcements:delete', z.tuple([uuid]), (_e, id) => collab.announcementsDelete(id))
+  validatedHandle('announcements:list-my-dismissals', z.tuple([]), () => collab.announcementsListMyDismissals())
+  validatedHandle('announcements:dismiss', z.tuple([uuid]), (_e, announcementId) => collab.announcementsDismiss(announcementId))
 
   const taskInput = z.object({ title: z.string().trim().min(1).max(200), assigneeId: uuid.nullable().optional(), dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional() })
   const taskStatus = z.enum(['open', 'done'])

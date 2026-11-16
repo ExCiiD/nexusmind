@@ -1,25 +1,24 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckSquare, ListTodo, Loader2, Megaphone, Pin, Plus, Square, Trash2 } from 'lucide-react'
+import { CheckSquare, ListTodo, Loader2, Plus, Square, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
 import { isLegacyStaff } from '@/lib/permissions'
-import type { Announcement, Task } from '@/lib/teamOps'
+import type { Task } from '@/lib/teamOps'
 
 interface Props { groups: Group[]; myUserId: string; nameOf: (userId: string) => string }
 
-/** E7 (docs/PLAN_GESTION_EQUIPE.md): pinned announcements and assignable to-do tasks, shared desktop/web. */
+/** E7 (docs/PLAN_GESTION_EQUIPE.md): assignable to-do tasks, shared
+ *  desktop/web. Announcements moved into Planning in Phase 2 of the
+ *  Planning rework (§9) — see AnnouncementBubbleStack.tsx. */
 export function TeamOpsSection({ groups, myUserId, nameOf }: Props) {
   const { t } = useTranslation()
   const [groupId, setGroupId] = useState(groups[0]?.id ?? null)
   const group = groups.find((g) => g.id === groupId)
-  // Tasks AND Announcements are both still is_group_staff-gated today;
-  // Announcements move to canEditCalendar (Phase 2, folded into Planning).
   const isStaff = !!group && isLegacyStaff(group.myRole)
 
   if (groups.length === 0) return null
@@ -29,7 +28,7 @@ export function TeamOpsSection({ groups, myUserId, nameOf }: Props) {
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Megaphone className="h-5 w-5 text-hextech-gold" />{t('teamOps.title', { defaultValue: 'Announcements & tasks' })}
+            <ListTodo className="h-5 w-5 text-hextech-gold" />{t('teamOps.title', { defaultValue: 'Tasks' })}
           </CardTitle>
           {groups.length > 1 && (
             <select value={groupId ?? ''} onChange={(e) => setGroupId(e.target.value)}
@@ -38,96 +37,12 @@ export function TeamOpsSection({ groups, myUserId, nameOf }: Props) {
             </select>
           )}
         </div>
-        <CardDescription>{t('teamOps.desc', { defaultValue: "Pinned announcements and assignable to-do tasks for the group." })}</CardDescription>
+        <CardDescription>{t('teamOps.desc', { defaultValue: "Assignable to-do tasks for the group." })}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {groupId && (
-          <>
-            <AnnouncementsPanel groupId={groupId} isStaff={isStaff} nameOf={nameOf} />
-            <TasksPanel groupId={groupId} isStaff={isStaff} myUserId={myUserId} nameOf={nameOf} members={group?.members ?? []} />
-          </>
-        )}
+        {groupId && <TasksPanel groupId={groupId} isStaff={isStaff} myUserId={myUserId} nameOf={nameOf} members={group?.members ?? []} />}
       </CardContent>
     </Card>
-  )
-}
-
-function AnnouncementsPanel({ groupId, isStaff, nameOf }: { groupId: string; isStaff: boolean; nameOf: (id: string) => string }) {
-  const { t, i18n } = useTranslation()
-  const { toast } = useToast()
-  const [items, setItems] = useState<Announcement[] | null>(null)
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
-  const [creating, setCreating] = useState(false)
-
-  const load = useCallback(async () => {
-    try { setItems(await window.api.announcementsList(groupId)) }
-    catch (err) { setItems([]); toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
-  }, [groupId, t, toast])
-
-  useEffect(() => { load() }, [load])
-
-  const create = async () => {
-    if (!title.trim() || !body.trim()) return
-    setCreating(true)
-    try {
-      await window.api.announcementsCreate(groupId, { title: title.trim(), body: body.trim() })
-      setTitle(''); setBody('')
-      await load()
-    } catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
-    finally { setCreating(false) }
-  }
-
-  const togglePin = async (a: Announcement) => {
-    try { await window.api.announcementsSetPinned(a.id, !a.pinned); await load() }
-    catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
-  }
-  const remove = async (id: string) => {
-    try { await window.api.announcementsDelete(id); await load() }
-    catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
-  }
-
-  return (
-    <div className="space-y-2">
-      <h4 className="text-sm font-medium text-hextech-text-bright">{t('teamOps.announcements', { defaultValue: 'Announcements' })}</h4>
-      {isStaff && (
-        <div className="flex flex-wrap gap-2 rounded-lg border border-hextech-border-dim p-3">
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} className="flex-1 min-w-[10rem]" placeholder={t('teamOps.announcementTitlePlaceholder', { defaultValue: 'Title…' })} />
-          <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={1} maxLength={4000} className="flex-1 min-w-[12rem]" placeholder={t('teamOps.announcementBodyPlaceholder', { defaultValue: 'Message…' })} />
-          <Button size="sm" onClick={create} disabled={!title.trim() || !body.trim() || creating}>
-            {creating && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}{t('teamOps.post', { defaultValue: 'Post' })}
-          </Button>
-        </div>
-      )}
-      {items === null ? (
-        <Loader2 className="h-4 w-4 animate-spin text-hextech-text-dim" />
-      ) : items.length === 0 ? (
-        <p className="text-xs text-hextech-text-dim">{t('teamOps.noAnnouncements', { defaultValue: 'No announcements yet.' })}</p>
-      ) : (
-        <ul className="space-y-1.5">
-          {items.map((a) => (
-            <li key={a.id} className="rounded-lg border border-hextech-border-dim p-2">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    {a.pinned && <Pin className="h-3.5 w-3.5 text-hextech-gold" />}
-                    <span className="text-sm font-medium text-hextech-text-bright">{a.title}</span>
-                  </div>
-                  <p className="text-sm text-hextech-text">{a.body}</p>
-                  <p className="text-[11px] text-hextech-text-dim">{nameOf(a.createdBy)} · {new Date(a.createdAt).toLocaleDateString(i18n.language)}</p>
-                </div>
-                {isStaff && (
-                  <div className="flex items-center gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => togglePin(a)}><Pin className={a.pinned ? 'h-3.5 w-3.5 text-hextech-gold' : 'h-3.5 w-3.5 text-hextech-text-dim'} /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => remove(a.id)}><Trash2 className="h-3.5 w-3.5 text-hextech-text-dim" /></Button>
-                  </div>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   )
 }
 
@@ -170,7 +85,7 @@ function TasksPanel({ groupId, isStaff, myUserId, nameOf, members }: {
   }
 
   return (
-    <div className="space-y-2 border-t border-hextech-border-dim pt-3">
+    <div className="space-y-2">
       <h4 className="flex items-center gap-1.5 text-sm font-medium text-hextech-text-bright">
         <ListTodo className="h-4 w-4 text-hextech-gold" />{t('teamOps.tasks', { defaultValue: 'Tasks' })}
       </h4>

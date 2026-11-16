@@ -8,6 +8,7 @@ import * as calendarCore from '@/lib/calendarCore'
 import * as vodReviewCore from '@/lib/vodReviewCore'
 import * as wellbeingCore from '@/lib/wellbeingCore'
 import * as teamOpsCore from '@/lib/teamOpsCore'
+import * as announcementsCore from '@/lib/announcementsCore'
 import * as reportCore from '@/lib/reportCore'
 import * as trialsCore from '@/lib/trialsCore'
 import * as scrimsReadCore from '@/lib/scrimsCore'
@@ -222,10 +223,12 @@ export const webApi = {
   wellbeingSetLoadThreshold: (groupId: string, hours: number) => wellbeingCore.setWeeklyLoadThreshold(sb, groupId, hours),
 
   // ── E7: communication & tasks ──
-  announcementsList: (groupId: string) => teamOpsCore.listAnnouncements(sb, groupId),
-  announcementsCreate: (groupId: string, input: Parameters<typeof teamOpsCore.createAnnouncement>[2]) => teamOpsCore.createAnnouncement(sb, groupId, input),
-  announcementsSetPinned: (id: string, pinned: boolean) => teamOpsCore.setAnnouncementPinned(sb, id, pinned),
-  announcementsDelete: (id: string) => teamOpsCore.deleteAnnouncement(sb, id),
+  announcementsList: (groupId: string) => announcementsCore.listAnnouncements(sb, groupId),
+  announcementsCreate: (groupId: string, input: Parameters<typeof announcementsCore.createAnnouncement>[2]) => announcementsCore.createAnnouncement(sb, groupId, input),
+  announcementsSetPinned: (id: string, pinned: boolean) => announcementsCore.setAnnouncementPinned(sb, id, pinned),
+  announcementsDelete: (id: string) => announcementsCore.deleteAnnouncement(sb, id),
+  announcementsListMyDismissals: () => announcementsCore.listMyDismissals(sb),
+  announcementsDismiss: (announcementId: string) => announcementsCore.dismissAnnouncement(sb, announcementId),
   tasksList: (groupId: string) => teamOpsCore.listTasks(sb, groupId),
   tasksCreate: (groupId: string, input: Parameters<typeof teamOpsCore.createTask>[2]) => teamOpsCore.createTask(sb, groupId, input),
   tasksSetStatus: (id: string, status: 'open' | 'done') => teamOpsCore.setTaskStatus(sb, id, status),

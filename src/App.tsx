@@ -28,6 +28,7 @@ import { DevToolbar } from '@/components/Dev/DevToolbar'
 import { UpdateBanner } from '@/components/UpdateBanner'
 import { Toaster } from '@/components/ui/toaster'
 import { BackgroundJobsIndicator } from '@/components/BackgroundJobsIndicator'
+import { AnnouncementBubbleStack } from '@/components/Announcements/AnnouncementBubbleStack'
 import { useEffect } from 'react'
 
 export function App() {
@@ -81,6 +82,7 @@ export function App() {
           Rendered above the toaster so its pills don't get covered by
           stacked toasts. Hidden when no jobs are active. */}
       {user && <BackgroundJobsIndicator />}
+      {user && <AnnouncementBubbleStack />}
       <Toaster />
     </>
   )

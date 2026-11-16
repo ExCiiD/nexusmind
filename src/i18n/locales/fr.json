@@ -1185,6 +1185,14 @@
     "empty": "Aucun commentaire pour l'instant.",
     "placeholder": "Écrire un commentaire…"
   },
+  "announcements": {
+    "title": "Annonces",
+    "titlePlaceholder": "Titre…",
+    "bodyPlaceholder": "Message…",
+    "post": "Publier",
+    "none": "Aucune annonce pour l'instant.",
+    "close": "Fermer"
+  },
   "mistakes": {
     "deleteFailed": "Impossible de supprimer l'erreur",
     "tagFailed": "Impossible d'enregistrer l'erreur",
@@ -1296,7 +1304,7 @@
       "planning": "Planning",
       "vod": "Review VOD",
       "wellbeing": "Bien-être",
-      "teamOps": "Annonces & tâches",
+      "teamOps": "Tâches",
       "reports": "Rapport hebdo",
       "trials": "Essais",
       "players": "Joueurs",
@@ -1901,13 +1909,8 @@
     "loadThresholdSuffix": "h/semaine avec une humeur en baisse."
   },
   "teamOps": {
-    "title": "Annonces & tâches",
-    "desc": "Annonces épinglées et tâches assignables pour le groupe.",
-    "announcements": "Annonces",
-    "announcementTitlePlaceholder": "Titre…",
-    "announcementBodyPlaceholder": "Message…",
-    "post": "Publier",
-    "noAnnouncements": "Aucune annonce pour l'instant.",
+    "title": "Tâches",
+    "desc": "Tâches assignables pour le groupe.",
     "tasks": "Tâches",
     "taskTitlePlaceholder": "ex. Préparer le scouting de Rival",
     "unassigned": "Non assignée",
