@@ -1,18 +1,12 @@
 ---
 name: delegation-core
-description: Delegates execution to external CLIs (Gemini, Qwen, MiniMax, GLM, Muse, Codex, OpenCode, Glimmer). Use for execution tasks. Do not use for secrets.
+description: Decides whether a token-heavy, low-judgment sub-task should be delegated to the local Gemini CLI instead of spending this session's own context on it (summarizing a huge file, a bulk pattern scan, a first pass over a large reference doc). Only Gemini is wired up in this project. Do not use for secrets.
 alwaysApply: false
 category: delegation-framework
 tags:
 - delegation
 - external-llm
 - gemini
-- qwen
-- minimax
-- glm
-- muse
-- codex
-- opencode
 - task-management
 - quality-control
 dependencies:
@@ -214,14 +208,13 @@ See `modules/cost-estimation.md` for leyline integration examples.
 
 ## Service-Specific Skills
 
-For detailed service workflows:
-- `Skill(conjure:gemini-delegation)`: Gemini CLI specifics.
-- `Skill(conjure:qwen-delegation)`: Qwen MCP specifics.
-- `Skill(conjure:minimax-delegation)`: MiniMax CLI specifics.
-- `Skill(conjure:glm-delegation)`: GLM via the Z.ai endpoint swap.
-- `Skill(conjure:muse-delegation)`: Meta Muse Code CLI specifics.
-- `Skill(conjure:codex-delegation)`: OpenAI Codex CLI specifics.
-- `Skill(conjure:opencode-delegation)`: OpenCode CLI specifics.
+Only `gemini-delegation` is wired up in this project — it's the only CLI
+installed and authenticated here. The other provider skills this framework
+upstream ships (qwen, minimax, glm, muse, codex, opencode) were removed
+during vendoring since there's no corresponding CLI on this machine; don't
+attempt to invoke them. If a real need for another provider comes up later,
+re-vendor the matching skill from `athola/claude-night-market`'s `conjure`
+plugin rather than re-authoring one.
 
 ## Execution Modes
 
