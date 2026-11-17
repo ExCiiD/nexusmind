@@ -15,6 +15,7 @@ import { StaffDashboardSection } from './StaffDashboardSection'
 import { DevPlanCard } from '@/components/Coaching/DevPlanCard'
 import { PlanningSection } from './PlanningSection'
 import { VodReviewSection } from './VodReviewSection'
+import { MyMicroVerdictsCard, TeamCodexCard } from '@/components/MicroReview/CoachMicroReviews'
 import { WellbeingSection } from './WellbeingSection'
 import { TeamOpsSection } from './TeamOpsSection'
 import { NotificationPrefsCard } from '@/components/Notifications/NotificationPrefsCard'
@@ -103,6 +104,7 @@ export function CoachingPage() {
               <PanelErrorBoundary key="overview" label="Overview">
                 <div className="space-y-4">
                   <AssignedObjectivesCard />
+                  <MyMicroVerdictsCard />
                   {myPlayerGroups.map((g) => (
                     <DevPlanCard key={g.id} groupId={g.id} playerId={myUserId} mode="player" />
                   ))}
@@ -122,7 +124,10 @@ export function CoachingPage() {
             )}
             {tab === 'vod' && (
               <PanelErrorBoundary key="vod" label="VOD review">
-                <VodReviewSection groups={groups} myUserId={myUserId} nameOf={nameOf} />
+                <div className="space-y-4">
+                  <VodReviewSection groups={groups} myUserId={myUserId} nameOf={nameOf} />
+                  <TeamCodexCard staffGroups={staffGroups} />
+                </div>
               </PanelErrorBoundary>
             )}
             {tab === 'wellbeing' && (

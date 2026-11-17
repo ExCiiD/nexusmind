@@ -14,6 +14,7 @@ import { analyzeLanePhase, type LanePhaseResult } from '../lanePhaseAnalyzer'
 import { detectMistakes } from '../mistakeDetector'
 import { planAutoBookmarks, type AutoBookmarkCandidate } from '../mistakeBookmarks'
 import { applySeverityDelta } from '../mistakeTuning'
+import { mistakeDuplicateIndex } from '../mistakeDedupe'
 import { buildPrefilledNotes } from '../reviewNotes'
 
 let autoSnapshotRunning = false
@@ -205,7 +206,7 @@ interface MatchCacheLoadErr {
  * analyzer, mistake detector, future analyzers) can share the same
  * lazy-fetch-and-cache pipeline without duplicating the Riot calls.
  */
-async function ensureMatchCache(gameId: string, forceRefetch: boolean, logPrefix = 'cache'): Promise<MatchCacheLoadOk | MatchCacheLoadErr> {
+export async function ensureMatchCache(gameId: string, forceRefetch: boolean, logPrefix = 'cache'): Promise<MatchCacheLoadOk | MatchCacheLoadErr> {
   const prisma = getPrisma()
   const game = await prisma.game.findUnique({ where: { id: gameId } })
   if (!game) return { ok: false, reason: 'no-game', message: 'Game record not found.' }
@@ -435,16 +436,8 @@ export function registerStatsHandlers() {
       const tags = await prisma.mistakeTag.findMany({ where: { slug: { in: slugs }, archivedAt: null } })
       const slugToTagId = new Map(tags.map((t) => [t.slug, t.id]))
 
-      const existing = await prisma.mistake.findMany({
-        where: { gameId, autoDetected: true },
-        select: { tagId: true, gameTimeSec: true },
-      })
-      const bucket = new Map<string, number[]>()
-      for (const e of existing) {
-        const list = bucket.get(e.tagId) ?? []
-        list.push(e.gameTimeSec)
-        bucket.set(e.tagId, list)
-      }
+      // Every mistake the game already has, whoever made it (see mistakeDedupe.ts).
+      const known = await mistakeDuplicateIndex(gameId)
 
       // MX3: per-tag severity learned from this player repeatedly deleting it.
       const tunings = user ? await prisma.mistakeTagTuning.findMany({ where: { userId: user.id, tagId: { in: tags.map((t) => t.id) } } }) : []
@@ -455,8 +448,7 @@ export function registerStatsHandlers() {
       for (const c of candidates) {
         const tagId = slugToTagId.get(c.tagSlug)
         if (!tagId) continue
-        const nearby = bucket.get(tagId) ?? []
-        if (nearby.some((t) => Math.abs(t - c.gameTimeSec) <= 3)) continue
+        if (known.has(tagId, c.gameTimeSec)) continue
         const severity = applySeverityDelta(Math.min(3, Math.max(1, c.severity ?? 2)), deltaByTagId.get(tagId) ?? 0)
         await prisma.mistake.create({
           data: {
@@ -470,8 +462,7 @@ export function registerStatsHandlers() {
         })
         created++
         newlyCreated.push({ tagSlug: c.tagSlug, tagLabel: tags.find((t) => t.id === tagId)?.label ?? c.tagSlug, gameTimeSec: c.gameTimeSec, severity })
-        nearby.push(c.gameTimeSec)
-        bucket.set(tagId, nearby)
+        known.add(tagId, c.gameTimeSec)
       }
       if (created > 0) console.log(`[events] Auto-detected ${created} mistake(s) for game ${gameId}`)
       if (newlyCreated.some((c) => c.severity >= 3)) await autoBookmarkSevereMistakes(gameId, game.duration, newlyCreated)

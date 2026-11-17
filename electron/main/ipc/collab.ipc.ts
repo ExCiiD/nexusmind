@@ -138,6 +138,33 @@ export function registerCollabHandlers() {
   validatedHandle('vodreview:set-assignment-status', z.tuple([uuid, assignmentStatus]), (_e, id, status) => collab.vodReviewSetAssignmentStatus(id, status))
   validatedHandle('vodreview:delete-assignment', z.tuple([uuid]), (_e, id) => collab.vodReviewDeleteAssignment(id))
 
+  // Micro-review, coach side (docs/PLAN_MICRO_REVIEW.md)
+  const slug = z.string().min(1).max(64).regex(/^[a-z0-9-]+$/)
+  validatedHandle('microreview-cloud:player-answers', z.tuple([uuid]), (_e, playerId) => collab.microReviewCloudPlayerAnswers(playerId))
+  validatedHandle('microreview-cloud:my-verdicts', z.tuple([]), () => collab.microReviewCloudMyVerdicts())
+  validatedHandle('microreview-cloud:set-verdict', z.tuple([z.object({
+    answerId: uuid,
+    groupId: uuid,
+    status: z.enum(['validated', 'corrected']),
+    correctedOutcome: z.enum(['mistake', 'justified']).nullable().optional(),
+    correctedTag: slug.nullable().optional(),
+    note: z.string().trim().max(1000).nullable().optional(),
+  })]), (_e, v) => collab.microReviewCloudSetVerdict(v))
+  validatedHandle('team-codex:list', z.tuple([z.array(uuid).max(20)]), (_e, groupIds) => collab.teamCodexList(groupIds))
+  validatedHandle('team-codex:add', z.tuple([z.object({
+    groupId: uuid,
+    role: z.enum(['any', 'TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY']),
+    mistakeSlug: slug,
+    phase: z.enum(['any', 'early', 'mid', 'late']),
+    fundamentalId: z.string().min(1).max(64),
+    radarAxis: z.string().max(16).optional(),
+    headline: z.string().trim().min(1).max(140),
+    tacticalRule: z.string().trim().min(1).max(1000),
+    drillObjective: z.string().trim().min(1).max(300),
+    videoRef: z.string().trim().max(500).nullable().optional(),
+  })]), (_e, r) => collab.teamCodexAdd(r))
+  validatedHandle('team-codex:delete', z.tuple([uuid]), (_e, id) => collab.teamCodexDelete(id))
+
   const checkinInput = z.object({
     energy: z.number().int().min(1).max(5), mood: z.number().int().min(1).max(5), sleep: z.number().int().min(1).max(5),
     note: z.string().max(500).nullable().optional(),

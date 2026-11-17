@@ -6,6 +6,9 @@ import * as dashboardCore from '@/lib/staffDashboardCore'
 import * as devPlanCore from '@/lib/devPlanCore'
 import * as calendarCore from '@/lib/calendarCore'
 import * as vodReviewCore from '@/lib/vodReviewCore'
+import * as microReviewCloud from '@/lib/microReviewCloudCore'
+import { builtInTagsAsRows } from '@/lib/mistakeTagCatalog'
+import type { MicroVerdictInput, TeamCodexRuleInput } from '@/lib/microReview/types'
 import * as wellbeingCore from '@/lib/wellbeingCore'
 import * as teamOpsCore from '@/lib/teamOpsCore'
 import * as announcementsCore from '@/lib/announcementsCore'
@@ -247,6 +250,15 @@ export const webApi = {
 
   // ── E5: collaborative VOD review ──
   vodReviewListSessions: (groupId: string) => vodReviewCore.listSessions(sb, groupId),
+  // Micro-review, coach side (docs/PLAN_MICRO_REVIEW.md)
+  microReviewCloudPlayerAnswers: (playerId: string) => microReviewCloud.listPlayerAnswers(sb, playerId),
+  microReviewCloudMyVerdicts: async () => microReviewCloud.listMyReviewedAnswers(sb, await currentUserId()),
+  microReviewCloudSetVerdict: async (input: MicroVerdictInput) => microReviewCloud.setVerdict(sb, await currentUserId(), input),
+  teamCodexList: (groupIds: string[]) => microReviewCloud.listTeamCodex(sb, groupIds),
+  teamCodexAdd: (input: TeamCodexRuleInput) => microReviewCloud.addTeamCodexRule(sb, input),
+  teamCodexDelete: (id: string) => microReviewCloud.deleteTeamCodexRule(sb, id),
+  // No local database on the web: the built-in catalog (the coach corrects with built-in tags).
+  listMistakeTags: async () => builtInTagsAsRows(),
   vodReviewCreateSession: (groupId: string, input: Parameters<typeof vodReviewCore.createSession>[2]) => vodReviewCore.createSession(sb, groupId, input),
   vodReviewDeleteSession: (id: string) => vodReviewCore.deleteSession(sb, id),
   vodReviewAddComment: (sessionId: string, input: Parameters<typeof vodReviewCore.addComment>[2]) => vodReviewCore.addComment(sb, sessionId, input),

@@ -40,6 +40,8 @@ import { useToast } from '@/hooks/useToast'
 import { formatGameTime, formatKDA, formatCSPerMin, cn } from '@/lib/utils'
 import { GameRecordingPanel } from '@/components/Recording/GameRecordingPanel'
 import { CoachFeedbackPanel } from '@/components/Coaching/CoachFeedbackPanel'
+import { MicroReviewPanel } from '@/components/MicroReview/MicroReviewPanel'
+import { ObjectiveAutoCheck } from '@/components/MicroReview/ObjectiveAutoCheck'
 
 export function ReviewPage() {
   const { t } = useTranslation()
@@ -116,6 +118,13 @@ export function ReviewPage() {
   const [objectiveRespected, setObjectiveRespected] = useState<boolean | null>(null)
   // R2: the running experiment already knows whether this game met its criterion.
   const [autoCheck, setAutoCheck] = useState<CoachObjectiveCheck | null>(null)
+  // Micro-review answers change the automatic objective verification.
+  const [verifyKey, setVerifyKey] = useState(0)
+  const [autoVerified, setAutoVerified] = useState<boolean | null>(null)
+  const onAutoVerdict = useCallback((passed: boolean) => {
+    setAutoVerified(passed)
+    setObjectiveRespected((cur) => (cur === null ? passed : cur))
+  }, [])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   // The game the post-game assistant talks about (latestGame moves on after save).
@@ -654,10 +663,10 @@ export function ReviewPage() {
           <ShieldAlert className="h-5 w-5 text-yellow-400 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-yellow-300">
-              Off-role game detected ({latestGame.role})
+              {t('review.offRole.title', { role: latestGame.role })}
             </p>
             <p className="text-xs text-yellow-400/70 mt-0.5">
-              Your main role is {user?.mainRole}. Do you want to keep this game in the session or remove it?
+              {t('review.offRole.desc', { mainRole: user?.mainRole })}
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
@@ -665,14 +674,14 @@ export function ReviewPage() {
               onClick={() => setOffRoleDismissed(true)}
               className="rounded border border-yellow-500/40 px-3 py-1 text-xs text-yellow-300 hover:bg-yellow-500/10 transition-colors"
             >
-              Keep
+              {t('review.offRole.keep')}
             </button>
             <button
               onClick={handleRemoveOffRoleGame}
               disabled={removingGame}
               className="rounded border border-[#E24C3A]/50 bg-[#E24C3A]/10 px-3 py-1 text-xs text-[#E24C3A] hover:bg-[#E24C3A]/20 transition-colors disabled:opacity-50"
             >
-              {removingGame ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Remove from session'}
+              {removingGame ? <Loader2 className="h-3 w-3 animate-spin" /> : t('review.offRole.remove')}
             </button>
           </div>
         </div>
@@ -702,6 +711,9 @@ export function ReviewPage() {
         <StatPill icon={Eye} label={t('review.stats.vision')} value={latestGame.visionScore.toString()} />
         <StatPill icon={Clock} label={t('review.stats.duration')} value={formatGameTime(latestGame.duration)} />
       </div>
+
+      {/* 45-second guided micro-review: critical moments → QCM → Codex */}
+      <MicroReviewPanel gameId={latestGame.id} onAnswered={() => setVerifyKey((k) => k + 1)} />
 
       {/* Recording panel — passes notes for video markers + receives new video-timestamped notes */}
       <GameRecordingPanel
@@ -778,6 +790,10 @@ export function ReviewPage() {
               <X className="h-4 w-4 mr-2" /> {t('review.no')}
             </Button>
           </div>
+          <ObjectiveAutoCheck gameId={latestGame.id} refreshKey={verifyKey} onVerdict={onAutoVerdict} />
+          {autoVerified != null && objectiveRespected === autoVerified && !autoCheck && (
+            <p className="mt-2 text-[11px] text-hextech-text-dim">{t('objectiveCheck.prefilled')}</p>
+          )}
           {autoCheck && objectiveRespected === autoCheck.passed && (
             <p className="mt-2 text-[11px] text-hextech-text-dim" data-testid="review-auto-objective">
               {t('coach.review.prefilled', {
@@ -791,7 +807,7 @@ export function ReviewPage() {
 
       {hasDraft && !saved && (
         <p className="text-[10px] text-hextech-text-dim text-right -mb-2">
-          Draft auto-saved
+          {t('review.draftSaved')}
         </p>
       )}
 

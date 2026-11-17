@@ -3,60 +3,11 @@
  * via `upsert` on the unique `slug`). Editing this list adds new tags
  * without ever overwriting user-created or user-edited ones.
  *
- * Categories drive the grouping in the tag picker:
- *   macro   — map awareness, rotations, objectives
- *   micro   — mechanical / trading mistakes
- *   vision  — wards, control, info gathering
- *   economy — gold flow, recall timing, items
- *   draft   — pre-game choices (runes, summoners)
- *
- * `slug` is also referenced by mistakeDetector.ts heuristics — keep these
- * stable across releases.
+ * The list itself lives in src/lib/mistakeTagCatalog.ts (shared with the web
+ * app, which has no local database).
  */
 import { getPrisma } from '../database'
-
-interface BuiltInTag {
-  slug: string
-  label: string
-  category: 'macro' | 'micro' | 'vision' | 'economy' | 'draft'
-  icon?: string
-  color?: string
-}
-
-const BUILT_IN_TAGS: BuiltInTag[] = [
-  // Macro
-  { slug: 'overstay',           label: 'Overstay',                category: 'macro',   color: '#E24C3A' },
-  { slug: 'dove-tower',         label: 'Dove tower',              category: 'macro',   color: '#E24C3A' },
-  { slug: 'face-checked',       label: 'Face-checked bush',       category: 'macro',   color: '#E24C3A' },
-  { slug: 'no-vision-objective',label: 'Objective with no vision',category: 'macro',   color: '#FFB454' },
-  { slug: 'solo-baron-died',    label: 'Solo Baron / died',       category: 'macro',   color: '#E24C3A' },
-  { slug: 'bad-lane-opening',   label: 'Bad lane opening',        category: 'macro',   color: '#FFB454' },
-  { slug: 'bad-wave-sync',      label: 'Bad wave synchronisation',category: 'macro',   color: '#FFB454' },
-  // Micro
-  { slug: 'bad-trade',          label: 'Bad trade',               category: 'micro',   color: '#FFB454' },
-  { slug: 'wasted-summoner',    label: 'Wasted summoner',         category: 'micro',   color: '#FFB454' },
-  { slug: 'whiff-skillshot',    label: 'Whiffed key skillshot',   category: 'micro',   color: '#FFB454' },
-  { slug: 'bad-positioning',    label: 'Bad positioning',         category: 'micro',   color: '#FFB454' },
-  { slug: 'bad-kiting',         label: 'Bad kiting',              category: 'micro',   color: '#FFB454' },
-  { slug: 'bad-threat-assessment', label: 'Bad threat assessment', category: 'micro', color: '#FFB454' },
-  { slug: 'bad-engage-angle',   label: 'Bad engage angle',        category: 'micro',   color: '#FFB454' },
-  { slug: 'bad-dmg-maximisation', label: 'Bad dmg maximisation',  category: 'micro',   color: '#FFB454' },
-  // Vision
-  { slug: 'forgot-trinket',     label: 'Forgot trinket up',       category: 'vision',  color: '#3E8E7E' },
-  { slug: 'no-ward-pre-obj',    label: 'No ward pre-objective',   category: 'vision',  color: '#3E8E7E' },
-  { slug: 'walked-into-ward',   label: 'Walked into enemy ward',  category: 'vision',  color: '#3E8E7E' },
-  // Macro — detected automatically (docs/AUDIT_REGLES_METIER.md M5, M9)
-  { slug: 'death-before-objective', label: 'Died before a lost objective', category: 'macro', color: '#E24C3A' },
-  { slug: 'caught-out',         label: 'Caught out alone',        category: 'macro',   color: '#E24C3A' },
-  // Economy
-  { slug: 'late-back',          label: 'Late back',               category: 'economy', color: '#D4A24C' },
-  { slug: 'unused-gold',        label: 'Died with unspent gold',  category: 'economy', color: '#D4A24C' },
-  { slug: 'cs-deficit',         label: 'CS deficit at 10 min',    category: 'economy', color: '#D4A24C' },
-  { slug: 'xp-deficit',         label: 'XP deficit vs opponent',  category: 'economy', color: '#D4A24C' },
-  { slug: 'behind-on-levels-death', label: 'Died behind on levels', category: 'economy', color: '#D4A24C' },
-  // Draft
-  { slug: 'bad-rune-choice',    label: 'Bad rune choice',         category: 'draft',   color: '#A78BFA' },
-]
+import { BUILT_IN_MISTAKE_TAGS as BUILT_IN_TAGS } from '../../../src/lib/mistakeTagCatalog'
 
 /**
  * Idempotent — runs on every Electron start after the DB is initialised.

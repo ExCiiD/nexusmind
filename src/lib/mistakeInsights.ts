@@ -15,6 +15,8 @@ export interface MistakeOccurrence {
   autoDetected: boolean
   note: string | null
   recordingId: string | null
+  /** P(win) was < 0.18 or > 0.85 just before: excluded from the win-rate ratios. */
+  garbageTime?: boolean
   game: { id: string; champion: string; opponentChampion: string | null; win: boolean; gameEndAt: string; duration: number }
 }
 
@@ -64,21 +66,25 @@ export interface RankedMistake {
 const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0)
 
 /** Analysed games = games with at least one tagged mistake in the window
- *  (untagged games were simply not reviewed, so they can't be "without"). */
+ *  (untagged games were simply not reviewed, so they can't be "without").
+ *  Garbage-time occurrences count in the totals but not in the win-rate
+ *  ratios: a game where the tag only shows up in garbage time sits on
+ *  neither side for that tag. */
 export function rankMistakes(occ: MistakeOccurrence[]): RankedMistake[] {
   const games = new Map<string, boolean>()
   for (const o of occ) games.set(o.game.id, o.game.win)
-  const byTag = new Map<string, { o: MistakeOccurrence; count: number; gameIds: Set<string> }>()
+  const byTag = new Map<string, { o: MistakeOccurrence; count: number; gameIds: Set<string>; decisive: Set<string> }>()
   for (const o of occ) {
-    const e = byTag.get(o.tag.id) ?? { o, count: 0, gameIds: new Set<string>() }
+    const e = byTag.get(o.tag.id) ?? { o, count: 0, gameIds: new Set<string>(), decisive: new Set<string>() }
     e.count++
     e.gameIds.add(o.game.id)
+    if (!o.garbageTime) e.decisive.add(o.game.id)
     byTag.set(o.tag.id, e)
   }
   const total = occ.length
   return [...byTag.values()]
-    .map(({ o, count, gameIds }) => {
-      const withIds = [...gameIds]
+    .map(({ o, count, gameIds, decisive }) => {
+      const withIds = [...decisive]
       const withoutIds = [...games.keys()].filter((id) => !gameIds.has(id))
       const wr = (ids: string[]) => (ids.length >= 2 ? pct(ids.filter((id) => games.get(id)).length, ids.length) : null)
       const family = tagFamily(o.tag.slug, o.tag.category)

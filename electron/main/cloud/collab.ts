@@ -13,6 +13,8 @@ import type { TeamWeeklyReport } from '../../../src/lib/report'
 import * as trials from '../../../src/lib/trialsCore'
 import * as scrimsRead from '../../../src/lib/scrimsCore'
 import * as discussion from '../../../src/lib/discussionCore'
+import * as microReview from '../../../src/lib/microReviewCloudCore'
+import type { MicroVerdictInput, TeamCodexRuleInput } from '../../../src/lib/microReview/types'
 import type { DiscussionSubjectType } from '../../../src/lib/discussion'
 import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
 import type { AxisStatus, NewAxisInput, NewDevPlanPeriod } from '../../../src/lib/devPlan'
@@ -157,3 +159,22 @@ export const trialsAddEvaluation = (candidateId: string, input: NewTrialEvaluati
 export const trialsDeleteEvaluation = (id: string) => trials.deleteEvaluation(getSupabase(), id)
 
 export const scrimsListForGroup = (groupId: string) => scrimsRead.listScrimsForGroup(getSupabase(), groupId)
+
+// ── Micro-review, coach side (src/lib/microReviewCloudCore.ts) ──────────
+let microCloudWarned = false
+/** Best effort, never throws: signed out or migration not applied → skipped. */
+export async function microReviewPushAnswer(input: microReview.PushAnswerInput): Promise<void> {
+  try {
+    if (!(await getAccessToken())) return
+    await microReview.pushAnswer(getSupabase(), await me(), input)
+  } catch (err) {
+    if (!microCloudWarned) console.warn('[microreview] cloud push skipped:', (err as Error)?.message ?? err)
+    microCloudWarned = true
+  }
+}
+export const microReviewCloudPlayerAnswers = (playerId: string) => microReview.listPlayerAnswers(getSupabase(), playerId)
+export const microReviewCloudMyVerdicts = async () => microReview.listMyReviewedAnswers(getSupabase(), await me())
+export const microReviewCloudSetVerdict = async (input: MicroVerdictInput) => microReview.setVerdict(getSupabase(), await me(), input)
+export const teamCodexList = (groupIds: string[]) => microReview.listTeamCodex(getSupabase(), groupIds)
+export const teamCodexAdd = (input: TeamCodexRuleInput) => microReview.addTeamCodexRule(getSupabase(), input)
+export const teamCodexDelete = (id: string) => microReview.deleteTeamCodexRule(getSupabase(), id)

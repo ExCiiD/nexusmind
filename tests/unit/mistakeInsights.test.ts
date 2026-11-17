@@ -64,3 +64,17 @@ describe('latestMoments', () => {
     expect(latestMoments(o, 'a').map((m) => m.game.id)).toEqual(['g2', 'g1'])
   })
 })
+
+describe('rankMistakes — garbage time', () => {
+  it('keeps garbage-time occurrences in the count but out of the win-rate ratios', () => {
+    const g = (o: MistakeOccurrence) => ({ ...o, garbageTime: true })
+    const o = [
+      occ('caught-out', 'g1', false, 1), occ('caught-out', 'g2', false, 2), g(occ('caught-out', 'g3', true, 3)),
+      occ('late-back', 'g4', true, 4), occ('late-back', 'g5', true, 5),
+    ]
+    const caught = rankMistakes(o).find((r) => r.slug === 'caught-out')!
+    expect(caught.count).toBe(3)
+    // g3 (a stomp) sits on neither side: with = g1, g2 (0 %), without = g4, g5 (100 %).
+    expect(caught).toMatchObject({ winrateWith: 0, winrateWithout: 100 })
+  })
+})

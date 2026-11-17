@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { championLabel } from '@/lib/statsInsights'
 import { CommentThread } from '@/components/Coaching/CommentThread'
 import { DevPlanCard } from '@/components/Coaching/DevPlanCard'
+import { PlayerMicroReviewsCard } from '@/components/MicroReview/CoachMicroReviews'
 import { collabErrorKey, type AssignedObjective, type Group, type PlayerSessionView } from '@/lib/collab'
 import type { DevPlan } from '@/lib/devPlan'
 import type { StaffNote } from '@/lib/teamOps'
@@ -176,6 +177,7 @@ function PlayerView({ player, picker, myUserId, nameOf }: { player: PlayerRef; p
       <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-12">
         <div className="space-y-5 xl:col-span-7">
           <DevPlanCard groupId={player.groupId} playerId={player.userId} mode="staff" />
+          <PlayerMicroReviewsCard playerId={player.userId} groupId={player.groupId} />
           {sessions === null ? (
             <div className={panel}><Loader2 className="h-5 w-5 animate-spin text-hextech-text-dim" /></div>
           ) : (

@@ -539,6 +539,19 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   autoDetectMistakes: (gameId: string) => Promise<{ created: number; skipped: number; reason: string }>
   /** Mistake Lab: tagged occurrences with game result, game time and recording. */
   getMistakeOccurrences: (opts?: { days?: number; role?: string | null; champion?: string | null }) => Promise<import('./mistakeInsights').MistakeOccurrence[]>
+
+  // Micro-review (docs/PLAN_MICRO_REVIEW.md)
+  microReviewGet: (gameId: string) => Promise<import('./microReview/types').MicroReviewPayload | null>
+  microReviewAnswer: (input: import('./microReview/types').MicroReviewAnswerInput) => Promise<import('./microReview/types').MicroReviewAnswerResult>
+  microReviewVerifyObjectives: (gameId: string) => Promise<import('./microReview/types').ObjectiveVerificationPayload | null>
+  calibrationStatus: () => Promise<import('./microReview/types').CalibrationStatus | null>
+  calibrationSubmit: (family: import('./mistakeInsights').MistakeFamily) => Promise<import('./microReview/types').CalibrationResult>
+  microReviewCloudPlayerAnswers: import('./microReview/types').MicroReviewCloudApi['microReviewCloudPlayerAnswers']
+  microReviewCloudMyVerdicts: import('./microReview/types').MicroReviewCloudApi['microReviewCloudMyVerdicts']
+  microReviewCloudSetVerdict: import('./microReview/types').MicroReviewCloudApi['microReviewCloudSetVerdict']
+  teamCodexList: import('./microReview/types').MicroReviewCloudApi['teamCodexList']
+  teamCodexAdd: import('./microReview/types').MicroReviewCloudApi['teamCodexAdd']
+  teamCodexDelete: import('./microReview/types').MicroReviewCloudApi['teamCodexDelete']
   getMistakeTopTags: (opts?: { days?: number; role?: string | null; champion?: string | null }) => Promise<MistakeTopTagEntry[]>
   getMistakeTrend: (opts: { tagSlugs?: string[]; days?: number; role?: string | null; champion?: string | null }) => Promise<MistakeTrendEntry[]>
   getMistakeHeatmap: (opts: { days?: number; role?: string | null; champion?: string | null }) => Promise<MistakeHeatmapEntry[]>

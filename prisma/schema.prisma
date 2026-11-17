@@ -51,6 +51,8 @@ model User {
   adviceLogs         AdviceLog[]
   coachingExperiments CoachingExperiment[]
   mistakeTagTunings    MistakeTagTuning[]
+  microReviewAnswers   MicroReviewAnswer[]
+  calibrationFlashes   CalibrationFlash[]
 }
 
 model Account {
@@ -133,6 +135,8 @@ model Game {
   detailedStats    GameDetailedStats?
   recording        Recording?
   mistakes         Mistake[]
+  analysis         GameAnalysis?
+  microReviewAnswers MicroReviewAnswer[]
 
   @@index([sessionId])
 }
@@ -567,4 +571,70 @@ model MistakeTagTuning {
   updatedAt     DateTime   @updatedAt
 
   @@unique([userId, tagId])
+}
+
+// ── Micro-review (docs/PLAN_MICRO_REVIEW.md) ────────────────────────────
+// Local only (not in SYNC_TABLES): derived data + the player's own answers.
+
+// Cached AnomalyDetector output for a game (win-probability curve, <= 3
+// critical moments, contested objectives). Recomputed when `version` changes.
+model GameAnalysis {
+  id        String   @id @default(cuid())
+  gameId    String   @unique
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  version   Int
+  // JSON: GameAnalysis (src/lib/microReview/anomalyDetector.ts)
+  payload   String
+  // XP for completing the micro-review: once per game, even after a recompute.
+  reviewXpAwarded Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// One answer of the guided micro-review QCM. outcome = justified creates no
+// Mistake row (never counts against the player); mistake / custom point at
+// the Mistake they created. Also the local-learning dataset (choice
+// frequency per role / champion).
+model MicroReviewAnswer {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameId      String
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  momentKey   String
+  // critical-death | absent-objective | early-deficit
+  trigger     String
+  gameTimeSec Int
+  // mistake | justified | custom
+  outcome     String
+  tagSlug     String?
+  // reason id of the button (microReview.reason.*), null for "Autre cause"
+  reason      String?
+  viaOther    Boolean  @default(false)
+  note        String?
+  role        String
+  champion    String
+  mistakeId   String?
+  // created | confirmed-auto | existing — what re-answering may undo (see migration)
+  mistakeOrigin String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([gameId, momentKey])
+  @@index([userId, role])
+}
+
+// Calibration flash (every 15 games): perceived costliest family vs the
+// family the micro-review data points at.
+model CalibrationFlash {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  perceived   String
+  measuredTop String?
+  gapPts      Int
+  evidence    Int
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

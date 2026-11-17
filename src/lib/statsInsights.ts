@@ -130,12 +130,15 @@ export function winrateByDuration(games: InsightGame[]): Bucket[] {
 }
 
 export const DAYPART_KEYS = ['morning', 'afternoon', 'evening', 'night'] as const
+export type Daypart = (typeof DAYPART_KEYS)[number]
+/** Daypart of a local time: 6–12, 12–18, 18–24, 0–6. */
+export function daypartOf(date: Date): Daypart {
+  const h = date.getHours()
+  return h < 6 ? 'night' : h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening'
+}
 /** Local time of the game end: 6–12, 12–18, 18–24, 0–6. */
 export function winrateByDaypart(games: InsightGame[]): Bucket[] {
-  return bucketize(games, [...DAYPART_KEYS], (g) => {
-    const h = new Date(g.gameEndAt).getHours()
-    return h < 6 ? 'night' : h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening'
-  })
+  return bucketize(games, [...DAYPART_KEYS], (g) => daypartOf(new Date(g.gameEndAt)))
 }
 
 export interface TiltReport {
@@ -147,7 +150,7 @@ export interface TiltReport {
 
 /** Two games count as "back to back" when the second one ended within
  *  this window after the first — a rough proxy for the same play session. */
-const SAME_SESSION_MS = 90 * 60 * 1000
+export const SAME_SESSION_MS = 90 * 60 * 1000
 
 /** Win rate of the game played right after a win vs. right after a loss
  *  (same sitting only). A big gap is the classic tilt signal. */

@@ -19,6 +19,12 @@ import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
 import { detectMistakes, type MistakeCandidate } from '../mistakeDetector'
 import { nextTuning } from '../mistakeTuning'
+import { mistakeDuplicateIndex } from '../mistakeDedupe'
+import { ensureGameAnalysis } from './microReview.ipc'
+import { isGarbageTime, winProbAt } from '../../../src/lib/microReview/winProbability'
+
+/** Games analysed per Mistake Lab load when their analysis is not cached yet (cached timelines only, no Riot call). */
+const ANALYSIS_BACKFILL = 10
 
 const TAG_CATEGORIES = new Set(['macro', 'micro', 'vision', 'economy', 'draft'])
 
@@ -178,25 +184,16 @@ export function registerMistakeHandlers() {
     const tags = await prisma.mistakeTag.findMany({ where: { slug: { in: slugs }, archivedAt: null } })
     const slugToTagId = new Map(tags.map((t) => [t.slug, t.id]))
 
-    // Pre-load existing auto-detected mistakes for this game to deduplicate.
-    const existing = await prisma.mistake.findMany({
-      where: { gameId, autoDetected: true },
-      select: { tagId: true, gameTimeSec: true },
-    })
-    const existingBuckets = new Map<string, number[]>()
-    for (const e of existing) {
-      const list = existingBuckets.get(e.tagId) ?? []
-      list.push(e.gameTimeSec)
-      existingBuckets.set(e.tagId, list)
-    }
+    // Every mistake the game already has — auto-detected, confirmed by a
+    // micro-review answer or tagged by hand — so a refresh never repeats one.
+    const known = await mistakeDuplicateIndex(gameId)
 
     let created = 0
     let skipped = 0
     for (const c of candidates) {
       const tagId = slugToTagId.get(c.tagSlug)
       if (!tagId) { skipped++; continue }
-      const nearby = existingBuckets.get(tagId) ?? []
-      if (nearby.some((t) => Math.abs(t - c.gameTimeSec) <= 3)) { skipped++; continue }
+      if (known.has(tagId, c.gameTimeSec)) { skipped++; continue }
       await prisma.mistake.create({
         data: {
           gameId,
@@ -208,8 +205,7 @@ export function registerMistakeHandlers() {
         },
       })
       created++
-      nearby.push(c.gameTimeSec)
-      existingBuckets.set(tagId, nearby)
+      known.add(tagId, c.gameTimeSec)
     }
 
     console.log(`[mistake] auto-detect game=${gameId}: created=${created}, skipped=${skipped}`)
@@ -272,8 +268,24 @@ export function registerMistakeHandlers() {
       },
       orderBy: { createdAt: 'desc' },
     })
-    return all
-      .filter((m) => m.game && championMatches(m.game.champion, champ))
+    const rows = all.filter((m) => m.game && championMatches(m.game.champion, champ))
+    // Garbage time (P(win) < 0.18 or > 0.85 before the mistake) stays out of
+    // the with/without win-rate ratios — docs/PLAN_MICRO_REVIEW.md §A.
+    const gameIds = [...new Set(rows.map((m) => m.gameId))]
+    const curves = new Map<string, number[]>()
+    for (const a of await prisma.gameAnalysis.findMany({ where: { gameId: { in: gameIds } } })) {
+      try { curves.set(a.gameId, JSON.parse(a.payload).winProb ?? []) } catch { /* ignore */ }
+    }
+    for (const gid of gameIds.filter((g) => !curves.has(g)).slice(0, ANALYSIS_BACKFILL)) {
+      const { analysis } = await ensureGameAnalysis(gid, false).catch(() => ({ analysis: null }))
+      if (analysis) curves.set(gid, analysis.winProb)
+    }
+    // A mistake that comes from a micro-review answer already passed the detector's garbage-time gate, taken at
+    // the action itself; its own timestamp is a few seconds earlier (VOD anchor) and must not be judged again.
+    const reviewed = new Set((await prisma.microReviewAnswer.findMany({
+      where: { gameId: { in: gameIds }, mistakeId: { not: null } }, select: { mistakeId: true },
+    })).map((a) => a.mistakeId))
+    return rows
       .map((m) => ({
         id: m.id,
         tag: { id: m.tag.id, slug: m.tag.slug, label: m.tag.label, category: m.tag.category, color: m.tag.color },
@@ -282,6 +294,7 @@ export function registerMistakeHandlers() {
         autoDetected: m.autoDetected,
         note: m.note,
         recordingId: m.recordingId ?? m.game!.recording?.id ?? null,
+        garbageTime: !reviewed.has(m.id) && isGarbageTime(winProbAt(curves.get(m.gameId) ?? [], m.gameTimeSec * 1000)),
         game: {
           id: m.game!.id,
           champion: m.game!.champion,

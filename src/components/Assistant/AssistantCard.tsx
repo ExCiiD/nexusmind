@@ -18,6 +18,8 @@ interface AssistantCardProps {
   /** Change it to make the card reload (e.g. number of games in the session). */
   refreshKey?: string | number
   className?: string
+  /** Extra block at the bottom of the card (weekly: the Codex priority of the week). */
+  footer?: React.ReactNode
 }
 
 const TONE_ICON: Record<AssistantTone, React.ComponentType<{ className?: string }>> = {
@@ -52,7 +54,7 @@ function formatMetricValue(metric: string, value: number): string {
  * moment — post-game, session brief or weekly summary. Every point says why
  * it was raised and can be rated 👍/👎, which re-weights the rules locally.
  */
-export function AssistantCard({ moment, gameId, refreshKey, className }: AssistantCardProps) {
+export function AssistantCard({ moment, gameId, refreshKey, className, footer }: AssistantCardProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const fundamentals = useLocalizedFundamentals()
@@ -272,6 +274,7 @@ export function AssistantCard({ moment, gameId, refreshKey, className }: Assista
             </p>
           </div>
         )}
+        {footer}
       </CardContent>
     </Card>
   )

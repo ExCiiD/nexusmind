@@ -7,6 +7,8 @@ import { useGameStore } from '@/store/useGameStore'
 import { CoachingPatternCard } from '@/components/Coaching/CoachingPatternCard'
 import { ReassessmentBanner } from '@/components/Coaching/ReassessmentBanner'
 import { AssistantCard } from '@/components/Assistant/AssistantCard'
+import { WeeklyCodex } from '@/components/MicroReview/WeeklyCodex'
+import { LowEnergyPrompt } from '@/components/MicroReview/LowEnergyPrompt'
 import { ProgressChart } from '@/components/Charts/ProgressChart'
 import { FundamentalsRadarChart } from '@/components/Charts/FundamentalsRadarChart'
 import { buildFundamentalsRadar, overallRadarScore, radarAxesForRole } from '@/lib/fundamentalsRadarCore'
@@ -218,7 +220,9 @@ export function DashboardPage() {
         <div className="space-y-6 xl:col-span-4">
           <ProgressionCard totalXp={user.xp} onAssessment={() => navigate('/assessment')} />
           <FundamentalsRadarCard role={user.mainRole} />
-          <AssistantCard moment="weekly" />
+          {/* Assistant, proactive: tilt / weak daypart → low-energy protocol as the session objective */}
+          <LowEnergyPrompt context="dashboard" />
+          <AssistantCard moment="weekly" footer={<WeeklyCodex role={user.mainRole} />} />
           <CoachingPatternCard />
         </div>
       </div>

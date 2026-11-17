@@ -1,0 +1,1236 @@
+[
+  {
+    "id": "vision-obj-any-mid",
+    "role": "any",
+    "mistakeSlug": "no-ward-pre-obj",
+    "phase": "mid",
+    "radarAxis": "vspm",
+    "fundamentalId": "vision_control",
+    "headline": {
+      "fr": "Ward 60 s avant le spawn, pas 10 s",
+      "en": "Ward 60 s before the spawn, not 10 s"
+    },
+    "tacticalRule": {
+      "fr": "Quand le timer de l'objectif passe sous 1:00, pose ton ward dans l'entrée de fosse côté ennemi (pas dans la fosse). À 0:10, la vision ne sert plus qu'à voir l'ennemi déjà installé.",
+      "en": "When the objective timer drops under 1:00, ward the enemy-side entrance of the pit (not the pit itself). At 0:10, vision only shows you an enemy that is already set up."
+    },
+    "drillObjective": {
+      "fr": "5 prochaines parties : au moins 1 ward entre 1:00 et 0:30 avant chaque dragon et Baron.",
+      "en": "Next 5 games: at least 1 ward between 1:00 and 0:30 before every dragon and Baron."
+    }
+  },
+  {
+    "id": "vision-obj-jungle-mid",
+    "role": "JUNGLE",
+    "mistakeSlug": "no-ward-pre-obj",
+    "phase": "mid",
+    "radarAxis": "vspm",
+    "fundamentalId": "vision_control",
+    "headline": {
+      "fr": "Ton clear doit finir du côté de l'objectif",
+      "en": "End your clear on the objective's side"
+    },
+    "tacticalRule": {
+      "fr": "Planifie ton chemin pour être à côté de la fosse 45 s avant le spawn : trinket dans le buisson d'entrée ennemi, puis passe en Balayeur si ton support couvre déjà la vision profonde.",
+      "en": "Path so you stand next to the pit 45 s before the spawn: trinket the enemy entrance bush, then swap to Oracle Lens if your support already covers deep vision."
+    },
+    "drillObjective": {
+      "fr": "Avant chaque objectif : être dans la rivière concernée à −0:45 avec ton trinket encore chargé.",
+      "en": "Before each objective: be in that river at −0:45 with your trinket still charged."
+    }
+  },
+  {
+    "id": "vision-obj-support-mid",
+    "role": "UTILITY",
+    "mistakeSlug": "no-ward-pre-obj",
+    "phase": "mid",
+    "radarAxis": "vspm",
+    "fundamentalId": "vision_setup",
+    "headline": {
+      "fr": "Prépare la vision avec ta wave, pas après",
+      "en": "Set vision up with your wave, not after it"
+    },
+    "tacticalRule": {
+      "fr": "À 1:30 du spawn, push avec ton ADC puis back pour 2 pinks. Entre en rivière avec ton jungler : pink dans le buisson de fosse, ward profond sur le chemin de rotation ennemi (raptors ou tri-buisson).",
+      "en": "At 1:30 before the spawn, push with your ADC then recall for 2 control wards. Enter the river with your jungler: control ward in the pit bush, deep ward on the enemy rotation path (raptors or tri-bush)."
+    },
+    "drillObjective": {
+      "fr": "Chaque objectif : 1 pink + 1 ward posés avant le spawn, en duo avec ton jungler.",
+      "en": "Every objective: 1 control ward + 1 ward placed before the spawn, together with your jungler."
+    }
+  },
+  {
+    "id": "vision-obj-any-late",
+    "role": "any",
+    "mistakeSlug": "no-ward-pre-obj",
+    "phase": "late",
+    "radarAxis": "vspm",
+    "fundamentalId": "vision_control",
+    "headline": {
+      "fr": "Après 25 min, la vision se gagne avec les waves",
+      "en": "After 25 min, vision is won through waves"
+    },
+    "tacticalRule": {
+      "fr": "On ne ward plus la Baron en face-check. Pousse d'abord les waves bot et mid, puis entre à deux avec Balayeur + pink. Sans waves poussées, laisse l'objectif et prends l'opposé.",
+      "en": "No more face-check warding at Baron. Push bot and mid waves first, then enter in pairs with Oracle Lens + control ward. With no waves pushed, give it up and take the cross-map trade."
+    },
+    "drillObjective": {
+      "fr": "5 parties : ne rentre jamais seul dans une zone de Baron/Ancestral sans vision active.",
+      "en": "5 games: never enter a Baron/Elder area alone without live vision."
+    }
+  },
+  {
+    "id": "vision-noobj-any-any",
+    "role": "any",
+    "mistakeSlug": "no-vision-objective",
+    "phase": "any",
+    "radarAxis": "vspm",
+    "fundamentalId": "vision_control",
+    "headline": {
+      "fr": "Pas de fight d'objectif sans le flanc couvert",
+      "en": "No objective fight with an uncovered flank"
+    },
+    "tacticalRule": {
+      "fr": "Avant de commencer l'objectif, identifie le chemin par lequel l'ennemi arrive en flanc (jungle ennemie la plus proche) et place-y un ward. L'objectif se lance seulement quand ce flanc est visible.",
+      "en": "Before starting the objective, find the path the enemy flanks from (closest enemy jungle) and ward it. Only start the objective once that flank is visible."
+    },
+    "drillObjective": {
+      "fr": "Sur chaque objectif : nomme à voix haute le flanc à surveiller avant de taper le monstre.",
+      "en": "On every objective: call out the flank to watch before hitting the monster."
+    }
+  },
+  {
+    "id": "death-obj-any-mid",
+    "role": "any",
+    "mistakeSlug": "death-before-objective",
+    "phase": "mid",
+    "radarAxis": "deaths",
+    "fundamentalId": "tempo",
+    "headline": {
+      "fr": "Mourir 60 s avant un objectif, c'est l'offrir",
+      "en": "Dying 60 s before an objective gives it away"
+    },
+    "tacticalRule": {
+      "fr": "Dans les 90 s qui précèdent un dragon ou une Baron, aucun 1v1, aucun face-check, aucune plate. Ta seule mission : arriver vivant, full HP, avec ta wave poussée.",
+      "en": "In the 90 s before a dragon or Baron: no 1v1, no face-check, no plate. Your only job: arrive alive, full HP, with your wave pushed."
+    },
+    "drillObjective": {
+      "fr": "5 parties : 0 mort dans les 90 s qui précèdent un objectif.",
+      "en": "5 games: 0 deaths in the 90 s before an objective."
+    }
+  },
+  {
+    "id": "overstay-any-early",
+    "role": "any",
+    "mistakeSlug": "overstay",
+    "phase": "early",
+    "radarAxis": "deaths",
+    "fundamentalId": "tempo",
+    "headline": {
+      "fr": "Une plate de plus coûte un back",
+      "en": "One more plate costs you a recall"
+    },
+    "tacticalRule": {
+      "fr": "Après un kill ou une plate, regarde la minimap : si le jungler ennemi n'est pas visible, back immédiatement. Une plate rapporte 160 g, une mort en coûte 300 plus la wave.",
+      "en": "After a kill or a plate, check the minimap: if the enemy jungler is not visible, recall right away. A plate is worth 160 g, a death costs 300 plus the wave."
+    },
+    "drillObjective": {
+      "fr": "Après chaque kill en lane : back dans les 20 s si le jungler ennemi est MIA.",
+      "en": "After every lane kill: recall within 20 s if the enemy jungler is missing."
+    }
+  },
+  {
+    "id": "overstay-any-mid",
+    "role": "any",
+    "mistakeSlug": "overstay",
+    "phase": "mid",
+    "radarAxis": "deaths",
+    "fundamentalId": "tempo",
+    "headline": {
+      "fr": "Après un gain : convertis ou reset",
+      "en": "After a win: convert or reset"
+    },
+    "tacticalRule": {
+      "fr": "Un kill ou une tour ouvre 30 s. Utilise-les pour un objectif proche ou pour back, jamais pour \"un camp de plus\" en jungle ennemie. Si tu n'as pas d'objectif à moins de 30 s de marche, back.",
+      "en": "A kill or a tower opens a 30 s window. Spend it on a nearby objective or a recall, never on \"one more camp\" in the enemy jungle. No objective within 30 s of walking: recall."
+    },
+    "drillObjective": {
+      "fr": "5 parties : après chaque kill/tour, décision en 5 s — objectif ou back.",
+      "en": "5 games: after every kill/tower, decide within 5 s — objective or recall."
+    }
+  },
+  {
+    "id": "overstay-jungle-early",
+    "role": "JUNGLE",
+    "mistakeSlug": "overstay",
+    "phase": "early",
+    "radarAxis": "kda",
+    "fundamentalId": "tempo",
+    "headline": {
+      "fr": "Gank réussi = camp proche puis back",
+      "en": "Successful gank = nearby camp, then recall"
+    },
+    "tacticalRule": {
+      "fr": "Après un gank, ne reste pas pour tower-dive sans la wave. Prends le camp ou le crabe le plus proche, back, et reviens synchronisé avec le prochain objectif.",
+      "en": "After a gank, don't stay to dive without the wave. Take the closest camp or scuttle, recall, and come back synced with the next objective."
+    },
+    "drillObjective": {
+      "fr": "Après chaque gank avant 10 min : back dans les 45 s.",
+      "en": "After every gank before 10 min: recall within 45 s."
+    }
+  },
+  {
+    "id": "gold-any-any",
+    "role": "any",
+    "mistakeSlug": "unused-gold",
+    "phase": "any",
+    "radarAxis": "goldm",
+    "fundamentalId": "recall_timing",
+    "headline": {
+      "fr": "1 400 g en poche = back, pas fight",
+      "en": "1,400 g in your pocket = recall, not fight"
+    },
+    "tacticalRule": {
+      "fr": "Au-delà de 1 300–1 400 g, un composant complet t'attend en boutique. Regarde ton or à chaque wave ; si un fight se prépare et que tu peux backer avant, back d'abord.",
+      "en": "Above 1,300–1,400 g, a full component is waiting in the shop. Check your gold every wave; if a fight is coming and you can recall first, recall first."
+    },
+    "drillObjective": {
+      "fr": "5 parties : 0 mort avec plus de 1 400 g non dépensés.",
+      "en": "5 games: 0 deaths with more than 1,400 unspent gold."
+    }
+  },
+  {
+    "id": "lateback-any-mid",
+    "role": "any",
+    "mistakeSlug": "late-back",
+    "phase": "mid",
+    "radarAxis": "goldm",
+    "fundamentalId": "recall_timing",
+    "headline": {
+      "fr": "Back sur la wave, pas sur ta barre de vie",
+      "en": "Recall on the wave, not on your health bar"
+    },
+    "tacticalRule": {
+      "fr": "Back juste après avoir fait crasher ta wave sous la tour ennemie. Un recall en jungle ennemie, ou dans un buisson sans vision, se fait interrompre : la mort la plus chère du jeu.",
+      "en": "Recall right after crashing your wave into the enemy tower. Recalling in the enemy jungle, or in an unwarded bush, gets interrupted: the most expensive death in the game."
+    },
+    "drillObjective": {
+      "fr": "Chaque back : wave poussée + recall dans ta moitié de carte.",
+      "en": "Every recall: wave pushed + recall on your half of the map."
+    }
+  },
+  {
+    "id": "caught-any-mid",
+    "role": "any",
+    "mistakeSlug": "caught-out",
+    "phase": "mid",
+    "radarAxis": "deaths",
+    "fundamentalId": "map_awareness",
+    "headline": {
+      "fr": "Side lane : compte les ennemis avant chaque pas",
+      "en": "Side lane: count enemies before every step"
+    },
+    "tacticalRule": {
+      "fr": "Si moins de 3 ennemis sont visibles, ne dépasse pas la rivière en side lane. Pousse jusqu'à la moitié, puis reviens vers ta tour. Le compte se fait sur la minimap, pas sur l'écran.",
+      "en": "If fewer than 3 enemies are visible, don't cross the river in a side lane. Push to the middle, then fall back toward your tower. Count on the minimap, not on screen."
+    },
+    "drillObjective": {
+      "fr": "5 parties : 0 mort seul dans la moitié ennemie de la carte.",
+      "en": "5 games: 0 deaths alone in the enemy half of the map."
+    }
+  },
+  {
+    "id": "caught-any-late",
+    "role": "any",
+    "mistakeSlug": "caught-out",
+    "phase": "late",
+    "radarAxis": "deaths",
+    "fundamentalId": "map_awareness",
+    "headline": {
+      "fr": "Après 25 min, une mort isolée = une Baron",
+      "en": "After 25 min, one isolated death = one Baron"
+    },
+    "tacticalRule": {
+      "fr": "En late, les timers de mort dépassent 40 s : assez pour Baron ou Ancestral. Ne farm la side que si l'objectif suivant est à plus de 60 s, et toujours avec ton équipe entre toi et l'ennemi.",
+      "en": "Late game death timers go past 40 s: enough for Baron or Elder. Only farm a side lane if the next objective is more than 60 s away, and always with your team between you and the enemy."
+    },
+    "drillObjective": {
+      "fr": "Après 25 min : vérifie le timer du prochain objectif avant chaque side.",
+      "en": "After 25 min: check the next objective timer before every side lane trip."
+    }
+  },
+  {
+    "id": "caught-support-mid",
+    "role": "UTILITY",
+    "mistakeSlug": "caught-out",
+    "phase": "mid",
+    "radarAxis": "deaths",
+    "fundamentalId": "vision_setup",
+    "headline": {
+      "fr": "Ne ward jamais seul en jungle ennemie",
+      "en": "Never ward the enemy jungle alone"
+    },
+    "tacticalRule": {
+      "fr": "La vision profonde se pose avec un allié à portée ou quand 4 ennemis sont visibles. Sinon, ward la limite de ta jungle : moins d'info, mais tu restes en vie.",
+      "en": "Deep wards go down with an ally in range or when 4 enemies are visible. Otherwise, ward the edge of your own jungle: less info, but you stay alive."
+    },
+    "drillObjective": {
+      "fr": "5 parties : chaque ward en jungle ennemie posée avec un allié à moins de 1 500 unités.",
+      "en": "5 games: every enemy-jungle ward placed with an ally within 1,500 units."
+    }
+  },
+  {
+    "id": "caught-jungle-early",
+    "role": "JUNGLE",
+    "mistakeSlug": "caught-out",
+    "phase": "early",
+    "radarAxis": "deaths",
+    "fundamentalId": "jungle_tracking",
+    "headline": {
+      "fr": "Pas d'invade sans savoir où est l'autre jungler",
+      "en": "No invade without knowing where the other jungler is"
+    },
+    "tacticalRule": {
+      "fr": "Avant d'entrer dans la jungle ennemie, déduis son côté de départ (leash, premier camp vu, lane qui a reçu de l'aide). Invade uniquement le côté opposé, et quand tes laners proches ont la prio.",
+      "en": "Before entering the enemy jungle, work out their starting side (leash, first camp seen, which lane helped). Only invade the opposite side, and only when your nearby laners have priority."
+    },
+    "drillObjective": {
+      "fr": "Avant chaque invade : écris (ou dis) le côté probable du jungler ennemi.",
+      "en": "Before each invade: write (or say) where the enemy jungler probably is."
+    }
+  },
+  {
+    "id": "trinket-any-any",
+    "role": "any",
+    "mistakeSlug": "forgot-trinket",
+    "phase": "any",
+    "radarAxis": "vspm",
+    "fundamentalId": "vision_control",
+    "headline": {
+      "fr": "Un trinket chargé est une ward perdue",
+      "en": "A charged trinket is a wasted ward"
+    },
+    "tacticalRule": {
+      "fr": "Dès que tes 2 charges sont pleines, pose la première sur le chemin de gank vers ta lane (rivière ou tri-buisson). Avant de mourir, le trinket aurait dû montrer qui arrivait.",
+      "en": "As soon as both charges are up, place one on the gank path to your lane (river or tri-bush). Before you died, the trinket should have shown who was coming."
+    },
+    "drillObjective": {
+      "fr": "5 parties : jamais 2 charges de trinket en stock plus de 30 s.",
+      "en": "5 games: never sit on 2 trinket charges for more than 30 s."
+    }
+  },
+  {
+    "id": "positioning-any-mid",
+    "role": "any",
+    "mistakeSlug": "bad-positioning",
+    "phase": "mid",
+    "radarAxis": "deaths",
+    "fundamentalId": "positioning",
+    "headline": {
+      "fr": "Ta distance dépend de leur engage",
+      "en": "Your distance depends on their engage"
+    },
+    "tacticalRule": {
+      "fr": "Tant que leur outil d'engage le plus long (ult, flash-combo) n'est pas utilisé, reste hors de sa portée + 1 dash. Tape la cible la plus proche, pas la plus juteuse.",
+      "en": "Until their longest engage tool (ult, flash combo) is used, stay outside its range + 1 dash. Hit the closest target, not the juiciest one."
+    },
+    "drillObjective": {
+      "fr": "Avant chaque fight : nomme le sort d'engage ennemi à respecter.",
+      "en": "Before each fight: name the enemy engage spell to respect."
+    }
+  },
+  {
+    "id": "positioning-adc-late",
+    "role": "BOTTOM",
+    "mistakeSlug": "bad-positioning",
+    "phase": "late",
+    "radarAxis": "deaths",
+    "fundamentalId": "positioning",
+    "headline": {
+      "fr": "ADC : tu frappes le premier à portée, pas la backline",
+      "en": "ADC: hit whoever is in range, not the backline"
+    },
+    "tacticalRule": {
+      "fr": "En late, ta valeur = ton temps en vie à taper. Reste derrière ta frontline, kite vers l'arrière, et n'avance pour la backline que lorsque leurs assassins ont utilisé leurs outils.",
+      "en": "Late game, your value = time alive and hitting. Stay behind your frontline, kite backward, and only step up for the backline once their assassins have used their tools."
+    },
+    "drillObjective": {
+      "fr": "5 parties : ne meurs pas en premier dans un teamfight.",
+      "en": "5 games: never be the first to die in a teamfight."
+    }
+  },
+  {
+    "id": "facecheck-any-any",
+    "role": "any",
+    "mistakeSlug": "face-checked",
+    "phase": "any",
+    "radarAxis": "vspm",
+    "fundamentalId": "vision_control",
+    "headline": {
+      "fr": "Pas de buisson sans info",
+      "en": "No bush without information"
+    },
+    "tacticalRule": {
+      "fr": "Entre dans un buisson non visible seulement si 4 ennemis sont visibles ou si un tank y passe en premier. Sinon : trinket, pink, Balayeur ou compétence de reconnaissance avant.",
+      "en": "Only walk into an unseen bush if 4 enemies are visible or a tank goes first. Otherwise: trinket, control ward, Oracle Lens or a scouting ability first."
+    },
+    "drillObjective": {
+      "fr": "5 parties : 0 mort sur un face-check.",
+      "en": "5 games: 0 deaths on a face-check."
+    }
+  },
+  {
+    "id": "wavesync-any-mid",
+    "role": "any",
+    "mistakeSlug": "bad-wave-sync",
+    "phase": "mid",
+    "radarAxis": "kp",
+    "fundamentalId": "wave_management_objectives",
+    "headline": {
+      "fr": "Rotation = wave poussée d'abord",
+      "en": "Rotation = wave pushed first"
+    },
+    "tacticalRule": {
+      "fr": "Avant de rejoindre un objectif, pousse ta wave jusqu'à la tour ennemie. Sans prio, tu arrives après eux, et ton laner adverse arrive avant toi.",
+      "en": "Before joining an objective, push your wave into the enemy tower. Without priority you arrive after them, and your lane opponent arrives before you."
+    },
+    "drillObjective": {
+      "fr": "Chaque objectif : ta wave a crashé avant que tu quittes la lane.",
+      "en": "Every objective: your wave has crashed before you leave the lane."
+    }
+  },
+  {
+    "id": "trade-any-early",
+    "role": "any",
+    "mistakeSlug": "bad-trade",
+    "phase": "early",
+    "radarAxis": "kda",
+    "fundamentalId": "trades",
+    "headline": {
+      "fr": "Trade quand son sort clé est en cooldown",
+      "en": "Trade when their key spell is on cooldown"
+    },
+    "tacticalRule": {
+      "fr": "Identifie le sort qui gagne leurs trades (dash, CC, bouclier). Attaque dans les 3–5 s après qu'il l'a utilisé sur un sbire ou sur toi, et recule dès qu'il revient.",
+      "en": "Identify the spell that wins their trades (dash, CC, shield). Go in within 3–5 s after they use it on a minion or on you, and back off as soon as it is back up."
+    },
+    "drillObjective": {
+      "fr": "5 parties : chaque trade engagé en lane suit un cooldown adverse identifié.",
+      "en": "5 games: every lane trade you start follows an identified enemy cooldown."
+    }
+  },
+  {
+    "id": "threat-any-mid",
+    "role": "any",
+    "mistakeSlug": "bad-threat-assessment",
+    "phase": "any",
+    "radarAxis": "deaths",
+    "fundamentalId": "threat_assessment",
+    "headline": {
+      "fr": "Respecte les paliers : niveau 6, premier objet",
+      "en": "Respect power spikes: level 6, first item"
+    },
+    "tacticalRule": {
+      "fr": "Avant de te battre, compare niveau et objets (Tab). Si l'ennemi vient de backer avec un objet complet ou d'atteindre le 6 avant toi, ne retrade pas avant ton propre back.",
+      "en": "Before fighting, compare levels and items (Tab). If the enemy just recalled into a completed item or hit 6 before you, don't trade again until your own recall."
+    },
+    "drillObjective": {
+      "fr": "À chaque back ennemi visible : regarde son achat sur Tab.",
+      "en": "Every time an enemy recall is visible: check their purchase on Tab."
+    }
+  },
+  {
+    "id": "cs-any-early",
+    "role": "any",
+    "mistakeSlug": "cs-deficit",
+    "phase": "early",
+    "radarAxis": "csm",
+    "fundamentalId": "csing_pathing",
+    "headline": {
+      "fr": "Le last-hit avant le trade",
+      "en": "Last-hit before you trade"
+    },
+    "tacticalRule": {
+      "fr": "Une wave complète vaut environ 125 g. Sous ta tour : 1 tir de tour + 1 attaque pour les mêlée, attaque + tour + attaque pour les casters. Trade uniquement quand aucun sbire n'est à un coup.",
+      "en": "A full wave is worth about 125 g. Under your tower: 1 tower shot + 1 auto for melee, auto + tower + auto for casters. Only trade when no minion is one hit away."
+    },
+    "drillObjective": {
+      "fr": "5 parties : pas plus de 15 CS de retard à 10:00 sur l'adversaire direct.",
+      "en": "5 games: no more than 15 CS behind your direct opponent at 10:00."
+    }
+  },
+  {
+    "id": "cs-top-early",
+    "role": "TOP",
+    "mistakeSlug": "cs-deficit",
+    "phase": "early",
+    "radarAxis": "cs15",
+    "fundamentalId": "wave_management",
+    "headline": {
+      "fr": "Top : une wave perdue sous tour coûte deux minutes",
+      "en": "Top: one wave lost under tower costs two minutes"
+    },
+    "tacticalRule": {
+      "fr": "En matchup perdant, laisse la wave venir à toi et freeze devant ta tour. Back seulement quand la wave va crasher chez l'ennemi, sinon tu perds la wave suivante sous ta tour.",
+      "en": "In a losing matchup, let the wave come to you and freeze in front of your tower. Only recall when the wave is about to crash on their side, or you lose the next one under your tower."
+    },
+    "drillObjective": {
+      "fr": "5 parties : 0 wave complète perdue sous ta tour avant 10 min.",
+      "en": "5 games: 0 full waves lost under your tower before 10 min."
+    }
+  },
+  {
+    "id": "xp-any-early",
+    "role": "any",
+    "mistakeSlug": "xp-deficit",
+    "phase": "early",
+    "radarAxis": "xp15",
+    "fundamentalId": "wave_management",
+    "headline": {
+      "fr": "Reste dans la portée d'XP pendant que la wave meurt",
+      "en": "Stay in XP range while the wave dies"
+    },
+    "tacticalRule": {
+      "fr": "Même sans last-hit, rester à 1 400 unités des sbires qui meurent te donne l'XP. Ne back pas et ne roam pas pendant qu'une wave complète meurt devant ta tour.",
+      "en": "Even without last-hitting, staying within 1,400 units of dying minions gives you the XP. Don't recall or roam while a full wave dies in front of your tower."
+    },
+    "drillObjective": {
+      "fr": "5 parties : pas plus de 400 XP de retard à 10:00.",
+      "en": "5 games: no more than 400 XP behind at 10:00."
+    }
+  },
+  {
+    "id": "opening-any-early",
+    "role": "any",
+    "mistakeSlug": "bad-lane-opening",
+    "phase": "early",
+    "radarAxis": "xp15",
+    "fundamentalId": "matchup_knowledge",
+    "headline": {
+      "fr": "Décide le plan des 3 premières waves en sélection",
+      "en": "Decide the plan for the first 3 waves in champ select"
+    },
+    "tacticalRule": {
+      "fr": "Avant le chargement : qui gagne le niveau 2 ? Où commence le jungler ennemi ? Si tu perds le niveau 2, ne te bats pas pour la première wave : last-hit et attends ta 3ᵉ wave.",
+      "en": "Before loading: who wins level 2? Where does the enemy jungler start? If you lose level 2, don't fight for the first wave: last-hit and wait for wave 3."
+    },
+    "drillObjective": {
+      "fr": "5 parties : note en sélection qui gagne le niveau 2 et vérifie après la partie.",
+      "en": "5 games: note in champ select who wins level 2 and check after the game."
+    }
+  },
+  {
+    "id": "skillshot-any-any",
+    "role": "any",
+    "mistakeSlug": "whiff-skillshot",
+    "phase": "any",
+    "radarAxis": "kda",
+    "fundamentalId": "mastery",
+    "headline": {
+      "fr": "Ta skillshot clé part sur une cible qui ne peut pas bouger",
+      "en": "Your key skillshot goes on a target that cannot move"
+    },
+    "tacticalRule": {
+      "fr": "Garde ton sort décisif (CC, exécution) pour une cible déjà ralentie, en animation ou coincée contre un mur. Lancée sur un ennemi libre à portée max, elle rate une fois sur deux et ouvre la fenêtre adverse.",
+      "en": "Hold your decisive spell (CC, execute) for a target that is slowed, mid-animation or pinned against a wall. Thrown at a free enemy at max range, it misses half the time and opens their window."
+    },
+    "drillObjective": {
+      "fr": "5 parties : avant chaque sort clé, attends un CC, un auto ou un dash adverse.",
+      "en": "5 games: before every key spell, wait for a CC, an auto or an enemy dash."
+    }
+  },
+  {
+    "id": "summoner-any-any",
+    "role": "any",
+    "mistakeSlug": "wasted-summoner",
+    "phase": "any",
+    "radarAxis": "deaths",
+    "fundamentalId": "summoner_spells",
+    "headline": {
+      "fr": "Flash pour survivre ou pour tuer, jamais « au cas où »",
+      "en": "Flash to survive or to kill, never \"just in case\""
+    },
+    "tacticalRule": {
+      "fr": "Un Flash gâché coûte 5 min de jeu prudent. Utilise-le seulement si sans lui tu meurs à coup sûr, ou si avec lui le kill est garanti (dégâts suffisants, pas de bouclier adverse disponible).",
+      "en": "A wasted Flash costs 5 minutes of careful play. Only use it if you surely die without it, or if it guarantees the kill (enough damage, no enemy shield up)."
+    },
+    "drillObjective": {
+      "fr": "Après chaque Flash, note : sauvé / kill / gâché. Objectif : 0 gâché sur 5 parties.",
+      "en": "After every Flash, note: saved / kill / wasted. Goal: 0 wasted over 5 games."
+    }
+  },
+  {
+    "id": "kiting-adc-any",
+    "role": "BOTTOM",
+    "mistakeSlug": "bad-kiting",
+    "phase": "any",
+    "radarAxis": "dmgm",
+    "fundamentalId": "mastery",
+    "headline": {
+      "fr": "Recule entre deux autos, pas pendant",
+      "en": "Step back between autos, not during them"
+    },
+    "tacticalRule": {
+      "fr": "Clique pour reculer juste après la sortie du projectile de ton auto, puis retape dès que l'auto est rechargée. Cliquer pendant l'animation annule le tir et divise ton DPS.",
+      "en": "Click to move back right after your auto's projectile leaves, then attack again as soon as it is ready. Clicking during the wind-up cancels the shot and cuts your DPS."
+    },
+    "drillObjective": {
+      "fr": "10 min en entraînement : kiting sur mannequin avec attaque-déplacement, puis 3 parties sans auto annulée en fight.",
+      "en": "10 min in practice tool: kite a dummy with attack-move, then 3 games without a cancelled auto in fights."
+    }
+  },
+  {
+    "id": "dive-any-early",
+    "role": "any",
+    "mistakeSlug": "dove-tower",
+    "phase": "early",
+    "radarAxis": "deaths",
+    "fundamentalId": "aggression_calibration",
+    "headline": {
+      "fr": "Pas de dive sans wave sous la tour",
+      "en": "No dive without a wave under the tower"
+    },
+    "tacticalRule": {
+      "fr": "Avant de dive, il faut au moins 3 sbires alliés sous la tour ennemie et une cible sous 40 % PV sans sort de fuite. Sinon la tour te cible dès le premier coup.",
+      "en": "Before diving, you need at least 3 allied minions under the enemy tower and a target under 40 % HP without an escape. Otherwise the tower targets you from the first hit."
+    },
+    "drillObjective": {
+      "fr": "5 parties : 0 mort sous une tour ennemie avant 14 min.",
+      "en": "5 games: 0 deaths under an enemy tower before 14 min."
+    }
+  },
+  {
+    "id": "enemyward-any-mid",
+    "role": "any",
+    "mistakeSlug": "walked-into-ward",
+    "phase": "mid",
+    "radarAxis": "vspm",
+    "fundamentalId": "fog_usage",
+    "headline": {
+      "fr": "Ton chemin doit éviter leurs wards connues",
+      "en": "Your path must avoid their known wards"
+    },
+    "tacticalRule": {
+      "fr": "Après chaque sweep ou ward ennemie vue, mémorise sa zone et contourne-la pour tes rotations et tes ganks. Un pink sur leur chemin de ward favori te rend invisible.",
+      "en": "After every sweep or enemy ward seen, remember its area and route around it for rotations and ganks. A control ward on their favourite warding spot makes you invisible."
+    },
+    "drillObjective": {
+      "fr": "Chaque partie : 1 pink sur un spot de ward ennemi déjà repéré.",
+      "en": "Every game: 1 control ward on an enemy ward spot you already found."
+    }
+  },
+  {
+    "id": "engage-any-late",
+    "role": "any",
+    "mistakeSlug": "bad-engage-angle",
+    "phase": "late",
+    "radarAxis": "kp",
+    "fundamentalId": "prefight_positioning",
+    "headline": {
+      "fr": "Engage par le côté, pas par la face",
+      "en": "Engage from the side, not head-on"
+    },
+    "tacticalRule": {
+      "fr": "Un engage frontal touche leur frontline. Avant de lancer, décale-toi dans le brouillard sur le flanc pour atteindre leur carry, et vérifie que 3 alliés peuvent suivre en moins de 2 s.",
+      "en": "A head-on engage hits their frontline. Before going in, shift into the fog on the flank to reach their carry, and check that 3 allies can follow within 2 s."
+    },
+    "drillObjective": {
+      "fr": "5 parties : chaque engage lancé avec au moins 3 alliés à portée.",
+      "en": "5 games: every engage started with at least 3 allies in range."
+    }
+  },
+  {
+    "id": "levels-any-mid",
+    "role": "any",
+    "mistakeSlug": "behind-on-levels-death",
+    "phase": "mid",
+    "radarAxis": "xp15",
+    "fundamentalId": "threat_assessment",
+    "headline": {
+      "fr": "Deux niveaux de retard = pas de 1v1",
+      "en": "Two levels behind = no 1v1"
+    },
+    "tacticalRule": {
+      "fr": "Avec 2 niveaux de moins, tu as environ un sort de rang en moins et 150 PV de moins. Joue avec ton équipe et farm les waves sûres jusqu'à recoller.",
+      "en": "Two levels down means roughly one spell rank and 150 HP less. Stay with your team and farm safe waves until you catch up."
+    },
+    "drillObjective": {
+      "fr": "Avant chaque fight, compare les niveaux (Tab) : 0 duel accepté à −2 niveaux.",
+      "en": "Before each fight, compare levels (Tab): 0 duels taken at −2 levels."
+    }
+  },
+  {
+    "id": "codex_macro_obj_tempo_vs_tower_greed",
+    "role": "any",
+    "mistakeSlug": "overstay",
+    "mistakeSlugs": [
+      "death-before-objective",
+      "unused-gold"
+    ],
+    "phase": "mid",
+    "radarAxis": "kp",
+    "fundamentalId": "tempo",
+    "headline": {
+      "fr": "Tempo d'objectif (T-45 s) vs greed de tour en side lane",
+      "en": "Objective tempo (T-45 s) vs side-lane tower greed"
+    },
+    "tacticalRule": {
+      "fr": "Après un kill ou un avantage pris en side lane à moins de 45 s d'un Dragon/Baron, deux seules options existent : (1) push la wave instantanément, LAISSER la tour ennemie en vie et recall immédiatement dans le buisson pour dépenser ton or et être sur l'objectif à l'heure. (2) Si tu restes taper la tour, ton équipe DOIT renoncer au Dragon immédiatement et jouer un pur cross-map (prendre la wave mid, envahir les camps opposés et taper la T2). L'erreur fatale est de finir la T1 et recall à T-10 s avec 1500 g en poche pendant que ton équipe attend dans la rivière : vous perdez à la fois la fenêtre d'engage et le cross-map.",
+      "en": "After a kill or an advantage in a side lane less than 45 s before a Dragon/Baron, only two options exist: (1) shove the wave instantly, LEAVE the enemy tower standing and recall right away in the bush to spend your gold and be on the objective on time. (2) If you stay to hit the tower, your team MUST give up the Dragon immediately and play a pure cross-map (take the mid wave, invade the opposite camps and hit the T2). The fatal mistake is finishing the T1 and recalling at T-10 s with 1,500 g in your pocket while your team waits in the river: you lose both the engage window and the cross-map."
+    },
+    "drillObjective": {
+      "fr": "À T-45 s d'un objectif, interdiction de taper une tour en side lane si l'équipe prévoit de jouer l'objectif : push la wave en un sort et recall immédiatement.",
+      "en": "At T-45 s before an objective, no hitting a side-lane tower if the team plans to play the objective: shove the wave with one spell and recall immediately."
+    },
+    "videoExamples": []
+  },
+  {
+    "id": "codex_jgl_3camps_mid_cross_bot_invade",
+    "role": "JUNGLE",
+    "mistakeSlug": "cs-deficit",
+    "mistakeSlugs": [
+      "bad-positioning"
+    ],
+    "phase": "early",
+    "radarAxis": "gold15",
+    "fundamentalId": "csing_pathing",
+    "headline": {
+      "fr": "Transition 3 camps → traversée mid → invade du buff sur prio bot",
+      "en": "3-camp transition → cross through mid → buff invade on bot priority"
+    },
+    "tacticalRule": {
+      "fr": "Quand ta botlane domine lourdement le niveau 1-2 (wave qui crash sous la tour ennemie, summoners adverses brûlés) et que ton mid a du setup : interromps ton premier full clear après 3 camps (niveau 3). Traverse directement par la mid lane pour forcer le sort de mobilité du mid ou du jungler adverse, puis enchaîne immédiatement dans le quadrant botside ennemi pour voler son Red/Blue buff avec la couverture de tes deux lanes prioritaires.",
+      "en": "When your botlane heavily wins levels 1-2 (wave crashing under the enemy tower, enemy summoners burned) and your mid has setup: cut your first full clear after 3 camps (level 3). Cross straight through mid lane to force the enemy mid or jungler mobility spell, then go immediately into the enemy botside quadrant to steal their Red/Blue buff, covered by your two priority lanes."
+    },
+    "drillObjective": {
+      "fr": "Regarde l'état de la botlane pendant ton 2e camp : si le crash bot est garanti, planifie une sortie à 3 camps pour invade le buff opposé.",
+      "en": "Watch the botlane during your 2nd camp: if the bot crash is guaranteed, plan a 3-camp exit to invade the opposite buff."
+    },
+    "videoExamples": [
+      {
+        "title": {
+          "fr": "LoL Esports (BFX vs G2) : 3 camps → traversée mid → invade du Red buff",
+          "en": "LoL Esports (BFX vs G2): 3 camps → cross through mid → Red buff invade"
+        },
+        "url": "https://www.youtube.com/watch?v=GGajtr2XB2Y&t=486s",
+        "startSeconds": 486,
+        "endSeconds": 530,
+        "source": "LoL Esports",
+        "coachNote": {
+          "fr": "Après 3 camps topside, Xin Zhao traverse mid niveau 3, force le Q de Vi sur les Raptors, puis exploite l'énorme prio d'Ashe/Séraphine au bot et la décale de LeBlanc pour voler le Red buff ennemi et brûler le Flash de l'ADC.",
+          "en": "After 3 topside camps, Xin Zhao crosses mid at level 3, forces Vi's Q on the Raptors, then uses Ashe/Seraphine's huge bot priority and LeBlanc's rotation to steal the enemy Red buff and burn the ADC's Flash."
+        }
+      }
+    ]
+  },
+  {
+    "id": "codex_jgl_pathing_integrity_reset_cycle",
+    "role": "JUNGLE",
+    "mistakeSlug": "overstay",
+    "mistakeSlugs": [
+      "cs-deficit"
+    ],
+    "phase": "early",
+    "radarAxis": "xp15",
+    "fundamentalId": "csing_pathing",
+    "headline": {
+      "fr": "Intégrité du cycle de clear : ignorer un camp isolé pour garder le pathing vers ta strong side",
+      "en": "Clear cycle integrity: skip an isolated camp to keep pathing toward your strong side"
+    },
+    "tacticalRule": {
+      "fr": "Après un play early (invade ou gank réussi côté bot), ne retourne PAS faire un camp isolé restant dans ton quadrant bot si tes camps topside viennent de respawn. Faire ce camp isolé te met hors tempo et inverse ton prochain cycle en bot-to-top (loin de ta strong side bot). Monte directement contrôler le jungler adverse sur le topside (Carapateur top), clean ton topside, recall pour acheter ton composant, puis redescends top-to-bot vers ton buff restant et le Dragon.",
+      "en": "After an early play (successful invade or gank botside), do NOT go back for an isolated camp left in your bot quadrant if your topside camps just respawned. That camp puts you out of tempo and flips your next cycle to bot-to-top (away from your bot strong side). Go straight up to control the enemy jungler topside (top Scuttle), clean your topside, recall for your component, then come back down top-to-bot toward your remaining buff and the Dragon."
+    },
+    "drillObjective": {
+      "fr": "Après un gank ou un invade early, reprends toujours ton clear par le quadrant qui te fait finir ton pathing du côté de ta strong side.",
+      "en": "After an early gank or invade, always resume your clear from the quadrant that ends your pathing on your strong side."
+    },
+    "videoExamples": [
+      {
+        "title": {
+          "fr": "LoL Esports (BFX vs G2) : sauter son propre Blue buff pour préserver le cycle top-to-bot",
+          "en": "LoL Esports (BFX vs G2): skipping your own Blue buff to keep the top-to-bot cycle"
+        },
+        "url": "https://www.youtube.com/watch?v=GGajtr2XB2Y&t=579s",
+        "startSeconds": 579,
+        "endSeconds": 668,
+        "source": "LoL Esports",
+        "coachNote": {
+          "fr": "Au lieu de redescendre faire son Blue buff (ce qui ruinerait son tempo et inverserait son pathing), Xin Zhao laisse son Blue en vie, monte matcher Vi sur le topside, clean son topside, recall pour son Tunneler, puis redescend top-to-bot pour enchaîner Blue + Dragon en sécurité.",
+          "en": "Instead of going back down for his Blue buff (which would wreck his tempo and flip his pathing), Xin Zhao leaves his Blue up, goes to match Vi topside, cleans his topside, recalls for his Tunneler, then comes back top-to-bot to chain Blue + Dragon safely."
+        }
+      }
+    ]
+  },
+  {
+    "id": "codex_macro_early_obj_setup_asymmetry",
+    "role": "any",
+    "mistakeSlug": "no-ward-pre-obj",
+    "mistakeSlugs": [
+      "death-before-objective",
+      "forgot-trinket"
+    ],
+    "phase": "early",
+    "radarAxis": "kp",
+    "fundamentalId": "wave_management_objectives",
+    "headline": {
+      "fr": "Setup d'objectif : en avance (recall T-60 s + opening mid) vs en retard (surnombre mid à 3)",
+      "en": "Objective setup: ahead (recall T-60 s + mid opening) vs behind (3-man mid overload)"
+    },
+    "tacticalRule": {
+      "fr": "Adapte le setup du Dragon à l'état du 3v3 : (1) EN AVANCE : recall à T-60 s, le support sort de base directement vers le mid (« opening mid ») pour débloquer la wave centrale et éclairer toute la rivière en premier. (2) EN RETARD (3v3 bot perdu) : ne va pas mourir dans la rivière bot. Groupe à 3 sur la mid lane pour prendre la prio centrale de force. Le midlaner ennemi doit alors décaler dans la rivière pour défendre ses wards, ce qui donne à ton midlaner le first move sur la wave suivante et force l'équipe ennemie à reculer malgré sa prio bot.",
+      "en": "Adapt the Dragon setup to the 3v3 state: (1) AHEAD: recall at T-60 s, the support leaves base straight to mid (\"mid opening\") to unlock the central wave and light up the whole river first. (2) BEHIND (bot 3v3 lost): don't go die in the bot river. Group 3 in mid lane to take central priority by force. The enemy midlaner then has to rotate into the river to defend their wards, which gives your midlaner first move on the next wave and forces the enemy team back despite their bot priority."
+    },
+    "drillObjective": {
+      "fr": "À T-60 s du Dragon : passe systématiquement par la mid lane avant la rivière. Si le 3v3 bot est perdant, surcharge le mid à 3 pour casser le tempo adverse.",
+      "en": "At T-60 s before Dragon: always go through mid lane before the river. If the bot 3v3 is losing, overload mid with 3 to break the enemy tempo."
+    },
+    "videoExamples": [
+      {
+        "title": {
+          "fr": "LoL Esports (BFX vs G2) : setup en avance (opening mid) & réponse en retard (prio mid à 3)",
+          "en": "LoL Esports (BFX vs G2): ahead setup (mid opening) & behind answer (3-man mid priority)"
+        },
+        "url": "https://www.youtube.com/watch?v=GGajtr2XB2Y&t=964s",
+        "startSeconds": 964,
+        "endSeconds": 1069,
+        "source": "LoL Esports",
+        "coachNote": {
+          "fr": "À 16:04, G2 (en avance) recall à 1 min du Drake et fait un opening mid avec Séraphine pour prendre la rivière. À 16:53, BFX (en retard, perdant le 3v3 bot) répond en prenant la prio mid à 3 : LeBlanc est forcée de décaler rivière, Ahri récupère le premier push sur la wave suivante, obligeant G2 à relâcher la pression bot.",
+          "en": "At 16:04, G2 (ahead) recalls 1 min before the Drake and opens mid with Seraphine to take the river. At 16:53, BFX (behind, losing the bot 3v3) answers by taking mid priority with 3: LeBlanc is forced to rotate river, Ahri gets the first push on the next wave, and G2 has to release bot pressure."
+        }
+      }
+    ]
+  },
+  {
+    "id": "codex_macro_131_jungle_hover_assignment",
+    "role": "any",
+    "mistakeSlug": "bad-positioning",
+    "mistakeSlugs": [
+      "caught-out",
+      "no-ward-pre-obj"
+    ],
+    "phase": "mid",
+    "radarAxis": "kp",
+    "fundamentalId": "rotation_positioning",
+    "headline": {
+      "fr": "Déploiement 1-3-1 : bloc de 3 en jungle, ADC au mid, catcher en couverture",
+      "en": "1-3-1 deployment: 3-man block in the jungle, ADC mid, catcher on cover"
+    },
+    "tacticalRule": {
+      "fr": "Quand ton side laner domine son 1v1 et que l'opposé est inatteignable, joue un 1-3-1 serré sur 2 lanes + le quadrant de jungle entre les deux (1 top, 3 jungle, 1 mid). Assigne ton ADC seul sur la wave mid pour qu'il prenne les ressources et waveclear, et place ton midlaner à CC/burst dans le groupe de 3 en jungle avec le jungler et le support. Ce bloc de 3 contrôle toute la vision du quadrant et peut en 3 secondes soit défendre sa side lane, soit punir et tuer tout ennemi qui tente de traverser.",
+      "en": "When your side laner wins their 1v1 and the opposite side is out of reach, play a tight 1-3-1 over 2 lanes + the jungle quadrant between them (1 top, 3 jungle, 1 mid). Put your ADC alone on the mid wave to take the resources and waveclear, and place your CC/burst midlaner in the 3-man jungle group with the jungler and support. That block controls all the vision in the quadrant and can, within 3 seconds, either defend its side lane or punish and kill any enemy trying to cross."
+    },
+    "drillObjective": {
+      "fr": "En mid game, laisse la wave mid à l'ADC et groupe mid + jungle + support dans le quadrant de jungle côté strong side pour verrouiller la vision et les rotations.",
+      "en": "In the mid game, leave the mid wave to the ADC and group mid + jungle + support in the strong-side jungle quadrant to lock down vision and rotations."
+    },
+    "videoExamples": [
+      {
+        "title": {
+          "fr": "LoL Esports (BFX vs G2) : 1-3-1 top/jungle/mid avec Gnar, Vi-Ahri-Neeko en jungle et ADC mid",
+          "en": "LoL Esports (BFX vs G2): top/jungle/mid 1-3-1 with Gnar, Vi-Ahri-Neeko in the jungle and ADC mid"
+        },
+        "url": "https://www.youtube.com/watch?v=GGajtr2XB2Y&t=1508s",
+        "startSeconds": 1508,
+        "endSeconds": 1551,
+        "source": "LoL Esports",
+        "coachNote": {
+          "fr": "Clear (Gnar) domine le top. BFX place Yunara au mid pour le farm et groupe Vi + Ahri + Neeko dans la jungle topside. Quand G2 tente de bouger sur Gnar, le trio en jungle intercepte et tue Ashe sur la rotation, prend la T1 mid et annule toute l'avance d'or de G2.",
+          "en": "Clear (Gnar) dominates top. BFX puts Yunara mid to farm and groups Vi + Ahri + Neeko in the topside jungle. When G2 tries to move on Gnar, the jungle trio intercepts and kills Ashe on the rotation, takes the mid T1 and erases G2's whole gold lead."
+        }
+      }
+    ]
+  },
+  {
+    "id": "codex_macro_baron_balance_system",
+    "role": "any",
+    "mistakeSlug": "bad-positioning",
+    "mistakeSlugs": [
+      "overstay",
+      "caught-out"
+    ],
+    "phase": "late",
+    "radarAxis": "goldm",
+    "fundamentalId": "decision_making",
+    "headline": {
+      "fr": "Baron powerplay : système de balance (1-3-1), ignorer la side sans menace, zéro recall",
+      "en": "Baron powerplay: balance system (1-3-1), ignore the threatless side lane, zero recall"
+    },
+    "tacticalRule": {
+      "fr": "Pour maximiser un Baron : (1) ZÉRO RECALL tant que l'équipe a ses PV, sa mana et ses ultimes. (2) Assigne un 1-3-1 sur 2 lanes (ex. mid + jungle + bot) avec les meilleurs waveclears/carries sur les waves et les tanks/bruisers en couverture dans la jungle, en ignorant l'ennemi en top s'il n'a pas la vitesse de push pour menacer la base (il sera forcé de recall). (3) SYSTÈME DE BALANCE : surcharger le bot force l'ennemi à défendre bot, le mid en profite pour prendre la T1. Quand l'ennemi disparaît du bot pour aller mid, le bot recule d'un cran sans forcer la T3 à l'aveugle. Si l'ennemi engage à 3 sur ton midlaner et claque ses ultimes, le bot punit immédiatement en prenant l'inhibiteur bot, puis toute l'équipe pivote à 5 au mid sans recall pour le 2e inhibiteur.",
+      "en": "To get the most out of a Baron: (1) ZERO RECALL while the team has HP, mana and ultimates. (2) Set up a 1-3-1 over 2 lanes (e.g. mid + jungle + bot) with your best waveclear/carries on the waves and the tanks/bruisers covering in the jungle, ignoring the enemy top laner if they lack the push speed to threaten your base (they will be forced to recall). (3) BALANCE SYSTEM: overloading bot forces the enemy to defend bot, and mid uses it to take the T1. When the enemy leaves bot for mid, bot steps back one notch without forcing the T3 blind. If the enemy engages 3 on your midlaner and burns their ultimates, bot punishes right away by taking the bot inhibitor, then the whole team pivots 5-man to mid without recalling for the 2nd inhibitor."
+    },
+    "drillObjective": {
+      "fr": "Sous Baron, maintiens la pression simultanée sur 2 lanes sans recall. N'avance que quand les défenseurs ennemis sont visibles sur l'autre lane (système de balance).",
+      "en": "Under Baron, keep pressure on 2 lanes at once without recalling. Only step forward when the enemy defenders are visible on the other lane (balance system)."
+    },
+    "videoExamples": [
+      {
+        "title": {
+          "fr": "LoL Esports (BFX vs G2) : leçon de Baron powerplay, système de balance & double inhibiteur",
+          "en": "LoL Esports (BFX vs G2): Baron powerplay lesson, balance system & double inhibitor"
+        },
+        "url": "https://www.youtube.com/watch?v=GGajtr2XB2Y&t=1828s",
+        "startSeconds": 1828,
+        "endSeconds": 2015,
+        "source": "LoL Esports",
+        "coachNote": {
+          "fr": "G2 ignore Ahri en top (forcée de recall), joue un 1-3-1 mid-jungle-bot sans jamais back. La pression bot libère la T1 mid pour LeBlanc. Quand BFX engage LeBlanc à 3 au mid (Vi R, Ahri R et Neeko R), G2 prend l'inhibiteur bot en réponse, puis rotate directement à 5 au mid pour prendre le 2e inhibiteur avant la fin du Baron.",
+          "en": "G2 ignores Ahri top (forced to recall) and plays a mid-jungle-bot 1-3-1 without ever backing. Bot pressure frees the mid T1 for LeBlanc. When BFX engages LeBlanc 3-man in mid (Vi R, Ahri R and Neeko R), G2 takes the bot inhibitor in response, then rotates 5-man straight to mid for the 2nd inhibitor before Baron runs out."
+        }
+      }
+    ]
+  },
+  {
+    "id": "codex_macro_tempo_lines_sync",
+    "role": "any",
+    "mistakeSlug": "overstay",
+    "mistakeSlugs": [
+      "unused-gold",
+      "caught-out"
+    ],
+    "phase": "mid",
+    "radarAxis": "kp",
+    "fundamentalId": "tempo",
+    "headline": {
+      "fr": "Synchronisation des tempo lines & cycles de recall",
+      "en": "Syncing tempo lines & recall cycles"
+    },
+    "tacticalRule": {
+      "fr": "Passé 15 minutes, visualise une ligne reliant tes alliés sur la minimap : (1) si tu as plus de 1500 g après une action et que ton équipe recall, INTERDICTION de rester farmer un camp ou une wave de plus. Retarder ton back de 20 secondes te place sur une tempo line arrière pendant que tes alliés avancent sur la carte et se font engager en 4v5. (2) Si tu sors de base en premier (front tempo), farm sans t'exposer puis replie-toi (fold back) sur la ligne de ton allié le plus fed. (3) Si tu es le joueur fed et que tu sors de base en retard, cours directement rejoindre la ligne de tes alliés sans t'arrêter aux camps.",
+      "en": "After 15 minutes, picture a line joining your allies on the minimap: (1) if you have more than 1,500 g after a play and your team recalls, you may NOT stay for one more camp or wave. Delaying your recall by 20 seconds puts you on a rear tempo line while your allies move up the map and get engaged 4v5. (2) If you leave base first (front tempo), farm without exposing yourself, then fold back onto the line of your most fed ally. (3) If you are the fed player and leave base late, run straight to your allies' line without stopping at camps."
+    },
+    "drillObjective": {
+      "fr": "Synchronise tes recalls à moins de 5 secondes de ton équipe après chaque action collective. Ne tape jamais une T2 ennemie si tes alliés sont encore en base.",
+      "en": "Sync your recalls within 5 seconds of your team after every group play. Never hit an enemy T2 while your allies are still in base."
+    },
+    "videoExamples": []
+  },
+  {
+    "id": "codex_mechanics_lane_quadrants_minion_wall",
+    "role": "any",
+    "mistakeSlug": "bad-positioning",
+    "mistakeSlugs": [
+      "bad-trade",
+      "cs-deficit"
+    ],
+    "phase": "early",
+    "radarAxis": "cs15",
+    "fundamentalId": "trades",
+    "headline": {
+      "fr": "Quadrants de lane : utilise la wave comme un mur invisible",
+      "en": "Lane quadrants: use the wave as an invisible wall"
+    },
+    "tacticalRule": {
+      "fr": "La wave divise la lane en deux côtés (haut / bas). Trader à travers la wave t'oblige à marcher dans tes sbires (l'ennemi touche à la fois ton champion et la wave avec un seul sort) et attire l'aggro de tous les sbires ennemis. RÈGLE : (1) si tu gagnes le trade court (Electrocute, Ignite…), place-toi DU MÊME CÔTÉ de la wave que ton adversaire pour l'empêcher de push et le forcer à te trade. (2) Si tu veux éviter le trade et farm ou push (mêlée vs range, désavantage de cooldowns), pivote systématiquement DU CÔTÉ OPPOSÉ de la wave par rapport à lui. En botlane, utilise le mur de sbires pour bloquer le hook du support ou isoler le 1v1 contre l'ennemi le plus faible.",
+      "en": "The wave splits the lane into two sides (top / bottom). Trading through the wave makes you walk into your minions (the enemy hits both your champion and the wave with one spell) and pulls aggro from every enemy minion. RULE: (1) if you win the short trade (Electrocute, Ignite…), stand ON THE SAME SIDE of the wave as your opponent to stop them pushing and force them to trade you. (2) If you want to avoid the trade and farm or push (melee vs ranged, cooldown disadvantage), always pivot to the OPPOSITE side of the wave from them. In botlane, use the minion wall to block the support's hook or isolate the 1v1 against the weaker enemy."
+    },
+    "drillObjective": {
+      "fr": "En phase de lane (0-10 min), ajuste en permanence ton côté de wave : même côté pour agresser, côté opposé pour neutraliser le matchup.",
+      "en": "In the laning phase (0-10 min), keep adjusting your side of the wave: same side to be aggressive, opposite side to neutralise the matchup."
+    },
+    "videoExamples": []
+  },
+  {
+    "id": "codex_deaths_teamfight_single_threat_tracking",
+    "role": "any",
+    "mistakeSlug": "bad-positioning",
+    "mistakeSlugs": [
+      "caught-out"
+    ],
+    "phase": "late",
+    "radarAxis": "kda",
+    "fundamentalId": "threat_assessment",
+    "headline": {
+      "fr": "Discipline de teamfight : identifie l'unique condition de ta mort (win condition adverse)",
+      "en": "Teamfight discipline: identify the one way you die (the enemy win condition)"
+    },
+    "tacticalRule": {
+      "fr": "Quand tu es le carry principal de ton équipe (ou que tu portes un gros shutdown), la seule façon pour l'ennemi de gagner le combat est de te one-shot avec 1 ou 2 ultimes clés (Diana R, Malphite R, Vi R, Flash-CC…). Avant chaque combat, identifie CE sort : tant qu'il n'est pas utilisé, joue à la limite de portée et refuse de donner l'angle, même si tu infliges moins de dégâts pendant les 4 premières secondes. Dès que le sort clé est forcé sur un allié, tu as le champ libre pour nettoyer le combat.",
+      "en": "When you are your team's main carry (or carry a big shutdown), the enemy's only way to win the fight is to one-shot you with 1 or 2 key ultimates (Diana R, Malphite R, Vi R, Flash-CC…). Before every fight, identify THAT spell: until it is used, play at max range and refuse the angle, even if you deal less damage in the first 4 seconds. As soon as the key spell is forced onto an ally, you are free to clean up the fight."
+    },
+    "drillObjective": {
+      "fr": "Avant chaque teamfight à partir de 15 min, nomme à voix haute l'unique sort ennemi capable de te tuer et n'entre jamais dans son rayon tant qu'il est disponible.",
+      "en": "Before every teamfight from 15 min on, name out loud the one enemy spell that can kill you and never step into its range while it is up."
+    },
+    "videoExamples": []
+  },
+  {
+    "id": "codex_tempo_single_action_window_wave_cheating",
+    "role": "any",
+    "mistakeSlug": "overstay",
+    "mistakeSlugs": [
+      "death-before-objective",
+      "cs-deficit"
+    ],
+    "phase": "mid",
+    "radarAxis": "goldm",
+    "fundamentalId": "tempo",
+    "headline": {
+      "fr": "Fenêtre de tempo à action unique & cheating waves",
+      "en": "Single-action tempo window & cheating waves"
+    },
+    "tacticalRule": {
+      "fr": "Le tempo fonctionne par fenêtres à action unique : quand l'adversaire montre une action d'un côté (gank, objectif, recall), tu gagnes une fenêtre de tempo pour faire UNE seule action (invade OU dive OU objectif OU reset). Vouloir encaisser deux actions sur une seule fenêtre (prendre le Dragon PUIS rester push une wave sans reset) redonne l'avantage de temps aux ennemis qui sortent de base avec leurs items. En défense ou avant un objectif, couper une wave ennemie très haut (cheat la wave) détruit instantanément le tour de jeu et la capacité de siège ou de dive adverse.",
+      "en": "Tempo works in single-action windows: when the enemy shows an action on one side (gank, objective, recall), you earn one tempo window for ONE action (invade OR dive OR objective OR reset). Trying to cash two actions in a single window (taking the Dragon THEN staying to push a wave without resetting) hands the time advantage back to enemies leaving base with their items. On defense or before an objective, cutting an enemy wave very high (cheating the wave) instantly breaks their turn and their siege or dive power."
+    },
+    "drillObjective": {
+      "fr": "Une seule action par fenêtre de tempo : après avoir encaissé un avantage (kill, tour ou objectif), fais ton reset immédiatement, avant que l'ennemi ne sorte de base.",
+      "en": "One action per tempo window: after cashing an advantage (kill, tower or objective), reset right away, before the enemy leaves base."
+    },
+    "videoExamples": []
+  },
+  {
+    "id": "codex_mechanics_wave_slow_fast_rotation_timer",
+    "role": "any",
+    "mistakeSlug": "cs-deficit",
+    "mistakeSlugs": [
+      "overstay",
+      "unused-gold"
+    ],
+    "phase": "early",
+    "radarAxis": "csm",
+    "fundamentalId": "wave_management",
+    "headline": {
+      "fr": "Règle slow → fast, chronomètre de rotation (20 s / 45 s) & préparation side à T-60 s",
+      "en": "Slow → fast rule, rotation timer (20 s / 45 s) & side prep at T-60 s"
+    },
+    "tacticalRule": {
+      "fr": "16 CS valent l'or d'un kill sans augmenter ton shutdown. (1) LOI SLOW → FAST : devant ta tour, fais toujours un slow push (last-hit au dernier moment) pour cumuler 2 waves qui te protègent des ganks et des trades. Dès que la wave suivante arrive près de la tour adverse, passe en fast push (tous tes sorts) pour crash vite, sortir de la zone de danger et débloquer ton recall ou ta rotation. (2) CHRONOMÈTRE DE ROTATION : quand tu décales après un crash, tu as 20 s si l'ennemi push, ou 45 s s'il te suit, avant que le bounce-back ne meure sous ta tour. (3) À T-60 s d'un objectif, push toujours la side lane OPPOSÉE à l'objectif.",
+      "en": "16 CS are worth a kill's gold without raising your shutdown. (1) SLOW → FAST: in front of your tower, always slow push (last-hit at the last moment) to stack 2 waves that protect you from ganks and trades. As soon as the next wave reaches the enemy tower, switch to a fast push (all spells) to crash quickly, leave the danger zone and unlock your recall or rotation. (2) ROTATION TIMER: when you move after a crash, you have 20 s if the enemy pushes, or 45 s if they follow you, before the bounce-back dies under your tower. (3) At T-60 s before an objective, always push the side lane OPPOSITE the objective."
+    },
+    "drillObjective": {
+      "fr": "Applique le cycle « slow push wave 1 → fast push wave 2 → recall ou roam de moins de 30 s » pour tenir plus de 7,5 CS/min.",
+      "en": "Run the \"slow push wave 1 → fast push wave 2 → recall or roam under 30 s\" cycle to hold more than 7.5 CS/min."
+    },
+    "videoExamples": []
+  },
+  {
+    "id": "codex_vision_jungle_tracking_math_timers",
+    "role": "any",
+    "mistakeSlug": "caught-out",
+    "mistakeSlugs": [
+      "no-ward-pre-obj",
+      "forgot-trinket"
+    ],
+    "phase": "early",
+    "radarAxis": "xp15",
+    "fundamentalId": "map_awareness",
+    "headline": {
+      "fr": "Jungle tracking mathématique : 1 camp = 4 CS, respawn 2:15 & timers 2:30 / 4:10",
+      "en": "Jungle tracking by numbers: 1 camp = 4 CS, 2:15 respawn & 2:30 / 4:10 timers"
+    },
+    "tacticalRule": {
+      "fr": "Traquer le jungler repose sur 3 constantes : (1) chaque camp vaut exactement 4 CS (12 CS = 3 camps faits ; 20 CS = 5 camps ; 24 CS = full clear). (2) 2:30 est l'alerte universelle du gank de transition 3 camps. (3) Un petit camp repousse en 2:15 : le 1er camp fait à 1:50 repousse à 4:05 (début du 2e cycle). En tant que laner, ne pose jamais ta ward dans le buisson collé à ta lane (trop tard pour réagir) : pose-la sur un camp ennemi (Raptors ou Blue/Gromp) et penche ton placement (hover) du côté opposé au jungler adverse.",
+      "en": "Tracking the jungler rests on 3 constants: (1) each camp is worth exactly 4 CS (12 CS = 3 camps done; 20 CS = 5 camps; 24 CS = full clear). (2) 2:30 is the universal alert for the 3-camp transition gank. (3) A small camp respawns in 2:15: the 1st camp taken at 1:50 is back at 4:05 (start of the 2nd cycle). As a laner, never ward the bush right next to your lane (too late to react): ward an enemy camp (Raptors or Blue/Gromp) and lean your position (hover) away from the enemy jungler."
+    },
+    "drillObjective": {
+      "fr": "Ward les Raptors ou le buff ennemi entre 1:15 et 2:10, compte les multiples de 4 CS du jungler adverse dès qu'il apparaît et respecte les fenêtres 2:30 et 3:15-4:15.",
+      "en": "Ward the enemy Raptors or buff between 1:15 and 2:10, count the enemy jungler's multiples of 4 CS as soon as they show, and respect the 2:30 and 3:15-4:15 windows."
+    },
+    "videoExamples": []
+  },
+  {
+    "id": "codex_mechanics_trading_4laws_cooldown_punish",
+    "role": "any",
+    "mistakeSlug": "bad-trade",
+    "mistakeSlugs": [
+      "bad-positioning",
+      "cs-deficit"
+    ],
+    "phase": "early",
+    "radarAxis": "dmgm",
+    "fundamentalId": "trades",
+    "headline": {
+      "fr": "Les 4 lois du trading : punir le last-hit, fenêtres de cooldown & PV contre push",
+      "en": "The 4 laws of trading: punish the last hit, cooldown windows & HP for push"
+    },
+    "tacticalRule": {
+      "fr": "Ordre de priorité : farm > trade. (1) Lance tes sorts uniquement à la seconde où l'adversaire fige son personnage pour last-hit un sbire (surtout le canon). (2) Utilise le cancel d'auto sur un sbire pour bait le sort clé adverse, puis punis immédiatement pendant son cooldown. (3) Ne prends JAMAIS un trade contre un ennemi qui s'apprête à recall si tu veux toi-même rester sur la carte : il reviendra full vie avec ses items contre toi à 50 % PV. (4) Dans un matchup perdant contre un mage à longue portée, accepte d'échanger un peu de PV pour hard push la wave dès son arrivée et débloquer ton reset.",
+      "en": "Priority order: farm > trade. (1) Only cast at the very second your opponent freezes to last-hit a minion (especially the cannon). (2) Use an auto cancel on a minion to bait their key spell, then punish right away during its cooldown. (3) NEVER take a trade against an enemy about to recall if you want to stay on the map: they come back full HP with items against you at 50 % HP. (4) In a losing matchup against a long-range mage, accept losing a bit of HP to hard push the wave as soon as it arrives and unlock your reset."
+    },
+    "drillObjective": {
+      "fr": "Ne lance aucun skillshot au hasard : attends l'animation de last-hit adverse ou le cooldown de son sort principal.",
+      "en": "Never throw a skillshot at random: wait for the enemy last-hit animation or their main spell's cooldown."
+    },
+    "videoExamples": []
+  },
+  {
+    "id": "codex_macro_choosing_good_fights_camera_check",
+    "role": "any",
+    "mistakeSlug": "bad-positioning",
+    "mistakeSlugs": [
+      "death-before-objective",
+      "cs-deficit"
+    ],
+    "phase": "mid",
+    "radarAxis": "kp",
+    "fundamentalId": "decision_making",
+    "headline": {
+      "fr": "Sélection de fight (camera check) : avantage numérique, spikes & coût d'opportunité",
+      "en": "Picking fights (camera check): numbers, spikes & opportunity cost"
+    },
+    "tacticalRule": {
+      "fr": "Quand tu hésites entre continuer à push ou farm ta lane et rejoindre un combat en rivière, déplace ta caméra sur l'action avant de t'engager. Si ta wave est mauvaise, bouger te garantit une perte individuelle : le combat doit donc être clairement gagnant. Vérifie 3 critères : (1) avantage numérique immédiat (ton support ou jungler est sur zone avant le leur), (2) power spikes des champions présents (un Viego niv 5 écrase un Hecarim niv 5 sans R), (3) ton impact relatif face à ton vis-à-vis. Si l'un des critères est rouge, annule ta rotation à mi-chemin et reprends ta wave.",
+      "en": "When you hesitate between pushing or farming your lane and joining a river fight, move your camera to the action before committing. If your wave is bad, moving guarantees you a personal loss, so the fight must be clearly winning. Check 3 criteria: (1) immediate numbers advantage (your support or jungler is there before theirs), (2) power spikes of the champions involved (a level 5 Viego crushes a level 5 Hecarim without R), (3) your impact compared to your lane opponent. If any criterion is red, cancel the rotation halfway and go back to your wave."
+    },
+    "drillObjective": {
+      "fr": "Déplace ta caméra pendant la marche vers tout combat : si ton équipe est en infériorité numérique ou de spike, fais demi-tour immédiatement vers ta wave.",
+      "en": "Move your camera while walking to any fight: if your team is down in numbers or spikes, turn back to your wave immediately."
+    },
+    "videoExamples": []
+  },
+  {
+    "id": "codex_tempo_territorial_vs_order_vs_economic",
+    "role": "any",
+    "mistakeSlug": "bad-positioning",
+    "mistakeSlugs": [
+      "overstay",
+      "unused-gold",
+      "behind-on-levels-death"
+    ],
+    "phase": "early",
+    "radarAxis": "gold15",
+    "fundamentalId": "resource_management",
+    "headline": {
+      "fr": "Les 3 tempos : territorial (espace), d'ordre (premier arrivé) & économique réel (PV/mana/XP)",
+      "en": "The 3 tempos: territorial (space), order (first to arrive) & real economic (HP/mana/XP)"
+    },
+    "tacticalRule": {
+      "fr": "Ne confonds jamais l'or total avec ta puissance réelle à l'instant T : (1) TEMPO ÉCONOMIQUE RÉEL = items achetés × PV actuels × mana actuel × niveau (1 niveau d'XP vaut environ 800 g de stats brutes ; un joueur à 15 % PV ou sans mana a un tempo économique nul, il est « virtuellement mort »). N'utilise jamais ta Barrière ou ton Heal à 5 % PV : claque-les au-dessus de 30 % PV pour conserver ta capacité à rester sur la carte. (2) TEMPO D'ORDRE = être sur la zone 5 s avant l'ennemi. (3) TEMPO TERRITORIAL = avoir la vision posée et la wave poussée. On utilise son tempo économique pour gagner le wave management, qui débloque le tempo d'ordre et le territoire.",
+      "en": "Never confuse total gold with your real power right now: (1) REAL ECONOMIC TEMPO = items bought × current HP × current mana × level (1 XP level is worth about 800 g of raw stats; a player at 15 % HP or with no mana has zero economic tempo, they are 'virtually dead'). Never use your Barrier or Heal at 5 % HP: use it above 30 % HP to keep your ability to stay on the map. (2) ORDER TEMPO = being in the area 5 s before the enemy. (3) TERRITORIAL TEMPO = having vision down and the wave pushed. You spend economic tempo to win wave management, which unlocks order tempo and territory."
+    },
+    "drillObjective": {
+      "fr": "Évalue le rapport de force en regardant d'abord le niveau d'XP et les barres de PV/mana, avant les items. Utilise tes summoners défensifs au-dessus de 30 % PV pour préserver ton temps de présence sur la carte.",
+      "en": "Judge the matchup by looking at XP level and HP/mana bars first, items second. Use your defensive summoners above 30 % HP to preserve your time on the map."
+    },
+    "videoExamples": []
+  },
+  {
+    "id": "codex_macro_pressure_asymmetry_next_midwave",
+    "role": "any",
+    "mistakeSlug": "caught-out",
+    "mistakeSlugs": [
+      "bad-positioning",
+      "cs-deficit"
+    ],
+    "phase": "mid",
+    "radarAxis": "csm",
+    "fundamentalId": "lane_assignment",
+    "headline": {
+      "fr": "Asymétrie de pression : contrôle 2 lanes (en avance) vs surcharge 1 lane (en retard) & anticipation N+1",
+      "en": "Pressure asymmetry: 2-lane control (ahead) vs 1-lane overload (behind) & N+1 anticipation"
+    },
+    "tacticalRule": {
+      "fr": "Passé 15 minutes : (1) ANTICIPATION N+1 : au moment où tu tapes la wave mid actuelle, tu dois DÉJÀ avoir décidé ce que tu feras sur la PROCHAINE wave mid (dans 25 s) en lisant qui a recall en face. (2) ASYMÉTRIE DE PRESSION : si ton équipe domine militairement, contrôle 2 lanes (mid + 1 side) pour étouffer la carte. Si ton équipe est en retard, interdiction de vous disperser en 1-3-1 (vous êtes vulnérables partout) : surchargez 1 seule lane ou jouez à l'opposé direct des 2 ennemis les plus fed. (3) RAYON DE SÉCURITÉ : la prio mid dicte la profondeur autorisée en side lane. Sans prio mid, interdiction de dépasser la rivière en side lane.",
+      "en": "After 15 minutes: (1) N+1 ANTICIPATION: while you are hitting the current mid wave, you must ALREADY have decided what you will do on the NEXT mid wave (in 25 s) by reading who recalled on the other side. (2) PRESSURE ASYMMETRY: if your team is stronger in fights, control 2 lanes (mid + 1 side) to choke the map. If your team is behind, no spreading out in a 1-3-1 (you are vulnerable everywhere): overload a single lane or play directly opposite their 2 most fed players. (3) SAFETY RADIUS: mid priority sets how deep you may go in a side lane. Without mid priority, do not go past the river in a side lane."
+    },
+    "drillObjective": {
+      "fr": "À chaque wave mid nettoyée entre 15 et 25 min, annonce immédiatement ton plan pour la wave suivante (N+1), avant même qu'elle n'arrive au centre.",
+      "en": "On every mid wave cleared between 15 and 25 min, call your plan for the next wave (N+1) right away, before it even reaches the middle."
+    },
+    "videoExamples": []
+  },
+  {
+    "id": "codex_vision_baron_chokepoint_support_zoning",
+    "role": "any",
+    "mistakeSlug": "bad-positioning",
+    "mistakeSlugs": [
+      "no-ward-pre-obj",
+      "death-before-objective"
+    ],
+    "phase": "late",
+    "radarAxis": "kp",
+    "fundamentalId": "prefight_positioning",
+    "headline": {
+      "fr": "Géométrie du Baron et du Dragon : contrôle des choke points & zonage par le support",
+      "en": "Baron and Dragon geometry: choke point control & the support's zoning job"
+    },
+    "tacticalRule": {
+      "fr": "Le fond de la fosse du Baron ou du Dragon est un piège prévisible où toute l'équipe subit les sorts de zone. Seuls l'ADC et le jungler doivent taper le Baron. En tant que support, mage de contrôle ou bruiser, tu ne dois JAMAIS taper le Baron ni le regarder : place-toi en amont, devant les choke points d'accès (banana bush, pixel bush, couloir du Blue/Red), dans le brouillard de guerre. Ton rôle est de verrouiller l'entrée : forcer l'équipe ennemie à traverser un entonnoir sous tes contrôles de foule avant même qu'elle ne voie l'objectif.",
+      "en": "The back of the Baron or Dragon pit is a predictable trap where the whole team eats area spells. Only the ADC and the jungler should hit Baron. As a support, control mage or bruiser, you must NEVER hit Baron or even look at it: stand upstream, in front of the access choke points (banana bush, pixel bush, Blue/Red corridor), in the fog of war. Your job is to lock the entrance: force the enemy team through a funnel under your crowd control before they even see the objective."
+    },
+    "drillObjective": {
+      "fr": "Sur chaque Baron ou Dragon en mid/late game, ne reste jamais groupé à 5 dans la fosse : sors du pit pour tenir le buisson d'entrée (choke point) et bloquer l'accès ennemi.",
+      "en": "On every Baron or Dragon in the mid/late game, never stay grouped as 5 in the pit: leave the pit to hold the entrance bush (choke point) and block the enemy's access."
+    },
+    "videoExamples": []
+  },
+  {
+    "id": "codex_mechanics_mid_6archetypes_3v3_synergy",
+    "role": "any",
+    "mistakeSlug": "bad-trade",
+    "mistakeSlugs": [
+      "cs-deficit",
+      "bad-positioning",
+      "bad-threat-assessment"
+    ],
+    "phase": "early",
+    "radarAxis": "cs15",
+    "fundamentalId": "matchup_knowledge",
+    "headline": {
+      "fr": "Les 6 archétypes de matchup & primauté du triangle 3v3 (mid-jungle-support)",
+      "en": "The 6 matchup archetypes & the primacy of the 3v3 triangle (mid-jungle-support)"
+    },
+    "tacticalRule": {
+      "fr": "Dès l'écran de chargement, verrouille ton mode opératoire pour éliminer l'hésitation : (A) ton 1v1 dépend toujours de la synergie 3v3 (mid + jungle + support). Un matchup gagnant en 1v1 devient injouable si leur trio écrase le tien. (B) Identifie ton archétype parmi les 6 : (1) autonomie (prio permanente), (2) alternant (la prio bascule selon des paliers précis de niveaux ou d'items : ne force jamais pendant ton creux), (3) sustain (échanger tes PV contre la mana adverse avec Bouclier de Doran + Second souffle), (4) shove & fight (push permanent pour attaquer le jungler ennemi en 2v1), (5) spike (survie pure à 10 CS/min jusqu'à 2 items à 15 min), (6) précision/mana (ta barre de mana = tes munitions ; chaque sort raté est une perte sèche).",
+      "en": "From the loading screen, lock in how you will play to remove hesitation: (A) your 1v1 always depends on the 3v3 synergy (mid + jungle + support). A winning 1v1 matchup becomes unplayable if their trio crushes yours. (B) Identify your archetype among the 6: (1) autonomy (permanent priority), (2) alternating (priority flips at precise level or item breakpoints: never force during your trough), (3) sustain (trade your HP for their mana with Doran's Shield + Second Wind), (4) shove & fight (permanent push to attack the enemy jungler 2v1), (5) spike (pure survival at 10 CS/min until 2 items at 15 min), (6) precision/mana (your mana bar is your ammunition; every missed spell is a net loss)."
+    },
+    "drillObjective": {
+      "fr": "Pendant l'écran de chargement, nomme l'archétype exact de ton matchup (1 à 6) et détermine qui gagne le 3v3 mid-jungle-support.",
+      "en": "During the loading screen, name the exact archetype of your matchup (1 to 6) and work out who wins the mid-jungle-support 3v3."
+    },
+    "videoExamples": []
+  },
+  {
+    "id": "codex_tempo_roam_check_systematic_fog",
+    "role": "any",
+    "mistakeSlug": "cs-deficit",
+    "mistakeSlugs": [
+      "overstay"
+    ],
+    "phase": "early",
+    "radarAxis": "xp15",
+    "fundamentalId": "roam_gank_timing",
+    "headline": {
+      "fr": "Masquage systématique après chaque wave & filtre strict de roam",
+      "en": "Systematic fog after every wave & strict roam filter"
+    },
+    "tacticalRule": {
+      "fr": "Roam en début de partie n'est jamais gratuit : un roam raté coûte jusqu'à 2 plaques et 3 waves, et dès que tu dépasses le tiers de la rivière, tu as déjà perdu la prio sur la wave suivante. (1) MASQUAGE SYSTÉMATIQUE : après CHAQUE wave poussée, entre dans le brouillard ou le buisson de ta lane pour mettre une pression invisible sur la carte, mais ne complète réellement le roam qu'exceptionnellement (environ 1 fois sur 8). (2) FILTRE DE ROAM : ne dépasse la rivière que si l'ennemi n'a pas les Grubs + un gros waveclear, que ce n'est pas une wave canon, que la cible n'a pas de Flash ou que tes alliés ont du CC garanti, et que tu joues vers ta win condition. Si le roam est repéré en chemin, fais demi-tour immédiatement, sans jamais forcer.",
+      "en": "Roaming early is never free: a failed roam costs up to 2 plates and 3 waves, and once you pass a third of the river you have already lost priority on the next wave. (1) SYSTEMATIC FOG: after EVERY pushed wave, step into the fog or your lane bush to put invisible pressure on the map, but only complete the roam exceptionally (about 1 time in 8). (2) ROAM FILTER: only go past the river if the enemy does not have the Grubs + strong waveclear, it is not a cannon wave, the target has no Flash or your allies have guaranteed CC, and you are playing toward your win condition. If the roam is spotted on the way, turn back immediately and never force it."
+    },
+    "drillObjective": {
+      "fr": "Disparais dans le brouillard de guerre entre chaque wave, mais annule tout roam dès la rivière si le kill ou le Flash n'est pas garanti à 80 %.",
+      "en": "Disappear into the fog of war between waves, but cancel any roam at the river if the kill or the Flash is not 80 % guaranteed."
+    },
+    "videoExamples": []
+  },
+  {
+    "id": "codex_mental_low_energy_anti_tilt_protocol",
+    "role": "any",
+    "mistakeSlug": "caught-out",
+    "mistakeSlugs": [
+      "bad-positioning",
+      "bad-trade",
+      "wasted-summoner"
+    ],
+    "phase": "mid",
+    "radarAxis": "kda",
+    "fundamentalId": "resilience",
+    "headline": {
+      "fr": "Protocole basse énergie / anti-tilt : simplifier le jeu sous fatigue cognitive",
+      "en": "Low-energy / anti-tilt protocol: simplify the game under cognitive fatigue"
+    },
+    "tacticalRule": {
+      "fr": "Quand tu joues fatigué, tard le soir ou après une défaite frustrante, ta bande passante cognitive baisse : vouloir jouer sur les mécaniques pures ou le limit testing garantit la défaite. Bascule immédiatement sur 3 règles à faible coût d'énergie : (1) NEUTRALISATION DES WAVES : push ta wave et recule immédiatement dans le brouillard, sans chercher à poke sous la tour ennemie. (2) RESPECT À 100 % DES MOUVEMENTS SUSPECTS : si un ennemi s'avance bizarrement vers toi, considère systématiquement que son jungler est derrière lui et recule sans vérifier. (3) ÉCONOMIE DE FLASH : interdiction d'utiliser ton Flash sur une escarmouche isolée ; garde-le exclusivement pour les grands teamfights d'objectifs.",
+      "en": "When you play tired, late at night or after a frustrating loss, your cognitive bandwidth drops: trying to win on pure mechanics or limit testing guarantees the loss. Switch immediately to 3 low-energy rules: (1) NEUTRALISE WAVES: push your wave and step straight back into the fog, without trying to poke under the enemy tower. (2) RESPECT EVERY SUSPICIOUS MOVE: if an enemy walks up to you oddly, always assume their jungler is behind them and back off without checking. (3) FLASH ECONOMY: no Flash on an isolated skirmish; keep it exclusively for the big objective teamfights."
+    },
+    "drillObjective": {
+      "fr": "En session de fatigue ou après une défaite : zéro duel mécanique forcé, regarde la minimap entre chaque wave et communique par 3 pings sur le trajet ennemi.",
+      "en": "In a tired session or after a loss: zero forced mechanical duel, look at the minimap between every wave and communicate with 3 pings on the enemy path."
+    },
+    "videoExamples": []
+  }
+]

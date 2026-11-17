@@ -48,6 +48,7 @@ import { registerYoutubeHandlers } from './ipc/youtube.ipc'
 import { registerBackupHandlers } from './ipc/backup.ipc'
 import { registerTeamHandlers, retierLowSampleFlexEntries } from './ipc/team.ipc'
 import { registerMistakeHandlers } from './ipc/mistakes.ipc'
+import { registerMicroReviewHandlers } from './ipc/microReview.ipc'
 import { registerBookmarkHandlers } from './ipc/bookmarks.ipc'
 import { registerDataHandlers } from './ipc/data.ipc'
 import { registerCloudHandlers } from './ipc/cloud.ipc'
@@ -427,6 +428,7 @@ async function bootstrap() {
   registerBackupHandlers()
   registerTeamHandlers()
   registerMistakeHandlers()
+  registerMicroReviewHandlers()
   registerBookmarkHandlers()
   registerDataHandlers()
   registerCloudHandlers()

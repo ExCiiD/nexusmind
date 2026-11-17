@@ -17,6 +17,11 @@ import { useTranslation } from 'react-i18next'
 import { AlertTriangle, Play, FlaskConical, Check, Loader2, Search, Crosshair } from 'lucide-react'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip } from 'recharts'
 import { Button } from '@/components/ui/button'
+import { CodexCard } from '@/components/MicroReview/CodexCard'
+import { usePrepareSession } from '@/components/MicroReview/usePrepareSession'
+import { useTeamCodex } from '@/components/MicroReview/useTeamCodex'
+import { codexFor, dominantPhase } from '@/lib/microReview/codex'
+import { useUserStore } from '@/store/useUserStore'
 import { cn } from '@/lib/utils'
 import { championLabel } from '@/lib/statsInsights'
 import {
@@ -48,6 +53,7 @@ export function MistakeStatsPage() {
   const [family, setFamily] = useState<MistakeFamily | 'all'>('all')
   const [focus, setFocus] = useState<string | null>(null)
   const [experiment, setExperiment] = useState<'idle' | 'busy' | 'done' | 'error'>('idle')
+  const mainRole = useUserStore((s) => s.user?.mainRole ?? '')
 
   useEffect(() => {
     let cancelled = false
@@ -204,6 +210,7 @@ export function MistakeStatsPage() {
                   row={focused}
                   occ={(occ ?? []).filter((o) => o.tag.slug === focused.slug)}
                   moments={latestMoments(occ ?? [], focused.slug)}
+                  role={role || mainRole}
                   experiment={experiment}
                   onExperiment={startExperiment}
                   onReplay={(o) => navigate(`/record/${o.recordingId}?at=${o.gameTimeSec}`)}
@@ -252,10 +259,11 @@ function RankRow({ row, max, active, onClick }: { row: RankedMistake; max: numbe
   )
 }
 
-function Inspector({ row, occ, moments, experiment, onExperiment, onReplay }: {
+function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay }: {
   row: RankedMistake
   occ: MistakeOccurrence[]
   moments: MistakeOccurrence[]
+  role: string
   experiment: 'idle' | 'busy' | 'done' | 'error'
   onExperiment: () => void
   onReplay: (o: MistakeOccurrence) => void
@@ -263,6 +271,11 @@ function Inspector({ row, occ, moments, experiment, onExperiment, onReplay }: {
   const { t } = useTranslation()
   const phases = phaseBreakdown(occ)
   const total = Math.max(occ.length, 1)
+  const prepare = usePrepareSession()
+  const teamRules = useTeamCodex()
+  const phase = dominantPhase(occ.map((o) => o.gameTimeSec))
+  const prescription = codexFor(row.slug, role, phase, teamRules)
+  const garbage = occ.filter((o) => o.garbageTime).length
   return (
     <>
       <div>
@@ -293,6 +306,15 @@ function Inspector({ row, occ, moments, experiment, onExperiment, onReplay }: {
             )
           })}
         </div>
+        {garbage > 0 && <p className="mt-2 text-[11px] text-hextech-text-dim">{t('mistakeLab.inspector.garbage', { count: garbage })}</p>}
+        {prescription ? (
+          <div className="mt-3">
+            {phase && <p className="mb-1.5 text-[11px] text-hextech-text">{t('codex.whenTitle', { phase: t(`mistakeLab.phase.${phase}`) })}</p>}
+            <CodexCard entry={prescription} onPrepare={() => prepare(prescription)} />
+          </div>
+        ) : (
+          <p className="mt-3 text-[11px] text-hextech-text-dim">{t('codex.none')}</p>
+        )}
       </div>
 
       <div>

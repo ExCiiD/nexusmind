@@ -400,6 +400,18 @@ const api = {
   autoDetectMistakes: (gameId: string) => ipcRenderer.invoke('mistake:auto-detect', gameId),
   coachStartTagExperiment: (tagSlug: string) => ipcRenderer.invoke('coach:start-tag-experiment', tagSlug),
   getMistakeOccurrences: (opts?: { days?: number; role?: string | null; champion?: string | null }) => ipcRenderer.invoke('mistake-stats:occurrences', opts),
+  // Micro-review (docs/PLAN_MICRO_REVIEW.md)
+  microReviewGet: (gameId: string) => ipcRenderer.invoke('microreview:get', gameId),
+  microReviewAnswer: (input: unknown) => ipcRenderer.invoke('microreview:answer', input),
+  microReviewVerifyObjectives: (gameId: string) => ipcRenderer.invoke('microreview:verify-objectives', gameId),
+  calibrationStatus: () => ipcRenderer.invoke('microreview:calibration-status'),
+  calibrationSubmit: (family: string) => ipcRenderer.invoke('microreview:calibration-submit', family),
+  microReviewCloudPlayerAnswers: (playerId: string) => ipcRenderer.invoke('microreview-cloud:player-answers', playerId),
+  microReviewCloudMyVerdicts: () => ipcRenderer.invoke('microreview-cloud:my-verdicts'),
+  microReviewCloudSetVerdict: (input: unknown) => ipcRenderer.invoke('microreview-cloud:set-verdict', input),
+  teamCodexList: (groupIds: string[]) => ipcRenderer.invoke('team-codex:list', groupIds),
+  teamCodexAdd: (input: unknown) => ipcRenderer.invoke('team-codex:add', input),
+  teamCodexDelete: (id: string) => ipcRenderer.invoke('team-codex:delete', id),
   getMistakeTopTags: (opts?: { days?: number; role?: string | null; champion?: string | null }) =>
     ipcRenderer.invoke('mistake-stats:top-tags', opts),
   getMistakeTrend: (opts: { tagSlugs?: string[]; days?: number; role?: string | null; champion?: string | null }) =>
