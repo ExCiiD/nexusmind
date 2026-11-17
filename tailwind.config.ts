@@ -1,5 +1,13 @@
 import type { Config } from 'tailwindcss'
 
+/**
+ * Theme colors are CSS variables (runtime theme switch), which Tailwind 3
+ * cannot split into channels — so opacity modifiers like `bg-hextech-green/20`
+ * were silently dropped (no CSS generated). color-mix keeps the variable and
+ * applies the modifier; without a modifier <alpha-value> is 1 (= the color).
+ */
+const c = (v: string) => `color-mix(in srgb, var(${v}) calc(<alpha-value> * 100%), transparent)`
+
 const config: Config = {
   darkMode: 'class',
   content: ['./src/**/*.{ts,tsx}', './index.html'],
@@ -12,53 +20,53 @@ const config: Config = {
         // whole app without a rebuild. See index.css for the actual values
         // per theme.
         hextech: {
-          black: 'var(--hextech-black)',
-          dark: 'var(--hextech-dark)',
-          elevated: 'var(--hextech-elevated)',
-          panel: 'var(--hextech-panel)',
-          border: 'var(--hextech-border)',
-          'border-dim': 'var(--hextech-border-dim)',
-          cyan: 'var(--hextech-cyan)',
-          teal: 'var(--hextech-teal)',
-          gold: 'var(--hextech-gold)',
-          'gold-bright': 'var(--hextech-gold-bright)',
-          red: 'var(--hextech-red)',
-          green: 'var(--hextech-green)',
-          text: 'var(--hextech-text)',
-          'text-bright': 'var(--hextech-text-bright)',
-          'text-dim': 'var(--hextech-text-dim)',
-          blue: 'var(--hextech-blue)',
-          'blue-bright': 'var(--hextech-blue-bright)',
+          black: c('--hextech-black'),
+          dark: c('--hextech-dark'),
+          elevated: c('--hextech-elevated'),
+          panel: c('--hextech-panel'),
+          border: c('--hextech-border'),
+          'border-dim': c('--hextech-border-dim'),
+          cyan: c('--hextech-cyan'),
+          teal: c('--hextech-teal'),
+          gold: c('--hextech-gold'),
+          'gold-bright': c('--hextech-gold-bright'),
+          red: c('--hextech-red'),
+          green: c('--hextech-green'),
+          text: c('--hextech-text'),
+          'text-bright': c('--hextech-text-bright'),
+          'text-dim': c('--hextech-text-dim'),
+          blue: c('--hextech-blue'),
+          'blue-bright': c('--hextech-blue-bright'),
         },
-        background: 'var(--hextech-black)',
-        foreground: 'var(--hextech-gold-bright)',
+        background: c('--hextech-black'),
+        foreground: c('--hextech-gold-bright'),
         card: {
-          DEFAULT: 'var(--hextech-dark)',
-          foreground: 'var(--hextech-text)',
+          DEFAULT: c('--hextech-dark'),
+          foreground: c('--hextech-text'),
         },
         primary: {
-          DEFAULT: 'var(--hextech-gold)',
-          foreground: 'var(--hextech-black)',
+          DEFAULT: c('--hextech-gold'),
+          foreground: c('--hextech-black'),
         },
         secondary: {
-          DEFAULT: 'var(--hextech-cyan)',
-          foreground: 'var(--hextech-black)',
+          DEFAULT: c('--hextech-cyan'),
+          foreground: c('--hextech-black'),
         },
         accent: {
-          DEFAULT: 'var(--hextech-teal)',
-          foreground: 'var(--hextech-gold-bright)',
+          DEFAULT: c('--hextech-teal'),
+          foreground: c('--hextech-gold-bright'),
         },
         destructive: {
-          DEFAULT: 'var(--hextech-red)',
-          foreground: 'var(--hextech-gold-bright)',
+          DEFAULT: c('--hextech-red'),
+          foreground: c('--hextech-gold-bright'),
         },
         muted: {
-          DEFAULT: 'var(--hextech-elevated)',
-          foreground: 'var(--hextech-text)',
+          DEFAULT: c('--hextech-elevated'),
+          foreground: c('--hextech-text'),
         },
-        border: 'var(--hextech-border)',
-        input: 'var(--hextech-elevated)',
-        ring: 'var(--hextech-gold)',
+        border: c('--hextech-border'),
+        input: c('--hextech-elevated'),
+        ring: c('--hextech-gold'),
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

@@ -445,7 +445,8 @@
       "progress": "Progress",
       "gameHistory": "Game History",
       "achievements": "Achievements",
-      "stats": "Stats"
+      "stats": "Stats",
+      "detailed": "Detailed stats"
     },
     "charts": {
       "skillProgress": "Skill Progress Over Time",
@@ -481,8 +482,8 @@
       "winRate": "Win Rate"
     },
     "gate": {
-      "title": "First assessment required",
-      "desc": "Before seeing your statistics, complete your first skills assessment. Ascend uses it as the starting point to track your progress.",
+      "title": "Initial assessment pending",
+      "desc": "Your game stats are already here. Take your first skills assessment to unlock fundamentals progression, session history and achievements.",
       "cta": "Take my assessment now"
     },
     "summary": {
@@ -1299,7 +1300,12 @@
     "bodyPlaceholder": "Message…",
     "post": "Post",
     "none": "No announcements yet.",
-    "close": "Close"
+    "close": "Close",
+    "pinned": "Pinned",
+    "latest": "Latest announcement",
+    "seeAll": "See all ({{count}})",
+    "publish": "Post an announcement",
+    "togglePin": "Pin / unpin"
   },
   "mistakes": {
     "deleteFailed": "Failed to delete mistake",
@@ -1482,7 +1488,19 @@
         "open": "open",
         "done": "done",
         "dismissed": "dismissed"
-      }
+      },
+      "kicker": "Goals",
+      "titleFor": "Assign to {{name}}",
+      "presetsLabel": "Templates:",
+      "presets": [
+        "Review 3 avoidable deaths per game",
+        "Ward before every objective",
+        "Stop after 2 losses in a row",
+        "Note the timing of every back"
+      ],
+      "listTitle": "Assigned goals ({{count}})",
+      "dueOn": "by {{date}}",
+      "toggleHint": "Click to toggle done / open"
     },
     "assigned": {
       "title": "Objectives from your coach",
@@ -1498,7 +1516,18 @@
     "staffNotes": {
       "title": "Private staff notes",
       "hint": "Only visible to this group's staff — the player never sees these.",
-      "placeholder": "Private note…"
+      "placeholder": "Private note…",
+      "kicker": "Confidential",
+      "empty": "No notes about {{name}} yet.",
+      "tagLabel": "Category",
+      "tag": {
+        "followup": "Follow-up",
+        "tilt": "Tilt",
+        "draft": "Draft",
+        "mental": "Mental"
+      },
+      "add": "Add",
+      "commentHint": "For feedback the player can see, comment directly on their review in the journal."
     },
     "comments": {
       "empty": "No comment yet.",
@@ -1516,6 +1545,48 @@
       "TOO_MANY_GROUPS": "You already own the maximum number of groups (10).",
       "LOGIN_REQUIRED": "Sign in to your Ascend account first.",
       "generic": "Something went wrong. Check your connection and try again."
+    },
+    "dossier": {
+      "pickPlayer": "Player",
+      "kicker": "Player file · {{role}}",
+      "status": {
+        "alert": "Alert: {{games}} games without review on {{date}}",
+        "discipline": "Review discipline: {{pct}}%",
+        "noData": "No shared data"
+      },
+      "tile": {
+        "discipline": "Review discipline",
+        "axes": "Development plan",
+        "goals": "Assigned goals",
+        "pool": "Champion pool"
+      },
+      "reviewedOf": "{{reviewed}}/{{games}} reviewed",
+      "axesCount_one": "{{count}} axis",
+      "axesCount_other": "{{count}} axes",
+      "noPlan": "No active plan",
+      "openGoals_one": "{{count}} open",
+      "openGoals_other": "{{count}} open",
+      "doneGoals_one": "{{count}} done",
+      "doneGoals_other": "{{count}} done",
+      "nextDue": "Next deadline: {{date}}",
+      "noDue": "No deadline",
+      "fromShared": "From shared games"
+    },
+    "journal": {
+      "kicker": "Session journal",
+      "title_one": "{{count}} day",
+      "title_other": "{{count}} days",
+      "filter": {
+        "all": "All",
+        "incomplete": "Incomplete",
+        "complete": "100% reviewed"
+      },
+      "search": "Date or objective…",
+      "noMatch": "No session matches.",
+      "autopilot": "No session objective (autopilot)",
+      "counts": "{{games}} games · {{reviews}} reviews",
+      "w": "W",
+      "l": "L"
     }
   },
   "assistant": {
@@ -1989,7 +2060,9 @@
       "mode": {
         "esport": "Esport hours ({{from}}h–{{to}}h)",
         "day": "Full day ({{from}}h–{{to}}h)"
-      }
+      },
+      "hoverAdd": "+ Add ({{h}}h)",
+      "hoverFree": "+ Book"
     },
     "popup": {
       "kicker": "Quick planning",
@@ -2061,7 +2134,29 @@
           "Opponent scouting"
         ]
       }
-    }
+    },
+    "kicker": "Operational planning",
+    "heading": "Planning & common slots",
+    "windowsBadge_one": "{{count}} optimal window this week",
+    "windowsBadge_other": "{{count}} optimal windows this week",
+    "hint": "Drag in the grid to create a slot, in each day's right strip to set your availability. Click an event for details.",
+    "windows": {
+      "title": "Common slots",
+      "starters": "{{n}}/{{n}} starters",
+      "book": "Scrim",
+      "free": "Free · Ready to book",
+      "busy": "Taken ({{title}})"
+    },
+    "inspector": {
+      "empty": "Click an event in the grid to see its details and who is free.",
+      "presence": "Attendance",
+      "free": "Free",
+      "unknown": "Unconfirmed",
+      "edit": "Edit",
+      "confirmDelete": "Confirm?"
+    },
+    "legend": "Legend",
+    "legendFree": "All starters free"
   },
   "teamSession": {
     "notFound": "No team session found for this event — open it from Planning.",

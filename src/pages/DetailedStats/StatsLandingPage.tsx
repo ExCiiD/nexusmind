@@ -69,7 +69,9 @@ interface LinkedAccount {
   createdAt: string
 }
 
-export function StatsLandingPage() {
+/** Rendered as the "Stats détaillées" tab of the Statistics page
+ *  (AnalyticsPage) — no page title of its own there. */
+export function StatsLandingPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation()
   const user = useUserStore((s) => s.user)
   const [averages, setAverages] = useState<any>(null)
@@ -158,9 +160,11 @@ export function StatsLandingPage() {
     <div className="space-y-4 animate-fade-in">
       <div className="flex flex-wrap items-start justify-between gap-3">
        <div>
+        {!embedded && (
         <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">
           {t('statsAvg.title')}
         </h1>
+        )}
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           <p className="text-sm text-hextech-text">{t('statsAvg.subtitle')}</p>
           {mainRole && (
@@ -171,11 +175,11 @@ export function StatsLandingPage() {
           )}
         </div>
        </div>
-        {/* The fundamentals progression page (/analytics) has no sidebar entry
-            of its own since the nav merged both "statistics" entries. */}
-        <Link to="/analytics" className="inline-flex items-center gap-1.5 rounded-md border border-hextech-border-dim px-3 py-1.5 text-xs font-medium text-hextech-text-bright hover:border-hextech-gold hover:text-hextech-gold-bright">
+        {!embedded && (
+        <Link to="/stats?tab=progress" className="inline-flex items-center gap-1.5 rounded-md border border-hextech-border-dim px-3 py-1.5 text-xs font-medium text-hextech-text-bright hover:border-hextech-gold hover:text-hextech-gold-bright">
           <TrendingUp className="h-3.5 w-3.5 text-hextech-gold" />{t('statsAvg.fundamentalsLink')}
         </Link>
+        )}
       </div>
 
       {/* Account filter — only shown when secondary accounts exist */}

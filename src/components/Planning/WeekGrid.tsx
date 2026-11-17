@@ -43,11 +43,13 @@ interface Props {
   onSelectAvailabilityRange: (range: HourRange) => void
   onRemoveAvailabilityException: (id: string) => void
   onEventClick: (event: CalendarEvent) => void
+  /** Event highlighted in the side inspector. */
+  selectedEventId?: string | null
 }
 
 export function WeekGrid({
   days, mode, events, scrims, rules, exceptions, starterIds, commonFree, myAvailabilityExceptions, canEditCalendar,
-  onSelectEventRange, onSelectAvailabilityRange, onRemoveAvailabilityException, onEventClick,
+  onSelectEventRange, onSelectAvailabilityRange, onRemoveAvailabilityException, onEventClick, selectedEventId,
 }: Props) {
   const { t, i18n } = useTranslation()
   const { start: HOUR_START, end: HOUR_END, rowHeight: ROW } = GRID_MODES[mode]
@@ -149,7 +151,19 @@ export function WeekGrid({
                   className={cn('relative flex-1', canEditCalendar && 'cursor-cell')}
                   onMouseDown={beginDrag(dayIndex, 'event')}
                 >
-                  {hours.map((h) => <div key={h} className="border-b border-hextech-border-dim/30" style={{ height: ROW }} />)}
+                  {hours.map((h) => {
+                    const inFree = dayFree.some((w) => Number(w.startTime.slice(0, 2)) <= h && h * 60 < Number(w.endTime.slice(0, 2)) * 60 + Number(w.endTime.slice(3, 5)))
+                    return (
+                      <div key={h} className="group/cell relative border-b border-hextech-border-dim/30" style={{ height: ROW }}>
+                        {canEditCalendar && !drag && (
+                          <span className={cn('pointer-events-none absolute right-1 top-1 z-[1] rounded px-1 font-mono text-[9px] font-bold uppercase opacity-0 transition-opacity group-hover/cell:opacity-100',
+                            inFree ? 'bg-hextech-green/25 text-hextech-green' : 'bg-hextech-gold/20 text-hextech-gold')}>
+                            {inFree ? t('planning.grid.hoverFree') : t('planning.grid.hoverAdd', { h })}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
 
                   {/* Every starter free: shaded zone behind events */}
                   {dayFree.map((w, i) => {
@@ -157,7 +171,7 @@ export function WeekGrid({
                     const e = Math.min(Number(w.endTime.slice(0, 2)) * 60 + Number(w.endTime.slice(3, 5)), HOUR_END * 60)
                     if (e <= s) return null
                     return (
-                      <div key={i} className="pointer-events-none absolute inset-x-0 border-y border-hextech-green/15 bg-hextech-green/[0.10] px-1.5 pt-1 font-mono text-[10px] leading-tight text-hextech-green/80" style={{ top: top(s), height: ((e - s) / 60) * ROW }}>
+                      <div key={i} className="pointer-events-none absolute inset-x-0 border-y border-hextech-green/30 bg-hextech-green/[0.16] px-1.5 pt-1 font-mono text-[10px] leading-tight text-hextech-green/80" style={{ top: top(s), height: ((e - s) / 60) * ROW }}>
                         {total}/{total}<br />{t('planning.grid.free')}
                       </div>
                     )
@@ -183,7 +197,7 @@ export function WeekGrid({
                       <EventCard key={e.id} accent={(KIND_STYLE[e.kind] ?? KIND_STYLE.other).accent} tag={t(`planning.tag.${e.kind}`, { defaultValue: e.kind })}
                         time={`${shortH(startMin)}–${shortH(startMin + durMin)}`} title={e.title} notes={e.notes}
                         attendance={att ? { free: freeAtt, total: att } : undefined}
-                        top={top(startMin)} height={(durMin / 60) * ROW} onClick={() => onEventClick(e)} />
+                        top={top(startMin)} height={(durMin / 60) * ROW} selected={selectedEventId === e.id} onClick={() => onEventClick(e)} />
                     )
                   })}
 
@@ -230,7 +244,7 @@ export function WeekGrid({
   )
 }
 
-function EventCard({ accent, tag, time, title, notes, attendance, top, height, onClick }: {
+function EventCard({ accent, tag, time, title, notes, attendance, top, height, selected, onClick }: {
   accent: string
   tag: string
   time: string
@@ -239,6 +253,7 @@ function EventCard({ accent, tag, time, title, notes, attendance, top, height, o
   attendance?: { free: number; total: number }
   top: number
   height: number
+  selected?: boolean
   onClick?: () => void
 }) {
   const h = Math.max(height, 26)
@@ -249,7 +264,8 @@ function EventCard({ accent, tag, time, title, notes, attendance, top, height, o
       title={title}
       onMouseDown={(ev: React.MouseEvent) => ev.stopPropagation()}
       onClick={onClick ? (ev: React.MouseEvent) => { ev.stopPropagation(); onClick() } : undefined}
-      className="absolute inset-x-1 z-[5] flex flex-col overflow-hidden rounded-md border border-l-[3px] px-2 py-1.5 text-left shadow-md transition-[filter] hover:brightness-125"
+      aria-pressed={onClick ? !!selected : undefined}
+      className={cn('absolute inset-x-1 z-[5] flex flex-col overflow-hidden rounded-md border border-l-[3px] px-2 py-1.5 text-left shadow-md transition-[filter] hover:brightness-125', selected && 'z-[6] ring-2 ring-hextech-gold ring-offset-1 ring-offset-hextech-black')}
       style={{ top: top + 1, height: h - 2, borderColor: `${accent}55`, borderLeftColor: accent, backgroundColor: `color-mix(in srgb, ${accent} 16%, var(--hextech-dark))` }}
     >
       <div className="flex items-start justify-between gap-1">

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { StatsLandingPage } from '@/pages/DetailedStats/StatsLandingPage'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -15,7 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { useLocalizedFundamental, useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { formatKDA, formatGameTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { TrendingUp, History, Award, BarChart3, Calendar, ClipboardList, Loader2, Info } from 'lucide-react'
+import { TrendingUp, History, Award, BarChart3, Calendar, ClipboardList, Loader2, Info, Table2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FundamentalFilter } from './FundamentalFilter'
 import { ProgressSummary } from './ProgressSummary'
@@ -106,7 +107,9 @@ export function AnalyticsPage() {
   // Chart 1 and chart 2 keep independent, persisted fundamental filters.
   const [selectedFundamentalIds, setSelectedFundamentalIdsRaw] = useState<string[] | null>(() => readIds(LS_FILTER_KEY))
   const [trendSelectedIds, setTrendSelectedIdsRaw] = useState<string[] | null>(() => readIds(LS_TREND_FILTER_KEY))
-  const [activeTab, setActiveTabRaw] = useState<string>(() => localStorage.getItem(LS_TAB_KEY) ?? 'progress')
+  const [params, setParams] = useSearchParams()
+  const [activeTab, setActiveTabRaw] = useState<string>(() => params.get('tab') ?? localStorage.getItem(LS_TAB_KEY) ?? 'detailed')
+  useEffect(() => { const tab = params.get('tab'); if (tab) setActiveTabRaw(tab) }, [params])
   // Period filter (applies to chart 1)
   const [timePeriod, setTimePeriodRaw] = useState<TimePeriod>(() => (localStorage.getItem(LS_PERIOD_KEY) as TimePeriod) ?? 'all')
 
@@ -116,7 +119,11 @@ export function AnalyticsPage() {
   }
   const setSelectedFundamentalIds = (ids: string[] | null) => { setSelectedFundamentalIdsRaw(ids); persistIds(LS_FILTER_KEY, ids) }
   const setTrendSelectedIds = (ids: string[] | null) => { setTrendSelectedIdsRaw(ids); persistIds(LS_TREND_FILTER_KEY, ids) }
-  const setActiveTab = (tab: string) => { setActiveTabRaw(tab); localStorage.setItem(LS_TAB_KEY, tab) }
+  const setActiveTab = (tab: string) => {
+    setActiveTabRaw(tab)
+    localStorage.setItem(LS_TAB_KEY, tab)
+    if (params.get('tab')) setParams({}, { replace: true })
+  }
   const setTimePeriod = (p: TimePeriod) => { setTimePeriodRaw(p); localStorage.setItem(LS_PERIOD_KEY, p) }
 
   useEffect(() => {
@@ -171,21 +178,28 @@ export function AnalyticsPage() {
     )
   }
 
-  // Gate: no assessment means no data — redirect to the first assessment
+  // No assessment yet: the fundamentals tabs have no data, but the detailed
+  // game stats (Riot data) don't need one — show those, plus an invitation.
   if (progressData.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-6 py-24 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-hextech-gold/30 bg-hextech-gold/10">
-          <ClipboardList className="h-8 w-8 text-hextech-gold" />
+      <div className="space-y-4 animate-fade-in">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('analytics.title')}</h1>
+          <p className="mt-1 text-sm text-hextech-text">{t('analytics.subtitle')}</p>
         </div>
-        <div className="space-y-2">
-          <h2 className="font-display text-xl font-bold text-hextech-gold-bright">{t('analytics.gate.title')}</h2>
-          <p className="max-w-sm text-sm leading-relaxed text-hextech-text-dim">{t('analytics.gate.desc')}</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-hextech-gold/30 bg-hextech-gold/[0.06] px-4 py-3">
+          <div className="flex items-start gap-3">
+            <ClipboardList className="mt-0.5 h-5 w-5 shrink-0 text-hextech-gold" />
+            <div>
+              <p className="text-sm font-semibold text-hextech-text-bright">{t('analytics.gate.title')}</p>
+              <p className="text-xs text-hextech-text">{t('analytics.gate.desc')}</p>
+            </div>
+          </div>
+          <Button size="sm" onClick={() => navigate('/assessment')} className="gap-2">
+            <ClipboardList className="h-4 w-4" />{t('analytics.gate.cta')}
+          </Button>
         </div>
-        <Button onClick={() => navigate('/assessment')} className="gap-2">
-          <ClipboardList className="h-4 w-4" />
-          {t('analytics.gate.cta')}
-        </Button>
+        <StatsLandingPage embedded />
       </div>
     )
   }
@@ -250,11 +264,16 @@ export function AnalyticsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
+          <TabsTrigger value="detailed"><Table2 className="mr-1 h-4 w-4" /> {t('analytics.tabs.detailed')}</TabsTrigger>
           <TabsTrigger value="progress"><TrendingUp className="mr-1 h-4 w-4" /> {t('analytics.tabs.progress')}</TabsTrigger>
           <TabsTrigger value="history"><History className="mr-1 h-4 w-4" /> {t('analytics.tabs.gameHistory')}</TabsTrigger>
           <TabsTrigger value="badges"><Award className="mr-1 h-4 w-4" /> {t('analytics.tabs.achievements')}</TabsTrigger>
           <TabsTrigger value="stats"><BarChart3 className="mr-1 h-4 w-4" /> {t('analytics.tabs.stats')}</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="detailed">
+          {activeTab === 'detailed' && <StatsLandingPage embedded />}
+        </TabsContent>
 
         <TabsContent value="progress" className="space-y-4">
           {/* 1. Where I stand — the essentials before any chart */}

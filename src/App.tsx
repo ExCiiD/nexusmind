@@ -11,7 +11,6 @@ import { AnalyticsPage } from '@/pages/Analytics/AnalyticsPage'
 import { ReassessmentPage } from '@/pages/Assessment/ReassessmentPage'
 import { HistoryPage } from '@/pages/History/HistoryPage'
 import { DetailedStatsPage } from '@/pages/DetailedStats/DetailedStatsPage'
-import { StatsLandingPage } from '@/pages/DetailedStats/StatsLandingPage'
 import { LanePhasePage } from '@/pages/Stats/LanePhasePage'
 import { MistakeStatsPage } from '@/pages/Stats/MistakeStatsPage'
 import { SettingsPage } from '@/pages/Settings/SettingsPage'
@@ -64,9 +63,9 @@ export function App() {
             <Route path="/post-game-capture" element={<PostGameCapturePage />} />
             <Route path="/external-review/new" element={<ExternalReviewNewPage />} />
             <Route path="/external-review/:id" element={<ExternalReviewPage />} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/analytics" element={<Navigate to="/stats?tab=progress" replace />} />
             <Route path="/history" element={<HistoryPage />} />
-            <Route path="/stats" element={<StatsLandingPage />} />
+            <Route path="/stats" element={<AnalyticsPage />} />
             <Route path="/stats/averages" element={<Navigate to="/stats" replace />} />
             <Route path="/stats/:matchId" element={<DetailedStatsPage />} />
             <Route path="/lane-phase/:gameId" element={<LanePhasePage />} />

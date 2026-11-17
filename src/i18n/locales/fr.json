@@ -445,7 +445,8 @@
       "progress": "Progression",
       "gameHistory": "Historique des parties",
       "achievements": "Succès",
-      "stats": "Stats"
+      "stats": "Stats",
+      "detailed": "Stats détaillées"
     },
     "charts": {
       "skillProgress": "Progression des compétences",
@@ -481,8 +482,8 @@
       "winRate": "Taux de victoire"
     },
     "gate": {
-      "title": "Bilan initial requis",
-      "desc": "Avant d'accéder aux statistiques, complétez votre premier bilan de compétences. Ascend s'en sert comme point de départ pour suivre votre progression.",
+      "title": "Bilan initial à faire",
+      "desc": "Tes stats de parties sont déjà là. Fais ton premier bilan de compétences pour débloquer la progression des fondamentaux, l'historique des sessions et les succès.",
       "cta": "Faire mon bilan maintenant"
     },
     "summary": {
@@ -1299,7 +1300,12 @@
     "bodyPlaceholder": "Message…",
     "post": "Publier",
     "none": "Aucune annonce pour l'instant.",
-    "close": "Fermer"
+    "close": "Fermer",
+    "pinned": "Épinglée",
+    "latest": "Dernière annonce",
+    "seeAll": "Tout voir ({{count}})",
+    "publish": "Publier une annonce",
+    "togglePin": "Épingler / désépingler"
   },
   "mistakes": {
     "deleteFailed": "Impossible de supprimer l'erreur",
@@ -1482,7 +1488,19 @@
         "open": "en cours",
         "done": "fait",
         "dismissed": "ignoré"
-      }
+      },
+      "kicker": "Objectifs",
+      "titleFor": "Assigner à {{name}}",
+      "presetsLabel": "Modèles :",
+      "presets": [
+        "Revoir 3 morts évitables par game",
+        "Ward avant chaque objectif",
+        "Stop après 2 défaites d'affilée",
+        "Noter le timing de chaque back"
+      ],
+      "listTitle": "Objectifs assignés ({{count}})",
+      "dueOn": "avant le {{date}}",
+      "toggleHint": "Cliquer pour basculer fait / en cours"
     },
     "assigned": {
       "title": "Objectifs de votre coach",
@@ -1498,7 +1516,18 @@
     "staffNotes": {
       "title": "Notes privées du staff",
       "hint": "Visibles uniquement par le staff de ce groupe — le joueur ne les voit jamais.",
-      "placeholder": "Note privée…"
+      "placeholder": "Note privée…",
+      "kicker": "Confidentiel",
+      "empty": "Aucune note sur {{name}} pour l'instant.",
+      "tagLabel": "Catégorie",
+      "tag": {
+        "followup": "Suivi",
+        "tilt": "Tilt",
+        "draft": "Draft",
+        "mental": "Mental"
+      },
+      "add": "Ajouter",
+      "commentHint": "Pour un retour visible par le joueur, commente directement sa review dans le journal."
     },
     "comments": {
       "empty": "Aucun commentaire pour l'instant.",
@@ -1516,6 +1545,48 @@
       "TOO_MANY_GROUPS": "Vous possédez déjà le nombre maximum de groupes (10).",
       "LOGIN_REQUIRED": "Connectez-vous d'abord à votre compte Ascend.",
       "generic": "Une erreur est survenue. Vérifiez votre connexion et réessayez."
+    },
+    "dossier": {
+      "pickPlayer": "Joueur suivi",
+      "kicker": "Dossier joueur · {{role}}",
+      "status": {
+        "alert": "Alerte : {{games}} games sans review le {{date}}",
+        "discipline": "Discipline review : {{pct}} %",
+        "noData": "Aucune donnée partagée"
+      },
+      "tile": {
+        "discipline": "Assiduité review",
+        "axes": "Plan de développement",
+        "goals": "Objectifs assignés",
+        "pool": "Pool de champions"
+      },
+      "reviewedOf": "{{reviewed}}/{{games}} reviewées",
+      "axesCount_one": "{{count}} axe",
+      "axesCount_other": "{{count}} axes",
+      "noPlan": "Aucun plan actif",
+      "openGoals_one": "{{count}} en cours",
+      "openGoals_other": "{{count}} en cours",
+      "doneGoals_one": "{{count}} fait",
+      "doneGoals_other": "{{count}} faits",
+      "nextDue": "Prochaine échéance : {{date}}",
+      "noDue": "Aucune échéance",
+      "fromShared": "Sur les games partagées"
+    },
+    "journal": {
+      "kicker": "Journal des sessions",
+      "title_one": "{{count}} jour",
+      "title_other": "{{count}} jours",
+      "filter": {
+        "all": "Tout",
+        "incomplete": "Incomplètes",
+        "complete": "100 % review"
+      },
+      "search": "Date ou objectif…",
+      "noMatch": "Aucune session ne correspond.",
+      "autopilot": "Sans objectif de session (autopilote)",
+      "counts": "{{games}} games · {{reviews}} reviews",
+      "w": "V",
+      "l": "D"
     }
   },
   "assistant": {
@@ -1989,7 +2060,9 @@
       "mode": {
         "esport": "Heures esport ({{from}}h–{{to}}h)",
         "day": "Journée ({{from}}h–{{to}}h)"
-      }
+      },
+      "hoverAdd": "+ Ajouter ({{h}}h)",
+      "hoverFree": "+ Poser"
     },
     "popup": {
       "kicker": "Planification rapide",
@@ -2061,7 +2134,29 @@
           "Scouting adversaire"
         ]
       }
-    }
+    },
+    "kicker": "Planning opérationnel",
+    "heading": "Planning & créneaux communs",
+    "windowsBadge_one": "{{count}} fenêtre optimale cette semaine",
+    "windowsBadge_other": "{{count}} fenêtres optimales cette semaine",
+    "hint": "Glisse dans la grille pour créer un créneau, dans la bande de droite de chaque jour pour poser ta dispo. Clique un événement pour le détail.",
+    "windows": {
+      "title": "Créneaux communs",
+      "starters": "{{n}}/{{n}} titulaires",
+      "book": "Scrim",
+      "free": "Libre · Prêt à réserver",
+      "busy": "Complet ({{title}})"
+    },
+    "inspector": {
+      "empty": "Clique un événement de la grille pour voir son détail et qui est dispo.",
+      "presence": "Présence",
+      "free": "Dispo",
+      "unknown": "Non confirmé",
+      "edit": "Modifier",
+      "confirmDelete": "Confirmer ?"
+    },
+    "legend": "Légende",
+    "legendFree": "Tous les titulaires dispo"
   },
   "teamSession": {
     "notFound": "Aucune session d'équipe trouvée pour cet événement — ouvre-la depuis Planning.",

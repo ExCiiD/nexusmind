@@ -52,8 +52,8 @@ const COLUMN_GROUPS: Array<{ label: string; span: number; cls?: string }> = [
   { label: '', span: 1 }, // player (sticky, no group label needed)
   { label: 'Record', span: 2 },
   { label: 'Combat', span: 4 },
-  { label: 'Economy', span: 6 },
-  { label: 'Impact', span: 7, cls: 'text-hextech-gold-bright/80' },
+  { label: 'Economy', span: 4 },
+  { label: 'Impact', span: 9, cls: 'text-hextech-gold-bright/80' },
   { label: 'Vision', span: 4 },
 ]
 
@@ -164,9 +164,9 @@ export function StatsTable({ players, matchCount, basedOnLabel }: { players: Syn
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{a.csPerMin.toFixed(1)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{Math.round(a.gold).toLocaleString()}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{Math.round(a.goldPerMin)}</td>
-                  <td className="px-1.5 py-1.5 text-right tabular-nums">{formatK(a.damage)}</td>
+                  <td className="px-1.5 py-1.5 text-right tabular-nums border-l border-hextech-border-dim/30">{formatK(a.damage)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{Math.round(a.damagePerMin)}</td>
-                  <td className="px-1.5 py-1.5 text-right tabular-nums border-l border-hextech-border-dim/30">{formatK(a.damageTaken)}</td>
+                  <td className="px-1.5 py-1.5 text-right tabular-nums">{formatK(a.damageTaken)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums text-blue-300">{s.damageTakenPct.toFixed(1)}%</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums text-emerald-300 font-semibold">{Math.round(s.kpPct)}%</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums text-yellow-300">{s.goldPct.toFixed(1)}%</td>
@@ -231,8 +231,8 @@ function ShareDonut({ titleKey, defaultTitle, players, valueFn }: {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  innerRadius="55%"
-                  outerRadius="90%"
+                  innerRadius="50%"
+                  outerRadius="78%"
                   paddingAngle={2}
                   label={({ percent }) => {
                     const pct = (percent ?? 0) * 100
