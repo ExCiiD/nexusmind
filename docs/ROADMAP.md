@@ -170,6 +170,11 @@ Plans détaillés liés : [moteur de coaching (design)](MOTEUR_REGLES.md), [cata
 - Rapport hebdomadaire partageable (Discord / lien web public).
 - Télémétrie anonyme opt-in pour mesurer les métriques du PRD §18.
 - Nourrir le moteur de règles avec du contenu externe (transcriptions YouTube, analyses pro) — voir [`PLAN_GESTION_EQUIPE.md` §8](PLAN_GESTION_EQUIPE.md#8-prochain-chantier--scouting-avancé-bot-discord-ux-ajouté-14112026-demandé-par-lutilisateur), pas cadrée (tension avec le choix 100 % règles/local de la Phase A).
+- **Empreinte des fondamentaux (Dashboard) : choisir la source de comparaison** — demandé par l'utilisateur le 17/11/2026. Par défaut, le radar compare la forme récente (moyenne des 15 dernières games) à un snapshot (moyenne des 40 dernières games) *du joueur lui-même*. Ajouter une option pour comparer plutôt à un **autre joueur choisi** : l'utilisateur saisit un pseudo Riot ID, l'app va chercher ses 40 dernières games en solo/duo (queue 420) via le proxy Riot existant et calcule les mêmes 9 KPIs côté snapshot. Points d'implémentation :
+  - Résoudre et **mémoriser le puuid** du joueur au moment de la saisie (`account-v1/accounts/by-riot-id`), pas seulement le pseudo — le puuid est stable même si le joueur change de nom plus tard, contrairement au pseudo seul.
+  - Si la résolution échoue à ce moment-là (API indisponible, pseudo mal orthographié), le signaler immédiatement — pas de friction sinon : tant que le puuid mémorisé reste valide, un changement de pseudo ultérieur du joueur suivi ne doit rien casser silencieusement (c'est justement le but de stocker le puuid plutôt que le nom).
+  - Respecter les mêmes quotas/rate-limits que le reste du proxy Riot (`RIOT_LIMITS`) ; mettre en cache le puuid résolu (table locale type "joueurs suivis") pour ne pas re-résoudre le pseudo à chaque ouverture du dashboard.
+  - UI : un sélecteur simple sur la carte radar ("Comparer à : Moi (snapshot) / [pseudo du joueur suivi]"), avec un bouton pour ajouter/changer le joueur suivi.
 
 ## Phase S — Audit de sécurité avant publication du site ⏳
 

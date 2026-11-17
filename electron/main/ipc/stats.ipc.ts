@@ -882,6 +882,75 @@ export function registerStatsHandlers() {
     }
   })
 
+  /**
+   * "Empreinte des fondamentaux" radar (Dashboard): default comparison is
+   * the user's own recent form (avg of the last 15 games) against their
+   * own longer-window snapshot (avg of the last 40 games) — a narrower
+   * window than `stats:compute-averages`'s persisted `StatsSnapshot` (capped
+   * at 20 games), so computed fresh here rather than reusing that table.
+   */
+  ipcMain.handle('stats:get-fundamentals-radar', async () => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    if (!user) return null
+
+    const accounts = await prisma.account.findMany({ where: { userId: user.id } })
+    const mainRole = (user as any).mainRole as string | null
+    const { matchIds, allPuuids } = await getAggregatedMatchIds(user, accounts, 40)
+    if (matchIds.length === 0) return null
+
+    const allStats: any[] = []
+    for (const matchId of matchIds) {
+      let matchData: any
+      let timelineData: any = null
+
+      const cached = await prisma.matchCache.findUnique({ where: { matchId } })
+      if (cached) {
+        matchData = JSON.parse(cached.matchJson)
+        timelineData = cached.timelineJson ? JSON.parse(cached.timelineJson) : null
+      } else {
+        try {
+          matchData = await getMatch(matchId, user.region)
+          await prisma.matchCache.upsert({
+            where: { matchId },
+            create: { matchId, matchJson: JSON.stringify(matchData) },
+            update: {},
+          })
+        } catch { continue }
+      }
+
+      if (!timelineData) {
+        try { timelineData = await getMatchTimeline(matchId, user.region) } catch { /* optional */ }
+        if (timelineData) {
+          await prisma.matchCache.update({
+            where: { matchId },
+            data: { timelineJson: JSON.stringify(timelineData) },
+          }).catch(() => {})
+        }
+      }
+
+      const resolvedPuuid = resolvePuuid(matchData, allPuuids)
+      if (!resolvedPuuid) continue
+
+      const detailed = extractDetailedStats(matchData, timelineData, resolvedPuuid)
+      if (!detailed) continue
+      if (mainRole && detailed.meta.role !== mainRole) continue
+
+      allStats.push(detailed)
+      if (allStats.length >= 40) break
+    }
+
+    if (allStats.length === 0) return null
+
+    const recentStats = allStats.slice(0, 15)
+    return {
+      recent: recentStats.length > 0 ? computeAverages(recentStats) : null,
+      recentGameCount: recentStats.length,
+      snapshot: computeAverages(allStats),
+      snapshotGameCount: allStats.length,
+    }
+  })
+
   ipcMain.handle('stats:get-snapshots', async () => {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })

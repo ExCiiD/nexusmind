@@ -12,6 +12,9 @@ import { CoachingPatternCard } from '@/components/Coaching/CoachingPatternCard'
 import { ReassessmentBanner } from '@/components/Coaching/ReassessmentBanner'
 import { AssistantCard } from '@/components/Assistant/AssistantCard'
 import { ProgressChart } from '@/components/Charts/ProgressChart'
+import { FundamentalsRadarChart } from '@/components/Charts/FundamentalsRadarChart'
+import { buildFundamentalsRadar, overallRadarScore } from '@/lib/fundamentalsRadarCore'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import {
   Target,
   Play,
@@ -29,6 +32,8 @@ import {
   TrendingUp,
   TrendingDown,
   AlertTriangle,
+  Layers,
+  Loader2,
 } from 'lucide-react'
 import type { MistakeTopTagEntry } from '@/lib/ipc'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
@@ -196,9 +201,9 @@ export function DashboardPage() {
 
         {/* Right sidebar — same height as the left column's stack, so the
             card doesn't leave a tall dead gap below it on long pages. */}
-        <div className="flex flex-col">
+        <div className="flex flex-col space-y-4">
           {/* Progression + compact winrate merged */}
-          <Card className="flex h-full flex-col">
+          <Card className="flex flex-col">
             <CardHeader className="pb-2 pt-4 px-4">
               <CardTitle className="text-sm">{t('dashboard.progress')}</CardTitle>
             </CardHeader>
@@ -234,6 +239,8 @@ export function DashboardPage() {
               </Button>
             </CardContent>
           </Card>
+
+          <FundamentalsRadarCard />
         </div>
       </div>
 
@@ -255,6 +262,122 @@ export function DashboardPage() {
           fight for attention until the user starts tagging. */}
       <MistakeFrequencyCard onViewAll={() => navigate('/stats/mistakes')} />
     </div>
+  )
+}
+
+/**
+ * "Empreinte des fondamentaux" (requested redesign reference) — compares
+ * the user's recent form (avg of the last 15 games) against their longer
+ * snapshot (avg of the last 40 games), across 9 fixed KPIs. Desktop-only
+ * (needs the local Riot fetch pipeline), loads on its own so a slow Riot
+ * API round-trip never blocks the rest of the dashboard.
+ */
+function FundamentalsRadarCard() {
+  const { t } = useTranslation()
+  const [data, setData] = useState<{ recent: any; recentGameCount: number; snapshot: any; snapshotGameCount: number } | null | undefined>(undefined)
+  const [showModal, setShowModal] = useState(false)
+
+  useEffect(() => {
+    window.api.getFundamentalsRadar().then(setData).catch(() => setData(null))
+  }, [])
+
+  if (data === undefined) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center gap-2 p-6 text-xs text-hextech-text-dim">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          {t('dashboard.radar.loading', { defaultValue: 'Calcul de l’empreinte…' })}
+        </CardContent>
+      </Card>
+    )
+  }
+  if (!data) return null
+
+  const points = buildFundamentalsRadar(data.recent, data.snapshot)
+  const score = overallRadarScore(points)
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="pb-2 pt-4 px-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">{t('dashboard.radar.title', { defaultValue: 'Empreinte des fondamentaux' })}</CardTitle>
+            {score !== null && (
+              <span className="text-[10px] font-mono text-hextech-green">
+                {t('dashboard.radar.score', { defaultValue: 'Score : {{score}}/100', score })}
+              </span>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3 px-4 pb-4">
+          <FundamentalsRadarChart points={points} />
+          <div className="flex items-center justify-center gap-4 text-[10px] text-hextech-text-dim">
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-full bg-hextech-gold" />
+              {t('dashboard.radar.recentLabel', { count: data.recentGameCount, defaultValue: 'Récent ({{count}} games)' })}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-full border border-dashed border-slate-400" />
+              {t('dashboard.radar.snapshotLabel', { count: data.snapshotGameCount, defaultValue: 'Snapshot ({{count}} games)' })}
+            </span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full gap-2 text-xs"
+            onClick={() => setShowModal(true)}
+          >
+            <Layers className="h-3.5 w-3.5 text-hextech-gold" />
+            {t('dashboard.radar.fullBreakdown', { defaultValue: 'Bilan complet des fondamentaux' })}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('dashboard.radar.modalTitle', { defaultValue: 'Bilan détaillé des fondamentaux' })}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {points.map((p) => {
+              const diff = p.recentScore != null && p.snapshotScore != null ? p.recentScore - p.snapshotScore : null
+              return (
+                <div key={p.key} className="rounded-lg border border-hextech-border-dim bg-hextech-elevated p-3">
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="font-bold text-hextech-text-bright">{p.label}</span>
+                    <div className="flex items-center gap-2 font-mono">
+                      <span className="text-hextech-text-dim">
+                        {p.recentRaw != null ? p.recentRaw.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}{p.unit}
+                      </span>
+                      {diff !== null && (
+                        <span className={cn(
+                          'px-1.5 py-0.5 rounded text-[10px] font-bold',
+                          diff >= 0 ? 'bg-hextech-green/15 text-hextech-green' : 'bg-[#E24C3A]/15 text-[#E24C3A]',
+                        )}>
+                          {diff >= 0 ? `+${diff}` : diff} pts
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-hextech-base overflow-hidden">
+                    <div
+                      className={cn(
+                        'h-full rounded-full',
+                        (p.recentScore ?? 0) >= 75 ? 'bg-hextech-green' : (p.recentScore ?? 0) >= 50 ? 'bg-hextech-gold' : 'bg-[#E24C3A]',
+                      )}
+                      style={{ width: `${p.recentScore ?? 0}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowModal(false)}>{t('common.close', { defaultValue: 'Fermer' })}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

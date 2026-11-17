@@ -407,6 +407,9 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   getStatsSnapshots: () => Promise<any[]>
   autoSnapshot: () => Promise<{ created: number }>
   getAccountAverages: (puuid: string | null) => Promise<{ averages: any; gameCount: number; firstGameAt: string; lastGameAt: string } | null>
+  /** "Empreinte des fondamentaux" radar (Dashboard) — recent (last 15
+   *  games) vs snapshot (last 40 games), both via computeAverages(). */
+  getFundamentalsRadar: () => Promise<{ recent: any; recentGameCount: number; snapshot: any; snapshotGameCount: number } | null>
   clearStatsSnapshots: () => Promise<{ deleted: number }>
 
   // Destructive data maintenance (Settings → Danger Zone)

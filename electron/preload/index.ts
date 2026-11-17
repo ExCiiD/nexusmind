@@ -82,6 +82,7 @@ const api = {
   getStatsSnapshots: () => ipcRenderer.invoke('stats:get-snapshots'),
   autoSnapshot: () => ipcRenderer.invoke('stats:auto-snapshot'),
   getAccountAverages: (puuid: string | null) => ipcRenderer.invoke('stats:get-account-averages', puuid),
+  getFundamentalsRadar: () => ipcRenderer.invoke('stats:get-fundamentals-radar'),
   clearStatsSnapshots: () => ipcRenderer.invoke('stats:clear-snapshots'),
 
   // Destructive data maintenance (Settings → Danger Zone)

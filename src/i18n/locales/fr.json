@@ -155,6 +155,15 @@
       "title": "Plus grandes évolutions de stats",
       "noData": "Il faut au moins 2 snapshots — calculez des moyennes pour suivre la progression",
       "vsSnap": "vs snapshot précédent"
+    },
+    "radar": {
+      "loading": "Calcul de l'empreinte des fondamentaux…",
+      "title": "Empreinte des fondamentaux",
+      "score": "Score : {{score}}/100",
+      "recentLabel": "Récent ({{count}} games)",
+      "snapshotLabel": "Snapshot ({{count}} games)",
+      "fullBreakdown": "Voir le détail par fondamental",
+      "modalTitle": "Détail des fondamentaux"
     }
   },
   "session": {
@@ -534,7 +543,12 @@
     },
     "autoSnapshotDone_one": "{{count}} snapshot calculé automatiquement",
     "autoSnapshotDone_other": "{{count}} snapshots calculés automatiquement",
-    "noProgressionData": "Il faut au moins 2 snapshots pour comparer. Jouez 20+ parties et revenez ici."
+    "noProgressionData": "Il faut au moins 2 snapshots pour comparer. Jouez 20+ parties et revenez ici.",
+    "basedOnGames": "Basé sur vos {{count}} dernières games",
+    "highlights": {
+      "improved": "Plus grande amélioration",
+      "regressed": "À surveiller"
+    }
   },
   "detailedStats": {
     "pageTitle": "Stats détaillées",
@@ -1178,7 +1192,8 @@
     "cancel": "Annuler",
     "create": "Créer",
     "delete": "Supprimer",
-    "loading": "Chargement…"
+    "loading": "Chargement…",
+    "close": "Fermer"
   },
   "discussion": {
     "title": "Discussion",

@@ -71,6 +71,7 @@ export function StatsLandingPage() {
   const { t } = useTranslation()
   const user = useUserStore((s) => s.user)
   const [averages, setAverages] = useState<any>(null)
+  const [averagesMeta, setAveragesMeta] = useState<{ gameCount: number; firstGameAt: string; lastGameAt: string } | null>(null)
   const [snapshots, setSnapshots] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<ActiveTab>('averages')
@@ -96,6 +97,7 @@ export function StatsLandingPage() {
     try {
       const result = await window.api.getAccountAverages(puuid)
       setAverages(result?.averages ?? null)
+      setAveragesMeta(result ? { gameCount: result.gameCount, firstGameAt: result.firstGameAt, lastGameAt: result.lastGameAt } : null)
     } catch { /* silent */ }
     finally { setAccountLoading(false) }
   }
@@ -120,7 +122,9 @@ export function StatsLandingPage() {
         if (user?.puuid) {
           await loadAveragesForAccount(user.puuid)
         } else if (snaps.length > 0) {
-          setAverages(snaps[snaps.length - 1].stats)
+          const latest = snaps[snaps.length - 1]
+          setAverages(latest.stats)
+          setAveragesMeta({ gameCount: latest.gameCount, firstGameAt: latest.firstGameAt, lastGameAt: latest.lastGameAt })
         }
       } catch { /* silent */ }
       finally { setLoading(false) }
@@ -259,15 +263,34 @@ export function StatsLandingPage() {
 
           {averages && !accountLoading && (
             <>
+              {/* Context: what these averages are actually based on — without
+                  this, the whole page is a wall of numbers with no sense of
+                  sample size or recency. */}
+              {averagesMeta && (
+                <p className="text-xs text-hextech-text-dim">
+                  {t('statsAvg.basedOnGames', {
+                    count: averagesMeta.gameCount,
+                    defaultValue: 'Basé sur vos {{count}} dernières games',
+                  })}
+                  {' · '}
+                  {new Date(averagesMeta.firstGameAt).toLocaleDateString()} → {new Date(averagesMeta.lastGameAt).toLocaleDateString()}
+                </p>
+              )}
+
+              {/* Highlights — the one thing this page was missing: a direct
+                  answer to "so what changed", instead of making the user
+                  scan 6 cards of ~45 rows to find it themselves. */}
+              <HighlightsCard snapshots={snapshots} />
+
               {/* Summary banner */}
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-                <MiniStat label={t('statsAvg.winRate')} value={`${averages.meta.winRate}%`} />
-                <MiniStat label="KDA" value={`${averages.meta.avgKills}/${averages.meta.avgDeaths}/${averages.meta.avgAssists}`} />
-                <MiniStat label={t('statsAvg.csMin')} value={averages.economy.csPerMin} />
-                <MiniStat label={t('statsAvg.gpm')} value={averages.economy.goldPerMin} />
-                <MiniStat label={t('statsAvg.dpm')} value={averages.combat.damagePerMin} />
-                <MiniStat label={t('statsAvg.kp')} value={`${averages.combat.killParticipation}%`} />
-                <MiniStat label={t('statsAvg.vsMin')} value={averages.vision.visionScorePerMin} />
+                <MiniStat label={t('statsAvg.winRate')} value={`${averages.meta.winRate}%`} trend={diffFromSnapshots(snapshots, (s) => s.meta.winRate)} />
+                <MiniStat label="KDA" value={`${averages.meta.avgKills}/${averages.meta.avgDeaths}/${averages.meta.avgAssists}`} trend={diffFromSnapshots(snapshots, kdaRatio)} />
+                <MiniStat label={t('statsAvg.csMin')} value={averages.economy.csPerMin} trend={diffFromSnapshots(snapshots, (s) => s.economy.csPerMin)} />
+                <MiniStat label={t('statsAvg.gpm')} value={averages.economy.goldPerMin} trend={diffFromSnapshots(snapshots, (s) => s.economy.goldPerMin)} />
+                <MiniStat label={t('statsAvg.dpm')} value={averages.combat.damagePerMin} trend={diffFromSnapshots(snapshots, (s) => s.combat.damagePerMin)} />
+                <MiniStat label={t('statsAvg.kp')} value={`${averages.combat.killParticipation}%`} trend={diffFromSnapshots(snapshots, (s) => s.combat.killParticipation)} />
+                <MiniStat label={t('statsAvg.vsMin')} value={averages.vision.visionScorePerMin} trend={diffFromSnapshots(snapshots, (s) => s.vision.visionScorePerMin)} />
               </div>
 
               {/* Category breakdowns */}
@@ -355,11 +378,95 @@ export function StatsLandingPage() {
 
 /* ─── Sub-components ─── */
 
-function MiniStat({ label, value }: { label: string; value: any }) {
+/** Diff between the last two snapshots for any `computeAverages()` path —
+ *  same comparison basis as the Progression tab, reused here so the
+ *  Averages tab isn't a flat wall of numbers with no sense of direction. */
+function diffFromSnapshots(snapshots: any[], path: (s: any) => number | null): { diff: number; higherIsBetter: boolean } | null {
+  if (snapshots.length < 2) return null
+  const prev = path(snapshots[snapshots.length - 2].stats)
+  const curr = path(snapshots[snapshots.length - 1].stats)
+  if (prev == null || curr == null) return null
+  return { diff: Number((curr - prev).toFixed(2)), higherIsBetter: true }
+}
+
+const kdaRatio = (s: any) => (s.meta.avgDeaths > 0 ? (s.meta.avgKills + s.meta.avgAssists) / s.meta.avgDeaths : s.meta.avgKills + s.meta.avgAssists)
+
+function TrendBadge({ trend }: { trend: { diff: number; higherIsBetter: boolean } | null | undefined }) {
+  if (!trend || trend.diff === 0) return null
+  const isPositive = trend.higherIsBetter ? trend.diff > 0 : trend.diff < 0
+  return (
+    <span className={cn('ml-1 inline-flex items-center gap-0.5 text-[10px] font-semibold', isPositive ? 'text-hextech-green' : 'text-[#E24C3A]')}>
+      {isPositive ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
+      {trend.diff > 0 ? '+' : ''}{trend.diff}
+    </span>
+  )
+}
+
+function MiniStat({ label, value, trend }: { label: string; value: any; trend?: { diff: number; higherIsBetter: boolean } | null }) {
   return (
     <div className="rounded-lg bg-hextech-elevated border border-hextech-border-dim p-3 text-center">
-      <div className="text-lg font-bold text-hextech-gold-bright">{value ?? '—'}</div>
+      <div className="flex items-baseline justify-center">
+        <span className="text-lg font-bold text-hextech-gold-bright">{value ?? '—'}</span>
+        <TrendBadge trend={trend} />
+      </div>
       <div className="text-[10px] text-hextech-text-dim">{label}</div>
+    </div>
+  )
+}
+
+/** Biggest improvement + biggest regression since the previous snapshot,
+ *  picked from the same STAT_ROWS list the Progression tab already uses —
+ *  the one "so what" the Averages tab was missing. */
+function HighlightsCard({ snapshots }: { snapshots: any[] }) {
+  const { t } = useTranslation()
+  if (snapshots.length < 2) return null
+
+  const prevStats = snapshots[snapshots.length - 2].stats
+  const currStats = snapshots[snapshots.length - 1].stats
+
+  const moves = STAT_ROWS
+    .map((row) => {
+      const prev = row.path(prevStats)
+      const curr = row.path(currStats)
+      if (prev == null || curr == null) return null
+      const diff = curr - prev
+      const signed = row.higherIsBetter === false ? -diff : diff
+      return { row, diff, signed }
+    })
+    .filter((m): m is { row: StatRowDef; diff: number; signed: number } => m !== null && m.diff !== 0)
+
+  if (moves.length === 0) return null
+
+  const best = [...moves].sort((a, b) => b.signed - a.signed)[0]
+  const worst = [...moves].sort((a, b) => a.signed - b.signed)[0]
+
+  const renderMove = (m: typeof best, positive: boolean) => {
+    const fmt = m.row.format ?? ((v: number) => v.toLocaleString())
+    return (
+      <div className={cn(
+        'flex items-center gap-2.5 rounded-lg border px-3 py-2.5 flex-1 min-w-0',
+        positive ? 'border-hextech-green/30 bg-hextech-green/5' : 'border-[#E24C3A]/30 bg-[#E24C3A]/5',
+      )}>
+        {positive ? <TrendingUp className="h-4 w-4 text-hextech-green shrink-0" /> : <TrendingDown className="h-4 w-4 text-[#E24C3A] shrink-0" />}
+        <div className="min-w-0">
+          <p className="text-[11px] text-hextech-text-dim">
+            {positive ? t('statsAvg.highlights.improved', { defaultValue: 'Biggest improvement' }) : t('statsAvg.highlights.regressed', { defaultValue: 'Needs attention' })}
+          </p>
+          <p className="text-sm font-semibold text-hextech-text-bright truncate">
+            {m.row.label}
+            <span className={cn('ml-1.5 font-mono', positive ? 'text-hextech-green' : 'text-[#E24C3A]')}>
+              {m.diff > 0 ? '+' : ''}{fmt(Number(m.diff.toFixed(1)))}
+            </span>
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col sm:flex-row gap-3">
+      {renderMove(best, true)}
+      {worst !== best && renderMove(worst, false)}
     </div>
   )
 }

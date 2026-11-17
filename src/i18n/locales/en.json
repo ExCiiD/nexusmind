@@ -155,6 +155,15 @@
       "title": "Biggest stat changes",
       "noData": "Need at least 2 snapshots — compute averages to track progression",
       "vsSnap": "vs previous snapshot"
+    },
+    "radar": {
+      "loading": "Computing your fundamentals footprint…",
+      "title": "Fundamentals footprint",
+      "score": "Score: {{score}}/100",
+      "recentLabel": "Recent ({{count}} games)",
+      "snapshotLabel": "Snapshot ({{count}} games)",
+      "fullBreakdown": "Full fundamentals breakdown",
+      "modalTitle": "Detailed fundamentals breakdown"
     }
   },
   "session": {
@@ -534,7 +543,12 @@
     },
     "autoSnapshotDone_one": "{{count}} new snapshot computed automatically",
     "autoSnapshotDone_other": "{{count}} new snapshots computed automatically",
-    "noProgressionData": "Need at least 2 snapshots to compare progression. Play 20+ games then come back here."
+    "noProgressionData": "Need at least 2 snapshots to compare progression. Play 20+ games then come back here.",
+    "basedOnGames": "Based on your last {{count}} games",
+    "highlights": {
+      "improved": "Biggest improvement",
+      "regressed": "Needs attention"
+    }
   },
   "detailedStats": {
     "pageTitle": "Detailed Stats",
@@ -1178,7 +1192,8 @@
     "cancel": "Cancel",
     "create": "Create",
     "delete": "Delete",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "close": "Close"
   },
   "discussion": {
     "title": "Discussion",
