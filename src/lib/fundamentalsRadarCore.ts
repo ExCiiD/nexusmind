@@ -29,13 +29,16 @@ export const RADAR_AXES: RadarAxisDef[] = [
     pick: (s) => (s?.meta?.avgDeaths > 0 ? (s.meta.avgKills + s.meta.avgAssists) / s.meta.avgDeaths : s?.meta ? s.meta.avgKills + s.meta.avgAssists : null),
   },
   { key: 'csm', label: 'CS/m', unit: '', min: 3, max: 9, pick: (s) => s?.economy?.csPerMin ?? null },
-  { key: 'goldm', label: 'Gold/m', unit: '', min: 250, max: 550, pick: (s) => s?.economy?.goldPerMin ?? null },
+  { key: 'goldm', label: 'Gold/m', unit: ' g', min: 250, max: 550, pick: (s) => s?.economy?.goldPerMin ?? null },
   { key: 'dmgm', label: 'DMG/m', unit: '', min: 300, max: 900, pick: (s) => s?.combat?.damagePerMin ?? null },
   { key: 'kp', label: 'KP', unit: '%', min: 0, max: 100, pick: (s) => s?.combat?.killParticipation ?? null },
   { key: 'fb', label: 'FB', unit: '%', min: 0, max: 100, pick: (s) => s?.laning?.firstBloodRate ?? null },
   { key: 'cs15', label: 'CS@15', unit: '', min: 50, max: 140, pick: (s) => s?.laning?.cs15 ?? null },
-  { key: 'xp15', label: 'XP@15', unit: '', min: 4500, max: 8500, pick: (s) => s?.laning?.xp15 ?? null },
-  { key: 'gold15', label: 'Gold@15', unit: '', min: 3500, max: 6500, pick: (s) => s?.laning?.gold15 ?? null },
+  // @15 ranges from real ranked timelines (17/11/2026 check): lobby average
+  // ≈ 5,650 gold / 10.5 levels at 15:00, strong laners 7,000+ gold and
+  // 8,500+ XP. Riot's totalGold includes the 500 starting gold.
+  { key: 'xp15', label: 'XP@15', unit: ' XP', min: 4500, max: 9500, pick: (s) => s?.laning?.xp15 ?? null },
+  { key: 'gold15', label: 'Gold@15', unit: ' g', min: 3500, max: 7500, pick: (s) => s?.laning?.gold15 ?? null },
 ]
 
 /**

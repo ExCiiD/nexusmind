@@ -505,7 +505,8 @@ function FundamentalsRadarCard({ role }: { role: string | null }) {
 }
 
 function fmtNum(v: number | null): string {
-  return v != null ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'
+  // Large values (gold, XP) read better as whole numbers: 6 277 g, not 6 277.4.
+  return v != null ? v.toLocaleString(undefined, { maximumFractionDigits: Math.abs(v) >= 100 ? 0 : 2 }) : '—'
 }
 
 function MistakeFrequencyCard({ onViewAll }: { onViewAll: () => void }) {
