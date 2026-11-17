@@ -45,7 +45,7 @@ export function CoachingPatternCard() {
   if (!hasWeakKpis && !hasRepeatedObjective && !lowCompletionRate && !hasHighDeaths) return null
 
   return (
-    <Card className="border-hextech-gold/20 bg-hextech-gold/5">
+    <Card className="border-hextech-gold/20 bg-gradient-to-b from-hextech-gold/5 to-hextech-gold/5">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <BarChart2 className="h-4 w-4 text-hextech-gold" />

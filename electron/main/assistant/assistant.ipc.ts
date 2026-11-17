@@ -26,7 +26,7 @@ import {
   type Verdict,
 } from './experiments'
 import { buildPlayerContext, laneFromReport, type GameRecord, type PlayerContext, type SessionRecord } from './features'
-import { problemById } from './problems'
+import { problemById, problemForTag } from './problems'
 import { buildReport, neighbourObjective, type AssistantReport } from './report'
 import { statBilanGaps, suggestedScores } from './reassessment'
 import { pickPriorityGame } from './reviewPriority'
@@ -408,6 +408,21 @@ export function registerAssistantHandlers(): void {
       const loaded = await activeUserContext(now)
       if (!loaded) throw new Error('No active user')
       const row = await createExperiment(loaded.user.id, loaded.ctx, { problemId, tagSlug, ruleId: rule, source: rule ? 'assistant' : 'player', startedAt: now })
+      if (!row) throw new Error('NOT_MEASURABLE')
+      return toView(row, loaded.ctx, [])
+    },
+  )
+
+  /** Mistake Lab "work on this mistake": same experiment as the assistant's,
+   *  with the coaching problem resolved from the tag on this side. */
+  validatedHandle(
+    'coach:start-tag-experiment',
+    z.tuple([z.string().max(64).regex(/^[a-z0-9-]+$/)]),
+    async (_e, tagSlug) => {
+      const now = Date.now()
+      const loaded = await activeUserContext(now)
+      if (!loaded) throw new Error('No active user')
+      const row = await createExperiment(loaded.user.id, loaded.ctx, { problemId: problemForTag(tagSlug).id, tagSlug, ruleId: null, source: 'player', startedAt: now })
       if (!row) throw new Error('NOT_MEASURABLE')
       return toView(row, loaded.ctx, [])
     },

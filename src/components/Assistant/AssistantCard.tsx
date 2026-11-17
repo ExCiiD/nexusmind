@@ -121,7 +121,7 @@ export function AssistantCard({ moment, gameId, refreshKey, className }: Assista
   if (moment !== 'weekly' && report.insights.length === 0 && report.basisGames < 3) return null
 
   return (
-    <Card className={cn('border-hextech-cyan/20 bg-hextech-blue/10', className)} data-testid={`assistant-card-${moment}`}>
+    <Card className={cn('border-hextech-cyan/20 bg-gradient-to-b from-hextech-blue/10 to-hextech-blue/10', className)} data-testid={`assistant-card-${moment}`}>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-hextech-cyan" />
@@ -236,14 +236,18 @@ export function AssistantCard({ moment, gameId, refreshKey, className }: Assista
           <div className="space-y-1.5 pt-1">
             <p className="text-xs font-medium text-hextech-gold">{t('assistant.drivers.title')}</p>
             {drivers.map((d) => (
-              <div key={d.metric} className="flex items-center gap-2">
-                <span className="text-xs text-hextech-text w-40 truncate">{t(`assistant.metrics.${d.metric}`)}</span>
-                <div className="h-1.5 flex-1 rounded bg-hextech-elevated overflow-hidden">
+              // Stacked (name + direction, then the bar) so it fits the narrow
+              // dashboard column instead of overflowing fixed-width columns.
+              <div key={d.metric} className="space-y-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="min-w-0 truncate text-xs text-hextech-text">{t(`assistant.metrics.${d.metric}`)}</span>
+                  <span className="shrink-0 text-[11px] text-hextech-text-dim">
+                    {t(d.direction === 'higher' ? 'assistant.drivers.higher' : 'assistant.drivers.lower')}
+                  </span>
+                </div>
+                <div className="h-1.5 rounded bg-hextech-elevated overflow-hidden">
                   <div className="h-full bg-hextech-cyan" style={{ width: `${Math.round(d.importance * 100)}%` }} />
                 </div>
-                <span className="text-[11px] text-hextech-text-dim w-28 text-right">
-                  {t(d.direction === 'higher' ? 'assistant.drivers.higher' : 'assistant.drivers.lower')}
-                </span>
               </div>
             ))}
             <p className="text-[11px] text-hextech-text-dim">
@@ -256,11 +260,11 @@ export function AssistantCard({ moment, gameId, refreshKey, className }: Assista
           <div className="space-y-1.5 pt-1" data-testid="assistant-best-worst">
             <p className="text-xs font-medium text-hextech-gold">{t('assistant.bestWorst.title')}</p>
             {report.bestWorst.indicators.map((ind) => (
-              <div key={ind.metric} className="flex items-center justify-between gap-2 text-xs">
-                <span className="text-hextech-text w-32 shrink-0 truncate">{t(`assistant.metrics.${ind.metric}`)}</span>
-                <span className="text-hextech-green">{formatMetricValue(ind.metric, ind.bestMean)}</span>
+              <div key={ind.metric} className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 text-xs">
+                <span className="min-w-0 truncate text-hextech-text">{t(`assistant.metrics.${ind.metric}`)}</span>
+                <span className="text-right font-mono text-hextech-green">{formatMetricValue(ind.metric, ind.bestMean)}</span>
                 <span className="text-hextech-text-dim">{t('assistant.bestWorst.vs')}</span>
-                <span className="text-[#E24C3A]">{formatMetricValue(ind.metric, ind.worstMean)}</span>
+                <span className="text-right font-mono text-hextech-red">{formatMetricValue(ind.metric, ind.worstMean)}</span>
               </div>
             ))}
             <p className="text-[11px] text-hextech-text-dim">

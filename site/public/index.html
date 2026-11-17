@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ascend — progresser à League of Legends : joueur, coach, équipe</title>
+<meta name="description" content="Ascend enregistre tes parties de League of Legends, repère tes erreurs, mesure ta progression et réunit coachs et équipes : planning, scrims, drafts, scouting. Gratuit, pour Windows.">
+<link rel="canonical" href="https://[DOMAINE]/">
+<link rel="alternate" hreflang="fr" href="https://[DOMAINE]/">
+<link rel="alternate" hreflang="en" href="https://[DOMAINE]/en/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="Ascend — l'atelier de progression de League of Legends">
+<meta property="og:description" content="Enregistrement automatique, reviews guidées, erreurs repérées, statistiques qui expliquent tes victoires, outils de coaching et d'équipe. Gratuit.">
+<meta property="og:image" content="/assets/shots/dashboard-fr.webp">
+<meta property="og:type" content="website">
+<link rel="preload" href="/assets/fonts/big-shoulders-display.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Ascend","applicationCategory":"GameApplication","operatingSystem":"Windows 10, Windows 11","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"description":"Outil de progression pour League of Legends : enregistrement, reviews, statistiques, coaching et gestion d'équipe."}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Aller au contenu</a>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="Ascend, accueil">ASCEND<span>.</span></a>
+    <nav class="nav" aria-label="Navigation principale">
+      <a class="hide-sm" href="#ateliers">Fonctionnalités</a>
+      <a class="hide-sm" href="#equipes">Coachs &amp; équipes</a>
+      <a class="hide-sm" href="#donnees-riot">Données Riot</a>
+      <a class="hide-sm" href="#faq">FAQ</a>
+      <a class="lang" href="/en/" hreflang="en" lang="en">EN</a>
+      <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases">Télécharger</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap">
+      <div>
+        <p class="kicker">League of Legends · Windows · Gratuit · Bêta</p>
+        <h1 id="hero-title" class="display h1">Deviens ton<br>propre coach.<br><span class="signal">Puis celui<br>de ton équipe.</span></h1>
+        <p class="lead">Ascend enregistre tes parties, repère tes erreurs et te dit quoi travailler à la suivante. Les coachs suivent leurs élèves, les équipes préparent leurs scrims. Un seul outil, sans abonnement.</p>
+        <div class="btn-row">
+          <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases">Télécharger pour Windows</a>
+          <a class="btn btn-ghost" href="https://nexusmind-web.nexusmind-riot-proxy.workers.dev">Ouvrir l'app web</a>
+        </div>
+        <p class="release-meta" data-version>Windows 10/11 · bêta sur invitation</p>
+      </div>
+      <aside class="report" aria-label="Exemple de rapport généré par Ascend">
+        <div class="report-head"><span>RAPPORT · SEMAINE 47</span><span>10 DERNIÈRES PARTIES</span></div>
+        <div class="report-body">
+          <p class="report-title">Ta lane est gagnée.<br>Ton farm ne suit pas.</p>
+          <div class="report-stats">
+            <div><b>+380</b><span>or à 15 min</span></div>
+            <div><b class="signal">5.8</b><span>CS / min · cible 7</span></div>
+            <div><b>70%</b><span>de victoires</span></div>
+          </div>
+          <p class="report-note">Objectif proposé pour ta prochaine session : 7 CS/min en phase de lane. 5 min de last-hit en outil d'entraînement avant ta première partie.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="apercu-title" style="padding-top: 0; border-top: 0;">
+    <div class="wrap">
+      <h2 id="apercu-title" class="kicker">L'app, telle quelle</h2>
+      <figure class="shot">
+        <img src="/assets/shots/dashboard-fr.webp" width="1600" height="1000" alt="Tableau de bord d'Ascend : forme sur les dernières parties, session d'entraînement, chiffres clés, dernière partie et empreinte des fondamentaux en radar." loading="lazy">
+        <figcaption><span>Tableau de bord — capture de l'application, compte de démonstration.</span><span class="mono">v0.2 bêta</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="ateliers" class="section" aria-labelledby="ateliers-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="ateliers-title" class="display h2">Trois ateliers.<br>Un seul outil.</h2>
+        <p>Ascend est né comme un outil d'auto-coaching. Il couvre aujourd'hui tout le cycle de progression : le joueur seul, le coach qui suit ses élèves, l'équipe qui s'entraîne ensemble. Chacun ne voit que ce que les autres ont choisi de partager.</p>
+      </div>
+      <ol class="workshops">
+        <li class="workshop">
+          <span class="num">I</span>
+          <div><h3 class="h3">Le joueur</h3><p class="who">Pour progresser en ranked, seul, avec méthode.</p></div>
+          <ul class="feature-list">
+            <li><strong>Sessions à objectif</strong> : 1 à 3 fondamentaux parmi 10 familles (vagues, vision, trades, rotations…).</li>
+            <li><strong>Enregistrement automatique</strong> de chaque partie, détectée sans rien toucher.</li>
+            <li><strong>Review guidée</strong> : notes par objectif, commentaires horodatés sur la vidéo.</li>
+            <li><strong>Erreurs repérées</strong> automatiquement et placées sur la timeline de la VOD.</li>
+            <li><strong>Statistiques</strong> par partie, phase de lane, moyennes et progression dans le temps.</li>
+            <li><strong>Empreinte des fondamentaux</strong> : radar forme récente contre tes 40 dernières parties, KPI dédiés aux supports.</li>
+            <li><strong>Assistant à règles transparentes</strong> : il dit toujours pourquoi, sans IA payante.</li>
+            <li><strong>Multi-comptes</strong> : un seul historique pour tous tes comptes Riot.</li>
+          </ul>
+        </li>
+        <li class="workshop">
+          <span class="num">II</span>
+          <div><h3 class="h3">Le coach</h3><p class="who">Pour suivre des élèves, en séance ou à distance.</p></div>
+          <ul class="feature-list">
+            <li><strong>Groupes de coaching</strong> sur invitation, avec rôles (coach, analyste, joueur).</li>
+            <li><strong>Partage au choix du joueur</strong> : reviews, stats ou rien, réglable à tout moment.</li>
+            <li><strong>Commentaires horodatés</strong> sur les reviews, fil de discussion coach ↔ joueur.</li>
+            <li><strong>Objectifs assignés</strong> avec échéance, repris en un clic à la session suivante.</li>
+            <li><strong>Plans de développement</strong> individuels et suivi des entretiens.</li>
+            <li><strong>Rapports hebdomadaires</strong> et alerte quand un élève décroche.</li>
+          </ul>
+        </li>
+        <li class="workshop">
+          <span class="num">III</span>
+          <div><h3 class="h3">L'équipe</h3><p class="who">Pour les rosters amateurs et semi-pro qui s'entraînent sérieusement.</p></div>
+          <ul class="feature-list">
+            <li><strong>Planning</strong> façon agenda, disponibilités et créneaux communs, export calendrier.</li>
+            <li><strong>Scrims</strong> : préparation, checklist, analyse d'après-match.</li>
+            <li><strong>Drafts, pools de champions</strong> et synergies du roster.</li>
+            <li><strong>Scouting adverse</strong> à partir des Riot ID que tu saisis.</li>
+            <li><strong>Review collective de VOD</strong>, débrief transcrit en local.</li>
+            <li><strong>Bot Discord</strong> et app web mobile pour suivre depuis n'importe où.</li>
+          </ul>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="boucle-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="boucle-title" class="display h2">Une boucle.<br>Quatre gestes.</h2>
+        <p>Les joueurs qui progressent ne jouent pas forcément plus : ils jouent avec un objectif, se revoient et mesurent. Ascend fait le travail ingrat entre deux parties.</p>
+      </div>
+      <ol class="loop">
+        <li><span class="num">01</span><h3>Choisis un objectif</h3><p>Ascend t'en propose un d'après tes dernières parties. Tu peux le changer.</p></li>
+        <li><span class="num">02</span><h3>Joue normalement</h3><p>La partie est détectée et filmée. Rien ne s'affiche pendant que tu joues.</p></li>
+        <li><span class="num">03</span><h3>Revois l'essentiel</h3><p>Les moments clés sont déjà marqués. Tu notes ton objectif en deux minutes.</p></li>
+        <li><span class="num">04</span><h3>Mesure</h3><p>Tes 15 dernières parties contre tes 40 dernières : tu vois si ça marche.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="fonctions-title">
+    <div class="wrap">
+      <h2 id="fonctions-title" class="kicker">En détail</h2>
+
+      <div class="split">
+        <div>
+          <h3>Ce qui te fait gagner.<br><span class="signal">Pas juste des moyennes.</span></h3>
+          <p>L'onglet Analyse lit tes 50 dernières parties et répond aux vraies questions : sur quel champion tu gagnes, ce qui change dans ton jeu quand tu perds, à quelle heure tu joues le mieux, si tu enchaînes mal après une défaite.</p>
+          <ul class="checks">
+            <li><b>Victoires vs défaites</b> : morts, KDA, farm et vision côte à côte, avec ton levier n°1.</li>
+            <li><b>Gestion du tilt</b> : ton taux de victoire juste après une défaite, dans la même session.</li>
+            <li><b>Échantillons honnêtes</b> : moins de 3 parties, c'est grisé. Pas de fausse certitude.</li>
+          </ul>
+        </div>
+        <figure class="shot">
+          <img src="/assets/shots/insights-fr.webp" width="1600" height="1000" alt="Onglet Analyse : à retenir, pool de champions, victoires contre défaites, taux de victoire selon la durée, l'heure et après une défaite." loading="lazy">
+          <figcaption><span>Statistiques → Analyse</span></figcaption>
+        </figure>
+      </div>
+
+      <div class="split reverse">
+        <div>
+          <h3>La VOD est déjà<br>annotée.</h3>
+          <p>Après chaque partie, Ascend croise la vidéo avec la chronologie officielle du match : morts, objectifs, combats. Les erreurs probables sont marquées, avec une explication que tu valides ou rejettes.</p>
+          <ul class="checks">
+            <li><b>Bibliothèque d'erreurs</b> : chaque erreur taguée nourrit tes statistiques d'erreurs récurrentes.</li>
+            <li><b>Clips et marque-pages</b> pour garder un moment, le partager ou l'envoyer à ton coach.</li>
+            <li><b>Tes vidéos restent sur ton PC.</b> Elles ne sont jamais envoyées sur nos serveurs.</li>
+          </ul>
+        </div>
+        <div class="timeline" role="img" aria-label="Illustration d'une timeline de VOD avec trois moments repérés : un first blood à 3 min 22, une séquence sans farm à 23 min 10 et une mort avant le Baron à 34 min 15.">
+          <div class="mono muted" style="font-size: 11px; letter-spacing: .12em;">WUKONG VS DIANA · 48:25</div>
+          <div class="timeline-bar"><div class="played"></div>
+            <span class="marker good" style="left: 7%"></span><span class="marker bad" style="left: 48%"></span><span class="marker bad" style="left: 71%"></span>
+          </div>
+          <div class="timeline-legend"><span><i style="background: var(--win)"></i>impact positif</span><span><i style="background: var(--signal)"></i>erreur probable</span></div>
+          <div style="margin-top: 14px;">
+            <div class="moment good"><span class="t">03:22</span><div>First blood sécurisé en 2v2<p>+400 or, bonne gestion de vague avant l'action.</p></div></div>
+            <div class="moment"><span class="t">23:10</span><div>3 min 30 sans farmer<p>Regroupement au mid pendant que la side lane pousse seule.</p></div></div>
+            <div class="moment"><span class="t">34:15</span><div>Mort avant le Baron, sans Flash<p>Engagement à 1 contre 3 dans une rivière sans vision.</p></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="split">
+        <div>
+          <h3>Un assistant qui<br>explique tout.</h3>
+          <p>Pas d'IA générative, pas d'abonnement. L'assistant applique des règles de coaching écrites à l'avance, sur tes propres chiffres. Chaque conseil montre les parties d'où il vient. Tu indiques s'il t'a été utile, et il s'ajuste.</p>
+          <ul class="checks">
+            <li><b>Expériences mesurables</b> : « 10 parties à moins de 5 morts », suivies automatiquement.</li>
+            <li><b>Évaluations périodiques</b> pour recalibrer tes objectifs.</li>
+          </ul>
+        </div>
+        <div class="insight">
+          <span class="tag">FOCUS PRIORITAIRE · 40 DERNIÈRES PARTIES</span>
+          <p class="msg">Ton CS/min baisse (6,1 contre 7,0 visé). Quelques minutes de last-hit avant de lancer la file t'aideront.</p>
+          <p class="why"><b>Pourquoi ?</b> Sur tes 12 dernières défaites, tu perds en moyenne 1,2 CS/min entre la 15e et la 28e minute, soit environ 270 pièces d'or à 15 minutes.</p>
+        </div>
+      </div>
+
+      <div class="split reverse">
+        <div>
+          <h3>Ton app,<br>à ta façon.</h3>
+          <p>Huit thèmes de couleurs, des fonds d'écran avec filtre de couleur ou un fond uni, appliqués en direct. Un profil qui garde la trace de ton travail dans l'app : niveau d'entraînement et titres gagnés en faisant tes reviews.</p>
+        </div>
+        <figure class="shot">
+          <img src="/assets/shots/appearance-fr.webp" width="1600" height="1000" alt="Réglages d'apparence : thèmes de couleurs, fonds d'écran, filtre de couleur et aperçu en direct." loading="lazy">
+          <figcaption><span>Réglages → Apparence</span></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="equipes" class="section" aria-labelledby="equipes-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="equipes-title" class="display h2">Pour les coachs<br>et les équipes.</h2>
+        <p>Tout ce qu'un staff fait aujourd'hui entre Discord, un tableur et trois sites de stats, réuni au même endroit. Sur le PC pour l'analyse, sur le téléphone pour le planning.</p>
+      </div>
+      <div class="team-cols">
+        <div>
+          <h3>ORGANISER</h3>
+          <ul>
+            <li><b>Planning partagé</b>Vue semaine façon agenda, rappels la veille et une heure avant.</li>
+            <li><b>Disponibilités</b>Récurrentes, avec créneaux communs calculés pour tout le roster.</li>
+            <li><b>Annonces et tâches</b>Notifications avec heures calmes réglables.</li>
+            <li><b>Recrutement</b>Candidats, grille d'évaluation, décision.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>PRÉPARER</h3>
+          <ul>
+            <li><b>Drafts</b>Préparations partagées, liées aux scrims.</li>
+            <li><b>Pools de champions</b>Niveau de maîtrise et synergies du roster.</li>
+            <li><b>Scouting</b>Champions et menaces d'une équipe adverse, à partir de son historique public.</li>
+            <li><b>Stats de scrims et tournois</b>Parties personnalisées agrégées par joueur.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>DÉBRIEFER</h3>
+          <ul>
+            <li><b>Review collective</b>Commentaires sur la VOD, actions et assignations.</li>
+            <li><b>Transcription locale</b>Le débrief vocal est retranscrit sur ton PC, rien n'est envoyé.</li>
+            <li><b>Bien-être</b>Check-in énergie/humeur/sommeil, partagé seulement si le joueur l'accepte.</li>
+            <li><b>Rapports</b>Hebdomadaires, joueur et équipe, exportables.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="donnees-riot" class="section" aria-labelledby="riot-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="riot-title" class="display h2">Comment Ascend<br>utilise les données Riot.</h2>
+        <p>Ascend s'appuie sur l'API officielle de Riot Games, en lecture seule, et respecte ses règles d'utilisation. Voici précisément ce que l'application demande, et ce qu'elle ne fait jamais.</p>
+      </div>
+      <div class="facts">
+        <div class="fact"><h3>Après la partie, jamais pendant</h3><p>Ascend n'affiche rien en jeu : pas d'overlay, pas d'information sur les adversaires, aucun avantage en direct. L'API locale <code>Live Client Data</code> du jeu sert uniquement à savoir quand une partie commence et se termine, pour lancer et arrêter l'enregistrement.</p></div>
+        <div class="fact"><h3>La clé reste sur nos serveurs</h3><p>L'application n'embarque aucune clé d'API. Les requêtes passent par un relais Ascend (HTTPS) qui ajoute la clé, n'autorise qu'une liste fermée d'appels en lecture et limite le volume par compte.</p></div>
+        <div class="fact"><h3>Les données de match sont mises en cache</h3><p>Chaque match n'est demandé qu'une fois, puis gardé sur ton PC. Cela respecte les limites de débit de Riot et accélère l'app.</p></div>
+        <div class="fact"><h3>Pas de classement maison</h3><p>Ascend n'estime pas de MMR et ne remplace pas le classement officiel. Le rang affiché est celui que Riot fournit.</p></div>
+        <div class="fact"><h3>Ce que tu choisis de partager</h3><p>Tes données de coaching restent privées. Un coach ou un coéquipier ne voit que ce que tu as accepté de partager avec son groupe, et tu peux retirer ce partage à tout moment.</p></div>
+        <div class="fact"><h3>Données publiques seulement</h3><p>Le scouting utilise uniquement l'historique public des Riot ID que tu saisis. Ascend ne cherche pas à identifier des joueurs anonymes.</p></div>
+      </div>
+      <div class="endpoints table-scroll">
+        <table>
+          <caption class="kicker" style="text-align: left; padding: 16px 16px 0; margin: 0;">Appels à l'API Riot Games</caption>
+          <thead><tr><th scope="col">API</th><th scope="col">Pourquoi</th></tr></thead>
+          <tbody>
+            <tr><td><code>ACCOUNT-V1</code></td><td>Retrouver ton compte (et celui de tes coéquipiers ou adversaires scoutés) à partir d'un Riot ID.</td></tr>
+            <tr><td><code>SUMMONER-V4</code></td><td>Afficher le niveau et l'icône d'invocateur.</td></tr>
+            <tr><td><code>LEAGUE-V4</code></td><td>Afficher le rang classé officiel.</td></tr>
+            <tr><td><code>CHAMPION-MASTERY-V4</code></td><td>Construire le pool de champions d'un joueur.</td></tr>
+            <tr><td><code>MATCH-V5</code> (matches, timeline)</td><td>Statistiques d'après-partie, valeurs à 15 minutes, placement des moments clés sur la VOD, statistiques de scrims.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="vie-privee-title">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="vie-privee-title" class="display h2">Tes données<br>t'appartiennent.</h2>
+        <p>Ascend fonctionne d'abord sur ton PC. Le compte sert à sauvegarder, synchroniser tes appareils et travailler avec ton coach ou ton équipe. <a href="/confidentialite.html">Lire la politique de confidentialité</a>.</p>
+      </div>
+      <div class="facts">
+        <div class="fact"><h3>Local d'abord</h3><p>Sessions, reviews, notes et statistiques vivent dans l'application. Elle reste utilisable hors ligne.</p></div>
+        <div class="fact"><h3>Vidéos jamais envoyées</h3><p>Les enregistrements restent sur ton disque. Tu choisis ce que tu publies (par exemple sur ta chaîne YouTube).</p></div>
+        <div class="fact"><h3>Hébergement en Europe</h3><p>Comptes et sauvegardes chez Supabase, région Union européenne / Suisse. Aucune donnée vendue, aucune publicité.</p></div>
+        <div class="fact"><h3>Export et suppression</h3><p>Exporte toutes tes données en un fichier. Supprime ton compte et tes sauvegardes en un clic, depuis l'app.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" class="section faq" aria-labelledby="faq-title">
+    <div class="wrap">
+      <h2 id="faq-title" class="display h2" style="margin-bottom: 32px;">Questions</h2>
+      <details><summary>Ascend est-il gratuit ?</summary><p>Oui. Toutes les fonctionnalités décrites ici sont gratuites pendant la bêta, et une version gratuite complète restera toujours disponible.</p></details>
+      <details><summary>Comment obtenir un accès ?</summary><p>La bêta est sur invitation : un code d'accès, ou le code d'une équipe ou d'un groupe de coaching qui t'invite. Demande-le à <span class="placeholder">[E-MAIL DE CONTACT]</span>.</p></details>
+      <details><summary>Est-ce autorisé par Riot Games ?</summary><p>Ascend utilise l'API publique officielle de Riot Games et respecte ses règles : aucune modification du jeu, aucune information pendant la partie, aucun avantage en direct. Ascend n'est pas approuvé par Riot Games (voir la mention en bas de page).</p></details>
+      <details><summary>Est-ce que ça marche sur Mac ?</summary><p>L'application de bureau est disponible pour Windows 10 et 11. L'app web (reviews, coaching, planning, scrims) fonctionne sur tous les appareils, mais n'enregistre pas les parties.</p></details>
+      <details><summary>Est-ce que l'enregistrement ralentit le jeu ?</summary><p>La capture utilise l'encodeur matériel de ta carte graphique quand il est disponible. La qualité, les images par seconde et le dossier sont réglables, et l'enregistrement automatique peut être désactivé.</p></details>
+      <details><summary>Mes coéquipiers voient-ils mes statistiques ?</summary><p>Seulement si tu le décides. Le partage se règle groupe par groupe (reviews, statistiques, données d'équipe, bien-être) et se retire à tout moment.</p></details>
+      <details><summary>Y a-t-il de l'IA ?</summary><p>Non pour le cœur de l'app : l'assistant applique des règles de coaching transparentes. La transcription vocale des débriefs utilise un modèle qui tourne sur ton PC ; rien n'est envoyé à un service d'IA.</p></details>
+    </div>
+  </section>
+
+  <section class="cta-band" aria-labelledby="cta-title">
+    <div class="wrap">
+      <h2 id="cta-title" class="display h2">Ta prochaine partie<br>compte double.</h2>
+      <div>
+        <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases">Télécharger pour Windows</a>
+        <p class="release-meta" data-version style="margin-top: 10px;">Windows 10/11 · bêta sur invitation</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="/">ASCEND<span>.</span></a>
+        <p style="margin: 10px 0 0; max-width: 360px;">L'outil de progression des joueurs, coachs et équipes de League of Legends.</p>
+      </div>
+      <div>
+        <h2>PRODUIT</h2>
+        <ul>
+          <li><a data-download href="https://github.com/ExCiiD/nexusmind/releases">Télécharger (Windows)</a></li>
+          <li><a href="https://nexusmind-web.nexusmind-riot-proxy.workers.dev">App web</a></li>
+          <li><a href="https://github.com/ExCiiD/nexusmind/releases">Notes de version</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>LÉGAL</h2>
+        <ul>
+          <li><a href="/conditions.html">Conditions d'utilisation</a></li>
+          <li><a href="/confidentialite.html">Politique de confidentialité</a></li>
+          <li>Contact : <span class="placeholder">[E-MAIL DE CONTACT]</span></li>
+        </ul>
+      </div>
+    </div>
+    <p class="legal-notice" lang="en">Ascend isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.</p>
+    <p class="legal-notice" style="margin-top: 8px; padding-top: 0; border-top: 0;">Ascend n'est pas approuvé par Riot Games et ne reflète pas les opinions de Riot Games ni de quiconque officiellement impliqué dans la production ou la gestion des propriétés de Riot Games. Riot Games et toutes les propriétés associées sont des marques commerciales ou déposées de Riot Games, Inc.</p>
+  </div>
+</footer>
+<script src="/assets/site.js" defer></script>
+</body>
+</html>

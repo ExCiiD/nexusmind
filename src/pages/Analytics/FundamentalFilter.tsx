@@ -104,7 +104,7 @@ export function FundamentalFilter({ categories, selected, onChange, withData }: 
                             ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
                             : isActive
                               ? 'border-hextech-border text-hextech-text-dim'
-                              : 'border-hextech-border-dim text-hextech-text-dim opacity-40 hover:opacity-70',
+                              : 'border-hextech-border-dim text-hextech-text hover:border-hextech-border',
                         )}
                       >
                         {f.label}

@@ -331,7 +331,7 @@ function GamesTab() {
                       'rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-colors',
                       selectedRoles.includes(role)
                         ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright'
-                        : 'border-hextech-border-dim text-hextech-text-dim opacity-50',
+                        : 'border-hextech-border-dim text-hextech-text hover:border-hextech-border',
                     )}
                   >
                     {ROLE_LABELS[role]}

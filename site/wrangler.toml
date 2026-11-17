@@ -1,0 +1,12 @@
+# Ascend showcase site (docs/PLAN_VITRINE.md), served by Cloudflare Workers
+# static assets like the web app (web/wrangler.toml). Plain static files, no
+# build step. Deploy from this folder:
+#   npx wrangler deploy
+# Before going public: replace every [DOMAINE] / [E-MAIL DE CONTACT] /
+# [NOM DE L'ÉDITEUR] placeholder (grep -r "\[" public) and attach the domain.
+name = "nexusmind-site"
+compatibility_date = "2025-09-01"
+
+[assets]
+directory = "./public"
+not_found_handling = "404-page"

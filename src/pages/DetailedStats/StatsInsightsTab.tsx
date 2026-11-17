@@ -17,7 +17,7 @@ import {
   type SplitMetric,
 } from '@/lib/statsInsights'
 
-const panel = 'rounded-2xl border border-hextech-border-dim/70 bg-hextech-dark/85 p-5 shadow-lg backdrop-blur-sm'
+const panel = 'rounded-2xl border border-hextech-border-dim/70 panel-surface p-5 shadow-lg backdrop-blur-sm'
 
 /**
  * Stats → "Analyse" tab: turns the last 50 games into answers instead of

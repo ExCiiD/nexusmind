@@ -121,7 +121,7 @@ export function LanePhasePage() {
   const oppIcon = useChampionIconUrl(report?.opponent.championName ?? null)
 
   return (
-    <div className="space-y-4 p-6 max-w-6xl mx-auto">
+    <div className="w-full space-y-4 py-4">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
           <ArrowLeft className="h-4 w-4" /> Back

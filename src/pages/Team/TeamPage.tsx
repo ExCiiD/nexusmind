@@ -91,7 +91,7 @@ export function TeamPage() {
     // Wide layout — Team Management has dense grids (champion list, drafts, scouting),
     // so we use the full window width up to a generous ceiling instead of `max-w-7xl`
     // which left half the screen empty on 1080p+ displays.
-    <div className="p-6 space-y-4 w-full max-w-[1800px] mx-auto">
+    <div className="w-full space-y-4 py-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-hextech-text-bright flex items-center gap-2">

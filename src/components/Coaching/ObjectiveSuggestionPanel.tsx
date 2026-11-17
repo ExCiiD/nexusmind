@@ -91,7 +91,7 @@ export function ObjectiveSuggestionPanel({ assessmentScores, onAccept }: Objecti
   if (suggestions.length === 0) return null
 
   return (
-    <Card className="border-hextech-teal/30 bg-hextech-blue/10">
+    <Card className="border-hextech-teal/30 bg-gradient-to-b from-hextech-blue/10 to-hextech-blue/10">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Lightbulb className="h-4 w-4 text-hextech-cyan" />

@@ -74,7 +74,7 @@ export function TimelineNoteInput({ notes, onChange, objectiveLabel }: TimelineN
       </div>
 
       {showGuide && (
-        <Card className="border-hextech-teal/30 bg-hextech-blue/30">
+        <Card className="border-hextech-teal/30 bg-gradient-to-b from-hextech-blue/30 to-hextech-blue/30">
           <CardContent className="p-4">
             <p className="text-xs font-semibold text-hextech-cyan mb-2">
               {t('reviewForm.timeline.guideTitle')}

@@ -177,6 +177,8 @@
   --app-bg-blur: 0px;
   --app-bg-tint: #000000;
   --app-bg-tint-opacity: 0;
+  /* Panel / card fill over the background (Settings → Appearance). */
+  --app-panel-opacity: 90%;
 }
 
 .ascend-texture-bg {
@@ -217,6 +219,19 @@
 .app-drag-region textarea,
 .app-drag-region [role="button"] {
   -webkit-app-region: no-drag;
+}
+
+/*
+ * Panel and card fill: the theme's dark surface at the user's chosen
+ * opacity (Settings → Appearance → panels). A colour tint on a card is
+ * written as a background *gradient* (bg-gradient-to-b from-x/10 to-x/10),
+ * which CSS paints above this background-color — the tint stays visible
+ * but text never sits straight on the background image.
+ */
+@layer components {
+  .panel-surface {
+    background-color: color-mix(in srgb, var(--hextech-dark) var(--app-panel-opacity), transparent);
+  }
 }
 
 @layer base {

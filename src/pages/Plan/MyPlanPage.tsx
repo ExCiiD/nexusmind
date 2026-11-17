@@ -74,7 +74,7 @@ export function MyPlanPage() {
       )}
 
       {focus && (
-        <Card className="border-hextech-gold/40 bg-hextech-gold/5" data-testid="plan-focus">
+        <Card className="border-hextech-gold/40 bg-gradient-to-b from-hextech-gold/5 to-hextech-gold/5" data-testid="plan-focus">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Target className="h-4 w-4 text-hextech-gold" />

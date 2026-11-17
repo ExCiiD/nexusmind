@@ -1,5 +1,7 @@
 # Plan — site vitrine Ascend
 
+> **État (17/11/2026)** : site construit dans `site/` (HTML/CSS statiques, sans build ni script tiers) — direction graphique « A · Rapport de scouting » choisie par l'utilisateur, avec le contenu « ateliers » de B (joueur / coach / équipe) ; la carte joueur n'est volontairement pas mise en avant. Pages : `/` et `/en/`, `/conditions.html`, `/confidentialite.html`, `/en/terms.html`, `/en/privacy.html`, 404. Section « Comment Ascend utilise les données Riot » (APIs appelées, relais, pas d'info en jeu, pas de MMR) pensée pour la demande de clé **Production**. Captures réelles via le harness (`.harness/shots.mjs`). Reste avant mise en ligne : remplacer les placeholders `[DOMAINE]`, `[E-MAIL DE CONTACT]`, `[NOM DE L'ÉDITEUR]`, `[ADRESSE / PAYS]`, puis `cd site && npx wrangler deploy` + domaine. Les textes légaux du site (v0.2) sont plus complets que ceux de l'app (`src/legal/*.md`, v0.1) : à resynchroniser.
+
 > Front-end généré avec **Gemini 4** (code) et **Midjourney** (visuels). Ce document est le brief : objectifs, structure, textes, visuels (prompts), contraintes, technique et lancement.
 
 ---

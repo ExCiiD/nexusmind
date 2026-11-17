@@ -615,7 +615,16 @@
       "axisNote": "Axe Y = évolution en % depuis le premier snapshot · valeurs brutes visibles dans le tooltip"
     },
     "basedOnGames_one": "Basé sur votre dernière partie",
-    "basedOnGames_other": "Basé sur vos {{count}} dernières parties"
+    "basedOnGames_other": "Basé sur vos {{count}} dernières parties",
+    "seriesCat": {
+      "general": "Général",
+      "economy": "Économie",
+      "combat": "Combat",
+      "laning": "Phase de lane",
+      "vision": "Vision",
+      "objectives": "Objectifs"
+    },
+    "seriesReset": "Revenir aux courbes par défaut"
   },
   "detailedStats": {
     "pageTitle": "Stats détaillées",
@@ -2432,12 +2441,36 @@
       "zaun": {
         "label": "Chimie de Zaun",
         "desc": "Vert toxique et rouille."
+      },
+      "custom": {
+        "label": "Personnalisé",
+        "desc": "Tes propres couleurs."
       }
-    }
+    },
+    "custom": {
+      "base": "Fond",
+      "accent": "Couleur principale",
+      "secondary": "Couleur secondaire",
+      "hint": "Les autres teintes (cadres, bordures, textes) sont calculées à partir de ces trois couleurs, en gardant le texte lisible.",
+      "reset": "Revenir aux couleurs proposées"
+    },
+    "myImage": "Mon image",
+    "addImage": "Ajouter mon image",
+    "replaceImage": "Remplacer",
+    "removeImage": "Retirer",
+    "localOnly": "Ton image reste sur cet ordinateur : elle n’est jamais envoyée en ligne.",
+    "imageError": "Image illisible. Essaie un PNG, JPG ou WebP.",
+    "panels": "Cadres",
+    "panelPreset": {
+      "glass": "Transparents",
+      "balanced": "Équilibrés",
+      "solid": "Pleins"
+    },
+    "panelsHint": "Opacité des cadres : {{value}} %. Plus c’est plein, plus le texte est lisible sur un fond chargé."
   },
   "profile": {
     "title": "Mon profil",
-    "subtitle": "Votre carte de joueur, votre rang Ascend et vos titres.",
+    "subtitle": "Ta carte de joueur, ton palier d’entraînement et tes titres.",
     "edit": "Personnaliser",
     "save": "Enregistrer",
     "saved": "Profil enregistré",
@@ -2449,7 +2482,7 @@
       "titles": "Titre & vitrine",
       "bio": "Devise"
     },
-    "unlockAt": "Se débloque au rang {{tier}}",
+    "unlockAt": "Se débloque au palier {{tier}}",
     "bioLabel": "Votre devise",
     "bioPlaceholder": "Ex. : « Un CS à la fois. »",
     "equipTitle": "Titre affiché sous votre nom",
@@ -2464,26 +2497,26 @@
       "clips": "Clips",
       "days": "Jours",
       "showcase": "Vitrine",
-      "maxTier": "Rang maximal atteint",
+      "maxTier": "Palier maximal atteint",
       "toNextTier_one": "Encore {{count}} niveau avant {{tier}}",
       "toNextTier_other": "Encore {{count}} niveaux avant {{tier}}"
     },
     "path": {
       "title": "Chemin d’ascension",
-      "desc": "Votre rang Ascend monte avec votre niveau dans l’app. Chaque rang débloque de nouvelles icônes.",
+      "desc": "Ton palier Ascend monte avec ton niveau d’entraînement dans l’app — il mesure ton travail, pas ton niveau de jeu. Chaque palier débloque de nouvelles icônes.",
       "level": "Niv. {{level}}",
       "unlocksIcon": "Icône débloquée à ce rang",
       "howToXp": "Gagnez de l’XP avec les sessions, les reviews, les évaluations et votre série de jours."
     },
     "tiers": {
-      "iron": "Fer",
-      "bronze": "Bronze",
-      "silver": "Argent",
-      "gold": "Or",
-      "platinum": "Platine",
-      "emerald": "Émeraude",
-      "diamond": "Diamant",
-      "master": "Maître"
+      "recrue": "Recrue",
+      "initie": "Initié",
+      "adepte": "Adepte",
+      "stratege": "Stratège",
+      "virtuose": "Virtuose",
+      "sage": "Sage",
+      "oracle": "Oracle",
+      "legende": "Légende"
     },
     "rarity": {
       "common": "Commun",
@@ -2623,5 +2656,89 @@
         "desc_other": "Atteindre le niveau {{count}}"
       }
     }
+  },
+  "mistakeLab": {
+    "title": "Labo d’erreurs",
+    "subtitle": "Tes erreurs taguées : lesquelles coûtent le plus, quand elles arrivent, et où les revoir.",
+    "period": "Période",
+    "days_one": "{{count}} j",
+    "days_other": "{{count}} j",
+    "role": "Rôle",
+    "champion": "Champion",
+    "championPlaceholder": "Champion (ex. Renekton)",
+    "roles": {
+      "any": "Tous les rôles",
+      "TOP": "Top",
+      "JUNGLE": "Jungle",
+      "MIDDLE": "Mid",
+      "BOTTOM": "ADC",
+      "UTILITY": "Support"
+    },
+    "loading": "Chargement de tes erreurs…",
+    "empty": "Aucune erreur taguée sur cette période.",
+    "emptyHint": "Tague des erreurs pendant tes reviews (ou lance la détection automatique) et elles apparaîtront ici.",
+    "kpi": {
+      "total": "Erreurs taguées",
+      "games_one": "sur {{count}} partie analysée",
+      "games_other": "sur {{count}} parties analysées",
+      "perGame": "Par partie",
+      "perGameSub": "en moyenne",
+      "top": "Erreur n°1",
+      "topSub": "{{count}} fois · {{share}} % du total",
+      "phase": "Phase la plus touchée",
+      "phaseSub": "{{share}} % de tes erreurs"
+    },
+    "families": "Familles d’erreurs",
+    "family": {
+      "all": "Toutes",
+      "deaths": "Positionnement & morts",
+      "vision": "Vision & carte",
+      "tempo": "Tempo & économie",
+      "mechanics": "Mécaniques & laning"
+    },
+    "ranking": {
+      "title": "Classement par fréquence",
+      "none": "Aucune erreur de cette famille sur la période.",
+      "legend": "Rouge : erreurs qui coûtent des combats ou des objectifs · Ambre : vision et tempo · Bleu : micro. La dernière colonne compare ton taux de victoire avec et sans cette erreur.",
+      "costTitle": "Écart de taux de victoire : parties avec cette erreur vs parties analysées sans"
+    },
+    "trend": {
+      "title": "Évolution",
+      "notEnough": "Pas encore assez de parties pour une courbe.",
+      "mode": {
+        "day": "par jour",
+        "game": "par partie (historique court)"
+      }
+    },
+    "phase": {
+      "early": "Début",
+      "mid": "Milieu",
+      "late": "Fin"
+    },
+    "phaseRange": {
+      "early": "0–14 min",
+      "mid": "14–25 min",
+      "late": "25 min et +"
+    },
+    "inspector": {
+      "title": "Détail de l’erreur",
+      "pick": "Choisis une erreur dans le classement.",
+      "summary_one": "{{count}} fois sur {{games}} partie · {{share}} % de tes erreurs.",
+      "summary_other": "{{count}} fois sur {{games}} parties · {{share}} % de tes erreurs.",
+      "cost": "Tu gagnes {{with}} % des parties où elle arrive, contre {{without}} % des autres parties analysées.",
+      "when": "Quand elle arrive",
+      "moments": "Derniers moments",
+      "replay": "Revoir",
+      "noVod": "pas de VOD",
+      "actionHint": "Fais-en ton objectif : Ascend suit cette erreur sur tes prochaines parties et te dit si elle recule.",
+      "action": {
+        "idle": "Travailler cette erreur",
+        "busy": "Lancement…",
+        "done": "Suivi lancé",
+        "error": "Impossible à mesurer pour cette erreur"
+      }
+    },
+    "win": "V",
+    "loss": "D"
   }
 }

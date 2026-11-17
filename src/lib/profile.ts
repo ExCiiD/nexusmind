@@ -37,15 +37,22 @@ export interface ProfileStats {
 
 /* ─── Tiers ─── */
 
+/**
+ * Ascend tiers measure work done in the app (XP from reviews, sessions,
+ * assessments), never game skill. Names and colors are deliberately unlike
+ * League's ranked ladder (no metals/gems, no rank palette): Riot's developer
+ * policies forbid alternative ranking systems, and nothing here should read
+ * as one.
+ */
 export const TIERS = [
-  { id: 'iron', minLevel: 1, from: '#5B5F66', to: '#8C9097', glow: 'rgba(140,144,151,0.35)' },
-  { id: 'bronze', minLevel: 3, from: '#7A4A2A', to: '#C98A55', glow: 'rgba(201,138,85,0.4)' },
-  { id: 'silver', minLevel: 6, from: '#8A97A6', to: '#E3EAF2', glow: 'rgba(214,224,235,0.4)' },
-  { id: 'gold', minLevel: 10, from: '#A8781F', to: '#F5D27A', glow: 'rgba(245,210,122,0.45)' },
-  { id: 'platinum', minLevel: 15, from: '#2E8C86', to: '#9BE6D8', glow: 'rgba(110,220,200,0.45)' },
-  { id: 'emerald', minLevel: 20, from: '#127A4E', to: '#4FE0A0', glow: 'rgba(79,224,160,0.45)' },
-  { id: 'diamond', minLevel: 27, from: '#3A5FD0', to: '#B6C8FF', glow: 'rgba(150,180,255,0.5)' },
-  { id: 'master', minLevel: 35, from: '#7D2FC4', to: '#E6A8FF', glow: 'rgba(210,140,255,0.55)' },
+  { id: 'recrue', minLevel: 1, from: '#4E5359', to: '#9AA0A8', glow: 'rgba(154,160,168,0.35)' },
+  { id: 'initie', minLevel: 3, from: '#3E5468', to: '#8FB0C9', glow: 'rgba(143,176,201,0.4)' },
+  { id: 'adepte', minLevel: 6, from: '#1F6F6A', to: '#6FD3C3', glow: 'rgba(111,211,195,0.4)' },
+  { id: 'stratege', minLevel: 10, from: '#2E7A3C', to: '#8BE08F', glow: 'rgba(139,224,143,0.42)' },
+  { id: 'virtuose', minLevel: 15, from: '#A8701F', to: '#F5C46A', glow: 'rgba(245,196,106,0.45)' },
+  { id: 'sage', minLevel: 20, from: '#B2471E', to: '#FF9A5C', glow: 'rgba(255,154,92,0.45)' },
+  { id: 'oracle', minLevel: 27, from: '#8E1F3A', to: '#FF6F91', glow: 'rgba(255,111,145,0.5)' },
+  { id: 'legende', minLevel: 35, from: '#C9A227', to: '#FFF2B8', glow: 'rgba(255,242,184,0.55)' },
 ] as const
 export type TierId = (typeof TIERS)[number]['id']
 export type Tier = (typeof TIERS)[number]
@@ -85,9 +92,9 @@ export interface ProfileIcon { id: string; url: string; unlockTier: TierId }
 
 /** The first five are free; the rest unlock as the Ascend tier rises. */
 const ICON_UNLOCKS: Array<[string, TierId]> = [
-  ['tempete', 'iron'], ['survivant', 'iron'], ['souffle', 'iron'], ['jade', 'iron'], ['elevation', 'iron'],
-  ['brasier', 'bronze'], ['halo', 'silver'], ['ascension', 'gold'], ['arcane', 'platinum'],
-  ['cercle', 'emerald'], ['invocatrice', 'emerald'], ['chevalier', 'diamond'], ['heaume', 'master'],
+  ['tempete', 'recrue'], ['survivant', 'recrue'], ['souffle', 'recrue'], ['jade', 'recrue'], ['elevation', 'recrue'],
+  ['brasier', 'initie'], ['halo', 'adepte'], ['ascension', 'stratege'], ['arcane', 'virtuose'],
+  ['cercle', 'sage'], ['invocatrice', 'sage'], ['chevalier', 'oracle'], ['heaume', 'legende'],
 ]
 export const PROFILE_ICONS: ProfileIcon[] = ICON_UNLOCKS
   .filter(([id]) => ICON_URLS[id])

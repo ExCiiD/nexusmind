@@ -535,6 +535,8 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   updateMistake: (args: { id: string; note?: string | null; severity?: number; tagId?: string }) => Promise<Mistake>
   deleteMistake: (id: string) => Promise<{ success: boolean }>
   autoDetectMistakes: (gameId: string) => Promise<{ created: number; skipped: number; reason: string }>
+  /** Mistake Lab: tagged occurrences with game result, game time and recording. */
+  getMistakeOccurrences: (opts?: { days?: number; role?: string | null; champion?: string | null }) => Promise<import('./mistakeInsights').MistakeOccurrence[]>
   getMistakeTopTags: (opts?: { days?: number; role?: string | null; champion?: string | null }) => Promise<MistakeTopTagEntry[]>
   getMistakeTrend: (opts: { tagSlugs?: string[]; days?: number; role?: string | null; champion?: string | null }) => Promise<MistakeTrendEntry[]>
   getMistakeHeatmap: (opts: { days?: number; role?: string | null; champion?: string | null }) => Promise<MistakeHeatmapEntry[]>
@@ -692,6 +694,8 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   sendAssistantFeedback: (insightKey: string, ruleId: string, moment: AssistantMoment, vote: 1 | -1 | 0) => Promise<{ ok: boolean }>
   coachExperiments: () => Promise<CoachExperimentState | null>
   coachStartExperiment: (problemId: string, tagSlug: string | null, ruleId: string | null) => Promise<CoachExperiment>
+  /** Starts the measurable experiment for one mistake tag (Mistake Lab). */
+  coachStartTagExperiment: (tagSlug: string) => Promise<CoachExperiment>
   coachAbandonExperiment: (experimentId: string) => Promise<{ ok: boolean }>
   coachObjectiveCheck: (gameId: string) => Promise<CoachObjectiveCheck | null>
   /** R4/R5: which unreviewed game to review first, and the backlog size. */

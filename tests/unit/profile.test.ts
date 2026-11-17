@@ -18,23 +18,23 @@ const stats = (p: Partial<ProfileStats> = {}): ProfileStats => ({
 
 describe('tiers', () => {
   it('maps levels to tiers', () => {
-    expect(tierForLevel(1).id).toBe('iron')
-    expect(tierForLevel(6).id).toBe('silver')
-    expect(tierForLevel(27).id).toBe('diamond')
-    expect(tierForLevel(99).id).toBe('master')
+    expect(tierForLevel(1).id).toBe('recrue')
+    expect(tierForLevel(6).id).toBe('adepte')
+    expect(tierForLevel(27).id).toBe('oracle')
+    expect(tierForLevel(99).id).toBe('legende')
   })
 
   it('reports progress toward the next tier', () => {
     const p = tierProgress(0)
-    expect(p.tier.id).toBe('iron')
-    expect(p.next?.id).toBe('bronze')
+    expect(p.tier.id).toBe('recrue')
+    expect(p.next?.id).toBe('initie')
     expect(p.progress).toBeGreaterThanOrEqual(0)
     expect(p.progress).toBeLessThan(100)
   })
 
   it('compares tiers', () => {
-    expect(isTierReached('gold', 'silver')).toBe(true)
-    expect(isTierReached('silver', 'gold')).toBe(false)
+    expect(isTierReached('stratege', 'adepte')).toBe(true)
+    expect(isTierReached('adepte', 'stratege')).toBe(false)
   })
 })
 

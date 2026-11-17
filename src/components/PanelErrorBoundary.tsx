@@ -41,7 +41,7 @@ export class PanelErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <Card className="p-4 border-red-500/50 bg-red-500/5">
+        <Card className="p-4 border-red-500/50 bg-gradient-to-b from-red-500/5 to-red-500/5">
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 text-red-400 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">

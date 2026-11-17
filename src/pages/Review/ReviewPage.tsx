@@ -726,7 +726,7 @@ export function ReviewPage() {
       {latestGame.review?.id && <CoachFeedbackPanel reviewId={latestGame.review.id} gameId={latestGame.id} />}
 
       {Object.keys(biasWarningsByObjective).length > 0 && (
-        <Card className="border-orange-500/40 bg-orange-500/5">
+        <Card className="border-orange-500/40 bg-gradient-to-b from-orange-500/5 to-orange-500/5">
           <CardContent className="flex items-start gap-3 p-4">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-300" />
             <div className="space-y-1">

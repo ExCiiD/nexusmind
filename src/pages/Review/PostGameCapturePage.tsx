@@ -145,7 +145,7 @@ export function PostGameCapturePage() {
   if (loading) return <div className="p-12 text-center text-hextech-text-dim">Chargement…</div>
   if (!filePath) {
     return (
-      <div className="p-8 max-w-lg mx-auto space-y-4">
+      <div className="w-full space-y-4 py-6">
         <p className="text-hextech-text-dim">Enregistrement introuvable.</p>
         <Button type="button" variant="outline" onClick={() => navigate(-1)}>
           Retour
@@ -155,7 +155,7 @@ export function PostGameCapturePage() {
   }
 
   return (
-    <div className="animate-fade-in max-w-lg mx-auto pb-20 px-4">
+    <div className="w-full animate-fade-in pb-20">
       <div className="flex items-center gap-3 mb-6">
         <button
           type="button"

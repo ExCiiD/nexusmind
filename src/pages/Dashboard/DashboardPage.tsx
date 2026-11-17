@@ -59,7 +59,7 @@ interface RecentGame {
 /** Shared panel chrome — translucent so the user's background (Settings →
  *  Appearance) shows through, with the theme's own border token. */
 export const panelClass =
-  'rounded-2xl border border-hextech-border-dim/70 bg-hextech-dark/85 backdrop-blur-sm shadow-lg'
+  'rounded-2xl border border-hextech-border-dim/70 panel-surface backdrop-blur-sm shadow-lg'
 
 export function DashboardPage() {
   const { t } = useTranslation()
@@ -208,6 +208,10 @@ export function DashboardPage() {
           {lastGame && <LastGameCard game={lastGame} onViewDetails={() => navigate(`/stats/${lastGame.matchId}`)} onReview={() => navigate('/review')} />}
 
           {statDiffs.length >= 2 && <StatDiffsCard diffs={statDiffs} onViewAll={() => navigate('/stats')} />}
+
+          {/* In the left column (not full-width below the grid): the right
+              column is taller, and this card fills the gap it left. */}
+          <MistakeFrequencyCard onViewAll={() => navigate('/stats/mistakes')} />
         </div>
 
         {/* ── Right column ── */}
@@ -219,7 +223,6 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <MistakeFrequencyCard onViewAll={() => navigate('/stats/mistakes')} />
     </div>
   )
 }

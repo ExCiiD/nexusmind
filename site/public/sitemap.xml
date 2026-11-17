@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://[DOMAINE]/</loc></url>
+  <url><loc>https://[DOMAINE]/en/</loc></url>
+  <url><loc>https://[DOMAINE]/conditions.html</loc></url>
+  <url><loc>https://[DOMAINE]/confidentialite.html</loc></url>
+  <url><loc>https://[DOMAINE]/en/terms.html</loc></url>
+  <url><loc>https://[DOMAINE]/en/privacy.html</loc></url>
+</urlset>

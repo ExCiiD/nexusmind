@@ -171,7 +171,7 @@ export function ReviewInsightPanel({
   if (insights.length === 0) return null
 
   return (
-    <Card className="border-hextech-cyan/20 bg-hextech-blue/10">
+    <Card className="border-hextech-cyan/20 bg-gradient-to-b from-hextech-blue/10 to-hextech-blue/10">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-hextech-cyan" />

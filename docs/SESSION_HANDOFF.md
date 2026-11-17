@@ -13,10 +13,11 @@ place, no UI.
 
 ## Still open
 
-1. **Redesign direction** — 3 directions mocked on the canvas
-   https://claude.ai/artifact/Nd4UZ3stkv3DcUke9eS2mD (A scouting report, B
-   Hextech atelier, C telemetry). Waiting for the user's pick; then apply it to
-   the app + web and build the showcase site (`docs/PLAN_VITRINE.md`).
+1. **Redesign** — user picked A's visual style + B's « ateliers » content
+   (no player-card pitch). Showcase site built in `site/` (see PLAN_VITRINE
+   status); needs publisher/contact/domain placeholders filled, deploy, then
+   the Riot Production key application. Applying direction A to the app +
+   web is still to do. beta.107 is released (GitHub pre-release).
 2. **Bug: infinite loading screen / can't log back in after logging out** —
    not investigated yet. Ask desktop vs web and repro steps. Start at
    `web/src/api.ts`, `web/src/pages/AccountPage.tsx`,

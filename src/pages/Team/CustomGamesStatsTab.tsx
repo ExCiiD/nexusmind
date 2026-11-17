@@ -300,7 +300,7 @@ export function CustomGamesStatsTab({ team, gameType }: Props) {
       </Card>
 
       {pendingFiles.length > 0 && (
-        <Card className="p-3 border-amber-500/50 bg-amber-500/5">
+        <Card className="p-3 border-amber-500/50 bg-gradient-to-b from-amber-500/5 to-amber-500/5">
           <div className="flex items-start gap-2">
             <AlertTriangle className="h-4 w-4 text-amber-300 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">

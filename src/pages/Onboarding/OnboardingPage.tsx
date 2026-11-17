@@ -47,8 +47,8 @@ export function OnboardingPage() {
 
   return (
     <div className="ascend-texture-bg flex min-h-screen">
-      <div className="flex flex-1 flex-col items-center justify-center px-8 py-12">
-        <div className="w-full max-w-2xl space-y-8">
+      <div className="flex flex-1 flex-col items-center justify-center px-[4vw] py-12">
+        <div className="w-full space-y-8">
           <div className="text-center space-y-3">
             <div className="flex items-center justify-center gap-3 mb-6">
               <img src={logo} alt="" className="h-12 w-12 rounded-full object-cover" />

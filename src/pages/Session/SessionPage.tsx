@@ -747,7 +747,7 @@ export function SessionPage() {
 
       {/* "Same as last session" prefill banner */}
       {lastConfig && (
-        <Card className="border-hextech-gold/30 bg-hextech-gold/5">
+        <Card className="border-hextech-gold/30 bg-gradient-to-b from-hextech-gold/5 to-hextech-gold/5">
           <CardContent className="flex items-center justify-between gap-4 p-4">
             <div className="flex items-start gap-3 min-w-0">
               <RotateCcw className="mt-0.5 h-4 w-4 shrink-0 text-hextech-gold" />

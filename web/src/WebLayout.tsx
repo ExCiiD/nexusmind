@@ -54,8 +54,8 @@ export function WebLayout() {
         <NotificationBell />
       </div>
 
-      <main className="px-4 pb-24 pt-4 md:ml-56 md:px-8 md:pb-8 md:pt-8">
-        <div className="mx-auto max-w-4xl">
+      <main className="px-[4vw] pb-24 pt-4 md:ml-56 md:px-[3vw] md:pb-8 md:pt-8">
+        <div className="w-full">
           <Outlet />
         </div>
       </main>

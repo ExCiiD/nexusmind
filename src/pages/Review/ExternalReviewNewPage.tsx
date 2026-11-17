@@ -91,7 +91,7 @@ export function ExternalReviewNewPage() {
 
   if (!filePath) {
     return (
-      <div className="p-8 space-y-4 max-w-lg mx-auto">
+      <div className="w-full space-y-4 py-6">
         <p className="text-hextech-text-dim">Recording file not found for this id.</p>
         <Button type="button" variant="outline" onClick={() => navigate(-1)}>
           Back
@@ -101,7 +101,7 @@ export function ExternalReviewNewPage() {
   }
 
   return (
-    <div className="animate-fade-in max-w-lg mx-auto pb-20 px-4">
+    <div className="w-full animate-fade-in pb-20">
       <div className="flex items-center gap-3 mb-6">
         <button
           type="button"

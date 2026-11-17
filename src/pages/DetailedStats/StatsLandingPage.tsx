@@ -537,56 +537,51 @@ const LINE_CATEGORIES = ['general', 'economy', 'combat', 'laning', 'vision', 'ob
 
 const DEFAULT_SERIES = ['csPerMin', 'kp', 'winRate', 'vsPerMin']
 
+/**
+ * Series picker for the progression chart. One row of category tabs, then
+ * only that category's series (≤ 8) — instead of 23 pills at once (UI/UX
+ * audit 17/11/2026: no "tag soup"). Selections persist across tabs.
+ */
 function SeriesFilterBar({ selected, onChange }: { selected: string[]; onChange: (next: string[]) => void }) {
   const { t } = useTranslation()
-  const allKeys = LINE_SERIES.map((s) => s.key)
-  const isAll = selected.length === allKeys.length
-
-  const toggleAll = () => onChange(isAll ? DEFAULT_SERIES : [...allKeys])
-  const toggleCategory = (cat: string) => {
-    const catKeys = LINE_SERIES.filter((s) => s.category === cat).map((s) => s.key)
-    const allActive = catKeys.every((k) => selected.includes(k))
-    if (allActive) onChange(selected.filter((k) => !catKeys.includes(k)))
-    else onChange([...new Set([...selected, ...catKeys])])
-  }
+  const firstCat = LINE_SERIES.find((s) => selected.includes(s.key))?.category ?? LINE_CATEGORIES[0]
+  const [cat, setCat] = useState<string>(firstCat)
   const toggleSeries = (key: string) => {
     if (selected.includes(key)) onChange(selected.filter((k) => k !== key))
     else onChange([...selected, key])
   }
+  const countIn = (c: string) => LINE_SERIES.filter((s) => s.category === c && selected.includes(s.key)).length
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 flex-wrap">
-        <Filter className="h-3.5 w-3.5 text-hextech-text-dim shrink-0" />
-        <button onClick={toggleAll}
-          className={cn('rounded-full border px-3 py-0.5 text-[10px] font-medium transition-colors',
-            isAll ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright' : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border')}
-        >
-          {t('analytics.objectiveFilter.all')}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap rounded-lg border border-hextech-border-dim p-0.5" role="tablist">
+          {LINE_CATEGORIES.map((c) => (
+            <button key={c} role="tab" aria-selected={cat === c} onClick={() => setCat(c)}
+              className={cn('rounded-md px-3 py-1 text-xs font-medium transition-colors',
+                cat === c ? 'bg-hextech-gold text-hextech-black' : 'text-hextech-text-bright hover:bg-hextech-elevated')}>
+              {t(`statsAvg.seriesCat.${c}`)}
+              {countIn(c) > 0 && <span className={cn('ml-1.5 font-mono text-[10px]', cat === c ? 'text-hextech-black/70' : 'text-hextech-gold')}>{countIn(c)}</span>}
+            </button>
+          ))}
+        </div>
+        <button onClick={() => onChange(DEFAULT_SERIES)} className="text-xs text-hextech-text underline hover:text-hextech-text-bright">
+          {t('statsAvg.seriesReset')}
         </button>
-        {LINE_CATEGORIES.map((cat) => {
-          const catKeys = LINE_SERIES.filter((s) => s.category === cat).map((s) => s.key)
-          const allActive = catKeys.every((k) => selected.includes(k))
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {LINE_SERIES.filter((s) => s.category === cat).map((s) => {
+          const on = selected.includes(s.key)
           return (
-            <button key={cat} onClick={() => toggleCategory(cat)}
-              className={cn('rounded-full border px-3 py-0.5 text-[10px] font-medium transition-colors capitalize',
-                allActive ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright' : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border')}
-            >
-              {cat}
+            <button key={s.key} onClick={() => toggleSeries(s.key)} aria-pressed={on}
+              className={cn('flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                on ? 'text-hextech-text-bright' : 'border-hextech-border-dim text-hextech-text hover:border-hextech-border')}
+              style={on ? { borderColor: s.color, backgroundColor: `${s.color}22` } : undefined}>
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
+              {s.label}
             </button>
           )
         })}
-      </div>
-      <div className="flex items-center gap-1.5 flex-wrap">
-        {LINE_SERIES.map((s) => (
-          <button key={s.key} onClick={() => toggleSeries(s.key)}
-            className={cn('rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition-colors',
-              selected.includes(s.key) ? 'border-hextech-gold/60 text-hextech-text-bright' : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border')}
-            style={selected.includes(s.key) ? { borderColor: s.color, backgroundColor: `${s.color}15` } : undefined}
-          >
-            {s.label}
-          </button>
-        ))}
       </div>
     </div>
   )

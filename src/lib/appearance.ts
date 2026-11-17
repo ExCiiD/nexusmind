@@ -28,11 +28,19 @@ export const BACKGROUND_IMAGES = {
 export type BackgroundImageId = keyof typeof BACKGROUND_IMAGES
 export const BACKGROUND_IMAGE_IDS = Object.keys(BACKGROUND_IMAGES) as BackgroundImageId[]
 
+/** The user's own picture (Settings → Appearance → "Mon image"). Stored only
+ *  in this device's IndexedDB (src/lib/localImageStore.ts) — never synced or
+ *  uploaded. Its object URL is resolved at boot by `loadCustomBackground()`. */
+export const CUSTOM_IMAGE_ID = 'custom'
+let customImageUrl: string | null = null
+export function setCustomImageUrl(url: string | null): void { customImageUrl = url }
+export function getCustomImageUrl(): string | null { return customImageUrl }
+
 export type BackgroundMode = 'image' | 'color'
 
 export interface AppearancePrefs {
   mode: BackgroundMode
-  imageId: BackgroundImageId
+  imageId: BackgroundImageId | typeof CUSTOM_IMAGE_ID
   /** Color filter laid over the image (colorize blend), `#rrggbb`. */
   tintColor: string
   /** 0 = no filter, 100 = fully recolored. */
@@ -43,6 +51,8 @@ export interface AppearancePrefs {
   blur: number
   /** Used when `mode === 'color'`, `#rrggbb`. */
   solidColor: string
+  /** Panel/card fill over the background, 40 (see-through) – 100 (solid). */
+  panelOpacity: number
 }
 
 export const DEFAULT_APPEARANCE: AppearancePrefs = {
@@ -53,6 +63,7 @@ export const DEFAULT_APPEARANCE: AppearancePrefs = {
   dim: 90,
   blur: 0,
   solidColor: '#0D0A06',
+  panelOpacity: 90,
 }
 
 const STORAGE_KEY = 'ascend_appearance'
@@ -67,12 +78,13 @@ export function sanitizeAppearance(raw: unknown): AppearancePrefs {
   const d = DEFAULT_APPEARANCE
   return {
     mode: r.mode === 'color' ? 'color' : 'image',
-    imageId: r.imageId && r.imageId in BACKGROUND_IMAGES ? r.imageId : d.imageId,
+    imageId: r.imageId === CUSTOM_IMAGE_ID || (r.imageId && r.imageId in BACKGROUND_IMAGES) ? r.imageId : d.imageId,
     tintColor: typeof r.tintColor === 'string' && HEX.test(r.tintColor) ? r.tintColor : d.tintColor,
     tintStrength: clamp(r.tintStrength, 0, 100, d.tintStrength),
     dim: clamp(r.dim, 0, 95, d.dim),
     blur: clamp(r.blur, 0, 16, d.blur),
     solidColor: typeof r.solidColor === 'string' && HEX.test(r.solidColor) ? r.solidColor : d.solidColor,
+    panelOpacity: clamp(r.panelOpacity, 40, 100, d.panelOpacity),
   }
 }
 
@@ -88,7 +100,9 @@ export function getStoredAppearance(): AppearancePrefs {
 /** CSS custom properties for a given preference set — also used inline by
  *  the small preview tile in Settings so it matches the real thing. */
 export function appearanceVars(p: AppearancePrefs): Record<string, string> {
-  const image = p.mode === 'image' ? `url("${BACKGROUND_IMAGES[p.imageId].full}")` : 'none'
+  const src = p.imageId === CUSTOM_IMAGE_ID ? customImageUrl : BACKGROUND_IMAGES[p.imageId].full
+  // Custom image not loaded (yet / deleted elsewhere): fall back to the default.
+  const image = p.mode !== 'image' ? 'none' : `url("${src ?? BACKGROUND_IMAGES.swirl.full}")`
   return {
     '--app-bg-color': p.mode === 'color' ? p.solidColor : 'var(--hextech-black)',
     '--app-bg-image': image,
@@ -96,6 +110,7 @@ export function appearanceVars(p: AppearancePrefs): Record<string, string> {
     '--app-bg-blur': `${p.blur}px`,
     '--app-bg-tint': p.tintColor,
     '--app-bg-tint-opacity': p.mode === 'image' ? String(p.tintStrength / 100) : '0',
+    '--app-panel-opacity': `${p.panelOpacity}%`,
   }
 }
 
@@ -105,4 +120,14 @@ export function applyAppearance(p: AppearancePrefs, persist = true): void {
   if (persist) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)) } catch { /* per-viewer convenience only */ }
   }
+}
+
+/** Boot helper: resolves the user's own image from local storage, then
+ *  (re)applies the stored preferences so it shows once ready. */
+export async function loadCustomBackground(): Promise<void> {
+  const { getLocalImage } = await import('./localImageStore')
+  const blob = await getLocalImage(CUSTOM_IMAGE_ID).catch(() => null)
+  if (customImageUrl) URL.revokeObjectURL(customImageUrl)
+  setCustomImageUrl(blob ? URL.createObjectURL(blob) : null)
+  applyAppearance(getStoredAppearance(), false)
 }

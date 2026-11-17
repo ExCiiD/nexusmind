@@ -25,7 +25,7 @@ import {
 import { ProfileCard, TitlePill, TierAvatar } from '@/components/Profile/ProfileCard'
 
 type EditTab = 'icon' | 'banner' | 'titles' | 'bio'
-const panel = 'rounded-2xl border border-hextech-border-dim/70 bg-hextech-dark/85 p-5 shadow-lg backdrop-blur-sm'
+const panel = 'rounded-2xl border border-hextech-border-dim/70 panel-surface p-5 shadow-lg backdrop-blur-sm'
 
 export function ProfilePage() {
   const { t } = useTranslation()
@@ -283,7 +283,7 @@ function TierPath({ currentTierId, level, iconId }: { currentTierId: string; lev
           {TIERS.map((tier, i) => {
             const reached = i <= currentIdx
             const current = i === currentIdx
-            const unlocks = PROFILE_ICONS.filter((ic) => ic.unlockTier === tier.id && tier.id !== 'iron')
+            const unlocks = PROFILE_ICONS.filter((ic) => ic.unlockTier === tier.id && tier.id !== 'recrue')
             return (
               <div key={tier.id} className="flex flex-col items-center text-center">
                 {current ? (

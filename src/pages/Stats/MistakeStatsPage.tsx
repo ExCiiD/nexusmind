@@ -1,259 +1,333 @@
 /**
- * Mistake Library — aggregated stats page.
- *
- * Three views over the user's tagged mistakes:
- *   - Top tags bar chart (how often each mistake was tagged in window)
- *   - Trend line chart (per-day count for selected tag(s))
- *   - Heatmap (tag × day, opacity = count)
- *
- * All three respond to a shared filter: time window (7/14/30/90 j), role,
- * champion. Pure read-side; never mutates anything.
+ * Mistake Lab (Stats → Erreurs) — rebuilt from the UI/UX audit of
+ * 17/11/2026 ("audit_ui_ux_mistake_library.md"):
+ *   - full-width 12-column bento instead of a narrow centred column;
+ *   - one interactive ranking (count, share, win-rate cost, severity
+ *     colour) instead of three charts repeating the same tags;
+ *   - 4 families instead of a 26-pill tag cloud;
+ *   - a trend that switches to per-game buckets on short histories;
+ *   - game-phase matrix (early / mid / late) instead of a 2-column heatmap;
+ *   - every mistake leads somewhere: rewatch the exact moment, or start a
+ *     measured experiment on it.
+ * Pure read-side except the explicit "work on it" button.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Filter } from 'lucide-react'
-import {
-  ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip as RTooltip, Legend,
-} from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { AlertTriangle, Play, FlaskConical, Check, Loader2, Search, Crosshair } from 'lucide-react'
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip } from 'recharts'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { MistakeTag, MistakeTopTagEntry, MistakeTrendEntry, MistakeHeatmapEntry } from '@/lib/ipc'
+import { championLabel } from '@/lib/statsInsights'
+import {
+  rankMistakes,
+  phaseBreakdown,
+  buildTrend,
+  latestMoments,
+  fmtClock,
+  FAMILIES,
+  FAMILY_COLOR,
+  PHASES,
+  type MistakeOccurrence,
+  type MistakeFamily,
+  type RankedMistake,
+} from '@/lib/mistakeInsights'
 
 type WindowDays = 7 | 14 | 30 | 90
 const WINDOWS: WindowDays[] = [7, 14, 30, 90]
-const ROLES: Array<{ id: string; label: string }> = [
-  { id: '',         label: 'Any role' },
-  { id: 'TOP',      label: 'Top' },
-  { id: 'JUNGLE',   label: 'Jungle' },
-  { id: 'MIDDLE',   label: 'Mid' },
-  { id: 'BOTTOM',   label: 'ADC' },
-  { id: 'UTILITY',  label: 'Support' },
-]
+const ROLES = ['', 'TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'] as const
+const panel = 'panel-surface rounded-2xl border border-hextech-border-dim/70 shadow-lg backdrop-blur-sm'
 
 export function MistakeStatsPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
   const [windowDays, setWindowDays] = useState<WindowDays>(30)
   const [role, setRole] = useState<string>('')
-  const [champion, setChampion] = useState<string>('')
-  const [allTags, setAllTags] = useState<MistakeTag[]>([])
-  const [topTags, setTopTags] = useState<MistakeTopTagEntry[]>([])
-  const [trend, setTrend] = useState<MistakeTrendEntry[]>([])
-  const [heatmap, setHeatmap] = useState<MistakeHeatmapEntry[]>([])
-  const [selectedSlugs, setSelectedSlugs] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    window.api.listMistakeTags()
-      .then(setAllTags)
-      .catch(() => setAllTags([]))
-  }, [])
+  const [champion, setChampion] = useState('')
+  const [occ, setOcc] = useState<MistakeOccurrence[] | null>(null)
+  const [family, setFamily] = useState<MistakeFamily | 'all'>('all')
+  const [focus, setFocus] = useState<string | null>(null)
+  const [experiment, setExperiment] = useState<'idle' | 'busy' | 'done' | 'error'>('idle')
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    Promise.all([
-      window.api.getMistakeTopTags({ days: windowDays, role: role || null, champion: champion || null }),
-      window.api.getMistakeHeatmap({ days: windowDays, role: role || null, champion: champion || null }),
-    ])
-      .then(([top, hm]) => {
-        if (cancelled) return
-        setTopTags(top)
-        setHeatmap(hm)
-        // Default trend to the top 3 slugs so the user sees data immediately.
-        if (selectedSlugs.length === 0 && top.length > 0) {
-          setSelectedSlugs(top.slice(0, 3).map((t) => t.tag.slug))
-        }
-      })
-      .catch(() => { /* swallow — empty state already handles missing data */ })
-      .finally(() => !cancelled && setLoading(false))
+    setOcc(null)
+    window.api.getMistakeOccurrences({ days: windowDays, role: role || null, champion: champion.trim() || null })
+      .then((rows) => { if (!cancelled) setOcc(rows) })
+      .catch(() => { if (!cancelled) setOcc([]) })
     return () => { cancelled = true }
   }, [windowDays, role, champion])
 
-  useEffect(() => {
-    if (selectedSlugs.length === 0) {
-      setTrend([])
-      return
+  const ranking = useMemo(() => rankMistakes(occ ?? []), [occ])
+  const visible = useMemo(() => (family === 'all' ? ranking : ranking.filter((r) => r.family === family)), [ranking, family])
+  // Keep the inspector on a tag that exists in the current filter.
+  const focused = visible.find((r) => r.slug === focus) ?? visible[0] ?? null
+  useEffect(() => { setExperiment('idle') }, [focused?.slug])
+
+  const trendSlugs = useMemo(() => {
+    const top = visible.slice(0, 3).map((r) => r.slug)
+    return focused && !top.includes(focused.slug) ? [focused.slug, ...top.slice(0, 2)] : top
+  }, [visible, focused])
+  const trend = useMemo(() => buildTrend(occ ?? [], trendSlugs), [occ, trendSlugs])
+
+  const games = new Set((occ ?? []).map((o) => o.game.id)).size
+  const allPhases = phaseBreakdown(occ ?? [])
+  const worstPhase = PHASES.reduce((a, b) => (allPhases[b] > allPhases[a] ? b : a), 'early')
+
+  const startExperiment = async () => {
+    if (!focused) return
+    setExperiment('busy')
+    try {
+      await window.api.coachStartTagExperiment(focused.slug)
+      setExperiment('done')
+    } catch {
+      setExperiment('error')
     }
-    window.api.getMistakeTrend({ tagSlugs: selectedSlugs, days: windowDays, role: role || null, champion: champion || null })
-      .then(setTrend)
-      .catch(() => setTrend([]))
-  }, [selectedSlugs, windowDays, role, champion])
-
-  const trendData = useMemo(() => {
-    // Recharts wants [{ date, slug1: n, slug2: n }, …]
-    return trend.map((row) => ({
-      date: row.date.slice(5), // MM-DD
-      ...row.counts,
-    }))
-  }, [trend])
-
-  const heatmapDays = useMemo(() => {
-    const days = new Set<string>()
-    for (const h of heatmap) days.add(h.date)
-    return [...days].sort()
-  }, [heatmap])
-
-  const heatmapTags = useMemo(() => {
-    const byTag = new Map<string, { id: string; slug: string; label: string }>()
-    for (const h of heatmap) {
-      if (!byTag.has(h.tagId)) byTag.set(h.tagId, { id: h.tagId, slug: h.tagSlug, label: h.tagLabel })
-    }
-    return [...byTag.values()].sort((a, b) => a.label.localeCompare(b.label))
-  }, [heatmap])
-
-  function heatmapCount(date: string, tagId: string): number {
-    return heatmap.find((h) => h.date === date && h.tagId === tagId)?.count ?? 0
   }
-  const maxCount = useMemo(() => heatmap.reduce((m, h) => Math.max(m, h.count), 0), [heatmap])
 
   return (
-    <div className="space-y-4 p-6 max-w-6xl mx-auto">
-      <div className="flex items-center gap-3">
-        <AlertTriangle className="h-5 w-5 text-amber-300" />
-        <h1 className="text-xl font-semibold text-hextech-text-bright">Mistake Library</h1>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="py-3 px-4 flex items-center gap-3 flex-wrap">
-          <Filter className="h-3.5 w-3.5 text-hextech-text-dim" />
-          <div className="flex items-center rounded-md border border-hextech-border-dim bg-hextech-elevated p-0.5">
+    <div className="w-full space-y-4 py-2">
+      {/* Title + compact toolbar on one line */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 font-display text-2xl font-extrabold text-hextech-text-bright">
+            <AlertTriangle className="h-5 w-5 text-hextech-gold" /> {t('mistakeLab.title')}
+          </h1>
+          <p className="mt-0.5 text-sm text-hextech-text">{t('mistakeLab.subtitle')}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-lg border border-hextech-border-dim p-0.5" role="group" aria-label={t('mistakeLab.period')}>
             {WINDOWS.map((d) => (
-              <button
-                key={d}
-                onClick={() => setWindowDays(d)}
-                className={cn(
-                  'rounded px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors',
-                  windowDays === d ? 'bg-hextech-gold/20 text-hextech-gold' : 'text-hextech-text-dim hover:text-hextech-text-bright',
-                )}
-              >
-                {d}d
+              <button key={d} onClick={() => setWindowDays(d)} aria-pressed={windowDays === d}
+                className={cn('rounded-md px-3 py-1.5 text-xs font-semibold transition-colors', windowDays === d ? 'bg-hextech-gold text-hextech-black' : 'text-hextech-text-bright hover:bg-hextech-elevated')}>
+                {t('mistakeLab.days', { count: d })}
               </button>
             ))}
           </div>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className="rounded border border-hextech-border-dim bg-hextech-elevated text-[11px] text-hextech-text-bright px-2 py-1"
-          >
-            {ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+          <label className="sr-only" htmlFor="ml-role">{t('mistakeLab.role')}</label>
+          <select id="ml-role" value={role} onChange={(e) => setRole(e.target.value)}
+            className="h-9 rounded-lg border border-hextech-border-dim bg-hextech-elevated px-2 text-xs text-hextech-text-bright">
+            {ROLES.map((r) => <option key={r} value={r}>{t(`mistakeLab.roles.${r || 'any'}`)}</option>)}
           </select>
-          <input
-            type="text"
-            value={champion}
-            onChange={(e) => setChampion(e.target.value)}
-            placeholder="Champion (e.g. Renekton)"
-            className="rounded border border-hextech-border-dim bg-hextech-elevated text-[11px] text-hextech-text-bright px-2 py-1 w-44"
-          />
-          {loading && <span className="text-[10px] text-hextech-text-dim">Loading…</span>}
-        </CardContent>
-      </Card>
-
-      {/* Top tags */}
-      <Card>
-        <CardHeader className="py-3"><CardTitle className="text-sm">Top mistakes — last {windowDays} days</CardTitle></CardHeader>
-        <CardContent className="pt-0 pb-4">
-          {topTags.length === 0 ? (
-            <p className="text-xs text-hextech-text-dim py-2">No tagged mistakes in this window.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={Math.min(40 * topTags.length + 30, 360)}>
-              <BarChart data={topTags.map((t) => ({ name: t.tag.label, count: t.count, color: t.tag.color }))} layout="vertical" margin={{ left: 12 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2A1D11" />
-                <XAxis type="number" tick={{ fill: '#B5A68C', fontSize: 11 }} allowDecimals={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: '#D4A24C', fontSize: 11 }} width={160} />
-                <RTooltip
-                  contentStyle={{ background: '#0a0e13', border: '1px solid #2A1D11', borderRadius: 6, fontSize: 11 }}
-                  cursor={{ fill: '#ffffff10' }}
-                />
-                <Bar dataKey="count" fill="#FFB454" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Trend */}
-      <Card>
-        <CardHeader className="py-3 flex flex-row items-center justify-between gap-3">
-          <CardTitle className="text-sm">Trend</CardTitle>
-          <div className="flex flex-wrap gap-1 max-w-[60%] justify-end">
-            {allTags.map((t) => {
-              const active = selectedSlugs.includes(t.slug)
-              return (
-                <button
-                  key={t.slug}
-                  onClick={() => setSelectedSlugs((sel) => sel.includes(t.slug) ? sel.filter((s) => s !== t.slug) : [...sel, t.slug])}
-                  style={active ? { borderColor: t.color ?? '#FFB454', backgroundColor: `${t.color ?? '#FFB454'}20` } : undefined}
-                  className={cn(
-                    'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors',
-                    active ? 'text-hextech-text-bright' : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
-                  )}
-                >
-                  {t.label}
-                </button>
-              )
-            })}
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-hextech-text-dim" />
+            <input value={champion} onChange={(e) => setChampion(e.target.value)} placeholder={t('mistakeLab.championPlaceholder')} aria-label={t('mistakeLab.champion')}
+              className="h-9 w-48 rounded-lg border border-hextech-border-dim bg-hextech-elevated pl-7 pr-2 text-xs text-hextech-text-bright placeholder:text-hextech-text-dim" />
           </div>
-        </CardHeader>
-        <CardContent className="pt-0 pb-4">
-          {selectedSlugs.length === 0 ? (
-            <p className="text-xs text-hextech-text-dim py-2">Pick at least one tag above to see its trend.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2A1D11" />
-                <XAxis dataKey="date" tick={{ fill: '#B5A68C', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#B5A68C', fontSize: 11 }} allowDecimals={false} />
-                <RTooltip contentStyle={{ background: '#0a0e13', border: '1px solid #2A1D11', borderRadius: 6, fontSize: 11 }} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                {selectedSlugs.map((slug, i) => {
-                  const tag = allTags.find((t) => t.slug === slug)
-                  const color = tag?.color ?? `hsl(${(i * 67) % 360}, 70%, 60%)`
-                  return (
-                    <Line key={slug} type="monotone" dataKey={slug} stroke={color} name={tag?.label ?? slug} dot={{ r: 2 }} strokeWidth={2} connectNulls />
-                  )
-                })}
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Heatmap */}
-      <Card>
-        <CardHeader className="py-3"><CardTitle className="text-sm">Heatmap — tag × day</CardTitle></CardHeader>
-        <CardContent className="pt-0 pb-4 overflow-x-auto">
-          {heatmap.length === 0 ? (
-            <p className="text-xs text-hextech-text-dim py-2">No data yet for this window.</p>
-          ) : (
-            <div className="inline-block min-w-full">
-              <div className="grid" style={{ gridTemplateColumns: `160px repeat(${heatmapDays.length}, minmax(20px, 1fr))` }}>
-                <div />
-                {heatmapDays.map((d) => (
-                  <div key={d} className="text-[8px] text-hextech-text-dim text-center pt-1 transform rotate-[-65deg] origin-bottom-left h-10 whitespace-nowrap">{d.slice(5)}</div>
-                ))}
-                {heatmapTags.map((tag) => (
+      {occ === null ? (
+        <div className={cn(panel, 'flex items-center justify-center gap-2 py-16 text-sm text-hextech-text-dim')}><Loader2 className="h-4 w-4 animate-spin" />{t('mistakeLab.loading')}</div>
+      ) : occ.length === 0 ? (
+        <div className={cn(panel, 'py-16 text-center')}>
+          <p className="text-sm text-hextech-text-bright">{t('mistakeLab.empty')}</p>
+          <p className="mt-1 text-xs text-hextech-text-dim">{t('mistakeLab.emptyHint')}</p>
+        </div>
+      ) : (
+        <>
+          {/* Summary strip */}
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Stat label={t('mistakeLab.kpi.total')} value={String(occ.length)} sub={t('mistakeLab.kpi.games', { count: games })} />
+            <Stat label={t('mistakeLab.kpi.perGame')} value={(occ.length / Math.max(games, 1)).toFixed(1)} sub={t('mistakeLab.kpi.perGameSub')} />
+            <Stat label={t('mistakeLab.kpi.top')} value={ranking[0]?.label ?? '—'} sub={ranking[0] ? t('mistakeLab.kpi.topSub', { count: ranking[0].count, share: ranking[0].share }) : ''} color={ranking[0]?.color} small />
+            <Stat label={t('mistakeLab.kpi.phase')} value={t(`mistakeLab.phase.${worstPhase}`)} sub={t('mistakeLab.kpi.phaseSub', { share: Math.round((allPhases[worstPhase] / occ.length) * 100) })} small />
+          </div>
+
+          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-12">
+            {/* Left: ranking + trend */}
+            <div className="space-y-4 xl:col-span-7">
+              <section className={cn(panel, 'p-4')}>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-sm font-bold text-hextech-text-bright">{t('mistakeLab.ranking.title')}</h2>
+                  <div className="flex flex-wrap gap-1" role="tablist" aria-label={t('mistakeLab.families')}>
+                    {(['all', ...FAMILIES] as const).map((f) => (
+                      <button key={f} role="tab" aria-selected={family === f} onClick={() => setFamily(f)}
+                        className={cn('flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                          family === f ? 'border-hextech-gold bg-hextech-gold/15 text-hextech-gold-bright' : 'border-hextech-border-dim text-hextech-text hover:border-hextech-border')}>
+                        {f !== 'all' && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: FAMILY_COLOR[f] }} />}
+                        {t(`mistakeLab.family.${f}`)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {visible.length === 0 ? (
+                  <p className="py-6 text-center text-xs text-hextech-text-dim">{t('mistakeLab.ranking.none')}</p>
+                ) : (
+                  <ol className="space-y-1">
+                    {visible.map((r) => (
+                      <li key={r.tagId}>
+                        <RankRow row={r} max={visible[0].count} active={focused?.slug === r.slug} onClick={() => setFocus(r.slug)} />
+                      </li>
+                    ))}
+                  </ol>
+                )}
+                <p className="mt-3 text-[11px] text-hextech-text-dim">{t('mistakeLab.ranking.legend')}</p>
+              </section>
+
+              <section className={cn(panel, 'p-4')}>
+                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                  <h2 className="text-sm font-bold text-hextech-text-bright">{t('mistakeLab.trend.title')}</h2>
+                  <span className="text-[11px] text-hextech-text-dim">{t(`mistakeLab.trend.mode.${trend.mode}`)}</span>
+                </div>
+                {trend.points.length < 2 ? (
+                  <p className="py-8 text-center text-xs text-hextech-text-dim">{t('mistakeLab.trend.notEnough')}</p>
+                ) : (
                   <>
-                    <div key={`${tag.id}-label`} className="text-[10px] text-hextech-text px-2 py-1 truncate">{tag.label}</div>
-                    {heatmapDays.map((d) => {
-                      const count = heatmapCount(d, tag.id)
-                      const opacity = count === 0 ? 0 : Math.max(0.15, Math.min(1, count / Math.max(1, maxCount)))
-                      return (
-                        <div
-                          key={`${tag.id}-${d}`}
-                          title={count > 0 ? `${tag.label} on ${d}: ${count}` : `${tag.label} on ${d}: 0`}
-                          className="border border-hextech-border-dim/40 h-5 mx-px my-px rounded-sm"
-                          style={{ backgroundColor: count > 0 ? `rgba(255, 180, 84, ${opacity})` : 'transparent' }}
-                        />
-                      )
-                    })}
+                    <ResponsiveContainer width="100%" height={220}>
+                      <LineChart data={trend.points.map((p) => ({ label: p.label, ...p.counts }))} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--hextech-border-dim)" />
+                        <XAxis dataKey="label" tick={{ fill: 'var(--hextech-text)', fontSize: 11 }} />
+                        <YAxis allowDecimals={false} tick={{ fill: 'var(--hextech-text)', fontSize: 11 }} />
+                        <RTooltip contentStyle={{ background: 'var(--hextech-dark)', border: '1px solid var(--hextech-border-dim)', borderRadius: 8, fontSize: 12 }} />
+                        {trendSlugs.map((slug, i) => {
+                          const r = ranking.find((x) => x.slug === slug)
+                          return <Line key={slug} type="linear" dataKey={slug} name={r?.label ?? slug} stroke={i === 0 ? r?.color : ['#C9C5BA', '#7C8794'][i - 1] ?? '#999'} strokeWidth={i === 0 ? 2.5 : 1.5} dot={{ r: 2.5 }} />
+                        })}
+                      </LineChart>
+                    </ResponsiveContainer>
+                    <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-hextech-text">
+                      {trendSlugs.map((slug, i) => {
+                        const r = ranking.find((x) => x.slug === slug)
+                        return <span key={slug} className="flex items-center gap-1.5"><span className="h-0.5 w-4" style={{ backgroundColor: i === 0 ? r?.color : ['#C9C5BA', '#7C8794'][i - 1] }} />{r?.label}</span>
+                      })}
+                    </div>
                   </>
-                ))}
-              </div>
+                )}
+              </section>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            {/* Right: inspector for the selected mistake */}
+            <aside className={cn(panel, 'space-y-4 p-4 xl:sticky xl:top-2 xl:col-span-5')} aria-label={t('mistakeLab.inspector.title')}>
+              {focused ? (
+                <Inspector
+                  row={focused}
+                  occ={(occ ?? []).filter((o) => o.tag.slug === focused.slug)}
+                  moments={latestMoments(occ ?? [], focused.slug)}
+                  experiment={experiment}
+                  onExperiment={startExperiment}
+                  onReplay={(o) => navigate(`/record/${o.recordingId}?at=${o.gameTimeSec}`)}
+                />
+              ) : (
+                <p className="py-8 text-center text-xs text-hextech-text-dim">{t('mistakeLab.inspector.pick')}</p>
+              )}
+            </aside>
+          </div>
+        </>
+      )}
     </div>
+  )
+}
+
+function Stat({ label, value, sub, color, small }: { label: string; value: string; sub: string; color?: string; small?: boolean }) {
+  return (
+    <div className={cn(panel, 'rounded-xl p-3.5')}>
+      <div className="text-[11px] font-medium text-hextech-text">{label}</div>
+      <div className={cn('mt-1 truncate font-bold text-hextech-text-bright', small ? 'text-base' : 'font-mono text-2xl')} style={color ? { color } : undefined} title={value}>{value}</div>
+      <div className="mt-0.5 truncate text-[11px] text-hextech-text-dim">{sub}</div>
+    </div>
+  )
+}
+
+function RankRow({ row, max, active, onClick }: { row: RankedMistake; max: number; active: boolean; onClick: () => void }) {
+  const { t } = useTranslation()
+  const cost = row.winrateWith != null && row.winrateWithout != null ? row.winrateWith - row.winrateWithout : null
+  return (
+    <button onClick={onClick} aria-pressed={active}
+      className={cn('grid w-full grid-cols-[minmax(0,11rem)_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors',
+        active ? 'bg-hextech-elevated ring-1 ring-hextech-gold/60' : 'hover:bg-hextech-elevated/60')}>
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
+        <span className="truncate text-xs font-medium text-hextech-text-bright" title={row.label}>{row.label}</span>
+      </span>
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="h-3 rounded-sm" style={{ width: `${Math.max(4, (row.count / max) * 100)}%`, backgroundColor: row.color, opacity: active ? 1 : 0.75 }} />
+        <span className="shrink-0 font-mono text-[11px] text-hextech-text-bright">{row.count}× <span className="text-hextech-text-dim">· {row.share}%</span></span>
+      </span>
+      <span className={cn('w-20 text-right font-mono text-[11px]', cost == null ? 'text-hextech-text-dim' : cost < 0 ? 'text-hextech-red' : 'text-hextech-green')}
+        title={t('mistakeLab.ranking.costTitle')}>
+        {cost == null ? '—' : `${cost > 0 ? '+' : ''}${cost} pts`}
+      </span>
+    </button>
+  )
+}
+
+function Inspector({ row, occ, moments, experiment, onExperiment, onReplay }: {
+  row: RankedMistake
+  occ: MistakeOccurrence[]
+  moments: MistakeOccurrence[]
+  experiment: 'idle' | 'busy' | 'done' | 'error'
+  onExperiment: () => void
+  onReplay: (o: MistakeOccurrence) => void
+}) {
+  const { t } = useTranslation()
+  const phases = phaseBreakdown(occ)
+  const total = Math.max(occ.length, 1)
+  return (
+    <>
+      <div>
+        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: row.color }}>{t(`mistakeLab.family.${row.family}`)}</span>
+        <h2 className="mt-0.5 text-lg font-bold text-hextech-text-bright">{row.label}</h2>
+        <p className="mt-1 text-xs text-hextech-text">
+          {t('mistakeLab.inspector.summary', { count: row.count, games: row.games, share: row.share })}
+        </p>
+        {row.winrateWith != null && row.winrateWithout != null && (
+          <p className="mt-2 rounded-lg border border-hextech-border-dim bg-hextech-black/30 px-3 py-2 text-xs text-hextech-text-bright">
+            {t('mistakeLab.inspector.cost', { with: row.winrateWith, without: row.winrateWithout })}
+          </p>
+        )}
+      </div>
+
+      <div>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-hextech-text-dim">{t('mistakeLab.inspector.when')}</h3>
+        <div className="grid grid-cols-3 gap-2">
+          {PHASES.map((p) => {
+            const share = Math.round((phases[p] / total) * 100)
+            return (
+              <div key={p} className="rounded-lg border border-hextech-border-dim p-2.5">
+                <div className="text-[11px] text-hextech-text">{t(`mistakeLab.phase.${p}`)}</div>
+                <div className="text-[10px] text-hextech-text-dim">{t(`mistakeLab.phaseRange.${p}`)}</div>
+                <div className="mt-1.5 font-mono text-lg font-bold text-hextech-text-bright">{phases[p]}</div>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-hextech-elevated"><div className="h-full rounded-full" style={{ width: `${share}%`, backgroundColor: row.color }} /></div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-hextech-text-dim">{t('mistakeLab.inspector.moments')}</h3>
+        <ul className="divide-y divide-hextech-border-dim/50 rounded-lg border border-hextech-border-dim">
+          {moments.map((o) => (
+            <li key={o.id} className="flex items-center gap-3 px-3 py-2">
+              <span className="font-mono text-xs font-semibold" style={{ color: row.color }}>{fmtClock(o.gameTimeSec)}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs text-hextech-text-bright">
+                  {championLabel(o.game.champion)}{o.game.opponentChampion ? ` vs ${championLabel(o.game.opponentChampion)}` : ''}
+                  <span className={cn('ml-1.5 text-[10px] font-semibold', o.game.win ? 'text-hextech-green' : 'text-hextech-red')}>{o.game.win ? t('mistakeLab.win') : t('mistakeLab.loss')}</span>
+                </span>
+                <span className="block truncate text-[10px] text-hextech-text-dim">{new Date(o.game.gameEndAt).toLocaleDateString()}{o.note ? ` · ${o.note}` : ''}</span>
+              </span>
+              {o.recordingId ? (
+                <Button size="sm" variant="outline" className="h-8 shrink-0 gap-1 text-[11px]" onClick={() => onReplay(o)}>
+                  <Play className="h-3 w-3" />{t('mistakeLab.inspector.replay')}
+                </Button>
+              ) : (
+                <span className="shrink-0 text-[10px] text-hextech-text-dim">{t('mistakeLab.inspector.noVod')}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="rounded-lg border border-hextech-gold/30 bg-gradient-to-r from-hextech-gold/10 to-transparent p-3">
+        <p className="flex items-start gap-2 text-xs text-hextech-text-bright"><Crosshair className="mt-0.5 h-3.5 w-3.5 shrink-0 text-hextech-gold" />{t('mistakeLab.inspector.actionHint')}</p>
+        <Button size="sm" className="mt-2.5 w-full gap-1.5" onClick={onExperiment} disabled={experiment === 'busy' || experiment === 'done'}>
+          {experiment === 'busy' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : experiment === 'done' ? <Check className="h-3.5 w-3.5" /> : <FlaskConical className="h-3.5 w-3.5" />}
+          {t(`mistakeLab.inspector.action.${experiment}`)}
+        </Button>
+      </div>
+    </>
   )
 }
 

@@ -25,7 +25,7 @@ export function ReassessmentBanner() {
   if (!dateReassessment && statGapCount < 3) return null
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-hextech-gold/30 bg-hextech-gold/5 px-4 py-2.5" data-testid="reassessment-banner">
+    <div className="flex items-center justify-between panel-surface rounded-lg border border-hextech-gold/30 bg-gradient-to-r from-hextech-gold/15 to-hextech-gold/5 px-4 py-2.5" data-testid="reassessment-banner">
       <div className="flex items-center gap-3">
         <ClipboardList className="h-4 w-4 text-hextech-gold shrink-0" />
         <div>

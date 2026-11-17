@@ -615,7 +615,16 @@
       "axisNote": "Y axis = % change since the first snapshot · raw values in the tooltip"
     },
     "basedOnGames_one": "Based on your last game",
-    "basedOnGames_other": "Based on your last {{count}} games"
+    "basedOnGames_other": "Based on your last {{count}} games",
+    "seriesCat": {
+      "general": "General",
+      "economy": "Economy",
+      "combat": "Combat",
+      "laning": "Laning",
+      "vision": "Vision",
+      "objectives": "Objectives"
+    },
+    "seriesReset": "Back to default curves"
   },
   "detailedStats": {
     "pageTitle": "Detailed Stats",
@@ -2432,12 +2441,36 @@
       "zaun": {
         "label": "Zaun Chemtech",
         "desc": "Toxic green & rust."
+      },
+      "custom": {
+        "label": "Custom",
+        "desc": "Your own colors."
       }
-    }
+    },
+    "custom": {
+      "base": "Background",
+      "accent": "Main color",
+      "secondary": "Secondary color",
+      "hint": "Every other shade (panels, borders, text) is derived from these three colors, keeping text readable.",
+      "reset": "Back to the suggested colors"
+    },
+    "myImage": "My image",
+    "addImage": "Add my image",
+    "replaceImage": "Replace",
+    "removeImage": "Remove",
+    "localOnly": "Your image stays on this computer: it is never uploaded.",
+    "imageError": "Unreadable image. Try a PNG, JPG or WebP.",
+    "panels": "Panels",
+    "panelPreset": {
+      "glass": "See-through",
+      "balanced": "Balanced",
+      "solid": "Solid"
+    },
+    "panelsHint": "Panel opacity: {{value}}%. The more solid, the more readable text is on a busy background."
   },
   "profile": {
     "title": "My profile",
-    "subtitle": "Your player card, your Ascend rank and your titles.",
+    "subtitle": "Your player card, your practice tier and your titles.",
     "edit": "Customize",
     "save": "Save",
     "saved": "Profile saved",
@@ -2464,26 +2497,26 @@
       "clips": "Clips",
       "days": "Days",
       "showcase": "Showcase",
-      "maxTier": "Highest rank reached",
+      "maxTier": "Highest tier reached",
       "toNextTier_one": "{{count}} level to {{tier}}",
       "toNextTier_other": "{{count}} levels to {{tier}}"
     },
     "path": {
       "title": "Ascension path",
-      "desc": "Your Ascend rank rises with your app level. Each rank unlocks new icons.",
+      "desc": "Your Ascend tier rises with your practice level in the app — it measures your work, not your skill. Each tier unlocks new icons.",
       "level": "Lv. {{level}}",
       "unlocksIcon": "Icon unlocked at this rank",
       "howToXp": "Earn XP from sessions, reviews, assessments and your daily streak."
     },
     "tiers": {
-      "iron": "Iron",
-      "bronze": "Bronze",
-      "silver": "Silver",
-      "gold": "Gold",
-      "platinum": "Platinum",
-      "emerald": "Emerald",
-      "diamond": "Diamond",
-      "master": "Master"
+      "recrue": "Recruit",
+      "initie": "Initiate",
+      "adepte": "Adept",
+      "stratege": "Strategist",
+      "virtuose": "Virtuoso",
+      "sage": "Sage",
+      "oracle": "Oracle",
+      "legende": "Legend"
     },
     "rarity": {
       "common": "Common",
@@ -2623,5 +2656,89 @@
         "desc_other": "Reach level {{count}}"
       }
     }
+  },
+  "mistakeLab": {
+    "title": "Mistake Lab",
+    "subtitle": "Your tagged mistakes: which cost the most, when they happen, and where to rewatch them.",
+    "period": "Period",
+    "days_one": "{{count}}d",
+    "days_other": "{{count}}d",
+    "role": "Role",
+    "champion": "Champion",
+    "championPlaceholder": "Champion (e.g. Renekton)",
+    "roles": {
+      "any": "All roles",
+      "TOP": "Top",
+      "JUNGLE": "Jungle",
+      "MIDDLE": "Mid",
+      "BOTTOM": "ADC",
+      "UTILITY": "Support"
+    },
+    "loading": "Loading your mistakes…",
+    "empty": "No tagged mistakes in this period.",
+    "emptyHint": "Tag mistakes during your reviews (or run auto-detection) and they will show up here.",
+    "kpi": {
+      "total": "Tagged mistakes",
+      "games_one": "across {{count}} analysed game",
+      "games_other": "across {{count}} analysed games",
+      "perGame": "Per game",
+      "perGameSub": "on average",
+      "top": "#1 mistake",
+      "topSub": "{{count}} times · {{share}}% of total",
+      "phase": "Most affected phase",
+      "phaseSub": "{{share}}% of your mistakes"
+    },
+    "families": "Mistake families",
+    "family": {
+      "all": "All",
+      "deaths": "Positioning & deaths",
+      "vision": "Vision & map",
+      "tempo": "Tempo & economy",
+      "mechanics": "Mechanics & laning"
+    },
+    "ranking": {
+      "title": "Ranked by frequency",
+      "none": "No mistakes from this family in the period.",
+      "legend": "Red: mistakes that cost fights or objectives · Amber: vision and tempo · Blue: micro. The last column compares your win rate with and without the mistake.",
+      "costTitle": "Win-rate gap: games with this mistake vs analysed games without it"
+    },
+    "trend": {
+      "title": "Trend",
+      "notEnough": "Not enough games for a curve yet.",
+      "mode": {
+        "day": "per day",
+        "game": "per game (short history)"
+      }
+    },
+    "phase": {
+      "early": "Early",
+      "mid": "Mid",
+      "late": "Late"
+    },
+    "phaseRange": {
+      "early": "0–14 min",
+      "mid": "14–25 min",
+      "late": "25 min +"
+    },
+    "inspector": {
+      "title": "Mistake detail",
+      "pick": "Pick a mistake in the ranking.",
+      "summary_one": "{{count}} times over {{games}} game · {{share}}% of your mistakes.",
+      "summary_other": "{{count}} times over {{games}} games · {{share}}% of your mistakes.",
+      "cost": "You win {{with}}% of the games where it happens, vs {{without}}% of your other analysed games.",
+      "when": "When it happens",
+      "moments": "Latest moments",
+      "replay": "Rewatch",
+      "noVod": "no VOD",
+      "actionHint": "Make it your goal: Ascend tracks this mistake over your next games and tells you whether it drops.",
+      "action": {
+        "idle": "Work on this mistake",
+        "busy": "Starting…",
+        "done": "Tracking started",
+        "error": "Not measurable for this mistake"
+      }
+    },
+    "win": "W",
+    "loss": "L"
   }
 }

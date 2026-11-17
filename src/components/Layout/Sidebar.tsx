@@ -148,7 +148,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-hextech-border-dim bg-hextech-dark">
+    <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-hextech-border-dim bg-hextech-dark">
       <div className="app-drag-region flex h-14 items-center gap-3 border-b border-hextech-border-dim px-5">
         <img src={logo} alt="" className="h-8 w-8 rounded-full object-cover" />
         <div className="flex-1 min-w-0">
@@ -166,7 +166,9 @@ export function Sidebar() {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      {/* Scrolls on its own: on a short window the link list used to push the
+          whole layout past 100vh and add a second, page-level scrollbar. */}
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
@@ -190,7 +192,7 @@ export function Sidebar() {
       </nav>
 
       {user && (
-        <div className="border-t border-hextech-border-dim p-4 space-y-3">
+        <div className="shrink-0 border-t border-hextech-border-dim p-4 space-y-3">
           <div className="flex items-center justify-between text-xs">
             <span className="text-hextech-text">{t('sidebar.level')} {levelInfo.level}</span>
             <span className="text-hextech-gold">

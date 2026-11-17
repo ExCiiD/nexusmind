@@ -249,6 +249,50 @@ export function registerMistakeHandlers() {
       .map((e) => ({ tag: e.tag, count: e.count, lastAt: e.lastAt.toISOString() }))
   })
 
+  /**
+   * Mistake Lab: every tagged occurrence in the window with the context the
+   * page needs to make it actionable — the game's result (win-rate cost),
+   * when in the game it happened (early/mid/late) and the recording to jump
+   * to. Same window/role/champion filters as the other stats handlers.
+   * Read-only.
+   */
+  ipcMain.handle('mistake-stats:occurrences', async (_e, opts?: { days?: number; role?: string | null; champion?: string | null }) => {
+    const prisma = getPrisma()
+    const days = Math.max(1, opts?.days ?? 30)
+    const since = new Date(Date.now() - days * 86_400_000)
+    const champ = (opts?.champion ?? '').trim().toLowerCase()
+    const all = await prisma.mistake.findMany({
+      where: {
+        createdAt: { gte: since },
+        ...(opts?.role ? { game: { role: opts.role } } : {}),
+      },
+      include: {
+        tag: true,
+        game: { select: { id: true, champion: true, opponentChampion: true, win: true, gameEndAt: true, duration: true, recording: { select: { id: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+    return all
+      .filter((m) => m.game && championMatches(m.game.champion, champ))
+      .map((m) => ({
+        id: m.id,
+        tag: { id: m.tag.id, slug: m.tag.slug, label: m.tag.label, category: m.tag.category, color: m.tag.color },
+        severity: m.severity,
+        gameTimeSec: m.gameTimeSec,
+        autoDetected: m.autoDetected,
+        note: m.note,
+        recordingId: m.recordingId ?? m.game!.recording?.id ?? null,
+        game: {
+          id: m.game!.id,
+          champion: m.game!.champion,
+          opponentChampion: m.game!.opponentChampion,
+          win: m.game!.win,
+          gameEndAt: m.game!.gameEndAt.toISOString(),
+          duration: m.game!.duration,
+        },
+      }))
+  })
+
   ipcMain.handle('mistake-stats:trend', async (_e, opts: { tagSlugs?: string[]; days?: number; role?: string | null; champion?: string | null }) => {
     const prisma = getPrisma()
     const days = Math.max(1, opts?.days ?? 30)

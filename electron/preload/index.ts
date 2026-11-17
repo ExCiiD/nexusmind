@@ -397,6 +397,8 @@ const api = {
     ipcRenderer.invoke('mistake:update', args),
   deleteMistake: (id: string) => ipcRenderer.invoke('mistake:delete', id),
   autoDetectMistakes: (gameId: string) => ipcRenderer.invoke('mistake:auto-detect', gameId),
+  coachStartTagExperiment: (tagSlug: string) => ipcRenderer.invoke('coach:start-tag-experiment', tagSlug),
+  getMistakeOccurrences: (opts?: { days?: number; role?: string | null; champion?: string | null }) => ipcRenderer.invoke('mistake-stats:occurrences', opts),
   getMistakeTopTags: (opts?: { days?: number; role?: string | null; champion?: string | null }) =>
     ipcRenderer.invoke('mistake-stats:top-tags', opts),
   getMistakeTrend: (opts: { tagSlugs?: string[]; days?: number; role?: string | null; champion?: string | null }) =>

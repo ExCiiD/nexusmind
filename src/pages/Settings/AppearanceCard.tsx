@@ -1,11 +1,12 @@
-import { useState, type CSSProperties } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Palette, Check, Image as ImageIcon, PaintBucket, RotateCcw, Eye } from 'lucide-react'
+import { Palette, Check, Image as ImageIcon, PaintBucket, RotateCcw, Eye, Upload, Trash2, Loader2, Layers } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
-import { COLOR_THEMES, applyTheme, getStoredTheme, type ColorTheme } from '@/lib/theme'
+import { COLOR_THEMES, applyTheme, getStoredTheme, getCustomPalette, saveCustomPalette, DEFAULT_CUSTOM_PALETTE, type ColorTheme, type CustomPalette } from '@/lib/theme'
+import { saveLocalImage, deleteLocalImage } from '@/lib/localImageStore'
 import {
   BACKGROUND_IMAGES,
   BACKGROUND_IMAGE_IDS,
@@ -13,10 +14,13 @@ import {
   appearanceVars,
   applyAppearance,
   getStoredAppearance,
+  getCustomImageUrl,
+  setCustomImageUrl,
+  CUSTOM_IMAGE_ID,
   type AppearancePrefs,
 } from '@/lib/appearance'
 
-const THEME_SWATCHES: Record<ColorTheme, [string, string, string]> = {
+const THEME_SWATCHES: Record<Exclude<ColorTheme, 'custom'>, [string, string, string]> = {
   hextech: ['#0D0A06', '#D4A24C', '#3E8E7E'],
   piltover: ['#060B10', '#4C9ED4', '#3EC2D4'],
   noxus: ['#100607', '#C23B3B', '#D4753E'],
@@ -31,6 +35,12 @@ const THEME_SWATCHES: Record<ColorTheme, [string, string, string]> = {
  *  stays available for anything else. */
 const COLOR_PRESETS = ['#D4A24C', '#C23B3B', '#4C9ED4', '#A24CD4', '#5FB89A', '#E07AA0', '#0D0A06', '#101826']
 
+/** Panel fill presets: see-through, balanced, solid. */
+/** Dark backgrounds for the custom theme's base color. */
+const BASE_PRESETS = ['#0E0F14', '#0D0A06', '#100607', '#060B10', '#0A0610', '#070A05', '#141414']
+
+const PANEL_PRESETS = [{ id: 'glass', value: 60 }, { id: 'balanced', value: 90 }, { id: 'solid', value: 100 }] as const
+
 /**
  * Settings → Appearance: color theme + app background (image with a color
  * filter, or a plain color). Every change is applied to the whole app at
@@ -41,10 +51,50 @@ export function AppearanceCard() {
   const { t } = useTranslation()
   const [theme, setTheme] = useState<ColorTheme>(() => getStoredTheme())
   const [prefs, setPrefs] = useState<AppearancePrefs>(() => getStoredAppearance())
+  const [palette, setPalette] = useState<CustomPalette>(() => getCustomPalette())
+  const [customUrl, setCustomUrl] = useState<string | null>(() => getCustomImageUrl())
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
 
   const chooseTheme = (id: ColorTheme) => {
-    applyTheme(id)
+    applyTheme(id, palette)
     setTheme(id)
+  }
+  const updatePalette = (patch: Partial<CustomPalette>) => {
+    const next = { ...palette, ...patch }
+    setPalette(next)
+    saveCustomPalette(next)
+    applyTheme('custom', next)
+    setTheme('custom')
+  }
+  /** The picture is downscaled and kept in this device's IndexedDB only. */
+  const onPickImage = async (file: File | undefined) => {
+    if (!file) return
+    setUploading(true)
+    setUploadError(false)
+    try {
+      const blob = await saveLocalImage(CUSTOM_IMAGE_ID, file)
+      const prev = getCustomImageUrl()
+      if (prev) URL.revokeObjectURL(prev)
+      const url = URL.createObjectURL(blob)
+      setCustomImageUrl(url)
+      setCustomUrl(url)
+      update({ mode: 'image', imageId: CUSTOM_IMAGE_ID, dim: 50 })
+    } catch {
+      setUploadError(true)
+    } finally {
+      setUploading(false)
+      if (fileInput.current) fileInput.current.value = ''
+    }
+  }
+  const removeImage = async () => {
+    await deleteLocalImage(CUSTOM_IMAGE_ID).catch(() => {})
+    const prev = getCustomImageUrl()
+    if (prev) URL.revokeObjectURL(prev)
+    setCustomImageUrl(null)
+    setCustomUrl(null)
+    if (prefs.imageId === CUSTOM_IMAGE_ID) update({ imageId: 'swirl', dim: BACKGROUND_IMAGES.swirl.dim })
   }
   const update = (patch: Partial<AppearancePrefs>) => {
     const next = { ...prefs, ...patch }
@@ -82,7 +132,7 @@ export function AppearanceCard() {
                   )}
                 >
                   <div className="flex w-full items-center gap-1.5">
-                    {THEME_SWATCHES[id].map((c, i) => (
+                    {(id === 'custom' ? [palette.base, palette.accent, palette.secondary] : THEME_SWATCHES[id]).map((c, i) => (
                       <span key={i} className="h-4 w-4 rounded-full border border-white/10" style={{ backgroundColor: c }} />
                     ))}
                     {active && <Check className="ml-auto h-4 w-4 text-hextech-gold" />}
@@ -95,6 +145,20 @@ export function AppearanceCard() {
               )
             })}
           </div>
+          {theme === 'custom' && (
+            <div className="grid gap-3 rounded-lg border border-hextech-border-dim p-3 sm:grid-cols-3">
+              {(['base', 'accent', 'secondary'] as const).map((key) => (
+                <div key={key} className="space-y-1.5">
+                  <span className="text-xs font-medium text-hextech-text-bright">{t(`appearance.custom.${key}`)}</span>
+                  <ColorRow value={palette[key]} presets={key === 'base' ? BASE_PRESETS : COLOR_PRESETS} onChange={(hex) => updatePalette({ [key]: hex })} />
+                </div>
+              ))}
+              <p className="text-[11px] text-hextech-text-dim sm:col-span-3">
+                {t('appearance.custom.hint')}{' '}
+                <button className="underline hover:text-hextech-text" onClick={() => updatePalette(DEFAULT_CUSTOM_PALETTE)}>{t('appearance.custom.reset')}</button>
+              </p>
+            </div>
+          )}
         </section>
 
         {/* ── Background ── */}
@@ -142,6 +206,37 @@ export function AppearanceCard() {
                       </button>
                     )
                   })}
+                  {customUrl ? (
+                    <button
+                      onClick={() => update({ imageId: CUSTOM_IMAGE_ID })}
+                      className={cn('group relative aspect-[4/3] overflow-hidden rounded-lg border-2 transition-all', prefs.imageId === CUSTOM_IMAGE_ID ? 'border-hextech-gold' : 'border-transparent hover:border-hextech-border')}
+                      title={t('appearance.myImage')}
+                    >
+                      <img src={customUrl} alt="" className="h-full w-full object-cover" />
+                      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-1.5 pb-1 pt-3 text-left text-[10px] font-medium text-white">{t('appearance.myImage')}</span>
+                      {prefs.imageId === CUSTOM_IMAGE_ID && <Check className="absolute right-1 top-1 h-4 w-4 rounded-full bg-hextech-gold p-0.5 text-hextech-black" />}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => fileInput.current?.click()}
+                      disabled={uploading}
+                      className="flex aspect-[4/3] flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-hextech-border-dim text-[11px] text-hextech-text transition-colors hover:border-hextech-gold hover:text-hextech-gold-bright"
+                    >
+                      {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      {t('appearance.addImage')}
+                    </button>
+                  )}
+                </div>
+                <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => onPickImage(e.target.files?.[0])} />
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-hextech-text-dim">
+                  <span>{t('appearance.localOnly')}</span>
+                  {customUrl && (
+                    <>
+                      <button className="inline-flex items-center gap-1 underline hover:text-hextech-text" onClick={() => fileInput.current?.click()}><Upload className="h-3 w-3" />{t('appearance.replaceImage')}</button>
+                      <button className="inline-flex items-center gap-1 underline hover:text-hextech-red" onClick={removeImage}><Trash2 className="h-3 w-3" />{t('appearance.removeImage')}</button>
+                    </>
+                  )}
+                  {uploadError && <span className="text-hextech-red">{t('appearance.imageError')}</span>}
                 </div>
 
                 <div className="space-y-2 rounded-lg border border-hextech-border-dim p-3">
@@ -164,6 +259,22 @@ export function AppearanceCard() {
               </div>
             )}
 
+            <div className="space-y-2 rounded-lg border border-hextech-border-dim p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-hextech-text-bright"><Layers className="h-3.5 w-3.5 text-hextech-gold" />{t('appearance.panels')}</span>
+                <div className="flex rounded-lg border border-hextech-border-dim p-0.5 text-[11px]">
+                  {PANEL_PRESETS.map((p) => (
+                    <button key={p.id} onClick={() => update({ panelOpacity: p.value })}
+                      className={cn('rounded-md px-2 py-0.5 font-medium transition-colors', prefs.panelOpacity === p.value ? 'bg-hextech-gold text-hextech-black' : 'text-hextech-text hover:text-hextech-text-bright')}>
+                      {t(`appearance.panelPreset.${p.id}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Slider value={[prefs.panelOpacity]} min={40} max={100} step={1} onValueChange={([v]) => update({ panelOpacity: v })} />
+              <p className="text-[11px] text-hextech-text-dim">{t('appearance.panelsHint', { value: prefs.panelOpacity })}</p>
+            </div>
+
             <Button variant="ghost" size="sm" onClick={reset} className="gap-1.5 text-xs text-hextech-text-dim">
               <RotateCcw className="h-3.5 w-3.5" /> {t('appearance.reset')}
             </Button>
@@ -176,10 +287,10 @@ export function AppearanceCard() {
   )
 }
 
-function ColorRow({ value, onChange }: { value: string; onChange: (hex: string) => void }) {
+function ColorRow({ value, onChange, presets = COLOR_PRESETS }: { value: string; onChange: (hex: string) => void; presets?: readonly string[] }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {COLOR_PRESETS.map((c) => (
+      {presets.map((c) => (
         <button
           key={c}
           onClick={() => onChange(c)}
@@ -226,17 +337,17 @@ function PreviewTile({ prefs }: { prefs: AppearancePrefs }) {
         />
         <div className="absolute inset-0" style={{ backgroundColor: 'var(--app-bg-tint)', opacity: 'var(--app-bg-tint-opacity)' as any, mixBlendMode: 'color' }} />
         <div className="absolute inset-0 flex gap-1.5 p-1.5">
-          <div className="w-1/4 space-y-1 rounded-md bg-hextech-dark/90 p-1.5">
+          <div className="w-1/4 space-y-1 rounded-md bg-hextech-dark p-1.5">
             <div className="h-2 w-3/4 rounded bg-hextech-gold/70" />
             {[0, 1, 2, 3, 4].map((i) => <div key={i} className={cn('h-1.5 rounded', i === 0 ? 'bg-hextech-gold/40' : 'bg-hextech-text-dim/40')} />)}
           </div>
           <div className="flex-1 space-y-1.5">
             <div className="h-2.5 w-1/2 rounded bg-hextech-text-bright/70" />
-            <div className="h-10 rounded-md border border-hextech-border-dim/70 bg-hextech-dark/85" />
+            <div className="h-10 rounded-md border border-hextech-border-dim/70 panel-surface" />
             <div className="grid grid-cols-3 gap-1">
-              {[0, 1, 2].map((i) => <div key={i} className="h-7 rounded-md border border-hextech-border-dim/70 bg-hextech-dark/85" />)}
+              {[0, 1, 2].map((i) => <div key={i} className="h-7 rounded-md border border-hextech-border-dim/70 panel-surface" />)}
             </div>
-            <div className="h-12 rounded-md border border-hextech-border-dim/70 bg-hextech-dark/85" />
+            <div className="h-12 rounded-md border border-hextech-border-dim/70 panel-surface" />
           </div>
         </div>
       </div>
