@@ -1,5 +1,7 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import { gameTimeToVideoTime } from '@/lib/eventSync'
+import { useTranslation } from 'react-i18next'
+import i18n from '@/i18n/config'
 import {
   Bookmark, Play, Pause, Volume2, VolumeX, Maximize2, Minimize2,
   Check, X, RotateCcw, RotateCw, PanelRight, PanelLeft, PanelRightClose,
@@ -45,19 +47,11 @@ const EVENT_ICONS: Record<GameEventType, LucideIcon> = {
   plate: Shield,
 }
 
-const EVENT_LABELS: Record<GameEventType, string> = {
-  kill: 'Kill',
-  death: 'Death',
-  assist: 'Assist',
-  dragon: 'Drake',
-  baron: 'Nashor',
-  voidgrub: 'Voidgrub',
-  herald: 'Herald',
-  atakhan: 'Atakhan',
-  turret: 'Tower',
-  inhibitor: 'Inhib',
-  plate: 'Plate',
-}
+/** Localized on read (record.eventType.*), so every existing EVENT_LABELS[x]
+ *  use follows the UI language without touching each call site. */
+const EVENT_LABELS = new Proxy({} as Record<GameEventType, string>, {
+  get: (_target, type) => i18n.t(`record.eventType.${String(type)}`),
+})
 
 // Order used by the legend / filter chips — most important categories first.
 const EVENT_ORDER: GameEventType[] = [
@@ -189,6 +183,9 @@ export function VideoReviewPlayer({
   mistakes, mistakeTags, onAddMistake, onDeleteMistake,
   bookmarks, onAddBookmark, onDeleteBookmark,
 }: VideoReviewPlayerProps) {
+  // Subscribes to language changes; strings below use i18n.t because this
+  // component has many local variables named `t` (times, tags).
+  useTranslation()
   const videoRef = useRef<HTMLVideoElement>(null)
   const progressRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -942,9 +939,9 @@ export function VideoReviewPlayer({
         <div className="rounded-full bg-white/5 p-4">
           <X className="h-8 w-8 text-white/30" />
         </div>
-        <p className="text-sm font-medium text-white/60">Recording file not found</p>
+        <p className="text-sm font-medium text-white/60">{i18n.t('record.player.fileNotFound')}</p>
         <p className="text-xs text-white/30 max-w-xs">
-          The video file has been moved or deleted. You can re-link a new file or remove this recording entry.
+          {i18n.t('record.player.fileNotFoundDesc')}
         </p>
       </div>
     )
@@ -990,7 +987,7 @@ export function VideoReviewPlayer({
               <button
                 type="button"
                 onClick={() => startEditNote(originalIndex, note.note)}
-                title="Click to edit"
+                title={i18n.t('record.player.clickToEdit')}
                 className="text-white/70 leading-tight pt-0.5 text-xs flex-1 break-words text-left hover:text-white transition-colors cursor-text"
               >
                 {note.note}
@@ -1001,7 +998,7 @@ export function VideoReviewPlayer({
             {canDelete && (
               <button
                 onClick={() => handleDeleteNote(originalIndex)}
-                title="Delete note"
+                title={i18n.t('record.player.deleteNote')}
                 className="opacity-0 group-hover/note:opacity-100 transition-opacity shrink-0 text-white/40 hover:text-[#E24C3A] p-0.5"
               >
                 <Trash2 className="h-3 w-3" />
@@ -1031,7 +1028,7 @@ export function VideoReviewPlayer({
           if (e.key === 'Enter') confirmMark()
           if (e.key === 'Escape') { setMarking(false); setPendingNote('') }
         }}
-        placeholder="Describe this moment…"
+        placeholder={i18n.t('record.player.describeMoment')}
         className="flex-1 bg-transparent text-sm text-white placeholder:text-white/30 focus:outline-none min-w-0"
       />
       <button
@@ -1063,7 +1060,7 @@ export function VideoReviewPlayer({
         type="text"
         value={bookmarkLabel}
         onChange={(e) => setBookmarkLabel(e.target.value)}
-        placeholder="Label (optional)…"
+        placeholder={i18n.t('record.player.labelOptional')}
         onKeyDown={(e) => {
           if (e.key === 'Enter') saveBookmark()
           if (e.key === 'Escape') setBookmarkDialogOpen(false)
@@ -1088,7 +1085,7 @@ export function VideoReviewPlayer({
           <span className="font-mono bg-amber-500/15 rounded px-1.5">{fmt(mistakeAtSec)}</span>
         </span>
         <div className="flex-1" />
-        <button onClick={() => setMistakeDialogOpen(false)} className="text-white/40 hover:text-white" title="Close (Esc)">
+        <button onClick={() => setMistakeDialogOpen(false)} className="text-white/40 hover:text-white" title={i18n.t('record.player.closeEsc')}>
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -1099,7 +1096,7 @@ export function VideoReviewPlayer({
         type="text"
         value={mistakeTagQuery}
         onChange={(e) => setMistakeTagQuery(e.target.value)}
-        placeholder="Filter tags…"
+        placeholder={i18n.t('record.player.filterTags')}
         className="w-full bg-transparent border-b border-white/10 text-xs text-white py-1 focus:outline-none focus:border-amber-400/60"
       />
       <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
@@ -1123,20 +1120,20 @@ export function VideoReviewPlayer({
             )
           })}
         {(mistakeTags?.length ?? 0) === 0 && (
-          <span className="text-[10px] text-white/40">No tags available — restart the app to seed them.</span>
+          <span className="text-[10px] text-white/40">{i18n.t('record.player.noTags')}</span>
         )}
       </div>
 
       <textarea
         value={mistakeNote}
         onChange={(e) => setMistakeNote(e.target.value)}
-        placeholder="Note (optional)…"
+        placeholder={i18n.t('record.player.noteOptional')}
         rows={2}
         className="w-full rounded bg-black/30 border border-white/10 text-xs text-white p-2 resize-none focus:outline-none focus:border-amber-400/40"
       />
 
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[10px] text-white/40 uppercase tracking-wider">Severity:</span>
+        <span className="text-[10px] text-white/40 uppercase tracking-wider">{i18n.t('record.player.severity')}</span>
         {([1, 2, 3] as const).map((s) => (
           <button
             key={s}
@@ -1150,7 +1147,7 @@ export function VideoReviewPlayer({
                 : 'bg-white/5 text-white/40 hover:bg-white/10',
             )}
           >
-            {s === 1 ? 'Minor' : s === 2 ? 'Standard' : 'Critical'}
+            {s === 1 ? i18n.t('record.player.sevMinor') : s === 2 ? i18n.t('record.player.sevStandard') : i18n.t('record.player.sevCritical')}
           </button>
         ))}
         <div className="flex-1" />
@@ -1159,7 +1156,7 @@ export function VideoReviewPlayer({
           disabled={!mistakeTagId || savingMistake}
           className="rounded bg-amber-500 text-black px-3 py-1 text-xs font-semibold hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          {savingMistake ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}
+          {savingMistake ? <Loader2 className="h-3 w-3 animate-spin" /> : i18n.t('record.player.save')}
         </button>
       </div>
     </div>
@@ -1175,9 +1172,9 @@ export function VideoReviewPlayer({
   const showMistakesSection = !!onAddMistake || (mistakes?.length ?? 0) > 0
   const showBookmarksSection = !!onAddBookmark || (bookmarks?.length ?? 0) > 0
   const availableSections: Array<{ id: SidebarSection; label: string; count: number; Icon: LucideIcon }> = [
-    { id: 'notes', label: 'Notes', count: videoNotes.length, Icon: MessageSquare },
-    ...(showMistakesSection ? [{ id: 'mistakes' as const, label: 'Mistakes', count: mappedMistakes.length, Icon: AlertTriangle }] : []),
-    ...(showBookmarksSection ? [{ id: 'bookmarks' as const, label: 'Marks', count: bookmarks?.length ?? 0, Icon: Bookmark }] : []),
+    { id: 'notes', label: i18n.t('record.player.notes'), count: videoNotes.length, Icon: MessageSquare },
+    ...(showMistakesSection ? [{ id: 'mistakes' as const, label: i18n.t('record.player.mistakesLabel'), count: mappedMistakes.length, Icon: AlertTriangle }] : []),
+    ...(showBookmarksSection ? [{ id: 'bookmarks' as const, label: i18n.t('record.player.marks'), count: bookmarks?.length ?? 0, Icon: Bookmark }] : []),
   ]
   const sidebarHasAnyContent = videoNotes.length > 0 || mappedMistakes.length > 0 || (bookmarks?.length ?? 0) > 0 || !!onAddNote || showMistakesSection || showBookmarksSection
   // A section is rendered when it's available AND enabled in the filter.
@@ -1192,8 +1189,8 @@ export function VideoReviewPlayer({
       {marking && markInputBlock}
       {videoNotes.length === 0 && !marking ? (
         <p className="text-[11px] text-white/25">
-          No moments marked yet.
-          {!readonly && onAddNote && <> Press <kbd className="px-1 rounded bg-white/10 font-mono">Mark</kbd>.</>}
+          {i18n.t('record.player.noMoments')}
+          {!readonly && onAddNote && <> {i18n.t('record.player.press')} <kbd className="px-1 rounded bg-white/10 font-mono">{i18n.t('record.player.mark')}</kbd>.</>}
         </p>
       ) : (
         videoNotes.map(({ note, originalIndex }) => renderNoteRow(note, originalIndex))
@@ -1210,7 +1207,7 @@ export function VideoReviewPlayer({
         {(mistakes?.some((m) => m.autoDetected) ?? false) && (
           <button
             onClick={() => setShowAutoDetected((v) => !v)}
-            title={showAutoDetected ? 'Hide auto-detected mistakes' : 'Show auto-detected mistakes'}
+            title={showAutoDetected ? i18n.t('record.player.hideAuto') : i18n.t('record.player.showAuto')}
             className={cn(
               'rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider transition-colors',
               showAutoDetected ? 'bg-amber-500/30 text-amber-200' : 'bg-white/5 text-white/40 hover:bg-white/10',
@@ -1223,8 +1220,8 @@ export function VideoReviewPlayer({
       {mistakeDialogBlock}
       {mappedMistakes.length === 0 && !mistakeDialogOpen ? (
         <p className="text-[11px] text-white/25">
-          No mistakes tagged yet.
-          {onAddMistake && <> Press <kbd className="px-1 rounded bg-white/10 font-mono">X</kbd>.</>}
+          {i18n.t('record.player.noMistakes')}
+          {onAddMistake && <> {i18n.t('record.player.press')} <kbd className="px-1 rounded bg-white/10 font-mono">X</kbd>.</>}
         </p>
       ) : (
         mappedMistakes.map((m) => (
@@ -1238,14 +1235,14 @@ export function VideoReviewPlayer({
             <div className="flex-1 min-w-0">
               <p className="text-xs text-white/80 leading-tight">
                 {m.tag.label}
-                {m.autoDetected && <span className="ml-1.5 text-[9px] text-white/40 uppercase tracking-wider">auto</span>}
+                {m.autoDetected && <span className="ml-1.5 text-[9px] text-white/40 uppercase tracking-wider">{i18n.t('record.player.auto')}</span>}
               </p>
               {m.note && <p className="text-[10px] text-white/40 break-words">{m.note}</p>}
             </div>
             {onDeleteMistake && (
               <button
                 onClick={() => onDeleteMistake(m.id)}
-                title="Delete mistake"
+                title={i18n.t('record.player.deleteMistake')}
                 className="opacity-0 group-hover/mistake:opacity-100 transition-opacity shrink-0 text-white/40 hover:text-[#E24C3A] p-0.5"
               >
                 <Trash2 className="h-3 w-3" />
@@ -1265,8 +1262,8 @@ export function VideoReviewPlayer({
       {bookmarkDialogBlock}
       {(bookmarks?.length ?? 0) === 0 && !bookmarkDialogOpen ? (
         <p className="text-[11px] text-white/25">
-          No bookmarks yet.
-          {onAddBookmark && <> Press <kbd className="px-1 rounded bg-white/10 font-mono">B</kbd>.</>}
+          {i18n.t('record.player.noBookmarks')}
+          {onAddBookmark && <> {i18n.t('record.player.press')} <kbd className="px-1 rounded bg-white/10 font-mono">B</kbd>.</>}
         </p>
       ) : (
         bookmarks?.map((b) => (
@@ -1278,12 +1275,12 @@ export function VideoReviewPlayer({
               ▶ {fmt(b.videoTimeMs / 1000)}
             </button>
             <span className="text-xs text-white/80 leading-tight flex-1 break-words">
-              {b.label || <span className="text-white/30 italic">Unlabeled</span>}
+              {b.label || <span className="text-white/30 italic">{i18n.t('record.player.unlabeled')}</span>}
             </span>
             {onDeleteBookmark && (
               <button
                 onClick={() => onDeleteBookmark(b.id)}
-                title="Delete bookmark"
+                title={i18n.t('record.player.deleteBookmark')}
                 className="opacity-0 group-hover/bookmark:opacity-100 transition-opacity shrink-0 text-white/40 hover:text-[#E24C3A] p-0.5"
               >
                 <Trash2 className="h-3 w-3" />
@@ -1320,7 +1317,7 @@ export function VideoReviewPlayer({
                   else next.add(id)
                   return next
                 })}
-                title={on ? `Hide ${label}` : `Show ${label}`}
+                title={on ? i18n.t('record.player.hideX', { x: label }) : i18n.t('record.player.showX', { x: label })}
                 className={cn(
                   'flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors',
                   on
@@ -1341,7 +1338,7 @@ export function VideoReviewPlayer({
         </div>
         <button
           onClick={() => setSidebarPosition('hidden')}
-          title="Hide sidebar (H)"
+          title={i18n.t('record.player.hideSidebar')}
           className="px-2 text-white/40 hover:text-white border-l border-white/5 shrink-0"
         >
           <PanelRightClose className="h-3.5 w-3.5" />
@@ -1355,7 +1352,7 @@ export function VideoReviewPlayer({
         {showMistakesSection && sectionVisible('mistakes') && mistakesSection}
         {showBookmarksSection && sectionVisible('bookmarks') && bookmarksSection}
         {availableSections.every((s) => !sectionVisible(s.id)) && (
-          <p className="text-[11px] text-white/25 text-center pt-6">All sections hidden — tap a chip above to show one.</p>
+          <p className="text-[11px] text-white/25 text-center pt-6">{i18n.t('record.player.allHidden')}</p>
         )}
       </div>
     </div>
@@ -1368,12 +1365,12 @@ export function VideoReviewPlayer({
     <button
       type="button"
       onClick={() => setSidebarPosition('right')}
-      title="Show panel (H)"
+      title={i18n.t('record.player.showPanelH')}
       className="absolute right-0 top-1/2 -translate-y-1/2 z-40 inline-flex items-center gap-1 rounded-l-md bg-hextech-gold/80 hover:bg-hextech-gold text-black px-1.5 py-3 text-[10px] font-semibold uppercase tracking-wider shadow-lg"
       style={{ writingMode: 'vertical-rl' }}
     >
       <PanelRight className="h-3 w-3 rotate-180" />
-      <span>Panel</span>
+      <span>{i18n.t('record.player.panel')}</span>
     </button>
   )
 
@@ -1471,9 +1468,9 @@ export function VideoReviewPlayer({
                     <Loader2 className="h-10 w-10 text-hextech-gold animate-spin" />
                   </div>
                   <div className="text-center px-4 max-w-md">
-                    <p className="text-sm font-medium text-white">Finalizing video…</p>
+                    <p className="text-sm font-medium text-white">{i18n.t('record.player.finalizing')}</p>
                     <p className="text-xs text-white/60 mt-1">
-                      The recording is still being processed. It will become playable in a few seconds.
+                      {i18n.t('record.player.finalizingDesc')}
                     </p>
                   </div>
                 </>
@@ -1650,7 +1647,7 @@ export function VideoReviewPlayer({
               return (
                 <button
                   key={`bookmark-${b.id}`}
-                  title={`${fmt(b.videoTimeMs / 1000)} — ${b.label ?? 'Bookmark'}`}
+                  title={`${fmt(b.videoTimeMs / 1000)} — ${b.label ?? i18n.t('record.player.bookmark')}`}
                   onClick={(e) => { e.stopPropagation(); seekTo(b.videoTimeMs / 1000) }}
                   style={{ left: `${pct}%`, top: 'calc(50% - 92px)', backgroundColor: bg }}
                   className="absolute -translate-y-1/2 -translate-x-1/2 flex items-center justify-center w-5 h-5 rounded-md border border-black/60 shadow-md hover:scale-[1.4] hover:z-30 transition-transform z-[6]"
@@ -1673,7 +1670,7 @@ export function VideoReviewPlayer({
               return (
                 <button
                   key={`mistake-${m.id}`}
-                  title={`${fmt(m.videoTime)} — ${m.tag.label}${isAuto ? ' · AUTO' : ''}${m.note ? `\n${m.note}` : ''}`}
+                  title={`${fmt(m.videoTime)} — ${m.tag.label}${isAuto ? ` · ${i18n.t('record.player.auto').toUpperCase()}` : ''}${m.note ? `\n${m.note}` : ''}`}
                   onClick={(e) => { e.stopPropagation(); seekTo(m.videoTime) }}
                   style={{ left: `${pct}%`, top: 'calc(50% - 72px)', backgroundColor: bg }}
                   className={cn(
@@ -1740,9 +1737,9 @@ export function VideoReviewPlayer({
                 {/* Mode pills */}
                 <div className="flex items-center rounded-md border border-white/10 bg-white/5 p-0.5 mr-1">
                   {([
-                    { id: 'mine' as const, label: 'Mine', Icon: User, title: 'Only events you were involved in' },
-                    { id: 'all' as const, label: 'All', Icon: Users, title: 'All events including team-fight context' },
-                    { id: 'objectives' as const, label: 'Objectives', Icon: Target, title: 'All objectives + towers regardless of participation' },
+                    { id: 'mine' as const, label: i18n.t('record.player.modeMine'), Icon: User, title: i18n.t('record.player.modeMineHint') },
+                    { id: 'all' as const, label: i18n.t('record.player.modeAll'), Icon: Users, title: i18n.t('record.player.modeAllHint') },
+                    { id: 'objectives' as const, label: i18n.t('record.player.modeObjectives'), Icon: Target, title: i18n.t('record.player.modeObjectivesHint') },
                   ]).map(({ id, label, Icon, title }) => {
                     const active = filterMode === id
                     return (
@@ -1786,7 +1783,7 @@ export function VideoReviewPlayer({
                           return next
                         })
                       }}
-                      title={on ? `Hide ${EVENT_LABELS[t]}s` : `Show ${EVENT_LABELS[t]}s`}
+                      title={on ? i18n.t('record.player.hideX', { x: EVENT_LABELS[t] }) : i18n.t('record.player.showX', { x: EVENT_LABELS[t] })}
                       className={cn(
                         'flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider border transition-all',
                         on
@@ -1804,19 +1801,19 @@ export function VideoReviewPlayer({
                   <>
                     <button
                       onClick={() => setEventFilter(null)}
-                      title="Show all event categories (also clears the saved default)"
+                      title={i18n.t('record.player.resetHint')}
                       className="text-[10px] text-white/40 hover:text-white/80 underline underline-offset-2 px-1"
                     >
-                      Reset
+                      {i18n.t('record.player.reset')}
                     </button>
                     {/* Subtle hint that the current chip selection is the
                         new default for future recordings — answers the
                         question "is this sticky?" without a settings menu. */}
                     <span
-                      title="Your current chip selection is saved as the default for future recordings."
+                      title={i18n.t('record.player.savedDefaultHint')}
                       className="text-[9px] text-hextech-gold/50 px-1 italic"
                     >
-                      saved as default
+                      {i18n.t('record.player.savedDefault')}
                     </span>
                   </>
                 )}
@@ -1827,22 +1824,22 @@ export function VideoReviewPlayer({
 
         {/* Controls */}
         <div className="px-3 pb-3 flex items-center gap-1.5 flex-wrap">
-          <button onClick={() => seekBy(-1000)} title="Back 1s ([)" className="text-white/50 hover:text-white transition-colors">
+          <button onClick={() => seekBy(-1000)} title={i18n.t('record.player.back1')} className="text-white/50 hover:text-white transition-colors">
             <StepBack className="h-3.5 w-3.5" />
           </button>
-          <button onClick={() => skip(-10)} title="Back 10s (J)" className="flex items-center gap-0.5 rounded px-2 py-1 text-white/70 hover:text-white hover:bg-white/10 transition-colors text-xs">
+          <button onClick={() => skip(-10)} title={i18n.t('record.player.back10')} className="flex items-center gap-0.5 rounded px-2 py-1 text-white/70 hover:text-white hover:bg-white/10 transition-colors text-xs">
             <RotateCcw className="h-3.5 w-3.5" /><span>10</span>
           </button>
-          <button onClick={togglePlay} title="Play / Pause (Space)" className="rounded-full w-9 h-9 flex items-center justify-center bg-hextech-gold hover:bg-hextech-gold-bright text-black transition-colors shrink-0">
+          <button onClick={togglePlay} title={i18n.t('record.player.playPause')} className="rounded-full w-9 h-9 flex items-center justify-center bg-hextech-gold hover:bg-hextech-gold-bright text-black transition-colors shrink-0">
             {playing ? <Pause className="h-4 w-4 fill-black" /> : <Play className="h-4 w-4 fill-black ml-0.5" />}
           </button>
-          <button onClick={() => skip(10)} title="Forward 10s (L)" className="flex items-center gap-0.5 rounded px-2 py-1 text-white/70 hover:text-white hover:bg-white/10 transition-colors text-xs">
+          <button onClick={() => skip(10)} title={i18n.t('record.player.fwd10')} className="flex items-center gap-0.5 rounded px-2 py-1 text-white/70 hover:text-white hover:bg-white/10 transition-colors text-xs">
             <span>10</span><RotateCw className="h-3.5 w-3.5" />
           </button>
-          <button onClick={() => seekBy(1000)} title="Forward 1s (])" className="text-white/50 hover:text-white transition-colors">
+          <button onClick={() => seekBy(1000)} title={i18n.t('record.player.fwd1')} className="text-white/50 hover:text-white transition-colors">
             <StepForward className="h-3.5 w-3.5" />
           </button>
-          <button onClick={toggleMute} title="Mute (M)" className="text-white/60 hover:text-white transition-colors ml-1">
+          <button onClick={toggleMute} title={i18n.t('record.player.mute')} className="text-white/60 hover:text-white transition-colors ml-1">
             {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
           <input
@@ -1861,7 +1858,7 @@ export function VideoReviewPlayer({
           {mappedEvents.length > 0 && (
             <button
               onClick={() => setShowEvents((v) => !v)}
-              title={showEvents ? 'Hide event markers' : 'Show event markers'}
+              title={showEvents ? i18n.t('record.player.hideMarkers') : i18n.t('record.player.showMarkers')}
               className={cn(
                 'flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors mr-1',
                 showEvents
@@ -1877,7 +1874,7 @@ export function VideoReviewPlayer({
           <div className="flex items-center gap-0.5 rounded-md bg-white/5 border border-white/10 p-0.5 mr-1">
             <button
               onClick={() => setZoomLevel((z) => ZOOM_LEVELS[Math.max(0, ZOOM_LEVELS.indexOf(z) - 1)] ?? z)}
-              title="Zoom out (-)"
+              title={i18n.t('record.player.zoomOut')}
               className="text-white/40 hover:text-white transition-colors px-1"
               disabled={zoomLevel === 1}
             >
@@ -1886,7 +1883,7 @@ export function VideoReviewPlayer({
             <span className="text-[10px] font-mono text-white/50 px-1">{zoomLevel}×</span>
             <button
               onClick={() => setZoomLevel((z) => ZOOM_LEVELS[Math.min(ZOOM_LEVELS.length - 1, ZOOM_LEVELS.indexOf(z) + 1)] ?? z)}
-              title="Zoom in (+)"
+              title={i18n.t('record.player.zoomIn')}
               className="text-white/40 hover:text-white transition-colors px-1"
               disabled={zoomLevel === ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
             >
@@ -1914,11 +1911,11 @@ export function VideoReviewPlayer({
           {!readonly && (
             <button
               onClick={handleMarkMoment}
-              title="Mark this moment"
+              title={i18n.t('record.player.markHint')}
               className="flex items-center gap-1 rounded px-2 py-1 text-[#00C8C8] hover:text-white hover:bg-[#00C8C8]/20 transition-colors text-xs font-medium ml-1"
             >
               <Bookmark className="h-3.5 w-3.5" />
-              Mark
+              {i18n.t('record.player.mark')}
             </button>
           )}
 
@@ -1927,11 +1924,11 @@ export function VideoReviewPlayer({
           {onAddBookmark && (
             <button
               onClick={openBookmarkDialog}
-              title="Add a bookmark at the current time (B)"
+              title={i18n.t('record.player.bookmarkHint')}
               className="flex items-center gap-1 rounded px-2 py-1 text-hextech-cyan hover:text-white hover:bg-hextech-cyan/20 transition-colors text-xs font-medium"
             >
               <Bookmark className="h-3.5 w-3.5" />
-              {(bookmarks?.length ?? 0) > 0 ? `Bookmarks (${bookmarks!.length})` : 'Bookmark'}
+              {(bookmarks?.length ?? 0) > 0 ? i18n.t('record.player.bookmarksCount', { count: bookmarks!.length }) : i18n.t('record.player.bookmark')}
             </button>
           )}
 
@@ -1945,22 +1942,22 @@ export function VideoReviewPlayer({
             <>
               <button
                 onClick={openMistakeDialog}
-                title="Tag a mistake at the current time (X)"
+                title={i18n.t('record.player.mistakeHint')}
                 className="flex items-center gap-1 rounded px-2 py-1 text-amber-300 hover:text-white hover:bg-amber-500/20 transition-colors text-xs font-medium"
               >
                 <AlertTriangle className="h-3.5 w-3.5" />
-                Mistake
+                {i18n.t('record.player.mistake')}
               </button>
               {(mistakes?.some((m) => m.autoDetected) ?? false) && (
                 <button
                   onClick={() => setShowAutoDetected((v) => !v)}
-                  title={showAutoDetected ? 'Hide auto-detected mistakes' : 'Show auto-detected mistakes'}
+                  title={showAutoDetected ? i18n.t('record.player.hideAuto') : i18n.t('record.player.showAuto')}
                   className={cn(
                     'rounded px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors',
                     showAutoDetected ? 'bg-amber-500/30 text-amber-200' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/70',
                   )}
                 >
-                  Auto
+                  {i18n.t('record.player.auto')}
                 </button>
               )}
             </>
@@ -1971,18 +1968,18 @@ export function VideoReviewPlayer({
           {sidebarHasAnyContent && (
             <button
               onClick={cycleSidebar}
-              title={`Panel position (N) / Hide (H) — currently: ${sidebarPosition}`}
+              title={i18n.t('record.player.panelPositionHint', { pos: i18n.t(`record.player.pos.${sidebarPosition}`) })}
               className="ml-1 inline-flex items-center gap-1.5 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 px-2.5 py-1 text-[11px] font-medium text-white/90 transition-colors"
             >
-              {sidebarPosition === 'right' && <><PanelRight className="h-3.5 w-3.5" /><span>Panel ▸</span></>}
-              {sidebarPosition === 'left' && <><PanelLeft className="h-3.5 w-3.5" /><span>◂ Panel</span></>}
-              {sidebarPosition === 'hidden' && <><PanelRightClose className="h-3.5 w-3.5" /><span>Show panel</span></>}
+              {sidebarPosition === 'right' && <><PanelRight className="h-3.5 w-3.5" /><span>{i18n.t('record.player.panel')} ▸</span></>}
+              {sidebarPosition === 'left' && <><PanelLeft className="h-3.5 w-3.5" /><span>◂ {i18n.t('record.player.panel')}</span></>}
+              {sidebarPosition === 'hidden' && <><PanelRightClose className="h-3.5 w-3.5" /><span>{i18n.t('record.player.showPanel')}</span></>}
             </button>
           )}
 
           <button
             onClick={toggleFullscreen}
-            title="Fullscreen (F)"
+            title={i18n.t('record.player.fullscreen')}
             className="text-white/50 hover:text-white transition-colors ml-1"
           >
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ClipSharePanel } from '@/components/Share/ClipSharePanel'
 import {
@@ -55,6 +56,7 @@ export function RecordingMediaPanel({
   onNewClip,
   clipSaveKey,
 }: RecordingMediaPanelProps) {
+  const { t } = useTranslation()
   const [tab, setTab] = useState<MediaTab>('clips')
   const [clips, setClips] = useState<ClipEntry[]>([])
   const [loadingClips, setLoadingClips] = useState(false)
@@ -103,13 +105,13 @@ export function RecordingMediaPanel({
       const r = await (window.api as any).youtubeUpload({
         filePath,
         title,
-        description: 'Reviewed with Ascend',
+        description: t('record.youtube.reviewedDescription'),
         visibility: 'unlisted',
       })
       setYtUrl(r.url)
       setYtState('done')
     } catch (err: any) {
-      setYtError(err?.message ?? 'Upload failed')
+      setYtError(err?.message ?? t('record.youtube.failed'))
       setYtState('error')
     }
   }
@@ -118,20 +120,20 @@ export function RecordingMediaPanel({
     <div className="rounded-xl bg-hextech-elevated border border-hextech-border-dim overflow-hidden">
       {/* Tab bar */}
       <div className="flex items-center border-b border-hextech-border-dim px-3">
-        {(['clips', 'share'] as MediaTab[]).map((t) => (
+        {(['clips', 'share'] as MediaTab[]).map((tabId) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tabId}
+            onClick={() => setTab(tabId)}
             className={`px-3 py-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
-              tab === t
+              tab === tabId
                 ? 'border-hextech-gold text-hextech-gold'
                 : 'border-transparent text-hextech-text-dim hover:text-hextech-text'
             }`}
           >
-            {t === 'clips' ? (
+            {tabId === 'clips' ? (
               <span className="flex items-center gap-1.5">
                 <Scissors className="h-3 w-3" />
-                Clips
+                {t('record.filters.clips')}
                 {clips.length > 0 && (
                   <span className="rounded-full bg-hextech-gold/20 text-hextech-gold px-1 text-[9px]">
                     {clips.length}
@@ -141,7 +143,7 @@ export function RecordingMediaPanel({
             ) : (
               <span className="flex items-center gap-1.5">
                 <Share2 className="h-3 w-3" />
-                Share
+                {t('record.share.tab')}
               </span>
             )}
           </button>
@@ -188,6 +190,7 @@ interface ClipsSectionProps {
 }
 
 function ClipsSection({ clips, loading, recordingId, creatingClip, onNewClip, onDelete }: ClipsSectionProps) {
+  const { t } = useTranslation()
   return (
     <div className="flex items-center gap-3 min-h-[2rem]">
       <Button
@@ -195,17 +198,17 @@ function ClipsSection({ clips, loading, recordingId, creatingClip, onNewClip, on
         size="sm"
         className="h-7 text-xs gap-1.5 shrink-0"
         disabled={creatingClip || !recordingId}
-        title={!recordingId ? 'File must be linked to a recording to create clips' : undefined}
+        title={!recordingId ? t('record.clips.needsRecording') : undefined}
         onClick={onNewClip}
       >
         <Scissors className="h-3 w-3" />
-        {creatingClip ? 'Clipping…' : '+ New clip'}
+        {creatingClip ? t('record.clips.clipping') : t('record.clips.new')}
       </Button>
 
       {loading ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin text-hextech-text-dim/60" />
       ) : clips.length === 0 ? (
-        <p className="text-xs text-hextech-text-dim/60">No clips yet</p>
+        <p className="text-xs text-hextech-text-dim/60">{t('record.clips.none')}</p>
       ) : (
         <div className="flex gap-2 overflow-x-auto pb-0.5">
           {clips.map((c) => (
@@ -220,11 +223,12 @@ function ClipsSection({ clips, loading, recordingId, creatingClip, onNewClip, on
 // ── Clip row ──────────────────────────────────────────────────────────────────
 
 function ClipRow({ clip, onDelete }: { clip: ClipEntry; onDelete: () => void }) {
+  const { t } = useTranslation()
   const [confirmDelete, setConfirmDelete] = useState(false)
   return (
     <div className="w-44 shrink-0 rounded-lg border border-hextech-border-dim bg-hextech-background/40 px-2.5 py-1.5 flex items-center gap-2">
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-medium text-hextech-text-bright truncate">{clip.title ?? 'Clip'}</p>
+        <p className="text-[11px] font-medium text-hextech-text-bright truncate">{clip.title ?? t('record.clips.clip')}</p>
         <div className="flex items-center gap-1.5 text-[10px] text-hextech-text-dim">
           <span className="font-mono">{fmtMs(clip.startMs)}–{fmtMs(clip.endMs)}</span>
           <span>{fmtFileSize(clip.fileSize)}</span>
@@ -270,6 +274,7 @@ interface ShareSectionProps {
 }
 
 function ShareSection({ filePath, title, ytConnected, ytState, ytProgress, ytUrl, ytError, onYtUpload }: ShareSectionProps) {
+  const { t } = useTranslation()
   return (
     <div className="flex flex-wrap gap-6">
       {/* Discord / temp share */}
@@ -287,13 +292,13 @@ function ShareSection({ filePath, title, ytConnected, ytState, ytProgress, ytUrl
               className="h-7 gap-1.5 text-xs text-red-400 border-red-400/30 hover:bg-red-400/10"
               onClick={onYtUpload}
             >
-              <Youtube className="h-3.5 w-3.5" />Upload to YouTube
+              <Youtube className="h-3.5 w-3.5" />{t('record.youtube.upload')}
             </Button>
           )}
           {ytState === 'uploading' && (
             <div className="flex items-center gap-2 text-xs text-hextech-text-dim">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Uploading… {ytProgress}%
+              {t('record.youtube.uploading', { pct: ytProgress })}
               <div className="w-24 h-1 bg-white/10 rounded-full overflow-hidden">
                 <div className="h-full bg-red-500 transition-all" style={{ width: `${ytProgress}%` }} />
               </div>
@@ -301,12 +306,12 @@ function ShareSection({ filePath, title, ytConnected, ytState, ytProgress, ytUrl
           )}
           {ytState === 'done' && ytUrl && (
             <div className="flex items-center gap-3 text-xs">
-              <span className="text-green-400 flex items-center gap-1"><Check className="h-3 w-3" />Uploaded</span>
+              <span className="text-green-400 flex items-center gap-1"><Check className="h-3 w-3" />{t('record.youtube.uploaded')}</span>
               <a href={ytUrl} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:text-red-300 flex items-center gap-1">
-                <ExternalLink className="h-3 w-3" />Open
+                <ExternalLink className="h-3 w-3" />{t('record.youtube.open')}
               </a>
               <button onClick={() => navigator.clipboard.writeText(ytUrl)} className="text-hextech-text-dim hover:text-hextech-text flex items-center gap-1">
-                <Copy className="h-3 w-3" />Copy
+                <Copy className="h-3 w-3" />{t('record.youtube.copy')}
               </button>
             </div>
           )}

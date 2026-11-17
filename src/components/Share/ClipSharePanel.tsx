@@ -1,3 +1,5 @@
+import i18n from '@/i18n/config'
+import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -37,6 +39,7 @@ function formatBytes(bytes: number): string {
 }
 
 export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipSharePanelProps) {
+  const { t } = useTranslation()
   const strategy: ShareStrategy = fileSize <= MAX_DISCORD_BYTES ? 'discord_direct' : 'temp_upload'
 
   const [webhooks, setWebhooks] = useState<Webhook[]>([])
@@ -74,8 +77,8 @@ export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipShar
         if (selectedWebhook) {
           const embedContent = [
             caption ? `**${caption}**` : '',
-            `Video: ${result.url}`,
-            `Expires in ${expiryHours}h`,
+            t('share.embedVideo', { url: result.url }),
+            t('share.expiresIn', { h: expiryHours }),
           ].filter(Boolean).join('\n')
 
           await window.api.sendToDiscord(
@@ -114,19 +117,19 @@ export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipShar
             ? 'text-hextech-teal border-hextech-teal/30 text-[10px]'
             : 'text-orange-400 border-orange-400/30 text-[10px]'}
         >
-          {strategy === 'discord_direct' ? '✓ Direct Discord upload' : '⤴ Temp host → Discord link'}
+          {strategy === 'discord_direct' ? t('share.strategyDirect') : t('share.strategyTemp')}
         </Badge>
         <span className="text-[10px] text-hextech-text-dim">{formatBytes(fileSize)}</span>
       </div>
 
       {/* Caption */}
       <label className="block space-y-1">
-        <span className="text-[10px] text-hextech-text-dim">Caption (optional)</span>
+        <span className="text-[10px] text-hextech-text-dim">{t('share.caption')}</span>
         <input
           type="text"
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
-          placeholder="e.g. 'Sick teamfight'"
+          placeholder={t('share.captionPlaceholder')}
           maxLength={200}
           className="w-full rounded border border-hextech-border-dim bg-hextech-elevated px-2 py-1.5 text-xs text-hextech-text"
         />
@@ -135,7 +138,7 @@ export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipShar
       {/* Expiry selector (temp upload only) */}
       {strategy === 'temp_upload' && (
         <div className="space-y-1">
-          <p className="text-[10px] text-hextech-text-dim">Link expiry</p>
+          <p className="text-[10px] text-hextech-text-dim">{t('share.linkExpiry')}</p>
           <div className="flex gap-1.5">
             {([1, 12, 24, 72] as const).map((h) => (
               <button
@@ -158,14 +161,14 @@ export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipShar
       {webhooks.length > 0 ? (
         <div className="space-y-1">
           <p className="text-[10px] text-hextech-text-dim">
-            {strategy === 'discord_direct' ? 'Send to webhook' : 'Also notify webhook (optional)'}
+            {strategy === 'discord_direct' ? t('share.sendToWebhook') : t('share.alsoNotify')}
           </p>
           <select
             value={selectedWebhook}
             onChange={(e) => setSelectedWebhook(e.target.value)}
             className="w-full rounded border border-hextech-border-dim bg-hextech-elevated px-2 py-1.5 text-xs text-hextech-text"
           >
-            {strategy === 'temp_upload' && <option value="">— None —</option>}
+            {strategy === 'temp_upload' && <option value="">{t('share.none')}</option>}
             {webhooks.map((w) => (
               <option key={w.id} value={w.url}>{w.name}</option>
             ))}
@@ -173,7 +176,7 @@ export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipShar
         </div>
       ) : strategy === 'discord_direct' ? (
         <p className="text-[10px] text-orange-400/80">
-          No webhooks configured. Add one in Settings → Discord.
+          {t('share.noWebhooks')}
         </p>
       ) : null}
 
@@ -190,13 +193,13 @@ export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipShar
         <div className="rounded-md border border-hextech-teal/30 bg-hextech-teal/5 px-2.5 py-2 space-y-1.5">
           <div className="flex items-center gap-2">
             <Clock className="h-3 w-3 text-hextech-teal shrink-0" />
-            <p className="text-[10px] text-hextech-text-dim">Expires in {expiryHours}h</p>
+            <p className="text-[10px] text-hextech-text-dim">{t('share.expiresIn', { h: expiryHours })}</p>
           </div>
           <p className="text-xs text-hextech-teal truncate font-mono">{tempUrl}</p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" className="flex-1 h-7 text-xs gap-1" onClick={handleCopy}>
               {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-              {copied ? 'Copied!' : 'Copy link'}
+              {copied ? t('share.copied') : t('share.copyLink')}
             </Button>
             <Button
               variant="outline"
@@ -230,11 +233,11 @@ export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipShar
           onClick={handleShare}
         >
           {uploadState === 'uploading' ? (
-            <><Loader2 className="h-4 w-4 animate-spin" />Uploading…</>
+            <><Loader2 className="h-4 w-4 animate-spin" />{t('share.uploading')}</>
           ) : strategy === 'discord_direct' ? (
-            <><Send className="h-4 w-4" />Send to Discord</>
+            <><Send className="h-4 w-4" />{t('share.sendDiscord')}</>
           ) : (
-            <><Upload className="h-4 w-4" />Upload & Share</>
+            <><Upload className="h-4 w-4" />{t('share.uploadShare')}</>
           )}
         </Button>
       )}
@@ -242,7 +245,7 @@ export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipShar
       {/* Retry */}
       {uploadState === 'error' && (
         <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setUploadState('idle')}>
-          Retry
+          {t('share.retry')}
         </Button>
       )}
     </div>
@@ -250,10 +253,10 @@ export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipShar
 }
 
 function translateError(msg: string): string {
-  if (msg.includes('FILE_TOO_LARGE')) return 'File exceeds Discord 8 MB limit. Use the temp upload option.'
-  if (msg.includes('FILE_NOT_FOUND')) return 'Video file not found on disk.'
-  if (msg.includes('INVALID_WEBHOOK_URL')) return 'Invalid Discord webhook URL.'
-  if (msg.includes('No webhook selected')) return 'Please select a Discord webhook first.'
-  if (msg.includes('Litterbox')) return 'Temp upload failed. Check your internet connection and try again.'
+  if (msg.includes('FILE_TOO_LARGE')) return i18n.t('share.err.tooLarge')
+  if (msg.includes('FILE_NOT_FOUND')) return i18n.t('share.err.notFound')
+  if (msg.includes('INVALID_WEBHOOK_URL')) return i18n.t('share.err.invalidWebhook')
+  if (msg.includes('No webhook selected')) return i18n.t('share.err.noWebhook')
+  if (msg.includes('Litterbox')) return i18n.t('share.err.tempFailed')
   return msg.length > 120 ? `${msg.slice(0, 120)}…` : msg
 }

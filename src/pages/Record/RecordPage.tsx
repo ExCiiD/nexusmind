@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import i18n from '@/i18n/config'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
@@ -91,14 +93,16 @@ function saveFolders(f: Folder[]) { localStorage.setItem(FOLDER_KEY, JSON.string
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function nxmUrl(p: string) { const n = p.replace(/\\/g, '/'); return n.startsWith('/') ? `nxm://${n}` : `nxm:///${n}` }
-function queueLabel(q: string) { return ({ soloq: 'SoloQ', flex: 'Flex', aram: 'ARAM', arena: 'Arena', custom: 'Custom', normal: 'Normal' } as Record<string, string>)[q] ?? 'Unknown' }
+function queueLabel(q: string) { return ({ soloq: 'SoloQ', flex: 'Flex', aram: 'ARAM', arena: 'Arena', custom: i18n.t('record.mode.custom'), normal: i18n.t('record.mode.normal') } as Record<string, string>)[q] ?? i18n.t('record.mode.unknown') }
 function queueBadgeColor(q: string) { return ({ soloq: 'text-hextech-gold border-hextech-gold/30', flex: 'text-blue-400 border-blue-400/30', aram: 'text-purple-400 border-purple-400/30', arena: 'text-orange-400 border-orange-400/30' } as Record<string, string>)[q] ?? 'text-hextech-text-dim border-hextech-border-dim' }
 
 function getDateKey(dateStr: string): string {
-  return new Date(dateStr).toISOString().slice(0, 10) // YYYY-MM-DD
+  // Local calendar day (not UTC): a game at 00:30 belongs to that night's day group.
+  const d = new Date(dateStr)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 function formatDateLabel(isoDate: string): string {
-  return new Date(isoDate + 'T00:00:00').toLocaleDateString(undefined, {
+  return new Date(isoDate + 'T00:00:00').toLocaleDateString(i18n.language, {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   })
 }
@@ -121,6 +125,7 @@ function buildPageNumbers(current: number, total: number): Array<number | '…'>
 const ITEMS_PER_PAGE = 20
 
 export function RecordPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { toast } = useToast()
 
@@ -196,16 +201,16 @@ export function RecordPage() {
       // they specifically clicked Scan to recover an orphan).
       const backfillNote =
         (result.backfillLinked ?? 0) > 0
-          ? ` · linked ${result.backfillLinked} from Riot history`
+          ? t('record.toast.scanBackfill', { count: result.backfillLinked })
           : ''
       toast({
-        title: 'Scan complete',
+        title: t('record.toast.scanDone'),
         description:
-          `${result.scanned} files found — ${result.matched} matched, ${result.orphaned} new` +
-          `${result.dismissed > 0 ? `, ${result.dismissed} dismissed` : ''}${backfillNote}`,
+          t('record.toast.scanSummary', { scanned: result.scanned, matched: result.matched, orphaned: result.orphaned }) +
+          `${result.dismissed > 0 ? t('record.toast.scanDismissed', { count: result.dismissed }) : ''}${backfillNote}`,
       })
     } catch (err) {
-      toast({ title: 'Scan failed', description: (err as Error)?.message ?? 'An unknown error occurred.', variant: 'destructive' })
+      toast({ title: t('record.toast.scanFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
     } finally { setScanning(false) }
   }
 
@@ -217,23 +222,23 @@ export function RecordPage() {
     try {
       const result = await window.api.backfillOrphanRecordings(recordingId)
       if (result.linked > 0) {
-        toast({ title: 'Recording linked', description: 'Game data found in Riot history — opening with markers now.' })
+        toast({ title: t('record.toast.linked'), description: t('record.toast.linkedDesc') })
         await loadRecords()
       } else if (result.skipped > 0) {
         toast({
-          title: 'Already linked elsewhere',
-          description: 'The matching Riot game is already linked to another recording.',
+          title: t('record.toast.alreadyLinked'),
+          description: t('record.toast.alreadyLinkedDesc'),
           variant: 'destructive',
         })
       } else {
         toast({
-          title: 'No match found',
-          description: 'No Riot game was found within ±5 min of this recording. Make sure you played that game on one of your linked accounts.',
+          title: t('record.toast.noMatch'),
+          description: t('record.toast.noMatchDesc'),
           variant: 'destructive',
         })
       }
     } catch (err) {
-      toast({ title: 'Link failed', description: (err as Error)?.message ?? 'An unknown error occurred.', variant: 'destructive' })
+      toast({ title: t('record.toast.linkFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
     }
   }
 
@@ -310,7 +315,7 @@ export function RecordPage() {
       await window.api.deleteRecordingById(r.recordingId)
       removeSingleRecord(r.recordingId)
     } catch (err: any) {
-      toast({ title: 'Delete failed', description: err?.message ?? String(err), variant: 'destructive' })
+      toast({ title: t('record.toast.deleteFailed'), description: err?.message ?? String(err), variant: 'destructive' })
     }
   }, [removeSingleRecord, toast])
 
@@ -323,7 +328,7 @@ export function RecordPage() {
     setRecords(p => p.filter(r => !selectedIds.has(r.recordingId)))
     setFolders(p => { const n = p.map(f => ({ ...f, recordingIds: f.recordingIds.filter(id => !selectedIds.has(id)) })); saveFolders(n); return n })
     setSelectedIds(new Set())
-    if (failed > 0) toast({ title: `${failed} deletion(s) failed`, variant: 'destructive' })
+    if (failed > 0) toast({ title: t('record.toast.bulkDeleteFailed', { count: failed }), variant: 'destructive' })
   }, [selectedIds, toast])
 
   // ── Selection ───────────────────────────────────────────────────────────
@@ -412,21 +417,23 @@ export function RecordPage() {
 
       {/* ── Header ── */}
       <div className="flex items-center gap-3 pb-4">
-        <h1 className="font-display text-xl font-bold text-hextech-gold-bright shrink-0">Record Hub</h1>
+        <h1 className="font-display text-xl font-bold text-hextech-gold-bright shrink-0">{t('record.title')}</h1>
         <span className="text-xs text-hextech-text-dim bg-hextech-elevated border border-hextech-border-dim rounded px-2 py-0.5 shrink-0">
           {filters.content === 'clips'
-            ? `${allClips.length} clip${allClips.length !== 1 ? 's' : ''}`
+            ? t('record.count.clips', { count: allClips.length })
             : filters.content === 'all'
-              ? `${filtered.length} recording${filtered.length !== 1 ? 's' : ''} + ${allClips.length} clip${allClips.length !== 1 ? 's' : ''}`
-              : `${filtered.length}${filtered.length !== records.length ? ` / ${records.length}` : ''} recording${records.length !== 1 ? 's' : ''}`}
+              ? `${t('record.count.recordings', { count: filtered.length })} + ${t('record.count.clips', { count: allClips.length })}`
+              : filtered.length !== records.length
+                ? t('record.count.filtered', { shown: filtered.length, count: records.length })
+                : t('record.count.recordings', { count: records.length })}
         </span>
         <div className="flex-1" />
         <Button variant="outline" size="sm" onClick={() => setShowFilters(v => !v)}
           className={`gap-1.5 h-7 text-xs ${showFilters ? 'border-hextech-gold/60 text-hextech-gold' : ''}`}>
-          <Filter className="h-3 w-3" />Filters
+          <Filter className="h-3 w-3" />{t('record.filters.toggle')}
         </Button>
         <Button variant="outline" size="sm" onClick={handleScan} disabled={scanning} className="gap-1.5 h-7 text-xs">
-          {scanning ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}Scan
+          {scanning ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}{t('record.scan')}
         </Button>
       </div>
 
@@ -435,14 +442,14 @@ export function RecordPage() {
         <Card className="mb-4">
           <CardContent className="pt-3 pb-2">
             <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-              <FilterRow label="Content" value={filters.content} onChange={v => updateFilter('content', v as ContentFilter)}
-                options={[{ value: 'all', label: 'All' }, { value: 'records', label: 'Full records' }, { value: 'clips', label: 'Clips' }]} />
-              <FilterRow label="Mode" value={filters.mode} onChange={v => updateFilter('mode', v as ModeFilter)}
-                options={[{ value: 'all', label: 'All' }, { value: 'soloq', label: 'SoloQ' }, { value: 'flex', label: 'Flex' }, { value: 'aram', label: 'ARAM' }, { value: 'arena', label: 'Arena' }, { value: 'custom', label: 'Custom' }]} />
-              <FilterRow label="Review" value={filters.review} onChange={v => updateFilter('review', v as ReviewFilter)}
-                options={[{ value: 'all', label: 'All' }, { value: 'reviewed', label: 'Reviewed' }, { value: 'unreviewed', label: 'Unreviewed' }]} />
-              <FilterRow label="Source" value={filters.source} onChange={v => updateFilter('source', v as SourceFilter)}
-                options={[{ value: 'all', label: 'All' }, { value: 'capture', label: 'Ascend' }, { value: 'obs', label: 'OBS' }, { value: 'outplayed', label: 'Outplayed' }, { value: 'insightcapture', label: 'Insight' }, { value: 'youtube', label: 'YouTube' }, { value: 'manual', label: 'Manual' }]} />
+              <FilterRow label={t('record.filters.content')} value={filters.content} onChange={v => updateFilter('content', v as ContentFilter)}
+                options={[{ value: 'all', label: t('record.filters.all') }, { value: 'records', label: t('record.filters.records') }, { value: 'clips', label: t('record.filters.clips') }]} />
+              <FilterRow label={t('record.filters.mode')} value={filters.mode} onChange={v => updateFilter('mode', v as ModeFilter)}
+                options={[{ value: 'all', label: t('record.filters.all') }, { value: 'soloq', label: 'SoloQ' }, { value: 'flex', label: 'Flex' }, { value: 'aram', label: 'ARAM' }, { value: 'arena', label: 'Arena' }, { value: 'custom', label: t('record.mode.custom') }]} />
+              <FilterRow label={t('record.filters.review')} value={filters.review} onChange={v => updateFilter('review', v as ReviewFilter)}
+                options={[{ value: 'all', label: t('record.filters.all') }, { value: 'reviewed', label: t('record.filters.reviewed') }, { value: 'unreviewed', label: t('record.filters.unreviewed') }]} />
+              <FilterRow label={t('record.filters.source')} value={filters.source} onChange={v => updateFilter('source', v as SourceFilter)}
+                options={[{ value: 'all', label: t('record.filters.all') }, { value: 'capture', label: 'Ascend' }, { value: 'obs', label: 'OBS' }, { value: 'outplayed', label: 'Outplayed' }, { value: 'insightcapture', label: 'Insight' }, { value: 'youtube', label: 'YouTube' }, { value: 'manual', label: t('record.filters.manual') }]} />
             </div>
           </CardContent>
         </Card>
@@ -459,10 +466,10 @@ export function RecordPage() {
               value={newFolderName}
               onChange={e => setNewFolderName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') { setCreatingFolder(false); setNewFolderName('') } }}
-              placeholder="Folder name…"
+              placeholder={t('record.folder.namePlaceholder')}
               className="flex-1 max-w-xs rounded border border-hextech-gold/40 bg-hextech-elevated px-2 py-1 text-sm text-hextech-text focus:outline-none focus:border-hextech-gold"
             />
-            <Button size="sm" onClick={handleCreateFolder} disabled={!newFolderName.trim()} className="h-7 text-xs">Create</Button>
+            <Button size="sm" onClick={handleCreateFolder} disabled={!newFolderName.trim()} className="h-7 text-xs">{t('record.folder.create')}</Button>
             <button onClick={() => { setCreatingFolder(false); setNewFolderName('') }} className="text-hextech-text-dim hover:text-hextech-text">
               <X className="h-4 w-4" />
             </button>
@@ -473,7 +480,7 @@ export function RecordPage() {
             className="flex items-center gap-1.5 text-sm text-hextech-text-dim hover:text-hextech-gold transition-colors"
           >
             <FolderPlus className="h-4 w-4" />
-            Create a folder
+            {t('record.folder.new')}
           </button>
         )}
       </div>
@@ -481,24 +488,24 @@ export function RecordPage() {
       {/* ── States ── */}
       {loading && (
         <div className="flex items-center gap-3 py-12 justify-center text-hextech-text-dim">
-          <Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm">Loading…</span>
+          <Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm">{t('record.loading')}</span>
         </div>
       )}
       {isEmpty && (
         <Card><CardContent className="flex flex-col items-center gap-3 py-12 text-center">
           <Film className="h-10 w-10 opacity-30 text-hextech-text-dim" />
-          <p className="text-sm font-medium text-hextech-text-bright">No recordings found</p>
-          <p className="text-xs text-hextech-text-dim max-w-xs">Enable auto-record in Settings, or click Scan to detect recordings.</p>
+          <p className="text-sm font-medium text-hextech-text-bright">{t('record.empty.title')}</p>
+          <p className="text-xs text-hextech-text-dim max-w-xs">{t('record.empty.desc')}</p>
           <Button variant="outline" size="sm" onClick={handleScan} disabled={scanning} className="gap-2 mt-2">
-            {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Scan
+            {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}{t('record.scan')}
           </Button>
         </CardContent></Card>
       )}
       {noMatch && (
         <Card><CardContent className="flex flex-col items-center gap-3 py-8 text-center">
           <Filter className="h-8 w-8 opacity-30 text-hextech-text-dim" />
-          <p className="text-sm font-medium text-hextech-text-bright">No recordings match these filters</p>
-          <Button variant="ghost" size="sm" onClick={() => { const r: Filters = { content: 'all', mode: 'all', review: 'all', source: 'all' }; setFilters(r); saveFilters(r) }}>Reset filters</Button>
+          <p className="text-sm font-medium text-hextech-text-bright">{t('record.noMatch')}</p>
+          <Button variant="ghost" size="sm" onClick={() => { const r: Filters = { content: 'all', mode: 'all', review: 'all', source: 'all' }; setFilters(r); saveFilters(r) }}>{t('record.filters.reset')}</Button>
         </CardContent></Card>
       )}
 
@@ -507,8 +514,8 @@ export function RecordPage() {
         allClips.length === 0 ? (
           <Card><CardContent className="flex flex-col items-center gap-3 py-8 text-center">
             <Scissors className="h-8 w-8 opacity-30 text-hextech-text-dim" />
-            <p className="text-sm font-medium text-hextech-text-bright">No clips found</p>
-            <p className="text-xs text-hextech-text-dim max-w-xs">Create clips from any recording by opening it and selecting a time range.</p>
+            <p className="text-sm font-medium text-hextech-text-bright">{t('record.clips.empty')}</p>
+            <p className="text-xs text-hextech-text-dim max-w-xs">{t('record.clips.emptyDesc')}</p>
           </CardContent></Card>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -518,7 +525,7 @@ export function RecordPage() {
                   await window.api.deleteClip(clip.clipId)
                   setAllClips((prev) => prev.filter((c) => c.clipId !== clip.clipId))
                 } catch (err: any) {
-                  toast({ title: 'Delete failed', description: err?.message ?? String(err), variant: 'destructive' })
+                  toast({ title: t('record.toast.deleteFailed'), description: err?.message ?? String(err), variant: 'destructive' })
                 }
               }} />
             ))}
@@ -599,7 +606,7 @@ export function RecordPage() {
                 : 'border-hextech-border-dim text-hextech-text-dim bg-hextech-elevated hover:border-hextech-gold/50 hover:text-hextech-text',
             )}
           >
-            <ChevronLeft className="h-4 w-4" />Prev
+            <ChevronLeft className="h-4 w-4" />{t('record.prev')}
           </button>
 
           <div className="flex items-center gap-1">
@@ -633,7 +640,7 @@ export function RecordPage() {
                 : 'border-hextech-gold/60 text-hextech-gold bg-hextech-gold/10 hover:bg-hextech-gold/20',
             )}
           >
-            Next<ChevronRight className="h-4 w-4" />
+            {t('record.next')}<ChevronRight className="h-4 w-4" />
           </button>
         </div>
       )}
@@ -644,7 +651,7 @@ export function RecordPage() {
           <div className="flex items-center gap-2">
             <Scissors className="h-4 w-4 text-hextech-gold" />
             <h2 className="text-sm font-semibold text-hextech-text-bright">
-              Clips
+              {t('record.filters.clips')}
               <span className="ml-2 text-xs font-normal text-hextech-text-dim">
                 ({allClips.length})
               </span>
@@ -657,7 +664,7 @@ export function RecordPage() {
                   await window.api.deleteClip(clip.clipId)
                   setAllClips((prev) => prev.filter((c) => c.clipId !== clip.clipId))
                 } catch (err: any) {
-                  toast({ title: 'Delete failed', description: err?.message ?? String(err), variant: 'destructive' })
+                  toast({ title: t('record.toast.deleteFailed'), description: err?.message ?? String(err), variant: 'destructive' })
                 }
               }} />
             ))}
@@ -669,7 +676,7 @@ export function RecordPage() {
       {selectedIds.size > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl bg-hextech-dark/95 backdrop-blur border border-hextech-border-dim shadow-2xl px-4 py-2.5">
           <span className="text-sm font-medium text-hextech-text-bright">
-            {selectedIds.size} selected
+            {t('record.selection.count', { count: selectedIds.size })}
           </span>
           <div className="h-4 w-px bg-hextech-border-dim" />
 
@@ -681,7 +688,7 @@ export function RecordPage() {
                 className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs border border-hextech-border-dim text-hextech-text-dim hover:text-hextech-text hover:border-hextech-gold/40 transition-colors"
               >
                 <FolderOpen className="h-3.5 w-3.5" />
-                Move to folder
+                {t('record.selection.moveTo')}
                 <ChevronDown className="h-3 w-3" />
               </button>
               {showMoveDropdown && (
@@ -703,7 +710,7 @@ export function RecordPage() {
             className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs bg-[#E24C3A]/10 border border-[#E24C3A]/40 text-[#E24C3A] hover:bg-[#E24C3A]/20 transition-colors font-medium"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            Delete
+            {t('common.delete')}
           </button>
 
           <button onClick={() => setSelectedIds(new Set())} className="text-hextech-text-dim/60 hover:text-hextech-text-dim transition-colors ml-1">
@@ -736,6 +743,7 @@ function RecordGroupSection({ groupKey, label, records, selectedIds, collapsed, 
   const ids = records.map(r => r.recordingId)
   const allSelected = ids.length > 0 && ids.every(id => selectedIds.has(id))
   const someSelected = ids.some(id => selectedIds.has(id))
+  const { t } = useTranslation()
 
   return (
     <div className="mb-6">
@@ -754,7 +762,7 @@ function RecordGroupSection({ groupKey, label, records, selectedIds, collapsed, 
       {/* Cards grid */}
       {!collapsed && (
         records.length === 0 ? (
-          <p className="text-xs text-hextech-text-dim/50 pl-7 py-2">Empty folder</p>
+          <p className="text-xs text-hextech-text-dim/50 pl-7 py-2">{t('record.folder.empty')}</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {records.map(r => (
@@ -791,8 +799,9 @@ interface RecordCardProps {
 function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, onRemoveFromFolder, onTryLink }: RecordCardProps) {
   const [linking, setLinking] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const { t, i18n: i18next } = useTranslation()
   const date = new Date(r.gameEndAt)
-  const dateStr = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  const dateStr = date.toLocaleDateString(i18next.language, { year: 'numeric', month: 'short', day: 'numeric' })
 
   return (
     <div
@@ -813,7 +822,7 @@ function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, o
       {/* Delete button — on hover */}
       <button
         onClick={() => confirmDelete ? onDelete(r) : setConfirmDelete(true)}
-        title={confirmDelete ? 'Click again to confirm' : 'Delete recording'}
+        title={confirmDelete ? t('record.card.confirmHint') : t('record.card.delete')}
         className={cn(
           'absolute top-1.5 right-1.5 z-20 transition-all flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-medium backdrop-blur-sm',
           confirmDelete
@@ -822,7 +831,7 @@ function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, o
         )}
       >
         <Trash2 className="h-2.5 w-2.5" />
-        {confirmDelete ? 'Confirm?' : 'Delete'}
+        {confirmDelete ? t('record.card.confirm') : t('common.delete')}
       </button>
 
       {/* Thumbnail */}
@@ -872,7 +881,7 @@ function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, o
           <div className="flex items-center justify-between gap-1 text-[10px] text-hextech-text-dim">
             <div className="flex items-center gap-1 min-w-0">
               <Video className="h-2.5 w-2.5 shrink-0" />
-              <span className="truncate">Not linked to a game</span>
+              <span className="truncate">{t('record.card.notLinked')}</span>
             </div>
             {onTryLink && (
               <button
@@ -883,18 +892,18 @@ function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, o
                   try { await onTryLink(r.recordingId) } finally { setLinking(false) }
                 }}
                 disabled={linking}
-                title="Look this recording up in Riot match history"
+                title={t('record.card.tryLinkHint')}
                 className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider bg-hextech-gold/15 text-hextech-gold border border-hextech-gold/40 hover:bg-hextech-gold/30 disabled:opacity-50 disabled:cursor-wait transition-colors shrink-0"
               >
                 {linking ? (
                   <>
                     <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                    <span>Linking…</span>
+                    <span>{t('record.card.linking')}</span>
                   </>
                 ) : (
                   <>
                     <Link2 className="h-2.5 w-2.5" />
-                    <span>Try link</span>
+                    <span>{t('record.card.tryLink')}</span>
                   </>
                 )}
               </button>
@@ -904,12 +913,12 @@ function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, o
         <div className="flex items-center gap-1 min-w-0">
           {!r.isOrphaned && r.accountName && <AccountBadge name={r.accountName} />}
           <span className="text-[10px] text-hextech-text-dim truncate">{dateStr}</span>
-          {r.hasReview && <span className="text-[9px] text-hextech-cyan flex items-center gap-0.5 shrink-0"><ClipboardCheck className="h-2.5 w-2.5" /> Rev</span>}
+          {r.hasReview && <span className="text-[9px] text-hextech-cyan flex items-center gap-0.5 shrink-0"><ClipboardCheck className="h-2.5 w-2.5" /> {t('record.card.reviewed')}</span>}
           {!r.isOrphaned && r.queueType && r.queueType !== 'unknown' && (
             <span className={`text-[9px] px-1 rounded border shrink-0 ${queueBadgeColor(r.queueType)}`}>{queueLabel(r.queueType)}</span>
           )}
           {onRemoveFromFolder && (
-            <button onClick={e => { e.stopPropagation(); onRemoveFromFolder(r.recordingId) }} title="Remove from folder"
+            <button onClick={e => { e.stopPropagation(); onRemoveFromFolder(r.recordingId) }} title={t('record.folder.remove')}
               className="ml-auto text-hextech-text-dim/30 hover:text-hextech-text-dim transition-colors shrink-0">
               <X className="h-3 w-3" />
             </button>
@@ -963,6 +972,7 @@ function FilterRow({ label, options, value, onChange }: { label: string; options
 
 function ClipCard({ clip, onOpen, onDelete }: { clip: ClipEntry; onOpen: () => void; onDelete: () => void }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const { t, i18n: i18next } = useTranslation()
   const durationSecs = (clip.endMs - clip.startMs) / 1000
   const fileSizeMB = clip.fileSize > 0 ? `${(clip.fileSize / (1024 * 1024)).toFixed(1)} MB` : ''
 
@@ -972,7 +982,7 @@ function ClipCard({ clip, onOpen, onDelete }: { clip: ClipEntry; onOpen: () => v
       <div className="relative w-full cursor-pointer" style={{ paddingTop: '56.25%' }} onClick={onOpen}>
         <div className="absolute inset-0 bg-hextech-background/80">
           {clip.thumbnailPath
-            ? <img src={nxmUrl(clip.thumbnailPath)} alt={clip.title ?? 'Clip'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            ? <img src={nxmUrl(clip.thumbnailPath)} alt={clip.title ?? t('record.clips.clip')} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
             : <div className="w-full h-full flex items-center justify-center"><Scissors className="h-8 w-8 text-hextech-text-dim/20" /></div>}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
         </div>
@@ -995,13 +1005,13 @@ function ClipCard({ clip, onOpen, onDelete }: { clip: ClipEntry; onOpen: () => v
         <div className="flex items-center gap-1.5">
           <Scissors className="h-3 w-3 text-hextech-gold shrink-0" />
           <span className="text-xs font-medium text-hextech-text-bright truncate">
-            {clip.title || clip.champion || 'Clip'}
+            {clip.title || clip.champion || t('record.clips.clip')}
           </span>
         </div>
         <div className="flex items-center gap-2 text-[10px] text-hextech-text-dim">
           {clip.champion && <span>{clip.champion}</span>}
           {fileSizeMB && <span>{fileSizeMB}</span>}
-          <span>{new Date(clip.createdAt).toLocaleDateString()}</span>
+          <span>{new Date(clip.createdAt).toLocaleDateString(i18next.language)}</span>
         </div>
       </div>
 
@@ -1009,8 +1019,8 @@ function ClipCard({ clip, onOpen, onDelete }: { clip: ClipEntry; onOpen: () => v
       <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
         {confirmDelete ? (
           <div className="flex gap-1">
-            <button onClick={onDelete} className="rounded bg-[#E24C3A]/90 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-[#E24C3A]">Delete</button>
-            <button onClick={() => setConfirmDelete(false)} className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white hover:bg-black/80">Cancel</button>
+            <button onClick={onDelete} className="rounded bg-[#E24C3A]/90 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-[#E24C3A]">{t('common.delete')}</button>
+            <button onClick={() => setConfirmDelete(false)} className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white hover:bg-black/80">{t('common.cancel')}</button>
           </div>
         ) : (
           <button onClick={() => setConfirmDelete(true)} className="rounded bg-black/50 p-1 text-hextech-text-dim hover:text-[#E24C3A] hover:bg-black/70 transition-colors">

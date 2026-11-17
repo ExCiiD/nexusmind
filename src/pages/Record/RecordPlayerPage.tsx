@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react'
 import type { Mistake, MistakeTag, Bookmark } from '@/lib/ipc'
 import { ClipSharePanel } from '@/components/Share/ClipSharePanel'
+import i18n from '@/i18n/config'
 import { useToast } from '@/hooks/useToast'
 
 type YoutubeUploadState = 'idle' | 'uploading' | 'done' | 'error'
@@ -78,7 +80,7 @@ function parseMmSs(v: string): number | null {
 function fmtFileSize(b: number) { return b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB` }
 
 function sourceLabel(s: string) {
-  return ({ capture: 'Ascend', outplayed: 'Outplayed', insightcapture: 'InsightCapture', obs: 'OBS', youtube: 'YouTube', external: 'External' } as Record<string, string>)[s] ?? 'Manual'
+  return ({ capture: 'Ascend', outplayed: 'Outplayed', insightcapture: 'InsightCapture', obs: 'OBS', youtube: 'YouTube', external: i18n.t('record.source.external') } as Record<string, string>)[s] ?? i18n.t('record.filters.manual')
 }
 
 function extractYtId(url: string) {
@@ -88,6 +90,7 @@ function extractYtId(url: string) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function RecordPlayerPage() {
+  const { t } = useTranslation()
   const { recordingId } = useParams<{ recordingId: string }>()
   const navigate = useNavigate()
   // ?clipId=<id> — when present we play the clip's standalone file
@@ -151,7 +154,7 @@ export function RecordPlayerPage() {
     try {
       const title = recording.isOrphaned
         ? recording.champion
-        : `${recording.champion} — ${recording.win ? 'Victory' : 'Defeat'}`
+        : `${recording.champion} — ${recording.win ? t('record.victory') : t('record.defeat')}`
       const ext = await window.api.createExternalReview({
         title,
         filePath: recording.filePath ?? undefined,
@@ -186,7 +189,7 @@ export function RecordPlayerPage() {
     try {
       const all = await window.api.listGamesWithRecordings()
       const rec = (all as any[]).find((r: any) => r.recordingId === recordingId)
-      if (!rec) { setError('Recording not found'); return }
+      if (!rec) { setError(t('record.player.notFound')); return }
       setRecording({
         id: rec.recordingId, gameId: rec.gameId ?? null, filePath: rec.filePath,
         youtubeUrl: rec.youtubeUrl, source: rec.source, thumbnailPath: rec.thumbnailPath,
@@ -199,7 +202,7 @@ export function RecordPlayerPage() {
       setClips(await (window.api as any).listClips(recordingId) ?? [])
     } catch (err) {
       console.error('[RecordPlayerPage] Load failed:', err)
-      setError('Failed to load recording')
+      setError(t('record.player.loadFailed'))
     } finally { setLoading(false) }
   }, [recordingId])
 
@@ -246,9 +249,9 @@ export function RecordPlayerPage() {
         recordingId: recording.id,
       })
       await reloadMistakes()
-      toast({ title: 'Mistake tagged', description: `Saved at ${Math.floor(payload.gameTimeSec / 60)}:${String(payload.gameTimeSec % 60).padStart(2, '0')} game time.` })
+      toast({ title: t('record.toast.mistakeTagged'), description: t('record.toast.savedAtGameTime', { time: `${Math.floor(payload.gameTimeSec / 60)}:${String(payload.gameTimeSec % 60).padStart(2, '0')}` }) })
     } catch (err) {
-      toast({ title: 'Failed to tag mistake', description: (err as Error)?.message ?? 'Unknown error', variant: 'destructive' })
+      toast({ title: t('record.toast.mistakeFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
     }
   }, [recording, reloadMistakes, toast])
 
@@ -257,7 +260,7 @@ export function RecordPlayerPage() {
       await window.api.deleteMistake(id)
       await reloadMistakes()
     } catch (err) {
-      toast({ title: 'Failed to delete mistake', description: (err as Error)?.message ?? 'Unknown error', variant: 'destructive' })
+      toast({ title: t('record.toast.mistakeDeleteFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
     }
   }, [reloadMistakes, toast])
 
@@ -282,9 +285,9 @@ export function RecordPlayerPage() {
     try {
       await window.api.createBookmark({ recordingId, ...payload })
       await reloadBookmarks()
-      toast({ title: 'Bookmark added', description: `Saved at ${fmtMs(payload.videoTimeMs)}.` })
+      toast({ title: t('record.toast.bookmarkAdded'), description: t('record.toast.savedAt', { time: fmtMs(payload.videoTimeMs) }) })
     } catch (err) {
-      toast({ title: 'Failed to add bookmark', description: (err as Error)?.message ?? 'Unknown error', variant: 'destructive' })
+      toast({ title: t('record.toast.bookmarkFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
     }
   }, [recordingId, reloadBookmarks, toast])
 
@@ -293,7 +296,7 @@ export function RecordPlayerPage() {
       await window.api.deleteBookmark(id)
       await reloadBookmarks()
     } catch (err) {
-      toast({ title: 'Failed to delete bookmark', description: (err as Error)?.message ?? 'Unknown error', variant: 'destructive' })
+      toast({ title: t('record.toast.bookmarkDeleteFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
     }
   }, [reloadBookmarks, toast])
 
@@ -304,12 +307,12 @@ export function RecordPlayerPage() {
       const res = await window.api.autoDetectMistakes(recording.gameId)
       await reloadMistakes()
       toast({
-        title: 'Auto-detect done',
-        description: `Created ${res.created}, skipped ${res.skipped} duplicate(s).`,
+        title: t('record.toast.autoDetectDone'),
+        description: t('record.toast.autoDetectSummary', { created: res.created, skipped: res.skipped }),
         variant: res.created > 0 ? undefined : 'destructive',
       })
     } catch (err) {
-      toast({ title: 'Auto-detect failed', description: (err as Error)?.message ?? 'Unknown error', variant: 'destructive' })
+      toast({ title: t('record.toast.autoDetectFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
     } finally {
       setAutoDetecting(false)
     }
@@ -357,18 +360,18 @@ export function RecordPlayerPage() {
         setRecordingStartOffsetSec(r?.startOffsetSec ?? null)
       } catch { /* leave previous value */ }
       if (res.events.length > 0) {
-        toast({ title: 'Events refreshed', description: `${res.events.length} event(s) loaded.` })
+        toast({ title: t('record.toast.eventsRefreshed'), description: t('record.toast.eventsLoaded', { count: res.events.length }) })
       } else {
         const reasonHint =
-          res.diag.reason === 'timeline-fetch-failed' ? 'Riot timeline API unreachable.'
-          : res.diag.reason === 'player-not-resolved' ? `Player "${recording.champion}" not found in match.`
-          : res.diag.reason === 'no-match-id' ? 'Recording is not linked to a Riot match.'
-          : res.diag.reason === 'empty-timeline' ? 'Timeline has no relevant events.'
-          : res.diag.message ?? 'No events available.'
-        toast({ title: 'No events found', description: reasonHint, variant: 'destructive' })
+          res.diag.reason === 'timeline-fetch-failed' ? t('record.events.timelineUnreachable')
+          : res.diag.reason === 'player-not-resolved' ? t('record.events.playerNotFound', { champion: recording.champion })
+          : res.diag.reason === 'no-match-id' ? t('record.events.noMatchId')
+          : res.diag.reason === 'empty-timeline' ? t('record.events.emptyTimeline')
+          : res.diag.message ?? t('record.events.none')
+        toast({ title: t('record.toast.noEvents'), description: reasonHint, variant: 'destructive' })
       }
     } catch (err) {
-      toast({ title: 'Refresh failed', description: (err as Error)?.message ?? 'An unknown error occurred.', variant: 'destructive' })
+      toast({ title: t('record.toast.refreshFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
     } finally {
       setRefreshingEvents(false)
     }
@@ -377,7 +380,7 @@ export function RecordPlayerPage() {
   const handleUnlink = useCallback(async () => {
     if (!recording?.gameId) return
     await window.api.unlinkRecording(recording.gameId)
-    toast({ title: 'Recording unlinked', description: 'The recording is still available in your library.' })
+    toast({ title: t('record.toast.unlinked'), description: t('record.toast.unlinkedDesc') })
     await loadData()
   }, [recording, loadData, toast])
 
@@ -391,23 +394,23 @@ export function RecordPlayerPage() {
     try {
       const result = await window.api.backfillOrphanRecordings(recording.id)
       if (result.linked > 0) {
-        toast({ title: 'Recording linked', description: 'Game data recovered from Riot history — reloading to show markers.' })
+        toast({ title: t('record.toast.linked'), description: t('record.toast.linkedDesc') })
         await loadData()
       } else if (result.skipped > 0) {
         toast({
-          title: 'Already linked elsewhere',
-          description: 'The matching Riot game is already linked to another recording.',
+          title: t('record.toast.alreadyLinked'),
+          description: t('record.toast.alreadyLinkedDesc'),
           variant: 'destructive',
         })
       } else {
         toast({
-          title: 'No match found',
-          description: 'No Riot game was found within ±5 min of this recording. Confirm the account you played on is linked in Ascend.',
+          title: t('record.toast.noMatch'),
+          description: t('record.toast.noMatchDesc'),
           variant: 'destructive',
         })
       }
     } catch (err) {
-      toast({ title: 'Link failed', description: (err as Error)?.message ?? 'An unknown error occurred.', variant: 'destructive' })
+      toast({ title: t('record.toast.linkFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
     } finally {
       setTryingLink(false)
     }
@@ -462,13 +465,13 @@ export function RecordPlayerPage() {
       setCreatingClip(false)
       await loadData()
       toast({
-        title: 'Clip exported',
-        description: `Saved to ${result.filePath}${result.revealedInFolder ? ' — opened in Explorer.' : '.'}`,
+        title: t('record.toast.clipExported'),
+        description: result.revealedInFolder ? t('record.toast.clipExportedRevealed', { path: result.filePath }) : t('record.toast.clipExportedTo', { path: result.filePath }),
       })
     } catch (err) {
       toast({
-        title: 'Clip export failed',
-        description: (err as Error)?.message ?? 'Unknown error',
+        title: t('record.toast.clipExportFailed'),
+        description: (err as Error)?.message ?? t('record.toast.unknownError'),
         variant: 'destructive',
       })
     } finally {
@@ -487,23 +490,23 @@ export function RecordPlayerPage() {
     try {
       const r = await (window.api as any).youtubeUpload({
         filePath: recording.filePath,
-        title: `${recording.champion} — ${recording.win ? 'Victory' : 'Defeat'} | Ascend`,
-        description: 'Recorded with Ascend', visibility: 'unlisted',
+        title: `${recording.champion} — ${recording.win ? t('record.victory') : t('record.defeat')} | Ascend`,
+        description: t('record.youtube.description'), visibility: 'unlisted',
       })
       setYtUrl(r.url); setYtState('done')
       if (recording.gameId) await window.api.setYoutubeUrl(recording.gameId, r.url)
-    } catch (err: any) { setYtError(err?.message ?? 'Upload failed'); setYtState('error') }
+    } catch (err: any) { setYtError(err?.message ?? t('record.youtube.failed')); setYtState('error') }
   }
 
   if (loading) return (
     <div className="flex items-center justify-center py-20 text-hextech-text-dim">
-      <Loader2 className="h-6 w-6 animate-spin mr-3" /><span>Loading recording…</span>
+      <Loader2 className="h-6 w-6 animate-spin mr-3" /><span>{t('record.player.loading')}</span>
     </div>
   )
   if (error || !recording) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
-      <p className="text-hextech-text-dim">{error ?? 'Recording not found'}</p>
-      <Button variant="outline" onClick={() => navigate('/record')}>Back to Record Hub</Button>
+      <p className="text-hextech-text-dim">{error ?? t('record.player.notFound')}</p>
+      <Button variant="outline" onClick={() => navigate('/record')}>{t('record.player.back')}</Button>
     </div>
   )
 
@@ -533,7 +536,7 @@ export function RecordPlayerPage() {
     <div className="flex flex-col gap-2 animate-fade-in" style={{ height: 'calc(100vh - 3.25rem)', overflow: 'auto' }}>
       {/* Back nav */}
       <button onClick={() => navigate('/record')} className="flex items-center gap-1.5 text-xs text-hextech-text-dim hover:text-hextech-text transition-colors self-start shrink-0">
-        <ArrowLeft className="h-3.5 w-3.5" />Back to Record Hub
+        <ArrowLeft className="h-3.5 w-3.5" />{t('record.player.back')}
       </button>
 
       {/* Meta bar */}
@@ -562,7 +565,7 @@ export function RecordPlayerPage() {
         <div className="flex items-center gap-2 rounded-lg bg-hextech-gold/10 border border-hextech-gold/40 px-3 py-1.5 shrink-0">
           <Scissors className="h-3.5 w-3.5 text-hextech-gold shrink-0" />
           <span className="text-xs text-hextech-text-bright font-medium truncate">
-            {activeClip.title || 'Clip'}
+            {activeClip.title || t('record.clips.clip')}
           </span>
           <span className="text-[10px] font-mono text-hextech-text-dim">
             {fmtMs(activeClip.startMs)}–{fmtMs(activeClip.endMs)}
@@ -573,7 +576,7 @@ export function RecordPlayerPage() {
             className="text-[11px] text-hextech-text-dim hover:text-hextech-text transition-colors flex items-center gap-1"
           >
             <Video className="h-3 w-3" />
-            Full recording
+            {t('record.player.fullRecording')}
           </button>
         </div>
       )}
@@ -644,7 +647,7 @@ export function RecordPlayerPage() {
         </div>
       ) : (
         <div className="rounded-xl bg-[#050A10] border border-white/10 aspect-video flex items-center justify-center">
-          <p className="text-hextech-text-dim text-sm">No video file linked</p>
+          <p className="text-hextech-text-dim text-sm">{t('record.player.noVideo')}</p>
         </div>
       )}
 
@@ -652,33 +655,33 @@ export function RecordPlayerPage() {
       {creatingClip && (
         <div className="flex items-center gap-2 rounded-lg bg-[#090e17] border border-hextech-gold/30 px-3 py-1.5 shrink-0">
           <div className="flex items-center gap-1 rounded bg-white/5 border border-white/10 px-1.5 py-1">
-            <span className="text-[9px] text-hextech-text-dim/60 uppercase">In</span>
+            <span className="text-[9px] text-hextech-text-dim/60 uppercase">{t('record.clipEditor.in')}</span>
             <input type="text" value={startInput} onChange={(e) => setStartInput(e.target.value)} onBlur={applyStart} onKeyDown={(e) => e.key === 'Enter' && applyStart()}
               className="w-11 bg-transparent text-[11px] font-mono text-hextech-text text-center focus:outline-none" />
           </div>
           <span className="text-[10px] font-mono text-hextech-text-dim/50">{fmtMs(Math.max(0, clipRange.endMs - clipRange.startMs))}</span>
           <div className="flex items-center gap-1 rounded bg-white/5 border border-white/10 px-1.5 py-1">
-            <span className="text-[9px] text-hextech-text-dim/60 uppercase">Out</span>
+            <span className="text-[9px] text-hextech-text-dim/60 uppercase">{t('record.clipEditor.out')}</span>
             <input type="text" value={endInput} onChange={(e) => setEndInput(e.target.value)} onBlur={applyEnd} onKeyDown={(e) => e.key === 'Enter' && applyEnd()}
               className="w-11 bg-transparent text-[11px] font-mono text-hextech-text text-center focus:outline-none" />
           </div>
           <div className="flex-1" />
-          <input type="text" value={clipTitle} onChange={(e) => setClipTitle(e.target.value)} placeholder={`Clip — ${recording.champion}`}
+          <input type="text" value={clipTitle} onChange={(e) => setClipTitle(e.target.value)} placeholder={t('record.clipEditor.titlePlaceholder', { champion: recording.champion })}
             className="w-40 rounded bg-white/5 border border-white/10 px-2 py-1 text-[11px] text-hextech-text placeholder:text-hextech-text-dim/40 focus:outline-none focus:border-hextech-gold/50" />
           <Button size="sm" className="h-7 gap-1 text-xs bg-hextech-gold text-hextech-dark hover:bg-hextech-gold-bright px-2.5"
             onClick={handleSaveClip} disabled={savingClip || exportingClip || clipRange.endMs <= clipRange.startMs}
-            title="Save clip in Ascend (stays in the app)">
-            {savingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}Save
+            title={t('record.clipEditor.saveHint')}>
+            {savingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}{t('record.clipEditor.save')}
           </Button>
           <Button size="sm" variant="outline"
             className="h-7 gap-1 text-xs border-hextech-cyan/40 text-hextech-cyan hover:bg-hextech-cyan/10 px-2.5"
             onClick={handleExportClip} disabled={savingClip || exportingClip || clipRange.endMs <= clipRange.startMs}
-            title="Export clip mp4 and reveal it in Explorer">
-            {exportingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}Export
+            title={t('record.clipEditor.exportHint')}>
+            {exportingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}{t('record.clipEditor.export')}
           </Button>
           <button onClick={() => setCreatingClip(false)}
             className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-[#E24C3A] border border-[#E24C3A]/30 hover:bg-[#E24C3A]/10 transition-colors">
-            <Square className="h-3 w-3" />Cancel
+            <Square className="h-3 w-3" />{t('common.cancel')}
           </button>
         </div>
       )}
@@ -721,6 +724,7 @@ interface MetaBarProps {
 }
 
 function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink, onTryLink, tryingLink, eventsCount, eventsDiag, onRefreshEvents, refreshingEvents, onAutoDetectMistakes, autoDetectingMistakes, mistakeCount }: MetaBarProps) {
+  const { t } = useTranslation()
   const dateStr = new Date(recording.gameEndAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
   return (
     <div className="flex items-center gap-3 rounded-xl bg-hextech-elevated border border-hextech-border-dim px-3 py-2 flex-wrap shrink-0">
@@ -735,7 +739,7 @@ function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink, onT
       {!recording.isOrphaned && (
         <>
           <Badge variant={recording.win ? 'success' : 'destructive'} className="text-[10px] shrink-0">
-            {recording.win ? 'Victory' : 'Defeat'}
+            {recording.win ? t('record.victory') : t('record.defeat')}
           </Badge>
           <span className="font-mono text-sm text-hextech-text shrink-0">{recording.kills}/{recording.deaths}/{recording.assists}</span>
           <span className="flex items-center gap-1 text-xs text-hextech-text-dim shrink-0">
@@ -764,11 +768,11 @@ function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink, onT
           variant="outline" size="sm"
           disabled={tryingLink}
           onClick={onTryLink}
-          title="Look this recording up in Riot match history"
+          title={t('record.card.tryLinkHint')}
           className="gap-1.5 h-7 text-xs shrink-0 border-hextech-gold/40 text-hextech-gold hover:bg-hextech-gold/10"
         >
           {tryingLink ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
-          {tryingLink ? 'Linking…' : 'Try to link'}
+          {tryingLink ? t('record.card.linking') : t('record.card.tryLink')}
         </Button>
       )}
 
@@ -783,22 +787,22 @@ function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink, onT
             variant="outline" size="sm"
             disabled={refreshingEvents}
             onClick={onRefreshEvents}
-            title={`Refresh game events (currently ${eventsCount} loaded${eventsDiag.frameCount ? ` from ${eventsDiag.frameCount} timeline frames` : ''})`}
+            title={eventsDiag.frameCount ? t('record.events.refreshHintFrames', { count: eventsCount, frames: eventsDiag.frameCount }) : t('record.events.refreshHint', { count: eventsCount })}
             className="gap-1.5 h-7 text-xs shrink-0 text-hextech-text-dim hover:text-hextech-gold hover:border-hextech-gold/40"
           >
             {refreshingEvents ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            {eventsCount} events
+            {t('record.events.count', { count: eventsCount })}
           </Button>
         ) : (
           <Button
             variant="outline" size="sm"
             disabled={refreshingEvents}
             onClick={onRefreshEvents}
-            title={eventsDiag.message ?? 'No game events available — click to retry'}
+            title={eventsDiag.message ?? t('record.events.retryHint')}
             className="gap-1.5 h-7 text-xs shrink-0 border-[#E24C3A]/40 text-[#E24C3A] hover:bg-[#E24C3A]/10"
           >
             {refreshingEvents ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            {refreshingEvents ? 'Refreshing…' : 'No markers — Refresh'}
+            {refreshingEvents ? t('record.events.refreshing') : t('record.events.noMarkers')}
           </Button>
         )
       )}
@@ -814,10 +818,10 @@ function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink, onT
             variant="outline" size="sm"
             className="gap-1.5 h-7 text-xs shrink-0 text-hextech-text-dim hover:text-hextech-gold hover:border-hextech-gold/40"
             onClick={() => onNavigate(`/lane-phase/${recording.gameId}?rec=${recording.id}`)}
-            title="Compare your laning phase to your direct opponent (0-14 min)"
+            title={t('record.player.lanePhaseHint')}
           >
             <Target className="h-3.5 w-3.5" />
-            Lane Phase
+            {t('record.player.lanePhase')}
           </Button>
           {/* Run the mistake heuristics on the cached Riot timeline.
               Idempotent — duplicates within 3s of an existing auto row are
@@ -827,11 +831,11 @@ function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink, onT
             variant="outline" size="sm"
             disabled={autoDetectingMistakes}
             onClick={onAutoDetectMistakes}
-            title="Run the mistake auto-detector for this game"
+            title={t('record.player.autoDetectHint')}
             className="gap-1.5 h-7 text-xs shrink-0 text-amber-300 hover:text-white hover:border-amber-400/40 hover:bg-amber-500/10"
           >
             {autoDetectingMistakes ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-            Mistakes ({mistakeCount})
+            {t('record.player.mistakes', { count: mistakeCount })}
           </Button>
           <Button
             variant="outline" size="sm"
@@ -839,16 +843,16 @@ function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink, onT
             onClick={() => onNavigate(`/review?gameId=${recording.gameId}`)}
           >
             <ClipboardCheck className="h-3.5 w-3.5" />
-            {recording.hasReview ? 'Open Review' : 'Start Review'}
+            {recording.hasReview ? t('record.player.openReview') : t('record.player.startReview')}
           </Button>
           <Button
             variant="outline" size="sm"
             className="gap-1.5 h-7 text-xs shrink-0 text-hextech-text-dim hover:text-hextech-gold hover:border-hextech-gold/40"
             onClick={onUnlink}
-            title="Unlink recording from this game"
+            title={t('record.player.unlinkHint')}
           >
             <Unlink className="h-3.5 w-3.5" />
-            Unlink
+            {t('record.player.unlink')}
           </Button>
         </>
       )}
@@ -868,7 +872,7 @@ function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink, onT
           className="gap-2 h-7 text-xs shrink-0 bg-hextech-gold hover:bg-hextech-gold/90 text-hextech-dark font-semibold border-0"
         >
           {reviewLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-          Review
+          {t('record.player.review')}
         </Button>
       )}
     </div>
@@ -892,6 +896,7 @@ interface BottomPanelProps {
 }
 
 function BottomPanel({ recording, clips, activeTab, onTabChange, onNewClip, creatingClip, onDeleteClip, onPlayClip, activeClipId, ytState, ytProgress, ytUrl, ytError, ytConnected, onYtUpload }: BottomPanelProps) {
+  const { t } = useTranslation()
   return (
     <div className="rounded-xl bg-hextech-elevated border border-hextech-border-dim overflow-hidden shrink-0">
       {/* Tab bar */}
@@ -901,8 +906,8 @@ function BottomPanel({ recording, clips, activeTab, onTabChange, onNewClip, crea
             className={`px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px ${activeTab === tab ? 'border-hextech-gold text-hextech-gold' : 'border-transparent text-hextech-text-dim hover:text-hextech-text'}`}
           >
             {tab === 'clips'
-              ? <span className="flex items-center gap-1.5"><Scissors className="h-3 w-3" />Clips{clips.length > 0 && <span className="rounded-full bg-hextech-gold/20 text-hextech-gold px-1 text-[9px]">{clips.length}</span>}</span>
-              : <span className="flex items-center gap-1.5"><Share2 className="h-3 w-3" />Share</span>}
+              ? <span className="flex items-center gap-1.5"><Scissors className="h-3 w-3" />{t('record.filters.clips')}{clips.length > 0 && <span className="rounded-full bg-hextech-gold/20 text-hextech-gold px-1 text-[9px]">{clips.length}</span>}</span>
+              : <span className="flex items-center gap-1.5"><Share2 className="h-3 w-3" />{t('record.share.tab')}</span>}
           </button>
         ))}
       </div>
@@ -939,17 +944,18 @@ function ClipsTab({ clips, creatingClip, onNewClip, onDeleteClip, onPlayClip, ac
   onPlayClip: (id: string) => void
   activeClipId: string | null
 }) {
+  const { t } = useTranslation()
   return (
     <div className="flex items-center gap-3">
       {/* New clip button */}
       <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5 shrink-0" onClick={onNewClip} disabled={creatingClip}>
         <Scissors className="h-3 w-3" />
-        {creatingClip ? 'Clipping…' : '+ New clip'}
+        {creatingClip ? t('record.clips.clipping') : t('record.clips.new')}
       </Button>
 
       {/* Clips list — horizontal scroll row */}
       {clips.length === 0 ? (
-        <p className="text-xs text-hextech-text-dim/60">No clips yet</p>
+        <p className="text-xs text-hextech-text-dim/60">{t('record.clips.none')}</p>
       ) : (
         <div className="flex gap-2 overflow-x-auto pb-0.5">
           {clips.map((clip) => (
@@ -970,30 +976,31 @@ function ClipsTab({ clips, creatingClip, onNewClip, onDeleteClip, onPlayClip, ac
 // ── Share tab ─────────────────────────────────────────────────────────────────
 
 function ShareTab({ filePath, champion, win, isOrphaned, ytState, ytProgress, ytUrl, ytError, ytConnected, onYtUpload }: { filePath: string; champion: string; win: boolean; isOrphaned?: boolean; ytState: YoutubeUploadState; ytProgress: number; ytUrl: string | null; ytError: string | null; ytConnected: boolean; onYtUpload: () => void }) {
+  const { t } = useTranslation()
   return (
     <div className="flex items-center gap-6 flex-wrap">
       {/* Discord — inline share panel */}
-      <ClipSharePanel filePath={filePath} fileSize={0} title={isOrphaned ? champion : `${champion} — ${win ? 'Victory' : 'Defeat'}`} />
+      <ClipSharePanel filePath={filePath} fileSize={0} title={isOrphaned ? champion : `${champion} — ${win ? t('record.victory') : t('record.defeat')}`} />
 
       {/* YouTube */}
       {ytConnected && (
         <div className="flex items-center gap-2">
           {ytState === 'idle' && (
             <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs text-red-400 border-red-400/30 hover:bg-red-400/10" onClick={onYtUpload}>
-              <Youtube className="h-3.5 w-3.5" />Upload to YouTube
+              <Youtube className="h-3.5 w-3.5" />{t('record.youtube.upload')}
             </Button>
           )}
           {ytState === 'uploading' && (
             <div className="flex items-center gap-2 text-xs text-hextech-text-dim">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />Uploading… {ytProgress}%
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />{t('record.youtube.uploading', { pct: ytProgress })}
               <div className="w-24 h-1 bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-red-500 transition-all" style={{ width: `${ytProgress}%` }} /></div>
             </div>
           )}
           {ytState === 'done' && ytUrl && (
             <div className="flex items-center gap-3 text-xs">
-              <span className="text-green-400 flex items-center gap-1"><Check className="h-3 w-3" />Uploaded</span>
-              <a href={ytUrl} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:text-red-300 flex items-center gap-1"><ExternalLink className="h-3 w-3" />Open</a>
-              <button onClick={() => navigator.clipboard.writeText(ytUrl)} className="text-hextech-text-dim hover:text-hextech-text flex items-center gap-1"><Copy className="h-3 w-3" />Copy</button>
+              <span className="text-green-400 flex items-center gap-1"><Check className="h-3 w-3" />{t('record.youtube.uploaded')}</span>
+              <a href={ytUrl} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:text-red-300 flex items-center gap-1"><ExternalLink className="h-3 w-3" />{t('record.youtube.open')}</a>
+              <button onClick={() => navigator.clipboard.writeText(ytUrl)} className="text-hextech-text-dim hover:text-hextech-text flex items-center gap-1"><Copy className="h-3 w-3" />{t('record.youtube.copy')}</button>
             </div>
           )}
           {ytState === 'error' && <span className="text-xs text-[#E24C3A]">{ytError}</span>}
@@ -1011,6 +1018,7 @@ function ClipRow({ clip, onDelete, onPlay, isActive }: {
   onPlay: () => void
   isActive: boolean
 }) {
+  const { t } = useTranslation()
   const [confirmDelete, setConfirmDelete] = useState(false)
   return (
     <div
@@ -1026,11 +1034,11 @@ function ClipRow({ clip, onDelete, onPlay, isActive }: {
         type="button"
         onClick={onPlay}
         className="flex-1 min-w-0 text-left cursor-pointer"
-        title="Play this clip in the player"
+        title={t('record.clips.playHint')}
       >
         <p className="text-[11px] font-medium text-hextech-text-bright truncate flex items-center gap-1">
           {isActive && <Play className="h-2.5 w-2.5 text-hextech-gold shrink-0" />}
-          {clip.title ?? 'Clip'}
+          {clip.title ?? t('record.clips.clip')}
         </p>
         <div className="flex items-center gap-1.5 text-[10px] text-hextech-text-dim">
           <span className="font-mono">{fmtMs(clip.startMs)}–{fmtMs(clip.endMs)}</span>
