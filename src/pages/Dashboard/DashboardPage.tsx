@@ -1,19 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { useUserStore } from '@/store/useUserStore'
 import { useSessionStore } from '@/store/useSessionStore'
 import { useGameStore } from '@/store/useGameStore'
-import { XPBar } from '@/components/Gamification/XPBar'
-import { StreakCounter } from '@/components/Gamification/StreakCounter'
 import { CoachingPatternCard } from '@/components/Coaching/CoachingPatternCard'
 import { ReassessmentBanner } from '@/components/Coaching/ReassessmentBanner'
 import { AssistantCard } from '@/components/Assistant/AssistantCard'
 import { ProgressChart } from '@/components/Charts/ProgressChart'
 import { FundamentalsRadarChart } from '@/components/Charts/FundamentalsRadarChart'
-import { buildFundamentalsRadar, overallRadarScore } from '@/lib/fundamentalsRadarCore'
+import { buildFundamentalsRadar, overallRadarScore, radarAxesForRole } from '@/lib/fundamentalsRadarCore'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import {
   Target,
@@ -34,15 +30,17 @@ import {
   AlertTriangle,
   Layers,
   Loader2,
+  Flame,
+  Radio,
+  Sparkles,
 } from 'lucide-react'
 import type { MistakeTopTagEntry } from '@/lib/ipc'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { useTranslation } from 'react-i18next'
-import { formatKDA, formatGameTime, cn } from '@/lib/utils'
-
+import { formatKDA, formatGameTime, getLevelFromXp, cn } from '@/lib/utils'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
 
-interface LastGame {
+interface RecentGame {
   matchId: string
   champion: string
   opponentChampion: string | null
@@ -55,7 +53,13 @@ interface LastGame {
   duration: number
   win: boolean
   gameEndAt: string
+  reviewStatus?: 'pending' | 'to_be_reviewed' | 'reviewed'
 }
+
+/** Shared panel chrome — translucent so the user's background (Settings →
+ *  Appearance) shows through, with the theme's own border token. */
+export const panelClass =
+  'rounded-2xl border border-hextech-border-dim/70 bg-hextech-dark/85 backdrop-blur-sm shadow-lg'
 
 export function DashboardPage() {
   const { t } = useTranslation()
@@ -68,211 +72,338 @@ export function DashboardPage() {
   const loadProgressData = useGameStore((s) => s.loadProgressData)
   const navigate = useNavigate()
   const allFundamentals = useLocalizedFundamentals().flatMap((c) => c.fundamentals)
-  const [lastGame, setLastGame] = useState<LastGame | null>(null)
+  const [recentGames, setRecentGames] = useState<RecentGame[]>([])
   const [snapshots, setSnapshots] = useState<any[]>([])
 
   useEffect(() => {
     loadActiveSession()
     loadStats()
     loadProgressData()
-    window.api.getMatchHistoryWithStatus(1).then((games: any[]) => {
-      if (games.length > 0) setLastGame(games[0])
-    }).catch(() => {})
+    window.api.getMatchHistoryWithStatus(10).then((games: any[]) => setRecentGames(games ?? [])).catch(() => {})
     window.api.getStatsSnapshots().then(setSnapshots).catch(() => {})
   }, [loadActiveSession, loadStats, loadProgressData])
 
   if (!user) return null
 
-  // Resolve session objective IDs
-  const sessionObjectiveIds = (() => {
+  const sessionObjectiveIds: string[] = (() => {
     if (!activeSession) return []
     try { return JSON.parse(activeSession.objectiveIds) } catch { return [activeSession.objectiveId] }
   })()
-
   const objectiveName = sessionObjectiveIds
     .map((id: string) => allFundamentals.find((f) => f.id === id)?.label ?? id)
     .join(', ')
+  const sessionProgressData = progressData.filter((d) => sessionObjectiveIds.includes(d.fundamentalId))
 
-  // Filter progressData to session objectives
-  const sessionProgressData = progressData.filter((d) =>
-    sessionObjectiveIds.includes(d.fundamentalId),
-  )
-
-  // Stat diffs: last two snapshots
   const statDiffs = computeStatDiffs(snapshots)
-
-  const winrate = stats && stats.totalGames > 0
-    ? Math.round((stats.wins / stats.totalGames) * 100)
-    : null
+  const lastGame = recentGames[0] ?? null
+  const form = summarizeForm(recentGames)
+  const winrate = stats && stats.totalGames > 0 ? Math.round((stats.wins / stats.totalGames) * 100) : null
+  const formDelta = winrate !== null && form ? form.winrate - winrate : null
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 animate-fade-in">
+      {/* ── Header ── */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">
-            {t('dashboard.welcome')} {user.displayName || user.summonerName}
-          </h1>
-          <p className="text-sm text-hextech-text mt-0.5">{t('dashboard.subtitle')}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="font-display text-2xl font-extrabold tracking-tight text-hextech-text-bright lg:text-3xl">
+              {t('dashboard.welcome')} <span className="text-hextech-gold">{user.displayName || user.summonerName}</span>
+            </h1>
+            {user.streakDays > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-hextech-gold/25 bg-hextech-gold/10 px-2.5 py-1 text-xs font-medium text-hextech-gold-bright">
+                <Flame className="h-3.5 w-3.5 fill-hextech-gold text-hextech-gold" />
+                {t('dashboard.header.streak', { count: user.streakDays })}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-hextech-text">
+            {form ? (
+              <>
+                <span>{t('dashboard.header.formLine', { count: form.games })}</span>
+                <span className={cn('font-mono font-semibold', form.winrate >= 50 ? 'text-hextech-green' : 'text-hextech-red')}>
+                  {form.winrate}% {t('dashboard.header.winrateShort')}
+                </span>
+                {formDelta !== null && formDelta !== 0 && (
+                  <span className="text-hextech-text-dim">
+                    ({formDelta > 0 ? '+' : ''}{formDelta} {t('dashboard.header.vsOverall')})
+                  </span>
+                )}
+              </>
+            ) : (
+              t('dashboard.subtitle')
+            )}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {form && <FormStrip games={recentGames} />}
+          {user.mainRole && (
+            <div className="flex items-center gap-1.5 rounded-lg border border-hextech-border-dim bg-hextech-dark/80 px-3 py-1.5 text-xs text-hextech-text">
+              <Swords className="h-3.5 w-3.5 text-hextech-gold" />
+              <span>{t('dashboard.header.mainRole')}</span>
+              <strong className="text-hextech-text-bright">{user.mainRole}</strong>
+            </div>
+          )}
         </div>
       </div>
 
       <ReassessmentBanner />
 
-      {/* Main row: content (2/3) + sidebar (1/3) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Left column */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Active session card */}
-          {activeSession ? (
-            <Card className="border-hextech-green/30 bg-hextech-green/5">
-              <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <Swords className="h-5 w-5 text-hextech-green shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-hextech-text-dim">{t('dashboard.activeSession.title')}</p>
-                    <p className="font-semibold text-hextech-text-bright truncate">{objectiveName}</p>
-                    <p className="text-xs text-hextech-text mt-0.5">
-                      {t('dashboard.activeSession.game', { count: activeSession.games.length })}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <Button size="sm" onClick={() => navigate('/review')}>
-                    <Play className="h-3.5 w-3.5 mr-1.5" />
-                    {t('dashboard.activeSession.continueButton')}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => navigate('/analytics')}>
-                    <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
-                    {t('dashboard.viewProgress')}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="flex items-center justify-between gap-4 p-4">
-                <div>
-                  <p className="font-medium text-hextech-text-bright">{t('dashboard.noSession.title')}</p>
-                  <p className="text-xs text-hextech-text mt-0.5">{t('dashboard.noSession.desc')}</p>
-                </div>
-                <Button size="sm" onClick={() => navigate('/session')} className="shrink-0">
-                  <Target className="h-3.5 w-3.5 mr-1.5" />
-                  {t('dashboard.noSession.button')}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-12">
+        {/* ── Left column ── */}
+        <div className="space-y-6 xl:col-span-8">
+          <SessionHero
+            active={!!activeSession}
+            objectiveName={objectiveName}
+            gamesCount={activeSession?.games.length ?? 0}
+            onStart={() => navigate('/session')}
+            onContinue={() => navigate('/review')}
+            onProgress={() => navigate('/analytics')}
+          />
 
-          {/* Session objective progress (only when active) */}
           {sessionObjectiveIds.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2 pt-4 px-4">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <TrendingUp className="h-4 w-4 text-hextech-cyan" />
-                  {t('dashboard.sessionProgress.title')}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                {sessionProgressData.length > 0 ? (
-                  <ProgressChart data={sessionProgressData} fundamentalIds={sessionObjectiveIds} />
-                ) : (
-                  <p className="text-sm text-hextech-text-dim py-6 text-center">
-                    {t('dashboard.sessionProgress.noData')}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            <section className={cn(panelClass, 'p-5')}>
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-hextech-text-bright">
+                <TrendingUp className="h-4 w-4 text-hextech-cyan" />
+                {t('dashboard.sessionProgress.title')}
+              </h3>
+              {sessionProgressData.length > 0 ? (
+                <ProgressChart data={sessionProgressData} fundamentalIds={sessionObjectiveIds} />
+              ) : (
+                <p className="py-6 text-center text-sm text-hextech-text-dim">{t('dashboard.sessionProgress.noData')}</p>
+              )}
+            </section>
           )}
 
-          {/* Stats grid */}
           {stats && stats.totalGames > 0 && (
-            <div className="grid grid-cols-4 gap-3">
-              <StatCard icon={Gamepad2} label={t('dashboard.stats.games')} value={stats.totalGames.toString()} />
-              <StatCard icon={Trophy} label={t('dashboard.stats.winRate')} value={`${Math.round((stats.wins / stats.totalGames) * 100)}%`} />
-              <StatCard icon={Crosshair} label={t('dashboard.stats.avgKda')} value={stats.avgKDA.toFixed(2)} />
-              <StatCard icon={ShieldCheck} label={t('dashboard.stats.objSuccess')} value={`${stats.objectiveSuccessRate}%`} />
+            <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+              <KpiCard icon={Gamepad2} label={t('dashboard.kpi.volume')} tone="gold"
+                value={stats.totalGames.toString()} unit={t('dashboard.kpi.games')}
+                footer={<>
+                  <span className="text-hextech-green">{stats.wins} {t('dashboard.kpi.winShort')}</span>
+                  <span className="text-hextech-text-dim">•</span>
+                  <span className="text-hextech-red">{stats.losses} {t('dashboard.kpi.lossShort')}</span>
+                </>}
+              />
+              <KpiCard icon={Trophy} label={t('dashboard.stats.winRate')} tone="green"
+                value={`${winrate}%`}
+                badge={formDelta !== null && formDelta !== 0 ? <Delta value={formDelta} suffix="%" /> : undefined}
+                footer={<div className="w-full">
+                  <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-hextech-red/40">
+                    <div className="h-full rounded-full bg-hextech-green" style={{ width: `${winrate}%` }} />
+                  </div>
+                  {form && <div className="mt-1 text-[10px] text-hextech-text-dim">{t('dashboard.kpi.lastN', { count: form.games, wr: form.winrate })}</div>}
+                </div>}
+              />
+              <KpiCard icon={Crosshair} label={t('dashboard.stats.avgKda')} tone="cyan"
+                value={stats.avgKDA.toFixed(2)}
+                footer={form ? <span className="text-hextech-text">{form.k.toFixed(1)} / {form.d.toFixed(1)} / {form.a.toFixed(1)}</span> : undefined}
+              />
+              <KpiCard icon={ShieldCheck} label={t('dashboard.stats.objSuccess')} tone="gold" accentValue
+                value={`${stats.objectiveSuccessRate}%`}
+                footer={<span className="text-hextech-text">{t('dashboard.kpi.objHint')}</span>}
+              />
             </div>
           )}
 
-          {/* Last game */}
-          {lastGame && <LastGameCard game={lastGame} onViewDetails={() => navigate(`/stats/${lastGame.matchId}`)} />}
+          {lastGame && <LastGameCard game={lastGame} onViewDetails={() => navigate(`/stats/${lastGame.matchId}`)} onReview={() => navigate('/review')} />}
+
+          {statDiffs.length >= 2 && <StatDiffsCard diffs={statDiffs} onViewAll={() => navigate('/stats')} />}
         </div>
 
-        {/* Right sidebar — same height as the left column's stack, so the
-            card doesn't leave a tall dead gap below it on long pages. */}
-        <div className="flex flex-col space-y-4">
-          {/* Progression + compact winrate merged */}
-          <Card className="flex flex-col">
-            <CardHeader className="pb-2 pt-4 px-4">
-              <CardTitle className="text-sm">{t('dashboard.progress')}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-1 flex-col space-y-3 px-4 pb-4">
-              <XPBar totalXp={user.xp} />
-              <StreakCounter days={user.streakDays} />
-              {winrate !== null && stats && (
-                <div className="rounded-lg border border-hextech-border-dim bg-hextech-elevated px-3 py-2">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs text-hextech-text-dim">{t('dashboard.stats.winRate')}</span>
-                    <span className="text-sm font-bold text-hextech-gold-bright">{winrate}%</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-hextech-base overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-hextech-green transition-all"
-                      style={{ width: `${winrate}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between mt-1">
-                    <span className="text-[10px] text-hextech-green">{stats.wins}W</span>
-                    <span className="text-[10px] text-[#E24C3A]">{stats.losses}L</span>
-                  </div>
-                </div>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full border-hextech-gold/40 text-hextech-gold hover:bg-hextech-gold/10 gap-2 mt-auto"
-                onClick={() => navigate('/assessment')}
-              >
-                <ClipboardCheck className="h-4 w-4" />
-                {t('dashboard.fullAssessmentButton')}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <FundamentalsRadarCard />
-        </div>
-      </div>
-
-      {/* Bottom row: stat diffs (2/3) + coaching patterns (1/3) — same visual line */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
-          {statDiffs.length >= 2 && (
-            <StatDiffsCard diffs={statDiffs} onViewAll={() => navigate('/stats')} />
-          )}
-        </div>
-        <div className="space-y-4">
+        {/* ── Right column ── */}
+        <div className="space-y-6 xl:col-span-4">
+          <ProgressionCard totalXp={user.xp} onAssessment={() => navigate('/assessment')} />
+          <FundamentalsRadarCard role={user.mainRole} />
           <AssistantCard moment="weekly" />
           <CoachingPatternCard />
         </div>
       </div>
 
-      {/* Recurring mistakes (last 7 days) — appears only when there's data
-          to show. Same compact card style as the stat diffs so it doesn't
-          fight for attention until the user starts tagging. */}
       <MistakeFrequencyCard onViewAll={() => navigate('/stats/mistakes')} />
     </div>
   )
 }
 
+/* ─── Header pieces ─── */
+
+function summarizeForm(games: RecentGame[]) {
+  if (games.length === 0) return null
+  const n = games.length
+  const wins = games.filter((g) => g.win).length
+  return {
+    games: n,
+    winrate: Math.round((wins / n) * 100),
+    k: games.reduce((s, g) => s + g.kills, 0) / n,
+    d: games.reduce((s, g) => s + g.deaths, 0) / n,
+    a: games.reduce((s, g) => s + g.assists, 0) / n,
+  }
+}
+
+/** Last-N results, oldest → newest, as small W/L pips. */
+function FormStrip({ games }: { games: RecentGame[] }) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-hextech-border-dim bg-hextech-dark/80 px-3 py-1.5" title={t('dashboard.header.formTitle')}>
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-hextech-text-dim">{t('dashboard.header.form')}</span>
+      <div className="flex gap-1">
+        {[...games].reverse().map((g) => (
+          <span key={g.matchId} className={cn('h-3.5 w-1.5 rounded-sm', g.win ? 'bg-hextech-green' : 'bg-hextech-red/80')} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Delta({ value, suffix = '' }: { value: number; suffix?: string }) {
+  const up = value > 0
+  return (
+    <span className={cn('flex items-center gap-0.5 font-mono text-[11px] font-semibold', up ? 'text-hextech-green' : 'text-hextech-red')}>
+      {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+      {up ? '+' : ''}{value}{suffix}
+    </span>
+  )
+}
+
+/* ─── Session hero ─── */
+
+function SessionHero({ active, objectiveName, gamesCount, onStart, onContinue, onProgress }: {
+  active: boolean
+  objectiveName: string
+  gamesCount: number
+  onStart: () => void
+  onContinue: () => void
+  onProgress: () => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <section className={cn(
+      panelClass,
+      'relative overflow-hidden p-5 lg:p-6',
+      active ? 'border-hextech-green/40' : 'bg-gradient-to-br from-hextech-elevated/90 via-hextech-dark/90 to-hextech-dark/90',
+    )}>
+      <div className="pointer-events-none absolute -right-16 -top-24 h-56 w-56 rounded-full bg-hextech-gold/10 blur-3xl" />
+      <div className="relative flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded border border-hextech-gold/30 bg-hextech-gold/15 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-hextech-gold-bright">
+              <Crosshair className="h-3 w-3" /> {t('dashboard.hero.badge')}
+            </span>
+            {active && (
+              <span className="inline-flex items-center gap-1.5 rounded border border-hextech-green/40 bg-hextech-green/15 px-2 py-0.5 font-mono text-[10px] uppercase text-hextech-green">
+                <Radio className="h-3 w-3 animate-pulse" /> {t('dashboard.activeSession.title')}
+              </span>
+            )}
+          </div>
+          <h2 className="mt-2 text-lg font-bold text-hextech-text-bright">
+            {active ? objectiveName : t('dashboard.noSession.title')}
+          </h2>
+          <p className="mt-0.5 text-xs text-hextech-text">
+            {active ? t('dashboard.activeSession.game', { count: gamesCount }) : t('dashboard.hero.desc')}
+          </p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          {active ? (
+            <>
+              <Button onClick={onContinue} className="gap-1.5 font-bold"><Play className="h-4 w-4 fill-current" />{t('dashboard.activeSession.continueButton')}</Button>
+              <Button variant="outline" onClick={onProgress} className="gap-1.5"><BarChart3 className="h-4 w-4" />{t('dashboard.viewProgress')}</Button>
+            </>
+          ) : (
+            <Button onClick={onStart} size="lg" className="gap-2 px-5 font-bold shadow-lg shadow-hextech-gold/20">
+              <Target className="h-4 w-4" />{t('dashboard.noSession.button')}
+            </Button>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ─── KPI card ─── */
+
+const TONES = {
+  gold: 'border-hextech-gold/25 bg-hextech-gold/10 text-hextech-gold',
+  green: 'border-hextech-green/25 bg-hextech-green/10 text-hextech-green',
+  cyan: 'border-hextech-cyan/25 bg-hextech-cyan/10 text-hextech-cyan',
+} as const
+
+function KpiCard({ icon: Icon, label, value, unit, badge, footer, tone, accentValue }: {
+  icon: any
+  label: string
+  value: string
+  unit?: string
+  badge?: ReactNode
+  footer?: ReactNode
+  tone: keyof typeof TONES
+  accentValue?: boolean
+}) {
+  return (
+    <div className={cn(panelClass, 'rounded-xl p-4 transition-colors hover:border-hextech-border')}>
+      <div className="mb-2 flex items-center justify-between text-hextech-text">
+        <span className="text-xs font-medium">{label}</span>
+        <div className={cn('flex h-7 w-7 items-center justify-center rounded-lg border', TONES[tone])}>
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span className={cn('font-mono text-2xl font-extrabold tabular-nums', accentValue ? 'text-hextech-gold' : 'text-hextech-text-bright')}>{value}</span>
+        {unit && <span className="text-xs text-hextech-text">{unit}</span>}
+        {badge}
+      </div>
+      {footer && (
+        <div className="mt-2 flex items-center justify-between gap-1 border-t border-hextech-border-dim/50 pt-2 font-mono text-[11px]">
+          {footer}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── Progression (XP) ─── */
+
+function ProgressionCard({ totalXp, onAssessment }: { totalXp: number; onAssessment: () => void }) {
+  const { t } = useTranslation()
+  const { level, currentXp, nextLevelXp } = getLevelFromXp(totalXp)
+  const pct = Math.min(100, Math.round((currentXp / nextLevelXp) * 100))
+  return (
+    <section className={cn(panelClass, 'space-y-4 p-5')}>
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-bold text-hextech-text-bright">{t('dashboard.progress')}</h3>
+        <span className="rounded-md border border-hextech-gold/25 bg-hextech-gold/10 px-2 py-0.5 font-mono text-xs text-hextech-gold-bright">
+          {currentXp} / {nextLevelXp} XP
+        </span>
+      </div>
+      <div className="space-y-2.5 rounded-xl border border-hextech-border-dim/60 bg-hextech-black/50 p-3.5">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-hextech-gold bg-hextech-gold/20 font-mono text-sm font-bold text-hextech-gold-bright shadow-[0_0_12px_rgba(0,0,0,0.3)]">
+            {level}
+          </div>
+          <div>
+            <div className="text-xs font-bold text-hextech-text-bright">{t('dashboard.progression.level', { level })}</div>
+            <div className="text-[11px] text-hextech-text">
+              {t('dashboard.progression.toNext', { xp: nextLevelXp - currentXp, level: level + 1 })}
+            </div>
+          </div>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-hextech-elevated">
+          <div className="h-full rounded-full bg-gradient-to-r from-hextech-gold to-hextech-gold-bright transition-all duration-500" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+      <Button variant="outline" size="sm" className="w-full gap-2 border-hextech-gold/40 text-hextech-gold hover:bg-hextech-gold/10" onClick={onAssessment}>
+        <ClipboardCheck className="h-4 w-4" />
+        {t('dashboard.fullAssessmentButton')}
+      </Button>
+    </section>
+  )
+}
+
 /**
- * "Empreinte des fondamentaux" (requested redesign reference) — compares
- * the user's recent form (avg of the last 15 games) against their longer
- * snapshot (avg of the last 40 games), across 9 fixed KPIs. Desktop-only
- * (needs the local Riot fetch pipeline), loads on its own so a slow Riot
- * API round-trip never blocks the rest of the dashboard.
+ * "Empreinte des fondamentaux" — compares the user's recent form (avg of
+ * the last 15 games) against their longer snapshot (avg of the last 40
+ * games), across the 9 KPIs of the reference design. Desktop-only (needs
+ * the local Riot fetch pipeline), loads on its own so a slow Riot API
+ * round-trip never blocks the rest of the dashboard.
  */
-function FundamentalsRadarCard() {
+function FundamentalsRadarCard({ role }: { role: string | null }) {
   const { t } = useTranslation()
   const [data, setData] = useState<{ recent: any; recentGameCount: number; snapshot: any; snapshotGameCount: number } | null | undefined>(undefined)
   const [showModal, setShowModal] = useState(false)
@@ -283,89 +414,78 @@ function FundamentalsRadarCard() {
 
   if (data === undefined) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center gap-2 p-6 text-xs text-hextech-text-dim">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          {t('dashboard.radar.loading', { defaultValue: 'Calcul de l’empreinte…' })}
-        </CardContent>
-      </Card>
+      <section className={cn(panelClass, 'flex items-center justify-center gap-2 p-6 text-xs text-hextech-text-dim')}>
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        {t('dashboard.radar.loading')}
+      </section>
     )
   }
   if (!data) return null
 
-  const points = buildFundamentalsRadar(data.recent, data.snapshot)
+  const isSupport = radarAxesForRole(role) !== radarAxesForRole(null)
+  const points = buildFundamentalsRadar(data.recent, data.snapshot, radarAxesForRole(role))
+    .map((p) => ({ ...p, label: t(`dashboard.radar.axis.${p.key}`, { defaultValue: p.label }) }))
   const score = overallRadarScore(points)
 
   return (
     <>
-      <Card>
-        <CardHeader className="pb-2 pt-4 px-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">{t('dashboard.radar.title', { defaultValue: 'Empreinte des fondamentaux' })}</CardTitle>
-            {score !== null && (
-              <span className="text-[10px] font-mono text-hextech-green">
-                {t('dashboard.radar.score', { defaultValue: 'Score : {{score}}/100', score })}
-              </span>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3 px-4 pb-4">
+      <section className={cn(panelClass, 'space-y-3 p-5')}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-hextech-text-bright">
+            {t('dashboard.radar.title')}
+            {isSupport && <span className="ml-2 rounded border border-hextech-cyan/40 bg-hextech-cyan/10 px-1.5 py-0.5 align-middle text-[10px] font-semibold text-hextech-cyan">{t('dashboard.radar.supportBadge')}</span>}
+          </h3>
+          {score !== null && (
+            <span className="font-mono text-[10px] text-hextech-green">{t('dashboard.radar.score', { score })}</span>
+          )}
+        </div>
+        <div className="rounded-xl border border-hextech-border-dim/60 bg-hextech-black/50 p-3">
           <FundamentalsRadarChart points={points} />
-          <div className="flex items-center justify-center gap-4 text-[10px] text-hextech-text-dim">
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2 w-2 rounded-full bg-hextech-gold" />
-              {t('dashboard.radar.recentLabel', { count: data.recentGameCount, defaultValue: 'Récent ({{count}} games)' })}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2 w-2 rounded-full border border-dashed border-slate-400" />
-              {t('dashboard.radar.snapshotLabel', { count: data.snapshotGameCount, defaultValue: 'Snapshot ({{count}} games)' })}
-            </span>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full gap-2 text-xs"
-            onClick={() => setShowModal(true)}
-          >
-            <Layers className="h-3.5 w-3.5 text-hextech-gold" />
-            {t('dashboard.radar.fullBreakdown', { defaultValue: 'Bilan complet des fondamentaux' })}
-          </Button>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="flex items-center justify-center gap-4 text-[10px] text-hextech-text-dim">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full bg-hextech-gold" />
+            {t('dashboard.radar.recentLabel', { count: data.recentGameCount })}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full border border-dashed border-slate-400" />
+            {t('dashboard.radar.snapshotLabel', { count: data.snapshotGameCount })}
+          </span>
+        </div>
+        <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => setShowModal(true)}>
+          <Layers className="h-3.5 w-3.5 text-hextech-gold" />
+          {t('dashboard.radar.fullBreakdown')}
+        </Button>
+      </section>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{t('dashboard.radar.modalTitle', { defaultValue: 'Bilan détaillé des fondamentaux' })}</DialogTitle>
+            <DialogTitle>{t('dashboard.radar.modalTitle')}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+          <div className="max-h-[60vh] space-y-2 overflow-y-auto">
             {points.map((p) => {
               const diff = p.recentScore != null && p.snapshotScore != null ? p.recentScore - p.snapshotScore : null
               return (
                 <div key={p.key} className="rounded-lg border border-hextech-border-dim bg-hextech-elevated p-3">
-                  <div className="flex items-center justify-between text-xs mb-1.5">
+                  <div className="mb-1.5 flex items-center justify-between text-xs">
                     <span className="font-bold text-hextech-text-bright">{p.label}</span>
                     <div className="flex items-center gap-2 font-mono">
                       <span className="text-hextech-text-dim">
-                        {p.recentRaw != null ? p.recentRaw.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}{p.unit}
+                        {fmtNum(p.snapshotRaw)}{p.unit} → <span className="text-hextech-text-bright">{fmtNum(p.recentRaw)}{p.unit}</span>
                       </span>
                       {diff !== null && (
-                        <span className={cn(
-                          'px-1.5 py-0.5 rounded text-[10px] font-bold',
-                          diff >= 0 ? 'bg-hextech-green/15 text-hextech-green' : 'bg-[#E24C3A]/15 text-[#E24C3A]',
-                        )}>
+                        <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-bold', diff >= 0 ? 'bg-hextech-green/15 text-hextech-green' : 'bg-hextech-red/15 text-hextech-red')}>
                           {diff >= 0 ? `+${diff}` : diff} pts
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-hextech-base overflow-hidden">
+                  <div className="relative h-2 w-full overflow-hidden rounded-full bg-hextech-elevated">
+                    <div className="absolute inset-y-0 left-0 rounded-full bg-slate-500/40" style={{ width: `${p.snapshotScore ?? 0}%` }} />
                     <div
-                      className={cn(
-                        'h-full rounded-full',
-                        (p.recentScore ?? 0) >= 75 ? 'bg-hextech-green' : (p.recentScore ?? 0) >= 50 ? 'bg-hextech-gold' : 'bg-[#E24C3A]',
-                      )}
-                      style={{ width: `${p.recentScore ?? 0}%` }}
+                      className={cn('absolute inset-y-0 left-0 rounded-full', (p.recentScore ?? 0) >= 75 ? 'bg-hextech-green' : (p.recentScore ?? 0) >= 50 ? 'bg-hextech-gold' : 'bg-hextech-red')}
+                      style={{ width: `${p.recentScore ?? 0}%`, opacity: 0.9 }}
                     />
                   </div>
                 </div>
@@ -373,7 +493,7 @@ function FundamentalsRadarCard() {
             })}
           </div>
           <DialogFooter>
-            <Button onClick={() => setShowModal(false)}>{t('common.close', { defaultValue: 'Fermer' })}</Button>
+            <Button onClick={() => setShowModal(false)}>{t('common.close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -381,7 +501,12 @@ function FundamentalsRadarCard() {
   )
 }
 
+function fmtNum(v: number | null): string {
+  return v != null ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'
+}
+
 function MistakeFrequencyCard({ onViewAll }: { onViewAll: () => void }) {
+  const { t } = useTranslation()
   const [top, setTop] = useState<MistakeTopTagEntry[]>([])
   useEffect(() => {
     window.api.getMistakeTopTags({ days: 7 })
@@ -391,31 +516,31 @@ function MistakeFrequencyCard({ onViewAll }: { onViewAll: () => void }) {
   if (top.length === 0) return null
 
   return (
-    <Card>
-      <CardHeader className="pb-2 pt-4 px-4 flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2 text-sm">
+    <section className={cn(panelClass, 'p-5')}>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-hextech-text-bright">
           <AlertTriangle className="h-4 w-4 text-amber-300" />
-          Recurring mistakes (7 days)
-        </CardTitle>
-        <Button variant="ghost" size="sm" onClick={onViewAll} className="text-xs h-7">
-          View all
-          <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+          {t('dashboard.mistakes.title')}
+        </h3>
+        <Button variant="ghost" size="sm" onClick={onViewAll} className="h-7 text-xs">
+          {t('dashboard.mistakes.viewAll')}
+          <ChevronRight className="ml-0.5 h-3.5 w-3.5" />
         </Button>
-      </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-2 px-4 pb-4">
+      </div>
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
         {top.map((entry) => (
           <div
             key={entry.tag.id}
-            className="rounded-lg border border-hextech-border-dim bg-hextech-elevated px-3 py-2.5"
+            className="rounded-lg border border-hextech-border-dim bg-hextech-elevated/70 px-3 py-2.5"
             style={entry.tag.color ? { borderLeftColor: entry.tag.color, borderLeftWidth: 3 } : undefined}
           >
-            <p className="text-xs text-hextech-text-bright font-medium truncate" title={entry.tag.label}>{entry.tag.label}</p>
-            <p className="text-[10px] text-hextech-text-dim capitalize">{entry.tag.category}</p>
-            <p className="text-lg font-bold text-amber-200 mt-1">{entry.count}<span className="ml-1 text-[10px] text-hextech-text-dim font-normal">tagged</span></p>
+            <p className="truncate text-xs font-medium text-hextech-text-bright" title={entry.tag.label}>{entry.tag.label}</p>
+            <p className="text-[10px] capitalize text-hextech-text-dim">{entry.tag.category}</p>
+            <p className="mt-1 text-lg font-bold text-amber-200">{entry.count}<span className="ml-1 text-[10px] font-normal text-hextech-text-dim">{t('dashboard.mistakes.tagged')}</span></p>
           </div>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }
 
@@ -459,31 +584,26 @@ function computeStatDiffs(snapshots: any[]): StatDiffItem[] {
       curr: cv,
       diff: cv - pv,
       higherIsBetter: stat.higherIsBetter ?? true,
-      format: stat.format ?? ((v) => typeof v === 'number' ? v.toLocaleString() : String(v)),
+      format: stat.format ?? ((v) => (typeof v === 'number' ? v.toLocaleString() : String(v))),
     })
   }
+  // Rank by relative change so a +40 gold/min doesn't always beat a +1.0 CS/min.
+  const rel = (d: StatDiffItem) => Math.abs(d.diff) / Math.max(Math.abs(d.prev), 1)
+  return diffs.sort((a, b) => rel(b) - rel(a)).slice(0, 5)
+}
 
-  // Sort by absolute diff descending, show top 5
-  return diffs.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff)).slice(0, 5)
+/** Bar fills for the before/after gauge: both values on one shared scale
+ *  that also covers 0, so negative stats (gold diff) still read correctly. */
+export function comparisonFills(prev: number, curr: number): { prevFill: number; currFill: number } {
+  const lo = Math.min(0, prev, curr)
+  const hi = Math.max(0, prev, curr)
+  const span = hi - lo || 1
+  const pad = span * 0.15
+  const toPct = (v: number) => Math.round(((v - lo + pad) / (span + pad * 2)) * 100)
+  return { prevFill: toPct(prev), currFill: toPct(curr) }
 }
 
 /* ─── Sub-components ─── */
-
-function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-hextech-border-dim bg-hextech-elevated">
-          <Icon className="h-4 w-4 text-hextech-gold" />
-        </div>
-        <div>
-          <div className="text-lg font-bold text-hextech-text-bright">{value}</div>
-          <div className="text-xs text-hextech-text">{label}</div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
 
 function ChampionIcon({ name, size = 48, className }: { name: string | null | undefined; size?: number; className?: string }) {
   const url = useChampionIconUrl(name)
@@ -493,13 +613,12 @@ function ChampionIcon({ name, size = 48, className }: { name: string | null | un
     return (
       <div
         style={{ width: size, height: size }}
-        className={cn('rounded-full bg-hextech-elevated border border-hextech-border-dim flex items-center justify-center shrink-0', className)}
+        className={cn('flex shrink-0 items-center justify-center rounded-full border border-hextech-border-dim bg-hextech-elevated', className)}
       >
         <Shield className="h-5 w-5 text-hextech-text-dim" />
       </div>
     )
   }
-
   return (
     <img
       src={url}
@@ -507,133 +626,149 @@ function ChampionIcon({ name, size = 48, className }: { name: string | null | un
       width={size}
       height={size}
       onError={() => setError(true)}
-      className={cn('rounded-full object-cover border-2 shrink-0', className)}
+      className={cn('shrink-0 rounded-full border-2 object-cover', className)}
       style={{ width: size, height: size }}
     />
   )
 }
 
-function LastGameCard({ game, onViewDetails }: { game: LastGame; onViewDetails: () => void }) {
+function timeAgo(iso: string, t: (k: string, o?: any) => string): string {
+  const ms = Date.now() - new Date(iso).getTime()
+  if (!Number.isFinite(ms) || ms < 0) return ''
+  const h = Math.floor(ms / 3_600_000)
+  if (h < 1) return t('dashboard.lastGame.justNow')
+  if (h < 24) return t('dashboard.lastGame.hoursAgo', { count: h })
+  return t('dashboard.lastGame.daysAgo', { count: Math.floor(h / 24) })
+}
+
+function LastGameCard({ game, onViewDetails, onReview }: { game: RecentGame; onViewDetails: () => void; onReview: () => void }) {
   const { t } = useTranslation()
   const kda = game.deaths === 0 ? 'Perfect' : ((game.kills + game.assists) / game.deaths).toFixed(2)
-  const cspm = game.duration > 0 ? (game.cs / (game.duration / 60)).toFixed(1) : '0'
+  const minutes = game.duration / 60
+  const cspm = minutes > 0 ? game.cs / minutes : 0
+  const vpm = minutes > 0 ? game.visionScore / minutes : 0
+  const needsReview = game.reviewStatus && game.reviewStatus !== 'reviewed'
 
   return (
-    <Card className={cn(
-      'border transition-colors',
-      game.win ? 'border-hextech-green/30 bg-hextech-green/5' : 'border-[#E24C3A]/20 bg-[#E24C3A]/5',
-    )}>
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
+    <section className={cn(panelClass, 'overflow-hidden')}>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hextech-border-dim/50 px-5 pb-3 pt-4">
+        <div className="flex items-center gap-2.5">
           <Swords className="h-4 w-4 text-hextech-gold" />
-          {t('dashboard.lastGame.title')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-4">
-          {/* Result badge */}
-          <Badge
-            variant={game.win ? 'success' : 'destructive'}
-            className="text-sm px-3 py-1 shrink-0 w-12 justify-center"
-          >
-            {game.win ? 'W' : 'L'}
-          </Badge>
-
-          {/* Champion matchup */}
-          <div className="flex items-center gap-2 shrink-0">
-            <ChampionIcon
-              name={game.champion}
-              size={52}
-              className={game.win ? 'border-hextech-green/50' : 'border-[#E24C3A]/40'}
-            />
-            <div className="flex flex-col items-center">
-              <span className="text-xs text-hextech-text-dim">{t('dashboard.lastGame.vs')}</span>
-              <div className="h-px w-6 bg-hextech-border-dim mt-0.5" />
-            </div>
-            <ChampionIcon
-              name={game.opponentChampion}
-              size={40}
-              className="border-hextech-border-dim opacity-70"
-            />
-          </div>
-
-          {/* Stats */}
-          <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs">
-            <div>
-              <div className="text-hextech-text-dim">KDA</div>
-              <div className="font-semibold text-hextech-text-bright">
-                {formatKDA(game.kills, game.deaths, game.assists)}
-                <span className="ml-1 text-hextech-gold font-bold">({kda})</span>
-              </div>
-            </div>
-            <div>
-              <div className="text-hextech-text-dim flex items-center gap-1"><Target className="h-3 w-3" />CS/m</div>
-              <div className="font-semibold text-hextech-text-bright">{cspm}</div>
-            </div>
-            <div>
-              <div className="text-hextech-text-dim flex items-center gap-1"><Eye className="h-3 w-3" />Vision</div>
-              <div className="font-semibold text-hextech-text-bright">{game.visionScore}</div>
-            </div>
-            <div>
-              <div className="text-hextech-text-dim flex items-center gap-1"><Clock className="h-3 w-3" /></div>
-              <div className="font-semibold text-hextech-text-bright">{formatGameTime(game.duration)}</div>
-            </div>
-          </div>
-
-          {/* Link to detailed stats */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onViewDetails}
-            className="shrink-0 gap-1 text-xs text-hextech-gold hover:bg-hextech-gold/10"
-          >
-            {t('dashboard.lastGame.viewDetails')}
-            <ChevronRight className="h-3 w-3" />
-          </Button>
+          <h3 className="text-sm font-bold text-hextech-text-bright">{t('dashboard.lastGame.title')}</h3>
+          <span className="text-[11px] text-hextech-text-dim">• {timeAgo(game.gameEndAt, t)}</span>
         </div>
-      </CardContent>
-    </Card>
+        {needsReview && (
+          <button onClick={onReview} className="flex items-center gap-1 rounded border border-hextech-gold/30 bg-hextech-gold/15 px-2 py-0.5 text-[11px] font-medium text-hextech-gold-bright hover:bg-hextech-gold/25">
+            <Sparkles className="h-3 w-3" /> {t('dashboard.lastGame.toReview')}
+          </button>
+        )}
+      </div>
+
+      <div className={cn(
+        'flex flex-col justify-between gap-5 bg-gradient-to-r to-transparent p-5 lg:flex-row lg:items-center',
+        game.win ? 'from-hextech-green/10 via-transparent' : 'from-hextech-red/10 via-transparent',
+      )}>
+        <div className="flex items-center gap-4">
+          <div className={cn(
+            'shrink-0 rounded-xl border px-3 py-2.5 text-center',
+            game.win ? 'border-hextech-green/40 bg-hextech-green/15' : 'border-hextech-red/40 bg-hextech-red/15',
+          )}>
+            <div className={cn('text-xs font-extrabold uppercase tracking-wider', game.win ? 'text-hextech-green' : 'text-hextech-red')}>
+              {game.win ? t('dashboard.lastGame.victory') : t('dashboard.lastGame.defeat')}
+            </div>
+            <div className="mt-0.5 font-mono text-[11px] text-hextech-text">{formatGameTime(game.duration)}</div>
+          </div>
+          <div className="flex items-center gap-3">
+            <ChampionIcon name={game.champion} size={52} className={game.win ? 'border-hextech-green/50' : 'border-hextech-red/40'} />
+            <span className="px-1 font-mono text-[10px] font-bold text-hextech-text-dim">VS</span>
+            <ChampionIcon name={game.opponentChampion} size={40} className="border-hextech-border-dim opacity-80" />
+          </div>
+        </div>
+
+        <div className="grid flex-1 grid-cols-2 gap-4 sm:grid-cols-4 lg:gap-6 lg:px-4">
+          <Metric label="KDA" value={formatKDA(game.kills, game.deaths, game.assists)} sub={`${kda} ratio`} subClass="text-hextech-gold" />
+          <Metric label="CS / min" icon={Target} value={cspm.toFixed(1)} sub={`${game.cs} CS`} />
+          <Metric label="Vision" icon={Eye} value={String(game.visionScore)} sub={`${vpm.toFixed(2)} / min`} />
+          <Metric label={t('dashboard.lastGame.duration')} icon={Clock} value={formatGameTime(game.duration)} sub={game.role} />
+        </div>
+
+        <Button variant="outline" size="sm" onClick={onViewDetails} className="shrink-0 gap-1.5 text-xs text-hextech-gold">
+          {t('dashboard.lastGame.viewDetails')}
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </section>
+  )
+}
+
+function Metric({ label, value, sub, icon: Icon, subClass }: { label: string; value: string; sub?: string; icon?: any; subClass?: string }) {
+  return (
+    <div>
+      <div className="flex items-center gap-1 text-[11px] text-hextech-text-dim">
+        {Icon && <Icon className="h-3 w-3" />}{label}
+      </div>
+      <div className="mt-0.5 font-mono text-sm font-bold text-hextech-text-bright">{value}</div>
+      {sub && <div className={cn('font-mono text-[10px] capitalize text-hextech-text-dim', subClass)}>{sub}</div>}
+    </div>
   )
 }
 
 function StatDiffsCard({ diffs, onViewAll }: { diffs: StatDiffItem[]; onViewAll: () => void }) {
   const { t } = useTranslation()
-
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <BarChart3 className="h-4 w-4 text-hextech-gold" />
+    <section className={cn(panelClass, 'p-5 lg:p-6')}>
+      <div className="flex flex-col justify-between gap-2 border-b border-hextech-border-dim/50 pb-4 sm:flex-row sm:items-center">
+        <div>
+          <h3 className="flex items-center gap-2 text-base font-bold text-hextech-text-bright">
+            <TrendingUp className="h-4 w-4 text-hextech-green" />
             {t('dashboard.statDiffs.title')}
-          </CardTitle>
-          <Button variant="ghost" size="sm" onClick={onViewAll} className="gap-1 text-xs text-hextech-text-dim hover:text-hextech-gold">
-            {t('statsAvg.tabs.progression')}
-            <ChevronRight className="h-3 w-3" />
-          </Button>
+          </h3>
+          <p className="mt-0.5 text-xs text-hextech-text">{t('dashboard.statDiffs.vsSnap')}</p>
         </div>
-        <p className="text-[11px] text-hextech-text-dim mt-0.5">{t('dashboard.statDiffs.vsSnap')}</p>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {diffs.map((item) => {
-          const isPositive = item.higherIsBetter ? item.diff > 0 : item.diff < 0
-          const isNegative = item.higherIsBetter ? item.diff < 0 : item.diff > 0
-          const diffColor = isPositive ? 'text-hextech-green' : isNegative ? 'text-[#E24C3A]' : 'text-hextech-text-dim'
+        <button onClick={onViewAll} className="flex items-center gap-1 self-start text-xs font-semibold text-hextech-gold hover:text-hextech-gold-bright sm:self-center">
+          {t('statsAvg.tabs.progression')}
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
 
+      <div className="mt-4 space-y-2.5">
+        {diffs.map((item) => {
+          const good = item.higherIsBetter ? item.diff > 0 : item.diff < 0
+          const bad = item.higherIsBetter ? item.diff < 0 : item.diff > 0
+          const { prevFill, currFill } = comparisonFills(item.prev, item.curr)
           return (
-            <div key={item.label} className="grid grid-cols-[7rem_1fr_1.25rem_1fr_3.75rem] items-center gap-2 py-1">
-              <span className="text-xs text-hextech-text">{item.label}</span>
-              <span className="text-xs text-hextech-text-dim text-right tabular-nums">{item.format(item.prev)}</span>
-              <span className="text-[10px] text-hextech-text-dim text-center">→</span>
-              <span className="text-xs font-semibold text-hextech-text-bright text-left tabular-nums">{item.format(item.curr)}</span>
-              <span className={`flex items-center justify-end gap-0.5 text-xs font-bold tabular-nums ${diffColor}`}>
-                {isPositive ? <TrendingUp className="h-3 w-3" /> : isNegative ? <TrendingDown className="h-3 w-3" /> : null}
-                {item.diff > 0 ? '+' : ''}{item.diff.toFixed(1)}
-              </span>
+            <div key={item.label} className={cn('rounded-xl border p-3.5', good ? 'border-hextech-green/20 bg-hextech-green/[0.04]' : 'border-hextech-border-dim/50 bg-hextech-black/40')}>
+              <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-12">
+                <div className="text-xs font-bold text-hextech-text-bright md:col-span-3">{item.label}</div>
+                <div className="md:col-span-5">
+                  <div className="relative h-2 w-full overflow-hidden rounded-full bg-hextech-elevated">
+                    <div className="absolute inset-y-0 left-0 rounded-full bg-slate-500/40" style={{ width: `${prevFill}%` }} />
+                    <div
+                      className={cn('absolute inset-y-0 left-0 rounded-full transition-all duration-500', good ? 'bg-gradient-to-r from-hextech-green/50 to-hextech-green' : bad ? 'bg-gradient-to-r from-hextech-red/50 to-hextech-red' : 'bg-hextech-text-dim')}
+                      style={{ width: `${currFill}%`, opacity: 0.9 }}
+                    />
+                  </div>
+                  <div className="mt-1 flex justify-between font-mono text-[10px] text-hextech-text-dim">
+                    <span>{t('dashboard.statDiffs.prev')}</span>
+                    <span className="text-hextech-text">{t('dashboard.statDiffs.now')}</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3 font-mono tabular-nums md:col-span-4 md:justify-end">
+                  <span className="text-xs text-hextech-text-dim line-through">{item.format(item.prev)}</span>
+                  <span className="text-hextech-text-dim">→</span>
+                  <span className="text-sm font-bold text-hextech-text-bright">{item.format(item.curr)}</span>
+                  <span className={cn(
+                    'min-w-[68px] rounded-md border px-2 py-1 text-right text-xs font-bold',
+                    good ? 'border-hextech-green/30 bg-hextech-green/15 text-hextech-green' : bad ? 'border-hextech-red/30 bg-hextech-red/15 text-hextech-red' : 'border-hextech-border-dim text-hextech-text-dim',
+                  )}>
+                    {item.diff > 0 ? '▲ +' : item.diff < 0 ? '▼ ' : ''}{item.diff.toFixed(1)}
+                  </span>
+                </div>
+              </div>
             </div>
           )
         })}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }

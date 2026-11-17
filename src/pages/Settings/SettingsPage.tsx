@@ -11,8 +11,8 @@ import { useUserStore } from '@/store/useUserStore'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 import { useDiscordWebhooks, type DiscordWebhook } from '@/hooks/useDiscordWebhooks'
-import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Target, Video, Circle, FolderOpen, X, Pencil, Check, FlaskConical, Youtube, Volume2, Mic, AlertTriangle, ExternalLink, Palette } from 'lucide-react'
-import { COLOR_THEMES, applyTheme, getStoredTheme, type ColorTheme } from '@/lib/theme'
+import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Target, Video, Circle, FolderOpen, X, Pencil, Check, FlaskConical, Youtube, Volume2, Mic, AlertTriangle, ExternalLink } from 'lucide-react'
+import { AppearanceCard } from './AppearanceCard'
 import { cn } from '@/lib/utils'
 import type { AudioDevicesSummary } from '@/lib/ipc'
 
@@ -1261,65 +1261,6 @@ function DangerZoneCard() {
               Reset everything
             </Button>
           )}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-// ── Appearance sub-component ─────────────────────────────────────────────────
-
-const THEME_PREVIEW: Record<ColorTheme, { label: string; desc: string; swatches: [string, string, string] }> = {
-  hextech: { label: 'Hextech Gold', desc: 'The default look.', swatches: ['#0D0A06', '#D4A24C', '#3E8E7E'] },
-  piltover: { label: 'Piltover Blue', desc: 'Cool cyan & blue.', swatches: ['#060B10', '#4C9ED4', '#3EC2D4'] },
-  noxus: { label: 'Noxus Crimson', desc: 'Warm red & iron.', swatches: ['#100607', '#C23B3B', '#D4753E'] },
-  void: { label: 'Void Purple', desc: 'Violet & arcane.', swatches: ['#0A0610', '#A24CD4', '#8E6AD4'] },
-}
-
-function AppearanceCard() {
-  const [theme, setTheme] = useState<ColorTheme>(() => getStoredTheme())
-
-  const choose = (t: ColorTheme) => {
-    applyTheme(t)
-    setTheme(t)
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Palette className="h-5 w-5 text-hextech-gold" />
-          Appearance
-        </CardTitle>
-        <CardDescription>Pick a color theme for the whole app — applies instantly, no restart needed.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {COLOR_THEMES.map((id) => {
-            const preview = THEME_PREVIEW[id]
-            const active = theme === id
-            return (
-              <button
-                key={id}
-                onClick={() => choose(id)}
-                className={cn(
-                  'flex flex-col items-start gap-2 rounded-lg border p-3 text-left transition-all',
-                  active ? 'border-hextech-gold bg-hextech-gold/10' : 'border-hextech-border-dim hover:border-hextech-border',
-                )}
-              >
-                <div className="flex items-center gap-1.5">
-                  {preview.swatches.map((c, i) => (
-                    <span key={i} className="h-4 w-4 rounded-full border border-white/10" style={{ backgroundColor: c }} />
-                  ))}
-                  {active && <Check className="ml-auto h-4 w-4 text-hextech-gold" />}
-                </div>
-                <div>
-                  <p className={cn('text-sm font-medium', active ? 'text-hextech-gold-bright' : 'text-hextech-text-bright')}>{preview.label}</p>
-                  <p className="text-[11px] text-hextech-text-dim">{preview.desc}</p>
-                </div>
-              </button>
-            )
-          })}
         </div>
       </CardContent>
     </Card>

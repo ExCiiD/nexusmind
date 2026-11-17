@@ -175,6 +175,20 @@ Plans détaillés liés : [moteur de coaching (design)](MOTEUR_REGLES.md), [cata
   - Si la résolution échoue à ce moment-là (API indisponible, pseudo mal orthographié), le signaler immédiatement — pas de friction sinon : tant que le puuid mémorisé reste valide, un changement de pseudo ultérieur du joueur suivi ne doit rien casser silencieusement (c'est justement le but de stocker le puuid plutôt que le nom).
   - Respecter les mêmes quotas/rate-limits que le reste du proxy Riot (`RIOT_LIMITS`) ; mettre en cache le puuid résolu (table locale type "joueurs suivis") pour ne pas re-résoudre le pseudo à chaque ouverture du dashboard.
   - UI : un sélecteur simple sur la carte radar ("Comparer à : Moi (snapshot) / [pseudo du joueur suivi]"), avec un bouton pour ajouter/changer le joueur suivi.
+  - **État (17/11/2026)** : socle backend déjà posé — table `FollowedPlayer` (puuid stocké, unique par `[userId, puuid]`), handlers `stats:list/add/remove-followed-player` et paramètre `followedPlayerId` sur `stats:get-fundamentals-radar` (ne remplace que le côté snapshot). Reste : exposer ces handlers dans `preload` + `src/lib/ipc.ts`, le sélecteur sur la carte radar (formulaire pseudo/tag/région calqué sur `RiotConnectStep.tsx`), et un avertissement si le puuid ne renvoie plus de parties (compte supprimé/transféré) — un simple changement de pseudo, lui, ne casse rien et ne nécessite aucun message.
+
+## Phase U — Refonte UX & personnalisation (17/11/2026) 🟡
+
+Demandé par l'utilisateur le 17/11/2026 (retours : « ça se voit que c'est fait par IA »).
+
+- ✅ **Tableau de bord** restylé d'après la maquette `ascend_esports_performance_app.tsx` : forme sur 10 parties, carte session, KPI enrichis, dernière partie, évolutions avec jauges avant/après. Panneaux translucides pour laisser voir le fond choisi.
+- ✅ **Radar par rôle** : 9 KPI laner (KDA, CS/m, Gold/m, DMG/m, KP, FB, CS@15, XP@15, Gold@15) ; pour les **supports** (`UTILITY`) : KDA, KP, morts (axe inversé), vision/min, écart de vision vs support adverse, pinks, wards détruites, soins+boucliers sur alliés /min (enchanteurs) et CC/min (supports d'engage). Les deux derniers sont extraits du JSON de match en cache, donc rétroactifs.
+- ✅ **Statistiques → onglet « Analyse »** (par défaut) : à retenir, pool de champions, victoires vs défaites (levier n°1), winrate selon durée / heure, tilt après défaite. Calcul client sur les 50 dernières parties (`src/lib/statsInsights.ts`).
+- ✅ **Apparence** : 8 thèmes de couleurs, 5 fonds d'écran (dont 4 fournis), filtre de couleur (fusion « color »), assombrir, flou, ou couleur unie — appliqués en direct à toute l'app, aperçu miniature (`src/lib/appearance.ts`).
+- ✅ **Profil joueur** (`/profile`) : carte (bannière, icône à cadre de rang, titre équipé, devise, compteurs, vitrine de 3 titres), rang Ascend Fer → Maître selon le niveau, 13 icônes dont 8 à débloquer par rang, 24 titres à raretés (ex. « Vit pour les caméras » à 30 clips, « Grinder fou » à 50 reviews). Compteurs via `profile:get-stats`.
+- ⏳ Profil : stocké par appareil (localStorage) — à synchroniser (Supabase) pour l'afficher aux coéquipiers / coachs et sur le web.
+- ⏳ **Refonte graphique complète** : 3 directions maquettées (A « Rapport de scouting », B « Atelier Hextech », C « Télémétrie ») — choix utilisateur attendu, puis application app + web + vitrine.
+- ⏳ **Vitrine** : construire le site (`PLAN_VITRINE.md`) dans la direction retenue.
 
 ## Phase S — Audit de sécurité avant publication du site ⏳
 

@@ -5,6 +5,7 @@ import {
   getMatchIds,
   getMatch,
   getMatchTimeline,
+  getAccountByRiotId,
   extractPlayerStats,
   extractDetailedStats,
 } from '../riotClient'
@@ -52,6 +53,65 @@ function resolvePuuid(matchData: any, puuids: string[]): string | null {
     if (participants.some((p: any) => p.puuid === puuid)) return puuid
   }
   return null
+}
+
+/**
+ * Shared match-fetch-and-extract loop used by the fundamentals radar for
+ * both the logged-in user's own games and a followed player's games: pulls
+ * each match (cached in MatchCache when possible), resolves whichever of
+ * `puuids` played in it, extracts detailed stats, and optionally filters to
+ * `mainRole` for a fair lane-for-lane comparison. Stops once `limit` stats
+ * are collected.
+ */
+async function fetchDetailedStatsForMatches(
+  prisma: ReturnType<typeof getPrisma>,
+  matchIds: string[],
+  puuids: string[],
+  region: string,
+  mainRole: string | null,
+  limit: number,
+): Promise<any[]> {
+  const allStats: any[] = []
+  for (const matchId of matchIds) {
+    let matchData: any
+    let timelineData: any = null
+
+    const cached = await prisma.matchCache.findUnique({ where: { matchId } })
+    if (cached) {
+      matchData = JSON.parse(cached.matchJson)
+      timelineData = cached.timelineJson ? JSON.parse(cached.timelineJson) : null
+    } else {
+      try {
+        matchData = await getMatch(matchId, region)
+        await prisma.matchCache.upsert({
+          where: { matchId },
+          create: { matchId, matchJson: JSON.stringify(matchData) },
+          update: {},
+        })
+      } catch { continue }
+    }
+
+    if (!timelineData) {
+      try { timelineData = await getMatchTimeline(matchId, region) } catch { /* optional */ }
+      if (timelineData) {
+        await prisma.matchCache.update({
+          where: { matchId },
+          data: { timelineJson: JSON.stringify(timelineData) },
+        }).catch(() => {})
+      }
+    }
+
+    const resolvedPuuid = resolvePuuid(matchData, puuids)
+    if (!resolvedPuuid) continue
+
+    const detailed = extractDetailedStats(matchData, timelineData, resolvedPuuid)
+    if (!detailed) continue
+    if (mainRole && detailed.meta.role !== mainRole) continue
+
+    allStats.push(detailed)
+    if (allStats.length >= limit) break
+  }
+  return allStats
 }
 
 /** Resolve display name + profile icon for an account by puuid. */
@@ -888,8 +948,14 @@ export function registerStatsHandlers() {
    * own longer-window snapshot (avg of the last 40 games) — a narrower
    * window than `stats:compute-averages`'s persisted `StatsSnapshot` (capped
    * at 20 games), so computed fresh here rather than reusing that table.
+   *
+   * `followedPlayerId`, when provided, swaps the snapshot side only: instead
+   * of the user's own 40-game average, it's the chosen followed player's
+   * last 40 solo/duo (queue 420) games. `recent` always stays the logged-in
+   * user's own current form — the point is comparing yourself against
+   * someone else's level, not replacing your own data.
    */
-  ipcMain.handle('stats:get-fundamentals-radar', async () => {
+  ipcMain.handle('stats:get-fundamentals-radar', async (_e, followedPlayerId?: string) => {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return null
@@ -899,56 +965,79 @@ export function registerStatsHandlers() {
     const { matchIds, allPuuids } = await getAggregatedMatchIds(user, accounts, 40)
     if (matchIds.length === 0) return null
 
-    const allStats: any[] = []
-    for (const matchId of matchIds) {
-      let matchData: any
-      let timelineData: any = null
-
-      const cached = await prisma.matchCache.findUnique({ where: { matchId } })
-      if (cached) {
-        matchData = JSON.parse(cached.matchJson)
-        timelineData = cached.timelineJson ? JSON.parse(cached.timelineJson) : null
-      } else {
-        try {
-          matchData = await getMatch(matchId, user.region)
-          await prisma.matchCache.upsert({
-            where: { matchId },
-            create: { matchId, matchJson: JSON.stringify(matchData) },
-            update: {},
-          })
-        } catch { continue }
-      }
-
-      if (!timelineData) {
-        try { timelineData = await getMatchTimeline(matchId, user.region) } catch { /* optional */ }
-        if (timelineData) {
-          await prisma.matchCache.update({
-            where: { matchId },
-            data: { timelineJson: JSON.stringify(timelineData) },
-          }).catch(() => {})
-        }
-      }
-
-      const resolvedPuuid = resolvePuuid(matchData, allPuuids)
-      if (!resolvedPuuid) continue
-
-      const detailed = extractDetailedStats(matchData, timelineData, resolvedPuuid)
-      if (!detailed) continue
-      if (mainRole && detailed.meta.role !== mainRole) continue
-
-      allStats.push(detailed)
-      if (allStats.length >= 40) break
-    }
-
+    const allStats = await fetchDetailedStatsForMatches(prisma, matchIds, allPuuids, user.region, mainRole, 40)
     if (allStats.length === 0) return null
 
     const recentStats = allStats.slice(0, 15)
+
+    let snapshot = computeAverages(allStats)
+    let snapshotGameCount = allStats.length
+    let snapshotLabel: string | null = null
+
+    if (followedPlayerId) {
+      const followed = await prisma.followedPlayer.findFirst({ where: { id: followedPlayerId, userId: user.id } })
+      if (followed) {
+        const theirIds = await getMatchIds(followed.puuid, followed.region, 40, 0, 'soloq').catch(() => [] as string[])
+        const theirStats = theirIds.length > 0
+          ? await fetchDetailedStatsForMatches(prisma, theirIds, [followed.puuid], followed.region, mainRole, 40)
+          : []
+        if (theirStats.length > 0) {
+          snapshot = computeAverages(theirStats)
+          snapshotGameCount = theirStats.length
+          snapshotLabel = `${followed.gameName}#${followed.tagLine}`
+          await prisma.followedPlayer.update({ where: { id: followed.id }, data: { lastUsedAt: new Date() } }).catch(() => {})
+        }
+      }
+    }
+
     return {
       recent: recentStats.length > 0 ? computeAverages(recentStats) : null,
       recentGameCount: recentStats.length,
-      snapshot: computeAverages(allStats),
-      snapshotGameCount: allStats.length,
+      snapshot,
+      snapshotGameCount,
+      snapshotLabel,
     }
+  })
+
+  /** List players this user has previously added for radar comparison, most recently used first. */
+  ipcMain.handle('stats:list-followed-players', async () => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    if (!user) return []
+    return prisma.followedPlayer.findMany({ where: { userId: user.id }, orderBy: { lastUsedAt: 'desc' } })
+  })
+
+  /**
+   * Resolves a Riot ID to a puuid and remembers it under that user for future
+   * radar comparisons. The puuid is what's stored and reused afterwards — a
+   * later name change by the tracked player never breaks the comparison,
+   * since lookups never happen by name again after this one.
+   */
+  ipcMain.handle('stats:add-followed-player', async (_e, gameName: string, tagLine: string, region: string) => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    if (!user) throw new Error('No active user')
+
+    const account = await getAccountByRiotId(gameName.trim(), tagLine.trim(), region)
+    if (!account?.puuid) throw new Error('Could not resolve that Riot ID')
+
+    const existing = await prisma.followedPlayer.findFirst({ where: { userId: user.id, puuid: account.puuid } })
+    if (existing) {
+      return prisma.followedPlayer.update({
+        where: { id: existing.id },
+        data: { gameName: account.gameName, tagLine: account.tagLine, region, lastUsedAt: new Date() },
+      })
+    }
+    return prisma.followedPlayer.create({
+      data: { userId: user.id, gameName: account.gameName, tagLine: account.tagLine, region, puuid: account.puuid },
+    })
+  })
+
+  ipcMain.handle('stats:remove-followed-player', async (_e, id: string) => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    if (!user) return
+    await prisma.followedPlayer.deleteMany({ where: { id, userId: user.id } })
   })
 
   ipcMain.handle('stats:get-snapshots', async () => {
@@ -1188,6 +1277,8 @@ function computeAverages(statsArray: any[]) {
       damageTaken: sum((s) => s.combat.damageTaken),
       damageMitigated: sum((s) => s.combat.damageMitigated),
       damageTakenPercent: sum((s) => s.combat.damageTakenPercent),
+      healShieldPerMin: sum((s) => s.combat.healShieldPerMin ?? null),
+      ccPerMin: sum((s) => s.combat.ccPerMin ?? null),
     },
     objectives: {
       damageToEpicMonsters: sum((s) => s.objectives.damageToEpicMonsters),

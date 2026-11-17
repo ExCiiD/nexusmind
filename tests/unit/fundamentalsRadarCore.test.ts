@@ -70,3 +70,22 @@ describe('radarPolygonPoints', () => {
     expect(() => radarPolygonPoints(points, 'recentScore', 90, 64)).not.toThrow()
   })
 })
+
+describe('support radar', () => {
+  it('uses support axes for UTILITY and laner axes otherwise', async () => {
+    const { radarAxesForRole, SUPPORT_RADAR_AXES, RADAR_AXES } = await import('../../src/lib/fundamentalsRadarCore')
+    expect(radarAxesForRole('UTILITY')).toBe(SUPPORT_RADAR_AXES)
+    expect(radarAxesForRole('JUNGLE')).toBe(RADAR_AXES)
+    expect(radarAxesForRole(null)).toBe(RADAR_AXES)
+    expect(SUPPORT_RADAR_AXES).toHaveLength(9)
+  })
+
+  it('scores fewer deaths higher (inverted axis)', async () => {
+    const { buildFundamentalsRadar, SUPPORT_RADAR_AXES } = await import('../../src/lib/fundamentalsRadarCore')
+    const avg = (deaths: number) => ({ meta: { avgKills: 1, avgDeaths: deaths, avgAssists: 12 }, combat: { killParticipation: 60, healShieldPerMin: 250, ccPerMin: 1.5 }, vision: { visionScorePerMin: 2, visionScoreAdvantage: 10, controlWardsPurchased: 4, wardsDestroyed: 3 } })
+    const pts = buildFundamentalsRadar(avg(3), avg(7), SUPPORT_RADAR_AXES)
+    const d = pts.find((p) => p.key === 'deaths')!
+    expect(d.recentScore!).toBeGreaterThan(d.snapshotScore!)
+    expect(pts.find((p) => p.key === 'healshield')!.recentScore).toBe(50)
+  })
+})

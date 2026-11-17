@@ -11,7 +11,8 @@
     "help": "Help",
     "mistakes": "Mistakes",
     "coaching": "Coaching",
-    "plan": "My Plan"
+    "plan": "My Plan",
+    "profile": "Profile"
   },
   "settings": {
     "title": "Settings",
@@ -118,7 +119,16 @@
       "title": "Last game",
       "vs": "vs",
       "noOpponent": "?",
-      "viewDetails": "View details"
+      "viewDetails": "View details",
+      "justNow": "just now",
+      "hoursAgo_one": "{{count}} hour ago",
+      "hoursAgo_other": "{{count}} hours ago",
+      "daysAgo_one": "{{count}} day ago",
+      "daysAgo_other": "{{count}} days ago",
+      "toReview": "To review",
+      "victory": "Victory",
+      "defeat": "Defeat",
+      "duration": "Duration"
     },
     "reassessmentBanner": {
       "title": "Time for your periodic assessment",
@@ -154,7 +164,9 @@
     "statDiffs": {
       "title": "Biggest stat changes",
       "noData": "Need at least 2 snapshots — compute averages to track progression",
-      "vsSnap": "vs previous snapshot"
+      "vsSnap": "vs previous snapshot",
+      "prev": "Prev. snapshot",
+      "now": "Now"
     },
     "radar": {
       "loading": "Computing your fundamentals footprint…",
@@ -163,7 +175,49 @@
       "recentLabel": "Recent ({{count}} games)",
       "snapshotLabel": "Snapshot ({{count}} games)",
       "fullBreakdown": "Full fundamentals breakdown",
-      "modalTitle": "Detailed fundamentals breakdown"
+      "modalTitle": "Detailed fundamentals breakdown",
+      "supportBadge": "Support",
+      "axis": {
+        "deaths": "Deaths",
+        "vspm": "Vision/min",
+        "vsdiff": "Vision diff",
+        "pinks": "Control wards",
+        "wardkill": "Wards killed",
+        "healshield": "Heal+shield/min",
+        "cc": "CC/min"
+      }
+    },
+    "header": {
+      "streak_one": "Active streak: {{count}} day",
+      "streak_other": "Active streak: {{count}} days",
+      "formLine_one": "Over your last game:",
+      "formLine_other": "Over your last {{count}} games:",
+      "winrateShort": "win rate",
+      "vsOverall": "pts vs overall",
+      "mainRole": "Main role:",
+      "form": "Form",
+      "formTitle": "Recent results (oldest to newest)"
+    },
+    "hero": {
+      "badge": "Deliberate practice",
+      "desc": "Pick 1 to 3 priority objectives for your next games — that is what makes you improve fastest."
+    },
+    "kpi": {
+      "volume": "Games played",
+      "games": "games",
+      "winShort": "W",
+      "lossShort": "L",
+      "lastN": "{{wr}}% over last {{count}}",
+      "objHint": "session objectives met"
+    },
+    "progression": {
+      "level": "Level {{level}}",
+      "toNext": "{{xp}} XP to level {{level}}"
+    },
+    "mistakes": {
+      "title": "Recurring mistakes (7 days)",
+      "viewAll": "View all",
+      "tagged": "tagged"
     }
   },
   "session": {
@@ -517,8 +571,8 @@
     "selected": "selected"
   },
   "statsAvg": {
-    "title": "20-Game Averages",
-    "subtitle": "Average performance across your last 20 games — save a snapshot to track progression over time",
+    "title": "Statistics",
+    "subtitle": "What makes you win, your averages and your progression over time",
     "navButton": "20-Game Averages",
     "compute": "Compute & Save",
     "empty": "No snapshots yet. Click \"Compute & Save\" to generate your first 20-game average.",
@@ -531,7 +585,8 @@
     "vsMin": "VS/min",
     "tabs": {
       "averages": "20-Game Averages",
-      "progression": "Progression"
+      "progression": "Progression",
+      "insights": "Insights"
     },
     "progTable": {
       "stat": "Stat",
@@ -544,11 +599,23 @@
     "autoSnapshotDone_one": "{{count}} new snapshot computed automatically",
     "autoSnapshotDone_other": "{{count}} new snapshots computed automatically",
     "noProgressionData": "Need at least 2 snapshots to compare progression. Play 20+ games then come back here.",
-    "basedOnGames": "Based on your last {{count}} games",
     "highlights": {
       "improved": "Biggest improvement",
       "regressed": "Needs attention"
-    }
+    },
+    "roleOnly": "{{role}} only",
+    "account": "Account:",
+    "mainAccount": "{{name}} (main)",
+    "allAccounts": "All accounts",
+    "computing": "Computing stats…",
+    "avgOf_one": "avg of {{count}} game",
+    "avgOf_other": "avg of {{count}} games",
+    "chart": {
+      "tooltipNote": "Value in brackets = index (base 0)",
+      "axisNote": "Y axis = % change since the first snapshot · raw values in the tooltip"
+    },
+    "basedOnGames_one": "Based on your last game",
+    "basedOnGames_other": "Based on your last {{count}} games"
   },
   "detailedStats": {
     "pageTitle": "Detailed Stats",
@@ -2244,5 +2311,317 @@
     },
     "currentStarter": "Current starter for {{role}}: {{names}}",
     "criterionPlaceholder": "e.g. Macro, Communication…"
+  },
+  "statsInsights": {
+    "loading": "Analyzing your recent games…",
+    "notEnough": "Play a few more games: insights need at least 6 games to be reliable.",
+    "notEnoughSide": "Not enough wins and losses to compare yet (3 of each minimum).",
+    "basis": "Analysis of your last {{count}} ranked games. Greyed-out rows have fewer than 3 games — take them with a grain of salt.",
+    "gamesShort_one": "{{count}} game",
+    "gamesShort_other": "{{count}} games",
+    "takeaway": {
+      "title": "Key takeaways",
+      "lever": {
+        "deaths": "Your biggest gap between wins and losses is deaths ({{wins}} per game when you win, {{losses}} when you lose). Dying less is your #1 lever.",
+        "kda": "Your KDA collapses in losses ({{wins}} → {{losses}}): the fights you lose weigh more than the ones you win.",
+        "csPerMin": "Your farm drops sharply in losses ({{wins}} → {{losses}} CS/min): keep farming even when the game gets messy.",
+        "visionPerMin": "Your vision drops in losses ({{wins}} → {{losses}} /min): that is often where games turn."
+      },
+      "tilt": "After a loss you win {{afterLoss}}% of the next game, vs {{afterWin}}% after a win. Take a break after a loss.",
+      "best_one": "{{champion}} is your best pick: {{wr}}% win rate over {{count}} game.",
+      "best_other": "{{champion}} is your best pick: {{wr}}% win rate over {{count}} games."
+    },
+    "pool": {
+      "title": "Champion pool",
+      "desc": "Your most played champions and what they bring you.",
+      "champion": "Champion",
+      "games": "Games",
+      "winrate": "Win rate",
+      "deaths": "Deaths"
+    },
+    "split": {
+      "title": "Wins vs losses",
+      "desc": "What changes in your play when you lose.",
+      "wins": "Wins",
+      "losses": "Losses",
+      "metric": {
+        "deaths": "Deaths / game",
+        "kda": "KDA",
+        "csPerMin": "CS / min",
+        "visionPerMin": "Vision / min",
+        "duration": "Length (min)"
+      }
+    },
+    "duration": {
+      "title": "By game length",
+      "desc": "Are you stronger early or late?",
+      "short": "Under 25 min",
+      "mid": "25 to 32 min",
+      "long": "Over 32 min"
+    },
+    "daypart": {
+      "title": "By time of day",
+      "desc": "When you play your best.",
+      "morning": "Morning (6am–12pm)",
+      "afternoon": "Afternoon (12–6pm)",
+      "evening": "Evening (6pm–12am)",
+      "night": "Night (12–6am)"
+    },
+    "tilt": {
+      "title": "Tilt check",
+      "desc": "The next game, in the same play session.",
+      "afterWin": "After a win",
+      "afterLoss": "After a loss",
+      "streak_one": "Longest losing streak: {{count}} game.",
+      "streak_other": "Longest losing streak: {{count}} games."
+    }
+  },
+  "appearance": {
+    "title": "Appearance",
+    "desc": "Color theme and background — everything applies live, no restart needed.",
+    "themes": "Color theme",
+    "background": "Background",
+    "mode": {
+      "image": "Image",
+      "color": "Solid color"
+    },
+    "filter": "Color filter",
+    "dim": "Darken",
+    "blur": "Blur",
+    "solidColor": "Background color",
+    "solidHint": "A plain background, no image. Cards keep the theme colors.",
+    "reset": "Reset background",
+    "preview": "Preview",
+    "liveHint": "Changes are already applied to the whole app.",
+    "image": {
+      "swirl": "Hextech",
+      "abysse": "Abyss",
+      "ecarlate": "Scarlet",
+      "braise": "Ember",
+      "fracture": "Fracture"
+    },
+    "theme": {
+      "hextech": {
+        "label": "Hextech Gold",
+        "desc": "The default look."
+      },
+      "piltover": {
+        "label": "Piltover Blue",
+        "desc": "Cool cyan & blue."
+      },
+      "noxus": {
+        "label": "Noxus Crimson",
+        "desc": "Warm red & iron."
+      },
+      "void": {
+        "label": "Void Purple",
+        "desc": "Violet & arcane."
+      },
+      "ionia": {
+        "label": "Ionia Blossom",
+        "desc": "Soft pink & jade."
+      },
+      "shurima": {
+        "label": "Shurima Sun",
+        "desc": "Sand gold & turquoise."
+      },
+      "freljord": {
+        "label": "Freljord Frost",
+        "desc": "Ice blue & silver."
+      },
+      "zaun": {
+        "label": "Zaun Chemtech",
+        "desc": "Toxic green & rust."
+      }
+    }
+  },
+  "profile": {
+    "title": "My profile",
+    "subtitle": "Your player card, your Ascend rank and your titles.",
+    "edit": "Customize",
+    "save": "Save",
+    "saved": "Profile saved",
+    "newTitle": "New title unlocked!",
+    "livePreview": "Live preview — nothing is saved until you hit “Save”.",
+    "editTabs": {
+      "icon": "Icon",
+      "banner": "Banner",
+      "titles": "Title & showcase",
+      "bio": "Motto"
+    },
+    "unlockAt": "Unlocks at {{tier}}",
+    "bioLabel": "Your motto",
+    "bioPlaceholder": "E.g. “One CS at a time.”",
+    "equipTitle": "Title shown under your name",
+    "noTitle": "None",
+    "showcasePick": "Pin up to {{count}} titles to your showcase",
+    "noTitlesYet": "No titles yet — finish your first review to unlock one!",
+    "titlesHeading": "Titles",
+    "loadingStats": "Loading your activity…",
+    "card": {
+      "games": "Games",
+      "reviews": "Reviews",
+      "clips": "Clips",
+      "days": "Days",
+      "showcase": "Showcase",
+      "maxTier": "Highest rank reached",
+      "toNextTier_one": "{{count}} level to {{tier}}",
+      "toNextTier_other": "{{count}} levels to {{tier}}"
+    },
+    "path": {
+      "title": "Ascension path",
+      "desc": "Your Ascend rank rises with your app level. Each rank unlocks new icons.",
+      "level": "Lv. {{level}}",
+      "unlocksIcon": "Icon unlocked at this rank",
+      "howToXp": "Earn XP from sessions, reviews, assessments and your daily streak."
+    },
+    "tiers": {
+      "iron": "Iron",
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "platinum": "Platinum",
+      "emerald": "Emerald",
+      "diamond": "Diamond",
+      "master": "Master"
+    },
+    "rarity": {
+      "common": "Common",
+      "rare": "Rare",
+      "epic": "Epic",
+      "legendary": "Legendary"
+    },
+    "banners": {
+      "theme": "Theme",
+      "swirl": "Hextech",
+      "abysse": "Abyss",
+      "ecarlate": "Scarlet",
+      "braise": "Ember",
+      "fracture": "Fracture",
+      "nebuleuse": "Nebula",
+      "embleme": "Emblem"
+    },
+    "titles": {
+      "first_review": {
+        "name": "First Look",
+        "desc_one": "{{count}} review done",
+        "desc_other": "{{count}} reviews done"
+      },
+      "analyst": {
+        "name": "Analyst",
+        "desc_one": "{{count}} review done",
+        "desc_other": "{{count}} reviews done"
+      },
+      "grinder": {
+        "name": "Mad Grinder",
+        "desc_one": "{{count}} review done",
+        "desc_other": "{{count}} reviews done"
+      },
+      "lynx": {
+        "name": "Eagle Eye",
+        "desc_one": "{{count}} review done",
+        "desc_other": "{{count}} reviews done"
+      },
+      "clipper": {
+        "name": "Budding Editor",
+        "desc_one": "{{count}} clip saved",
+        "desc_other": "{{count}} clips saved"
+      },
+      "camera": {
+        "name": "Lives for the Camera",
+        "desc_one": "{{count}} clip saved",
+        "desc_other": "{{count}} clips saved"
+      },
+      "director": {
+        "name": "Director",
+        "desc_one": "{{count}} clip saved",
+        "desc_other": "{{count}} clips saved"
+      },
+      "archivist": {
+        "name": "Archivist",
+        "desc_one": "{{count}} game recorded",
+        "desc_other": "{{count}} games recorded"
+      },
+      "disciplined": {
+        "name": "Disciplined",
+        "desc_one": "{{count}} practice session",
+        "desc_other": "{{count}} practice sessions"
+      },
+      "war_machine": {
+        "name": "War Machine",
+        "desc_one": "{{count}} practice session",
+        "desc_other": "{{count}} practice sessions"
+      },
+      "centurion": {
+        "name": "Centurion",
+        "desc_one": "{{count}} game tracked",
+        "desc_other": "{{count}} games tracked"
+      },
+      "veteran": {
+        "name": "Rift Veteran",
+        "desc_one": "{{count}} game tracked",
+        "desc_other": "{{count}} games tracked"
+      },
+      "self_critic": {
+        "name": "Self-Critic",
+        "desc_one": "{{count}} mistake tagged",
+        "desc_other": "{{count}} mistakes tagged"
+      },
+      "hunter": {
+        "name": "Mistake Hunter",
+        "desc_one": "{{count}} mistake tagged",
+        "desc_other": "{{count}} mistakes tagged"
+      },
+      "annotator": {
+        "name": "Annotator",
+        "desc_one": "{{count}} bookmark placed",
+        "desc_other": "{{count}} bookmarks placed"
+      },
+      "introspective": {
+        "name": "Introspective",
+        "desc_one": "{{count}} self-assessment",
+        "desc_other": "{{count}} self-assessments"
+      },
+      "mentor": {
+        "name": "Mentor",
+        "desc_one": "{{count}} review of someone else’s game",
+        "desc_other": "{{count}} reviews of other players’ games"
+      },
+      "regular": {
+        "name": "Regular",
+        "desc_one": "{{count}}-day streak",
+        "desc_other": "{{count}}-day streak"
+      },
+      "unstoppable": {
+        "name": "Unstoppable",
+        "desc_one": "{{count}}-day streak",
+        "desc_other": "{{count}}-day streak"
+      },
+      "loyal": {
+        "name": "Loyal",
+        "desc_one": "{{count}} day on Ascend",
+        "desc_other": "{{count}} days on Ascend"
+      },
+      "pillar": {
+        "name": "Pillar",
+        "desc_one": "{{count}} day on Ascend",
+        "desc_other": "{{count}} days on Ascend"
+      },
+      "elder": {
+        "name": "Elder",
+        "desc_one": "{{count}} day on Ascend",
+        "desc_other": "{{count}} days on Ascend"
+      },
+      "ascendant": {
+        "name": "Ascendant",
+        "desc_one": "Reach level {{count}}",
+        "desc_other": "Reach level {{count}}"
+      },
+      "transcended": {
+        "name": "Transcended",
+        "desc_one": "Reach level {{count}}",
+        "desc_other": "Reach level {{count}}"
+      }
+    }
   }
 }

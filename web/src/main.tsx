@@ -17,6 +17,7 @@ import { AccountPage } from './pages/AccountPage'
 import { DownloadButton } from './DownloadButton'
 import { installDiagnostics } from '@/lib/diagnostics'
 import { applyTheme, getStoredTheme } from '@/lib/theme'
+import { applyAppearance, getStoredAppearance } from '@/lib/appearance'
 
 // Must run before any shared component calls window.api.
 installWebApi()
@@ -24,6 +25,7 @@ installWebApi()
 installDiagnostics()
 // Before the first paint, so there's no flash of the default theme.
 applyTheme(getStoredTheme())
+applyAppearance(getStoredAppearance(), false)
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {

@@ -38,6 +38,35 @@ export const RADAR_AXES: RadarAxisDef[] = [
   { key: 'gold15', label: 'Gold@15', unit: '', min: 3500, max: 6500, pick: (s) => s?.laning?.gold15 ?? null },
 ]
 
+/**
+ * Support (`UTILITY`) axes: the laner KPIs (CS, gold, damage) say nothing
+ * about a support's impact. These measure what a support controls —
+ * fight presence (KP, KDA), staying alive, vision (own score, the gap vs.
+ * the opposing support, control wards, wards cleared) and utility, split
+ * so both styles score fairly: heals + shields for enchanters, crowd
+ * control for engage supports. Same first-pass calibration caveat as above.
+ */
+export const SUPPORT_RADAR_AXES: RadarAxisDef[] = [
+  {
+    key: 'kda', label: 'KDA', unit: '', min: 0, max: 6,
+    pick: (s) => (s?.meta?.avgDeaths > 0 ? (s.meta.avgKills + s.meta.avgAssists) / s.meta.avgDeaths : s?.meta ? s.meta.avgKills + s.meta.avgAssists : null),
+  },
+  { key: 'kp', label: 'KP', unit: '%', min: 35, max: 80, pick: (s) => s?.combat?.killParticipation ?? null },
+  // Inverted: fewer deaths → further out on the chart (min > max).
+  { key: 'deaths', label: 'Deaths', unit: '', min: 9, max: 2, pick: (s) => s?.meta?.avgDeaths ?? null },
+  { key: 'vspm', label: 'Vision/m', unit: '', min: 0.8, max: 3.2, pick: (s) => s?.vision?.visionScorePerMin ?? null },
+  { key: 'vsdiff', label: 'Vision diff', unit: '', min: -15, max: 30, pick: (s) => s?.vision?.visionScoreAdvantage ?? null },
+  { key: 'pinks', label: 'Pinks', unit: '', min: 0, max: 8, pick: (s) => s?.vision?.controlWardsPurchased ?? null },
+  { key: 'wardkill', label: 'Wards killed', unit: '', min: 0, max: 6, pick: (s) => s?.vision?.wardsDestroyed ?? null },
+  { key: 'healshield', label: 'Heal+Shield/m', unit: '', min: 0, max: 500, pick: (s) => s?.combat?.healShieldPerMin ?? null },
+  { key: 'cc', label: 'CC/m', unit: '', min: 0, max: 3, pick: (s) => s?.combat?.ccPerMin ?? null },
+]
+
+/** Axis set for the user's main role (Riot `teamPosition` values). */
+export function radarAxesForRole(role: string | null | undefined): RadarAxisDef[] {
+  return role === 'UTILITY' || role === 'SUPPORT' ? SUPPORT_RADAR_AXES : RADAR_AXES
+}
+
 export interface RadarAxisPoint {
   key: string
   label: string
@@ -56,8 +85,8 @@ function normalize(value: number | null, min: number, max: number): number | nul
   return Math.max(0, Math.min(100, Math.round(pct)))
 }
 
-export function buildFundamentalsRadar(recent: any | null, snapshot: any | null): RadarAxisPoint[] {
-  return RADAR_AXES.map((axis) => {
+export function buildFundamentalsRadar(recent: any | null, snapshot: any | null, axes: RadarAxisDef[] = RADAR_AXES): RadarAxisPoint[] {
+  return axes.map((axis) => {
     const recentRaw = recent ? axis.pick(recent) : null
     const snapshotRaw = snapshot ? axis.pick(snapshot) : null
     return {

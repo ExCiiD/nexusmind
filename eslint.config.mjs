@@ -12,7 +12,7 @@ import globals from 'globals'
 
 export default tseslint.config(
   {
-    ignores: ['out/**', 'release/**', 'dist/**', 'web/dist/**', 'prisma-client/**', '**/node_modules/**', 'test-results/**', 'playwright-report/**', 'resources/**', '**/.wrangler/**'],
+    ignores: ['out/**', 'release/**', 'dist/**', 'web/dist/**', 'prisma-client/**', '**/node_modules/**', 'test-results/**', 'playwright-report/**', 'resources/**', '**/.wrangler/**', '.claude/**', '.harness/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

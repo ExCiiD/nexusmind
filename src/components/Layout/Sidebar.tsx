@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import {
+  UserCircle,
   LayoutDashboard,
   Swords,
   ClipboardCheck,
@@ -32,10 +33,13 @@ import { SyncIndicator } from '@/components/Cloud/SyncIndicator'
 import { FeedbackButton } from '@/components/Feedback/FeedbackDialog'
 import { NotificationBell } from '@/components/Notifications/NotificationBell'
 import logo from '@/assets/ascend-logo-mark.png'
+import { TierAvatar, useProfilePrefs } from '@/components/Profile/ProfileCard'
+import { tierForLevel } from '@/lib/profile'
 
 export function Sidebar() {
   const { t } = useTranslation()
   const user = useUserStore((s) => s.user)
+  const profilePrefs = useProfilePrefs(user?.id)
   const clearUser = useUserStore((s) => s.clearUser)
   const activeSession = useSessionStore((s) => s.activeSession)
   const [isRecording, setIsRecording] = useState(false)
@@ -117,6 +121,7 @@ export function Sidebar() {
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { to: '/profile', icon: UserCircle, label: t('nav.profile') },
     { to: '/plan', icon: ListTodo, label: t('nav.plan') },
     { to: '/session', icon: Swords, label: t('nav.session') },
     { to: '/record', icon: Film, label: 'Record' },
@@ -220,14 +225,15 @@ export function Sidebar() {
           <FeedbackButton />
 
           <div className="flex items-center justify-between">
-            <div className="truncate min-w-0">
-              {user.displayName && (
-                <div className="text-xs font-medium text-hextech-text-bright truncate">{user.displayName}</div>
-              )}
-              <div className="text-[10px] text-hextech-text-dim truncate">
-                {user.summonerName}#{user.tagLine}
+            <NavLink to="/profile" title={t('nav.profile')} className="group flex min-w-0 items-center gap-2.5 rounded-md p-1 -m-1 hover:bg-hextech-elevated/60">
+              {profilePrefs && <TierAvatar iconId={profilePrefs.iconId} tier={tierForLevel(levelInfo.level)} size={34} />}
+              <div className="truncate min-w-0">
+                <div className="text-xs font-medium text-hextech-text-bright truncate group-hover:text-hextech-gold-bright">{user.displayName || user.summonerName}</div>
+                <div className="text-[10px] text-hextech-text-dim truncate">
+                  {user.summonerName}#{user.tagLine}
+                </div>
               </div>
-            </div>
+            </NavLink>
             <div className="flex items-center gap-1 ml-2 shrink-0">
               <button
                 onClick={() => i18n.changeLanguage(i18n.language.startsWith('fr') ? 'en' : 'fr')}

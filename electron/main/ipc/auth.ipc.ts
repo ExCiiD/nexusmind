@@ -129,6 +129,38 @@ export function registerAuthHandlers() {
     return badges.map((b) => b.badgeId)
   })
 
+  /**
+   * Profile page: the activity counters player titles are earned from
+   * (src/lib/profile.ts). Counts only — no row data leaves the main process.
+   * Recordings/clips/bookmarks carry no userId, so "this user's" means
+   * linked to one of their games, plus orphan recordings (no game) which on
+   * a single-user desktop install can only be theirs.
+   */
+  ipcMain.handle('profile:get-stats', async () => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    if (!user) return null
+    const ownGame = { session: { userId: user.id } }
+    const ownRecording = { OR: [{ game: ownGame }, { gameId: null }] }
+    const [games, reviews, sessions, recordings, clips, bookmarks, mistakes, externalReviews, assessments] = await Promise.all([
+      prisma.game.count({ where: ownGame }),
+      prisma.review.count({ where: { game: ownGame } }),
+      prisma.session.count({ where: { userId: user.id } }),
+      prisma.recording.count({ where: ownRecording }),
+      prisma.clip.count({ where: { recording: ownRecording } }),
+      prisma.bookmark.count({ where: { recording: ownRecording } }),
+      prisma.mistake.count({ where: { game: ownGame, autoDetected: false } }),
+      prisma.externalReview.count({ where: { userId: user.id } }),
+      prisma.assessment.count({ where: { userId: user.id } }),
+    ])
+    return {
+      games, reviews, sessions, recordings, clips, bookmarks, mistakes, externalReviews, assessments,
+      xp: user.xp,
+      streakDays: user.streakDays,
+      memberSince: user.createdAt.toISOString(),
+    }
+  })
+
   ipcMain.handle('user:get', async () => {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })

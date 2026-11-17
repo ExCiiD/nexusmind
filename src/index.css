@@ -67,6 +67,82 @@
   --hextech-blue-bright: #E88A6B;
 }
 
+/* Ionia Blossom — soft pink & jade. */
+:root[data-theme="ionia"] {
+  --hextech-black: #0F080B;
+  --hextech-dark: #1C0F15;
+  --hextech-elevated: #2B1620;
+  --hextech-panel: #2B1620;
+  --hextech-border: #8A4A66;
+  --hextech-border-dim: #4A2836;
+  --hextech-cyan: #5FB89A;
+  --hextech-teal: #3B7E68;
+  --hextech-gold: #E07AA0;
+  --hextech-gold-bright: #F8D2E1;
+  --hextech-text: #B596A3;
+  --hextech-text-bright: #F8D2E1;
+  --hextech-text-dim: #6B4A58;
+  --hextech-blue: #22111A;
+  --hextech-blue-bright: #F0A0C0;
+}
+
+/* Shurima Sun — sand gold & turquoise. */
+:root[data-theme="shurima"] {
+  --hextech-black: #0E0B05;
+  --hextech-dark: #1D170A;
+  --hextech-elevated: #2D2410;
+  --hextech-panel: #2D2410;
+  --hextech-border: #9A7A2E;
+  --hextech-border-dim: #4F4019;
+  --hextech-cyan: #2FC1B8;
+  --hextech-teal: #1F8580;
+  --hextech-gold: #F0C24A;
+  --hextech-gold-bright: #FFF0C2;
+  --hextech-text: #BFAE84;
+  --hextech-text-bright: #FFF0C2;
+  --hextech-text-dim: #6E6040;
+  --hextech-blue: #241C0B;
+  --hextech-blue-bright: #FFD66B;
+}
+
+/* Freljord Frost — ice blue & silver. */
+:root[data-theme="freljord"] {
+  --hextech-black: #070B0F;
+  --hextech-dark: #0F161D;
+  --hextech-elevated: #18222D;
+  --hextech-panel: #18222D;
+  --hextech-border: #5E7C94;
+  --hextech-border-dim: #2C3B48;
+  --hextech-cyan: #9AD8F0;
+  --hextech-teal: #5A97AE;
+  --hextech-gold: #B8DDF5;
+  --hextech-gold-bright: #EEF7FD;
+  --hextech-text: #9DAEBB;
+  --hextech-text-bright: #EEF7FD;
+  --hextech-text-dim: #4E5E6B;
+  --hextech-blue: #111A22;
+  --hextech-blue-bright: #CDEBFA;
+}
+
+/* Zaun Chemtech — toxic green & rust. */
+:root[data-theme="zaun"] {
+  --hextech-black: #070A05;
+  --hextech-dark: #0F150B;
+  --hextech-elevated: #182212;
+  --hextech-panel: #182212;
+  --hextech-border: #5A8A34;
+  --hextech-border-dim: #2E4620;
+  --hextech-cyan: #C9772F;
+  --hextech-teal: #8A5224;
+  --hextech-gold: #8EE04A;
+  --hextech-gold-bright: #DDF8C4;
+  --hextech-text: #9FB58C;
+  --hextech-text-bright: #DDF8C4;
+  --hextech-text-dim: #4F6440;
+  --hextech-blue: #10180B;
+  --hextech-blue-bright: #B4F07A;
+}
+
 /* Void Purple — violet/arcane accent. */
 :root[data-theme="void"] {
   --hextech-black: #0A0610;
@@ -86,15 +162,49 @@
   --hextech-blue-bright: #B86BE8;
 }
 
-/* Faint swirl texture — put this on the layout's own root container, never
-   on `body`: the layout root paints an opaque background over the whole
-   viewport once React mounts, so a body-level background disappears right
-   after the first frame (looked fine only while the page was loading). */
+/*
+ * App background (Settings → Appearance, src/lib/appearance.ts). Put this on
+ * the layout's own root container, never on `body`: the layout root paints
+ * over the whole viewport once React mounts. The image and its color filter
+ * live on two fixed pseudo-layers behind the content (`isolation: isolate`
+ * keeps the negative z-index inside this container), all driven by CSS
+ * variables so a change in Settings repaints live.
+ */
+:root {
+  --app-bg-color: var(--hextech-black);
+  --app-bg-image: none;
+  --app-bg-brightness: 0.1;
+  --app-bg-blur: 0px;
+  --app-bg-tint: #000000;
+  --app-bg-tint-opacity: 0;
+}
+
 .ascend-texture-bg {
-  background-image: linear-gradient(rgba(13, 10, 6, 0.94), rgba(13, 10, 6, 0.94)), url('./assets/ascend-bg-swirl-1.jpg');
+  position: relative;
+  isolation: isolate;
+  background-color: var(--app-bg-color);
+}
+.ascend-texture-bg::before,
+.ascend-texture-bg::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.ascend-texture-bg::before {
+  background-image: var(--app-bg-image);
   background-size: cover;
   background-position: center;
-  background-attachment: fixed;
+  filter: blur(var(--app-bg-blur)) brightness(var(--app-bg-brightness));
+  /* Hides the soft transparent edge blur() leaves at the viewport border. */
+  transform: scale(1.04);
+}
+/* Color filter: recolors the image while keeping its light/dark structure. */
+.ascend-texture-bg::after {
+  background-color: var(--app-bg-tint);
+  opacity: var(--app-bg-tint-opacity);
+  mix-blend-mode: color;
 }
 
 .app-drag-region {

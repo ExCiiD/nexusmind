@@ -11,7 +11,7 @@
  * with the cosmetic theme.
  */
 
-export const COLOR_THEMES = ['hextech', 'piltover', 'noxus', 'void'] as const
+export const COLOR_THEMES = ['hextech', 'piltover', 'noxus', 'void', 'ionia', 'shurima', 'freljord', 'zaun'] as const
 export type ColorTheme = (typeof COLOR_THEMES)[number]
 
 const STORAGE_KEY = 'ascend_color_theme'

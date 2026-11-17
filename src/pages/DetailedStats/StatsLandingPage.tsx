@@ -27,8 +27,9 @@ import {
   Tooltip as RTooltip,
   Legend,
 } from 'recharts'
+import { StatsInsightsTab } from './StatsInsightsTab'
 
-type ActiveTab = 'averages' | 'progression'
+type ActiveTab = 'insights' | 'averages' | 'progression'
 
 export interface GameHistoryEntry {
   gameId: string | null
@@ -74,7 +75,7 @@ export function StatsLandingPage() {
   const [averagesMeta, setAveragesMeta] = useState<{ gameCount: number; firstGameAt: string; lastGameAt: string } | null>(null)
   const [snapshots, setSnapshots] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<ActiveTab>('averages')
+  const [activeTab, setActiveTab] = useState<ActiveTab>('insights')
   const [avgChartSeries, setAvgChartSeries] = useState<string[]>(DEFAULT_SERIES)
   const [autoSnapMsg, setAutoSnapMsg] = useState<string | null>(null)
 
@@ -163,7 +164,7 @@ export function StatsLandingPage() {
           {mainRole && (
             <span className="inline-flex items-center gap-1 rounded-full border border-hextech-cyan/40 bg-hextech-cyan/10 px-2.5 py-0.5 text-[11px] font-medium text-hextech-cyan">
               <Filter className="h-3 w-3" />
-              {ROLE_LABELS[mainRole] ?? mainRole} only
+              {t('statsAvg.roleOnly', { role: ROLE_LABELS[mainRole] ?? mainRole })}
             </span>
           )}
         </div>
@@ -172,7 +173,7 @@ export function StatsLandingPage() {
       {/* Account filter — only shown when secondary accounts exist */}
       {showAccountFilter && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-hextech-text-dim shrink-0">Compte :</span>
+          <span className="text-xs text-hextech-text-dim shrink-0">{t('statsAvg.account')}</span>
 
           {/* Main account chip (default) */}
           <button
@@ -184,7 +185,7 @@ export function StatsLandingPage() {
                 : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
             )}
           >
-            {user?.displayName || user?.summonerName || 'Main'} (principal)
+            {t('statsAvg.mainAccount', { name: user?.displayName || user?.summonerName || 'Main' })}
           </button>
 
           {/* Secondary accounts */}
@@ -213,7 +214,7 @@ export function StatsLandingPage() {
                 : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
             )}
           >
-            Tous les comptes
+            {t('statsAvg.allAccounts')}
           </button>
 
           {accountLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-hextech-text-dim" />}
@@ -229,7 +230,7 @@ export function StatsLandingPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-hextech-border-dim">
-        {(['averages', 'progression'] as ActiveTab[]).map((tab) => (
+        {(['insights', 'averages', 'progression'] as ActiveTab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -244,6 +245,8 @@ export function StatsLandingPage() {
         ))}
       </div>
 
+      {activeTab === 'insights' && <StatsInsightsTab />}
+
       {/* Averages Tab */}
       {activeTab === 'averages' && (
         <>
@@ -257,7 +260,7 @@ export function StatsLandingPage() {
           {accountLoading && (
             <div className="flex items-center justify-center py-16 gap-3 text-hextech-text-dim">
               <Loader2 className="h-5 w-5 animate-spin" />
-              Calcul des statistiques…
+              {t('statsAvg.computing')}
             </div>
           )}
 
@@ -268,10 +271,7 @@ export function StatsLandingPage() {
                   sample size or recency. */}
               {averagesMeta && (
                 <p className="text-xs text-hextech-text-dim">
-                  {t('statsAvg.basedOnGames', {
-                    count: averagesMeta.gameCount,
-                    defaultValue: 'Basé sur vos {{count}} dernières games',
-                  })}
+                  {t('statsAvg.basedOnGames', { count: averagesMeta.gameCount })}
                   {' · '}
                   {new Date(averagesMeta.firstGameAt).toLocaleDateString()} → {new Date(averagesMeta.lastGameAt).toLocaleDateString()}
                 </p>
@@ -317,7 +317,7 @@ export function StatsLandingPage() {
                   { label: t('detailedStats.economy.teamGold'), value: `${averages.economy.teamGoldPercent}%` },
                   { label: t('detailedStats.economy.maxCsAdv'), value: averages.economy.maxCsAdvantage },
                 ]} />
-                <AvgCard icon={Swords} color="text-[#E24C3A]" title={t('detailedStats.combat.title')} rows={[
+                <AvgCard icon={Swords} color="text-hextech-red" title={t('detailedStats.combat.title')} rows={[
                   { label: t('detailedStats.combat.totalDamage'), value: averages.meta.avgDuration ? Math.round(averages.combat.damagePerMin * (averages.meta.avgDuration / 60)) : null },
                   { label: t('detailedStats.combat.kp'), value: `${averages.combat.killParticipation}%` },
                   { label: t('detailedStats.combat.dpm'), value: averages.combat.damagePerMin },
@@ -395,7 +395,7 @@ function TrendBadge({ trend }: { trend: { diff: number; higherIsBetter: boolean 
   if (!trend || trend.diff === 0) return null
   const isPositive = trend.higherIsBetter ? trend.diff > 0 : trend.diff < 0
   return (
-    <span className={cn('ml-1 inline-flex items-center gap-0.5 text-[10px] font-semibold', isPositive ? 'text-hextech-green' : 'text-[#E24C3A]')}>
+    <span className={cn('ml-1 inline-flex items-center gap-0.5 text-[10px] font-semibold', isPositive ? 'text-hextech-green' : 'text-hextech-red')}>
       {isPositive ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
       {trend.diff > 0 ? '+' : ''}{trend.diff}
     </span>
@@ -445,16 +445,16 @@ function HighlightsCard({ snapshots }: { snapshots: any[] }) {
     return (
       <div className={cn(
         'flex items-center gap-2.5 rounded-lg border px-3 py-2.5 flex-1 min-w-0',
-        positive ? 'border-hextech-green/30 bg-hextech-green/5' : 'border-[#E24C3A]/30 bg-[#E24C3A]/5',
+        positive ? 'border-hextech-green/30 bg-hextech-green/5' : 'border-hextech-red/30 bg-hextech-red/5',
       )}>
-        {positive ? <TrendingUp className="h-4 w-4 text-hextech-green shrink-0" /> : <TrendingDown className="h-4 w-4 text-[#E24C3A] shrink-0" />}
+        {positive ? <TrendingUp className="h-4 w-4 text-hextech-green shrink-0" /> : <TrendingDown className="h-4 w-4 text-hextech-red shrink-0" />}
         <div className="min-w-0">
           <p className="text-[11px] text-hextech-text-dim">
-            {positive ? t('statsAvg.highlights.improved', { defaultValue: 'Biggest improvement' }) : t('statsAvg.highlights.regressed', { defaultValue: 'Needs attention' })}
+            {positive ? t('statsAvg.highlights.improved') : t('statsAvg.highlights.regressed')}
           </p>
           <p className="text-sm font-semibold text-hextech-text-bright truncate">
             {m.row.label}
-            <span className={cn('ml-1.5 font-mono', positive ? 'text-hextech-green' : 'text-[#E24C3A]')}>
+            <span className={cn('ml-1.5 font-mono', positive ? 'text-hextech-green' : 'text-hextech-red')}>
               {m.diff > 0 ? '+' : ''}{fmt(Number(m.diff.toFixed(1)))}
             </span>
           </p>
@@ -489,7 +489,7 @@ function AvgCard({ icon: Icon, color, title, rows }: {
             <span className="text-xs text-hextech-text">{row.label}</span>
             <span className={`text-sm font-semibold ${
               row.diff && row.value !== null
-                ? (row.value > 0 ? 'text-hextech-green' : row.value < 0 ? 'text-[#E24C3A]' : 'text-hextech-text-bright')
+                ? (row.value > 0 ? 'text-hextech-green' : row.value < 0 ? 'text-hextech-red' : 'text-hextech-text-bright')
                 : 'text-hextech-text-bright'
             }`}>
               {row.value !== null && row.value !== undefined
@@ -597,9 +597,10 @@ function SeriesFilterBar({ selected, onChange }: { selected: string[]; onChange:
  * and the original raw value (for context), keyed by `${key}_raw`.
  */
 function IndexedTooltip({ active, payload, label }: any) {
+  const { t } = useTranslation()
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-lg border border-hextech-border bg-hextech-bg p-3 text-xs shadow-lg min-w-[160px]">
+    <div className="rounded-lg border border-hextech-border bg-hextech-dark p-3 text-xs shadow-lg min-w-[160px]">
       <p className="mb-2 font-medium text-hextech-gold-bright">{label}</p>
       {payload.map((entry: any) => {
         const rawKey = `${entry.dataKey}_raw`
@@ -621,13 +622,14 @@ function IndexedTooltip({ active, payload, label }: any) {
         )
       })}
       <p className="mt-2 border-t border-hextech-border-dim pt-1.5 text-hextech-text-dim">
-        Valeur entre parenthèses = indice (base 0)
+        {t('statsAvg.chart.tooltipNote')}
       </p>
     </div>
   )
 }
 
 function ProgressionLineChart({ snapshots, selectedSeries }: { snapshots: any[]; selectedSeries: string[] }) {
+  const { t } = useTranslation()
   const activeSeries = LINE_SERIES.filter((s) => selectedSeries.includes(s.key))
 
   // Collect the baseline (first snapshot) raw value for each series
@@ -668,10 +670,10 @@ function ProgressionLineChart({ snapshots, selectedSeries }: { snapshots: any[];
     <div className="space-y-1">
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#2A1D11" />
-          <XAxis dataKey="date" tick={{ fill: '#B5A68C', fontSize: 11 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--hextech-border-dim)" />
+          <XAxis dataKey="date" tick={{ fill: 'var(--hextech-text)', fontSize: 11 }} />
           <YAxis
-            tick={{ fill: '#B5A68C', fontSize: 11 }}
+            tick={{ fill: 'var(--hextech-text)', fontSize: 11 }}
             tickFormatter={(v) => `${v > 0 ? '+' : ''}${v}`}
           />
           <RTooltip content={<IndexedTooltip />} />
@@ -682,7 +684,7 @@ function ProgressionLineChart({ snapshots, selectedSeries }: { snapshots: any[];
         </LineChart>
       </ResponsiveContainer>
       <p className="text-center text-[10px] text-hextech-text-dim">
-        Axe Y = évolution en % depuis le premier snapshot · valeurs brutes visibles dans le tooltip
+        {t('statsAvg.chart.axisNote')}
       </p>
     </div>
   )
@@ -805,13 +807,13 @@ function ProgressionTab({ snapshots }: { snapshots: any[] }) {
         <span className="text-right text-hextech-cyan">
           {t('statsAvg.progTable.snapshot', { n: baseIdx + 1 })}
           <span className="ml-1 opacity-60 font-normal">
-            avg of {base.gameCount} games
+            {t('statsAvg.avgOf', { count: base.gameCount })}
           </span>
         </span>
         <span className="text-right text-hextech-gold">
           {t('statsAvg.progTable.snapshot', { n: targetIdx + 1 })}
           <span className="ml-1 opacity-60 font-normal">
-            avg of {target.gameCount} games
+            {t('statsAvg.avgOf', { count: target.gameCount })}
           </span>
         </span>
         <span className="text-right">{t('statsAvg.progTable.diff')}</span>
@@ -834,7 +836,7 @@ function ProgressionTab({ snapshots }: { snapshots: any[] }) {
                 <span className="text-right text-xs font-medium text-hextech-text-bright">{targetVal != null ? fmt(targetVal) : '—'}</span>
                 <span className={cn(
                   'text-right text-xs font-semibold flex items-center justify-end gap-1',
-                  isPositive ? 'text-hextech-green' : isNegative ? 'text-[#E24C3A]' : 'text-hextech-text-dim',
+                  isPositive ? 'text-hextech-green' : isNegative ? 'text-hextech-red' : 'text-hextech-text-dim',
                 )}>
                   {diff !== null ? (
                     <>

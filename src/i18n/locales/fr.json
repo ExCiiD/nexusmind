@@ -11,7 +11,8 @@
     "help": "Aide",
     "mistakes": "Erreurs",
     "coaching": "Coaching",
-    "plan": "Mon plan"
+    "plan": "Mon plan",
+    "profile": "Profil"
   },
   "settings": {
     "title": "Paramètres",
@@ -118,7 +119,16 @@
       "title": "Dernière partie",
       "vs": "vs",
       "noOpponent": "?",
-      "viewDetails": "Voir les stats"
+      "viewDetails": "Voir les stats",
+      "justNow": "à l’instant",
+      "hoursAgo_one": "il y a {{count}} heure",
+      "hoursAgo_other": "il y a {{count}} heures",
+      "daysAgo_one": "il y a {{count}} jour",
+      "daysAgo_other": "il y a {{count}} jours",
+      "toReview": "À reviewer",
+      "victory": "Victoire",
+      "defeat": "Défaite",
+      "duration": "Durée"
     },
     "reassessmentBanner": {
       "title": "C'est l'heure de votre évaluation périodique",
@@ -154,7 +164,9 @@
     "statDiffs": {
       "title": "Plus grandes évolutions de stats",
       "noData": "Il faut au moins 2 snapshots — calculez des moyennes pour suivre la progression",
-      "vsSnap": "vs snapshot précédent"
+      "vsSnap": "vs snapshot précédent",
+      "prev": "Snapshot préc.",
+      "now": "Actuel"
     },
     "radar": {
       "loading": "Calcul de l'empreinte des fondamentaux…",
@@ -163,7 +175,49 @@
       "recentLabel": "Récent ({{count}} games)",
       "snapshotLabel": "Snapshot ({{count}} games)",
       "fullBreakdown": "Voir le détail par fondamental",
-      "modalTitle": "Détail des fondamentaux"
+      "modalTitle": "Détail des fondamentaux",
+      "supportBadge": "Support",
+      "axis": {
+        "deaths": "Morts",
+        "vspm": "Vision/min",
+        "vsdiff": "Écart vision",
+        "pinks": "Pinks",
+        "wardkill": "Wards détruites",
+        "healshield": "Soins+boucliers/min",
+        "cc": "CC/min"
+      }
+    },
+    "header": {
+      "streak_one": "Série active : {{count}} jour",
+      "streak_other": "Série active : {{count}} jours",
+      "formLine_one": "Sur votre dernière partie :",
+      "formLine_other": "Sur vos {{count}} dernières parties :",
+      "winrateShort": "de victoires",
+      "vsOverall": "pts vs global",
+      "mainRole": "Rôle principal :",
+      "form": "Forme",
+      "formTitle": "Résultats des dernières parties (de la plus ancienne à la plus récente)"
+    },
+    "hero": {
+      "badge": "Entraînement délibéré",
+      "desc": "Choisissez 1 à 3 objectifs prioritaires pour vos prochaines parties : c’est ce qui fait progresser le plus vite."
+    },
+    "kpi": {
+      "volume": "Volume de jeu",
+      "games": "parties",
+      "winShort": "V",
+      "lossShort": "D",
+      "lastN": "{{wr}}% sur les {{count}} dern.",
+      "objHint": "objectifs de session validés"
+    },
+    "progression": {
+      "level": "Niveau {{level}}",
+      "toNext": "Plus que {{xp}} XP avant le niveau {{level}}"
+    },
+    "mistakes": {
+      "title": "Erreurs récurrentes (7 jours)",
+      "viewAll": "Tout voir",
+      "tagged": "taguées"
     }
   },
   "session": {
@@ -517,8 +571,8 @@
     "selected": "sélectionné(s)"
   },
   "statsAvg": {
-    "title": "Moyennes sur 20 parties",
-    "subtitle": "Performance moyenne sur vos 20 dernières parties — sauvegardez un snapshot pour suivre la progression",
+    "title": "Statistiques",
+    "subtitle": "Ce qui vous fait gagner, vos moyennes et votre progression dans le temps",
     "navButton": "Moyennes 20 parties",
     "compute": "Calculer & Sauvegarder",
     "empty": "Aucun snapshot. Cliquez sur « Calculer & Sauvegarder » pour générer votre première moyenne.",
@@ -531,7 +585,8 @@
     "vsMin": "VS/min",
     "tabs": {
       "averages": "Moyennes 20 parties",
-      "progression": "Progression"
+      "progression": "Progression",
+      "insights": "Analyse"
     },
     "progTable": {
       "stat": "Statistique",
@@ -544,11 +599,23 @@
     "autoSnapshotDone_one": "{{count}} snapshot calculé automatiquement",
     "autoSnapshotDone_other": "{{count}} snapshots calculés automatiquement",
     "noProgressionData": "Il faut au moins 2 snapshots pour comparer. Jouez 20+ parties et revenez ici.",
-    "basedOnGames": "Basé sur vos {{count}} dernières games",
     "highlights": {
-      "improved": "Plus grande amélioration",
+      "improved": "Plus forte progression",
       "regressed": "À surveiller"
-    }
+    },
+    "roleOnly": "{{role}} uniquement",
+    "account": "Compte :",
+    "mainAccount": "{{name}} (principal)",
+    "allAccounts": "Tous les comptes",
+    "computing": "Calcul des statistiques…",
+    "avgOf_one": "moy. de {{count}} partie",
+    "avgOf_other": "moy. de {{count}} parties",
+    "chart": {
+      "tooltipNote": "Valeur entre parenthèses = indice (base 0)",
+      "axisNote": "Axe Y = évolution en % depuis le premier snapshot · valeurs brutes visibles dans le tooltip"
+    },
+    "basedOnGames_one": "Basé sur votre dernière partie",
+    "basedOnGames_other": "Basé sur vos {{count}} dernières parties"
   },
   "detailedStats": {
     "pageTitle": "Stats détaillées",
@@ -2244,5 +2311,317 @@
     },
     "currentStarter": "Titulaire actuel pour {{role}} : {{names}}",
     "criterionPlaceholder": "ex. Macro, Communication…"
+  },
+  "statsInsights": {
+    "loading": "Analyse de vos dernières parties…",
+    "notEnough": "Jouez encore quelques parties : l’analyse a besoin d’au moins 6 games pour être fiable.",
+    "notEnoughSide": "Pas encore assez de victoires et de défaites pour comparer (3 de chaque minimum).",
+    "basis": "Analyse de vos {{count}} dernières parties classées. Les cases grisées ont moins de 3 parties : à prendre avec des pincettes.",
+    "gamesShort_one": "{{count}} partie",
+    "gamesShort_other": "{{count}} parties",
+    "takeaway": {
+      "title": "À retenir",
+      "lever": {
+        "deaths": "Votre plus gros écart entre victoires et défaites : les morts ({{wins}} par partie quand vous gagnez, {{losses}} quand vous perdez). Mourir moins est votre levier n°1.",
+        "kda": "Votre KDA s’effondre en défaite ({{wins}} → {{losses}}) : vos fights perdus pèsent plus que vos fights gagnés.",
+        "csPerMin": "Votre farm chute nettement en défaite ({{wins}} → {{losses}} CS/min) : gardez le farm même quand la partie se complique.",
+        "visionPerMin": "Votre vision chute en défaite ({{wins}} → {{losses}} /min) : c’est souvent là que les parties basculent."
+      },
+      "tilt": "Après une défaite, vous gagnez {{afterLoss}}% de la partie suivante, contre {{afterWin}}% après une victoire. Faites une pause après une défaite.",
+      "best_one": "{{champion}} est votre meilleur pick : {{wr}}% de victoires sur {{count}} partie.",
+      "best_other": "{{champion}} est votre meilleur pick : {{wr}}% de victoires sur {{count}} parties."
+    },
+    "pool": {
+      "title": "Pool de champions",
+      "desc": "Vos champions les plus joués et ce qu’ils vous rapportent.",
+      "champion": "Champion",
+      "games": "Parties",
+      "winrate": "Victoires",
+      "deaths": "Morts"
+    },
+    "split": {
+      "title": "Victoires vs défaites",
+      "desc": "Ce qui change dans votre jeu quand vous perdez.",
+      "wins": "Victoires",
+      "losses": "Défaites",
+      "metric": {
+        "deaths": "Morts / partie",
+        "kda": "KDA",
+        "csPerMin": "CS / min",
+        "visionPerMin": "Vision / min",
+        "duration": "Durée (min)"
+      }
+    },
+    "duration": {
+      "title": "Selon la durée",
+      "desc": "Êtes-vous plus fort en early ou en late game ?",
+      "short": "Moins de 25 min",
+      "mid": "25 à 32 min",
+      "long": "Plus de 32 min"
+    },
+    "daypart": {
+      "title": "Selon l’heure",
+      "desc": "Le moment de la journée où vous jouez le mieux.",
+      "morning": "Matin (6h–12h)",
+      "afternoon": "Après-midi (12h–18h)",
+      "evening": "Soirée (18h–0h)",
+      "night": "Nuit (0h–6h)"
+    },
+    "tilt": {
+      "title": "Gestion du tilt",
+      "desc": "La partie suivante, dans la même session de jeu.",
+      "afterWin": "Après une victoire",
+      "afterLoss": "Après une défaite",
+      "streak_one": "Plus longue série de défaites : {{count}} partie.",
+      "streak_other": "Plus longue série de défaites : {{count}} parties."
+    }
+  },
+  "appearance": {
+    "title": "Apparence",
+    "desc": "Thème de couleurs et fond d’écran — tout s’applique en direct, sans redémarrage.",
+    "themes": "Thème de couleurs",
+    "background": "Fond d’écran",
+    "mode": {
+      "image": "Image",
+      "color": "Couleur unie"
+    },
+    "filter": "Filtre de couleur",
+    "dim": "Assombrir",
+    "blur": "Flou",
+    "solidColor": "Couleur de fond",
+    "solidHint": "Un fond uni, sans image. Les cartes gardent les couleurs du thème.",
+    "reset": "Réinitialiser le fond",
+    "preview": "Aperçu",
+    "liveHint": "Les changements s’appliquent déjà à toute l’application.",
+    "image": {
+      "swirl": "Hextech",
+      "abysse": "Abysse",
+      "ecarlate": "Écarlate",
+      "braise": "Braise",
+      "fracture": "Fracture"
+    },
+    "theme": {
+      "hextech": {
+        "label": "Or Hextech",
+        "desc": "Le look par défaut."
+      },
+      "piltover": {
+        "label": "Bleu Piltover",
+        "desc": "Cyan et bleu froids."
+      },
+      "noxus": {
+        "label": "Pourpre Noxus",
+        "desc": "Rouge chaud et fer."
+      },
+      "void": {
+        "label": "Violet du Néant",
+        "desc": "Violet et arcanes."
+      },
+      "ionia": {
+        "label": "Fleur d’Ionia",
+        "desc": "Rose tendre et jade."
+      },
+      "shurima": {
+        "label": "Soleil de Shurima",
+        "desc": "Or de sable et turquoise."
+      },
+      "freljord": {
+        "label": "Givre du Freljord",
+        "desc": "Bleu glacier et argent."
+      },
+      "zaun": {
+        "label": "Chimie de Zaun",
+        "desc": "Vert toxique et rouille."
+      }
+    }
+  },
+  "profile": {
+    "title": "Mon profil",
+    "subtitle": "Votre carte de joueur, votre rang Ascend et vos titres.",
+    "edit": "Personnaliser",
+    "save": "Enregistrer",
+    "saved": "Profil enregistré",
+    "newTitle": "Nouveau titre débloqué !",
+    "livePreview": "Aperçu en direct — rien n’est enregistré avant « Enregistrer ».",
+    "editTabs": {
+      "icon": "Icône",
+      "banner": "Bannière",
+      "titles": "Titre & vitrine",
+      "bio": "Devise"
+    },
+    "unlockAt": "Se débloque au rang {{tier}}",
+    "bioLabel": "Votre devise",
+    "bioPlaceholder": "Ex. : « Un CS à la fois. »",
+    "equipTitle": "Titre affiché sous votre nom",
+    "noTitle": "Aucun",
+    "showcasePick": "Épinglez jusqu’à {{count}} titres dans votre vitrine",
+    "noTitlesYet": "Pas encore de titre : faites votre première review pour débloquer le premier !",
+    "titlesHeading": "Titres",
+    "loadingStats": "Chargement de votre activité…",
+    "card": {
+      "games": "Parties",
+      "reviews": "Reviews",
+      "clips": "Clips",
+      "days": "Jours",
+      "showcase": "Vitrine",
+      "maxTier": "Rang maximal atteint",
+      "toNextTier_one": "Encore {{count}} niveau avant {{tier}}",
+      "toNextTier_other": "Encore {{count}} niveaux avant {{tier}}"
+    },
+    "path": {
+      "title": "Chemin d’ascension",
+      "desc": "Votre rang Ascend monte avec votre niveau dans l’app. Chaque rang débloque de nouvelles icônes.",
+      "level": "Niv. {{level}}",
+      "unlocksIcon": "Icône débloquée à ce rang",
+      "howToXp": "Gagnez de l’XP avec les sessions, les reviews, les évaluations et votre série de jours."
+    },
+    "tiers": {
+      "iron": "Fer",
+      "bronze": "Bronze",
+      "silver": "Argent",
+      "gold": "Or",
+      "platinum": "Platine",
+      "emerald": "Émeraude",
+      "diamond": "Diamant",
+      "master": "Maître"
+    },
+    "rarity": {
+      "common": "Commun",
+      "rare": "Rare",
+      "epic": "Épique",
+      "legendary": "Légendaire"
+    },
+    "banners": {
+      "theme": "Thème",
+      "swirl": "Hextech",
+      "abysse": "Abysse",
+      "ecarlate": "Écarlate",
+      "braise": "Braise",
+      "fracture": "Fracture",
+      "nebuleuse": "Nébuleuse",
+      "embleme": "Emblème"
+    },
+    "titles": {
+      "first_review": {
+        "name": "Premier regard",
+        "desc_one": "{{count}} review terminée",
+        "desc_other": "{{count}} reviews terminées"
+      },
+      "analyst": {
+        "name": "Analyste",
+        "desc_one": "{{count}} review terminée",
+        "desc_other": "{{count}} reviews terminées"
+      },
+      "grinder": {
+        "name": "Grinder fou",
+        "desc_one": "{{count}} review terminée",
+        "desc_other": "{{count}} reviews terminées"
+      },
+      "lynx": {
+        "name": "Œil de lynx",
+        "desc_one": "{{count}} review terminée",
+        "desc_other": "{{count}} reviews terminées"
+      },
+      "clipper": {
+        "name": "Monteur en herbe",
+        "desc_one": "{{count}} clip enregistré",
+        "desc_other": "{{count}} clips enregistrés"
+      },
+      "camera": {
+        "name": "Vit pour les caméras",
+        "desc_one": "{{count}} clip enregistré",
+        "desc_other": "{{count}} clips enregistrés"
+      },
+      "director": {
+        "name": "Réalisateur",
+        "desc_one": "{{count}} clip enregistré",
+        "desc_other": "{{count}} clips enregistrés"
+      },
+      "archivist": {
+        "name": "Archiviste",
+        "desc_one": "{{count}} partie enregistrée en vidéo",
+        "desc_other": "{{count}} parties enregistrées en vidéo"
+      },
+      "disciplined": {
+        "name": "Discipliné",
+        "desc_one": "{{count}} session d’entraînement",
+        "desc_other": "{{count}} sessions d’entraînement"
+      },
+      "war_machine": {
+        "name": "Machine de guerre",
+        "desc_one": "{{count}} session d’entraînement",
+        "desc_other": "{{count}} sessions d’entraînement"
+      },
+      "centurion": {
+        "name": "Centurion",
+        "desc_one": "{{count}} partie suivie",
+        "desc_other": "{{count}} parties suivies"
+      },
+      "veteran": {
+        "name": "Vétéran de la Faille",
+        "desc_one": "{{count}} partie suivie",
+        "desc_other": "{{count}} parties suivies"
+      },
+      "self_critic": {
+        "name": "Autocritique",
+        "desc_one": "{{count}} erreur taguée",
+        "desc_other": "{{count}} erreurs taguées"
+      },
+      "hunter": {
+        "name": "Chasseur d’erreurs",
+        "desc_one": "{{count}} erreur taguée",
+        "desc_other": "{{count}} erreurs taguées"
+      },
+      "annotator": {
+        "name": "Annotateur",
+        "desc_one": "{{count}} marque-page posé",
+        "desc_other": "{{count}} marque-pages posés"
+      },
+      "introspective": {
+        "name": "Introspectif",
+        "desc_one": "{{count}} auto-évaluation",
+        "desc_other": "{{count}} auto-évaluations"
+      },
+      "mentor": {
+        "name": "Mentor",
+        "desc_one": "{{count}} review de la partie d’un autre",
+        "desc_other": "{{count}} reviews de parties d’autres joueurs"
+      },
+      "regular": {
+        "name": "Assidu",
+        "desc_one": "Série de {{count}} jour",
+        "desc_other": "Série de {{count}} jours"
+      },
+      "unstoppable": {
+        "name": "Inarrêtable",
+        "desc_one": "Série de {{count}} jour",
+        "desc_other": "Série de {{count}} jours"
+      },
+      "loyal": {
+        "name": "Fidèle",
+        "desc_one": "{{count}} jour sur Ascend",
+        "desc_other": "{{count}} jours sur Ascend"
+      },
+      "pillar": {
+        "name": "Pilier",
+        "desc_one": "{{count}} jour sur Ascend",
+        "desc_other": "{{count}} jours sur Ascend"
+      },
+      "elder": {
+        "name": "Ancien",
+        "desc_one": "{{count}} jour sur Ascend",
+        "desc_other": "{{count}} jours sur Ascend"
+      },
+      "ascendant": {
+        "name": "Ascendant",
+        "desc_one": "Atteindre le niveau {{count}}",
+        "desc_other": "Atteindre le niveau {{count}}"
+      },
+      "transcended": {
+        "name": "Transcendé",
+        "desc_one": "Atteindre le niveau {{count}}",
+        "desc_other": "Atteindre le niveau {{count}}"
+      }
+    }
   }
 }

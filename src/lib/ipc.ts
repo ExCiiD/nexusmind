@@ -418,6 +418,8 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   resetAllData: () => Promise<{ sessions: number; games: number; recordings: number; files: number; snapshots: number; matchCache: number; externalReviews: number; assessments: number }>
 
   getBadges: () => Promise<string[]>
+  /** Activity counters for player titles (Profile page). */
+  getProfileStats: () => Promise<import('./profile').ProfileStats | null>
 
   listAccounts: () => Promise<Array<{ id: string; puuid: string; gameName: string; tagLine: string; region: string; createdAt: string }>>
   addAccount: (gameName: string, tagLine: string, region: string) => Promise<any>
@@ -736,6 +738,10 @@ export interface DetailedGameStats {
     damageTaken: number
     damageMitigated: number
     damageTakenPercent: number
+    /** Heals + shields on teammates per minute. */
+    healShieldPerMin?: number
+    /** Crowd-control score (Riot timeCCingOthers) per minute. */
+    ccPerMin?: number
   }
   objectives: {
     damageToEpicMonsters: number

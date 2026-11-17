@@ -91,6 +91,7 @@ const api = {
   resetAllData: () => ipcRenderer.invoke('data:reset-all'),
 
   getBadges: () => ipcRenderer.invoke('badges:get'),
+  getProfileStats: () => ipcRenderer.invoke('profile:get-stats'),
 
   listAccounts: () => ipcRenderer.invoke('account:list'),
   addAccount: (gameName: string, tagLine: string, region: string) =>

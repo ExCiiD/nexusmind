@@ -788,6 +788,12 @@ export function extractDetailedStats(matchData: any, timelineData: any | null, p
       damageTaken: p.totalDamageTaken,
       damageMitigated: p.damageSelfMitigated ?? 0,
       damageTakenPercent: teamDamageTaken > 0 ? Number(((p.totalDamageTaken / teamDamageTaken) * 100).toFixed(1)) : 0,
+      // Support impact (radar "support" axes): heals + shields given to
+      // teammates (enchanters) and crowd control applied (engage supports).
+      healShieldPerMin: gameDurationMin > 0
+        ? Math.round(((p.totalHealsOnTeammates ?? 0) + (p.totalDamageShieldedOnTeammates ?? 0)) / gameDurationMin)
+        : 0,
+      ccPerMin: gameDurationMin > 0 ? Number(((p.timeCCingOthers ?? 0) / gameDurationMin).toFixed(2)) : 0,
     },
     objectives: {
       damageToEpicMonsters: playerEpicMonsterDmg,

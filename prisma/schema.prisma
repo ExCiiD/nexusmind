@@ -153,6 +153,23 @@ model MatchCache {
   createdAt    DateTime @default(now())
 }
 
+// Players a user has chosen to compare their "fundamentals radar" against
+// (Dashboard), identified by their resolved puuid rather than their Riot ID
+// so a later name change by the tracked player never breaks the comparison.
+model FollowedPlayer {
+  id         String   @id @default(cuid())
+  userId     String
+  gameName   String
+  tagLine    String
+  region     String
+  puuid      String
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, puuid])
+  @@index([userId])
+}
+
 model Review {
   id                 String   @id @default(cuid())
   gameId             String   @unique
