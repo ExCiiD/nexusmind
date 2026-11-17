@@ -177,6 +177,20 @@ export function registerAnalyticsHandlers() {
     })
   })
 
+  /** Sidebar badges: two COUNT queries on the local DB, cheap enough to
+   *  refresh on every navigation. */
+  ipcMain.handle('nav:badges', async () => {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    if (!user) return { toReview: 0, mistakes30d: 0 }
+    const ownGame = { session: { userId: user.id } }
+    const [toReview, mistakes30d] = await Promise.all([
+      prisma.game.count({ where: { ...ownGame, reviewStatus: 'to_be_reviewed' } }),
+      prisma.mistake.count({ where: { game: ownGame, createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) } } }),
+    ])
+    return { toReview, mistakes30d }
+  })
+
   ipcMain.handle('analytics:get-game-history', async (_event, limit = 20) => {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })

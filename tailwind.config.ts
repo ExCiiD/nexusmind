@@ -63,6 +63,10 @@ const config: Config = {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['"Beaufort for LOL"', 'Inter', 'system-ui', 'sans-serif'],
+        // Condensed display + mono (self-hosted, OFL) — the direction chosen for
+        // the site and the redesigned screens (planning).
+        condensed: ['"Big Shoulders Display"', '"Arial Narrow"', 'Inter', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'Consolas', 'monospace'],
       },
       borderRadius: {
         lg: '0.75rem',

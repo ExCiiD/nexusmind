@@ -2,7 +2,7 @@
  *  Planning rework — see docs/PLAN_GESTION_EQUIPE.md §9 Phase 1). */
 
 export type CalendarEventKind =
-  | 'tournament' | 'team_review' | 'one_on_one' | 'soloq_block' | 'rest' | 'other'
+  | 'tournament' | 'team_review' | 'one_on_one' | 'soloq_block' | 'rest' | 'other' | 'warmup_draft'
   | 'scrim' | 'flex' | 'meeting'
 
 /** Quick-select for "people concerned" on event creation — `custom` means

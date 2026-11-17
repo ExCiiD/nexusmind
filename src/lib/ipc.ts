@@ -365,6 +365,8 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   getProgressData: () => Promise<any>
   getSessionStats: () => Promise<any>
   getGameHistory: (limit?: number) => Promise<any[]>
+  /** Sidebar badges: games marked "to review", mistakes tagged in the last 30 days. */
+  getNavBadges: () => Promise<{ toReview: number; mistakes30d: number }>
   getKpiTimeline: () => Promise<Array<{ date: string; objectiveId: string; avgScore: number; gamesReviewed: number }>>
 
   fetchMatchHistory: (count?: number) => Promise<Array<{

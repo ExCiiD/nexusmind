@@ -12,7 +12,21 @@
     "mistakes": "Mistakes",
     "coaching": "Coaching",
     "plan": "My Plan",
-    "profile": "Profile"
+    "profile": "Profile",
+    "label": "Main navigation",
+    "groups": {
+      "practice": "Practice",
+      "analysis": "Analysis & data",
+      "team": "Team & staff",
+      "account": "Account & system"
+    },
+    "record": "Record",
+    "statistics": "Statistics",
+    "mistakeLab": "Mistake Lab",
+    "objBadge_one": "{{count}} goal",
+    "objBadge_other": "{{count}} goals",
+    "sessionLive": "Session running",
+    "autoRecordTitle": "Automatic recording on"
   },
   "settings": {
     "title": "Settings",
@@ -624,7 +638,8 @@
       "vision": "Vision",
       "objectives": "Objectives"
     },
-    "seriesReset": "Back to default curves"
+    "seriesReset": "Back to default curves",
+    "fundamentalsLink": "Fundamentals progression →"
   },
   "detailedStats": {
     "pageTitle": "Detailed Stats",
@@ -1269,7 +1284,9 @@
     "create": "Create",
     "delete": "Delete",
     "loading": "Loading…",
-    "close": "Close"
+    "close": "Close",
+    "yes": "yes",
+    "no": "no"
   },
   "discussion": {
     "title": "Discussion",
@@ -1907,7 +1924,8 @@
       "other": "Other",
       "scrim": "Scrim",
       "flex": "Flex",
-      "meeting": "Meeting"
+      "meeting": "Meeting",
+      "warmup_draft": "Warmup / draft"
     },
     "commonFree": "When all starters are free",
     "noStarters": "No starters with a linked account in the published roster yet.",
@@ -1944,7 +1962,106 @@
     "liveSyncHint": "Paste this URL into Google/Apple/Outlook \"subscribe by URL\" — it updates on its own.",
     "liveSyncCopied": "Link copied",
     "regenerateLiveSync": "Revoke & regenerate",
-    "openTeamSession": "Open team session"
+    "openTeamSession": "Open team session",
+    "tag": {
+      "scrim": "Scrim BO3",
+      "flex": "Flex",
+      "tournament": "Official",
+      "team_review": "VOD review",
+      "warmup_draft": "Warmup / draft",
+      "one_on_one": "1:1",
+      "meeting": "Meeting",
+      "soloq_block": "SoloQ",
+      "rest": "Rest",
+      "other": "Other"
+    },
+    "grid": {
+      "today": "TODAY",
+      "dayAvail": "{{free}}/{{total}} free",
+      "free": "FREE",
+      "railHint": "Your availability: drag in this strip to mark a free slot",
+      "removeAvail": "Available — click to remove",
+      "week": "Week #{{n}}",
+      "prevWeek": "Previous week",
+      "nextWeek": "Next week",
+      "todayAvail": "Starters free {{free}}/{{total}}:",
+      "hours": "Time range",
+      "mode": {
+        "esport": "Esport hours ({{from}}h–{{to}}h)",
+        "day": "Full day ({{from}}h–{{to}}h)"
+      }
+    },
+    "popup": {
+      "kicker": "Quick planning",
+      "newTitle": "New slot at {{time}}",
+      "editTitle": "Edit slot",
+      "type": "Activity type",
+      "titleLabel": "Slot title",
+      "prefillHint": "Suggested from the people concerned — type to change it.",
+      "completionHint": "Tab or Enter to complete: {{value}}",
+      "duration": "Duration",
+      "customTimes": "Exact times",
+      "notes": "Notes",
+      "submit": "Confirm slot"
+    },
+    "smartTitle": {
+      "oneOnOne": "1:1 with {{name}}",
+      "teamMeeting": "Team meeting",
+      "staffMeeting": "Staff meeting",
+      "vodReview": "VOD review",
+      "kind": {
+        "scrim": "Scrim BO3",
+        "flex": "Flex",
+        "tournament": "Official match",
+        "team_review": "VOD review",
+        "warmup_draft": "Warmup / draft",
+        "one_on_one": "1:1",
+        "meeting": "Team meeting",
+        "soloq_block": "SoloQ",
+        "rest": "Rest",
+        "other": ""
+      },
+      "suggestions": {
+        "scrim": [
+          "Scrim BO3",
+          "Scrim BO5",
+          "Scrim block"
+        ],
+        "flex": [
+          "Flex 5v5"
+        ],
+        "tournament": [
+          "Official match",
+          "Tournament"
+        ],
+        "team_review": [
+          "VOD review",
+          "VOD debrief"
+        ],
+        "warmup_draft": [
+          "Warmup / draft",
+          "Draft briefing"
+        ],
+        "one_on_one": [
+          "1:1"
+        ],
+        "meeting": [
+          "Team meeting",
+          "Staff meeting"
+        ],
+        "soloq_block": [
+          "SoloQ",
+          "SoloQ session"
+        ],
+        "rest": [
+          "Rest"
+        ],
+        "other": [
+          "Opponent analysis",
+          "Opponent scouting"
+        ]
+      }
+    }
   },
   "teamSession": {
     "notFound": "No team session found for this event — open it from Planning.",

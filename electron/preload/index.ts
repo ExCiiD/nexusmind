@@ -47,6 +47,7 @@ const api = {
   getProgressData: () => ipcRenderer.invoke('analytics:get-progress'),
   getSessionStats: () => ipcRenderer.invoke('analytics:get-session-stats'),
   getGameHistory: (limit?: number) => ipcRenderer.invoke('analytics:get-game-history', limit),
+  getNavBadges: () => ipcRenderer.invoke('nav:badges'),
   getKpiTimeline: () => ipcRenderer.invoke('analytics:get-kpi-timeline'),
 
   onGameEnd: (callback: (data: any) => void) => {

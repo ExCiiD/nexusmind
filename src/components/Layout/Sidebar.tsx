@@ -1,17 +1,14 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import {
   UserCircle,
   LayoutDashboard,
   Swords,
-  ClipboardCheck,
   TrendingUp,
   Flame,
   LogOut,
   ClipboardList,
-  BarChart3,
   Settings,
   Film,
-  Circle,
   FileSearch,
   RefreshCw,
   HelpCircle,
@@ -119,21 +116,58 @@ export function Sidebar() {
     }
   }
 
-  const navItems = [
-    { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
-    { to: '/profile', icon: UserCircle, label: t('nav.profile') },
-    { to: '/plan', icon: ListTodo, label: t('nav.plan') },
-    { to: '/session', icon: Swords, label: t('nav.session') },
-    { to: '/record', icon: Film, label: 'Record' },
-    { to: '/review', icon: FileSearch, label: t('nav.review') },
-    { to: '/history', icon: ClipboardList, label: t('nav.history') },
-    { to: '/stats', icon: BarChart3, label: t('nav.detailedStats') },
-    { to: '/stats/mistakes', icon: AlertTriangle, label: t('nav.mistakes', { defaultValue: 'Mistakes' }) },
-    { to: '/analytics', icon: TrendingUp, label: t('nav.analytics') },
-    { to: '/team', icon: Users, label: t('nav.team', { defaultValue: 'Team' }) },
-    { to: '/coaching', icon: GraduationCap, label: t('nav.coaching') },
-    { to: '/settings', icon: Settings, label: t('nav.settings') },
-    { to: '/help', icon: HelpCircle, label: t('nav.help') },
+  // Live badges (cheap local COUNTs), refreshed on every navigation and each minute.
+  const location = useLocation()
+  const [badges, setBadges] = useState<{ toReview: number; mistakes30d: number }>({ toReview: 0, mistakes30d: 0 })
+  useEffect(() => {
+    let alive = true
+    const load = () => window.api.getNavBadges?.().then((b) => { if (alive) setBadges(b) }).catch(() => {})
+    load()
+    const id = setInterval(load, 60_000)
+    return () => { alive = false; clearInterval(id) }
+  }, [location.pathname])
+
+  const planObjectives = (() => {
+    if (!activeSession) return 0
+    try { return (JSON.parse(activeSession.objectiveIds) as string[]).length } catch { return 1 }
+  })()
+
+  const path = location.pathname
+  const navGroups: NavGroup[] = [
+    {
+      id: 'practice',
+      items: [
+        { to: '/', icon: LayoutDashboard, label: t('nav.dashboard'), active: path === '/' },
+        { to: '/plan', icon: ListTodo, label: t('nav.plan'), badge: planObjectives > 0 ? { text: t('nav.objBadge', { count: planObjectives }), tone: 'dim' } : undefined },
+        { to: '/session', icon: Swords, label: t('nav.session'), dot: activeSession ? 'live' : undefined },
+        { to: '/record', icon: Film, label: t('nav.record'), status: isRecording ? 'rec' : user?.autoRecord ? 'auto' : undefined },
+        { to: '/review', icon: FileSearch, label: t('nav.review'), active: path.startsWith('/review') || path.startsWith('/external-review') || path === '/post-game-capture', badge: badges.toReview > 0 ? { text: String(badges.toReview), tone: 'strong' } : undefined },
+      ],
+    },
+    {
+      id: 'analysis',
+      items: [
+        { to: '/history', icon: ClipboardList, label: t('nav.history') },
+        // "Statistiques" covers the stats page, per-game stats, lane phase and fundamentals progression.
+        { to: '/stats', icon: TrendingUp, label: t('nav.statistics'), active: (path.startsWith('/stats') && !path.startsWith('/stats/mistakes')) || path.startsWith('/analytics') || path.startsWith('/lane-phase') },
+        { to: '/stats/mistakes', icon: AlertTriangle, label: t('nav.mistakeLab'), badge: badges.mistakes30d > 0 ? { text: String(badges.mistakes30d), tone: 'dim' } : undefined },
+      ],
+    },
+    {
+      id: 'team',
+      items: [
+        { to: '/team', icon: Users, label: t('nav.team', { defaultValue: 'Team' }), active: path.startsWith('/team') },
+        { to: '/coaching', icon: GraduationCap, label: t('nav.coaching') },
+      ],
+    },
+    {
+      id: 'account',
+      items: [
+        { to: '/profile', icon: UserCircle, label: t('nav.profile') },
+        { to: '/settings', icon: Settings, label: t('nav.settings') },
+        { to: '/help', icon: HelpCircle, label: t('nav.help') },
+      ],
+    },
   ]
 
   const handleDisconnect = async () => {
@@ -168,26 +202,18 @@ export function Sidebar() {
 
       {/* Scrolls on its own: on a short window the link list used to push the
           whole layout past 100vh and add a second, page-level scrollbar. */}
-      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {navItems.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-hextech-elevated text-hextech-gold-bright'
-                  : 'text-hextech-text hover:bg-hextech-elevated/50 hover:text-hextech-text-bright',
-              )
-            }
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-            {to === '/session' && activeSession && (
-              <span className="ml-auto h-2 w-2 rounded-full bg-hextech-green animate-pulse" />
-            )}
-          </NavLink>
+      <nav className="min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-4" aria-label={t('nav.label')}>
+        {navGroups.map((group, gi) => (
+          <div key={group.id}>
+            <p className="mb-1.5 px-3 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-hextech-text-dim">
+              {String(gi + 1).padStart(2, '0')} // {t(`nav.groups.${group.id}`)}
+            </p>
+            <ul className="space-y-0.5">
+              {group.items.map((item) => (
+                <li key={item.to}><SidebarLink item={item} /></li>
+              ))}
+            </ul>
+          </div>
         ))}
       </nav>
 
@@ -207,21 +233,6 @@ export function Sidebar() {
               <span>{user.streakDays} {user.streakDays === 1 ? t('sidebar.dayStreak') : t('sidebar.dayStreaks')}</span>
             </div>
           )}
-
-          {/* Fixed height avoids layout jump / “popup” flash when recording starts */}
-          <div className="min-h-[22px] flex items-center">
-            {isRecording ? (
-              <div className="flex items-center gap-1.5 text-xs text-[#E24C3A]">
-                <Circle className="h-2 w-2 fill-current animate-pulse" />
-                <span className="font-medium">Recording</span>
-              </div>
-            ) : user.autoRecord ? (
-              <div className="flex items-center gap-1.5 text-xs text-hextech-text-dim">
-                <Circle className="h-2 w-2" />
-                <span>Auto-record on</span>
-              </div>
-            ) : null}
-          </div>
 
           <SyncIndicator />
           <FeedbackButton />
@@ -257,5 +268,59 @@ export function Sidebar() {
         </div>
       )}
     </aside>
+  )
+}
+
+interface NavItem {
+  to: string
+  icon: typeof LayoutDashboard
+  label: string
+  /** Overrides NavLink's own matching (sections spanning several routes). */
+  active?: boolean
+  badge?: { text: string; tone: 'dim' | 'strong' }
+  dot?: 'live'
+  status?: 'rec' | 'auto'
+}
+interface NavGroup { id: 'practice' | 'analysis' | 'team' | 'account'; items: NavItem[] }
+
+function SidebarLink({ item }: { item: NavItem }) {
+  const { t } = useTranslation()
+  const Icon = item.icon
+  return (
+    <NavLink
+      to={item.to}
+      end={item.to === '/'}
+      className={({ isActive }) => {
+        const on = item.active ?? isActive
+        return cn(
+          'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+          on ? 'bg-hextech-elevated font-semibold text-hextech-gold-bright' : 'font-medium text-hextech-text hover:bg-hextech-elevated/50 hover:text-hextech-text-bright',
+        )
+      }}
+    >
+      {({ isActive }) => {
+        const on = item.active ?? isActive
+        return (
+          <>
+            {on && <span aria-hidden className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-hextech-gold" />}
+            <Icon className={cn('h-4 w-4 shrink-0', on ? 'text-hextech-gold' : '')} />
+            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+            {item.dot === 'live' && <span className="h-2 w-2 rounded-full bg-hextech-green animate-pulse" aria-label={t('nav.sessionLive')} />}
+            {item.status === 'rec' && (
+              <span className="flex items-center gap-1 font-mono text-[10px] font-bold text-hextech-red"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-hextech-red" />REC</span>
+            )}
+            {item.status === 'auto' && (
+              <span className="flex items-center gap-1 font-mono text-[10px] font-semibold text-hextech-green" title={t('nav.autoRecordTitle')}><span className="h-1.5 w-1.5 rounded-full bg-hextech-green" />AUTO</span>
+            )}
+            {item.badge && (
+              <span className={cn('rounded border px-1.5 py-px font-mono text-[10px]',
+                item.badge.tone === 'strong' ? 'border-hextech-text-bright font-bold text-hextech-text-bright' : 'border-hextech-border-dim text-hextech-text')}>
+                {item.badge.text}
+              </span>
+            )}
+          </>
+        )
+      }}
+    </NavLink>
   )
 }

@@ -12,7 +12,21 @@
     "mistakes": "Erreurs",
     "coaching": "Coaching",
     "plan": "Mon plan",
-    "profile": "Profil"
+    "profile": "Profil",
+    "label": "Navigation principale",
+    "groups": {
+      "practice": "Pratique",
+      "analysis": "Analyse & data",
+      "team": "Équipe & staff",
+      "account": "Compte & système"
+    },
+    "record": "Record",
+    "statistics": "Statistiques",
+    "mistakeLab": "Labo d’erreurs",
+    "objBadge_one": "{{count}} obj.",
+    "objBadge_other": "{{count}} obj.",
+    "sessionLive": "Session en cours",
+    "autoRecordTitle": "Enregistrement automatique activé"
   },
   "settings": {
     "title": "Paramètres",
@@ -624,7 +638,8 @@
       "vision": "Vision",
       "objectives": "Objectifs"
     },
-    "seriesReset": "Revenir aux courbes par défaut"
+    "seriesReset": "Revenir aux courbes par défaut",
+    "fundamentalsLink": "Progression des fondamentaux →"
   },
   "detailedStats": {
     "pageTitle": "Stats détaillées",
@@ -1269,7 +1284,9 @@
     "create": "Créer",
     "delete": "Supprimer",
     "loading": "Chargement…",
-    "close": "Fermer"
+    "close": "Fermer",
+    "yes": "oui",
+    "no": "non"
   },
   "discussion": {
     "title": "Discussion",
@@ -1907,7 +1924,8 @@
       "other": "Autre",
       "scrim": "Scrim",
       "flex": "Flex",
-      "meeting": "Réunion"
+      "meeting": "Réunion",
+      "warmup_draft": "Warmup / draft"
     },
     "commonFree": "Quand tous les titulaires sont dispo",
     "noStarters": "Aucun titulaire avec un compte lié dans le roster publié pour l'instant.",
@@ -1944,7 +1962,106 @@
     "liveSyncHint": "Colle cette URL dans Google/Apple/Outlook « s'abonner par URL » — elle se met à jour toute seule.",
     "liveSyncCopied": "Lien copié",
     "regenerateLiveSync": "Révoquer et régénérer",
-    "openTeamSession": "Ouvrir la session d'équipe"
+    "openTeamSession": "Ouvrir la session d'équipe",
+    "tag": {
+      "scrim": "Scrim BO3",
+      "flex": "Flex",
+      "tournament": "Officiel",
+      "team_review": "Review VOD",
+      "warmup_draft": "Warmup / draft",
+      "one_on_one": "1:1",
+      "meeting": "Réunion",
+      "soloq_block": "SoloQ",
+      "rest": "Repos",
+      "other": "Autre"
+    },
+    "grid": {
+      "today": "AUJ.",
+      "dayAvail": "{{free}}/{{total}} dispo",
+      "free": "DISPO",
+      "railHint": "Ta dispo : glisse dans cette bande pour marquer un créneau libre",
+      "removeAvail": "Disponible — clique pour retirer",
+      "week": "Semaine #{{n}}",
+      "prevWeek": "Semaine précédente",
+      "nextWeek": "Semaine suivante",
+      "todayAvail": "Dispo {{free}}/{{total}} titulaires :",
+      "hours": "Plage horaire",
+      "mode": {
+        "esport": "Heures esport ({{from}}h–{{to}}h)",
+        "day": "Journée ({{from}}h–{{to}}h)"
+      }
+    },
+    "popup": {
+      "kicker": "Planification rapide",
+      "newTitle": "Nouveau créneau à {{time}}",
+      "editTitle": "Modifier le créneau",
+      "type": "Type d’activité",
+      "titleLabel": "Intitulé du créneau",
+      "prefillHint": "Proposé d’après les personnes concernées — tape pour le changer.",
+      "completionHint": "Tab ou Entrée pour compléter : {{value}}",
+      "duration": "Durée",
+      "customTimes": "Horaires précis",
+      "notes": "Notes",
+      "submit": "Valider le créneau"
+    },
+    "smartTitle": {
+      "oneOnOne": "1:1 avec {{name}}",
+      "teamMeeting": "Réunion d’équipe",
+      "staffMeeting": "Réunion staff",
+      "vodReview": "Review VOD",
+      "kind": {
+        "scrim": "Scrim BO3",
+        "flex": "Flex",
+        "tournament": "Match officiel",
+        "team_review": "Review VOD",
+        "warmup_draft": "Warmup / draft",
+        "one_on_one": "1:1",
+        "meeting": "Réunion d’équipe",
+        "soloq_block": "SoloQ",
+        "rest": "Repos",
+        "other": ""
+      },
+      "suggestions": {
+        "scrim": [
+          "Scrim BO3",
+          "Scrim BO5",
+          "Scrim bloc"
+        ],
+        "flex": [
+          "Flex 5v5"
+        ],
+        "tournament": [
+          "Match officiel",
+          "Tournoi"
+        ],
+        "team_review": [
+          "Review VOD",
+          "Débrief VOD"
+        ],
+        "warmup_draft": [
+          "Warmup / draft",
+          "Briefing draft"
+        ],
+        "one_on_one": [
+          "1:1"
+        ],
+        "meeting": [
+          "Réunion d’équipe",
+          "Réunion staff"
+        ],
+        "soloq_block": [
+          "SoloQ",
+          "Session SoloQ"
+        ],
+        "rest": [
+          "Repos"
+        ],
+        "other": [
+          "Analyse adversaire",
+          "Scouting adversaire"
+        ]
+      }
+    }
   },
   "teamSession": {
     "notFound": "Aucune session d'équipe trouvée pour cet événement — ouvre-la depuis Planning.",

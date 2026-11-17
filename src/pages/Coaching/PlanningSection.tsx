@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CalendarDays, Copy, Download, Link2, Loader2, RotateCw, Users } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Copy, Download, Link2, Loader2, RotateCw, Users } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +10,9 @@ import { canEditCalendar as canEditCalendarRole } from '@/lib/permissions'
 import { eventsToICS, type AvailabilityException, type AvailabilityRule, type CalendarEvent, type CalendarSubscription, type CommonFreeWindow } from '@/lib/calendar'
 import { findCommonAvailability } from '@/lib/calendarCore'
 import type { ScrimSummary } from '@/lib/scrims'
-import { WeekGrid, type HourRange } from '@/components/Planning/WeekGrid'
+import { WeekGrid, GRID_MODES, type GridMode, type HourRange } from '@/components/Planning/WeekGrid'
+import { availableAnyTime, localDateKey } from '@/lib/planningView'
+import { cn } from '@/lib/utils'
 import { EventPopup } from '@/components/Planning/EventPopup'
 import { RequestEventDialog } from '@/components/Planning/RequestEventDialog'
 import { EventRequestsQueue } from '@/components/Planning/EventRequestsQueue'
@@ -24,7 +26,17 @@ function startOfWeek(d: Date): Date {
   out.setHours(0, 0, 0, 0)
   return out
 }
-const toDateKey = (d: Date) => d.toISOString().slice(0, 10)
+// Local calendar day (see localDateKey): the week is shown in the viewer's timezone.
+const toDateKey = localDateKey
+/** ISO-8601 week number (weeks start Monday; week 1 holds Jan 4th). */
+function isoWeek(d: Date): number {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  const day = t.getUTCDay() || 7
+  t.setUTCDate(t.getUTCDate() + 4 - day)
+  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1))
+  return Math.ceil(((t.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7)
+}
+const MODE_KEY = 'ascend_planning_mode'
 const toTimeKey = (h: number) => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`
 
 interface Props { groups: Group[]; myUserId: string; nameOf: (userId: string) => string }
@@ -47,6 +59,8 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
   const [starterIds, setStarterIds] = useState<string[]>([])
   const [creatingRange, setCreatingRange] = useState<HourRange | null>(null)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
+  const [mode, setModeState] = useState<GridMode>(() => { try { return localStorage.getItem(MODE_KEY) === 'day' ? 'day' : 'esport' } catch { return 'esport' } })
+  const setMode = (m: GridMode) => { setModeState(m); try { localStorage.setItem(MODE_KEY, m) } catch { /* per-device preference */ } }
 
   const weekEnd = useMemo(() => { const d = new Date(weekStart); d.setDate(d.getDate() + 7); return d }, [weekStart])
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d }), [weekStart])
@@ -155,13 +169,16 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
       <CardContent className="space-y-4">
         {groupId && <AnnouncementsCard groupId={groupId} canEdit={canEdit} nameOf={nameOf} />}
 
-        <div className="flex items-center justify-between">
-          <Button size="sm" variant="outline" onClick={() => setWeekStart((w) => { const d = new Date(w); d.setDate(d.getDate() - 7); return d })}>←</Button>
-          <span className="text-sm text-hextech-text-dim">
-            {weekStart.toLocaleDateString(i18n.language)} – {days[6].toLocaleDateString(i18n.language)}
-          </span>
-          <Button size="sm" variant="outline" onClick={() => setWeekStart((w) => { const d = new Date(w); d.setDate(d.getDate() + 7); return d })}>→</Button>
-        </div>
+        <WeekHeader
+          weekStart={weekStart}
+          lastDay={days[6]}
+          locale={i18n.language}
+          onShift={(delta) => setWeekStart((w) => { const d = new Date(w); d.setDate(d.getDate() + 7 * delta); return d })}
+          todayFree={starterIds.length ? availableAnyTime(rules, exceptions, starterIds, toDateKey(new Date())) : null}
+          starters={starterIds.length}
+          mode={mode}
+          onMode={setMode}
+        />
 
         {canEdit && groupId && <EventRequestsQueue groupId={groupId} nameOf={nameOf} />}
 
@@ -170,8 +187,13 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
         ) : (
           <WeekGrid
             days={days}
+            mode={mode}
             events={events}
             scrims={scrims}
+            rules={rules}
+            exceptions={exceptions}
+            starterIds={starterIds}
+            commonFree={commonFree}
             myAvailabilityExceptions={myExceptions}
             canEditCalendar={canEdit}
             onSelectEventRange={setCreatingRange}
@@ -187,6 +209,7 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
             members={group?.members ?? []}
             myUserId={myUserId}
             scrims={scrims}
+            recentTitles={[...new Set((events ?? []).map((e) => e.title))]}
             initialRange={creatingRange}
             editingEvent={editingEvent}
             canDelete={canEdit}
@@ -215,6 +238,49 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+/** Week navigation + "today: are all starters available?" + hours mode. */
+function WeekHeader({ weekStart, lastDay, locale, onShift, todayFree, starters, mode, onMode }: {
+  weekStart: Date
+  lastDay: Date
+  locale: string
+  onShift: (delta: number) => void
+  todayFree: number | null
+  starters: number
+  mode: GridMode
+  onMode: (m: GridMode) => void
+}) {
+  const { t } = useTranslation()
+  const fmt = (d: Date) => d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase()
+  const allFree = todayFree !== null && todayFree === starters
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => onShift(-1)} aria-label={t('planning.grid.prevWeek')}><ChevronLeft className="h-4 w-4" /></Button>
+        <div className="text-center">
+          <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-hextech-gold">{t('planning.grid.week', { n: isoWeek(weekStart) })}</p>
+          <p className="font-condensed text-2xl font-extrabold uppercase leading-tight text-hextech-text-bright">{fmt(weekStart)} – {fmt(lastDay)}</p>
+        </div>
+        <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => onShift(1)} aria-label={t('planning.grid.nextWeek')}><ChevronRight className="h-4 w-4" /></Button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {todayFree !== null && (
+          <span className={cn('flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 font-mono text-[11px] uppercase', allFree ? 'border-hextech-green/40 bg-hextech-green/10 text-hextech-green' : 'border-amber-400/40 bg-amber-400/10 text-amber-300')}>
+            <Users className="h-3.5 w-3.5" />{t('planning.grid.todayAvail', { free: todayFree, total: starters })} {allFree ? t('common.yes', { defaultValue: 'oui' }) : t('common.no', { defaultValue: 'non' })}
+          </span>
+        )}
+        <div className="flex rounded-lg border border-hextech-border-dim p-0.5" role="group" aria-label={t('planning.grid.hours')}>
+          {(Object.keys(GRID_MODES) as GridMode[]).map((m) => (
+            <button key={m} onClick={() => onMode(m)} aria-pressed={mode === m}
+              className={cn('rounded-md px-3 py-1.5 font-mono text-[11px] font-semibold uppercase', mode === m ? 'bg-hextech-gold text-hextech-black' : 'text-hextech-text-bright hover:bg-hextech-elevated')}>
+              {t(`planning.grid.mode.${m}`, { from: String(GRID_MODES[m].start).padStart(2, '0'), to: GRID_MODES[m].end - 1 })}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
 

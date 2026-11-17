@@ -1,44 +1,42 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { X } from 'lucide-react'
+import { X, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { AvailabilityException, CalendarEvent } from '@/lib/calendar'
+import type { AvailabilityException, AvailabilityRule, CalendarEvent, CommonFreeWindow } from '@/lib/calendar'
 import type { ScrimSummary } from '@/lib/scrims'
-
-export const HOUR_START = 8
-export const HOUR_END = 24
-const ROW_HEIGHT = 32 // px per hour
-const RAIL_WIDTH = 16 // px, the per-day "my availability" rail
+import { KIND_STYLE, availableAnyTime, availableCount, localDateKey } from '@/lib/planningView'
 
 export interface HourRange { day: Date; startHour: number; endHour: number }
 
-const toDateKey = (d: Date) => d.toISOString().slice(0, 10)
-const clampHour = (h: number) => Math.min(HOUR_END, Math.max(HOUR_START, h))
-
-const KIND_COLOR: Record<CalendarEvent['kind'], string> = {
-  tournament: 'bg-hextech-gold/25 border-hextech-gold/60 text-hextech-gold-bright',
-  scrim: 'bg-emerald-500/20 border-emerald-500/60 text-emerald-200',
-  flex: 'bg-cyan-500/20 border-cyan-500/60 text-cyan-200',
-  team_review: 'bg-purple-500/20 border-purple-500/60 text-purple-200',
-  one_on_one: 'bg-blue-500/20 border-blue-500/60 text-blue-200',
-  meeting: 'bg-orange-500/20 border-orange-500/60 text-orange-200',
-  soloq_block: 'bg-zinc-500/20 border-zinc-500/60 text-zinc-200',
-  rest: 'bg-zinc-700/30 border-zinc-600/50 text-zinc-300',
-  other: 'bg-hextech-elevated border-hextech-border-dim text-hextech-text',
+/** "Esport hours" (16h–24h, taller rows) vs the full day (08h–24h). */
+export type GridMode = 'esport' | 'day'
+export const GRID_MODES: Record<GridMode, { start: number; end: number; rowHeight: number }> = {
+  esport: { start: 16, end: 24, rowHeight: 56 },
+  day: { start: 8, end: 24, rowHeight: 36 },
 }
+const RAIL_WIDTH = 12 // px, the per-day "my availability" rail
+
+const toDateKey = localDateKey
+const minutesOf = (iso: string) => { const d = new Date(iso); return d.getHours() * 60 + d.getMinutes() }
+const hhmm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`
+const shortH = (min: number) => `${Math.floor(min / 60)}h${min % 60 ? String(min % 60).padStart(2, '0') : ''}`
 
 /**
- * Google-Calendar-style hour grid (Phase 1, docs/PLAN_GESTION_EQUIPE.md §9).
- * Two independent drag surfaces per day column: the wide main lane (team
- * events) and a narrow side rail (the viewer's own availability) — kept as
- * physically separate hit areas so a drag is never ambiguous between the
- * two, rather than a mode toggle. Whole-hour snapping on drag; the popup
- * that opens afterward lets the user fine-tune the exact time.
+ * Week planning grid (redesign 17/11/2026, PLAN_GESTION_EQUIPE §9). Two
+ * drag surfaces per day: the main lane (team events, staff only) and a thin
+ * right rail (your own availability). Common-availability windows of the
+ * starters are shaded behind the events; each event shows how many of its
+ * attendees are free at that time.
  */
 interface Props {
   days: Date[]
+  mode: GridMode
   events: CalendarEvent[]
   scrims: ScrimSummary[]
+  rules: AvailabilityRule[]
+  exceptions: AvailabilityException[]
+  starterIds: string[]
+  commonFree: CommonFreeWindow[]
   myAvailabilityExceptions: AvailabilityException[]
   canEditCalendar: boolean
   onSelectEventRange: (range: HourRange) => void
@@ -48,36 +46,36 @@ interface Props {
 }
 
 export function WeekGrid({
-  days, events, scrims, myAvailabilityExceptions, canEditCalendar,
+  days, mode, events, scrims, rules, exceptions, starterIds, commonFree, myAvailabilityExceptions, canEditCalendar,
   onSelectEventRange, onSelectAvailabilityRange, onRemoveAvailabilityException, onEventClick,
 }: Props) {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const { start: HOUR_START, end: HOUR_END, rowHeight: ROW } = GRID_MODES[mode]
   const columnRefs = useRef<Array<HTMLDivElement | null>>([])
   const [drag, setDrag] = useState<{ dayIndex: number; lane: 'event' | 'availability'; startHour: number; endHour: number } | null>(null)
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => { const id = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(id) }, [])
 
+  const clampHour = useCallback((h: number) => Math.min(HOUR_END, Math.max(HOUR_START, h)), [HOUR_START, HOUR_END])
   const hourAt = useCallback((dayIndex: number, clientY: number): number => {
     const el = columnRefs.current[dayIndex]
     if (!el) return HOUR_START
     const rect = el.getBoundingClientRect()
-    const hour = HOUR_START + (clientY - rect.top) / ROW_HEIGHT
-    return clampHour(Math.round(hour))
-  }, [])
+    return clampHour(Math.round(HOUR_START + (clientY - rect.top) / ROW))
+  }, [HOUR_START, ROW, clampHour])
 
   const beginDrag = (dayIndex: number, lane: 'event' | 'availability') => (e: React.MouseEvent) => {
     if (lane === 'event' && !canEditCalendar) return
     e.preventDefault()
     const hour = hourAt(dayIndex, e.clientY)
     setDrag({ dayIndex, lane, startHour: hour, endHour: hour })
-
-    const onMove = (ev: MouseEvent) => {
-      setDrag((prev) => (prev ? { ...prev, endHour: hourAt(dayIndex, ev.clientY) } : prev))
-    }
+    const onMove = (ev: MouseEvent) => setDrag((prev) => (prev ? { ...prev, endHour: hourAt(dayIndex, ev.clientY) } : prev))
     const onUp = (ev: MouseEvent) => {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
       const endHour = hourAt(dayIndex, ev.clientY)
       const start = Math.min(hour, endHour)
-      const end = Math.max(hour, endHour, start + 1)
+      const end = Math.min(HOUR_END, Math.max(hour, endHour, start + 1))
       const range: HourRange = { day: days[dayIndex], startHour: start, endHour: end }
       if (lane === 'event') onSelectEventRange(range)
       else onSelectAvailabilityRange(range)
@@ -88,118 +86,187 @@ export function WeekGrid({
   }
 
   const hours = Array.from({ length: HOUR_END - HOUR_START }, (_, i) => HOUR_START + i)
-  const gridHeight = hours.length * ROW_HEIGHT
+  const gridHeight = hours.length * ROW
+  const top = (min: number) => (min / 60 - HOUR_START) * ROW
+  const visible = (startMin: number) => startMin / 60 >= HOUR_START && startMin / 60 < HOUR_END
+  const todayKey = toDateKey(now)
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+  const showNow = days.some((d) => toDateKey(d) === todayKey) && visible(nowMin)
+  const total = starterIds.length
+  const offset = -now.getTimezoneOffset() / 60
+  const tzLabel = `UTC${offset >= 0 ? '+' : ''}${offset}`
 
   return (
-    <div className="flex overflow-x-auto rounded-lg border border-hextech-border-dim">
-      {/* Time labels */}
-      <div className="shrink-0" style={{ width: 44 }}>
-        <div className="h-8 border-b border-hextech-border-dim" />
-        {hours.map((h) => (
-          <div key={h} className="flex items-start justify-end border-b border-hextech-border-dim/40 pr-1 text-[10px] text-hextech-text-dim" style={{ height: ROW_HEIGHT }}>
-            {String(h).padStart(2, '0')}:00
+    <div className="overflow-x-auto rounded-xl border border-hextech-border-dim bg-hextech-black/60">
+      <div className="flex min-w-[860px]">
+        {/* Time column */}
+        <div className="relative shrink-0 border-r border-hextech-border-dim" style={{ width: 64 }}>
+          <div className="flex h-14 items-end justify-center border-b border-hextech-border-dim pb-2 font-mono text-[10px] text-hextech-text-dim">{tzLabel}</div>
+          <div className="relative" style={{ height: gridHeight }}>
+            {hours.map((h) => (
+              <div key={h} className="flex justify-center border-b border-hextech-border-dim/40 pt-1 font-mono text-[11px] text-hextech-text" style={{ height: ROW }}>
+                {String(h).padStart(2, '0')}:00
+              </div>
+            ))}
+            {showNow && (
+              <span className="absolute left-1 z-20 -translate-y-1/2 rounded bg-hextech-red px-1 font-mono text-[10px] font-bold text-white" style={{ top: top(nowMin) }}>
+                {hhmm(nowMin)}
+              </span>
+            )}
           </div>
-        ))}
+        </div>
+
+        {days.map((day, dayIndex) => {
+          const key = toDateKey(day)
+          const isToday = key === todayKey
+          const dayEvents = events.filter((e) => toDateKey(new Date(e.startsAt)) === key)
+          const dayScrims = scrims.filter((s) => toDateKey(new Date(s.scheduledAt)) === key)
+          const dayFree = commonFree.filter((w) => w.date === key)
+          const dayExceptions = myAvailabilityExceptions.filter((ex) => ex.date === key && ex.available)
+          const free = total ? availableAnyTime(rules, exceptions, starterIds, key) : 0
+          const isDraggingHere = drag?.dayIndex === dayIndex
+          const draftStart = isDraggingHere ? Math.min(drag.startHour, drag.endHour) : null
+          const draftEnd = isDraggingHere ? Math.max(drag.startHour, drag.endHour, (draftStart ?? 0) + 1) : null
+
+          return (
+            <div key={key} className={cn('min-w-[110px] flex-1 border-r border-hextech-border-dim/60 last:border-r-0', isToday && 'bg-hextech-gold/[0.03]')}>
+              {/* Day header */}
+              <div className="flex h-14 flex-col items-center justify-center gap-1 border-b border-hextech-border-dim">
+                <div className={cn('flex items-center gap-1.5 font-condensed text-base font-extrabold uppercase tracking-wide', isToday ? 'text-hextech-gold' : 'text-hextech-text-bright')}>
+                  {day.toLocaleDateString(i18n.language, { weekday: 'short' }).replace('.', '')} {day.getDate()}
+                  {isToday && <span className="rounded bg-hextech-gold px-1 font-mono text-[9px] font-bold text-hextech-black">{t('planning.grid.today')}</span>}
+                </div>
+                {total > 0 && (
+                  <span className={cn('rounded px-1.5 font-mono text-[10px]', free === total ? 'bg-hextech-green/20 text-hextech-green' : 'text-hextech-text-dim')}>
+                    {t('planning.grid.dayAvail', { free, total })}
+                  </span>
+                )}
+              </div>
+
+              <div className="relative flex" style={{ height: gridHeight }}>
+                <div
+                  ref={(el) => { columnRefs.current[dayIndex] = el }}
+                  className={cn('relative flex-1', canEditCalendar && 'cursor-cell')}
+                  onMouseDown={beginDrag(dayIndex, 'event')}
+                >
+                  {hours.map((h) => <div key={h} className="border-b border-hextech-border-dim/30" style={{ height: ROW }} />)}
+
+                  {/* Every starter free: shaded zone behind events */}
+                  {dayFree.map((w, i) => {
+                    const s = Math.max(Number(w.startTime.slice(0, 2)) * 60 + Number(w.startTime.slice(3, 5)), HOUR_START * 60)
+                    const e = Math.min(Number(w.endTime.slice(0, 2)) * 60 + Number(w.endTime.slice(3, 5)), HOUR_END * 60)
+                    if (e <= s) return null
+                    return (
+                      <div key={i} className="pointer-events-none absolute inset-x-0 border-y border-hextech-green/15 bg-hextech-green/[0.10] px-1.5 pt-1 font-mono text-[10px] leading-tight text-hextech-green/80" style={{ top: top(s), height: ((e - s) / 60) * ROW }}>
+                        {total}/{total}<br />{t('planning.grid.free')}
+                      </div>
+                    )
+                  })}
+
+                  {dayScrims.map((s) => {
+                    const startMin = minutesOf(s.scheduledAt)
+                    if (!visible(startMin)) return null
+                    return (
+                      <EventCard key={`scrim-${s.id}`} accent={KIND_STYLE.scrim.accent} tag={t('planning.tag.scrim')}
+                        time={`${shortH(startMin)}–${shortH(startMin + s.durationMin)}`} title={s.opponent ? `${s.title} vs ${s.opponent}` : s.title}
+                        top={top(startMin)} height={(s.durationMin / 60) * ROW} />
+                    )
+                  })}
+
+                  {dayEvents.map((e) => {
+                    const startMin = minutesOf(e.startsAt)
+                    if (!visible(startMin)) return null
+                    const durMin = (new Date(e.endsAt).getTime() - new Date(e.startsAt).getTime()) / 60000
+                    const att = e.attendeeUserIds.length
+                    const freeAtt = att ? availableCount(rules, exceptions, e.attendeeUserIds, key, startMin, startMin + Math.min(durMin, 60)) : 0
+                    return (
+                      <EventCard key={e.id} accent={(KIND_STYLE[e.kind] ?? KIND_STYLE.other).accent} tag={t(`planning.tag.${e.kind}`, { defaultValue: e.kind })}
+                        time={`${shortH(startMin)}–${shortH(startMin + durMin)}`} title={e.title} notes={e.notes}
+                        attendance={att ? { free: freeAtt, total: att } : undefined}
+                        top={top(startMin)} height={(durMin / 60) * ROW} onClick={() => onEventClick(e)} />
+                    )
+                  })}
+
+                  {isDraggingHere && drag.lane === 'event' && draftStart !== null && draftEnd !== null && (
+                    <div className="pointer-events-none absolute inset-x-1 rounded-md border-2 border-dashed border-hextech-gold bg-hextech-gold/15"
+                      style={{ top: (draftStart - HOUR_START) * ROW, height: (draftEnd - draftStart) * ROW }} />
+                  )}
+                </div>
+
+                {/* My availability rail */}
+                <div
+                  className="relative shrink-0 cursor-pointer border-l border-hextech-border-dim/40 bg-black/20 hover:bg-hextech-green/5"
+                  style={{ width: RAIL_WIDTH }}
+                  title={t('planning.grid.railHint')}
+                  onMouseDown={beginDrag(dayIndex, 'availability')}
+                >
+                  {dayExceptions.map((ex) => {
+                    const s = ex.startTime ? Number(ex.startTime.slice(0, 2)) + Number(ex.startTime.slice(3, 5)) / 60 : HOUR_START
+                    const en = ex.endTime ? Number(ex.endTime.slice(0, 2)) + Number(ex.endTime.slice(3, 5)) / 60 : HOUR_END
+                    return (
+                      <button key={ex.id} title={t('planning.grid.removeAvail')}
+                        onMouseDown={(ev) => ev.stopPropagation()}
+                        onClick={(ev) => { ev.stopPropagation(); onRemoveAvailabilityException(ex.id) }}
+                        className="group absolute inset-x-0 flex items-center justify-center rounded-sm border border-hextech-green/60 bg-hextech-green/30 hover:bg-hextech-red/40"
+                        style={{ top: (clampHour(s) - HOUR_START) * ROW, height: Math.max((clampHour(en) - clampHour(s)) * ROW, 8) }}>
+                        <X className="hidden h-2.5 w-2.5 text-white group-hover:block" />
+                      </button>
+                    )
+                  })}
+                  {isDraggingHere && drag.lane === 'availability' && draftStart !== null && draftEnd !== null && (
+                    <div className="pointer-events-none absolute inset-x-0 rounded-sm border-2 border-dashed border-hextech-green bg-hextech-green/20"
+                      style={{ top: (draftStart - HOUR_START) * ROW, height: (draftEnd - draftStart) * ROW }} />
+                  )}
+                </div>
+
+                {/* Current time line */}
+                {showNow && <div className="pointer-events-none absolute inset-x-0 z-10 h-px bg-hextech-red" style={{ top: top(nowMin) }} />}
+              </div>
+            </div>
+          )
+        })}
       </div>
-
-      {days.map((day, dayIndex) => {
-        const key = toDateKey(day)
-        const dayEvents = events.filter((e) => e.startsAt.slice(0, 10) === key)
-        const dayScrims = scrims.filter((s) => s.scheduledAt.slice(0, 10) === key)
-        const dayExceptions = myAvailabilityExceptions.filter((ex) => ex.date === key && ex.available)
-        const isDraggingHere = drag?.dayIndex === dayIndex
-        const draftStart = isDraggingHere ? Math.min(drag.startHour, drag.endHour) : null
-        const draftEnd = isDraggingHere ? Math.max(drag.startHour, drag.endHour, (draftStart ?? 0) + 1) : null
-
-        return (
-          <div key={key} className="flex-1 min-w-[120px] border-l border-hextech-border-dim">
-            <div className="flex h-8 items-center justify-center border-b border-hextech-border-dim text-[11px] font-semibold uppercase tracking-wide text-hextech-text-dim">
-              {day.toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric' })}
-            </div>
-            <div className="relative flex" style={{ height: gridHeight }}>
-              {/* Main lane: team events */}
-              <div
-                ref={(el) => { columnRefs.current[dayIndex] = el }}
-                className={cn('relative flex-1', canEditCalendar && 'cursor-pointer')}
-                onMouseDown={beginDrag(dayIndex, 'event')}
-              >
-                {hours.map((h) => (
-                  <div key={h} className="border-b border-hextech-border-dim/30" style={{ height: ROW_HEIGHT }} />
-                ))}
-                {dayScrims.map((s) => {
-                  const start = new Date(s.scheduledAt).getHours() + new Date(s.scheduledAt).getMinutes() / 60
-                  const durH = s.durationMin / 60
-                  if (start < HOUR_START || start >= HOUR_END) return null
-                  return (
-                    <div
-                      key={`scrim-${s.id}`}
-                      title={`${s.title}${s.opponent ? ` vs ${s.opponent}` : ''}`}
-                      className="absolute left-0.5 right-0.5 overflow-hidden rounded border border-emerald-500/60 bg-emerald-500/20 px-1 py-0.5 text-[10px] text-emerald-200"
-                      style={{ top: (start - HOUR_START) * ROW_HEIGHT, height: Math.max(ROW_HEIGHT * durH, 16) }}
-                    >
-                      {s.title}{s.opponent ? ` vs ${s.opponent}` : ''}
-                    </div>
-                  )
-                })}
-                {dayEvents.map((e) => {
-                  const startDate = new Date(e.startsAt)
-                  const start = startDate.getHours() + startDate.getMinutes() / 60
-                  const durH = (new Date(e.endsAt).getTime() - startDate.getTime()) / 3_600_000
-                  if (start < HOUR_START || start >= HOUR_END) return null
-                  return (
-                    <button
-                      key={e.id}
-                      title={e.title}
-                      onMouseDown={(ev) => ev.stopPropagation()}
-                      onClick={(ev) => { ev.stopPropagation(); onEventClick(e) }}
-                      className={cn('absolute left-0.5 right-0.5 overflow-hidden rounded border px-1 py-0.5 text-left text-[10px]', KIND_COLOR[e.kind])}
-                      style={{ top: (start - HOUR_START) * ROW_HEIGHT, height: Math.max(ROW_HEIGHT * durH, 16) }}
-                    >
-                      {e.title}
-                    </button>
-                  )
-                })}
-                {isDraggingHere && drag.lane === 'event' && draftStart !== null && draftEnd !== null && (
-                  <div
-                    className="pointer-events-none absolute left-0.5 right-0.5 rounded border-2 border-dashed border-hextech-gold bg-hextech-gold/15"
-                    style={{ top: (draftStart - HOUR_START) * ROW_HEIGHT, height: (draftEnd - draftStart) * ROW_HEIGHT }}
-                  />
-                )}
-              </div>
-
-              {/* Availability rail: the viewer's own, click-drag to mark free */}
-              <div
-                className="relative shrink-0 cursor-pointer border-l border-hextech-border-dim/50 bg-black/10"
-                style={{ width: RAIL_WIDTH }}
-                onMouseDown={beginDrag(dayIndex, 'availability')}
-              >
-                {dayExceptions.map((ex) => {
-                  const start = ex.startTime ? Number(ex.startTime.slice(0, 2)) + Number(ex.startTime.slice(3, 5)) / 60 : HOUR_START
-                  const end = ex.endTime ? Number(ex.endTime.slice(0, 2)) + Number(ex.endTime.slice(3, 5)) / 60 : HOUR_END
-                  return (
-                    <button
-                      key={ex.id}
-                      title="Available — click to remove"
-                      onMouseDown={(ev) => ev.stopPropagation()}
-                      onClick={(ev) => { ev.stopPropagation(); onRemoveAvailabilityException(ex.id) }}
-                      className="group absolute inset-x-0 flex items-center justify-center rounded-sm border border-hextech-green/60 bg-hextech-green/30 hover:bg-[#E24C3A]/40"
-                      style={{ top: (clampHour(start) - HOUR_START) * ROW_HEIGHT, height: Math.max((clampHour(end) - clampHour(start)) * ROW_HEIGHT, 8) }}
-                    >
-                      <X className="hidden h-2.5 w-2.5 text-white group-hover:block" />
-                    </button>
-                  )
-                })}
-                {isDraggingHere && drag.lane === 'availability' && draftStart !== null && draftEnd !== null && (
-                  <div
-                    className="pointer-events-none absolute inset-x-0 rounded-sm border-2 border-dashed border-hextech-green bg-hextech-green/20"
-                    style={{ top: (draftStart - HOUR_START) * ROW_HEIGHT, height: (draftEnd - draftStart) * ROW_HEIGHT }}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        )
-      })}
     </div>
+  )
+}
+
+function EventCard({ accent, tag, time, title, notes, attendance, top, height, onClick }: {
+  accent: string
+  tag: string
+  time: string
+  title: string
+  notes?: string | null
+  attendance?: { free: number; total: number }
+  top: number
+  height: number
+  onClick?: () => void
+}) {
+  const h = Math.max(height, 26)
+  const roomy = h >= 84
+  const Tag = onClick ? 'button' : 'div'
+  return (
+    <Tag
+      title={title}
+      onMouseDown={(ev: React.MouseEvent) => ev.stopPropagation()}
+      onClick={onClick ? (ev: React.MouseEvent) => { ev.stopPropagation(); onClick() } : undefined}
+      className="absolute inset-x-1 z-[5] flex flex-col overflow-hidden rounded-md border border-l-[3px] px-2 py-1.5 text-left shadow-md transition-[filter] hover:brightness-125"
+      style={{ top: top + 1, height: h - 2, borderColor: `${accent}55`, borderLeftColor: accent, backgroundColor: `color-mix(in srgb, ${accent} 16%, var(--hextech-dark))` }}
+    >
+      <div className="flex items-start justify-between gap-1">
+        <span className={cn('max-w-[64%] rounded border px-1 font-mono text-[9px] font-semibold uppercase leading-[1.25] tracking-wide', !roomy && 'truncate')} style={{ borderColor: `${accent}66`, color: accent }}>{tag}</span>
+        <span className="shrink-0 font-mono text-[10px] font-bold text-hextech-text-bright">{time}</span>
+      </div>
+      <p className={cn('mt-1 font-condensed font-extrabold uppercase leading-[1.05] text-hextech-text-bright', roomy ? 'line-clamp-2 text-[15px]' : 'line-clamp-1 text-[13px]')}>{title}</p>
+      {roomy && (notes || attendance) && (
+        <div className="mt-auto flex items-center justify-between gap-1 border-t border-white/10 pt-1 text-[10px]">
+          <span className="min-w-0 truncate text-hextech-text">{notes}</span>
+          {attendance && (
+            <span className={cn('flex shrink-0 items-center gap-0.5 font-mono font-semibold', attendance.free === attendance.total ? 'text-hextech-green' : 'text-amber-300')}>
+              {attendance.free}/{attendance.total}{attendance.free === attendance.total && <Check className="h-3 w-3" />}
+            </span>
+          )}
+        </div>
+      )}
+    </Tag>
   )
 }
