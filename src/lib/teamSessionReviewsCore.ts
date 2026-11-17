@@ -118,3 +118,85 @@ export function isReviewReopenable(review: TeamSessionReview): boolean {
 export function isReviewDone(review: TeamSessionReview | null | undefined): boolean {
   return review?.status === 'done'
 }
+
+// ── End-of-game flow (17/11/2026) ──────────────────────────────────────
+
+/** Games a session responsible hasn't decided on yet, for the global
+ *  end-of-game prompt. Unlike `gamesNeedingReviewPrompt` this doesn't wait
+ *  for the match to be fetched: the coach usually isn't on the session page
+ *  (players' clients report the game), and the question "review it now?"
+ *  only needs to know a game ended. `dismissed` = games the user closed the
+ *  prompt for during this app run (asked again after a restart). */
+export function gamesAwaitingDecision(
+  games: TeamSessionGame[], reviews: TeamSessionReview[], dismissed: ReadonlySet<string> = new Set(),
+): TeamSessionGame[] {
+  const decided = new Set(reviews.map((r) => r.gameId).filter((id): id is string => id !== null))
+  return games.filter((g) => g.status !== 'error' && !decided.has(g.id) && !dismissed.has(g.id))
+}
+
+export interface EndOfGameAnswers {
+  reviewNow: boolean
+  lastGame: boolean
+  /** Only meaningful when `lastGame`. */
+  finalReviewNow: boolean
+}
+
+export interface EndOfGamePlan {
+  /** Create a 'deferred' per-game review row (the game was skipped). */
+  deferGameReview: boolean
+  endSession: boolean
+  /** Create a 'deferred' session-scope review row → persistent reminder. */
+  deferFinalReview: boolean
+  /** Where to send the user, or null to stay where they are. */
+  open: { gameId: string | null; final: boolean } | null
+}
+
+/** Turns the three answers of the end-of-game dialog into the actions to
+ *  run. Pure, so the branching (review now × last game × final now/later)
+ *  is unit-tested rather than buried in a component. */
+export function planEndOfGame(gameId: string, a: EndOfGameAnswers): EndOfGamePlan {
+  const finalNow = a.lastGame && a.finalReviewNow
+  return {
+    deferGameReview: !a.reviewNow,
+    endSession: a.lastGame,
+    deferFinalReview: a.lastGame && !a.finalReviewNow,
+    open: a.reviewNow || finalNow ? { gameId: a.reviewNow ? gameId : null, final: finalNow } : null,
+  }
+}
+
+export interface PendingFinalReview {
+  reviewId: string
+  sessionId: string
+  calendarEventId: string
+  title: string
+  startsAt: string | null
+  deferredAt: string
+}
+
+/** Final (session-scope) reviews postponed "to another day" for sessions
+ *  the signed-in user is responsible for. Filtered by the user's id
+ *  explicitly — RLS alone would also return sessions of their groups that
+ *  someone else is responsible for. */
+export async function listPendingFinalReviews(sb: SupabaseClient): Promise<PendingFinalReview[]> {
+  const { data: userData } = await sb.auth.getUser()
+  const uid = userData.user?.id
+  if (!uid) return []
+  const { data: revs, error } = await sb.from('team_session_reviews').select('id, session_id, updated_at')
+    .eq('scope', 'session').eq('status', 'deferred').is('game_id', null)
+  if (error) fail(error, 'list pending final reviews')
+  const rows = (revs ?? []) as Array<{ id: string; session_id: string; updated_at: string }>
+  if (rows.length === 0) return []
+  const { data: sessions, error: sErr } = await sb.from('team_sessions').select('id, calendar_event_id')
+    .in('id', rows.map((r) => r.session_id)).contains('responsible_user_ids', [uid])
+  if (sErr) fail(sErr, 'list pending final review sessions')
+  const sess = (sessions ?? []) as Array<{ id: string; calendar_event_id: string }>
+  if (sess.length === 0) return []
+  const { data: events } = await sb.from('calendar_events').select('id, title, starts_at').in('id', sess.map((s) => s.calendar_event_id))
+  const ev = new Map(((events ?? []) as Array<{ id: string; title: string; starts_at: string }>).map((e) => [e.id, e]))
+  return rows.flatMap((r) => {
+    const s = sess.find((x) => x.id === r.session_id)
+    if (!s) return []
+    const e = ev.get(s.calendar_event_id)
+    return [{ reviewId: r.id, sessionId: s.id, calendarEventId: s.calendar_event_id, title: e?.title ?? '', startsAt: e?.starts_at ?? null, deferredAt: r.updated_at }]
+  })
+}

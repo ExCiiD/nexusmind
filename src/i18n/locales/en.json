@@ -2245,6 +2245,44 @@
       "feedbackPlaceholder": "Optional — how did this session go for you?",
       "feedbackSend": "Send feedback",
       "feedbackSent": "Feedback sent"
+    },
+    "endOfGame": {
+      "title": "Game {{n}} finished",
+      "reviewQ": "Review this game now?",
+      "reviewYes": "Yes, record it",
+      "reviewNo": "No, skip",
+      "lastQ": "Was it the last game of the session?",
+      "lastYes": "Yes, last game",
+      "lastNo": "No, more to come",
+      "finalQ": "Final session review:",
+      "finalNow": "Now",
+      "finalLater": "Another day",
+      "hintRecord": "Screen + mic recording starts on its own when the review opens; transcription runs when you stop it.",
+      "hintBoth": "This game's review first, then the final review starts automatically.",
+      "hintLater": "The session will be closed. A reminder with a button to open the final review stays visible until it's done.",
+      "askLater": "Ask me later",
+      "confirm": "Confirm",
+      "finalPostponed": "Final review postponed — a reminder stays visible",
+      "focusTitle": "Game {{n}} review"
+    },
+    "finalReminder": {
+      "title": "Final review to do",
+      "untitled": "Team session",
+      "open": "Open final review"
+    },
+    "finalView": {
+      "title": "Final review",
+      "gamesCount_one": "{{count}} game in the session",
+      "gamesCount_other": "{{count}} games in the session",
+      "gamesTitle": "Every game of the session",
+      "noGames": "No game was recorded for this session.",
+      "recordGame": "Record its review",
+      "reviewState": {
+        "done": "Reviewed",
+        "deferred": "Review skipped",
+        "inProgress": "Review in progress",
+        "none": "No review"
+      }
     }
   },
   "vodReview": {

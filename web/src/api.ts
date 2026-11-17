@@ -192,6 +192,7 @@ export const webApi = {
   teamSessionReviewCreate: (sessionId: string, gameId: string | null, scope: Parameters<typeof teamSessionReviewsCore.createReview>[3], status: Parameters<typeof teamSessionReviewsCore.createReview>[4]) =>
     teamSessionReviewsCore.createReview(sb, sessionId, gameId, scope, status),
   teamSessionReviewUpdate: (id: string, patch: Parameters<typeof teamSessionReviewsCore.updateReview>[2]) => teamSessionReviewsCore.updateReview(sb, id, patch),
+  teamSessionPendingFinalReviews: () => teamSessionReviewsCore.listPendingFinalReviews(sb),
   teamSessionFeedbackList: (sessionId: string) => teamSessionReviewsCore.listFeedbackForSession(sb, sessionId),
   teamSessionFeedbackSubmit: (sessionId: string, body: string, transcript?: string | null) => teamSessionReviewsCore.submitFeedback(sb, sessionId, body, transcript ?? null),
   collabSetSharing: async (groupId: string, s: { shareReviews: boolean; shareStats: boolean; shareTeam: boolean; shareWellbeing: boolean }) =>

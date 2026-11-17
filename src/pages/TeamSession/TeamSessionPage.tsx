@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Loader2, CalendarClock, Target, Play, Square, Plus, X, ArrowLeft } from 'lucide-react'
+import { Loader2, CalendarClock, Target, Play, Square, Plus, X, ArrowLeft, ClipboardCheck, Mic } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -51,6 +51,15 @@ export function TeamSessionPage() {
   const [games, setGames] = useState<TeamSessionGame[]>([])
   const [reviews, setReviews] = useState<TeamSessionReview[]>([])
   const [now, setNow] = useState(() => new Date())
+  // End-of-game flow (EndOfGamePrompt / final-review reminder): ?review=<gameId>
+  // opens that game's review, ?final=1 the final-review view, ?start=1 starts
+  // recording on its own (the coach already confirmed in the dialog).
+  const [params] = useSearchParams()
+  const focusGameId = params.get('review')
+  const finalMode = params.get('final') === '1'
+  const autoStart = params.get('start') === '1'
+  const [focusGameDone, setFocusGameDone] = useState(false)
+  const [recordGameId, setRecordGameId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!calendarEventId) return
@@ -134,7 +143,11 @@ export function TeamSessionPage() {
     }
   }, [myUserId, eligibleResponsibles, responsibleIds.length])
 
-  const gamesNeedingPrompt = useMemo(() => gamesNeedingReviewPrompt(games, reviews), [games, reviews])
+  const gamesNeedingPrompt = useMemo(
+    () => gamesNeedingReviewPrompt(games, reviews).filter((g) => g.id !== focusGameId),
+    [games, reviews, focusGameId],
+  )
+  const focusGame = focusGameId ? games.find((g) => g.id === focusGameId) ?? null : null
 
   const kpiGroups = useMemo(
     () => selectedObjectives
@@ -251,6 +264,35 @@ export function TeamSessionPage() {
           {t(`teamSession.status.${session.status}`)}
         </Badge>
       </div>
+
+      {focusGame && canManage && event.kind !== 'meeting' && (
+        <div className="space-y-2">
+          <h2 className="flex items-center gap-2 text-sm font-bold text-hextech-text-bright"><Mic className="h-4 w-4 text-hextech-gold" />{t('teamSession.endOfGame.focusTitle', { n: games.indexOf(focusGame) + 1 })}</h2>
+          <PostGameReviewPrompt
+            sessionId={session.id}
+            gameId={focusGame.id}
+            gameLabel={t('teamSession.gameLabel', { defaultValue: 'Game {{n}}', n: games.indexOf(focusGame) + 1 })}
+            autoStart={autoStart}
+            onDecided={() => { setFocusGameDone(true); load() }}
+          />
+        </div>
+      )}
+
+      {finalMode && session.status === 'ended' && event.kind !== 'meeting' && (
+        <FinalReviewView
+          sessionId={session.id}
+          games={games}
+          reviews={reviews}
+          group={group}
+          canManage={canManage}
+          myUserId={myUserId ?? ''}
+          nameOf={nameOf}
+          autoStart={autoStart && (!focusGame || focusGameDone)}
+          recordGameId={recordGameId}
+          onRecordGame={setRecordGameId}
+          onChanged={load}
+        />
+      )}
 
       {session.status === 'scheduled' && countdown && (
         <Card>
@@ -428,7 +470,7 @@ export function TeamSessionPage() {
         </div>
       )}
 
-      {event.kind !== 'meeting' && session.status !== 'scheduled' && games.length > 0 && (
+      {!finalMode && event.kind !== 'meeting' && session.status !== 'scheduled' && games.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-sm font-bold text-hextech-text-bright">
             {t('teamSession.games', { defaultValue: 'Games', count: games.length })}
@@ -445,7 +487,7 @@ export function TeamSessionPage() {
         </div>
       )}
 
-      {session.status === 'ended' && (
+      {session.status === 'ended' && !finalMode && (
         <SessionReviewPanel sessionId={session.id} games={games} canManage={canManage} myUserId={myUserId ?? ''} nameOf={nameOf} />
       )}
 
@@ -477,6 +519,71 @@ export function TeamSessionPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+/** Final review (17/11/2026): the whole session in one place — session
+ *  performance + final recording, then EVERY game of the session with its
+ *  own review state (done / skipped / none), transcript excerpt, a way to
+ *  record a skipped one, and its full stats. */
+function FinalReviewView({ sessionId, games, reviews, group, canManage, myUserId, nameOf, autoStart, recordGameId, onRecordGame, onChanged }: {
+  sessionId: string
+  games: TeamSessionGame[]
+  reviews: TeamSessionReview[]
+  group: NonNullable<ReturnType<typeof useCollab>['groups'][number]>
+  canManage: boolean
+  myUserId: string
+  nameOf: (id: string) => string
+  autoStart: boolean
+  recordGameId: string | null
+  onRecordGame: (id: string | null) => void
+  onChanged: () => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 border-b border-hextech-border-dim pb-2">
+        <ClipboardCheck className="h-5 w-5 text-hextech-gold" />
+        <h2 className="font-display text-xl font-bold text-hextech-gold-bright">{t('teamSession.finalView.title')}</h2>
+        <span className="text-xs text-hextech-text-dim">{t('teamSession.finalView.gamesCount', { count: games.length })}</span>
+      </div>
+
+      <SessionReviewPanel sessionId={sessionId} games={games} canManage={canManage} myUserId={myUserId} nameOf={nameOf} autoStart={autoStart} />
+
+      {games.length === 0 ? (
+        <p className="text-sm text-hextech-text-dim">{t('teamSession.finalView.noGames')}</p>
+      ) : (
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold text-hextech-text-bright">{t('teamSession.finalView.gamesTitle')}</h3>
+          {games.map((g, i) => {
+            const review = reviews.find((r) => r.gameId === g.id) ?? null
+            const state = review?.status === 'done' ? 'done' : review?.status === 'deferred' ? 'deferred' : review ? 'inProgress' : 'none'
+            return (
+              <div key={g.id} className="space-y-2 rounded-xl border border-hextech-border-dim p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold text-hextech-text-bright">{t('teamSession.gameLabel', { defaultValue: 'Game {{n}}', n: i + 1 })}</span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={state === 'done' ? 'success' : state === 'none' ? 'outline' : 'gold'}>{t(`teamSession.finalView.reviewState.${state}`)}</Badge>
+                    {canManage && state !== 'done' && recordGameId !== g.id && (
+                      <Button size="sm" variant="outline" onClick={() => onRecordGame(g.id)}><Mic className="mr-1 h-3.5 w-3.5" />{t('teamSession.finalView.recordGame')}</Button>
+                    )}
+                  </div>
+                </div>
+                {review?.transcript && (
+                  <p className="line-clamp-3 whitespace-pre-wrap rounded-md bg-hextech-elevated p-2 text-xs text-hextech-text">{review.transcript}</p>
+                )}
+                {review?.summary && <p className="text-xs text-hextech-text-bright">{review.summary}</p>}
+                {recordGameId === g.id && (
+                  <PostGameReviewPrompt sessionId={sessionId} gameId={g.id} gameLabel={t('teamSession.gameLabel', { defaultValue: 'Game {{n}}', n: i + 1 })}
+                    autoStart onDecided={() => { onRecordGame(null); onChanged() }} />
+                )}
+                <TeamSessionGameCard game={g} group={group} canManage={canManage} onOurTeamIdResolved={onChanged} />
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

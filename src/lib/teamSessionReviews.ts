@@ -52,6 +52,8 @@ export interface TeamSessionReviewApi {
   teamSessionReviewGetForScope: (sessionId: string, scope: 'session' | 'meeting') => Promise<TeamSessionReview | null>
   teamSessionReviewCreate: (sessionId: string, gameId: string | null, scope: ReviewScope, status: ReviewStatus) => Promise<string>
   teamSessionReviewUpdate: (id: string, patch: TeamSessionReviewPatch) => Promise<void>
+  /** Final reviews postponed "to another day" for sessions I'm responsible for. */
+  teamSessionPendingFinalReviews: () => Promise<import('./teamSessionReviewsCore').PendingFinalReview[]>
   teamSessionFeedbackList: (sessionId: string) => Promise<TeamSessionFeedback[]>
   teamSessionFeedbackSubmit: (sessionId: string, body: string, transcript?: string | null) => Promise<void>
 }

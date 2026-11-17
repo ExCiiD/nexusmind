@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReviewRecorder } from './ReviewRecorder'
 import type { ReviewStatus, TeamSessionReview, TeamSessionReviewPatch } from '@/lib/teamSessionReviews'
@@ -8,6 +8,7 @@ interface Props {
   gameId: string
   gameLabel: string
   onDecided: () => void
+  autoStart?: boolean
 }
 
 /**
@@ -18,10 +19,16 @@ interface Props {
  * silent no-op) so the prompt never nags twice but the review stays
  * reopenable later from the games list.
  */
-export function PostGameReviewPrompt({ sessionId, gameId, gameLabel, onDecided }: Props) {
+export function PostGameReviewPrompt({ sessionId, gameId, gameLabel, onDecided, autoStart }: Props) {
   const { t } = useTranslation()
   const [review, setReview] = useState<TeamSessionReview | null>(null)
   const [skipping, setSkipping] = useState(false)
+  // A game skipped earlier already has a 'deferred' row: reuse it instead of
+  // inserting a second one when the coach comes back to record it.
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => {
+    window.api.teamSessionReviewGetForGame(gameId).then(setReview).catch(() => {}).finally(() => setLoaded(true))
+  }, [gameId])
 
   const create = async (status: ReviewStatus): Promise<TeamSessionReview> => {
     await window.api.teamSessionReviewCreate(sessionId, gameId, 'per_game', status)
@@ -55,6 +62,7 @@ export function PostGameReviewPrompt({ sessionId, gameId, gameLabel, onDecided }
       onCreate={create}
       onUpdate={update}
       onSkip={skipping ? undefined : skip}
+      autoStart={autoStart && loaded}
     />
   )
 }

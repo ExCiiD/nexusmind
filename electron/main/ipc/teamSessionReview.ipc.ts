@@ -27,6 +27,7 @@ export function registerTeamSessionReviewHandlers() {
   validatedHandle('team-session-review:create', z.tuple([uuid, uuid.nullable(), scope, status]),
     (_e, sessionId, gameId, s, st) => reviews.teamSessionReviewCreate(sessionId, gameId, s, st))
   validatedHandle('team-session-review:update', z.tuple([uuid, reviewPatch]), (_e, id, patch) => reviews.teamSessionReviewUpdate(id, patch))
+  validatedHandle('team-session-review:pending-final', z.tuple([]), () => reviews.teamSessionPendingFinalReviews())
   validatedHandle('team-session-review:feedback-list', z.tuple([uuid]), (_e, sessionId) => reviews.teamSessionFeedbackList(sessionId))
   validatedHandle('team-session-review:feedback-submit', z.tuple([uuid, z.string().trim().min(1).max(5000), z.string().max(100_000).nullable().optional()]),
     (_e, sessionId, body, transcript) => reviews.teamSessionFeedbackSubmit(sessionId, body, transcript ?? null))

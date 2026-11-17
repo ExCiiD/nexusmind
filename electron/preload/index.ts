@@ -540,6 +540,7 @@ const api = {
   teamSessionReviewCreate: (sessionId: string, gameId: string | null, scope: string, status: string) =>
     ipcRenderer.invoke('team-session-review:create', sessionId, gameId, scope, status),
   teamSessionReviewUpdate: (id: string, patch: unknown) => ipcRenderer.invoke('team-session-review:update', id, patch),
+  teamSessionPendingFinalReviews: () => ipcRenderer.invoke('team-session-review:pending-final'),
   teamSessionFeedbackList: (sessionId: string) => ipcRenderer.invoke('team-session-review:feedback-list', sessionId),
   teamSessionFeedbackSubmit: (sessionId: string, body: string, transcript?: string | null) =>
     ipcRenderer.invoke('team-session-review:feedback-submit', sessionId, body, transcript),

@@ -17,6 +17,9 @@ interface Props {
   canManage: boolean
   myUserId: string
   nameOf: (userId: string) => string
+  /** Start the final-review recording on mount (coach confirmed it in the
+   *  end-of-game dialog or from the postponed-review reminder). */
+  autoStart?: boolean
 }
 
 /**
@@ -30,7 +33,7 @@ interface Props {
  * page, so a second page would just mean clicking back and forth between
  * two views of the same session. Documented as a deliberate simplification.
  */
-export function SessionReviewPanel({ sessionId, games, canManage, myUserId, nameOf }: Props) {
+export function SessionReviewPanel({ sessionId, games, canManage, myUserId, nameOf, autoStart }: Props) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const [review, setReview] = useState<TeamSessionReview | null | undefined>(undefined)
@@ -108,6 +111,7 @@ export function SessionReviewPanel({ sessionId, games, canManage, myUserId, name
           review={review}
           onCreate={create}
           onUpdate={update}
+          autoStart={autoStart}
         />
       )}
 

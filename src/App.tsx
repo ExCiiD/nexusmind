@@ -31,6 +31,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { BackgroundJobsIndicator } from '@/components/BackgroundJobsIndicator'
 import { AnnouncementBubbleStack } from '@/components/Announcements/AnnouncementBubbleStack'
 import { TeamSessionBanner } from '@/components/TeamSession/TeamSessionBanner'
+import { EndOfGamePrompt } from '@/components/TeamSession/EndOfGamePrompt'
 import { useEffect } from 'react'
 
 export function App() {
@@ -88,6 +89,7 @@ export function App() {
       {user && <BackgroundJobsIndicator />}
       {user && <AnnouncementBubbleStack />}
       {user && <TeamSessionBanner />}
+      {user && <EndOfGamePrompt />}
       <Toaster />
     </>
   )

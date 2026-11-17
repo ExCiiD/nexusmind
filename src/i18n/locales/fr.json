@@ -2245,6 +2245,44 @@
       "feedbackPlaceholder": "Optionnel — comment s'est passée cette session pour toi ?",
       "feedbackSend": "Envoyer le retour",
       "feedbackSent": "Retour envoyé"
+    },
+    "endOfGame": {
+      "title": "Game {{n}} terminée",
+      "reviewQ": "Faire la review de cette game maintenant ?",
+      "reviewYes": "Oui, enregistrer",
+      "reviewNo": "Non, passer",
+      "lastQ": "Était-ce la dernière game de la session ?",
+      "lastYes": "Oui, dernière game",
+      "lastNo": "Non, on continue",
+      "finalQ": "Review finale de la session :",
+      "finalNow": "Maintenant",
+      "finalLater": "Un autre jour",
+      "hintRecord": "L'enregistrement écran + micro démarre tout seul à l'ouverture de la review, puis la transcription se lance quand tu l'arrêtes.",
+      "hintBoth": "D'abord la review de cette game, puis la review finale démarre automatiquement.",
+      "hintLater": "La session sera clôturée. Un rappel restera affiché avec un bouton pour ouvrir la review finale tant qu'elle n'est pas faite.",
+      "askLater": "Me redemander plus tard",
+      "confirm": "Valider",
+      "finalPostponed": "Review finale reportée — un rappel reste affiché",
+      "focusTitle": "Review de la game {{n}}"
+    },
+    "finalReminder": {
+      "title": "Review finale à faire",
+      "untitled": "Session d'équipe",
+      "open": "Ouvrir la review finale"
+    },
+    "finalView": {
+      "title": "Review finale",
+      "gamesCount_one": "{{count}} game dans la session",
+      "gamesCount_other": "{{count}} games dans la session",
+      "gamesTitle": "Toutes les games de la session",
+      "noGames": "Aucune game n'a été enregistrée pour cette session.",
+      "recordGame": "Enregistrer sa review",
+      "reviewState": {
+        "done": "Review faite",
+        "deferred": "Review passée",
+        "inProgress": "Review en cours",
+        "none": "Pas de review"
+      }
     }
   },
   "vodReview": {

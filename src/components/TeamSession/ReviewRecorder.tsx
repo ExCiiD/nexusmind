@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Mic, Square, Loader2, Youtube, Check } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -19,6 +19,10 @@ interface Props {
   /** Only shown for a per-game review — session/meeting reviews aren't
    *  skippable, since there's no "next one" to fall back on. */
   onSkip?: () => Promise<void>
+  /** Start recording as soon as the panel mounts — only passed after the
+   *  coach confirmed "review now" in the end-of-game dialog (consent was
+   *  given there, so no second click). */
+  autoStart?: boolean
 }
 
 /** Shared record → transcribe → optionally upload to YouTube flow (Phase
@@ -29,7 +33,7 @@ interface Props {
  *  record button is replaced with a note instead of risking a runtime
  *  "not a function" — recording a live screen+mic capture only makes
  *  sense from the desktop app anyway. */
-export function ReviewRecorder({ title, review, onCreate, onUpdate, onSkip }: Props) {
+export function ReviewRecorder({ title, review, onCreate, onUpdate, onSkip, autoStart }: Props) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const [busy, setBusy] = useState(false)
@@ -39,6 +43,7 @@ export function ReviewRecorder({ title, review, onCreate, onUpdate, onSkip }: Pr
   const [youtubeConnected, setYoutubeConnected] = useState<boolean | null>(null)
 
   const canRecord = typeof window.api.startCapture === 'function'
+  const autoStarted = useRef(false)
 
   useEffect(() => {
     if (canRecord) checkYoutube()
@@ -69,6 +74,14 @@ export function ReviewRecorder({ title, review, onCreate, onUpdate, onSkip }: Pr
       setBusy(false)
     }
   }
+
+  useEffect(() => {
+    if (!autoStart || autoStarted.current || !canRecord || recording || busy) return
+    if (review && (review.status === 'done' || review.status === 'recording' || review.status === 'processing')) return
+    autoStarted.current = true
+    start()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once when the panel is ready, not on every review refresh
+  }, [autoStart, review?.status])
 
   const stop = async () => {
     setBusy(true)
