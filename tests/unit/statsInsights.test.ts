@@ -105,3 +105,13 @@ describe('tiltReport', () => {
     expect(r.longestLossStreak).toBe(2)
   })
 })
+
+describe('championLabel', () => {
+  it('maps Data Dragon ids to display names', async () => {
+    const { championLabel } = await import('../../src/lib/statsInsights')
+    expect(championLabel('MonkeyKing')).toBe('Wukong')
+    expect(championLabel('LeeSin')).toBe('Lee Sin')
+    expect(championLabel('Khazix')).toBe("Kha'Zix")
+    expect(championLabel('Ahri')).toBe('Ahri')
+  })
+})

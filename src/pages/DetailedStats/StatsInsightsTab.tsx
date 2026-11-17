@@ -10,6 +10,7 @@ import {
   winrateByDuration,
   winrateByDaypart,
   tiltReport,
+  championLabel,
   MIN_SAMPLE,
   type InsightGame,
   type Bucket,
@@ -77,7 +78,7 @@ export function StatsInsightsTab() {
                     <td className="py-2">
                       <span className="flex items-center gap-2">
                         <ChampIcon name={row.champion} />
-                        <span className="font-medium text-hextech-text-bright">{row.champion}</span>
+                        <span className="font-medium text-hextech-text-bright">{championLabel(row.champion)}</span>
                       </span>
                     </td>
                     <td className="py-2 text-right font-mono text-hextech-text">{row.games}</td>
@@ -142,8 +143,9 @@ function KeyTakeaways({ lever, tilt, pool }: { lever: SplitMetric | null; tilt: 
   if (tilt.afterLoss.enough && tilt.afterWin.enough && tilt.afterWin.winrate - tilt.afterLoss.winrate >= 15) {
     lines.push(t('statsInsights.takeaway.tilt', { afterLoss: tilt.afterLoss.winrate, afterWin: tilt.afterWin.winrate }))
   }
-  const best = pool.filter((r) => r.games >= MIN_SAMPLE).sort((a, b) => b.winrate - a.winrate)[0]
-  if (best && best.winrate >= 55) lines.push(t('statsInsights.takeaway.best', { champion: best.champion, wr: best.winrate, count: best.games }))
+  // A "best pick" claim needs more than the generic minimum sample.
+  const best = pool.filter((r) => r.games >= 5).sort((a, b) => b.winrate - a.winrate)[0]
+  if (best && best.winrate >= 55) lines.push(t('statsInsights.takeaway.best', { champion: championLabel(best.champion), wr: best.winrate, count: best.games }))
   if (lines.length === 0) return null
 
   return (
@@ -164,7 +166,7 @@ function KeyTakeaways({ lever, tilt, pool }: { lever: SplitMetric | null; tilt: 
 }
 
 function fmt(v: number) {
-  return v.toLocaleString(undefined, { maximumFractionDigits: 1 })
+  return v.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 }
 
 function Header({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
@@ -191,7 +193,10 @@ function WinrateBar({ winrate, dim }: { winrate: number; dim?: boolean }) {
 
 function SplitRow({ m, highlight }: { m: SplitMetric; highlight: boolean }) {
   const { t } = useTranslation()
-  const lossWorse = m.higherIsBetter ? m.losses < m.wins : m.losses > m.wins
+  // Compare what is displayed (1 decimal) so an on-screen tie is never red.
+  const w = Number(m.wins.toFixed(1))
+  const l = Number(m.losses.toFixed(1))
+  const lossWorse = m.higherIsBetter ? l < w : l > w
   return (
     <div className={cn('grid grid-cols-[1fr_4.5rem_4.5rem] items-center rounded-lg px-2 py-1.5 text-xs', highlight && 'border border-hextech-gold/40 bg-hextech-gold/10')}>
       <span className="text-hextech-text">{t(`statsInsights.split.metric.${m.key}`)}</span>

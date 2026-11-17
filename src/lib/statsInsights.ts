@@ -174,3 +174,15 @@ export function tiltReport(games: InsightGame[]): TiltReport {
   }
   return { afterWin: b('afterWin', afterWin), afterLoss: b('afterLoss', afterLoss), longestLossStreak: longest }
 }
+
+/** Riot match data carries the Data Dragon id ("MonkeyKing", "LeeSin",
+ *  "Khazix"); this turns it into the name players know. */
+const CHAMPION_NAME_EXCEPTIONS: Record<string, string> = {
+  MonkeyKing: 'Wukong', DrMundo: 'Dr. Mundo', KSante: "K'Sante", Chogath: "Cho'Gath", Kaisa: "Kai'Sa",
+  Khazix: "Kha'Zix", Velkoz: "Vel'Koz", Belveth: "Bel'Veth", KogMaw: "Kog'Maw", RekSai: "Rek'Sai",
+  Nunu: 'Nunu & Willump', Renata: 'Renata Glasc', FiddleSticks: 'Fiddlesticks', Leblanc: 'LeBlanc',
+  JarvanIV: 'Jarvan IV', TahmKench: 'Tahm Kench', MasterYi: 'Master Yi',
+}
+export function championLabel(id: string): string {
+  return CHAMPION_NAME_EXCEPTIONS[id] ?? id.replace(/([a-z])([A-Z])/g, '$1 $2')
+}
