@@ -85,7 +85,8 @@ Prompt de départ suggéré pour Gemini : *« Génère un site vitrine statique 
 
 ## 6. Hébergement & domaine
 
-- Même Cloudflare que l'app web (Workers static assets) : `nexusmind-site` ; domaine personnalisé recommandé (ex. `nexusmind.gg` / `.app`) → aussi requis par Riot pour une **clé API Production** (site public + CGU + confidentialité).
+- Même Cloudflare que l'app web (Workers static assets) : `nexusmind-site` ; domaine personnalisé recommandé (ex. `nexusmind.gg` / `.app`), remis à plus tard le 18/11/2026.
+- **Clé API Production Riot** (documentation officielle lue le 18/11/2026) : Riot exige un site web vérifié, où l'on voit ce que fait le produit, ses conditions d'utilisation et sa politique de confidentialité. La vérification consiste à publier à la racine du site un fichier `riot.txt` contenant la chaîne reçue après le dépôt de la demande (ici : `site/public/riot.txt`, puis un déploiement ; à retirer une fois la vérification faite). Aucun texte officiel n'exige un domaine personnalisé. Riot écrit toutefois « domain you own » et ne dit rien des sous-domaines d'hébergeur comme workers.dev : leur acceptation n'est pas confirmée. Une clé personnelle ne permet pas d'ouvrir le produit au public. Sources : `developer.riotgames.com/docs/portal`, `developer.riotgames.com/how-to-verify-site.html`, et les articles « Production Key Applications » et « Verification for Production Applications » de `support-developer.riotgames.com`.
 - L'app web passe sous `app.<domaine>`, la vitrine sur la racine.
 
 ## 7. Lancement — checklist
