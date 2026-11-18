@@ -57,7 +57,7 @@ export default {
     ref: 'Pièce',
     synthetic: 'Compte de démonstration : les chiffres sont inventés, les règles et les fiches sont celles de l’application.',
     a: 'Une micro-revue. Réponds à la question : la fiche du Codex suit.',
-    b: 'Le tableau de bord. Réponds à la calibration, ou active le protocole basse énergie.',
+    b: 'Le tableau de bord. Réponds à la calibration.',
     c: "Le Labo d'erreurs sur {{labDays}} jours. Filtre par famille, puis ouvre une erreur.",
     d: "L'empreinte des fondamentaux. Passe un axe en revue, ou change de rôle.",
     e: "L'apparence. Change l'encre de l'application.",
@@ -78,7 +78,6 @@ export default {
     },
     notes: [
       ['Calibration flash', "Toutes les {{calibration}} parties, une seule question : quel fondamental t'a le plus coûté ? Ascend affiche ensuite l'écart entre ta réponse et ce que disent tes micro-revues."],
-      ['Protocole basse énergie', "Après {{lossStreak}} défaites d'affilée, ou sur un créneau horaire où tu gagnes moins de {{lowWinrate}} % de tes parties, Ascend propose un objectif de session allégé : trois règles simples à tenir quand la tête ne suit plus."],
     ],
   },
   micro: {
@@ -88,8 +87,8 @@ export default {
     facts: [
       ['{{maxMoments}} moments au plus', "Les plus coûteux de la partie, espacés d'au moins {{spacing}} secondes. S'il n'y en a aucun, Ascend le dit et te laisse lancer la suivante."],
       ['Trois déclencheurs', "Une mort suivie, dans les 90 secondes, d'un objectif perdu ou d'un net recul de tes chances. Un objectif majeur pris par l'adversaire alors que tu étais vivant, sans ward de ta part ni contrepartie ailleurs. Un retard à 10:00 : plus de 15 CS ou de 400 XP de moins que ton vis-à-vis."],
-      ['Douze schémas reconnus', "Gank sur un timer prévisible à 2:30, recall désynchronisé, shutdown donné en premier dans un fight, roam mid payé en plaques, support dans la fosse au lieu du goulet d'étranglement."],
-      ['Le garbage time ne compte pas', "Quand la partie était déjà jouée au moment de l'action, à plus de {{garbageHigh}} % ou à moins de {{garbageLow}} % d'après l'or, l'XP et les objectifs, le moment est écarté : il ne t'apprendrait rien."],
+      ['{{patterns}} schémas reconnus',"Gank sur un timer prévisible à 2:30, recall désynchronisé, shutdown donné en premier dans un fight, roam mid payé en plaques, support dans la fosse au lieu du goulet d'étranglement."],
+      ['Le garbage time ne compte pas', "Quand la partie était déjà jouée au moment de l'action, à plus de {{garbageHigh}} % ou à moins de {{garbageLow}} % d'après l'or, l'XP et les objectifs, le moment est écarté : il ne t'apprendrait rien. Seule exception au-dessus de {{garbageHigh}} % : le jungler qui recall sous Baron ou force un dive après un inhibiteur, deux façons de gâcher une partie gagnée."],
       ["Une décision assumée n'est pas une erreur", "Chaque question garde une sortie « justifié ». Elle est notée, jamais comptée contre toi."],
       ['Aucune IA, aucun envoi', "Des règles écrites à l'avance, exécutées sur ton PC, sans connexion. La même partie donne toujours les mêmes moments."],
       ['{{codex}} fiches au Codex', "Après ta réponse, le Codex donne la règle tactique et un objectif d'entraînement précis. Quelques fiches montrent la séquence dans un match professionnel officiel."],
@@ -109,7 +108,7 @@ export default {
   print: {
     title: "L'empreinte des fondamentaux",
     intro: "Neuf axes, deux fenêtres : tes {{recent}} dernières parties et tes {{snapshot}} dernières. L'écart entre les deux tracés, c'est ta forme du moment.",
-    support: "Les supports ont leurs propres axes : vision, présence en fight, soins, boucliers et contrôles. Le farm ne dit rien de leur partie.",
+    support: "Les supports ont leurs propres axes : vision, présence en fight, contrôles, et un impact en fight qui additionne soins, boucliers, dégâts infligés et dégâts absorbés. Un enchanteur, un mage poke et un support engage y sont jugés chacun sur son travail. Le farm ne dit rien de leur partie.",
     assessment: "L'empreinte complète une auto-évaluation de {{fundamentals}} fondamentaux, rangés en {{families}} familles. Quand tes chiffres s'éloignent de ce que tu avais déclaré, Ascend te propose de la refaire.",
     roleLabel: 'Rôle',
     roles: { carry: 'Top, jungle, mid, ADC', support: 'Support' },
@@ -228,6 +227,8 @@ export default {
       ["Est-ce que l'enregistrement ralentit le jeu ?", "La capture utilise l'encodeur matériel de ta carte graphique quand il est disponible. La qualité, les images par seconde et le dossier sont réglables, et l'enregistrement automatique peut être désactivé."],
       ['Mes coéquipiers voient-ils mes statistiques ?', "Seulement si tu le décides. Le partage se règle groupe par groupe (reviews, statistiques, données d'équipe, bien-être) et se retire à tout moment."],
       ["Y a-t-il de l'IA ?", "Pas dans le cœur de l'application : la micro-revue et l'assistant appliquent des règles de coaching écrites à l'avance, que tu peux lire. La transcription vocale des débriefs utilise un modèle qui tourne sur ton PC ; rien n'est envoyé à un service d'IA."],
+      ['Que sait le moteur du jeu ?', "Seulement ce que prouve la chronologie officielle de Riot, relevée chaque minute : positions, or, XP, niveaux, CS, kills, objectifs, tours, wards et achats. Ascend y applique des règles de coach écrites à l'avance : la carte (lanes, rivières, fosses, tours), les timers d'objectifs, les seuils d'économie, la course aux niveaux, la vision, le tempo et des schémas propres à chaque rôle ({{patterns}} en tout). Une estimation des chances de victoire, tirée de l'or, de l'XP et des objectifs, sert seulement à écarter les moments où la partie était déjà jouée : elle n'est jamais affichée comme une note. Ce que les données ne contiennent pas (sorts lancés, vagues de sbires, position d'une ward), le moteur ne le devine pas."],
+      ['Comment le Labo repère-t-il mes erreurs ?', "Par trois chemins. {{auto}} erreurs sont repérées sans toi sur la chronologie, par des règles fixes : par exemple, mourir avec plus de 1 500 or en poche, ou avoir 15 CS de retard sur ton vis-à-vis à 10:00. Les autres viennent de tes réponses à la micro-revue (une réponse « justifié » ne compte jamais) et de tes propres tags pendant la review. Une erreur déjà enregistrée n'est jamais comptée deux fois. Le Labo classe ensuite chaque erreur par fréquence, par moment de la partie et par écart de taux de victoire entre les parties avec et sans elle, puis te propose la fiche du Codex qui la corrige."],
       ['La micro-revue se trompe-t-elle ?', "Elle propose, tu décides. Elle ne voit que la chronologie du match, relevée chaque minute par Riot : quand les données ne prouvent rien, elle se tait. Et chaque moment garde sa sortie « justifié »."],
     ],
   },
@@ -260,7 +261,6 @@ export default {
     formLabel: 'Résultats des dix dernières parties, de la plus ancienne à la plus récente',
     noGap: 'échantillon trop petit',
     points: '{{n}} pts',
-    lowEnergyDone: 'Objectif de session : Résilience, puis {{objectives}}.',
     notFoundTitle: "Cette page n'existe pas.",
     notFoundBack: "Retour à l'accueil",
     legalBack: 'Accueil',

@@ -67,12 +67,12 @@ export const RADAR = {
   support: {
     recent: {
       meta: { avgKills: 1.4, avgAssists: 13.2, avgDeaths: 5.4 },
-      combat: { killParticipation: 64, healShieldPerMin: 310, ccPerMin: 1.4 },
+      combat: { killParticipation: 64, healShieldPerMin: 410, damagePerMin: 330, damageMitigatedPerMin: 380, ccPerMin: 1.4 },
       vision: { visionScorePerMin: 2.3, visionScoreAdvantage: 9, controlWardsPurchased: 4.1, wardsDestroyed: 3.2 },
     },
     snapshot: {
       meta: { avgKills: 1.2, avgAssists: 12.1, avgDeaths: 4.7 },
-      combat: { killParticipation: 61, healShieldPerMin: 285, ccPerMin: 1.5 },
+      combat: { killParticipation: 61, healShieldPerMin: 380, damagePerMin: 310, damageMitigatedPerMin: 365, ccPerMin: 1.5 },
       vision: { visionScorePerMin: 2.0, visionScoreAdvantage: 4, controlWardsPurchased: 3.4, wardsDestroyed: 2.6 },
     },
   },

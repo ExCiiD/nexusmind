@@ -31,12 +31,11 @@ export function buildData({ engine, app, copy, lang, locale, tierDefs, iconUnloc
     fundamentals: fundamentals.reduce((n, cat) => n + cat.fundamentals.length, 0),
     families: fundamentals.length,
     maxMoments: engine.DETECTOR_SPEC.maxMoments,
+    patterns: engine.MOMENT_PATTERNS.length,
     spacing: engine.DETECTOR_SPEC.minSpacingSec,
     recent: RADAR.recentGames,
     snapshot: RADAR.snapshotGames,
     calibration: engine.CALIBRATION_EVERY,
-    lossStreak: engine.LOW_ENERGY_LOSS_STREAK,
-    lowWinrate: engine.LOW_ENERGY_WINRATE,
     garbageHigh: Math.round(engine.GARBAGE_HIGH * 100),
     garbageLow: Math.round(engine.GARBAGE_LOW * 100),
     codex: engine.CODEX.length,
@@ -178,16 +177,7 @@ export function buildData({ engine, app, copy, lang, locale, tierDefs, iconUnloc
     session: {
       title: t('dashboard.activeSession.title'),
       objectives: objectives.join(', '),
-      objectivesLow: [fundLabel('resilience'), ...objectives].slice(0, 3).join(', '),
       games: t('dashboard.activeSession.game', { count: DASHBOARD.sessionGames }),
-    },
-    level: {
-      title: t('dashboard.progress'),
-      level: t('dashboard.progression.level', { level: DASHBOARD.level }),
-      tier: t(`profile.tiers.${tierOf(DASHBOARD.level).id}`),
-      xp: `${DASHBOARD.xpIntoLevel}/${need} XP`,
-      pct: Math.round((DASHBOARD.xpIntoLevel / need) * 100),
-      toNext: t('dashboard.progression.toNext', { xp: need - DASHBOARD.xpIntoLevel, level: DASHBOARD.level + 1 }),
     },
     calib: {
       title: t('calibration.title'),
@@ -204,22 +194,12 @@ export function buildData({ engine, app, copy, lang, locale, tierDefs, iconUnloc
       distTitle: t('calibration.dist', { count: games.length }),
       dist: dist.map((x) => ({ label: famLabel(x.family), share: x.share })),
     },
-    low: {
-      title: t('lowEnergy.title'),
-      reason: t('lowEnergy.lossStreakSession', { count: 2 }),
-      rules: t('lowEnergy.rules'),
-      activate: t('lowEnergy.activateNow'),
-      active: t('lowEnergy.activeOnSession'),
-      done: c('ui.lowEnergyDone', { first: fundLabel('resilience'), objectives: objectives.join(', ') }),
-    },
     s: {
       // The app still says "vos" on this one line; the page addresses the reader as "tu" throughout.
       welcome: t('dashboard.welcome'), formLine: c('ui.formLine', { count: last10.length }), form: t('dashboard.header.form'),
       mainRole: t('dashboard.header.mainRole'), formLabel: c('ui.formLabel'),
     },
   }
-  // The session card is only truthful if the demo really ends on two losses.
-  if (GAMES.slice(-2).some(Boolean)) throw new Error('demo: the session must end on two losses for the low-energy card')
 
   // ── D · fundamentals radar ──
   const radarSet = (role) => {
@@ -295,9 +275,10 @@ export function buildData({ engine, app, copy, lang, locale, tierDefs, iconUnloc
       nav: [t('nav.dashboard'), t('nav.session'), t('nav.review'), t('nav.mistakeLab')],
       sessionTitle: t('dashboard.activeSession.title'),
       objective: objectives.join(', '),
-      pct: dashboard.level.pct,
-      xp: dashboard.level.xp,
-      level: dashboard.level.level,
+      // The level as the app's sidebar shows it.
+      pct: Math.round((DASHBOARD.xpIntoLevel / need) * 100),
+      xp: `${DASHBOARD.xpIntoLevel}/${need} XP`,
+      level: `${t('sidebar.level')} ${DASHBOARD.level}`,
       stats: dashboard.stats,
     },
     s: {

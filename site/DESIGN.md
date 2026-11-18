@@ -10,6 +10,7 @@ what keeps it that way.
 1. Editorial "scouting report" style: condensed display type, hairline rules, one signal colour.
 2. Nothing that reads as generated: no purple or blue gradient, no row of three identical cards, no glow, no emoji, no vague marketing sentence.
 3. Riot Games compliance: no Riot logo, no official splash art, no official rank name, the legal notice on every page.
+   Champion names in text are allowed (confirmed by the publisher on 18 November 2026): the Codex fiches the micro-review preview embeds cite them. Champion icons and other Riot art stay out.
 4. Interactive previews of the real screens, and a download button that points straight at the release.
 
 ## Tokens

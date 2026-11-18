@@ -54,7 +54,7 @@ export default {
     ref: 'Exhibit',
     synthetic: 'Demonstration account: the numbers are invented, the rules and the Codex entries are the application’s own.',
     a: 'A micro-review. Answer the question: the Codex entry follows.',
-    b: 'The dashboard. Answer the calibration, or switch on the low-energy protocol.',
+    b: 'The dashboard. Answer the calibration.',
     c: 'The Mistake Lab over {{labDays}} days. Filter by family, then open a mistake.',
     d: 'The fundamentals fingerprint. Inspect an axis, or change role.',
     e: 'Appearance. Change the ink of the application.',
@@ -75,7 +75,6 @@ export default {
     },
     notes: [
       ['Calibration flash', 'Every {{calibration}} games, a single question: which fundamental cost you the most? Ascend then shows the gap between your answer and what your micro-reviews say.'],
-      ['Low-energy protocol', 'After {{lossStreak}} losses in a row, or in a time slot where you win under {{lowWinrate}} % of your games, Ascend offers a lighter session objective: three simple rules to hold when your head is no longer in it.'],
     ],
   },
   micro: {
@@ -85,8 +84,8 @@ export default {
     facts: [
       ['At most {{maxMoments}} moments', 'The costliest of the game, at least {{spacing}} seconds apart. When there is none, Ascend says so and lets you queue again.'],
       ['Three triggers', 'A death followed, within 90 seconds, by a lost objective or a clear drop in your chances. A major objective taken by the enemy while you were alive, with no ward of yours and nothing taken elsewhere. A deficit at 10:00: more than 15 CS or 400 XP behind your lane opponent.'],
-      ['Twelve recognised patterns', 'A gank on a predictable 2:30 timer, a desynchronised recall, a shutdown given first in a fight, a mid roam paid in plates, a support inside the pit instead of the choke point.'],
-      ['Garbage time does not count', 'When the game was already decided at the time of the action, above {{garbageHigh}} % or under {{garbageLow}} % from gold, XP and objectives, the moment is dropped: it would teach you nothing.'],
+      ['{{patterns}} recognised patterns','A gank on a predictable 2:30 timer, a desynchronised recall, a shutdown given first in a fight, a mid roam paid in plates, a support inside the pit instead of the choke point.'],
+      ['Garbage time does not count', 'When the game was already decided at the time of the action, above {{garbageHigh}} % or under {{garbageLow}} % from gold, XP and objectives, the moment is dropped: it would teach you nothing. One exception above {{garbageHigh}} %: a jungler who recalls during Baron or forces a dive after an inhibitor, two ways to throw a won game.'],
       ['A deliberate call is not a mistake', 'Every question keeps a “justified” way out. It is recorded, never counted against you.'],
       ['No AI, nothing sent', 'Rules written in advance, run on your PC, with no connection. The same game always gives the same moments.'],
       ['{{codex}} Codex entries', 'After your answer, the Codex gives the tactical rule and a precise training goal. A few entries show the sequence in an official professional match.'],
@@ -106,7 +105,7 @@ export default {
   print: {
     title: 'The fundamentals fingerprint',
     intro: 'Nine axes, two windows: your last {{recent}} games and your last {{snapshot}}. The gap between the two shapes is your current form.',
-    support: 'Supports get their own axes: vision, fight presence, heals, shields and crowd control. Farm says nothing about their game.',
+    support: 'Supports get their own axes: vision, fight presence, crowd control, and a fight impact that adds up heals, shields, damage dealt and damage absorbed. An enchanter, a poke mage and an engage support are each judged on their own job. Farm says nothing about their game.',
     assessment: 'The fingerprint completes a self-assessment of {{fundamentals}} fundamentals, in {{families}} families. When your numbers drift from what you declared, Ascend suggests doing it again.',
     roleLabel: 'Role',
     roles: { carry: 'Top, jungle, mid, ADC', support: 'Support' },
@@ -225,6 +224,8 @@ export default {
       ['Does recording slow the game down?', 'Capture uses your graphics card’s hardware encoder when available. Quality, frame rate and folder are configurable, and automatic recording can be turned off.'],
       ['Do my teammates see my statistics?', 'Only if you decide so. Sharing is set group by group (reviews, statistics, team data, wellbeing) and can be withdrawn at any time.'],
       ['Is there AI?', 'Not at the core of the application: the micro-review and the assistant apply coaching rules written in advance, which you can read. Voice transcription of debriefs uses a model that runs on your PC; nothing is sent to an AI service.'],
+      ['What does the engine know about the game?', 'Only what Riot’s official match timeline proves, sampled every minute: positions, gold, XP, levels, CS, kills, objectives, towers, wards and purchases. Ascend applies coaching rules written in advance to it: the map (lanes, rivers, pits, towers), objective timers, economy thresholds, the level race, vision, tempo and role-specific patterns ({{patterns}} in all). A win-chance estimate, drawn from gold, XP and objectives, only serves to set aside moments when the game was already decided: it is never shown as a rating. What the data does not contain (spells cast, minion waves, where a ward was placed), the engine does not guess.'],
+      ['How does the Mistake Lab spot my mistakes?', 'Three ways. {{auto}} mistakes are spotted without you on the timeline, by fixed rules: dying with more than 1,500 gold in your pocket, for instance, or being 15 CS behind your lane opponent at 10:00. The others come from your micro-review answers (a “justified” answer never counts) and from your own tags during a review. A mistake already recorded is never counted twice. The Lab then ranks each mistake by frequency, by moment of the game and by the win-rate gap between games with and without it, and offers the Codex entry that fixes it.'],
       ['Can the micro-review be wrong?', 'It suggests, you decide. It only sees the match timeline, sampled every minute by Riot: when the data proves nothing, it stays silent. And every moment keeps its “justified” way out.'],
     ],
   },
@@ -257,7 +258,6 @@ export default {
     formLabel: 'Results of the last ten games, oldest to most recent',
     noGap: 'sample too small',
     points: '{{n}} pts',
-    lowEnergyDone: 'Session objective: Resilience, then {{objectives}}.',
     notFoundTitle: 'This page does not exist.',
     notFoundBack: 'Back to home',
     legalBack: 'Home',

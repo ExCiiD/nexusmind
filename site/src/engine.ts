@@ -7,10 +7,9 @@
  */
 export { buildQcm } from '../../src/lib/microReview/smartQcm'
 export { CODEX, codexById, codexFor, localize, dominantPhase } from '../../src/lib/microReview/codex'
-export { DETECTOR_SPEC } from '../../src/lib/microReview/anomalyDetector'
+export { DETECTOR_SPEC, MOMENT_PATTERNS } from '../../src/lib/microReview/anomalyDetector'
 export { GARBAGE_HIGH, GARBAGE_LOW } from '../../src/lib/microReview/winProbability'
 export { CALIBRATION_EVERY, calibrationGap, measuredDistribution } from '../../src/lib/microReview/calibration'
-export { LOW_ENERGY_LOSS_STREAK, LOW_ENERGY_WINRATE } from '../../src/lib/microReview/lowEnergy'
 export { summaryText, tagLabel } from '../../src/components/MicroReview/text'
 export { FAMILIES, fmtClock, latestMoments, phaseBreakdown, phaseOf, rankMistakes, tagFamily } from '../../src/lib/mistakeInsights'
 export { RADAR_AXES, SUPPORT_RADAR_AXES, buildFundamentalsRadar, overallRadarScore } from '../../src/lib/fundamentalsRadarCore'
