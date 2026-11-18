@@ -38,8 +38,8 @@ body { position: relative; font-family: 'Inter', sans-serif; -webkit-font-smooth
 .brand { display: flex; align-items: center; gap: 14px; font: 900 44px/1 'Big Shoulders Display', sans-serif; letter-spacing: 0.06em; }
 .brand-mark { width: 52px; height: 52px; margin-top: -6px; }
 .ver { font: 500 20px/1 'JetBrains Mono', monospace; color: #B5A68C; }
-h1 { position: absolute; left: 72px; top: 156px; font: 800 116px/0.9 'Big Shoulders Display', sans-serif; letter-spacing: 0.012em; text-transform: uppercase; }
-h1 span { display: block; white-space: nowrap; }
+h1 { position: absolute; left: 72px; top: 156px; width: 660px; font: 800 92px/0.9 'Big Shoulders Display', sans-serif; letter-spacing: 0.012em; text-transform: uppercase; }
+h1 span { display: block; }
 p { position: absolute; left: 72px; bottom: 56px; width: 620px; padding-top: 20px; border-top: 3px solid #D4A24C; font-size: 24px; line-height: 1.4; color: #B5A68C; }
 .radar { position: absolute; right: 48px; bottom: 44px; width: 400px; height: 400px; }
 </style>

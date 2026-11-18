@@ -1,11 +1,13 @@
 /**
- * The document every page shares: head, the report's rail (its table of
- * contents, which folds into a top bar on small screens) and the footer with
- * the Riot Games notice.
+ * The document every page shares: head, the top bar (brand, the two product
+ * pages, language, "request access"), the closing call to action and the
+ * footer with the Riot Games notice.
  */
 import { esc, tx } from '../lib/html.mjs'
 import { icon } from '../lib/icons.mjs'
 import { brandMark } from '../lib/mark.mjs'
+import { megabytes } from '../release.mjs'
+import { num } from '../lib/html.mjs'
 
 /** JSON that can sit inside a <script> data block: no `<`, no line separators. */
 export const jsonBlock = (id, value) =>
@@ -15,6 +17,13 @@ export function downloadButton(c, ctx, { short = false, small = false } = {}) {
   const L = c.lang
   return `<a class="btn btn-primary${small ? ' btn-sm' : ''}" data-download href="${esc(ctx.urls.download)}">${icon.download(small ? 14 : 16)}<span>${tx(short ? c.download.ctaShort : c.download.cta, L)}</span></a>`
 }
+
+/** `mailto:` link that asks for an invite, subject and body filled in. */
+export const accessHref = (c, ctx) =>
+  `mailto:${ctx.contact}?subject=${encodeURIComponent(c.access.mailSubject)}&body=${encodeURIComponent(c.access.mailBody)}`
+
+/** Where "request access" leads: this page's closing section, or the home page's. */
+const accessAnchor = (c, page) => (page.hasAccess ? `#${c.access.id}` : `${c.home}#${c.access.id}`)
 
 function head(c, ctx, page) {
   const L = c.lang
@@ -49,59 +58,70 @@ ${page.jsonLd ? `<script type="application/ld+json">${JSON.stringify(page.jsonLd
 <script src="${esc(ctx.assets.js)}" defer></script>`.replace(/\n{2,}/g, '\n')
 }
 
-function rail(c, ctx, page) {
+function topBar(c, ctx, page) {
   const L = c.lang
-  const link = (item) => `<li><a href="${esc(item.href)}"${item.current ? ' aria-current="page"' : ''}>${tx(item.label, L)}</a></li>`
-  const nav = page.rail.map((group) => `${group.title ? `<p class="rail-h">${tx(group.title, L)}</p>` : ''}
-      <${group.numbered ? 'ol' : 'ul'} class="rail-list${group.numbered ? ' rail-num' : ''}">${group.items.map(link).join('')}</${group.numbered ? 'ol' : 'ul'}>`).join('\n')
+  const item = (key) => `<a href="${esc(c.pages[key].path)}"${page.current === key ? ' aria-current="page"' : ''}>${tx(c.navbar[key], L)}</a>`
   const lang = `<a class="lang" href="${esc(page.langSwitch.href)}" hreflang="${page.langSwitch.hreflang}" lang="${page.langSwitch.hreflang}" aria-label="${tx(page.langSwitch.label, L)}">${page.langSwitch.code}</a>`
-  return `<header class="rail" data-rail>
-    <div class="rail-top">
-      <a class="brand" href="${esc(c.home)}" aria-label="Ascend">${brandMark()}ASCEND</a>
-      <span class="brand-note mono">${tx(c.brandNote, L)}</span>
-      <span class="rail-tools">
-        ${lang}
-        <a class="rail-toggle" href="#${ctx.contentsId}" data-toggle aria-controls="rail-nav">${icon.menu(16)}<span>${tx(c.rail.menu, L)}</span></a>
-        ${downloadButton(c, ctx, { short: true, small: true })}
-      </span>
-    </div>
-    <nav class="rail-nav" id="rail-nav" aria-label="${tx(c.rail.label, L)}">
-      ${nav}
+  return `<header class="top" data-top>
+  <div class="top-in">
+    <a class="brand" href="${esc(c.home)}" aria-label="Ascend">${brandMark()}ASCEND</a>
+    <nav class="top-nav" id="top-nav" aria-label="${tx(c.navbar.label, L)}">
+      ${item('solo')}
+      ${item('team')}
     </nav>
-    <div class="rail-foot">
-      ${downloadButton(c, ctx, { short: true })}
-      <p class="rail-ver mono"><span data-version>${esc(ctx.release.version)}</span></p>
+    <div class="top-tools">
       ${lang}
+      <a class="btn btn-primary btn-sm top-cta" href="${esc(accessAnchor(c, page))}">${tx(c.navbar.access, L)}</a>
+      <button type="button" class="top-toggle" aria-controls="top-nav" aria-expanded="false" hidden>${icon.menu(18)}<span class="vh">${tx(c.navbar.menu, L)}</span></button>
     </div>
-  </header>`
+  </div>
+</header>`
+}
+
+/** Closing section of every product page: the invitation, and the download for those who have a code. */
+export function accessSection(c, ctx) {
+  const L = c.lang
+  const size = `${num(megabytes(ctx.release.bytes), c.locale)} ${c.download.sizeUnit}`
+  return `<section class="cta" id="${esc(c.access.id)}" aria-labelledby="h-${esc(c.access.id)}">
+  <div class="wrap">
+    <h2 id="h-${esc(c.access.id)}">${c.access.title.map((s) => `<span class="ln">${tx(s, L)}</span>`).join(' ')}</h2>
+    <p class="lead">${tx(c.access.lead, L)}</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="${esc(accessHref(c, ctx))}">${tx(c.access.request, L)}</a>
+      <span class="cta-note mono">${tx(c.access.note, L)}</span>
+    </div>
+    <p class="cta-code">${tx(c.access.haveCode, L)} <a data-download href="${esc(ctx.urls.download)}">${tx(c.download.cta, L)}</a> <span class="mono">v<span data-version>${esc(ctx.release.version)}</span> · <span data-size>${tx(size, L)}</span></span></p>
+  </div>
+</section>`
 }
 
 function footer(c, ctx, page) {
   const L = c.lang
-  const product = page.footerLinks.map((x) => `<li><a href="${esc(x.href)}">${tx(x.label, L)}</a></li>`).join('')
+  const li = (href, label) => `<li><a href="${esc(href)}">${tx(label, L)}</a></li>`
   return `<footer class="foot">
+  <div class="wrap">
     <div class="foot-grid">
       <div class="foot-brand">
         <p class="brand" aria-hidden="true">${brandMark()}ASCEND</p>
         <p>${tx(c.footer.tagline, L)}</p>
       </div>
-      <nav id="${ctx.contentsId}" aria-label="${tx(c.footer.contents, L)}">
-        <h2 class="foot-h">${tx(c.footer.contents, L)}</h2>
-        <ul class="foot-list foot-list-2">${product}</ul>
+      <nav aria-labelledby="foot-product">
+        <h2 class="foot-h" id="foot-product">${tx(c.footer.product, L)}</h2>
+        <ul class="foot-list">${li(c.pages.solo.path, c.navbar.solo)}${li(c.pages.team.path, c.navbar.team)}${li(accessAnchor(c, page), c.navbar.access)}</ul>
       </nav>
-      <nav aria-label="${tx(c.footer.legal, L)}">
-        <h2 class="foot-h">${tx(c.footer.legal, L)}</h2>
-        <ul class="foot-list">
-          <li><a href="${esc(c.footer.termsHref)}">${tx(c.footer.terms, L)}</a></li>
-          <li><a href="${esc(c.footer.privacyHref)}">${tx(c.footer.privacy, L)}</a></li>
-          <li><a href="${esc(ctx.urls.all)}">${tx(c.download.releaseNotes, L)}</a></li>
-          <li><a href="${esc(ctx.webApp)}">${tx(c.download.webApp, L)}</a></li>
-        </ul>
+      <nav aria-labelledby="foot-resources">
+        <h2 class="foot-h" id="foot-resources">${tx(c.footer.resources, L)}</h2>
+        <ul class="foot-list">${li(`${c.home}#${c.faq.id}`, c.footer.questions)}${li(`mailto:${ctx.contact}`, c.footer.contact)}${li(ctx.urls.all, c.footer.releaseNotes)}${li(ctx.webApp, c.download.webApp)}</ul>
+      </nav>
+      <nav aria-labelledby="foot-legal">
+        <h2 class="foot-h" id="foot-legal">${tx(c.footer.legal, L)}</h2>
+        <ul class="foot-list">${li(c.footer.termsHref, c.footer.terms)}${li(c.footer.privacyHref, c.footer.privacy)}</ul>
       </nav>
     </div>
     <p class="riot-notice" lang="en">${tx(c.footer.riot, 'en')}</p>
     ${c.footer.riotFr ? `<p class="riot-notice">${tx(c.footer.riotFr, L)}</p>` : ''}
-  </footer>`
+  </div>
+</footer>`
 }
 
 export function shell(c, ctx, page) {
@@ -112,15 +132,12 @@ ${head(c, ctx, page)}
 </head>
 <body${page.bodyClass ? ` class="${page.bodyClass}"` : ''}>
 <a class="skip" href="#main">${tx(c.skip, c.lang)}</a>
-<div class="layout">
-  ${rail(c, ctx, page)}
-  <div class="page">
-    <main id="main" tabindex="-1">
+${topBar(c, ctx, page)}
+<main id="main" tabindex="-1">
 ${page.main}
-    </main>
-    ${footer(c, ctx, page)}
-  </div>
-</div>
+${page.hasAccess ? accessSection(c, ctx) : ''}
+</main>
+${footer(c, ctx, page)}
 ${(page.data ?? []).join('\n')}
 </body>
 </html>

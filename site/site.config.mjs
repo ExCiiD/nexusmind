@@ -9,3 +9,9 @@
  * page that still prints a bracketed placeholder.
  */
 export const SITE_URL = ''
+
+/**
+ * Where "request access" and "write to us" lead: the publisher's contact
+ * address, the one the legal pages give.
+ */
+export const CONTACT_EMAIL = 'exciid501@gmail.com'

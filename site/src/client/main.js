@@ -1,136 +1,179 @@
 /**
  * Browser script of the showcase site. Everything on the page is already
- * rendered and readable without it; this file makes the exhibits respond.
+ * rendered and readable without it; this file adds what needs a browser:
  *
- * Each exhibit is the same module the build used (site/src/exhibits): a
- * `reduce(state, action, data)` and a `render(state, data)`. One click
- * listener per exhibit reads `data-act` from the control that was used, asks
- * the module for the next state and paints it. No framework, no network call
- * except the release lookup at the bottom.
+ *   - the top bar's menu on small screens;
+ *   - the app's clips, which play only while they are on screen (never with
+ *     reduced motion), each with a pause control;
+ *   - the mini demonstration windows of the product pages;
+ *   - the download link, moved to a newer release if GitHub knows one.
+ *
+ * No framework, no network call except the release lookup.
  */
-import * as micro from '../exhibits/micro.mjs'
-import * as dashboard from '../exhibits/dashboard.mjs'
-import * as lab from '../exhibits/lab.mjs'
-import * as radar from '../exhibits/radar.mjs'
-import * as tiers from '../exhibits/tiers.mjs'
-import { appVars } from '../lib/appVars.mjs'
 import { isNewer } from '../lib/version.mjs'
-// The app's own derivation of a full theme from three colours.
-import { deriveCustomTokens } from '../../../src/lib/theme'
 
-const EXHIBITS = { micro, dashboard, lab, radar, tiers }
+const root = document.documentElement
+root.classList.add('js')
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
+const lang = root.lang === 'fr' ? 'fr' : 'en'
+const WORDS = {
+  fr: { pause: 'Pause', play: 'Lecture', pauseLabel: 'Mettre la vidéo en pause', playLabel: 'Lire la vidéo' },
+  en: { pause: 'Pause', play: 'Play', pauseLabel: 'Pause the video', playLabel: 'Play the video' },
+}[lang]
 
 const read = (id) => {
   const el = document.getElementById(id)
   return el ? JSON.parse(el.textContent) : null
 }
 
-/* ── Exhibits ─────────────────────────────────────────────────────────── */
+/* ── Top bar: the two pages fold into a menu on small screens ─────────── */
 
-function mount(root) {
-  const name = root.dataset.exhibit
-  const mod = EXHIBITS[name]
-  const data = read(`data-${name}`)
-  if (!mod || !data) return
-  let state = mod.initialState(data)
-
-  const dispatch = (type, el) => {
-    const next = mod.reduce(state, { ...el.dataset, type }, data)
-    if (next === state) return
-    state = next
-    root.innerHTML = mod.render(state, data)
-    // The control that was used no longer exists: put the focus where the
-    // module says the result is, so keyboard and screen-reader users follow.
-    if (!state.focus) return
-    const target = root.querySelector(`[data-k="${state.focus}"]`)
-    if (!target) return
-    target.focus({ preventScroll: true })
-    target.scrollIntoView({ block: 'nearest' })
-  }
-
-  root.addEventListener('click', (e) => {
-    const el = e.target.closest('[data-act]')
-    if (el && root.contains(el)) dispatch(el.dataset.act, el)
-  })
-  // A mouse may inspect by hovering; touch and pen select by tapping.
-  root.addEventListener('pointerover', (e) => {
-    if (e.pointerType !== 'mouse') return
-    const el = e.target.closest('[data-hover]')
-    if (el && root.contains(el)) dispatch(el.dataset.hover, el)
-  })
-}
-
-document.querySelectorAll('[data-exhibit]').forEach(mount)
-
-/* ── Themes: repaint the sample, never re-create the colour inputs ────── */
-
-const themeRoot = document.querySelector('[data-themes]')
-const themeData = read('data-themes')
-if (themeRoot && themeData) {
-  const sample = themeRoot.querySelector('[data-sample]')
-  const own = themeRoot.querySelector('input[name="theme"][value="custom"]')
-  const ownChip = own.parentElement.querySelectorAll('.sw-chip i')
-  const field = (name) => themeRoot.querySelector(`input[name="${name}"]`)
-  const customVars = () => appVars(deriveCustomTokens({ base: field('base').value, accent: field('accent').value, secondary: field('secondary').value }))
-  const paint = (vars) => { for (const [k, v] of vars) sample.style.setProperty(k, v) }
-
-  themeRoot.addEventListener('change', (e) => {
-    if (e.target.name !== 'theme') return
-    paint(e.target.value === 'custom' ? customVars() : themeData.presets[e.target.value])
-  })
-  themeRoot.addEventListener('input', (e) => {
-    if (e.target.type !== 'color') return
-    const vars = customVars()
-    const v = Object.fromEntries(vars)
-    own.checked = true
-    paint(vars)
-    ownChip[0].style.background = v['--app-bg']
-    ownChip[1].style.background = v['--app-accent']
-    ownChip[2].style.background = v['--app-second']
-  })
-}
-
-/* ── Rail: contents toggle on small screens, current section on large ─── */
-
-const rail = document.querySelector('[data-rail]')
-const toggle = rail && rail.querySelector('[data-toggle]')
+const top = document.querySelector('[data-top]')
+const toggle = top && top.querySelector('.top-toggle')
 if (toggle) {
+  toggle.hidden = false
   const set = (open) => {
-    rail.classList.toggle('is-open', open)
+    top.classList.toggle('is-open', open)
     toggle.setAttribute('aria-expanded', String(open))
   }
-  // Without script the control is a plain link to the contents list in the
-  // footer; with it, a disclosure button for the list in the bar.
-  toggle.setAttribute('role', 'button')
-  set(false)
-  toggle.addEventListener('click', (e) => { e.preventDefault(); set(!rail.classList.contains('is-open')) })
-  toggle.addEventListener('keydown', (e) => { if (e.key === ' ') { e.preventDefault(); toggle.click() } })
-  rail.querySelector('.rail-nav').addEventListener('click', (e) => { if (e.target.closest('a')) set(false) })
+  toggle.addEventListener('click', () => set(!top.classList.contains('is-open')))
+  top.querySelector('.top-nav').addEventListener('click', (e) => { if (e.target.closest('a')) set(false) })
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape' || !rail.classList.contains('is-open')) return
+    if (e.key !== 'Escape' || !top.classList.contains('is-open')) return
     set(false)
     toggle.focus()
   })
 }
 
-const links = new Map()
-document.querySelectorAll('.rail-nav a[href^="#"]').forEach((a) => links.set(a.getAttribute('href').slice(1), a))
-const sections = [...links.keys()].map((id) => document.getElementById(id)).filter(Boolean)
-if (sections.length && 'IntersectionObserver' in window) {
-  const inBand = new Set()
-  const observer = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      if (entry.isIntersecting) inBand.add(entry.target.id)
-      else inBand.delete(entry.target.id)
-    }
-    const current = sections.find((s) => inBand.has(s.id))
-    for (const [id, a] of links) {
-      if (current && current.id === id) a.setAttribute('aria-current', 'location')
-      else a.removeAttribute('aria-current')
-    }
-  }, { rootMargin: '-20% 0px -70% 0px' })
-  sections.forEach((s) => observer.observe(s))
+/* ── Clips: play on screen, pause off screen, a control to stop them ──── */
+
+const inTour = (video) => !!video.closest('[data-tour]')
+const visible = new WeakSet()
+/** Videos the visitor paused: they stay paused until played again. */
+const held = new WeakSet()
+
+function playIfAllowed(video) {
+  if (reduced.matches || held.has(video) || !visible.has(video)) return
+  const p = video.play()
+  if (p && p.catch) p.catch(() => { /* autoplay refused: the poster stays */ })
 }
+
+const clips = [...document.querySelectorAll('video[data-clip]')]
+const clipObserver = 'IntersectionObserver' in window
+  ? new IntersectionObserver((entries) => {
+    for (const { target, isIntersecting } of entries) {
+      if (isIntersecting) { visible.add(target); if (!inTour(target)) playIfAllowed(target) } else { visible.delete(target); target.pause() }
+    }
+  }, { threshold: 0.35 })
+  : null
+
+for (const video of clips) {
+  if (inTour(video)) continue
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'clip-toggle'
+  const paint = () => {
+    const playing = !video.paused
+    button.textContent = playing ? WORDS.pause : WORDS.play
+    button.setAttribute('aria-label', playing ? WORDS.pauseLabel : WORDS.playLabel)
+    button.setAttribute('aria-pressed', String(!playing && held.has(video)))
+  }
+  button.addEventListener('click', () => {
+    if (video.paused) { held.delete(video); visible.add(video); const p = video.play(); if (p && p.catch) p.catch(() => {}) } else { held.add(video); video.pause() }
+  })
+  video.addEventListener('play', paint)
+  video.addEventListener('pause', paint)
+  paint()
+  video.parentElement.appendChild(button)
+  if (clipObserver) clipObserver.observe(video)
+}
+
+/* ── Mini demonstration windows ───────────────────────────────────────── */
+
+/** How long a still chapter stays on screen. */
+const STILL_MS = 6000
+
+function mountTour(tour) {
+  const tabs = [...tour.querySelectorAll('[role="tab"]')]
+  const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls')))
+  let index = 0
+  let timer = 0
+  let auto = !reduced.matches
+  let onScreen = false
+
+  const mediaOf = (i) => panels[i].querySelector('video, img')
+  for (const p of panels) {
+    const v = p.querySelector('video')
+    if (!v) continue
+    v.loop = false
+    v.preload = 'metadata'
+    if (reduced.matches) v.controls = true
+    v.addEventListener('ended', () => { if (auto && panels[index] === p) show(index + 1) })
+  }
+
+  function run() {
+    clearTimeout(timer)
+    tour.classList.toggle('is-playing', auto && onScreen)
+    if (!auto || !onScreen) return
+    const m = mediaOf(index)
+    if (m.tagName === 'VIDEO') {
+      const start = () => {
+        tour.style.setProperty('--dur', `${Math.max(1, m.duration || STILL_MS / 1000)}s`)
+        m.currentTime = 0
+        const p = m.play()
+        if (p && p.catch) p.catch(() => { timer = setTimeout(() => show(index + 1), STILL_MS) })
+      }
+      if (m.readyState >= 1) start(); else m.addEventListener('loadedmetadata', start, { once: true })
+    } else {
+      tour.style.setProperty('--dur', `${STILL_MS / 1000}s`)
+      timer = setTimeout(() => show(index + 1), STILL_MS)
+    }
+  }
+
+  function show(i, { focus = false } = {}) {
+    const next = (i + tabs.length) % tabs.length
+    const before = mediaOf(index)
+    if (before.tagName === 'VIDEO') before.pause()
+    index = next
+    tabs.forEach((t, k) => {
+      const on = k === index
+      t.setAttribute('aria-selected', String(on))
+      t.tabIndex = on ? 0 : -1
+      panels[k].classList.toggle('is-on', on)
+    })
+    // Restart the progress bar of the chosen tab.
+    tour.classList.remove('is-playing')
+    void tour.offsetWidth
+    if (focus) tabs[index].focus()
+    run()
+  }
+
+  tabs.forEach((t, k) => t.addEventListener('click', () => {
+    // A chapter chosen by hand stays: the window stops going through the others.
+    auto = false
+    show(k)
+    const m = mediaOf(k)
+    if (m.tagName === 'VIDEO' && !reduced.matches) { m.loop = true; const p = m.play(); if (p && p.catch) p.catch(() => {}) }
+  }))
+  tour.querySelector('[role="tablist"]').addEventListener('keydown', (e) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1, Home: -index, End: tabs.length - 1 - index }[e.key]
+    if (step == null) return
+    e.preventDefault()
+    auto = false
+    show(index + step, { focus: true })
+  })
+
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(([entry]) => {
+      onScreen = entry.isIntersecting
+      if (!onScreen) { clearTimeout(timer); const m = mediaOf(index); if (m.tagName === 'VIDEO') m.pause() }
+      run()
+    }, { threshold: 0.4 }).observe(tour)
+  }
+  tour.classList.add('is-ready')
+}
+
+document.querySelectorAll('[data-tour]').forEach(mountTour)
 
 /* ── Download: follow a newer release if GitHub knows one ─────────────── */
 
@@ -149,8 +192,6 @@ if (release && 'fetch' in window) {
       document.querySelectorAll('[data-download]').forEach((a) => { a.href = asset.browser_download_url })
       document.querySelectorAll('[data-version]').forEach((el) => { el.textContent = version })
       document.querySelectorAll('[data-size]').forEach((el) => { el.textContent = size })
-      // The published digest belongs to the release this page was built for.
-      document.querySelectorAll('[data-verify]').forEach((el) => { el.hidden = true })
     })
     .catch(() => { /* the built-in link stays */ })
 }

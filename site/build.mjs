@@ -22,15 +22,17 @@ import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { SITE_URL as CONFIG_URL } from './site.config.mjs'
+import { createRequire } from 'node:module'
+import { SITE_URL as CONFIG_URL, CONTACT_EMAIL } from './site.config.mjs'
 import fr from './src/copy/fr.mjs'
 import en from './src/copy/en.mjs'
 import { buildData } from './src/data.mjs'
 import { appVars, styleOf } from './src/lib/appVars.mjs'
 import { isNewer } from './src/lib/version.mjs'
 import { RELEASE, WEB_APP_URL, releaseUrls } from './src/release.mjs'
-import { shell } from './src/pages/shell.mjs'
+import { jsonBlock, shell } from './src/pages/shell.mjs'
 import { home } from './src/pages/home.mjs'
+import { product } from './src/pages/product.mjs'
 import { LEGAL, legalPage, notFoundPage } from './src/pages/legal.mjs'
 import { ogCard } from './src/pages/og.mjs'
 
@@ -131,13 +133,21 @@ const js = jsBundle.outputFiles[0].text
 await emit('assets/site.css', css)
 await emit('assets/site.js', js)
 
+/**
+ * Captures and clips of the app (site/public/media), listed in site/shots.cjs
+ * and made by site/capture.cjs: id → { w, h, clip }. A file that is missing
+ * fails the build (see the link check below).
+ */
+const MEDIA = Object.fromEntries(createRequire(import.meta.url)('./shots.cjs').map((s) => [s.id, { w: s.out[0], h: s.out[1], clip: !!s.steps }]))
+
 const ctxFor = (c) => ({
   siteUrl,
   preview,
   release: RELEASE,
   urls: releaseUrls(),
   webApp: WEB_APP_URL,
-  contentsId: c.rail.id,
+  contact: CONTACT_EMAIL,
+  media: MEDIA,
   assets: {
     css: `/assets/site.css?v=${hash(css)}`,
     js: `/assets/site.js?v=${hash(js)}`,
@@ -145,37 +155,48 @@ const ctxFor = (c) => ({
   },
 })
 
+/** Public address → file Cloudflare serves it from (/entrainement-solo is entrainement-solo.html). */
+const fileOf = (p) => (p.endsWith('/') ? `${p.slice(1)}index.html` : `${p.slice(1)}.html`)
+const other = (lang) => (lang === 'fr' ? en : fr)
+
 const pages = []
 for (const lang of ['fr', 'en']) {
   const c = COPY[lang]
   const ctx = ctxFor(c)
-  const body = home(c, ctx, data[lang])
-  const local = (x) => ({ href: `#${x.id}`, label: x.label })
-  pages.push({
-    file: lang === 'fr' ? 'index.html' : 'en/index.html',
-    kind: 'home',
-    lang,
-    html: shell(c, ctx, {
-      path: c.home,
-      title: c.meta.title,
-      description: c.meta.description,
-      alternates: { fr: fr.home, en: en.home, 'x-default': fr.home },
-      og: { title: c.meta.ogTitle, description: c.meta.ogDescription },
+  const release = jsonBlock('data-release', { version: ctx.release.version, api: ctx.urls.api, sizeUnit: c.download.sizeUnit, locale: c.locale })
+  const og = { title: c.meta.ogTitle, description: c.meta.ogDescription }
+  const marketing = [
+    {
+      kind: 'home', path: c.home, alt: other(lang).home, title: c.meta.title, description: c.meta.description, body: home(c, ctx, data[lang]),
       jsonLd: {
         '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Ascend', applicationCategory: 'GameApplication',
         operatingSystem: 'Windows 10, Windows 11', softwareVersion: RELEASE.version, downloadUrl: ctx.urls.download, inLanguage: lang,
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' }, description: c.meta.jsonLd,
       },
-      rail: [
-        { title: c.rail.sections, numbered: true, items: c.nav.map(local) },
-        { title: c.rail.annexes, items: c.annexes.map(local) },
-      ],
-      langSwitch: c.langSwitch,
-      footerLinks: [...c.nav, ...c.annexes].map(local),
-      main: body.main,
-      data: body.data,
-    }),
-  })
+    },
+    { kind: 'solo', path: c.pages.solo.path, alt: other(lang).pages.solo.path, title: c.pages.solo.title, description: c.pages.solo.description, body: product('solo', c, ctx, data[lang]) },
+    { kind: 'team', path: c.pages.team.path, alt: other(lang).pages.team.path, title: c.pages.team.title, description: c.pages.team.description, body: product('team', c, ctx, data[lang]) },
+  ]
+  for (const pg of marketing) {
+    pages.push({
+      file: fileOf(pg.path),
+      kind: 'marketing',
+      lang,
+      html: shell(c, ctx, {
+        path: pg.path,
+        title: pg.title,
+        description: pg.description,
+        alternates: lang === 'fr' ? { fr: pg.path, en: pg.alt, 'x-default': pg.path } : { fr: pg.alt, en: pg.path, 'x-default': pg.alt },
+        og,
+        jsonLd: pg.jsonLd,
+        current: pg.kind === 'home' ? null : pg.kind,
+        hasAccess: true,
+        langSwitch: { ...c.langSwitch, href: pg.alt },
+        main: pg.body.main,
+        data: [release],
+      }),
+    })
+  }
 }
 for (const doc of LEGAL) {
   const c = COPY[doc.lang]
@@ -273,7 +294,7 @@ for (const p of pages) {
   const all = ids(p.html)
   for (const id of new Set(all)) check(all.filter((x) => x === id).length === 1, `${where}: duplicate id "${id}"`)
   for (const m of p.html.matchAll(/\shref="#([^"]+)"/g)) check(all.includes(m[1]), `${where}: link to #${m[1]} leads nowhere`)
-  for (const m of p.html.matchAll(/\s(?:href|src)="(\/[^"#?]*)(?:\?[^"#]*)?(#[^"]*)?"/g)) {
+  for (const m of p.html.matchAll(/\s(?:href|src|poster)="(\/[^"#?]*)(?:\?[^"#]*)?(#[^"]*)?"/g)) {
     const target = m[1]
     check(known.has(target) || existsSync(path.join(out, target)), `${where}: ${target} does not exist`)
     check(!target.endsWith('.html'), `${where}: ${target} is served through a redirect, link to ${urlOf(target.slice(1))} instead`)
@@ -294,7 +315,7 @@ for (const p of pages) {
     const left = bracketed(p.html)
     check(!left.length, `${where}: ${left.length} bracketed placeholder${left.length > 1 ? 's' : ''} left (${left.join(', ')}); complete the legal pages before giving the site a public address`)
   }
-  if (p.kind === 'home') {
+  if (p.kind === 'marketing') {
     check(!bracketed(p.html).length, `${where}: a bracketed placeholder is printed on a marketing page`)
     // Riot policy: no official rank names, no place names from the game's universe.
     // (The radar's "Gold/m" and "Gold@15" axes are the in-game currency, as the app labels them.)

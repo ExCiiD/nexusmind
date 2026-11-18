@@ -10,10 +10,10 @@
  */
 export const RELEASE = {
   repo: 'ExCiiD/nexusmind',
-  version: '1.0.0-beta.1',
-  file: 'Ascend-Setup-1.0.0-beta.1.exe',
-  bytes: 346559572,
-  sha512: '44ojwZlvJHKcMhdVCn6NA93n+KdP2uYODIxsLWI1XNtXnsJhyXcSgZOV6ArRTcEeUaf2PKJxX5GBWiuatuH6dQ==',
+  version: '1.0.0-beta.2',
+  file: 'Ascend-Setup-1.0.0-beta.2.exe',
+  bytes: 346182736,
+  sha512: 'Li09CEJ+ih/IZVZUg111QpG1+IGTMlIzhdzxzKxuaR9Y6q+edITGmtsgEQf5g8MTTU+dxmtLk0PSS2D8BD0p0g==',
 }
 
 export const releaseUrls = (r = RELEASE) => ({
