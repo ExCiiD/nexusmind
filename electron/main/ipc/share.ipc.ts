@@ -1,6 +1,6 @@
 import { ipcMain, clipboard } from 'electron'
 import { getPrisma } from '../database'
-import { existsSync, createReadStream, statSync } from 'fs'
+import { existsSync, statSync } from 'fs'
 import { basename, extname } from 'path'
 import { z } from 'zod'
 import { validatedHandle, id, discordWebhookUrl, shortText, localPath } from './validate'

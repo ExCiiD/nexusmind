@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, Trash2, Clock, HelpCircle } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { useTranslation } from 'react-i18next'
 
 export interface TimelineNote {

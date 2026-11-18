@@ -5,7 +5,7 @@
  * - folder storage (localStorage serialisation)
  * - filter logic
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 
 // ── Inline copies of the pure helpers (avoids importing the React component) ──
 

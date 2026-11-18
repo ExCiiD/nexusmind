@@ -9,7 +9,7 @@ import { VideoReviewPlayer } from '@/components/Recording/VideoReviewPlayer'
 import { TimelineNoteInput, type TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
 import { DynamicKPIForm } from '@/components/ReviewForm/DynamicKPIForm'
 import { RecordingMediaPanel } from '@/components/Recording/RecordingMediaPanel'
-import { Loader2, Check, Link2, Trash2, Scissors, Square, Save } from 'lucide-react'
+import { Loader2, Check, Link2, Trash2, Square, Save } from 'lucide-react'
 import { ShareButton } from '@/components/Share/ShareButton'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -11,7 +11,7 @@ import type { Team, TeamMember, ChampionPoolEntry, TeamSynergyStats } from '@/li
 import { BulkImportModal } from './BulkImportModal'
 import { DashboardLayout } from './DashboardLayout'
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
-import { ScopeDialog, scopeToMatchCount, type FetchScope } from '@/components/team/ScopeDialog'
+import { ScopeDialog, type FetchScope } from '@/components/team/ScopeDialog'
 import { useBackgroundJobsStore } from '@/store/useBackgroundJobsStore'
 
 const ROLES = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'] as const
