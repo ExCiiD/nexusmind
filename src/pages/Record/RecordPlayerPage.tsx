@@ -165,7 +165,7 @@ export function RecordPlayerPage() {
     } finally {
       setCreatingReview(false)
     }
-  }, [recording, navigate])
+  }, [recording, navigate, t])
 
   // YouTube
   const [ytState, setYtState] = useState<YoutubeUploadState>('idle')
@@ -204,7 +204,7 @@ export function RecordPlayerPage() {
       console.error('[RecordPlayerPage] Load failed:', err)
       setError(t('record.player.loadFailed'))
     } finally { setLoading(false) }
-  }, [recordingId])
+  }, [recordingId, t])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -253,7 +253,7 @@ export function RecordPlayerPage() {
     } catch (err) {
       toast({ title: t('record.toast.mistakeFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
     }
-  }, [recording, reloadMistakes, toast])
+  }, [recording, reloadMistakes, toast, t])
 
   const handleDeleteMistake = useCallback(async (id: string) => {
     try {
@@ -262,7 +262,7 @@ export function RecordPlayerPage() {
     } catch (err) {
       toast({ title: t('record.toast.mistakeDeleteFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
     }
-  }, [reloadMistakes, toast])
+  }, [reloadMistakes, toast, t])
 
   // ── Bookmarks ─────────────────────────────────────────────────────────
   // Recording-scoped, so they work even on orphan recordings (no Riot
@@ -289,7 +289,7 @@ export function RecordPlayerPage() {
     } catch (err) {
       toast({ title: t('record.toast.bookmarkFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
     }
-  }, [recordingId, reloadBookmarks, toast])
+  }, [recordingId, reloadBookmarks, toast, t])
 
   const handleDeleteBookmark = useCallback(async (id: string) => {
     try {
@@ -298,7 +298,7 @@ export function RecordPlayerPage() {
     } catch (err) {
       toast({ title: t('record.toast.bookmarkDeleteFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
     }
-  }, [reloadBookmarks, toast])
+  }, [reloadBookmarks, toast, t])
 
   const handleAutoDetect = useCallback(async () => {
     if (!recording?.gameId) return
@@ -316,7 +316,7 @@ export function RecordPlayerPage() {
     } finally {
       setAutoDetecting(false)
     }
-  }, [recording, reloadMistakes, toast])
+  }, [recording, reloadMistakes, toast, t])
 
   // Fetch in-game events + the recording's precise startOffsetSec once we
   // know which game this recording is linked to. Both are best-effort — the
@@ -375,14 +375,14 @@ export function RecordPlayerPage() {
     } finally {
       setRefreshingEvents(false)
     }
-  }, [recording, toast])
+  }, [recording, toast, t])
 
   const handleUnlink = useCallback(async () => {
     if (!recording?.gameId) return
     await window.api.unlinkRecording(recording.gameId)
     toast({ title: t('record.toast.unlinked'), description: t('record.toast.unlinkedDesc') })
     await loadData()
-  }, [recording, loadData, toast])
+  }, [recording, loadData, toast, t])
 
   // Manual recovery for the orphan path: ask the backend to look up this
   // single recording in Riot match history. On success, reload so the
@@ -414,7 +414,7 @@ export function RecordPlayerPage() {
     } finally {
       setTryingLink(false)
     }
-  }, [recording, loadData, toast])
+  }, [recording, loadData, toast, t])
 
   const handleClipRangeChange = useCallback((range: { startMs: number; endMs: number }) => {
     setClipRange(range)

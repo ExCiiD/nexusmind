@@ -142,7 +142,7 @@ function NewSessionForm({ groupId, scrims, onCreated }: { groupId: string; scrim
 function SessionDetail({ session, group, isStaff, myUserId, nameOf, scrims, onChanged }: {
   session: VodReviewSession; group: Group; isStaff: boolean; myUserId: string; nameOf: (id: string) => string; scrims: ScrimSummary[]; onChanged: () => void
 }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { toast } = useToast()
   const members = useMemo(() => group.members, [group])
   const linkedScrim = session.scrimId ? scrims.find((s) => s.id === session.scrimId) : null

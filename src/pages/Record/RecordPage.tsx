@@ -317,7 +317,7 @@ export function RecordPage() {
     } catch (err: any) {
       toast({ title: t('record.toast.deleteFailed'), description: err?.message ?? String(err), variant: 'destructive' })
     }
-  }, [removeSingleRecord, toast])
+  }, [removeSingleRecord, toast, t])
 
   const handleBulkDelete = useCallback(async () => {
     const ids = Array.from(selectedIds)
@@ -329,7 +329,7 @@ export function RecordPage() {
     setFolders(p => { const n = p.map(f => ({ ...f, recordingIds: f.recordingIds.filter(id => !selectedIds.has(id)) })); saveFolders(n); return n })
     setSelectedIds(new Set())
     if (failed > 0) toast({ title: t('record.toast.bulkDeleteFailed', { count: failed }), variant: 'destructive' })
-  }, [selectedIds, toast])
+  }, [selectedIds, toast, t])
 
   // ── Selection ───────────────────────────────────────────────────────────
 
@@ -537,7 +537,6 @@ export function RecordPage() {
       {!loading && filters.content !== 'clips' && folderGroups.map(({ folder, records: recs }) => (
         <RecordGroupSection
           key={folder.id}
-          groupKey={folder.id}
           label={
             editingFolderId === folder.id ? (
               <div className="flex items-center gap-1.5">
@@ -579,7 +578,6 @@ export function RecordPage() {
       {!loading && filters.content !== 'clips' && dateGroups.map(([dateKey, recs]) => (
         <RecordGroupSection
           key={dateKey}
-          groupKey={dateKey}
           label={<span className="capitalize">{formatDateLabel(dateKey)}</span>}
           records={recs}
           selectedIds={selectedIds}
@@ -725,7 +723,6 @@ export function RecordPage() {
 // ── Group section ─────────────────────────────────────────────────────────────
 
 interface RecordGroupSectionProps {
-  groupKey: string
   label: React.ReactNode
   records: RecordEntry[]
   selectedIds: Set<string>
@@ -739,7 +736,7 @@ interface RecordGroupSectionProps {
   onTryLink?: (recordingId: string) => void
 }
 
-function RecordGroupSection({ groupKey, label, records, selectedIds, collapsed, onToggleCollapse, onToggleGroupSelect, onToggleCard, onOpen, onDelete, onRemoveFromFolder, onTryLink }: RecordGroupSectionProps) {
+function RecordGroupSection({ label, records, selectedIds, collapsed, onToggleCollapse, onToggleGroupSelect, onToggleCard, onOpen, onDelete, onRemoveFromFolder, onTryLink }: RecordGroupSectionProps) {
   const ids = records.map(r => r.recordingId)
   const allSelected = ids.length > 0 && ids.every(id => selectedIds.has(id))
   const someSelected = ids.some(id => selectedIds.has(id))

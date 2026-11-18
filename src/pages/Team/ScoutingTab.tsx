@@ -59,7 +59,9 @@ export function ScoutingTab() {
     }
   }
 
-  useEffect(() => { load() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
+  // Mount only: load() picks the first opponent when none is active yet.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load() }, [])
 
   const handleCreate = async () => {
     if (!newName.trim()) return
