@@ -19,7 +19,7 @@ function head(c, ctx, page) {
   const L = c.lang
   const abs = (p) => (ctx.siteUrl ? ctx.siteUrl + p : p)
   const links = [
-    ctx.siteUrl ? `<link rel="canonical" href="${esc(abs(page.path))}">` : '',
+    ctx.siteUrl && !page.noindex ? `<link rel="canonical" href="${esc(abs(page.path))}">` : '',
     ...Object.entries(page.alternates ?? {}).map(([hl, p]) => `<link rel="alternate" hreflang="${hl}" href="${esc(abs(p))}">`),
   ].filter(Boolean).join('\n')
   const og = page.og ? `<meta property="og:type" content="website">
@@ -35,7 +35,7 @@ ${ctx.assets.og ? `<meta property="og:image" content="${esc(abs(ctx.assets.og))}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${tx(page.title, L)}</title>
 <meta name="description" content="${tx(page.description, L)}">
-${page.noindex ? '<meta name="robots" content="noindex">' : ''}
+${page.noindex || ctx.preview ? '<meta name="robots" content="noindex">' : ''}
 ${links}
 <meta name="theme-color" content="#0D0A06">
 <meta name="color-scheme" content="dark">

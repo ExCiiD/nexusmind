@@ -41,6 +41,8 @@ const cache = path.join(here, '.cache')
 const src = (...p) => path.join(repo, 'src', ...p)
 const read = async (file) => (await readFile(file, 'utf8')).replace(/\r\n/g, '\n')
 const siteUrl = (process.env.SITE_URL ?? CONFIG_URL).replace(/\/+$/, '')
+/** No public address yet: the site is a preview and asks search engines not to index it. */
+const preview = !siteUrl
 const COPY = { fr, en }
 const problems = []
 const check = (ok, message) => { if (!ok) problems.push(message) }
@@ -112,6 +114,8 @@ async function emit(rel, content) {
   emitted.push([rel, Buffer.byteLength(content)])
 }
 const hash = (text) => createHash('sha256').update(text).digest('hex').slice(0, 10)
+/** Public address of a page file, as Cloudflare serves it: /index.html is /, /en/terms.html is /en/terms. */
+const urlOf = (file) => `/${file}`.replace(/index\.html$/, '').replace(/\.html$/, '')
 
 const cssParts = await Promise.all(['base.css', 'layout.css', 'app.css'].map((f) => read(path.join(here, 'src', 'styles', f))))
 const cssSource = `${cssParts[0]}\n/* App theme defaults, from src/index.css */\n.app{${styleOf(appVars(baseTokens))}}\n${cssParts[1]}\n${cssParts[2]}`
@@ -129,6 +133,7 @@ await emit('assets/site.js', js)
 
 const ctxFor = (c) => ({
   siteUrl,
+  preview,
   release: RELEASE,
   urls: releaseUrls(),
   webApp: WEB_APP_URL,
@@ -175,13 +180,15 @@ for (const lang of ['fr', 'en']) {
 for (const doc of LEGAL) {
   const c = COPY[doc.lang]
   const text = await read(path.join(here, 'src', 'legal', `${doc.source}.html`))
-  pages.push({ file: doc.path.slice(1), kind: 'legal', lang: doc.lang, html: shell(c, ctxFor(c), legalPage(c, doc, text)) })
+  pages.push({ file: `${doc.path.slice(1)}.html`, kind: 'legal', lang: doc.lang, html: shell(c, ctxFor(c), legalPage(c, doc, text)) })
 }
 pages.push({ file: '404.html', kind: 'notfound', lang: 'fr', html: shell(fr, ctxFor(fr), notFoundPage(fr, en)) })
 for (const p of pages) await emit(p.file, p.html)
 
 /* Headers: a strict policy, the same as before the rebuild. The exhibits need
- * inline style attributes (bar widths, theme variables), nothing else inline. */
+ * inline style attributes (bar widths, theme variables), nothing else inline.
+ * A preview adds X-Robots-Tag, and robots.txt keeps allowing the crawl on
+ * purpose: a crawler that may not fetch a page never reads its "noindex". */
 await emit('_headers', `/*
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
@@ -189,13 +196,13 @@ await emit('_headers', `/*
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), interest-cohort=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains
-
+${preview ? '  X-Robots-Tag: noindex\n' : ''}
 /assets/*
   Cache-Control: public, max-age=604800
 `)
 await emit('robots.txt', `User-agent: *\nAllow: /\n${siteUrl ? `Sitemap: ${siteUrl}/sitemap.xml\n` : ''}`)
 if (siteUrl) {
-  const urls = pages.filter((p) => p.kind !== 'notfound').map((p) => `  <url><loc>${siteUrl}/${p.file.replace(/index\.html$/, '')}</loc></url>`)
+  const urls = pages.filter((p) => p.kind !== 'notfound').map((p) => `  <url><loc>${siteUrl}${urlOf(p.file)}</loc></url>`)
   await emit('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`)
 } else {
   await rm(path.join(out, 'sitemap.xml'), { force: true })
@@ -258,7 +265,7 @@ const ids = (html) => [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1])
 const text = (html) => html.replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ')
 /** Everything a visitor can end up reading, including what the exhibits print after an interaction. */
 const everything = (html) => html.replace(/<[^>]+>/g, ' ')
-const known = new Set(pages.map((p) => `/${p.file}`.replace(/index\.html$/, '')))
+const known = new Set(pages.map((p) => urlOf(p.file)))
 for (const p of pages) {
   const where = p.file
   const all = ids(p.html)
@@ -267,11 +274,14 @@ for (const p of pages) {
   for (const m of p.html.matchAll(/\s(?:href|src)="(\/[^"#?]*)(?:\?[^"#]*)?(#[^"]*)?"/g)) {
     const target = m[1]
     check(known.has(target) || existsSync(path.join(out, target)), `${where}: ${target} does not exist`)
+    check(!target.endsWith('.html'), `${where}: ${target} is served through a redirect, link to ${urlOf(target.slice(1))} instead`)
     if (m[2] && known.has(target)) {
-      const dest = pages.find((q) => `/${q.file}`.replace(/index\.html$/, '') === target)
+      const dest = pages.find((q) => urlOf(q.file) === target)
       check(ids(dest.html).includes(m[2].slice(1)), `${where}: ${target}${m[2]} leads nowhere`)
     }
   }
+  const noindex = p.html.includes('<meta name="robots" content="noindex">')
+  check(noindex === (preview || p.kind === 'notfound'), `${where}: ${noindex ? 'is marked noindex although the site has a public address' : 'is not marked noindex although no public address is set'}`)
   check((p.html.match(/<h1[\s>]/g) ?? []).length === 1, `${where}: expected exactly one h1`)
   check(/Ascend isn[’']t endorsed by Riot Games/.test(p.html), `${where}: the Riot Games notice is missing`)
   check(!/\p{Extended_Pictographic}/u.test(everything(p.html)), `${where}: contains an emoji or pictograph`)
@@ -297,7 +307,7 @@ if (problems.length) {
 }
 
 const kb = (n) => `${(n / 1024).toFixed(1)} kB`
-console.log(`Ascend site built in ${path.relative(repo, out)}${siteUrl ? ` for ${siteUrl}` : ' (no public address set: no canonical link, no sitemap)'}`)
+console.log(`Ascend site built in ${path.relative(repo, out)}${siteUrl ? ` for ${siteUrl}` : ' (preview: no public address set, so no canonical link, no sitemap, and every page asks not to be indexed)'}`)
 for (const [rel, bytes] of emitted) console.log(`  ${rel.padEnd(26)} ${kb(bytes).padStart(9)}`)
 console.log(`  download → ${releaseUrls().download}`)
 console.log(`  facts    → ${Object.entries(data.fr.facts).map(([k, v]) => `${k} ${v}`).join(', ')}`)

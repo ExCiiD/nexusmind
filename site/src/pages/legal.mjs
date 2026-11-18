@@ -6,14 +6,17 @@
  */
 import { esc, tx } from '../lib/html.mjs'
 
+/* `path` is the public address. Cloudflare serves conditions.html at /conditions
+ * and redirects the .html form to it, so every link uses the short one; the
+ * build writes each page to `path` + '.html'. */
 export const LEGAL = [
-  { source: 'conditions', lang: 'fr', path: '/conditions.html', kind: 'terms', alternates: { fr: '/conditions.html', en: '/en/terms.html' },
+  { source: 'conditions', lang: 'fr', path: '/conditions', kind: 'terms', alternates: { fr: '/conditions', en: '/en/terms' },
     title: "Conditions d'utilisation — Ascend", description: "Les règles d'utilisation de l'application Ascend, de l'app web et de leurs services en ligne." },
-  { source: 'confidentialite', lang: 'fr', path: '/confidentialite.html', kind: 'privacy', alternates: { fr: '/confidentialite.html', en: '/en/privacy.html' },
+  { source: 'confidentialite', lang: 'fr', path: '/confidentialite', kind: 'privacy', alternates: { fr: '/confidentialite', en: '/en/privacy' },
     title: 'Politique de confidentialité — Ascend', description: 'Quelles données Ascend traite, où elles sont stockées, combien de temps, et comment exercer vos droits.' },
-  { source: 'terms', lang: 'en', path: '/en/terms.html', kind: 'terms', alternates: { fr: '/conditions.html', en: '/en/terms.html' },
+  { source: 'terms', lang: 'en', path: '/en/terms', kind: 'terms', alternates: { fr: '/conditions', en: '/en/terms' },
     title: 'Terms of Service — Ascend', description: 'The rules for using the Ascend application, web app and online services.' },
-  { source: 'privacy', lang: 'en', path: '/en/privacy.html', kind: 'privacy', alternates: { fr: '/confidentialite.html', en: '/en/privacy.html' },
+  { source: 'privacy', lang: 'en', path: '/en/privacy', kind: 'privacy', alternates: { fr: '/confidentialite', en: '/en/privacy' },
     title: 'Privacy Policy — Ascend', description: 'What data Ascend processes, where it is stored, for how long, and how to exercise your rights.' },
 ]
 
@@ -46,7 +49,7 @@ export const homeLinks = (c, base = c.home) => [...c.nav, ...c.annexes].map((x) 
 /** One 404 page for the whole site (Cloudflare serves /404.html for every miss): both languages on it. */
 export function notFoundPage(fr, en) {
   return {
-    path: '/404.html',
+    path: '/404',
     title: 'Page introuvable — Ascend',
     description: fr.ui.notFoundTitle,
     noindex: true,
