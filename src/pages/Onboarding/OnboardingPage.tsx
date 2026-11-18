@@ -6,7 +6,7 @@ import { AccountPickerStep } from './AccountPickerStep'
 import { cn } from '@/lib/utils'
 import { useTranslation } from 'react-i18next'
 import { SavedAccount } from '@/lib/ipc'
-import logo from '@/assets/ascend-logo-mark.png'
+import { AscendMark } from '@/components/Brand/AscendMark'
 
 type Flow = 'loading' | 'picker' | 'new-account'
 
@@ -38,9 +38,7 @@ export function OnboardingPage() {
   if (flow === 'loading') {
     return (
       <div className="ascend-texture-bg flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 rounded bg-gradient-to-br from-hextech-cyan to-hextech-teal flex items-center justify-center animate-pulse">
-          <span className="text-sm font-bold text-hextech-black">A</span>
-        </div>
+        <AscendMark size={40} className="animate-pulse" />
       </div>
     )
   }
@@ -51,7 +49,7 @@ export function OnboardingPage() {
         <div className="w-full space-y-8">
           <div className="text-center space-y-3">
             <div className="flex items-center justify-center gap-3 mb-6">
-              <img src={logo} alt="" className="h-12 w-12 rounded-full object-cover" />
+              <AscendMark size={48} className="shrink-0" />
               <h1 className="font-display text-3xl font-bold text-gradient-gold">Ascend</h1>
             </div>
             <p className="text-hextech-text">{t('onboarding.tagline')}</p>

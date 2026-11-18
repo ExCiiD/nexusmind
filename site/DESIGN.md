@@ -44,6 +44,16 @@ Open Font License. Inter's licence text sits next to it; the texts for the two
 faces inherited from the app are still to be added. Labels are in sentence
 case; no tracked-out capitals, no label sitting above a heading.
 
+## Logo
+
+The mark is "A d'éclats" (chosen on 18 November 2026): a solid A whose top
+bursts into gold fragments. It sits before "ASCEND" in the rail, the footer and
+the link-preview card (`src/lib/mark.mjs`, the simplified version: the site only
+shows it small). Trunk in `--text-hi`, fragments in `--accent`; never recoloured,
+never moved apart, no glow. The favicon is the app icon (`public/favicon.svg`).
+The masters, the app icon and the logotype are in the app's `src/assets/brand/`;
+the React component is `src/components/Brand/AscendMark.tsx`.
+
 ## Structure rules
 
 - Site chrome is square (radius 0) and flat. The previews keep the app's small radii, which is how the two are told apart.

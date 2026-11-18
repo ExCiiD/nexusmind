@@ -7,6 +7,7 @@
  * product: the fundamentals fingerprint of the demonstration account.
  */
 import { tx } from '../lib/html.mjs'
+import { brandMark } from '../lib/mark.mjs'
 
 export function ogCard(c, data, fontsUrl) {
   const L = c.lang
@@ -34,19 +35,20 @@ export function ogCard(c, data, fontsUrl) {
 html, body { width: 1200px; height: 630px; overflow: hidden; background: #0D0A06; color: #F5E3BE; }
 body { position: relative; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
 .top { position: absolute; left: 72px; right: 72px; top: 56px; display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 22px; border-bottom: 1px solid #6B5330; }
-.brand { font: 900 44px/1 'Big Shoulders Display', sans-serif; letter-spacing: 0.06em; }
+.brand { display: flex; align-items: center; gap: 14px; font: 900 44px/1 'Big Shoulders Display', sans-serif; letter-spacing: 0.06em; }
+.brand-mark { width: 52px; height: 52px; margin-top: -6px; }
 .ver { font: 500 20px/1 'JetBrains Mono', monospace; color: #B5A68C; }
 h1 { position: absolute; left: 72px; top: 156px; font: 800 116px/0.9 'Big Shoulders Display', sans-serif; letter-spacing: 0.012em; text-transform: uppercase; }
 h1 span { display: block; white-space: nowrap; }
 p { position: absolute; left: 72px; bottom: 56px; width: 620px; padding-top: 20px; border-top: 3px solid #D4A24C; font-size: 24px; line-height: 1.4; color: #B5A68C; }
-svg { position: absolute; right: 48px; bottom: 44px; width: 400px; height: 400px; }
+.radar { position: absolute; right: 48px; bottom: 44px; width: 400px; height: 400px; }
 </style>
 </head>
 <body>
-<div class="top"><span class="brand">ASCEND</span><span class="ver">${tx(c.brandNote, L)}</span></div>
+<div class="top"><span class="brand">${brandMark({ trunk: '#F5E3BE', burst: '#D4A24C' })}ASCEND</span><span class="ver">${tx(c.brandNote, L)}</span></div>
 <h1>${c.hero.title.map((s) => `<span>${tx(s, L)}</span>`).join('')}</h1>
 <p>${tx(c.meta.ogDescription, L)}</p>
-<svg viewBox="0 0 500 500" aria-hidden="true">
+<svg class="radar" viewBox="0 0 500 500" aria-hidden="true">
   ${rings}${spokes}
   <polygon points="${poly('ss')}" fill="none" stroke="#B5A68C" stroke-width="2" stroke-dasharray="7 6"/>
   <polygon points="${poly('rs')}" fill="#D4A24C" fill-opacity="0.16" stroke="#D4A24C" stroke-width="3.5" stroke-linejoin="round"/>

@@ -29,7 +29,7 @@ import i18n from '../../i18n/config'
 import { SyncIndicator } from '@/components/Cloud/SyncIndicator'
 import { FeedbackButton } from '@/components/Feedback/FeedbackDialog'
 import { NotificationBell } from '@/components/Notifications/NotificationBell'
-import logo from '@/assets/ascend-logo-mark.png'
+import { AscendMark } from '@/components/Brand/AscendMark'
 import { TierAvatar, useProfilePrefs } from '@/components/Profile/ProfileCard'
 import { tierForLevel } from '@/lib/profile'
 
@@ -184,7 +184,7 @@ export function Sidebar() {
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-hextech-border-dim bg-hextech-dark">
       <div className="app-drag-region flex h-14 items-center gap-3 border-b border-hextech-border-dim px-5">
-        <img src={logo} alt="" className="h-8 w-8 rounded-full object-cover" />
+        <AscendMark size={32} className="shrink-0" />
         <div className="flex-1 min-w-0">
           <span className="font-display text-lg font-bold text-hextech-gold-bright block leading-tight">Ascend</span>
           {appVersion && <span className="text-[10px] text-hextech-text-dim/60 leading-none">v{appVersion}</span>}

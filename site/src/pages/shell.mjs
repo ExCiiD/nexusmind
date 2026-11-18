@@ -5,6 +5,7 @@
  */
 import { esc, tx } from '../lib/html.mjs'
 import { icon } from '../lib/icons.mjs'
+import { brandMark } from '../lib/mark.mjs'
 
 /** JSON that can sit inside a <script> data block: no `<`, no line separators. */
 export const jsonBlock = (id, value) =>
@@ -56,7 +57,7 @@ function rail(c, ctx, page) {
   const lang = `<a class="lang" href="${esc(page.langSwitch.href)}" hreflang="${page.langSwitch.hreflang}" lang="${page.langSwitch.hreflang}" aria-label="${tx(page.langSwitch.label, L)}">${page.langSwitch.code}</a>`
   return `<header class="rail" data-rail>
     <div class="rail-top">
-      <a class="brand" href="${esc(c.home)}" aria-label="Ascend">ASCEND</a>
+      <a class="brand" href="${esc(c.home)}" aria-label="Ascend">${brandMark()}ASCEND</a>
       <span class="brand-note mono">${tx(c.brandNote, L)}</span>
       <span class="rail-tools">
         ${lang}
@@ -81,7 +82,7 @@ function footer(c, ctx, page) {
   return `<footer class="foot">
     <div class="foot-grid">
       <div class="foot-brand">
-        <p class="brand" aria-hidden="true">ASCEND</p>
+        <p class="brand" aria-hidden="true">${brandMark()}ASCEND</p>
         <p>${tx(c.footer.tagline, L)}</p>
       </div>
       <nav id="${ctx.contentsId}" aria-label="${tx(c.footer.contents, L)}">
