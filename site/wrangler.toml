@@ -5,8 +5,10 @@
 #   npm run site:preview        local check, with the production headers
 #   cd site && npx wrangler deploy
 #
-# Before going public: fill the bracketed placeholders of the four legal pages
-# (the build lists them), attach the domain and set SITE_URL in site.config.mjs.
+# Online as a preview at https://nexusmind-site.nexusmind-riot-proxy.workers.dev
+# (pages marked noindex while SITE_URL is empty in site.config.mjs).
+# Before opening it to search engines: fill the bracketed placeholders of the
+# four legal pages (the build lists them), then set SITE_URL, rebuild, deploy.
 name = "nexusmind-site"
 compatibility_date = "2025-09-01"
 

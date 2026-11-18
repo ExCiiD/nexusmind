@@ -58,9 +58,9 @@ case; no tracked-out capitals, no label sitting above a heading.
 ```
 site/
   build.mjs            the whole build (npm run site:build)
-  serve.mjs            local preview with production headers (npm run site:preview)
+  serve.mjs            local preview with production headers and page addresses (npm run site:preview)
   og.cjs               link-preview images, via the repo's Electron (npm run site:og)
-  site.config.mjs      SITE_URL, empty until a domain is attached
+  site.config.mjs      SITE_URL: empty means preview (not indexed), set means public
   src/
     engine.ts          the app modules the previews borrow (bundled, never copied)
     demo.mjs           the invented demonstration account: the only made-up numbers
@@ -84,6 +84,8 @@ Run `npm run site:build`; it stops with a list when any of these is true:
 - the stylesheet contains a gradient, a shadow or a blur;
 - a page prints an emoji, an official rank name, a place name from the game's universe, a bracketed placeholder (marketing pages), an unfilled slot, or the French elision glitch `d'trade`;
 - a link or an asset reference leads nowhere, an id is duplicated, a page has no single `h1`, or the Riot Games notice is missing;
+- an internal link names a `.html` file (Cloudflare would answer it with a redirect);
+- a preview page is not marked `noindex`, or a public page is;
 - the release metadata disagrees with `release/latest.yml` (when that file is present).
 
 ## After an app release
@@ -94,7 +96,15 @@ Run `npm run site:build`; it stops with a list when any of these is true:
 Until then the page still follows the newest release on its own: the browser
 asks GitHub once and repoints the button when a newer installer exists.
 
+## Online
+
+Preview: <https://nexusmind-site.nexusmind-riot-proxy.workers.dev> (Cloudflare worker `nexusmind-site`, first deployed on 18 November 2026).
+
+- **Preview or public.** While `SITE_URL` is empty the site is a preview: every page carries a robots `noindex` meta tag and every response an `X-Robots-Tag: noindex` header, so it can be shared by link without being indexed with unfinished legal pages. `robots.txt` still allows the crawl on purpose: a crawler that may not fetch a page never reads its `noindex`.
+- **Page addresses.** Cloudflare serves `conditions.html` at `/conditions` and answers `/conditions.html` with a redirect, so links, alternates and the sitemap use the short addresses. `serve.mjs` follows the same rules; `npx wrangler dev` inside `site/` runs Cloudflare's own emulator when in doubt.
+- **Deploying.** `npm run site:build`, commit, then `cd site && npx wrangler deploy`. `site/public` is what goes online, so deploy from a clean checkout. `npx wrangler rollback` returns to the previous version.
+
 ## Still to do by the publisher
 
 - Fill the bracketed placeholders of the four legal pages (publisher name, address, contact). The build lists them.
-- Attach a domain, set `SITE_URL` in `site.config.mjs`, rebuild: canonical links, absolute preview images and the sitemap appear.
+- Then open the site to search engines: attach a domain (or keep the workers.dev address), set `SITE_URL` in `site.config.mjs`, rebuild and deploy. The `noindex` marks go away; canonical links, absolute preview images and the sitemap appear. On a custom domain, turn on "Always Use HTTPS" in Cloudflare.
