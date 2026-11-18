@@ -15,7 +15,8 @@ import { criterionText } from '@/components/Assistant/ExperimentPanel'
 import type { CoachObjectiveCheck } from '@/components/Assistant/types'
 import { MatchHistoryPicker } from '@/components/Session/MatchHistoryPicker'
 import { AccountBadge } from '@/components/ui/AccountBadge'
-import { useLocalizedFundamental, useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
+import { useLocalizedFundamental, useLocalizedFundamentalList } from '@/lib/constants/useFundamentals'
+import { findFundamentalLabel } from '@/lib/fundamentals'
 import { getKPIsForObjective } from '@/lib/constants/fundamentals'
 import type { ReviewBiasSignal } from '@/lib/ipc'
 import { useTranslation } from 'react-i18next'
@@ -57,7 +58,7 @@ export function ReviewPage() {
   const [searchParams] = useSearchParams()
   const requestedGameId = searchParams.get('gameId')
   const { toast } = useToast()
-  const allFundamentals = useLocalizedFundamentals().flatMap((c) => c.fundamentals)
+  const allFundamentals = useLocalizedFundamentalList()
 
   // When a gameId is provided but there's no active session, load the game's session from DB
   const [historicContext, setHistoricContext] = useState<{ game: any; session: any } | null>(null)
@@ -107,7 +108,7 @@ export function ReviewPage() {
   }, [session])
 
   const objectiveLabelsStr = objectiveIds
-    .map((id) => allFundamentals.find((f) => f.id === id)?.label ?? id)
+    .map((id) => findFundamentalLabel(id, allFundamentals))
     .join(', ')
   const activeSubObjective = session?.subObjective
 

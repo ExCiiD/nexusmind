@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle2, XCircle, TrendingUp, TrendingDown, MessageSquare, AlertCircle } from 'lucide-react'
-import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
+import { useLocalizedFundamentalList } from '@/lib/constants/useFundamentals'
+import { findKpiLabel } from '@/lib/fundamentals'
 import type { Fundamental } from '@/lib/constants/fundamentals'
 import { cn } from '@/lib/utils'
 
@@ -23,15 +24,6 @@ interface InsightLine {
   icon: React.ComponentType<{ className?: string }>
   text: string
   variant: 'positive' | 'negative' | 'neutral' | 'warning'
-}
-
-/** Finds the label of a KPI ID across all fundamentals */
-function findKpiLabel(kpiId: string, allFundamentals: Fundamental[]): string {
-  for (const f of allFundamentals) {
-    const match = f.kpis.find((k) => k.id === kpiId)
-    if (match) return match.label
-  }
-  return kpiId
 }
 
 /**
@@ -152,7 +144,7 @@ export function ReviewInsightPanel({
   objectiveLabel,
   selectedKpiIds,
 }: ReviewInsightPanelProps) {
-  const allFundamentals = useLocalizedFundamentals().flatMap((c) => c.fundamentals)
+  const allFundamentals = useLocalizedFundamentalList()
 
   const insights = useMemo(
     () =>
@@ -165,7 +157,7 @@ export function ReviewInsightPanel({
         selectedKpiIds,
         allFundamentals,
       ),
-    [objectiveRespected, kpiScores, timelineNotes, freeText, objectiveLabel, selectedKpiIds],
+    [objectiveRespected, kpiScores, timelineNotes, freeText, objectiveLabel, selectedKpiIds, allFundamentals],
   )
 
   if (insights.length === 0) return null

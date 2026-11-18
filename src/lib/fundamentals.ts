@@ -30,3 +30,17 @@ export function getAllFundamentalsForGroup(groupFundamentals: GroupFundamental[]
 export function getFundamentalByIdForGroup(id: string, groupFundamentals: GroupFundamental[]): Fundamental | undefined {
   return getAllFundamentalsForGroup(groupFundamentals).find((f) => f.id === id)
 }
+
+/** Label of a fundamental in `list` (e.g. useLocalizedFundamentalList()), else the id itself. */
+export function findFundamentalLabel(id: string, list: Fundamental[]): string {
+  return list.find((f) => f.id === id)?.label ?? id
+}
+
+/** Label of a KPI across every fundamental of `list`, else the KPI id itself. */
+export function findKpiLabel(kpiId: string, list: Fundamental[]): string {
+  for (const f of list) {
+    const match = f.kpis.find((k) => k.id === kpiId)
+    if (match) return match.label
+  }
+  return kpiId
+}

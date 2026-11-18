@@ -1,29 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertTriangle, Repeat, BarChart2, CheckCircle2 } from 'lucide-react'
-import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
+import { useLocalizedFundamentalList } from '@/lib/constants/useFundamentals'
+import { findFundamentalLabel, findKpiLabel } from '@/lib/fundamentals'
 import type { CoachingPatterns } from '@/lib/ipc'
-import type { Fundamental } from '@/lib/constants/fundamentals'
 import { cn } from '@/lib/utils'
-
-function findKpiLabel(kpiId: string, allFundamentals: Fundamental[]): string {
-  for (const f of allFundamentals) {
-    const match = f.kpis.find((k) => k.id === kpiId)
-    if (match) return match.label
-  }
-  return kpiId
-}
-
-function findFundamentalLabel(id: string, allFundamentals: Fundamental[]): string {
-  return allFundamentals.find((f) => f.id === id)?.label ?? id
-}
 
 /**
  * Displays deterministic coaching patterns derived from the last 10 sessions.
  * Shown on the Dashboard as a persistent coaching insight widget.
  */
 export function CoachingPatternCard() {
-  const allFundamentals = useLocalizedFundamentals().flatMap((c) => c.fundamentals)
+  const allFundamentals = useLocalizedFundamentalList()
   const [patterns, setPatterns] = useState<CoachingPatterns | null>(null)
   const [loading, setLoading] = useState(true)
 

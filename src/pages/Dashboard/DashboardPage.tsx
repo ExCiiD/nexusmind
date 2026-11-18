@@ -35,7 +35,8 @@ import {
   Sparkles,
 } from 'lucide-react'
 import type { MistakeTopTagEntry } from '@/lib/ipc'
-import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
+import { useLocalizedFundamentalList } from '@/lib/constants/useFundamentals'
+import { findFundamentalLabel } from '@/lib/fundamentals'
 import { useTranslation } from 'react-i18next'
 import { formatKDA, formatGameTime, cn } from '@/lib/utils'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
@@ -128,7 +129,7 @@ export function DashboardPage() {
   const progressData = useGameStore((s) => s.progressData)
   const loadProgressData = useGameStore((s) => s.loadProgressData)
   const navigate = useNavigate()
-  const allFundamentals = useLocalizedFundamentals().flatMap((c) => c.fundamentals)
+  const allFundamentals = useLocalizedFundamentalList()
   const [recentGames, setRecentGames] = useState<RecentGame[]>([])
   const [snapshots, setSnapshots] = useState<any[]>([])
   const leftColumn = useRef<HTMLDivElement>(null)
@@ -151,7 +152,7 @@ export function DashboardPage() {
     try { return JSON.parse(activeSession.objectiveIds) } catch { return [activeSession.objectiveId] }
   })()
   const objectiveName = sessionObjectiveIds
-    .map((id: string) => allFundamentals.find((f) => f.id === id)?.label ?? id)
+    .map((id: string) => findFundamentalLabel(id, allFundamentals))
     .join(', ')
   const sessionProgressData = progressData.filter((d) => sessionObjectiveIds.includes(d.fundamentalId))
 

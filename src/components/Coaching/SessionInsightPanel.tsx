@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart3, CheckCircle2, Clock, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react'
-import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
+import { useLocalizedFundamentalList } from '@/lib/constants/useFundamentals'
+import { findFundamentalLabel } from '@/lib/fundamentals'
 import { cn } from '@/lib/utils'
 
 interface Review {
@@ -22,7 +23,6 @@ interface Game {
 interface SessionInsightPanelProps {
   games: Game[]
   objectiveIds: string
-  selectedKpiIds: string
 }
 
 interface InsightLine {
@@ -42,7 +42,7 @@ const variantStyles: Record<InsightLine['variant'], string> = {
  * Builds live coaching insights from the current active session's game data.
  * All computations are deterministic and run client-side without any external call.
  */
-function buildSessionInsights(games: Game[], objectiveIds: string[]): InsightLine[] {
+function buildSessionInsights(games: Game[]): InsightLine[] {
   const counted = games.filter((g) => g.reviewStatus !== 'to_be_reviewed')
   if (counted.length === 0) return []
 
@@ -123,20 +123,20 @@ function buildSessionInsights(games: Game[], objectiveIds: string[]): InsightLin
   return lines
 }
 
-export function SessionInsightPanel({ games, objectiveIds, selectedKpiIds }: SessionInsightPanelProps) {
+export function SessionInsightPanel({ games, objectiveIds }: SessionInsightPanelProps) {
   const parsedObjectiveIds = useMemo(() => {
     try { return JSON.parse(objectiveIds) as string[] } catch { return [objectiveIds] }
   }, [objectiveIds])
 
-  const allFundamentals = useLocalizedFundamentals().flatMap((c) => c.fundamentals)
+  const allFundamentals = useLocalizedFundamentalList()
 
   const objectiveLabels = parsedObjectiveIds
-    .map((id) => allFundamentals.find((f) => f.id === id)?.label ?? id)
+    .map((id) => findFundamentalLabel(id, allFundamentals))
     .join(', ')
 
   const insights = useMemo(
-    () => buildSessionInsights(games, parsedObjectiveIds),
-    [games, parsedObjectiveIds],
+    () => buildSessionInsights(games),
+    [games],
   )
 
   if (insights.length === 0) return null
