@@ -20,7 +20,6 @@ import { mergeMatchIdsByRecency } from '../../src/lib/scoutingCore'
 try {
   // Lazy require — keeps any import-time errors inside the try/catch
   // (top-level ESM imports throw before our handler sees them).
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Agent, setGlobalDispatcher } = require('undici') as typeof import('undici')
   setGlobalDispatcher(new Agent({ connections: 50, keepAliveTimeout: 30_000, keepAliveMaxTimeout: 60_000 }))
   console.info('[riotClient] Undici dispatcher boosted to 50 connections')

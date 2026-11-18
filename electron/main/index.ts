@@ -650,7 +650,6 @@ async function bootstrap() {
         const startDelayMs = RECORDER_BACKEND === 'wgc' ? 0 : RECORDING_START_DELAY_MS
         const activeRecorder = getActiveRecorder()
 
-        const scheduledAt = Date.now()
         if (startDelayMs > 0) {
           console.log(`[main] Deferring recording spawn by ${startDelayMs}ms (backend=${RECORDER_BACKEND}) to let LoL settle into its final presentation mode`)
         } else {
@@ -721,7 +720,7 @@ async function bootstrap() {
 
       // The WGC backend remuxes `.webm` → `.mp4` during finalize, so the final
       // on-disk path is only known after `waitForDone`. Re-read it here.
-      let finalPath = activeRecorder.getPendingRecording() ?? initialStopPath
+      const finalPath = activeRecorder.getPendingRecording() ?? initialStopPath
       console.log(`[main] Recording finalized → ${finalPath}`)
 
       const fileSize = existsSync(finalPath)

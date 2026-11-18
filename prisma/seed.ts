@@ -27,12 +27,6 @@ const CHAMPIONS = [
 ]
 const ROLES = ['TOP', 'JUNGLE', 'MID', 'BOT', 'SUPPORT']
 
-const FUNDAMENTALS = [
-  'wave_management', 'vision_control', 'trading_combat',
-  'map_movements', 'objective_control', 'team_coordination',
-  'mental_decisions', 'champion_mastery', 'resource_management', 'laning_phase',
-]
-
 const TIMELINE_EXAMPLES = [
   [{ time: '3:20', note: 'Missed 4 CS in a row under pressure' }, { time: '7:45', note: 'Good freeze maintained for 2 full waves' }, { time: '12:30', note: 'Overextended and got dove — should have reset' }],
   [{ time: '2:00', note: 'Lost 3v1 bush control at level 1' }, { time: '5:15', note: 'Hit 40 CS@5 — improving' }, { time: '9:00', note: 'Roamed mid after crash, secured kill' }],
@@ -103,7 +97,7 @@ async function main() {
     mental_decisions: 2, champion_mastery: 3, resource_management: 2, laning_phase: 2,
   }
 
-  const assessment1 = await prisma.assessment.create({
+  await prisma.assessment.create({
     data: {
       userId: user.id,
       createdAt: daysAgo(50),
@@ -122,7 +116,7 @@ async function main() {
     mental_decisions: 2, champion_mastery: 3, resource_management: 3, laning_phase: 3,
   }
 
-  const assessment2 = await prisma.assessment.create({
+  await prisma.assessment.create({
     data: {
       userId: user.id,
       createdAt: daysAgo(25),
@@ -141,7 +135,7 @@ async function main() {
     mental_decisions: 3, champion_mastery: 4, resource_management: 3, laning_phase: 4,
   }
 
-  const assessment3 = await prisma.assessment.create({
+  await prisma.assessment.create({
     data: {
       userId: user.id,
       createdAt: daysAgo(5),
@@ -182,7 +176,6 @@ async function main() {
 
   let totalGames = 0
   let totalReviews = 0
-  let objectiveRespectedCount = 0
 
   for (let si = 0; si < sessionConfigs.length; si++) {
     const cfg = sessionConfigs[si]
@@ -228,7 +221,6 @@ async function main() {
       const skipReview = cfg.status === 'completed' && gi === cfg.gamesCount - 1 && Math.random() > 0.7
       if (!skipReview && cfg.status === 'completed') {
         const objectiveRespected = Math.random() > 0.35
-        if (objectiveRespected) objectiveRespectedCount++
 
         const kpiScores: Record<string, number> = {}
         const kpiKeys = ['cs_efficiency', 'trade_efficiency', 'objective_participation', 'vision_coverage', 'positioning']

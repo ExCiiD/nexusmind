@@ -237,7 +237,7 @@ export class GameDetector {
     }
 
     // ── Phase 2: Background enrich with Riot Match API ─────────────────
-    this.enrichWithMatchApi(gameStartedAt, snapshot).catch((err) => {
+    this.enrichWithMatchApi(gameStartedAt).catch((err) => {
       console.error('[detector] Background enrich failed:', err)
     })
   }
@@ -337,7 +337,7 @@ export class GameDetector {
    * Runs in background after instant navigation. Fetches the real Riot Match API data,
    * updates the Game row with accurate stats (win/loss, exact CS, matchId, opponent, etc.).
    */
-  private async enrichWithMatchApi(gameStartedAt: number, snapshot: LiveSnapshot | null) {
+  private async enrichWithMatchApi(gameStartedAt: number) {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return

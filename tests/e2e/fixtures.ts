@@ -58,7 +58,6 @@ export async function launchApp(dir = makeDataDir(), opts: { cloud?: boolean } =
  */
 export async function seedUser(dir: string): Promise<void> {
   process.env.PRISMA_QUERY_ENGINE_LIBRARY = join(ROOT, 'prisma-client', 'query_engine-windows.dll.node')
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { PrismaClient } = require(join(ROOT, 'prisma-client'))
   const prisma = new PrismaClient({ datasources: { db: { url: `file:${join(dir, 'data', 'nexusmind.db')}` } } })
   try {

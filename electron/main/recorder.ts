@@ -28,7 +28,6 @@ function resolveFfmpegBinary(): { path: string; source: 'bundled' | 'ffmpeg-stat
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mod = require('ffmpeg-static')
     let staticBin: string | null = typeof mod === 'string' ? mod : (mod?.default ?? null)
     if (staticBin && app.isPackaged) {
