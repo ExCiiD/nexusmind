@@ -3,348 +3,534 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ascend — improve at League of Legends: player, coach, team</title>
-<meta name="description" content="Ascend records your League of Legends games, flags your mistakes, measures your progress and brings coaches and teams together: schedule, scrims, drafts, scouting. Free, for Windows.">
-<link rel="canonical" href="https://[DOMAINE]/en/">
-<link rel="alternate" hreflang="fr" href="https://[DOMAINE]/">
-<link rel="alternate" hreflang="en" href="https://[DOMAINE]/en/">
+<title>Ascend — the improvement tool for League of Legends: player, coach, team</title>
+<meta name="description" content="Ascend records your League of Legends games, finds the three moments that cost you the most and tells you what to work on. 45-second micro-review, Mistake Lab, fundamentals fingerprint, coaching and team tools. Free, for Windows.">
+<link rel="alternate" hreflang="fr" href="/">
+<link rel="alternate" hreflang="en" href="/en/">
+<link rel="alternate" hreflang="x-default" href="/">
+<meta name="theme-color" content="#0D0A06">
+<meta name="color-scheme" content="dark">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<meta property="og:title" content="Ascend — the League of Legends improvement workshop">
-<meta property="og:description" content="Automatic recording, guided reviews, flagged mistakes, stats that explain your wins, coaching and team tools. Free.">
-<meta property="og:image" content="/assets/shots/dashboard-en.webp">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="Ascend">
+<meta property="og:title" content="Ascend — become your own coach">
+<meta property="og:description" content="Guided 45-second micro-review, Mistake Lab, fundamentals fingerprint, coaching and team management for League of Legends. Free, for Windows.">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="/assets/og-en.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="/assets/fonts/big-shoulders-display.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/site.css">
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Ascend","applicationCategory":"GameApplication","operatingSystem":"Windows 10, Windows 11","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"description":"Improvement tool for League of Legends: recording, reviews, statistics, coaching and team management."}
-</script>
+<link rel="preload" href="/assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css?v=6c79279d10">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Ascend","applicationCategory":"GameApplication","operatingSystem":"Windows 10, Windows 11","softwareVersion":"1.0.0-beta.1","downloadUrl":"https://github.com/ExCiiD/nexusmind/releases/download/v1.0.0-beta.1/Ascend-Setup-1.0.0-beta.1.exe","inLanguage":"en","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"description":"Improvement tool for League of Legends: recording, guided micro-review, mistake statistics, coaching and team management."}</script>
+<script src="/assets/site.js?v=0bd0f5f29b" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-
-<header class="site-header">
-  <div class="wrap">
-    <a class="brand" href="/en/" aria-label="Ascend, home">ASCEND<span>.</span></a>
-    <nav class="nav" aria-label="Main navigation">
-      <a class="hide-sm" href="#workshops">Features</a>
-      <a class="hide-sm" href="#teams">Coaches &amp; teams</a>
-      <a class="hide-sm" href="#riot-data">Riot data</a>
-      <a class="hide-sm" href="#faq">FAQ</a>
-      <a class="lang" href="/" hreflang="fr" lang="fr">FR</a>
-      <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases">Download</a>
+<div class="layout">
+  <header class="rail" data-rail>
+    <div class="rail-top">
+      <a class="brand" href="/en/" aria-label="Ascend">ASCEND</a>
+      <span class="brand-note mono">1.0 beta</span>
+      <span class="rail-tools">
+        <a class="lang" href="/" hreflang="fr" lang="fr" aria-label="Version française">FR</a>
+        <a class="rail-toggle" href="#contents" data-toggle aria-controls="rail-nav"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 7h15M4.5 12h15M4.5 17h15"/></svg><span>Contents</span></a>
+        <a class="btn btn-primary btn-sm" data-download href="https://github.com/ExCiiD/nexusmind/releases/download/v1.0.0-beta.1/Ascend-Setup-1.0.0-beta.1.exe"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg><span>Download</span></a>
+      </span>
+    </div>
+    <nav class="rail-nav" id="rail-nav" aria-label="Report contents">
+      <p class="rail-h">Report</p>
+      <ol class="rail-list rail-num"><li><a href="#method">Method</a></li><li><a href="#micro-review">Micro-review</a></li><li><a href="#lab">Mistake Lab</a></li><li><a href="#fingerprint">Fingerprint</a></li><li><a href="#tiers">Tiers</a></li><li><a href="#modes">Player, coach, team</a></li><li><a href="#themes">Themes</a></li></ol>
+<p class="rail-h">Appendices</p>
+      <ul class="rail-list"><li><a href="#riot">Riot data</a></li><li><a href="#privacy">Your data</a></li><li><a href="#questions">Questions</a></li></ul>
     </nav>
-  </div>
-</header>
-
-<main id="main">
-  <section class="hero" aria-labelledby="hero-title">
-    <div class="wrap">
+    <div class="rail-foot">
+      <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases/download/v1.0.0-beta.1/Ascend-Setup-1.0.0-beta.1.exe"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg><span>Download</span></a>
+      <p class="rail-ver mono"><span data-version>1.0.0-beta.1</span></p>
+      <a class="lang" href="/" hreflang="fr" lang="fr" aria-label="Version française">FR</a>
+    </div>
+  </header>
+  <div class="page">
+    <main id="main" tabindex="-1">
+<section class="hero" aria-labelledby="h-hero">
+    <div class="hero-grid">
+      <div class="hero-main">
+        <h1 id="h-hero"><span class="ln">Become your</span> <span class="ln">own coach.</span></h1>
+        <p class="lead">Ascend records your League of Legends games, finds the three moments that cost you the most and asks you for a diagnosis in one click. By the next game you know what to work on. The same tool lets coaches follow their students, and teams prepare their scrims.</p>
+      </div>
+      <div class="sheet" id="download">
+        <dl class="sheet-facts"><div><dt>Game</dt><dd class="mono">League of Legends</dd></div><div><dt>Version</dt><dd class="mono"><span data-version>1.0.0-beta.1</span></dd></div><div><dt>Size</dt><dd class="mono"><span data-size>331 MB</span></dd></div><div><dt>System</dt><dd class="mono">Windows 10 and 11</dd></div><div><dt>Price</dt><dd class="mono">free</dd></div><div><dt>Access</dt><dd class="mono">invite only</dd></div></dl>
+        <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases/download/v1.0.0-beta.1/Ascend-Setup-1.0.0-beta.1.exe"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg><span>Download for Windows</span></a>
+        <p class="sheet-note">An invitation code is asked for at first sign-in. The code of a team or coaching group also opens access.</p>
+        <details class="verify" data-verify>
+          <summary>Verify the file</summary>
+          <p>SHA-512 digest of the installer, in base64, as published with the release:</p>
+          <code class="mono">44ojwZlvJHKcMhdVCn6NA93n+KdP2uYODIxsLWI1XNtXnsJhyXcSgZOV6ArRTcEeUaf2PKJxX5GBWiuatuH6dQ==</code>
+        </details>
+        <p class="sheet-links"><a href="https://github.com/ExCiiD/nexusmind/releases">All releases</a><a href="https://nexusmind-web.nexusmind-riot-proxy.workers.dev">Open the web app</a></p>
+      </div>
+    </div>
+    <figure class="piece" id="piece-a">
+      <figcaption class="piece-cap"><span class="piece-ref mono">Exhibit A</span><span class="piece-what">A micro-review. Answer the question: the Codex entry follows.</span></figcaption>
+      <div class="piece-frame app" data-exhibit="micro" role="group" aria-label="Exhibit A"><div class="mr">
+    <header class="mr-head">
+      <div><h3 class="mr-title"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M9.5 2.5h5M12 2.5V6"/></svg>45-second micro-review</h3><p class="mr-sub">The 3 moments that cost you the most. One click each.</p></div>
+      <span class="mr-count" aria-label="0 / 3">0/3</span>
+    </header>
+    <ol class="mr-queue" aria-label="Moments to review"><li><button class="q" data-act="go" data-i="0" data-k="q-0">
+      <span class="q-n">1</span>
+      <span class="q-clock">3:15</span><span class="q-label">Missed invade</span></button></li><li><button class="q" data-act="go" data-i="1" data-k="q-1">
+      <span class="q-n">2</span>
+      <span class="q-clock">15:10</span><span class="q-label">Missed cross-map</span></button></li><li><button class="q is-current" data-act="go" data-i="2" data-k="q-2" aria-current="true">
+      <span class="q-n">3</span>
+      <span class="q-clock">25:28</span><span class="q-label">Critical death</span></button></li></ol>
+    <div class="mr-body">
+      <div class="mr-map"><svg class="map" viewBox="0 0 300 300" role="img" aria-label="Position on the map at the key moment">
+    <path class="map-river" d="M52 36 L36 52 L248 264 L264 248 Z"/>
+    <path class="map-lane" d="M22 278 L22 22 L278 22 M22 278 L278 278 L278 22 M30 270 L270 30"/>
+    <rect class="map-frame" x="8" y="8" width="284" height="284"/>
+    <rect class="map-base map-own" x="8" y="244" width="48" height="48"/>
+    <rect class="map-base" x="244" y="8" width="48" height="48"/>
+    <circle class="map-zone" cx="100.1" cy="90.6" r="56.0"/><circle class="map-pit" cx="100.1" cy="90.6" r="4"/><circle class="map-zone" cx="197.3" cy="211.7" r="56.0"/><circle class="map-pit" cx="197.3" cy="211.7" r="4"/>
+    <circle class="map-ring" cx="112.0" cy="100.0" r="11"/>
+    <circle class="map-you" cx="112.0" cy="100.0" r="5"/>
+    <text class="map-label" x="128.0" y="104.0">you</text>
+  </svg><p class="mr-note"><svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 21s6.5-5.6 6.5-11a6.5 6.5 0 0 0-13 0c0 5.4 6.5 11 6.5 11z"/><circle cx="12" cy="10" r="2.2"/></svg>No VOD for this game: position on the map at the key moment.</p></div>
+      <div class="mr-qcm">
+        <p class="mr-summary" data-k="summary" tabindex="-1"><span class="mr-clock">25:28</span><span class="mr-zone">Top river</span>died 30 s before losing Baron, 1650 g unspent, alone against 3</p>
+        <p class="mr-question">What made this moment costly?</p>
+        <div class="opts" role="group" aria-label="What made this moment costly?"><button class="opt" data-act="answer" data-id="no-ward-pre-obj" aria-pressed="false">
+      <i class="dot"></i>
+      <span><span class="opt-main">Bad objective setup: went straight into the river without going through mid (or forced a losing 3v3 instead of taking mid with 3)</span><small>No ward pre-objective</small></span></button><button class="opt" data-act="answer" data-id="overstay" aria-pressed="false">
+      <i class="dot"></i>
+      <span><span class="opt-main">Overstayed after my play</span><small>Overstay</small></span></button><button class="opt opt-ok" data-act="answer" data-id="justified:stealAttempt" aria-pressed="false">
+      <i class="dot dot-ok"></i>
+      <span><span class="opt-main">Justified 50/50 smite</span><small>Justified decision: does not count against you</small></span></button>
+          <button class="opt opt-other" data-act="pick" data-k="other" aria-pressed="false"><span class="opt-main">Other cause…</span><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9.5 5.5L16 12l-6.5 6.5"/></svg></button>
+        </div>
+        <div class="mr-after" aria-live="polite"></div>
+      </div>
+    </div>
+    
+  </div></div>
+      <p class="piece-note">Demonstration account: the numbers are invented, the rules and the Codex entries are the application’s own.</p>
+    </figure>
+  </section>
+<section class="sec" id="method" aria-labelledby="h-method">
+    <header class="sec-head"><span class="sec-n mono" aria-hidden="true">1</span><h2 id="h-method">Deliberate practice</h2></header>
+    <div class="sec-body">
+      <p class="intro">Players who improve play with an objective, review themselves and measure. Ascend takes care of what happens between two games, where most people give up.</p>
+      <table class="grid-table steps">
+        <caption>One game, four moves</caption>
+        <thead><tr><th scope="col">Move</th><th scope="col">What Ascend does</th><th scope="col">What you do</th><th scope="col" class="num">Time</th></tr></thead>
+        <tbody><tr>
+          <th scope="row"><span class="step-n mono" aria-hidden="true">1</span>Pick an objective</th>
+          <td data-label="What Ascend does">Suggests 1 to 3 fundamentals out of 38, from your last games and your mistakes.</td>
+          <td data-label="What you do">You accept, or pick your own.</td>
+          <td data-label="Time" class="num mono">30 s</td>
+        </tr><tr>
+          <th scope="row"><span class="step-n mono" aria-hidden="true">2</span>Play</th>
+          <td data-label="What Ascend does">Detects the game and records it. Nothing shows on screen while you play.</td>
+          <td data-label="What you do">You play.</td>
+          <td data-label="Time" class="num mono">the game</td>
+        </tr><tr>
+          <th scope="row"><span class="step-n mono" aria-hidden="true">3</span>Review</th>
+          <td data-label="What Ascend does">Brings out at most 3 critical moments and cues the VOD twelve seconds before each.</td>
+          <td data-label="What you do">One click per moment.</td>
+          <td data-label="Time" class="num mono">45 s</td>
+        </tr><tr>
+          <th scope="row"><span class="step-n mono" aria-hidden="true">4</span>Measure</th>
+          <td data-label="What Ascend does">Checks the objective for you and compares your last 15 games with your last 40.</td>
+          <td data-label="What you do">You read the verdict.</td>
+          <td data-label="Time" class="num mono">10 s</td>
+        </tr></tbody>
+      </table>
+      <div class="with-notes">
+        <figure class="piece" id="piece-b">
+      <figcaption class="piece-cap"><span class="piece-ref mono">Exhibit B</span><span class="piece-what">The dashboard. Answer the calibration, or switch on the low-energy protocol.</span><span class="piece-demo">Demonstration account</span></figcaption>
+      <div class="piece-frame app" data-exhibit="dashboard" role="group" aria-label="Exhibit B"><div class="db">
+    <header class="db-head">
       <div>
-        <p class="kicker">League of Legends · Windows · Free · Beta</p>
-        <h1 id="hero-title" class="display h1">Become your<br>own coach.<br><span class="signal">Then your<br>team's.</span></h1>
-        <p class="lead">Ascend records your games, flags your mistakes and tells you what to work on next. Coaches follow their students, teams prepare their scrims. One tool, no subscription.</p>
-        <div class="btn-row">
-          <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases">Download for Windows</a>
-          <a class="btn btn-ghost" href="https://nexusmind-web.nexusmind-riot-proxy.workers.dev">Open the web app</a>
-        </div>
-        <p class="release-meta" data-version>Windows 10/11 · invite-only beta</p>
+        <p class="db-hello">Welcome back, <b>Kaito</b></p>
+        <p class="db-formline">Over your last 10 games: <b>40% win rate</b> <span>(−15 pts vs overall)</span></p>
       </div>
-      <aside class="report" aria-label="Example of a report generated by Ascend">
-        <div class="report-head"><span>REPORT · WEEK 47</span><span>LAST 10 GAMES</span></div>
-        <div class="report-body">
-          <p class="report-title">You win your lane.<br>Your farm doesn't follow.</p>
-          <div class="report-stats">
-            <div><b>+380</b><span>gold at 15 min</span></div>
-            <div><b class="signal">5.8</b><span>CS / min · target 7</span></div>
-            <div><b>70%</b><span>win rate</span></div>
-          </div>
-          <p class="report-note">Suggested goal for your next session: 7 CS/min in lane. 5 minutes of last-hitting in practice tool before your first game.</p>
-        </div>
-      </aside>
-    </div>
-  </section>
+      <div class="db-form"><span>Form</span><ol aria-label="Results of the last ten games, oldest to most recent"><li class="res"><span class="vh">game no. 5, loss</span><span aria-hidden="true">L</span></li><li class="res res-w"><span class="vh">game no. 6, win</span><span aria-hidden="true">W</span></li><li class="res"><span class="vh">game no. 7, loss</span><span aria-hidden="true">L</span></li><li class="res"><span class="vh">game no. 8, loss</span><span aria-hidden="true">L</span></li><li class="res res-w"><span class="vh">game no. 9, win</span><span aria-hidden="true">W</span></li><li class="res res-w"><span class="vh">game no. 10, win</span><span aria-hidden="true">W</span></li><li class="res"><span class="vh">game no. 11, loss</span><span aria-hidden="true">L</span></li><li class="res res-w"><span class="vh">game no. 12, win</span><span aria-hidden="true">W</span></li><li class="res"><span class="vh">game no. 13, loss</span><span aria-hidden="true">L</span></li><li class="res"><span class="vh">game no. 14, loss</span><span aria-hidden="true">L</span></li></ol><span class="db-role">Main role: <b>Jungle</b></span></div>
+    </header>
 
-  <section class="section" aria-labelledby="preview-title" style="padding-top: 0; border-top: 0;">
-    <div class="wrap">
-      <h2 id="preview-title" class="kicker">The app, as it is</h2>
-      <figure class="shot">
-        <img src="/assets/shots/dashboard-en.webp" width="1600" height="1000" alt="Ascend dashboard: recent form, practice session, key numbers, last game and fundamentals footprint radar." loading="lazy">
-        <figcaption><span>Dashboard — screenshot of the application, demo account.</span><span class="mono">v0.2 beta</span></figcaption>
-      </figure>
-    </div>
-  </section>
+    <section class="panel calib" aria-live="polite">
+      <h3 class="panel-title"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 16.5a8 8 0 1 1 15 0"/><path d="M12 14l3.5-4.5"/><circle cx="12" cy="14.5" r="1"/></svg>Calibration flash</h3>
+      <p class="panel-sub">16 games since your last calibration: 10 seconds to check your read.</p>
+      <p class="calib-q">Which fundamental cost you the most lately?</p>
+      <div class="calib-opts" role="group" aria-label="Which fundamental cost you the most lately?"><button class="opt opt-tight" data-act="calib" data-f="deaths" aria-pressed="false"><i class="fam fam-deaths"></i><span class="opt-main">Positioning &amp; deaths</span></button><button class="opt opt-tight" data-act="calib" data-f="vision" aria-pressed="false"><i class="fam fam-vision"></i><span class="opt-main">Vision &amp; map</span></button><button class="opt opt-tight" data-act="calib" data-f="tempo" aria-pressed="false"><i class="fam fam-tempo"></i><span class="opt-main">Tempo &amp; economy</span></button><button class="opt opt-tight" data-act="calib" data-f="mechanics" aria-pressed="false"><i class="fam fam-mechanics"></i><span class="opt-main">Mechanics &amp; laning</span></button></div>
+      
+    </section>
 
-  <section id="workshops" class="section" aria-labelledby="workshops-title">
-    <div class="wrap">
-      <div class="section-head">
-        <h2 id="workshops-title" class="display h2">Three workshops.<br>One tool.</h2>
-        <p>Ascend started as a self-coaching tool. It now covers the whole improvement cycle: the solo player, the coach following students, the team training together. Everyone only sees what the others chose to share.</p>
+    <div class="db-cols">
+      <section class="panel db-session">
+        <h3 class="panel-kicker">Active Session</h3>
+        <p class="db-objective">Wave Management, Vision Control</p>
+        <p class="panel-sub">4 games played this session</p>
+        <dl class="db-stats"><div><dt>Games</dt><dd>84</dd></div><div><dt>Win Rate</dt><dd>55%</dd></div><div><dt>Avg KDA</dt><dd>3.47</dd></div><div><dt>Obj. Success</dt><dd>72%</dd></div></dl>
+      </section>
+      <section class="panel db-level">
+        <h3 class="panel-kicker">Progress</h3>
+        <p class="db-level-n"><b>Level 10</b><span>Strategist</span></p>
+        <div class="meter" role="img" aria-label="225/351 XP"><i style="width:64%"></i></div>
+        <p class="panel-sub"><span class="mono">225/351 XP</span> 126 XP to level 11</p>
+      </section>
+      <section class="panel db-low" aria-live="polite">
+        <h3 class="panel-title"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3.5" y="8" width="15" height="8.5" rx="1.5"/><path d="M21 11v2.5M6.5 11v2.5"/></svg>Low-energy session detected</h3>
+        <p>2 losses in a row in this session.</p><p class="panel-sub">The protocol simplifies your game to 3 rules: neutralise waves, respect every suspicious move, keep your Flash for objective teamfights.</p>
+             <button class="app-btn app-btn-solid" data-act="low"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3.5" y="8" width="15" height="8.5" rx="1.5"/><path d="M21 11v2.5M6.5 11v2.5"/></svg>Activate on the running session</button>
+      </section>
+    </div>
+  </div></div>
+      
+    </figure>
+        <div class="notes"><div class="note"><h3>Calibration flash</h3><p>Every 15 games, a single question: which fundamental cost you the most? Ascend then shows the gap between your answer and what your micro-reviews say.</p></div><div class="note"><h3>Low-energy protocol</h3><p>After 2 losses in a row, or in a time slot where you win under 45% of your games, Ascend offers a lighter session objective: three simple rules to hold when your head is no longer in it.</p></div></div>
       </div>
-      <ol class="workshops">
-        <li class="workshop">
-          <span class="num">I</span>
-          <div><h3 class="h3">The player</h3><p class="who">To climb in ranked, alone, with a method.</p></div>
-          <ul class="feature-list">
-            <li><strong>Goal-driven sessions</strong>: 1 to 3 fundamentals from 10 families (waves, vision, trading, rotations…).</li>
-            <li><strong>Automatic recording</strong> of every game, detected with no clicks.</li>
-            <li><strong>Guided review</strong>: per-goal scoring, timestamped notes on the video.</li>
-            <li><strong>Mistakes flagged</strong> automatically and placed on the VOD timeline.</li>
-            <li><strong>Statistics</strong> per game, laning phase, averages and progression over time.</li>
-            <li><strong>Fundamentals footprint</strong>: recent form vs your last 40 games, with support-specific KPIs.</li>
-            <li><strong>Transparent rule-based assistant</strong>: it always says why, no paid AI.</li>
-            <li><strong>Multi-account</strong>: one history for all your Riot accounts.</li>
-          </ul>
-        </li>
-        <li class="workshop">
-          <span class="num">II</span>
-          <div><h3 class="h3">The coach</h3><p class="who">To follow students, live or remotely.</p></div>
-          <ul class="feature-list">
-            <li><strong>Coaching groups</strong> by invitation, with roles (coach, analyst, player).</li>
-            <li><strong>Sharing chosen by the player</strong>: reviews, stats or nothing, changeable anytime.</li>
-            <li><strong>Timestamped comments</strong> on reviews, coach ↔ player threads.</li>
-            <li><strong>Assigned goals</strong> with due dates, picked up in one click next session.</li>
-            <li><strong>Individual development plans</strong> and one-on-one tracking.</li>
-            <li><strong>Weekly reports</strong> and an alert when a student drops off.</li>
-          </ul>
-        </li>
-        <li class="workshop">
-          <span class="num">III</span>
-          <div><h3 class="h3">The team</h3><p class="who">For amateur and semi-pro rosters who train seriously.</p></div>
-          <ul class="feature-list">
-            <li><strong>Calendar-style schedule</strong>, availability and common slots, calendar export.</li>
-            <li><strong>Scrims</strong>: preparation, checklist, post-match analysis.</li>
-            <li><strong>Drafts, champion pools</strong> and roster synergies.</li>
-            <li><strong>Opponent scouting</strong> from the Riot IDs you enter.</li>
-            <li><strong>Team VOD review</strong>, debrief transcribed locally.</li>
-            <li><strong>Discord bot</strong> and a mobile web app to follow from anywhere.</li>
-          </ul>
-        </li>
-      </ol>
     </div>
   </section>
-
-  <section class="section" aria-labelledby="loop-title">
-    <div class="wrap">
-      <div class="section-head">
-        <h2 id="loop-title" class="display h2">One loop.<br>Four moves.</h2>
-        <p>Players who improve don't necessarily play more: they play with a goal, review and measure. Ascend does the tedious work between games.</p>
-      </div>
-      <ol class="loop">
-        <li><span class="num">01</span><h3>Pick a goal</h3><p>Ascend suggests one from your recent games. You can change it.</p></li>
-        <li><span class="num">02</span><h3>Play as usual</h3><p>The game is detected and recorded. Nothing is shown while you play.</p></li>
-        <li><span class="num">03</span><h3>Review what matters</h3><p>Key moments are already marked. Score your goal in two minutes.</p></li>
-        <li><span class="num">04</span><h3>Measure</h3><p>Your last 15 games against your last 40: you see whether it works.</p></li>
-      </ol>
+<section class="sec" id="micro-review" aria-labelledby="h-micro-review">
+    <header class="sec-head"><span class="sec-n mono" aria-hidden="true">2</span><h2 id="h-micro-review">The micro-review in 45 seconds</h2></header>
+    <div class="sec-body">
+      <p class="intro">A full review takes twenty minutes, and most players never do one. The micro-review only shows what weighed on the result, and ends before the next queue.</p>
+      <dl class="ledger"><div><dt>At most 3 moments</dt><dd>The costliest of the game, at least 25 seconds apart. When there is none, Ascend says so and lets you queue again.</dd></div><div><dt>Three triggers</dt><dd>A death followed, within 90 seconds, by a lost objective or a clear drop in your chances. A major objective taken by the enemy while you were alive, with no ward of yours and nothing taken elsewhere. A deficit at 10:00: more than 15 CS or 400 XP behind your lane opponent.</dd></div><div><dt>Twelve recognised patterns</dt><dd>A gank on a predictable 2:30 timer, a desynchronised recall, a shutdown given first in a fight, a mid roam paid in plates, a support inside the pit instead of the choke point.</dd></div><div><dt>Garbage time does not count</dt><dd>When the game was already decided at the time of the action, above 85% or under 18% from gold, XP and objectives, the moment is dropped: it would teach you nothing.</dd></div><div><dt>A deliberate call is not a mistake</dt><dd>Every question keeps a “justified” way out. It is recorded, never counted against you.</dd></div><div><dt>No AI, nothing sent</dt><dd>Rules written in advance, run on your PC, with no connection. The same game always gives the same moments.</dd></div><div><dt>53 Codex entries</dt><dd>After your answer, the Codex gives the tactical rule and a precise training goal. A few entries show the sequence in an official professional match.</dd></div></dl>
+      <p class="back"><a href="#piece-a">Back to exhibit A</a></p>
     </div>
   </section>
-
-  <section class="section" aria-labelledby="details-title">
-    <div class="wrap">
-      <h2 id="details-title" class="kicker">In detail</h2>
-
+<section class="sec" id="lab" aria-labelledby="h-lab">
+    <header class="sec-head"><span class="sec-n mono" aria-hidden="true">3</span><h2 id="h-lab">The Mistake Lab</h2></header>
+    <div class="sec-body">
       <div class="split">
-        <div>
-          <h3>What makes you win.<br><span class="signal">Not just averages.</span></h3>
-          <p>The Insights tab reads your last 50 games and answers real questions: which champions you win on, what changes in your play when you lose, when you play best, and whether you tilt after a loss.</p>
-          <ul class="checks">
-            <li><b>Wins vs losses</b>: deaths, KDA, farm and vision side by side, with your #1 lever.</li>
-            <li><b>Tilt check</b>: your win rate right after a loss, in the same session.</li>
-            <li><b>Honest samples</b>: fewer than 3 games is greyed out. No false certainty.</li>
-          </ul>
-        </div>
-        <figure class="shot">
-          <img src="/assets/shots/insights-en.webp" width="1600" height="1000" alt="Insights tab: key takeaways, champion pool, wins vs losses, win rate by game length, time of day and after a loss." loading="lazy">
-          <figcaption><span>Statistics → Insights</span></figcaption>
-        </figure>
+        <p class="intro">Every tagged mistake lands here, whether it comes from you, from the micro-review or from the automatic detector. The Lab answers three questions: which one comes back most, how much it costs you, and when in the game it happens.</p>
+        <ul class="figures"><li><b class="mono">26</b><span>mistakes in the catalogue, in four families</span></li><li><b class="mono">15</b><span>spotted without you, on the official match timeline</span></li><li><b class="mono">2 games</b><span>at least on each side before a win-rate gap is shown</span></li></ul>
       </div>
-
-      <div class="split reverse">
-        <div>
-          <h3>Your VOD comes<br>annotated.</h3>
-          <p>After each game, Ascend matches the video with the official match timeline: deaths, objectives, fights. Likely mistakes are marked, with an explanation you confirm or dismiss.</p>
-          <ul class="checks">
-            <li><b>Mistake library</b>: every tagged mistake feeds your recurring-mistake stats.</li>
-            <li><b>Clips and bookmarks</b> to keep a moment, share it or send it to your coach.</li>
-            <li><b>Your videos stay on your PC.</b> They are never uploaded to our servers.</li>
-          </ul>
-        </div>
-        <div class="timeline" role="img" aria-label="Illustration of a VOD timeline with three flagged moments: first blood at 3:22, a stretch with no farming at 23:10 and a death before Baron at 34:15.">
-          <div class="mono muted" style="font-size: 11px; letter-spacing: .12em;">WUKONG VS DIANA · 48:25</div>
-          <div class="timeline-bar"><div class="played"></div>
-            <span class="marker good" style="left: 7%"></span><span class="marker bad" style="left: 48%"></span><span class="marker bad" style="left: 71%"></span>
-          </div>
-          <div class="timeline-legend"><span><i style="background: var(--win)"></i>positive impact</span><span><i style="background: var(--signal)"></i>likely mistake</span></div>
-          <div style="margin-top: 14px;">
-            <div class="moment good"><span class="t">03:22</span><div>First blood secured in a 2v2<p>+400 gold, good wave setup before the play.</p></div></div>
-            <div class="moment"><span class="t">23:10</span><div>3 min 30 without farming<p>Grouped mid while the side lane pushed alone.</p></div></div>
-            <div class="moment"><span class="t">34:15</span><div>Death before Baron, no Flash<p>1v3 engage in a river with no vision.</p></div></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="split">
-        <div>
-          <h3>An assistant that<br>explains everything.</h3>
-          <p>No generative AI, no subscription. The assistant applies coaching rules written in advance to your own numbers. Every tip shows the games it comes from. Tell it whether it helped and it adapts.</p>
-          <ul class="checks">
-            <li><b>Measurable experiments</b>, tracked automatically over your next games.</li>
-            <li><b>Periodic self-assessments</b> to recalibrate your goals.</li>
-          </ul>
-        </div>
-        <div class="insight">
-          <span class="tag">PRIORITY FOCUS · LAST 40 GAMES</span>
-          <p class="msg">Your CS/min is dropping (6.1 vs a 7.0 target). A few minutes of last-hitting before queueing up will help.</p>
-          <p class="why"><b>Why?</b> Across your last 12 losses you lose 1.2 CS/min on average between minutes 15 and 28 — roughly 270 gold at 15 minutes.</p>
-        </div>
-      </div>
-
-      <div class="split reverse">
-        <div>
-          <h3>Your app,<br>your way.</h3>
-          <p>Eight color themes, backgrounds with a color filter or a solid color, applied live. A profile that tracks your work in the app: practice level and titles earned by doing your reviews.</p>
-        </div>
-        <figure class="shot">
-          <img src="/assets/shots/appearance-en.webp" width="1600" height="1000" alt="Appearance settings: color themes, backgrounds, color filter and live preview." loading="lazy">
-          <figcaption><span>Settings → Appearance</span></figcaption>
-        </figure>
-      </div>
+      <figure class="piece" id="piece-c">
+      <figcaption class="piece-cap"><span class="piece-ref mono">Exhibit C</span><span class="piece-what">The Mistake Lab over 30 days. Filter by family, then open a mistake.</span><span class="piece-demo">Demonstration account</span></figcaption>
+      <div class="piece-frame app" data-exhibit="lab" role="group" aria-label="Exhibit C"><div class="lab">
+    <dl class="lab-kpis"><div><dt>Tagged mistakes</dt><dd class="">36</dd><dd class="kpi-sub">across 14 analysed games</dd></div><div><dt>Per game</dt><dd class="">2.6</dd><dd class="kpi-sub">on average</dd></div><div><dt>#1 mistake</dt><dd class="is-text">No ward pre-objective</dd><dd class="kpi-sub">13 times · 36% of total</dd></div><div><dt>Most affected phase</dt><dd class="is-text">Mid</dd><dd class="kpi-sub">50% of your mistakes</dd></div></dl>
+    <div class="lab-cols">
+      <section class="panel lab-rank">
+        <h3 class="panel-title">Ranked by frequency</h3>
+        <div class="chips" role="group" aria-label="Mistake families"><button class="chip" aria-pressed="true" data-act="family" data-f="all" data-k="fam-all">All</button><button class="chip" aria-pressed="false" data-act="family" data-f="deaths" data-k="fam-deaths"><i class="fam fam-deaths"></i>Positioning &amp; deaths</button><button class="chip" aria-pressed="false" data-act="family" data-f="vision" data-k="fam-vision"><i class="fam fam-vision"></i>Vision &amp; map</button><button class="chip" aria-pressed="false" data-act="family" data-f="tempo" data-k="fam-tempo"><i class="fam fam-tempo"></i>Tempo &amp; economy</button><button class="chip" aria-pressed="false" data-act="family" data-f="mechanics" data-k="fam-mechanics"><i class="fam fam-mechanics"></i>Mechanics &amp; laning</button></div>
+        <ol class="ranks"><li><button class="rank is-current" data-act="open" data-slug="no-ward-pre-obj" data-k="row-no-ward-pre-obj" aria-pressed="true">
+      <span class="rank-name"><i class="fam fam-vision"></i>No ward pre-objective</span>
+      <span class="rank-bar"><i style="width:100%"></i></span>
+      <span class="rank-count">13×</span><span class="rank-share">36 %</span>
+      <span class="rank-delta is-cost" title="Win-rate gap: games with this mistake vs analysed games without it">−27 pts</span>
+    </button></li><li><button class="rank" data-act="open" data-slug="forgot-trinket" data-k="row-forgot-trinket" aria-pressed="false">
+      <span class="rank-name"><i class="fam fam-vision"></i>Forgot trinket up</span>
+      <span class="rank-bar"><i style="width:46%"></i></span>
+      <span class="rank-count">6×</span><span class="rank-share">17 %</span>
+      <span class="rank-delta is-cost" title="Win-rate gap: games with this mistake vs analysed games without it">−4 pts</span>
+    </button></li><li><button class="rank" data-act="open" data-slug="death-before-objective" data-k="row-death-before-objective" aria-pressed="false">
+      <span class="rank-name"><i class="fam fam-deaths"></i>Died before a lost objective</span>
+      <span class="rank-bar"><i style="width:38%"></i></span>
+      <span class="rank-count">5×</span><span class="rank-share">14 %</span>
+      <span class="rank-delta is-cost" title="Win-rate gap: games with this mistake vs analysed games without it">−36 pts</span>
+    </button></li><li><button class="rank" data-act="open" data-slug="overstay" data-k="row-overstay" aria-pressed="false">
+      <span class="rank-name"><i class="fam fam-tempo"></i>Overstay</span>
+      <span class="rank-bar"><i style="width:31%"></i></span>
+      <span class="rank-count">4×</span><span class="rank-share">11 %</span>
+      <span class="rank-delta is-cost" title="Win-rate gap: games with this mistake vs analysed games without it">−25 pts</span>
+    </button></li><li><button class="rank" data-act="open" data-slug="caught-out" data-k="row-caught-out" aria-pressed="false">
+      <span class="rank-name"><i class="fam fam-deaths"></i>Caught out alone</span>
+      <span class="rank-bar"><i style="width:23%"></i></span>
+      <span class="rank-count">3×</span><span class="rank-share">8 %</span>
+      <span class="rank-delta is-cost" title="Win-rate gap: games with this mistake vs analysed games without it">−55 pts</span>
+    </button></li><li><button class="rank" data-act="open" data-slug="bad-positioning" data-k="row-bad-positioning" aria-pressed="false">
+      <span class="rank-name"><i class="fam fam-deaths"></i>Bad positioning</span>
+      <span class="rank-bar"><i style="width:15%"></i></span>
+      <span class="rank-count">2×</span><span class="rank-share">6 %</span>
+      <span class="rank-delta" title="Win-rate gap: games with this mistake vs analysed games without it">+8 pts</span>
+    </button></li><li><button class="rank" data-act="open" data-slug="cs-deficit" data-k="row-cs-deficit" aria-pressed="false">
+      <span class="rank-name"><i class="fam fam-mechanics"></i>CS deficit at 10 min</span>
+      <span class="rank-bar"><i style="width:15%"></i></span>
+      <span class="rank-count">2×</span><span class="rank-share">6 %</span>
+      <span class="rank-delta is-cost" title="Win-rate gap: games with this mistake vs analysed games without it">−50 pts</span>
+    </button></li><li><button class="rank" data-act="open" data-slug="unused-gold" data-k="row-unused-gold" aria-pressed="false">
+      <span class="rank-name"><i class="fam fam-tempo"></i>Died with unspent gold</span>
+      <span class="rank-bar"><i style="width:8%"></i></span>
+      <span class="rank-count">1×</span><span class="rank-share">3 %</span>
+      <span class="rank-delta is-none" title="Win-rate gap: games with this mistake vs analysed games without it">—</span>
+    </button></li></ol>
+        <p class="panel-sub">Left to right: occurrences, share of the total, win-rate gap between the games with and without the mistake.</p>
+      </section>
+      <section class="panel lab-inspect" aria-live="polite">
+        <h3 class="lab-name">No ward pre-objective</h3>
+        <p class="lab-family"><i class="fam fam-vision"></i>Vision &amp; map</p>
+        <p class="panel-sub">13 times over 9 games · 36% of your mistakes.</p>
+        <p class="lab-cost">You win 33% of the games where it happens, vs 60% of your other analysed games.</p>
+        <h4 class="panel-kicker">When it happens</h4>
+        <dl class="phases"><div><dt>Early<small>0–14 min</small></dt><dd>2</dd><dd class="bar"><i style="width:22%"></i></dd></div><div><dt>Mid<small>14–25 min</small></dt><dd>9</dd><dd class="bar"><i style="width:100%"></i></dd></div><div><dt>Late<small>25 min +</small></dt><dd>2</dd><dd class="bar"><i style="width:22%"></i></dd></div></dl>
+        <p class="panel-sub">Prescription for the phase where it happens most: Mid</p>
+        <article class="fiche fiche-flat">
+          <p class="fiche-kind"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 4.5h10.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3V4.5z"/><path d="M5 17a3 3 0 0 1 3-3h10.5"/></svg>Codex advice</p>
+          <h4 class="fiche-title">End your clear on the objective’s side</h4>
+          <p class="fiche-rule">Path so you stand next to the pit 45 s before the spawn: trinket the enemy entrance bush, then swap to Oracle Lens if your support already covers deep vision.</p>
+          <div class="fiche-drill"><span>Training goal</span><p>Before each objective: be in that river at −0:45 with your trinket still charged.</p></div>
+        </article>
+        <h4 class="panel-kicker">Latest moments</h4>
+        <ul class="lab-moments"><li><span class="mono">24:58</span><span>game no. 14</span><span class="res res-s">L</span></li><li><span class="mono">15:30</span><span>game no. 14</span><span class="res res-s">L</span></li><li><span class="mono">24:10</span><span>game no. 12</span><span class="res res-s res-w">W</span></li></ul>
+        <p class="lab-hint"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.6"/></svg>Make it your goal: Ascend tracks this mistake over your next games and tells you whether it drops.</p>
+      </section>
+    </div>
+  </div></div>
+      
+    </figure>
+      <p class="outro">The gap reads in win-rate points: the games where the mistake happens against the other analysed games. A mistake can become the objective of your next sessions; Ascend tracks it and tells you whether it recedes.</p>
     </div>
   </section>
-
-  <section id="teams" class="section" aria-labelledby="teams-title">
-    <div class="wrap">
-      <div class="section-head">
-        <h2 id="teams-title" class="display h2">For coaches<br>and teams.</h2>
-        <p>Everything a staff does today across Discord, a spreadsheet and three stats sites, in one place. On the PC for analysis, on the phone for scheduling.</p>
+<section class="sec" id="fingerprint" aria-labelledby="h-fingerprint">
+    <header class="sec-head"><span class="sec-n mono" aria-hidden="true">4</span><h2 id="h-fingerprint">The fundamentals fingerprint</h2></header>
+    <div class="sec-body">
+      <p class="intro">Nine axes, two windows: your last 15 games and your last 40. The gap between the two shapes is your current form.</p>
+      <figure class="piece" id="piece-d">
+      <figcaption class="piece-cap"><span class="piece-ref mono">Exhibit D</span><span class="piece-what">The fundamentals fingerprint. Inspect an axis, or change role.</span><span class="piece-demo">Demonstration account</span></figcaption>
+      <div class="piece-frame app" data-exhibit="radar" role="group" aria-label="Exhibit D"><div class="rd">
+    <div class="rd-chart">
+      <div class="rd-top">
+        <h3 class="panel-title">Fundamentals footprint</h3><span class="mono rd-score">Score: 49/100</span>
       </div>
-      <div class="team-cols">
-        <div>
-          <h3>ORGANIZE</h3>
-          <ul>
-            <li><b>Shared schedule</b>Calendar week view, reminders the day before and one hour before.</li>
-            <li><b>Availability</b>Recurring, with common slots computed for the whole roster.</li>
-            <li><b>Announcements and tasks</b>Notifications with adjustable quiet hours.</li>
-            <li><b>Recruitment</b>Candidates, evaluation grid, decision.</li>
-          </ul>
-        </div>
-        <div>
-          <h3>PREPARE</h3>
-          <ul>
-            <li><b>Drafts</b>Shared preparations, linked to scrims.</li>
-            <li><b>Champion pools</b>Mastery level and roster synergies.</li>
-            <li><b>Scouting</b>An opposing team's champions and threats, from its public match history.</li>
-            <li><b>Scrim and tournament stats</b>Custom games aggregated per player.</li>
-          </ul>
-        </div>
-        <div>
-          <h3>DEBRIEF</h3>
-          <ul>
-            <li><b>Team review</b>Comments on the VOD, action items and assignments.</li>
-            <li><b>Local transcription</b>The voice debrief is transcribed on your PC; nothing is uploaded.</li>
-            <li><b>Wellbeing</b>Energy/mood/sleep check-ins, shared only if the player agrees.</li>
-            <li><b>Reports</b>Weekly, per player and team, exportable.</li>
-          </ul>
-        </div>
-      </div>
+      <svg class="rd-svg" viewBox="0 0 320 320" role="img" aria-label="Fundamentals footprint">
+        <polygon class="rd-ring" points="160.0,134.0 176.7,140.1 185.6,155.5 182.5,173.0 168.9,184.4 151.1,184.4 137.5,173.0 134.4,155.5 143.3,140.1"/><polygon class="rd-ring" points="160.0,108.0 193.4,120.2 211.2,151.0 205.0,186.0 177.8,208.9 142.2,208.9 115.0,186.0 108.8,151.0 126.6,120.2"/><polygon class="rd-ring" points="160.0,82.0 210.1,100.2 236.8,146.5 227.5,199.0 186.7,233.3 133.3,233.3 92.5,199.0 83.2,146.5 109.9,100.2"/><polygon class="rd-ring" points="160.0,56.0 226.8,80.3 262.4,141.9 250.1,212.0 195.6,257.7 124.4,257.7 69.9,212.0 57.6,141.9 93.2,80.3"/><line class="rd-spoke" x1="160" y1="160" x2="160.0" y2="56.0"/><line class="rd-spoke" x1="160" y1="160" x2="226.8" y2="80.3"/><line class="rd-spoke" x1="160" y1="160" x2="262.4" y2="141.9"/><line class="rd-spoke" x1="160" y1="160" x2="250.1" y2="212.0"/><line class="rd-spoke" x1="160" y1="160" x2="195.6" y2="257.7"/><line class="rd-spoke" x1="160" y1="160" x2="124.4" y2="257.7"/><line class="rd-spoke" x1="160" y1="160" x2="69.9" y2="212.0"/><line class="rd-spoke" x1="160" y1="160" x2="57.6" y2="141.9"/><line class="rd-spoke" x1="160" y1="160" x2="93.2" y2="80.3"/>
+        <polygon class="rd-snap" points="160.0,117.4 200.1,112.2 212.2,150.8 203.2,185.0 180.3,215.7 153.6,177.6 106.0,191.2 114.9,152.1 124.6,117.8"/>
+        <polygon class="rd-recent" points="160.0,111.1 194.8,118.6 210.2,151.2 206.8,187.0 181.7,219.6 151.5,183.5 114.1,186.5 111.9,151.5 118.6,110.6"/>
+        <circle class="rd-dot" cx="160.0" cy="111.1" r="3"/><circle class="rd-dot" cx="194.8" cy="118.6" r="3"/><circle class="rd-dot" cx="210.2" cy="151.2" r="3"/><circle class="rd-dot" cx="206.8" cy="187.0" r="3"/><circle class="rd-dot" cx="181.7" cy="219.6" r="3"/><circle class="rd-dot" cx="151.5" cy="183.5" r="3"/><circle class="rd-dot" cx="114.1" cy="186.5" r="3"/><circle class="rd-dot" cx="111.9" cy="151.5" r="3"/><circle class="rd-dot" cx="118.6" cy="110.6" r="3"/><g class="rd-axis" data-act="axis" data-hover="hover" data-a="kda"><circle cx="160.0" cy="33.1" r="20"/><text x="160.0" y="37.1" text-anchor="middle">KDA</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="csm"><circle cx="241.6" cy="62.8" r="20"/><text x="241.6" y="66.8" text-anchor="start">CS/m</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="goldm"><circle cx="285.0" cy="138.0" r="20"/><text x="285.0" y="142.0" text-anchor="start">Gold/m</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="dmgm"><circle cx="269.9" cy="223.4" r="20"/><text x="269.9" y="227.4" text-anchor="start">DMG/m</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="kp"><circle cx="203.4" cy="279.2" r="20"/><text x="203.4" y="283.2" text-anchor="start">KP</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="fb"><circle cx="116.6" cy="279.2" r="20"/><text x="116.6" y="283.2" text-anchor="end">FB</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="cs15"><circle cx="50.1" cy="223.4" r="20"/><text x="50.1" y="227.4" text-anchor="end">CS@15</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="xp15"><circle cx="35.0" cy="138.0" r="20"/><text x="35.0" y="142.0" text-anchor="end">XP@15</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="gold15"><circle cx="78.4" cy="62.8" r="20"/><text x="78.4" y="66.8" text-anchor="end">Gold@15</text></g>
+      </svg>
+      <p class="rd-legend"><span><i class="lg lg-recent"></i>Recent (15 games)</span><span><i class="lg lg-snap"></i>Snapshot (40 games)</span></p>
+      <p class="rd-readout" aria-live="polite">Hover an axis, or pick it in the table.</p>
+    </div>
+    <div class="rd-side">
+      <div class="segs" role="group" aria-label="Role"><button class="seg" aria-pressed="true" data-act="role" data-r="carry" data-k="role-carry">Top, jungle, mid, ADC</button><button class="seg" aria-pressed="false" data-act="role" data-r="support" data-k="role-support">Support</button></div>
+      <table class="rd-table">
+        <thead><tr><th scope="col">Axis</th><th scope="col">15 games</th><th scope="col">40 games</th><th scope="col">Gap</th></tr></thead>
+        <tbody><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="kda" data-k="axis-kda" aria-pressed="false">KDA</button></th>
+      <td>2.83</td><td>2.45</td><td class="gap is-good">+0.38</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="csm" data-k="axis-csm" aria-pressed="false">CS/m</button></th>
+      <td>6.1</td><td>6.6</td><td class="gap">−0.5</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="goldm" data-k="axis-goldm" aria-pressed="false">Gold/m</button></th>
+      <td>398 g</td><td>404 g</td><td class="gap">−6 g</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="dmgm" data-k="axis-dmgm" aria-pressed="false">DMG/m</button></th>
+      <td>612</td><td>588</td><td class="gap is-good">+24</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="kp" data-k="axis-kp" aria-pressed="false">KP</button></th>
+      <td>61%</td><td>57%</td><td class="gap is-good">+4%</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="fb" data-k="axis-fb" aria-pressed="false">FB</button></th>
+      <td>24%</td><td>18%</td><td class="gap is-good">+6%</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="cs15" data-k="axis-cs15" aria-pressed="false">CS@15</button></th>
+      <td>96</td><td>104</td><td class="gap">−8</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="xp15" data-k="axis-xp15" aria-pressed="false">XP@15</button></th>
+      <td>6,850 XP</td><td>6,720 XP</td><td class="gap is-good">+130 XP</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="gold15" data-k="axis-gold15" aria-pressed="false">Gold@15</button></th>
+      <td>5,980 g</td><td>5,610 g</td><td class="gap is-good">+370 g</td></tr></tbody>
+      </table>
+      <p class="panel-sub">The scales are fixed and the same for every player: the fingerprint compares you with no one.</p>
+    </div>
+  </div></div>
+      
+    </figure>
+      <div class="pair"><p>Supports get their own axes: vision, fight presence, heals, shields and crowd control. Farm says nothing about their game.</p><p>The fingerprint completes a self-assessment of 38 fundamentals, in 7 families. When your numbers drift from what you declared, Ascend suggests doing it again.</p></div>
     </div>
   </section>
-
-  <section id="riot-data" class="section" aria-labelledby="riot-title">
-    <div class="wrap">
-      <div class="section-head">
-        <h2 id="riot-title" class="display h2">How Ascend uses<br>Riot data.</h2>
-        <p>Ascend relies on the official Riot Games API, read-only, and follows Riot's developer policies. Here is exactly what the application requests, and what it never does.</p>
-      </div>
-      <div class="facts">
-        <div class="fact"><h3>After the game, never during</h3><p>Ascend shows nothing in game: no overlay, no information about opponents, no live advantage. The game's local <code>Live Client Data</code> API is only used to know when a game starts and ends, to start and stop recording.</p></div>
-        <div class="fact"><h3>The key stays on our servers</h3><p>The application ships no API key. Requests go through an Ascend relay (HTTPS) that adds the key, only allows a closed list of read-only calls and rate-limits each account.</p></div>
-        <div class="fact"><h3>Match data is cached</h3><p>Each match is requested once, then kept on your PC. This respects Riot's rate limits and keeps the app fast.</p></div>
-        <div class="fact"><h3>No home-made ranking</h3><p>Ascend does not estimate MMR and does not replace the official ladder. The rank shown is the one Riot provides.</p></div>
-        <div class="fact"><h3>What you choose to share</h3><p>Your coaching data stays private. A coach or teammate only sees what you agreed to share with their group, and you can withdraw that at any time.</p></div>
-        <div class="fact"><h3>Public data only</h3><p>Scouting only uses the public match history of Riot IDs you enter. Ascend does not try to identify anonymous players.</p></div>
-      </div>
-      <div class="endpoints table-scroll">
-        <table>
-          <caption class="kicker" style="text-align: left; padding: 16px 16px 0; margin: 0;">Riot Games API calls</caption>
-          <thead><tr><th scope="col">API</th><th scope="col">Why</th></tr></thead>
-          <tbody>
-            <tr><td><code>ACCOUNT-V1</code></td><td>Find your account (and your teammates' or scouted opponents') from a Riot ID.</td></tr>
-            <tr><td><code>SUMMONER-V4</code></td><td>Show summoner level and icon.</td></tr>
-            <tr><td><code>LEAGUE-V4</code></td><td>Show the official ranked tier.</td></tr>
-            <tr><td><code>CHAMPION-MASTERY-V4</code></td><td>Build a player's champion pool.</td></tr>
-            <tr><td><code>MATCH-V5</code> (matches, timeline)</td><td>Post-game statistics, values at 15 minutes, placing key moments on the VOD, scrim statistics.</td></tr>
-          </tbody>
+<section class="sec" id="tiers" aria-labelledby="h-tiers">
+    <header class="sec-head"><span class="sec-n mono" aria-hidden="true">5</span><h2 id="h-tiers">Practice tiers</h2></header>
+    <div class="sec-body">
+      <p class="intro">Eight tiers, from Recruit to Legend. They measure the work done in the application: reviews, micro-reviews, assessments. Winning moves nothing. Reviewing does.</p>
+      <div class="tiers-frame" data-exhibit="tiers"><div class="tiers">
+    <ol class="stairs" aria-label="Practice tiers, by Ascend level"><li style="--h:10">
+      <button class="step" data-act="tier" data-id="recrue" data-k="tier-recrue" aria-pressed="false">
+        <span class="step-name">Recruit</span><span class="step-level mono">lvl 1</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li><li style="--h:15">
+      <button class="step" data-act="tier" data-id="initie" data-k="tier-initie" aria-pressed="false">
+        <span class="step-name">Initiate</span><span class="step-level mono">lvl 3</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li><li style="--h:23">
+      <button class="step" data-act="tier" data-id="adepte" data-k="tier-adepte" aria-pressed="false">
+        <span class="step-name">Adept</span><span class="step-level mono">lvl 6</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li><li style="--h:34">
+      <button class="step is-current is-player" data-act="tier" data-id="stratege" data-k="tier-stratege" aria-pressed="true">
+        <span class="step-name">Strategist</span><span class="step-level mono">lvl 10</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li><li style="--h:47">
+      <button class="step" data-act="tier" data-id="virtuose" data-k="tier-virtuose" aria-pressed="false">
+        <span class="step-name">Virtuoso</span><span class="step-level mono">lvl 15</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li><li style="--h:60">
+      <button class="step" data-act="tier" data-id="sage" data-k="tier-sage" aria-pressed="false">
+        <span class="step-name">Sage</span><span class="step-level mono">lvl 20</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li><li style="--h:79">
+      <button class="step" data-act="tier" data-id="oracle" data-k="tier-oracle" aria-pressed="false">
+        <span class="step-name">Oracle</span><span class="step-level mono">lvl 27</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li><li style="--h:100">
+      <button class="step" data-act="tier" data-id="legende" data-k="tier-legende" aria-pressed="false">
+        <span class="step-name">Legend</span><span class="step-level mono">lvl 35</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li></ol>
+    <div class="tier-detail" aria-live="polite">
+      <h3 class="tier-name">Strategist</h3>
+      <p class="tier-level mono">level 10</p>
+      <ul><li>1,675 XP in total from level 1.</li><li>That is about 34 full game reviews, or 56 micro-reviews.</li><li>Unlocks 1 profile icon.</li></ul>
+      <p class="tier-you">The demonstration account is here, at level 10.</p>
+    </div>
+  </div></div>
+      <div class="split split-even">
+        <table class="grid-table xp">
+          <caption>What earns XP</caption>
+          <tbody><tr><th scope="row">Game review</th><td class="num mono">+50 XP</td></tr><tr><th scope="row">Micro-review completed</th><td class="num mono">+30 XP</td></tr><tr><th scope="row">Fundamentals assessment</th><td class="num mono">+100 XP</td></tr></tbody>
         </table>
+        <div class="prose"><p>This is not a ranking. Riot Games’ rules forbid alternative rankings and Ascend offers none: the tiers say nothing about your skill in game, and their names resemble no ranked ladder.</p><p>Profile titles are earned the same way: 10 reviews, 25 recordings, 30 clips.</p></div>
       </div>
     </div>
   </section>
-
-  <section class="section" aria-labelledby="privacy-title">
-    <div class="wrap">
-      <div class="section-head">
-        <h2 id="privacy-title" class="display h2">Your data<br>is yours.</h2>
-        <p>Ascend runs on your PC first. The account is for backups, syncing your devices and working with your coach or team. <a href="/en/privacy.html">Read the privacy policy</a>.</p>
-      </div>
-      <div class="facts">
-        <div class="fact"><h3>Local first</h3><p>Sessions, reviews, notes and statistics live in the application. It keeps working offline.</p></div>
-        <div class="fact"><h3>Videos never uploaded</h3><p>Recordings stay on your disk. You decide what you publish (for example on your own YouTube channel).</p></div>
-        <div class="fact"><h3>Hosted in Europe</h3><p>Accounts and backups at Supabase, EU / Switzerland region. No data sold, no advertising.</p></div>
-        <div class="fact"><h3>Export and deletion</h3><p>Export all your data to a file. Delete your account and backups in one click, from the app.</p></div>
-      </div>
+<section class="sec" id="modes" aria-labelledby="h-modes">
+    <header class="sec-head"><span class="sec-n mono" aria-hidden="true">6</span><h2 id="h-modes">Player, coach, team</h2></header>
+    <div class="sec-body">
+      <p class="intro">Ascend started as a self-coaching tool. Today it serves three uses, with one shared rule: each person only sees what the other chose to share.</p>
+      <table class="grid-table matrix">
+        <thead><tr><td></td><th scope="col">Player<small>Alone, in ranked, with a method.</small></th><th scope="col">Coach<small>Students, in session or remotely.</small></th><th scope="col">Team<small>A roster that practises seriously.</small></th></tr></thead>
+        <tbody>
+          <tr class="matrix-group"><th colspan="4" scope="rowgroup">Practise</th></tr>
+          <tr><th scope="row">Objective-driven session</th><td data-label="Player">1 to 3 fundamentals, suggested from your last games.</td><td data-label="Coach">Assigns an objective with a deadline; the student picks it up in one click.</td><td data-label="Team">Team sessions, with an end-of-game review.</td></tr><tr><th scope="row">Recording and VOD</th><td data-label="Player">Every game filmed hands-free, key moments already marked.</td><td data-label="Coach">Comments on shared reviews, to the second.</td><td data-label="Team">Collective VOD review, debrief transcribed on the PC.</td></tr>
+        </tbody><tbody>
+          <tr class="matrix-group"><th colspan="4" scope="rowgroup">Correct</th></tr>
+          <tr><th scope="row">Micro-review</th><td data-label="Player">Three moments, one click each, one Codex entry.</td><td data-label="Coach">Sees every answer at its timestamp, validates or corrects it.</td><td data-label="Team">Adds the team’s rules to the Codex: they come before the general entries.</td></tr><tr><th scope="row">Mistake Lab and fingerprint</th><td data-label="Player">Your mistakes ranked by cost, your radar over 15 and 40 games.</td><td data-label="Coach">Each student’s dominant mistake and form on one screen.</td><td data-label="Team">Combined roster statistics, scrims and tournaments included.</td></tr>
+        </tbody><tbody>
+          <tr class="matrix-group"><th colspan="4" scope="rowgroup">Organise</th></tr>
+          <tr><th scope="row">Follow-up</th><td data-label="Player">You choose what you share, group by group.</td><td data-label="Coach">Development plans, weekly reports, an alert when a student drops off.</td><td data-label="Team">Wellbeing (energy, mood, sleep), shared only if the player agrees.</td></tr><tr><th scope="row">Schedule and preparation</th><td class="is-none" data-label="Player"><span class="vh">Not applicable</span><span aria-hidden="true">—</span></td><td class="is-none" data-label="Coach"><span class="vh">Not applicable</span><span aria-hidden="true">—</span></td><td data-label="Team">Calendar, availability and common slots. Scrims, drafts, champion pools, opponent scouting.</td></tr><tr><th scope="row">Away from the PC</th><td data-label="Player">The web app, to read your reviews.</td><td data-label="Coach">Web app on a phone.</td><td data-label="Team">Web app on a phone and a Discord bot.</td></tr>
+        </tbody>
+      </table>
+      <p class="outro">The web app covers reviews, coaching, schedule and scrims on every device. It does not record games. <a href="https://nexusmind-web.nexusmind-riot-proxy.workers.dev">Open the web app</a></p>
     </div>
   </section>
-
-  <section id="faq" class="section faq" aria-labelledby="faq-title">
-    <div class="wrap">
-      <h2 id="faq-title" class="display h2" style="margin-bottom: 32px;">Questions</h2>
-      <details><summary>Is Ascend free?</summary><p>Yes. Every feature described here is free during the beta, and a complete free version will always remain available.</p></details>
-      <details><summary>How do I get access?</summary><p>The beta is invite-only: an access code, or the code of a team or coaching group that invites you. Ask for one at <span class="placeholder">[CONTACT EMAIL]</span>.</p></details>
-      <details><summary>Is it allowed by Riot Games?</summary><p>Ascend uses Riot Games' official public API and follows its policies: no game modification, no information during the game, no live advantage. Ascend isn't endorsed by Riot Games (see the notice at the bottom of the page).</p></details>
-      <details><summary>Does it work on Mac?</summary><p>The desktop app is available for Windows 10 and 11. The web app (reviews, coaching, schedule, scrims) works on every device but doesn't record games.</p></details>
-      <details><summary>Does recording slow the game down?</summary><p>Capture uses your graphics card's hardware encoder when available. Quality, frame rate and folder are configurable, and automatic recording can be turned off.</p></details>
-      <details><summary>Do my teammates see my statistics?</summary><p>Only if you decide so. Sharing is set group by group (reviews, statistics, team data, wellbeing) and can be withdrawn anytime.</p></details>
-      <details><summary>Is there AI?</summary><p>Not at the core: the assistant applies transparent coaching rules. Voice transcription of debriefs uses a model that runs on your PC; nothing is sent to an AI service.</p></details>
+<section class="sec" id="themes" aria-labelledby="h-themes">
+    <header class="sec-head"><span class="sec-n mono" aria-hidden="true">7</span><h2 id="h-themes">Themes</h2></header>
+    <div class="sec-body">
+      <p class="intro">Eight colour themes, and your own: you pick three colours, Ascend works out the others and keeps the text readable. Five backgrounds, your own image if you prefer, or a plain colour. Everything applies live, without a restart.</p>
+      <figure class="piece" id="piece-e">
+        <figcaption class="piece-cap"><span class="piece-ref mono">Exhibit E</span><span class="piece-what">Appearance. Change the ink of the application.</span></figcaption>
+        <div class="piece-frame" data-themes><div class="th">
+    <div class="th-side">
+      <fieldset class="th-presets">
+        <legend>Built-in themes</legend>
+        <label class="sw">
+      <input type="radio" name="theme" value="p0" checked><span class="sw-chip" aria-hidden="true"><i style="background:#0D0A06"></i><i style="background:#D4A24C"></i><i style="background:#3E8E7E"></i></span><span>Amber</span>
+    </label><label class="sw">
+      <input type="radio" name="theme" value="p1"><span class="sw-chip" aria-hidden="true"><i style="background:#060B10"></i><i style="background:#4C9ED4"></i><i style="background:#3EC2D4"></i></span><span>Steel blue</span>
+    </label><label class="sw">
+      <input type="radio" name="theme" value="p2"><span class="sw-chip" aria-hidden="true"><i style="background:#100607"></i><i style="background:#C23B3B"></i><i style="background:#D4753E"></i></span><span>Crimson</span>
+    </label><label class="sw">
+      <input type="radio" name="theme" value="p3"><span class="sw-chip" aria-hidden="true"><i style="background:#0A0610"></i><i style="background:#A24CD4"></i><i style="background:#8E6AD4"></i></span><span>Violet</span>
+    </label><label class="sw">
+      <input type="radio" name="theme" value="p4"><span class="sw-chip" aria-hidden="true"><i style="background:#0F080B"></i><i style="background:#E07AA0"></i><i style="background:#5FB89A"></i></span><span>Rose and jade</span>
+    </label><label class="sw">
+      <input type="radio" name="theme" value="p5"><span class="sw-chip" aria-hidden="true"><i style="background:#0E0B05"></i><i style="background:#F0C24A"></i><i style="background:#2FC1B8"></i></span><span>Sand</span>
+    </label><label class="sw">
+      <input type="radio" name="theme" value="p6"><span class="sw-chip" aria-hidden="true"><i style="background:#070B0F"></i><i style="background:#B8DDF5"></i><i style="background:#9AD8F0"></i></span><span>Frost</span>
+    </label><label class="sw">
+      <input type="radio" name="theme" value="p7"><span class="sw-chip" aria-hidden="true"><i style="background:#070A05"></i><i style="background:#8EE04A"></i><i style="background:#C9772F"></i></span><span>Acid green</span>
+    </label>
+        <label class="sw sw-own">
+          <input type="radio" name="theme" value="custom"><span class="sw-chip" aria-hidden="true"><i style="background:#0E0F14"></i><i style="background:#FF6B3D"></i><i style="background:#4FB3D9"></i></span><span>Your own</span>
+        </label>
+      </fieldset>
+      <fieldset class="th-custom">
+        <legend>Your own</legend>
+        <label class="th-field"><span>Background</span><input type="color" name="base" value="#0E0F14"></label><label class="th-field"><span>Main colour</span><input type="color" name="accent" value="#FF6B3D"></label><label class="th-field"><span>Secondary colour</span><input type="color" name="secondary" value="#4FB3D9"></label>
+      </fieldset>
     </div>
-  </section>
-
-  <section class="cta-band" aria-labelledby="cta-title">
-    <div class="wrap">
-      <h2 id="cta-title" class="display h2">Make your next<br>game count double.</h2>
-      <div>
-        <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases">Download for Windows</a>
-        <p class="release-meta" data-version style="margin-top: 10px;">Windows 10/11 · invite-only beta</p>
+    <div class="th-sample app" data-sample role="img" aria-label="Theme preview" style="--app-bg:#0D0A06;--app-surface:#1C140C;--app-panel:#2A1D11;--app-line:#4A3A24;--app-line-strong:#8A6A34;--app-accent:#D4A24C;--app-accent-hi:#F5E3BE;--app-second:#3E8E7E;--app-text:#B5A68C;--app-text-hi:#F5E3BE">
+      <ul class="th-nav"><li class="is-on">Dashboard</li><li>Session</li><li>Review</li><li>Mistake Lab</li></ul>
+      <div class="th-main">
+        <div class="panel">
+          <p class="panel-kicker">Active Session</p>
+          <p class="th-label">Current Objective</p>
+          <p class="db-objective">Wave Management, Vision Control</p>
+          <div class="meter"><i style="width:64%"></i></div>
+          <p class="panel-sub"><span class="mono">225/351 XP</span> Level 10</p>
+          <p class="th-actions"><span class="app-btn app-btn-solid">Continue Session</span><span class="th-link">View progress</span></p>
+        </div>
+        <dl class="db-stats"><div><dt>Games</dt><dd>84</dd></div><div><dt>Win Rate</dt><dd>55%</dd></div><div><dt>Avg KDA</dt><dd>3.47</dd></div><div><dt>Obj. Success</dt><dd>72%</dd></div></dl>
       </div>
     </div>
+  </div></div>
+      </figure>
+      <p class="outro">Your background image stays on your PC: it is never sent online.</p>
+    </div>
   </section>
-</main>
-
-<footer class="site-footer">
-  <div class="wrap">
-    <div class="footer-grid">
-      <div>
-        <a class="brand" href="/en/">ASCEND<span>.</span></a>
-        <p style="margin: 10px 0 0; max-width: 360px;">The improvement tool for League of Legends players, coaches and teams.</p>
+<section class="sec sec-annex" id="riot" aria-labelledby="h-riot">
+    <header class="sec-head"><h2 id="h-riot">What Ascend does with Riot data</h2></header>
+    <div class="sec-body">
+      <p class="intro">Ascend relies on the official Riot Games API, read-only, and follows Riot’s developer policies. Here is exactly what the application requests, and what it never does.</p>
+      <dl class="ledger"><div><dt>After the game, never during</dt><dd>Ascend shows nothing in game: no overlay, no information about opponents, no live advantage. The game’s local Live Client Data API is only used to know when a game starts and ends, to start and stop recording.</dd></div><div><dt>The key stays on our servers</dt><dd>The application ships no API key. Requests go through an Ascend relay (HTTPS) that adds the key, only allows a closed list of read-only calls and rate-limits each account.</dd></div><div><dt>Match data is cached</dt><dd>Each match is requested once, then kept on your PC. This respects Riot’s rate limits and keeps the application fast.</dd></div><div><dt>No home-made ranking</dt><dd>Ascend does not estimate MMR and does not replace the official ladder. The estimate of your winning chances is only used to drop garbage time after the game; it is never shown as a rating.</dd></div><div><dt>What you choose to share</dt><dd>Your coaching data stays private. A coach or teammate only sees what you agreed to share with their group, and you can withdraw that at any time.</dd></div><div><dt>Public data only</dt><dd>Scouting only uses the public match history of the Riot IDs you enter. Ascend does not try to identify anonymous players.</dd></div></dl>
+      <table class="grid-table api">
+        <caption>Riot Games API calls</caption>
+        <thead><tr><th scope="col">API</th><th scope="col">Why</th></tr></thead>
+        <tbody><tr><th scope="row" class="mono">ACCOUNT-V1</th><td>Find your account, and those of your teammates or of the opponents you scout, from a Riot ID.</td></tr><tr><th scope="row" class="mono">SUMMONER-V4</th><td>Show summoner level and icon.</td></tr><tr><th scope="row" class="mono">LEAGUE-V4</th><td>Show your official standing, as Riot provides it.</td></tr><tr><th scope="row" class="mono">CHAMPION-MASTERY-V4</th><td>Build a player’s champion pool.</td></tr><tr><th scope="row" class="mono">MATCH-V5 (matches, timeline)</th><td>Post-game statistics, values at 15 minutes, the critical moments of the micro-review, scrim statistics.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+<section class="sec sec-annex" id="privacy" aria-labelledby="h-privacy">
+    <header class="sec-head"><h2 id="h-privacy">Your data is yours</h2></header>
+    <div class="sec-body">
+      <p class="intro">Ascend runs on your PC first. The account is for backups, syncing your devices and working with your coach or team.</p>
+      <dl class="ledger"><div><dt>Local first</dt><dd>Sessions, reviews, notes and statistics live in the application. It keeps working offline.</dd></div><div><dt>Videos never uploaded</dt><dd>Recordings stay on your disk. You decide what you publish, for example on your own YouTube channel.</dd></div><div><dt>Hosted in Europe</dt><dd>Accounts and backups at Supabase, European Union and Switzerland region. No data sold, no advertising.</dd></div><div><dt>Export and deletion</dt><dd>Export all your data to a file. Delete your account and backups in one click, from the application.</dd></div></dl>
+      <p class="back"><a href="/en/privacy.html">Read the privacy policy</a></p>
+    </div>
+  </section>
+<section class="sec sec-annex" id="questions" aria-labelledby="h-questions">
+    <header class="sec-head"><h2 id="h-questions">Questions</h2></header>
+    <div class="sec-body">
+      <div class="faq"><details><summary>Is Ascend free?</summary><p>Yes. Every feature described here is free during the beta, and a complete free version will always remain available.</p></details><details><summary>How do I get access?</summary><p>The beta is invite-only. A member can create a single-use code, valid for 14 days. The code of a team or coaching group that invites you also opens access.</p></details><details><summary>Is it allowed by Riot Games?</summary><p>Ascend uses Riot Games’ official public API and follows its policies: no game modification, no information during the game, no live advantage. Ascend isn’t endorsed by Riot Games (see the notice at the bottom of the page).</p></details><details><summary>Does it work on Mac?</summary><p>The desktop application is available for Windows 10 and 11. The web app (reviews, coaching, schedule, scrims) works on every device but does not record games.</p></details><details><summary>Does recording slow the game down?</summary><p>Capture uses your graphics card’s hardware encoder when available. Quality, frame rate and folder are configurable, and automatic recording can be turned off.</p></details><details><summary>Do my teammates see my statistics?</summary><p>Only if you decide so. Sharing is set group by group (reviews, statistics, team data, wellbeing) and can be withdrawn at any time.</p></details><details><summary>Is there AI?</summary><p>Not at the core of the application: the micro-review and the assistant apply coaching rules written in advance, which you can read. Voice transcription of debriefs uses a model that runs on your PC; nothing is sent to an AI service.</p></details><details><summary>Can the micro-review be wrong?</summary><p>It suggests, you decide. It only sees the match timeline, sampled every minute by Riot: when the data proves nothing, it stays silent. And every moment keeps its “justified” way out.</p></details></div>
+    </div>
+  </section>
+<section class="final" aria-labelledby="h-final">
+    <h2 id="h-final"><span class="ln">Play one game.</span> <span class="ln">Review it in 45 seconds.</span></h2>
+    <p class="lead">Install Ascend, play as usual, then open the micro-review. You will know whether the tool works for you before the evening is over.</p>
+    <div class="final-cta">
+      <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases/download/v1.0.0-beta.1/Ascend-Setup-1.0.0-beta.1.exe"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg><span>Download for Windows</span></a>
+      <dl class="final-facts"><div><dt>Version</dt><dd class="mono"><span data-version>1.0.0-beta.1</span></dd></div><div><dt>Size</dt><dd class="mono"><span data-size>331 MB</span></dd></div><div><dt>System</dt><dd class="mono">Windows 10 and 11</dd></div></dl>
+    </div>
+    <p class="sheet-note">An invitation code is asked for at first sign-in. The code of a team or coaching group also opens access.</p>
+  </section>
+    </main>
+    <footer class="foot">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <p class="brand" aria-hidden="true">ASCEND</p>
+        <p>The improvement tool for League of Legends players, coaches and teams.</p>
       </div>
-      <div>
-        <h2>PRODUCT</h2>
-        <ul>
-          <li><a data-download href="https://github.com/ExCiiD/nexusmind/releases">Download (Windows)</a></li>
-          <li><a href="https://nexusmind-web.nexusmind-riot-proxy.workers.dev">Web app</a></li>
-          <li><a href="https://github.com/ExCiiD/nexusmind/releases">Release notes</a></li>
+      <nav id="contents" aria-label="Contents">
+        <h2 class="foot-h">Contents</h2>
+        <ul class="foot-list foot-list-2"><li><a href="#method">Method</a></li><li><a href="#micro-review">Micro-review</a></li><li><a href="#lab">Mistake Lab</a></li><li><a href="#fingerprint">Fingerprint</a></li><li><a href="#tiers">Tiers</a></li><li><a href="#modes">Player, coach, team</a></li><li><a href="#themes">Themes</a></li><li><a href="#riot">Riot data</a></li><li><a href="#privacy">Your data</a></li><li><a href="#questions">Questions</a></li></ul>
+      </nav>
+      <nav aria-label="Legal">
+        <h2 class="foot-h">Legal</h2>
+        <ul class="foot-list">
+          <li><a href="/en/terms.html">Terms of use</a></li>
+          <li><a href="/en/privacy.html">Privacy policy</a></li>
+          <li><a href="https://github.com/ExCiiD/nexusmind/releases">All releases</a></li>
+          <li><a href="https://nexusmind-web.nexusmind-riot-proxy.workers.dev">Open the web app</a></li>
         </ul>
-      </div>
-      <div>
-        <h2>LEGAL</h2>
-        <ul>
-          <li><a href="/en/terms.html">Terms of Service</a></li>
-          <li><a href="/en/privacy.html">Privacy Policy</a></li>
-          <li>Contact: <span class="placeholder">[CONTACT EMAIL]</span></li>
-        </ul>
-      </div>
+      </nav>
     </div>
-    <p class="legal-notice">Ascend isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.</p>
+    <p class="riot-notice" lang="en">Ascend isn’t endorsed by Riot Games and doesn’t reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.</p>
+    
+  </footer>
   </div>
-</footer>
-<script src="/assets/site.js" defer></script>
+</div>
+<script type="application/json" id="data-micro">{"lang":"en","first":2,"xp":30,"moments":[{"key":"early-deficit@195","clock":"3:15","zone":"Your jungle","line":"passive full clear while your lanes had priority, +420 g for your botlane at 3:00","label":"Missed invade","map":{"x":3600,"y":7200},"options":[{"id":"cs-deficit","outcome":"mistake","main":"Missed opportunity: I kept a passive full clear while my mid/bot lanes had full priority to invade","sub":"CS deficit at 10 min","fiche":"codex_jgl_3camps_mid_cross_bot_invade"},{"id":"bad-threat-assessment","outcome":"mistake","main":"I misread the lane states","sub":"Bad threat assessment","fiche":"codex_mechanics_mid_6archetypes_3v3_synergy"},{"id":"justified:noInvadeWindow","outcome":"justified","main":"No real window (enemy summoners up, shaky priority): clearing was right","sub":"Justified decision: does not count against you","fiche":null}],"other":{"overstay":"codex_jgl_pathing_integrity_reset_cycle","dove-tower":"dive-any-early","face-checked":"facecheck-any-any","no-vision-objective":"vision-noobj-any-any","solo-baron-died":null,"bad-lane-opening":"opening-any-early","bad-wave-sync":"wavesync-any-mid","bad-trade":"trade-any-early","wasted-summoner":"summoner-any-any","whiff-skillshot":"skillshot-any-any","bad-positioning":"codex_jgl_3camps_mid_cross_bot_invade","bad-kiting":null,"bad-threat-assessment":"codex_mechanics_mid_6archetypes_3v3_synergy","bad-engage-angle":"engage-any-late","bad-dmg-maximisation":null,"forgot-trinket":"codex_macro_early_obj_setup_asymmetry","no-ward-pre-obj":"codex_macro_early_obj_setup_asymmetry","walked-into-ward":"enemyward-any-mid","death-before-objective":"codex_macro_early_obj_setup_asymmetry","caught-out":"caught-jungle-early","late-back":"lateback-any-mid","unused-gold":"codex_mechanics_wave_slow_fast_rotation_timer","cs-deficit":"codex_jgl_3camps_mid_cross_bot_invade","xp-deficit":"xp-any-early","behind-on-levels-death":"codex_tempo_territorial_vs_order_vs_economic","bad-rune-choice":null}},{"key":"absent-objective@910","clock":"15:10","zone":"Top river","line":"the enemy takes Dragon while you arrive late, 2100 units walked toward the pit in the last 25 seconds, no cross-map in return","label":"Missed cross-map","map":{"x":5700,"y":7800},"options":[{"id":"overstay","outcome":"mistake","main":"Tempo delay: I hit one tower or wave too many before recalling instead of being on the objective (or committing to a real cross-map)","sub":"Overstay","fiche":"codex_macro_obj_tempo_vs_tower_greed"},{"id":"no-ward-pre-obj","outcome":"mistake","main":"No ward to set it up","sub":"No ward pre-objective","fiche":"vision-obj-jungle-mid"},{"id":"justified:notContestable","outcome":"justified","main":"Not contestable: right call to give it","sub":"Justified decision: does not count against you","fiche":null}],"other":{"overstay":"overstay-any-mid","dove-tower":"dive-any-early","face-checked":"facecheck-any-any","no-vision-objective":"vision-noobj-any-any","solo-baron-died":null,"bad-lane-opening":"opening-any-early","bad-wave-sync":"wavesync-any-mid","bad-trade":"codex_mental_low_energy_anti_tilt_protocol","wasted-summoner":"codex_mental_low_energy_anti_tilt_protocol","whiff-skillshot":"skillshot-any-any","bad-positioning":"codex_macro_131_jungle_hover_assignment","bad-kiting":null,"bad-threat-assessment":"threat-any-mid","bad-engage-angle":"engage-any-late","bad-dmg-maximisation":null,"forgot-trinket":"trinket-any-any","no-ward-pre-obj":"vision-obj-jungle-mid","walked-into-ward":"enemyward-any-mid","death-before-objective":"death-obj-any-mid","caught-out":"caught-any-mid","late-back":"lateback-any-mid","unused-gold":"codex_macro_obj_tempo_vs_tower_greed","cs-deficit":"codex_tempo_single_action_window_wave_cheating","xp-deficit":"xp-any-early","behind-on-levels-death":"levels-any-mid","bad-rune-choice":null}},{"key":"critical-death@1528","clock":"25:28","zone":"Top river","line":"died 30 s before losing Baron, 1650 g unspent, alone against 3","label":"Critical death","map":{"x":5600,"y":10000},"options":[{"id":"no-ward-pre-obj","outcome":"mistake","main":"Bad objective setup: went straight into the river without going through mid (or forced a losing 3v3 instead of taking mid with 3)","sub":"No ward pre-objective","fiche":"codex_macro_early_obj_setup_asymmetry"},{"id":"overstay","outcome":"mistake","main":"Overstayed after my play","sub":"Overstay","fiche":"codex_macro_baron_balance_system"},{"id":"justified:stealAttempt","outcome":"justified","main":"Justified 50/50 smite","sub":"Justified decision: does not count against you","fiche":null}],"other":{"overstay":"codex_macro_baron_balance_system","dove-tower":"dive-any-early","face-checked":"facecheck-any-any","no-vision-objective":"vision-noobj-any-any","solo-baron-died":null,"bad-lane-opening":"opening-any-early","bad-wave-sync":"wavesync-any-mid","bad-trade":"trade-any-early","wasted-summoner":"summoner-any-any","whiff-skillshot":"skillshot-any-any","bad-positioning":"codex_macro_baron_balance_system","bad-kiting":null,"bad-threat-assessment":"threat-any-mid","bad-engage-angle":"engage-any-late","bad-dmg-maximisation":null,"forgot-trinket":"trinket-any-any","no-ward-pre-obj":"vision-obj-any-late","walked-into-ward":"enemyward-any-mid","death-before-objective":"codex_vision_baron_chokepoint_support_zoning","caught-out":"caught-any-late","late-back":"lateback-any-mid","unused-gold":"gold-any-any","cs-deficit":"codex_jgl_3camps_mid_cross_bot_invade","xp-deficit":"xp-any-early","behind-on-levels-death":"levels-any-mid","bad-rune-choice":null}}],"fiches":{"codex_jgl_3camps_mid_cross_bot_invade":{"headline":"3-camp transition → cross through mid → buff invade on bot priority","rule":"When your botlane heavily wins levels 1-2 (wave crashing under the enemy tower, enemy summoners burned) and your mid has setup: cut your first full clear after 3 camps (level 3). Cross straight through mid lane to force the enemy mid or jungler mobility spell, then go immediately into the enemy botside quadrant to steal their Red/Blue buff, covered by your two priority lanes.","drill":"Watch the botlane during your 2nd camp: if the bot crash is guaranteed, plan a 3-camp exit to invade the opposite buff.","objective":"CSing / Pathing","video":true},"codex_mechanics_mid_6archetypes_3v3_synergy":{"headline":"The 6 matchup archetypes & the primacy of the 3v3 triangle (mid-jungle-support)","rule":"From the loading screen, lock in how you will play to remove hesitation: (A) your 1v1 always depends on the 3v3 synergy (mid + jungle + support). A winning 1v1 matchup becomes unplayable if their trio crushes yours. (B) Identify your archetype among the 6: (1) autonomy (permanent priority), (2) alternating (priority flips at precise level or item breakpoints: never force during your trough), (3) sustain (trade your HP for their mana with Doran's Shield + Second Wind), (4) shove & fight (permanent push to attack the enemy jungler 2v1), (5) spike (pure survival at 10 CS/min until 2 items at 15 min), (6) precision/mana (your mana bar is your ammunition; every missed spell is a net loss).","drill":"During the loading screen, name the exact archetype of your matchup (1 to 6) and work out who wins the mid-jungle-support 3v3.","objective":"Matchup","video":false},"codex_jgl_pathing_integrity_reset_cycle":{"headline":"Clear cycle integrity: skip an isolated camp to keep pathing toward your strong side","rule":"After an early play (successful invade or gank botside), do NOT go back for an isolated camp left in your bot quadrant if your topside camps just respawned. That camp puts you out of tempo and flips your next cycle to bot-to-top (away from your bot strong side). Go straight up to control the enemy jungler topside (top Scuttle), clean your topside, recall for your component, then come back down top-to-bot toward your remaining buff and the Dragon.","drill":"After an early gank or invade, always resume your clear from the quadrant that ends your pathing on your strong side.","objective":"CSing / Pathing","video":true},"dive-any-early":{"headline":"No dive without a wave under the tower","rule":"Before diving, you need at least 3 allied minions under the enemy tower and a target under 40 % HP without an escape. Otherwise the tower targets you from the first hit.","drill":"5 games: 0 deaths under an enemy tower before 14 min.","objective":"Aggression Calibration","video":false},"facecheck-any-any":{"headline":"No bush without information","rule":"Only walk into an unseen bush if 4 enemies are visible or a tank goes first. Otherwise: trinket, control ward, Oracle Lens or a scouting ability first.","drill":"5 games: 0 deaths on a face-check.","objective":"Vision Control","video":false},"vision-noobj-any-any":{"headline":"No objective fight with an uncovered flank","rule":"Before starting the objective, find the path the enemy flanks from (closest enemy jungle) and ward it. Only start the objective once that flank is visible.","drill":"On every objective: call out the flank to watch before hitting the monster.","objective":"Vision Control","video":false},"opening-any-early":{"headline":"Decide the plan for the first 3 waves in champ select","rule":"Before loading: who wins level 2? Where does the enemy jungler start? If you lose level 2, don't fight for the first wave: last-hit and wait for wave 3.","drill":"5 games: note in champ select who wins level 2 and check after the game.","objective":"Matchup","video":false},"wavesync-any-mid":{"headline":"Rotation = wave pushed first","rule":"Before joining an objective, push your wave into the enemy tower. Without priority you arrive after them, and your lane opponent arrives before you.","drill":"Every objective: your wave has crashed before you leave the lane.","objective":"Wave Management for Objectives","video":false},"trade-any-early":{"headline":"Trade when their key spell is on cooldown","rule":"Identify the spell that wins their trades (dash, CC, shield). Go in within 3–5 s after they use it on a minion or on you, and back off as soon as it is back up.","drill":"5 games: every lane trade you start follows an identified enemy cooldown.","objective":"Trades","video":false},"summoner-any-any":{"headline":"Flash to survive or to kill, never \"just in case\"","rule":"A wasted Flash costs 5 minutes of careful play. Only use it if you surely die without it, or if it guarantees the kill (enough damage, no enemy shield up).","drill":"After every Flash, note: saved / kill / wasted. Goal: 0 wasted over 5 games.","objective":"Summoner Spells","video":false},"skillshot-any-any":{"headline":"Your key skillshot goes on a target that cannot move","rule":"Hold your decisive spell (CC, execute) for a target that is slowed, mid-animation or pinned against a wall. Thrown at a free enemy at max range, it misses half the time and opens their window.","drill":"5 games: before every key spell, wait for a CC, an auto or an enemy dash.","objective":"Mastery","video":false},"engage-any-late":{"headline":"Engage from the side, not head-on","rule":"A head-on engage hits their frontline. Before going in, shift into the fog on the flank to reach their carry, and check that 3 allies can follow within 2 s.","drill":"5 games: every engage started with at least 3 allies in range.","objective":"Pre-fight Positioning","video":false},"codex_macro_early_obj_setup_asymmetry":{"headline":"Objective setup: ahead (recall T-60 s + mid opening) vs behind (3-man mid overload)","rule":"Adapt the Dragon setup to the 3v3 state: (1) AHEAD: recall at T-60 s, the support leaves base straight to mid (\"mid opening\") to unlock the central wave and light up the whole river first. (2) BEHIND (bot 3v3 lost): don't go die in the bot river. Group 3 in mid lane to take central priority by force. The enemy midlaner then has to rotate into the river to defend their wards, which gives your midlaner first move on the next wave and forces the enemy team back despite their bot priority.","drill":"At T-60 s before Dragon: always go through mid lane before the river. If the bot 3v3 is losing, overload mid with 3 to break the enemy tempo.","objective":"Wave Management for Objectives","video":true},"enemyward-any-mid":{"headline":"Your path must avoid their known wards","rule":"After every sweep or enemy ward seen, remember its area and route around it for rotations and ganks. A control ward on their favourite warding spot makes you invisible.","drill":"Every game: 1 control ward on an enemy ward spot you already found.","objective":"Fog Usage","video":false},"caught-jungle-early":{"headline":"No invade without knowing where the other jungler is","rule":"Before entering the enemy jungle, work out their starting side (leash, first camp seen, which lane helped). Only invade the opposite side, and only when your nearby laners have priority.","drill":"Before each invade: write (or say) where the enemy jungler probably is.","objective":"Jungle Tracking","video":false},"lateback-any-mid":{"headline":"Recall on the wave, not on your health bar","rule":"Recall right after crashing your wave into the enemy tower. Recalling in the enemy jungle, or in an unwarded bush, gets interrupted: the most expensive death in the game.","drill":"Every recall: wave pushed + recall on your half of the map.","objective":"Recall Timing","video":false},"codex_mechanics_wave_slow_fast_rotation_timer":{"headline":"Slow → fast rule, rotation timer (20 s / 45 s) & side prep at T-60 s","rule":"16 CS are worth a kill's gold without raising your shutdown. (1) SLOW → FAST: in front of your tower, always slow push (last-hit at the last moment) to stack 2 waves that protect you from ganks and trades. As soon as the next wave reaches the enemy tower, switch to a fast push (all spells) to crash quickly, leave the danger zone and unlock your recall or rotation. (2) ROTATION TIMER: when you move after a crash, you have 20 s if the enemy pushes, or 45 s if they follow you, before the bounce-back dies under your tower. (3) At T-60 s before an objective, always push the side lane OPPOSITE the objective.","drill":"Run the \"slow push wave 1 → fast push wave 2 → recall or roam under 30 s\" cycle to hold more than 7.5 CS/min.","objective":"Wave Management","video":false},"xp-any-early":{"headline":"Stay in XP range while the wave dies","rule":"Even without last-hitting, staying within 1,400 units of dying minions gives you the XP. Don't recall or roam while a full wave dies in front of your tower.","drill":"5 games: no more than 400 XP behind at 10:00.","objective":"Wave Management","video":false},"codex_tempo_territorial_vs_order_vs_economic":{"headline":"The 3 tempos: territorial (space), order (first to arrive) & real economic (HP/mana/XP)","rule":"Never confuse total gold with your real power right now: (1) REAL ECONOMIC TEMPO = items bought × current HP × current mana × level (1 XP level is worth about 800 g of raw stats; a player at 15 % HP or with no mana has zero economic tempo, they are 'virtually dead'). Never use your Barrier or Heal at 5 % HP: use it above 30 % HP to keep your ability to stay on the map. (2) ORDER TEMPO = being in the area 5 s before the enemy. (3) TERRITORIAL TEMPO = having vision down and the wave pushed. You spend economic tempo to win wave management, which unlocks order tempo and territory.","drill":"Judge the matchup by looking at XP level and HP/mana bars first, items second. Use your defensive summoners above 30 % HP to preserve your time on the map.","objective":"Resource Management","video":false},"codex_macro_obj_tempo_vs_tower_greed":{"headline":"Objective tempo (T-45 s) vs side-lane tower greed","rule":"After a kill or an advantage in a side lane less than 45 s before a Dragon/Baron, only two options exist: (1) shove the wave instantly, LEAVE the enemy tower standing and recall right away in the bush to spend your gold and be on the objective on time. (2) If you stay to hit the tower, your team MUST give up the Dragon immediately and play a pure cross-map (take the mid wave, invade the opposite camps and hit the T2). The fatal mistake is finishing the T1 and recalling at T-10 s with 1,500 g in your pocket while your team waits in the river: you lose both the engage window and the cross-map.","drill":"At T-45 s before an objective, no hitting a side-lane tower if the team plans to play the objective: shove the wave with one spell and recall immediately.","objective":"Tempo","video":false},"vision-obj-jungle-mid":{"headline":"End your clear on the objective's side","rule":"Path so you stand next to the pit 45 s before the spawn: trinket the enemy entrance bush, then swap to Oracle Lens if your support already covers deep vision.","drill":"Before each objective: be in that river at −0:45 with your trinket still charged.","objective":"Vision Control","video":false},"overstay-any-mid":{"headline":"After a win: convert or reset","rule":"A kill or a tower opens a 30 s window. Spend it on a nearby objective or a recall, never on \"one more camp\" in the enemy jungle. No objective within 30 s of walking: recall.","drill":"5 games: after every kill/tower, decide within 5 s — objective or recall.","objective":"Tempo","video":false},"codex_mental_low_energy_anti_tilt_protocol":{"headline":"Low-energy / anti-tilt protocol: simplify the game under cognitive fatigue","rule":"When you play tired, late at night or after a frustrating loss, your cognitive bandwidth drops: trying to win on pure mechanics or limit testing guarantees the loss. Switch immediately to 3 low-energy rules: (1) NEUTRALISE WAVES: push your wave and step straight back into the fog, without trying to poke under the enemy tower. (2) RESPECT EVERY SUSPICIOUS MOVE: if an enemy walks up to you oddly, always assume their jungler is behind them and back off without checking. (3) FLASH ECONOMY: no Flash on an isolated skirmish; keep it exclusively for the big objective teamfights.","drill":"In a tired session or after a loss: zero forced mechanical duel, look at the minimap between every wave and communicate with 3 pings on the enemy path.","objective":"Resilience","video":false},"codex_macro_131_jungle_hover_assignment":{"headline":"1-3-1 deployment: 3-man block in the jungle, ADC mid, catcher on cover","rule":"When your side laner wins their 1v1 and the opposite side is out of reach, play a tight 1-3-1 over 2 lanes + the jungle quadrant between them (1 top, 3 jungle, 1 mid). Put your ADC alone on the mid wave to take the resources and waveclear, and place your CC/burst midlaner in the 3-man jungle group with the jungler and support. That block controls all the vision in the quadrant and can, within 3 seconds, either defend its side lane or punish and kill any enemy trying to cross.","drill":"In the mid game, leave the mid wave to the ADC and group mid + jungle + support in the strong-side jungle quadrant to lock down vision and rotations.","objective":"Rotation Positioning","video":true},"threat-any-mid":{"headline":"Respect power spikes: level 6, first item","rule":"Before fighting, compare levels and items (Tab). If the enemy just recalled into a completed item or hit 6 before you, don't trade again until your own recall.","drill":"Every time an enemy recall is visible: check their purchase on Tab.","objective":"Threat Assessment","video":false},"trinket-any-any":{"headline":"A charged trinket is a wasted ward","rule":"As soon as both charges are up, place one on the gank path to your lane (river or tri-bush). Before you died, the trinket should have shown who was coming.","drill":"5 games: never sit on 2 trinket charges for more than 30 s.","objective":"Vision Control","video":false},"death-obj-any-mid":{"headline":"Dying 60 s before an objective gives it away","rule":"In the 90 s before a dragon or Baron: no 1v1, no face-check, no plate. Your only job: arrive alive, full HP, with your wave pushed.","drill":"5 games: 0 deaths in the 90 s before an objective.","objective":"Tempo","video":false},"caught-any-mid":{"headline":"Side lane: count enemies before every step","rule":"If fewer than 3 enemies are visible, don't cross the river in a side lane. Push to the middle, then fall back toward your tower. Count on the minimap, not on screen.","drill":"5 games: 0 deaths alone in the enemy half of the map.","objective":"Map Awareness","video":false},"codex_tempo_single_action_window_wave_cheating":{"headline":"Single-action tempo window & cheating waves","rule":"Tempo works in single-action windows: when the enemy shows an action on one side (gank, objective, recall), you earn one tempo window for ONE action (invade OR dive OR objective OR reset). Trying to cash two actions in a single window (taking the Dragon THEN staying to push a wave without resetting) hands the time advantage back to enemies leaving base with their items. On defense or before an objective, cutting an enemy wave very high (cheating the wave) instantly breaks their turn and their siege or dive power.","drill":"One action per tempo window: after cashing an advantage (kill, tower or objective), reset right away, before the enemy leaves base.","objective":"Tempo","video":false},"levels-any-mid":{"headline":"Two levels behind = no 1v1","rule":"Two levels down means roughly one spell rank and 150 HP less. Stay with your team and farm safe waves until you catch up.","drill":"Before each fight, compare levels (Tab): 0 duels taken at −2 levels.","objective":"Threat Assessment","video":false},"codex_macro_baron_balance_system":{"headline":"Baron powerplay: balance system (1-3-1), ignore the threatless side lane, zero recall","rule":"To get the most out of a Baron: (1) ZERO RECALL while the team has HP, mana and ultimates. (2) Set up a 1-3-1 over 2 lanes (e.g. mid + jungle + bot) with your best waveclear/carries on the waves and the tanks/bruisers covering in the jungle, ignoring the enemy top laner if they lack the push speed to threaten your base (they will be forced to recall). (3) BALANCE SYSTEM: overloading bot forces the enemy to defend bot, and mid uses it to take the T1. When the enemy leaves bot for mid, bot steps back one notch without forcing the T3 blind. If the enemy engages 3 on your midlaner and burns their ultimates, bot punishes right away by taking the bot inhibitor, then the whole team pivots 5-man to mid without recalling for the 2nd inhibitor.","drill":"Under Baron, keep pressure on 2 lanes at once without recalling. Only step forward when the enemy defenders are visible on the other lane (balance system).","objective":"Decision Making","video":true},"vision-obj-any-late":{"headline":"After 25 min, vision is won through waves","rule":"No more face-check warding at Baron. Push bot and mid waves first, then enter in pairs with Oracle Lens + control ward. With no waves pushed, give it up and take the cross-map trade.","drill":"5 games: never enter a Baron/Elder area alone without live vision.","objective":"Vision Control","video":false},"codex_vision_baron_chokepoint_support_zoning":{"headline":"Baron and Dragon geometry: choke point control & the support's zoning job","rule":"The back of the Baron or Dragon pit is a predictable trap where the whole team eats area spells. Only the ADC and the jungler should hit Baron. As a support, control mage or bruiser, you must NEVER hit Baron or even look at it: stand upstream, in front of the access choke points (banana bush, pixel bush, Blue/Red corridor), in the fog of war. Your job is to lock the entrance: force the enemy team through a funnel under your crowd control before they even see the objective.","drill":"On every Baron or Dragon in the mid/late game, never stay grouped as 5 in the pit: leave the pit to hold the entrance bush (choke point) and block the enemy's access.","objective":"Pre-fight Positioning","video":false},"caught-any-late":{"headline":"After 25 min, one isolated death = one Baron","rule":"Late game death timers go past 40 s: enough for Baron or Elder. Only farm a side lane if the next objective is more than 60 s away, and always with your team between you and the enemy.","drill":"After 25 min: check the next objective timer before every side lane trip.","objective":"Map Awareness","video":false},"gold-any-any":{"headline":"1,400 g in your pocket = recall, not fight","rule":"Above 1,300–1,400 g, a full component is waiting in the shop. Check your gold every wave; if a fight is coming and you can recall first, recall first.","drill":"5 games: 0 deaths with more than 1,400 unspent gold.","objective":"Recall Timing","video":false}},"families":[{"id":"deaths","label":"Positioning & deaths"},{"id":"vision","label":"Vision & map"},{"id":"tempo","label":"Tempo & economy"},{"id":"mechanics","label":"Mechanics & laning"}],"tags":[{"slug":"overstay","label":"Overstay","family":"tempo"},{"slug":"dove-tower","label":"Dove tower","family":"deaths"},{"slug":"face-checked","label":"Face-checked bush","family":"vision"},{"slug":"no-vision-objective","label":"Objective with no vision","family":"vision"},{"slug":"solo-baron-died","label":"Solo Baron / died","family":"deaths"},{"slug":"bad-lane-opening","label":"Bad lane opening","family":"mechanics"},{"slug":"bad-wave-sync","label":"Bad wave synchronisation","family":"tempo"},{"slug":"bad-trade","label":"Bad trade","family":"mechanics"},{"slug":"wasted-summoner","label":"Wasted summoner","family":"mechanics"},{"slug":"whiff-skillshot","label":"Whiffed key skillshot","family":"mechanics"},{"slug":"bad-positioning","label":"Bad positioning","family":"deaths"},{"slug":"bad-kiting","label":"Bad kiting","family":"mechanics"},{"slug":"bad-threat-assessment","label":"Bad threat assessment","family":"deaths"},{"slug":"bad-engage-angle","label":"Bad engage angle","family":"deaths"},{"slug":"bad-dmg-maximisation","label":"Bad damage maximisation","family":"mechanics"},{"slug":"forgot-trinket","label":"Forgot trinket up","family":"vision"},{"slug":"no-ward-pre-obj","label":"No ward pre-objective","family":"vision"},{"slug":"walked-into-ward","label":"Walked into enemy ward","family":"vision"},{"slug":"death-before-objective","label":"Died before a lost objective","family":"deaths"},{"slug":"caught-out","label":"Caught out alone","family":"deaths"},{"slug":"late-back","label":"Late back","family":"tempo"},{"slug":"unused-gold","label":"Died with unspent gold","family":"tempo"},{"slug":"cs-deficit","label":"CS deficit at 10 min","family":"mechanics"},{"slug":"xp-deficit","label":"XP deficit vs opponent","family":"mechanics"},{"slug":"behind-on-levels-death","label":"Died behind on levels","family":"deaths"},{"slug":"bad-rune-choice","label":"Bad rune choice","family":"mechanics"}],"pits":{"baron":{"x":5007,"y":10471},"dragon":{"x":9866,"y":4414},"radius":2800},"s":{"title":"45-second micro-review","subtitle":"The 3 moments that cost you the most. One click each.","queue":"Moments to review","question":"What made this moment costly?","other":"Other cause…","otherTitle":"Pick the cause","otherJustified":"This was not a mistake: it was my call","assumed":"My call: this was not a mistake","cancel":"Cancel","justifiedBadge":"Justified decision: does not count against you","justifiedDone":"Marked as justified: this moment does not count in your mistake stats.","next":"Next moment","done":"Micro-review complete","doneXp":"+{{xp}} Ascend XP","doneSummary":"{{mistakes}} mistake(s) tagged, {{justified}} justified decision(s).","codexTitle":"Codex advice","drill":"Training goal","prepare":"Set up my next session","noVod":"No VOD for this game: position on the map at the key moment.","mapLabel":"Position on the map at the key moment","familiesLabel":"Mistake families","restart":"Restart the demonstration","prepareDone":"In the application, your next session opens with this objective: {{objective}}.","codexVideo":"In the application, this entry also shows the sequence in an official professional match.","you":"you"}}</script>
+<script type="application/json" id="data-dashboard">{"lang":"en","name":"Kaito","role":"Jungle","form":[{"win":false,"letter":"L","label":"game no. 5, loss"},{"win":true,"letter":"W","label":"game no. 6, win"},{"win":false,"letter":"L","label":"game no. 7, loss"},{"win":false,"letter":"L","label":"game no. 8, loss"},{"win":true,"letter":"W","label":"game no. 9, win"},{"win":true,"letter":"W","label":"game no. 10, win"},{"win":false,"letter":"L","label":"game no. 11, loss"},{"win":true,"letter":"W","label":"game no. 12, win"},{"win":false,"letter":"L","label":"game no. 13, loss"},{"win":false,"letter":"L","label":"game no. 14, loss"}],"formWinrate":"40 % win rate","formDelta":"(−15 pts vs overall)","stats":[{"label":"Games","value":"84"},{"label":"Win Rate","value":"55 %"},{"label":"Avg KDA","value":"3.47"},{"label":"Obj. Success","value":"72 %"}],"session":{"title":"Active Session","objectives":"Wave Management, Vision Control","objectivesLow":"Resilience, Wave Management, Vision Control","games":"4 games played this session"},"level":{"title":"Progress","level":"Level 10","tier":"Strategist","xp":"225/351 XP","pct":64,"toNext":"126 XP to level 11"},"calib":{"title":"Calibration flash","due":"16 games since your last calibration: 10 seconds to check your read.","question":"Which fundamental cost you the most lately?","families":[{"id":"deaths","label":"Positioning & deaths"},{"id":"vision","label":"Vision & map"},{"id":"tempo","label":"Tempo & economy"},{"id":"mechanics","label":"Mechanics & laning"}],"results":{"deaths":"You thought \"Positioning & deaths\" (28 %), but your micro-reviews say \"Vision & map\" (53 %).","vision":"Good read: your data also points to \"Vision & map\" (53 % of your mistakes).","tempo":"You thought \"Tempo & economy\" (14 %), but your micro-reviews say \"Vision & map\" (53 %).","mechanics":"You thought \"Mechanics & laning\" (6 %), but your micro-reviews say \"Vision & map\" (53 %)."},"distTitle":"Your mistakes over your last 14 games","dist":[{"label":"Vision & map","share":53},{"label":"Positioning & deaths","share":28},{"label":"Tempo & economy","share":14},{"label":"Mechanics & laning","share":6}]},"low":{"title":"Low-energy session detected","reason":"2 losses in a row in this session.","rules":"The protocol simplifies your game to 3 rules: neutralise waves, respect every suspicious move, keep your Flash for objective teamfights.","activate":"Activate on the running session","active":"Low-energy protocol active on the running session","done":"Session objective: Resilience, then Wave Management, Vision Control."},"s":{"welcome":"Welcome back,","formLine":"Over your last 10 games:","form":"Form","mainRole":"Main role:","formLabel":"Results of the last ten games, oldest to most recent"}}</script>
+<script type="application/json" id="data-lab">{"lang":"en","families":[{"id":"deaths","label":"Positioning & deaths"},{"id":"vision","label":"Vision & map"},{"id":"tempo","label":"Tempo & economy"},{"id":"mechanics","label":"Mechanics & laning"}],"kpis":[{"label":"Tagged mistakes","value":"36","sub":"across 14 analysed games"},{"label":"Per game","value":"2.6","sub":"on average"},{"label":"#1 mistake","value":"No ward pre-objective","sub":"13 times · 36% of total","text":true},{"label":"Most affected phase","value":"Mid","sub":"50% of your mistakes","text":true}],"rows":[{"slug":"no-ward-pre-obj","label":"No ward pre-objective","family":"vision","count":13,"share":36,"bar":100,"delta":-27,"deltaLabel":"−27 pts","inspector":{"family":"Vision & map","summary":"13 times over 9 games · 36% of your mistakes.","cost":"You win 33% of the games where it happens, vs 60% of your other analysed games.","phases":[{"label":"Early","range":"0–14 min","count":2,"pct":22},{"label":"Mid","range":"14–25 min","count":9,"pct":100},{"label":"Late","range":"25 min +","count":2,"pct":22}],"prescTitle":"Prescription for the phase where it happens most: Mid","fiche":{"headline":"End your clear on the objective's side","rule":"Path so you stand next to the pit 45 s before the spawn: trinket the enemy entrance bush, then swap to Oracle Lens if your support already covers deep vision.","drill":"Before each objective: be in that river at −0:45 with your trinket still charged."},"moments":[{"clock":"24:58","label":"game no. 14","win":false,"letter":"L"},{"clock":"15:30","label":"game no. 14","win":false,"letter":"L"},{"clock":"24:10","label":"game no. 12","win":true,"letter":"W"}]}},{"slug":"forgot-trinket","label":"Forgot trinket up","family":"vision","count":6,"share":17,"bar":46,"delta":-4,"deltaLabel":"−4 pts","inspector":{"family":"Vision & map","summary":"6 times over 5 games · 17% of your mistakes.","cost":"You win 40% of the games where it happens, vs 44% of your other analysed games.","phases":[{"label":"Early","range":"0–14 min","count":5,"pct":100},{"label":"Mid","range":"14–25 min","count":1,"pct":20},{"label":"Late","range":"25 min +","count":0,"pct":0}],"prescTitle":"Prescription for the phase where it happens most: Early","fiche":{"headline":"Objective setup: ahead (recall T-60 s + mid opening) vs behind (3-man mid overload)","rule":"Adapt the Dragon setup to the 3v3 state: (1) AHEAD: recall at T-60 s, the support leaves base straight to mid (\"mid opening\") to unlock the central wave and light up the whole river first. (2) BEHIND (bot 3v3 lost): don't go die in the bot river. Group 3 in mid lane to take central priority by force. The enemy midlaner then has to rotate into the river to defend their wards, which gives your midlaner first move on the next wave and forces the enemy team back despite their bot priority.","drill":"At T-60 s before Dragon: always go through mid lane before the river. If the bot 3v3 is losing, overload mid with 3 to break the enemy tempo."},"moments":[{"clock":"10:40","label":"game no. 11","win":false,"letter":"L"},{"clock":"7:40","label":"game no. 10","win":true,"letter":"W"},{"clock":"8:30","label":"game no. 8","win":false,"letter":"L"}]}},{"slug":"death-before-objective","label":"Died before a lost objective","family":"deaths","count":5,"share":14,"bar":38,"delta":-36,"deltaLabel":"−36 pts","inspector":{"family":"Positioning & deaths","summary":"5 times over 5 games · 14% of your mistakes.","cost":"You win 20% of the games where it happens, vs 56% of your other analysed games.","phases":[{"label":"Early","range":"0–14 min","count":0,"pct":0},{"label":"Mid","range":"14–25 min","count":2,"pct":67},{"label":"Late","range":"25 min +","count":3,"pct":100}],"prescTitle":"Prescription for the phase where it happens most: Late","fiche":{"headline":"Baron and Dragon geometry: choke point control & the support's zoning job","rule":"The back of the Baron or Dragon pit is a predictable trap where the whole team eats area spells. Only the ADC and the jungler should hit Baron. As a support, control mage or bruiser, you must NEVER hit Baron or even look at it: stand upstream, in front of the access choke points (banana bush, pixel bush, Blue/Red corridor), in the fog of war. Your job is to lock the entrance: force the enemy team through a funnel under your crowd control before they even see the objective.","drill":"On every Baron or Dragon in the mid/late game, never stay grouped as 5 in the pit: leave the pit to hold the entrance bush (choke point) and block the enemy's access."},"moments":[{"clock":"25:28","label":"game no. 14","win":false,"letter":"L"},{"clock":"27:00","label":"game no. 13","win":false,"letter":"L"},{"clock":"21:30","label":"game no. 8","win":false,"letter":"L"}]}},{"slug":"overstay","label":"Overstay","family":"tempo","count":4,"share":11,"bar":31,"delta":-25,"deltaLabel":"−25 pts","inspector":{"family":"Tempo & economy","summary":"4 times over 4 games · 11% of your mistakes.","cost":"You win 25% of the games where it happens, vs 50% of your other analysed games.","phases":[{"label":"Early","range":"0–14 min","count":0,"pct":0},{"label":"Mid","range":"14–25 min","count":4,"pct":100},{"label":"Late","range":"25 min +","count":0,"pct":0}],"prescTitle":"Prescription for the phase where it happens most: Mid","fiche":{"headline":"After a win: convert or reset","rule":"A kill or a tower opens a 30 s window. Spend it on a nearby objective or a recall, never on \"one more camp\" in the enemy jungle. No objective within 30 s of walking: recall.","drill":"5 games: after every kill/tower, decide within 5 s — objective or recall."},"moments":[{"clock":"21:00","label":"game no. 13","win":false,"letter":"L"},{"clock":"14:40","label":"game no. 9","win":true,"letter":"W"},{"clock":"18:25","label":"game no. 7","win":false,"letter":"L"}]}},{"slug":"caught-out","label":"Caught out alone","family":"deaths","count":3,"share":8,"bar":23,"delta":-55,"deltaLabel":"−55 pts","inspector":{"family":"Positioning & deaths","summary":"3 times over 3 games · 8% of your mistakes.","cost":"You win 0% of the games where it happens, vs 55% of your other analysed games.","phases":[{"label":"Early","range":"0–14 min","count":0,"pct":0},{"label":"Mid","range":"14–25 min","count":1,"pct":50},{"label":"Late","range":"25 min +","count":2,"pct":100}],"prescTitle":"Prescription for the phase where it happens most: Late","fiche":{"headline":"After 25 min, one isolated death = one Baron","rule":"Late game death timers go past 40 s: enough for Baron or Elder. Only farm a side lane if the next objective is more than 60 s away, and always with your team between you and the enemy.","drill":"After 25 min: check the next objective timer before every side lane trip."},"moments":[{"clock":"29:05","label":"game no. 14","win":false,"letter":"L"},{"clock":"16:30","label":"game no. 8","win":false,"letter":"L"},{"clock":"25:10","label":"game no. 5","win":false,"letter":"L"}]}},{"slug":"bad-positioning","label":"Bad positioning","family":"deaths","count":2,"share":6,"bar":15,"delta":8,"deltaLabel":"+8 pts","inspector":{"family":"Positioning & deaths","summary":"2 times over 2 games · 6% of your mistakes.","cost":"You win 50% of the games where it happens, vs 42% of your other analysed games.","phases":[{"label":"Early","range":"0–14 min","count":0,"pct":0},{"label":"Mid","range":"14–25 min","count":0,"pct":0},{"label":"Late","range":"25 min +","count":2,"pct":100}],"prescTitle":"Prescription for the phase where it happens most: Late","fiche":{"headline":"Baron powerplay: balance system (1-3-1), ignore the threatless side lane, zero recall","rule":"To get the most out of a Baron: (1) ZERO RECALL while the team has HP, mana and ultimates. (2) Set up a 1-3-1 over 2 lanes (e.g. mid + jungle + bot) with your best waveclear/carries on the waves and the tanks/bruisers covering in the jungle, ignoring the enemy top laner if they lack the push speed to threaten your base (they will be forced to recall). (3) BALANCE SYSTEM: overloading bot forces the enemy to defend bot, and mid uses it to take the T1. When the enemy leaves bot for mid, bot steps back one notch without forcing the T3 blind. If the enemy engages 3 on your midlaner and burns their ultimates, bot punishes right away by taking the bot inhibitor, then the whole team pivots 5-man to mid without recalling for the 2nd inhibitor.","drill":"Under Baron, keep pressure on 2 lanes at once without recalling. Only step forward when the enemy defenders are visible on the other lane (balance system)."},"moments":[{"clock":"30:10","label":"game no. 12","win":true,"letter":"W"},{"clock":"27:20","label":"game no. 3","win":false,"letter":"L"}]}},{"slug":"cs-deficit","label":"CS deficit at 10 min","family":"mechanics","count":2,"share":6,"bar":15,"delta":-50,"deltaLabel":"−50 pts","inspector":{"family":"Mechanics & laning","summary":"2 times over 2 games · 6% of your mistakes.","cost":"You win 0% of the games where it happens, vs 50% of your other analysed games.","phases":[{"label":"Early","range":"0–14 min","count":2,"pct":100},{"label":"Mid","range":"14–25 min","count":0,"pct":0},{"label":"Late","range":"25 min +","count":0,"pct":0}],"prescTitle":"Prescription for the phase where it happens most: Early","fiche":{"headline":"3-camp transition → cross through mid → buff invade on bot priority","rule":"When your botlane heavily wins levels 1-2 (wave crashing under the enemy tower, enemy summoners burned) and your mid has setup: cut your first full clear after 3 camps (level 3). Cross straight through mid lane to force the enemy mid or jungler mobility spell, then go immediately into the enemy botside quadrant to steal their Red/Blue buff, covered by your two priority lanes.","drill":"Watch the botlane during your 2nd camp: if the bot crash is guaranteed, plan a 3-camp exit to invade the opposite buff."},"moments":[{"clock":"10:00","label":"game no. 11","win":false,"letter":"L"},{"clock":"10:00","label":"game no. 2","win":false,"letter":"L"}]}},{"slug":"unused-gold","label":"Died with unspent gold","family":"tempo","count":1,"share":3,"bar":8,"delta":null,"deltaLabel":"—","inspector":{"family":"Tempo & economy","summary":"1 times over 1 game · 3% of your mistakes.","cost":null,"phases":[{"label":"Early","range":"0–14 min","count":0,"pct":0},{"label":"Mid","range":"14–25 min","count":1,"pct":100},{"label":"Late","range":"25 min +","count":0,"pct":0}],"prescTitle":"Prescription for the phase where it happens most: Mid","fiche":{"headline":"Objective tempo (T-45 s) vs side-lane tower greed","rule":"After a kill or an advantage in a side lane less than 45 s before a Dragon/Baron, only two options exist: (1) shove the wave instantly, LEAVE the enemy tower standing and recall right away in the bush to spend your gold and be on the objective on time. (2) If you stay to hit the tower, your team MUST give up the Dragon immediately and play a pure cross-map (take the mid wave, invade the opposite camps and hit the T2). The fatal mistake is finishing the T1 and recalling at T-10 s with 1,500 g in your pocket while your team waits in the river: you lose both the engage window and the cross-map.","drill":"At T-45 s before an objective, no hitting a side-lane tower if the team plans to play the objective: shove the wave with one spell and recall immediately."},"moments":[{"clock":"23:40","label":"game no. 7","win":false,"letter":"L"}]}}],"s":{"all":"All","families":"Mistake families","rankingTitle":"Ranked by frequency","none":"No mistakes from this family in the period.","costTitle":"Win-rate gap: games with this mistake vs analysed games without it","when":"When it happens","momentsTitle":"Latest moments","actionHint":"Make it your goal: Ascend tracks this mistake over your next games and tells you whether it drops.","codexTitle":"Codex advice","drill":"Training goal","legend":"Left to right: occurrences, share of the total, win-rate gap between the games with and without the mistake.","noGap":"sample too small"}}</script>
+<script type="application/json" id="data-radar">{"lang":"en","roles":[{"id":"carry","label":"Top, jungle, mid, ADC"},{"id":"support","label":"Support"}],"sets":{"carry":{"score":"Score: 49/100","points":[{"key":"kda","label":"KDA","recent":"2.83","snapshot":"2.45","rs":47,"ss":41,"gap":"+0.38","good":true,"readout":"KDA: 2.83 over your last 15 games, 2.45 over the last 40."},{"key":"csm","label":"CS/m","recent":"6.1","snapshot":"6.6","rs":52,"ss":60,"gap":"−0.5","good":false,"readout":"CS/m: 6.1 over your last 15 games, 6.6 over the last 40."},{"key":"goldm","label":"Gold/m","recent":"398 g","snapshot":"404 g","rs":49,"ss":51,"gap":"−6 g","good":false,"readout":"Gold/m: 398 g over your last 15 games, 404 g over the last 40."},{"key":"dmgm","label":"DMG/m","recent":"612","snapshot":"588","rs":52,"ss":48,"gap":"+24","good":true,"readout":"DMG/m: 612 over your last 15 games, 588 over the last 40."},{"key":"kp","label":"KP","recent":"61 %","snapshot":"57 %","rs":61,"ss":57,"gap":"+4 %","good":true,"readout":"KP: 61 % over your last 15 games, 57 % over the last 40."},{"key":"fb","label":"FB","recent":"24 %","snapshot":"18 %","rs":24,"ss":18,"gap":"+6 %","good":true,"readout":"FB: 24 % over your last 15 games, 18 % over the last 40."},{"key":"cs15","label":"CS@15","recent":"96","snapshot":"104","rs":51,"ss":60,"gap":"−8","good":false,"readout":"CS@15: 96 over your last 15 games, 104 over the last 40."},{"key":"xp15","label":"XP@15","recent":"6,850 XP","snapshot":"6,720 XP","rs":47,"ss":44,"gap":"+130 XP","good":true,"readout":"XP@15: 6,850 XP over your last 15 games, 6,720 XP over the last 40."},{"key":"gold15","label":"Gold@15","recent":"5,980 g","snapshot":"5,610 g","rs":62,"ss":53,"gap":"+370 g","good":true,"readout":"Gold@15: 5,980 g over your last 15 games, 5,610 g over the last 40."}]},"support":{"score":"Score: 54/100","points":[{"key":"kda","label":"KDA","recent":"2.70","snapshot":"2.83","rs":45,"ss":47,"gap":"−0.13","good":false,"readout":"KDA: 2.70 over your last 15 games, 2.83 over the last 40."},{"key":"kp","label":"KP","recent":"64 %","snapshot":"61 %","rs":64,"ss":58,"gap":"+3 %","good":true,"readout":"KP: 64 % over your last 15 games, 61 % over the last 40."},{"key":"deaths","label":"Deaths","recent":"5.4","snapshot":"4.7","rs":51,"ss":61,"gap":"+0.7","good":false,"readout":"Deaths: 5.4 over your last 15 games, 4.7 over the last 40."},{"key":"vspm","label":"Vision/min","recent":"2.3","snapshot":"2.0","rs":62,"ss":50,"gap":"+0.3","good":true,"readout":"Vision/min: 2.3 over your last 15 games, 2.0 over the last 40."},{"key":"vsdiff","label":"Vision diff","recent":"9","snapshot":"4","rs":53,"ss":42,"gap":"+5","good":true,"readout":"Vision diff: 9 over your last 15 games, 4 over the last 40."},{"key":"pinks","label":"Control wards","recent":"4.1","snapshot":"3.4","rs":51,"ss":43,"gap":"+0.7","good":true,"readout":"Control wards: 4.1 over your last 15 games, 3.4 over the last 40."},{"key":"wardkill","label":"Wards killed","recent":"3.2","snapshot":"2.6","rs":53,"ss":43,"gap":"+0.6","good":true,"readout":"Wards killed: 3.2 over your last 15 games, 2.6 over the last 40."},{"key":"healshield","label":"Heal+shield/min","recent":"310","snapshot":"285","rs":62,"ss":57,"gap":"+25","good":true,"readout":"Heal+shield/min: 310 over your last 15 games, 285 over the last 40."},{"key":"cc","label":"CC/min","recent":"1.4","snapshot":"1.5","rs":47,"ss":50,"gap":"−0.1","good":false,"readout":"CC/min: 1.4 over your last 15 games, 1.5 over the last 40."}]}},"s":{"title":"Fundamentals footprint","recentLabel":"Recent (15 games)","snapshotLabel":"Snapshot (40 games)","roleLabel":"Role","colAxis":"Axis","colRecent":"15 games","colSnapshot":"40 games","colGap":"Gap","readoutIdle":"Hover an axis, or pick it in the table.","scale":"The scales are fixed and the same for every player: the fingerprint compares you with no one."}}</script>
+<script type="application/json" id="data-tiers">{"lang":"en","current":"stratege","tiers":[{"id":"recrue","label":"Recruit","level":"level 1","levelShort":"lvl 1","height":10,"detail":["The starting point: everyone begins here.","Nothing to unlock at this tier: the first five profile icons are free."]},{"id":"initie","label":"Initiate","level":"level 3","levelShort":"lvl 3","height":15,"detail":["214 XP in total from level 1.","That is about 5 full game reviews, or 8 micro-reviews.","Unlocks 1 profile icon."]},{"id":"adepte","label":"Adept","level":"level 6","levelShort":"lvl 6","height":23,"detail":["672 XP in total from level 1.","That is about 14 full game reviews, or 23 micro-reviews.","Unlocks 1 profile icon."]},{"id":"stratege","label":"Strategist","level":"level 10","levelShort":"lvl 10","height":34,"detail":["1,675 XP in total from level 1.","That is about 34 full game reviews, or 56 micro-reviews.","Unlocks 1 profile icon."]},{"id":"virtuose","label":"Virtuoso","level":"level 15","levelShort":"lvl 15","height":47,"detail":["4,045 XP in total from level 1.","That is about 81 full game reviews, or 135 micro-reviews.","Unlocks 1 profile icon."]},{"id":"sage","label":"Sage","level":"level 20","levelShort":"lvl 20","height":60,"detail":["8,813 XP in total from level 1.","That is about 177 full game reviews, or 294 micro-reviews.","Unlocks 2 profile icons."]},{"id":"oracle","label":"Oracle","level":"level 27","levelShort":"lvl 27","height":79,"detail":["24,560 XP in total from level 1.","That is about 492 full game reviews, or 819 micro-reviews.","Unlocks 1 profile icon."]},{"id":"legende","label":"Legend","level":"level 35","levelShort":"lvl 35","height":100,"detail":["76,521 XP in total from level 1.","That is about 1,531 full game reviews, or 2,551 micro-reviews.","Unlocks 1 profile icon."]}],"s":{"scaleLabel":"Practice tiers, by Ascend level","you":"The demonstration account is here, at level 10."}}</script>
+<script type="application/json" id="data-themes">{"presets":{"p0":[["--app-bg","#0D0A06"],["--app-surface","#1C140C"],["--app-panel","#2A1D11"],["--app-line","#4A3A24"],["--app-line-strong","#8A6A34"],["--app-accent","#D4A24C"],["--app-accent-hi","#F5E3BE"],["--app-second","#3E8E7E"],["--app-text","#B5A68C"],["--app-text-hi","#F5E3BE"]],"p1":[["--app-bg","#060B10"],["--app-surface","#0C1620"],["--app-panel","#132233"],["--app-line","#223C4A"],["--app-line-strong","#3E6E8A"],["--app-accent","#4C9ED4"],["--app-accent-hi","#BEE3F5"],["--app-second","#3EC2D4"],["--app-text","#8CA8B5"],["--app-text-hi","#BEE3F5"]],"p2":[["--app-bg","#100607"],["--app-surface","#200C0D"],["--app-panel","#331316"],["--app-line","#4A2224"],["--app-line-strong","#8A3E3E"],["--app-accent","#C23B3B"],["--app-accent-hi","#F5C4BE"],["--app-second","#D4753E"],["--app-text","#B58C8C"],["--app-text-hi","#F5C4BE"]],"p3":[["--app-bg","#0A0610"],["--app-surface","#160C20"],["--app-panel","#221333"],["--app-line","#3A224A"],["--app-line-strong","#6A3E8A"],["--app-accent","#A24CD4"],["--app-accent-hi","#E3BEF5"],["--app-second","#8E6AD4"],["--app-text","#A68CB5"],["--app-text-hi","#E3BEF5"]],"p4":[["--app-bg","#0F080B"],["--app-surface","#1C0F15"],["--app-panel","#2B1620"],["--app-line","#4A2836"],["--app-line-strong","#8A4A66"],["--app-accent","#E07AA0"],["--app-accent-hi","#F8D2E1"],["--app-second","#5FB89A"],["--app-text","#B596A3"],["--app-text-hi","#F8D2E1"]],"p5":[["--app-bg","#0E0B05"],["--app-surface","#1D170A"],["--app-panel","#2D2410"],["--app-line","#4F4019"],["--app-line-strong","#9A7A2E"],["--app-accent","#F0C24A"],["--app-accent-hi","#FFF0C2"],["--app-second","#2FC1B8"],["--app-text","#BFAE84"],["--app-text-hi","#FFF0C2"]],"p6":[["--app-bg","#070B0F"],["--app-surface","#0F161D"],["--app-panel","#18222D"],["--app-line","#2C3B48"],["--app-line-strong","#5E7C94"],["--app-accent","#B8DDF5"],["--app-accent-hi","#EEF7FD"],["--app-second","#9AD8F0"],["--app-text","#9DAEBB"],["--app-text-hi","#EEF7FD"]],"p7":[["--app-bg","#070A05"],["--app-surface","#0F150B"],["--app-panel","#182212"],["--app-line","#2E4620"],["--app-line-strong","#5A8A34"],["--app-accent","#8EE04A"],["--app-accent-hi","#DDF8C4"],["--app-second","#C9772F"],["--app-text","#9FB58C"],["--app-text-hi","#DDF8C4"]]}}</script>
+<script type="application/json" id="data-release">{"version":"1.0.0-beta.1","api":"https://api.github.com/repos/ExCiiD/nexusmind/releases?per_page=5","sizeUnit":"MB","locale":"en"}</script>
 </body>
 </html>

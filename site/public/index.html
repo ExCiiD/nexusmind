@@ -3,349 +3,534 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ascend — progresser à League of Legends : joueur, coach, équipe</title>
-<meta name="description" content="Ascend enregistre tes parties de League of Legends, repère tes erreurs, mesure ta progression et réunit coachs et équipes : planning, scrims, drafts, scouting. Gratuit, pour Windows.">
-<link rel="canonical" href="https://[DOMAINE]/">
-<link rel="alternate" hreflang="fr" href="https://[DOMAINE]/">
-<link rel="alternate" hreflang="en" href="https://[DOMAINE]/en/">
+<title>Ascend — l’outil de progression pour League of Legends : joueur, coach, équipe</title>
+<meta name="description" content="Ascend enregistre tes parties de League of Legends, retrouve les trois moments qui t’ont coûté le plus cher et te dit quoi travailler. Micro-revue en 45 secondes, Labo d’erreurs, empreinte des fondamentaux, outils de coaching et d’équipe. Gratuit, pour Windows.">
+<link rel="alternate" hreflang="fr" href="/">
+<link rel="alternate" hreflang="en" href="/en/">
+<link rel="alternate" hreflang="x-default" href="/">
+<meta name="theme-color" content="#0D0A06">
+<meta name="color-scheme" content="dark">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<meta property="og:title" content="Ascend — l'atelier de progression de League of Legends">
-<meta property="og:description" content="Enregistrement automatique, reviews guidées, erreurs repérées, statistiques qui expliquent tes victoires, outils de coaching et d'équipe. Gratuit.">
-<meta property="og:image" content="/assets/shots/dashboard-fr.webp">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="Ascend">
+<meta property="og:title" content="Ascend — deviens ton propre coach">
+<meta property="og:description" content="Micro-revue guidée en 45 secondes, Labo d’erreurs, empreinte des fondamentaux, coaching et gestion d’équipe pour League of Legends. Gratuit, pour Windows.">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:image" content="/assets/og-fr.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="/assets/fonts/big-shoulders-display.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/site.css">
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Ascend","applicationCategory":"GameApplication","operatingSystem":"Windows 10, Windows 11","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"description":"Outil de progression pour League of Legends : enregistrement, reviews, statistiques, coaching et gestion d'équipe."}
-</script>
+<link rel="preload" href="/assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css?v=6c79279d10">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Ascend","applicationCategory":"GameApplication","operatingSystem":"Windows 10, Windows 11","softwareVersion":"1.0.0-beta.1","downloadUrl":"https://github.com/ExCiiD/nexusmind/releases/download/v1.0.0-beta.1/Ascend-Setup-1.0.0-beta.1.exe","inLanguage":"fr","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"description":"Outil de progression pour League of Legends : enregistrement, micro-revue guidée, statistiques d'erreurs, coaching et gestion d'équipe."}</script>
+<script src="/assets/site.js?v=0bd0f5f29b" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">Aller au contenu</a>
-
-<header class="site-header">
-  <div class="wrap">
-    <a class="brand" href="/" aria-label="Ascend, accueil">ASCEND<span>.</span></a>
-    <nav class="nav" aria-label="Navigation principale">
-      <a class="hide-sm" href="#ateliers">Fonctionnalités</a>
-      <a class="hide-sm" href="#equipes">Coachs &amp; équipes</a>
-      <a class="hide-sm" href="#donnees-riot">Données Riot</a>
-      <a class="hide-sm" href="#faq">FAQ</a>
-      <a class="lang" href="/en/" hreflang="en" lang="en">EN</a>
-      <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases">Télécharger</a>
+<div class="layout">
+  <header class="rail" data-rail>
+    <div class="rail-top">
+      <a class="brand" href="/" aria-label="Ascend">ASCEND</a>
+      <span class="brand-note mono">1.0 bêta</span>
+      <span class="rail-tools">
+        <a class="lang" href="/en/" hreflang="en" lang="en" aria-label="English version">EN</a>
+        <a class="rail-toggle" href="#sommaire" data-toggle aria-controls="rail-nav"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 7h15M4.5 12h15M4.5 17h15"/></svg><span>Sommaire</span></a>
+        <a class="btn btn-primary btn-sm" data-download href="https://github.com/ExCiiD/nexusmind/releases/download/v1.0.0-beta.1/Ascend-Setup-1.0.0-beta.1.exe"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg><span>Télécharger</span></a>
+      </span>
+    </div>
+    <nav class="rail-nav" id="rail-nav" aria-label="Sommaire du rapport">
+      <p class="rail-h">Rapport</p>
+      <ol class="rail-list rail-num"><li><a href="#methode">Méthode</a></li><li><a href="#micro-revue">Micro-revue</a></li><li><a href="#labo">Labo d’erreurs</a></li><li><a href="#empreinte">Empreinte</a></li><li><a href="#paliers">Paliers</a></li><li><a href="#modes">Joueur, coach, équipe</a></li><li><a href="#themes">Thèmes</a></li></ol>
+<p class="rail-h">Annexes</p>
+      <ul class="rail-list"><li><a href="#riot">Données Riot</a></li><li><a href="#donnees">Tes données</a></li><li><a href="#questions">Questions</a></li></ul>
     </nav>
-  </div>
-</header>
-
-<main id="main">
-  <section class="hero" aria-labelledby="hero-title">
-    <div class="wrap">
+    <div class="rail-foot">
+      <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases/download/v1.0.0-beta.1/Ascend-Setup-1.0.0-beta.1.exe"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg><span>Télécharger</span></a>
+      <p class="rail-ver mono"><span data-version>1.0.0-beta.1</span></p>
+      <a class="lang" href="/en/" hreflang="en" lang="en" aria-label="English version">EN</a>
+    </div>
+  </header>
+  <div class="page">
+    <main id="main" tabindex="-1">
+<section class="hero" aria-labelledby="h-hero">
+    <div class="hero-grid">
+      <div class="hero-main">
+        <h1 id="h-hero"><span class="ln">Deviens ton</span> <span class="ln">propre coach.</span></h1>
+        <p class="lead">Ascend enregistre tes parties de League of Legends, retrouve les trois moments qui t’ont coûté le plus cher et te demande un diagnostic en un clic. À la partie suivante, tu sais quoi travailler. Le même outil sert aux coachs pour suivre leurs élèves, et aux équipes pour préparer leurs scrims.</p>
+      </div>
+      <div class="sheet" id="telecharger">
+        <dl class="sheet-facts"><div><dt>Jeu</dt><dd class="mono">League of Legends</dd></div><div><dt>Version</dt><dd class="mono"><span data-version>1.0.0-beta.1</span></dd></div><div><dt>Taille</dt><dd class="mono"><span data-size>331 Mo</span></dd></div><div><dt>Système</dt><dd class="mono">Windows 10 et 11</dd></div><div><dt>Prix</dt><dd class="mono">gratuit</dd></div><div><dt>Accès</dt><dd class="mono">sur invitation</dd></div></dl>
+        <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases/download/v1.0.0-beta.1/Ascend-Setup-1.0.0-beta.1.exe"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg><span>Télécharger pour Windows</span></a>
+        <p class="sheet-note">Un code d’invitation est demandé à la première connexion. Le code d’une équipe ou d’un groupe de coaching ouvre aussi l’accès.</p>
+        <details class="verify" data-verify>
+          <summary>Vérifier le fichier</summary>
+          <p>Empreinte SHA-512 de l’installeur, en base64, telle que publiée avec la version :</p>
+          <code class="mono">44ojwZlvJHKcMhdVCn6NA93n+KdP2uYODIxsLWI1XNtXnsJhyXcSgZOV6ArRTcEeUaf2PKJxX5GBWiuatuH6dQ==</code>
+        </details>
+        <p class="sheet-links"><a href="https://github.com/ExCiiD/nexusmind/releases">Toutes les versions</a><a href="https://nexusmind-web.nexusmind-riot-proxy.workers.dev">Ouvrir l’app web</a></p>
+      </div>
+    </div>
+    <figure class="piece" id="piece-a">
+      <figcaption class="piece-cap"><span class="piece-ref mono">Pièce A</span><span class="piece-what">Une micro-revue. Réponds à la question : la fiche du Codex suit.</span></figcaption>
+      <div class="piece-frame app" data-exhibit="micro" role="group" aria-label="Pièce A"><div class="mr">
+    <header class="mr-head">
+      <div><h3 class="mr-title"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M9.5 2.5h5M12 2.5V6"/></svg>Micro-review 45 s</h3><p class="mr-sub">Les 3 moments qui t’ont le plus coûté. Un clic par moment.</p></div>
+      <span class="mr-count" aria-label="0 / 3">0/3</span>
+    </header>
+    <ol class="mr-queue" aria-label="Moments à revoir"><li><button class="q" data-act="go" data-i="0" data-k="q-0">
+      <span class="q-n">1</span>
+      <span class="q-clock">3:15</span><span class="q-label">Invade manqué</span></button></li><li><button class="q" data-act="go" data-i="1" data-k="q-1">
+      <span class="q-n">2</span>
+      <span class="q-clock">15:10</span><span class="q-label">Cross-map manqué</span></button></li><li><button class="q is-current" data-act="go" data-i="2" data-k="q-2" aria-current="true">
+      <span class="q-n">3</span>
+      <span class="q-clock">25:28</span><span class="q-label">Mort critique</span></button></li></ol>
+    <div class="mr-body">
+      <div class="mr-map"><svg class="map" viewBox="0 0 300 300" role="img" aria-label="Position sur la carte au moment clé">
+    <path class="map-river" d="M52 36 L36 52 L248 264 L264 248 Z"/>
+    <path class="map-lane" d="M22 278 L22 22 L278 22 M22 278 L278 278 L278 22 M30 270 L270 30"/>
+    <rect class="map-frame" x="8" y="8" width="284" height="284"/>
+    <rect class="map-base map-own" x="8" y="244" width="48" height="48"/>
+    <rect class="map-base" x="244" y="8" width="48" height="48"/>
+    <circle class="map-zone" cx="100.1" cy="90.6" r="56.0"/><circle class="map-pit" cx="100.1" cy="90.6" r="4"/><circle class="map-zone" cx="197.3" cy="211.7" r="56.0"/><circle class="map-pit" cx="197.3" cy="211.7" r="4"/>
+    <circle class="map-ring" cx="112.0" cy="100.0" r="11"/>
+    <circle class="map-you" cx="112.0" cy="100.0" r="5"/>
+    <text class="map-label" x="128.0" y="104.0">toi</text>
+  </svg><p class="mr-note"><svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 21s6.5-5.6 6.5-11a6.5 6.5 0 0 0-13 0c0 5.4 6.5 11 6.5 11z"/><circle cx="12" cy="10" r="2.2"/></svg>Pas de VOD pour cette partie : position sur la carte au moment clé.</p></div>
+      <div class="mr-qcm">
+        <p class="mr-summary" data-k="summary" tabindex="-1"><span class="mr-clock">25:28</span><span class="mr-zone">Rivière haute</span>mort 30 s avant la perte du Baron, 1650 g en poche, seul contre 3</p>
+        <p class="mr-question">Qu’est-ce qui a coûté ce moment ?</p>
+        <div class="opts" role="group" aria-label="Qu’est-ce qui a coûté ce moment ?"><button class="opt" data-act="answer" data-id="no-ward-pre-obj" aria-pressed="false">
+      <i class="dot"></i>
+      <span><span class="opt-main">Mauvais setup d’objectif : entrée directe en rivière sans passer par le mid (ou 3v3 forcé en retard au lieu de prendre le mid à 3)</span><small>Pas de ward avant l’objectif</small></span></button><button class="opt" data-act="answer" data-id="overstay" aria-pressed="false">
+      <i class="dot"></i>
+      <span><span class="opt-main">Overstay après mon action</span><small>Overstay</small></span></button><button class="opt opt-ok" data-act="answer" data-id="justified:stealAttempt" aria-pressed="false">
+      <i class="dot dot-ok"></i>
+      <span><span class="opt-main">50/50 de smite justifié</span><small>Décision justifiée : ne compte pas contre toi</small></span></button>
+          <button class="opt opt-other" data-act="pick" data-k="other" aria-pressed="false"><span class="opt-main">Autre cause…</span><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9.5 5.5L16 12l-6.5 6.5"/></svg></button>
+        </div>
+        <div class="mr-after" aria-live="polite"></div>
+      </div>
+    </div>
+    
+  </div></div>
+      <p class="piece-note">Compte de démonstration : les chiffres sont inventés, les règles et les fiches sont celles de l’application.</p>
+    </figure>
+  </section>
+<section class="sec" id="methode" aria-labelledby="h-methode">
+    <header class="sec-head"><span class="sec-n mono" aria-hidden="true">1</span><h2 id="h-methode">L’entraînement délibéré</h2></header>
+    <div class="sec-body">
+      <p class="intro">Les joueurs qui progressent jouent avec un objectif, se revoient et mesurent. Ascend prend en charge ce qui se passe entre deux parties, là où l’on abandonne d’habitude.</p>
+      <table class="grid-table steps">
+        <caption>Une partie, quatre gestes</caption>
+        <thead><tr><th scope="col">Geste</th><th scope="col">Ce que fait Ascend</th><th scope="col">Ce que tu fais</th><th scope="col" class="num">Durée</th></tr></thead>
+        <tbody><tr>
+          <th scope="row"><span class="step-n mono" aria-hidden="true">1</span>Choisir un objectif</th>
+          <td data-label="Ce que fait Ascend">Propose 1 à 3 fondamentaux parmi 38, d’après tes dernières parties et tes erreurs.</td>
+          <td data-label="Ce que tu fais">Tu acceptes, ou tu choisis les tiens.</td>
+          <td data-label="Durée" class="num mono">30 s</td>
+        </tr><tr>
+          <th scope="row"><span class="step-n mono" aria-hidden="true">2</span>Jouer</th>
+          <td data-label="Ce que fait Ascend">Détecte la partie et l’enregistre. Rien ne s’affiche pendant que tu joues.</td>
+          <td data-label="Ce que tu fais">Tu joues.</td>
+          <td data-label="Durée" class="num mono">la partie</td>
+        </tr><tr>
+          <th scope="row"><span class="step-n mono" aria-hidden="true">3</span>Se revoir</th>
+          <td data-label="Ce que fait Ascend">Sort au plus 3 moments critiques et cale la VOD douze secondes avant chacun.</td>
+          <td data-label="Ce que tu fais">Un clic par moment.</td>
+          <td data-label="Durée" class="num mono">45 s</td>
+        </tr><tr>
+          <th scope="row"><span class="step-n mono" aria-hidden="true">4</span>Mesurer</th>
+          <td data-label="Ce que fait Ascend">Vérifie l’objectif à ta place et compare tes 15 dernières parties à tes 40 dernières.</td>
+          <td data-label="Ce que tu fais">Tu lis le verdict.</td>
+          <td data-label="Durée" class="num mono">10 s</td>
+        </tr></tbody>
+      </table>
+      <div class="with-notes">
+        <figure class="piece" id="piece-b">
+      <figcaption class="piece-cap"><span class="piece-ref mono">Pièce B</span><span class="piece-what">Le tableau de bord. Réponds à la calibration, ou active le protocole basse énergie.</span><span class="piece-demo">Compte de démonstration</span></figcaption>
+      <div class="piece-frame app" data-exhibit="dashboard" role="group" aria-label="Pièce B"><div class="db">
+    <header class="db-head">
       <div>
-        <p class="kicker">League of Legends · Windows · Gratuit · Bêta</p>
-        <h1 id="hero-title" class="display h1">Deviens ton<br>propre coach.<br><span class="signal">Puis celui<br>de ton équipe.</span></h1>
-        <p class="lead">Ascend enregistre tes parties, repère tes erreurs et te dit quoi travailler à la suivante. Les coachs suivent leurs élèves, les équipes préparent leurs scrims. Un seul outil, sans abonnement.</p>
-        <div class="btn-row">
-          <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases">Télécharger pour Windows</a>
-          <a class="btn btn-ghost" href="https://nexusmind-web.nexusmind-riot-proxy.workers.dev">Ouvrir l'app web</a>
-        </div>
-        <p class="release-meta" data-version>Windows 10/11 · bêta sur invitation</p>
+        <p class="db-hello">Bon retour, <b>Kaito</b></p>
+        <p class="db-formline">Sur tes 10 dernières parties : <b>40 % de victoires</b> <span>(−15 pts vs global)</span></p>
       </div>
-      <aside class="report" aria-label="Exemple de rapport généré par Ascend">
-        <div class="report-head"><span>RAPPORT · SEMAINE 47</span><span>10 DERNIÈRES PARTIES</span></div>
-        <div class="report-body">
-          <p class="report-title">Ta lane est gagnée.<br>Ton farm ne suit pas.</p>
-          <div class="report-stats">
-            <div><b>+380</b><span>or à 15 min</span></div>
-            <div><b class="signal">5.8</b><span>CS / min · cible 7</span></div>
-            <div><b>70%</b><span>de victoires</span></div>
-          </div>
-          <p class="report-note">Objectif proposé pour ta prochaine session : 7 CS/min en phase de lane. 5 min de last-hit en outil d'entraînement avant ta première partie.</p>
-        </div>
-      </aside>
-    </div>
-  </section>
+      <div class="db-form"><span>Forme</span><ol aria-label="Résultats des dix dernières parties, de la plus ancienne à la plus récente"><li class="res"><span class="vh">partie nº 5, défaite</span><span aria-hidden="true">D</span></li><li class="res res-w"><span class="vh">partie nº 6, victoire</span><span aria-hidden="true">V</span></li><li class="res"><span class="vh">partie nº 7, défaite</span><span aria-hidden="true">D</span></li><li class="res"><span class="vh">partie nº 8, défaite</span><span aria-hidden="true">D</span></li><li class="res res-w"><span class="vh">partie nº 9, victoire</span><span aria-hidden="true">V</span></li><li class="res res-w"><span class="vh">partie nº 10, victoire</span><span aria-hidden="true">V</span></li><li class="res"><span class="vh">partie nº 11, défaite</span><span aria-hidden="true">D</span></li><li class="res res-w"><span class="vh">partie nº 12, victoire</span><span aria-hidden="true">V</span></li><li class="res"><span class="vh">partie nº 13, défaite</span><span aria-hidden="true">D</span></li><li class="res"><span class="vh">partie nº 14, défaite</span><span aria-hidden="true">D</span></li></ol><span class="db-role">Rôle principal : <b>Jungle</b></span></div>
+    </header>
 
-  <section class="section" aria-labelledby="apercu-title" style="padding-top: 0; border-top: 0;">
-    <div class="wrap">
-      <h2 id="apercu-title" class="kicker">L'app, telle quelle</h2>
-      <figure class="shot">
-        <img src="/assets/shots/dashboard-fr.webp" width="1600" height="1000" alt="Tableau de bord d'Ascend : forme sur les dernières parties, session d'entraînement, chiffres clés, dernière partie et empreinte des fondamentaux en radar." loading="lazy">
-        <figcaption><span>Tableau de bord — capture de l'application, compte de démonstration.</span><span class="mono">v0.2 bêta</span></figcaption>
-      </figure>
-    </div>
-  </section>
+    <section class="panel calib" aria-live="polite">
+      <h3 class="panel-title"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 16.5a8 8 0 1 1 15 0"/><path d="M12 14l3.5-4.5"/><circle cx="12" cy="14.5" r="1"/></svg>Calibration flash</h3>
+      <p class="panel-sub">16 parties depuis ta dernière calibration : 10 secondes pour vérifier ton ressenti.</p>
+      <p class="calib-q">Quel fondamental t’a le plus coûté récemment ?</p>
+      <div class="calib-opts" role="group" aria-label="Quel fondamental t’a le plus coûté récemment ?"><button class="opt opt-tight" data-act="calib" data-f="deaths" aria-pressed="false"><i class="fam fam-deaths"></i><span class="opt-main">Positionnement &amp; morts</span></button><button class="opt opt-tight" data-act="calib" data-f="vision" aria-pressed="false"><i class="fam fam-vision"></i><span class="opt-main">Vision &amp; carte</span></button><button class="opt opt-tight" data-act="calib" data-f="tempo" aria-pressed="false"><i class="fam fam-tempo"></i><span class="opt-main">Tempo &amp; économie</span></button><button class="opt opt-tight" data-act="calib" data-f="mechanics" aria-pressed="false"><i class="fam fam-mechanics"></i><span class="opt-main">Mécaniques &amp; laning</span></button></div>
+      
+    </section>
 
-  <section id="ateliers" class="section" aria-labelledby="ateliers-title">
-    <div class="wrap">
-      <div class="section-head">
-        <h2 id="ateliers-title" class="display h2">Trois ateliers.<br>Un seul outil.</h2>
-        <p>Ascend est né comme un outil d'auto-coaching. Il couvre aujourd'hui tout le cycle de progression : le joueur seul, le coach qui suit ses élèves, l'équipe qui s'entraîne ensemble. Chacun ne voit que ce que les autres ont choisi de partager.</p>
+    <div class="db-cols">
+      <section class="panel db-session">
+        <h3 class="panel-kicker">Session active</h3>
+        <p class="db-objective">Gestion des waves, Contrôle de la vision</p>
+        <p class="panel-sub">4 parties jouées cette session</p>
+        <dl class="db-stats"><div><dt>Parties</dt><dd>84</dd></div><div><dt>Taux de victoire</dt><dd>55 %</dd></div><div><dt>KDA moyen</dt><dd>3,47</dd></div><div><dt>Obj. réussis</dt><dd>72 %</dd></div></dl>
+      </section>
+      <section class="panel db-level">
+        <h3 class="panel-kicker">Progression</h3>
+        <p class="db-level-n"><b>Niveau 10</b><span>Stratège</span></p>
+        <div class="meter" role="img" aria-label="225/351 XP"><i style="width:64%"></i></div>
+        <p class="panel-sub"><span class="mono">225/351 XP</span> Plus que 126 XP avant le niveau 11</p>
+      </section>
+      <section class="panel db-low" aria-live="polite">
+        <h3 class="panel-title"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3.5" y="8" width="15" height="8.5" rx="1.5"/><path d="M21 11v2.5M6.5 11v2.5"/></svg>Session basse énergie détectée</h3>
+        <p>2 défaites d’affilée dans cette session.</p><p class="panel-sub">Le protocole simplifie ton jeu en 3 règles : neutraliser les waves, respecter chaque mouvement suspect, garder ton Flash pour les teamfights d’objectif.</p>
+             <button class="app-btn app-btn-solid" data-act="low"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3.5" y="8" width="15" height="8.5" rx="1.5"/><path d="M21 11v2.5M6.5 11v2.5"/></svg>Activer sur la session en cours</button>
+      </section>
+    </div>
+  </div></div>
+      
+    </figure>
+        <div class="notes"><div class="note"><h3>Calibration flash</h3><p>Toutes les 15 parties, une seule question : quel fondamental t’a le plus coûté ? Ascend affiche ensuite l’écart entre ta réponse et ce que disent tes micro-revues.</p></div><div class="note"><h3>Protocole basse énergie</h3><p>Après 2 défaites d’affilée, ou sur un créneau horaire où tu gagnes moins de 45 % de tes parties, Ascend propose un objectif de session allégé : trois règles simples à tenir quand la tête ne suit plus.</p></div></div>
       </div>
-      <ol class="workshops">
-        <li class="workshop">
-          <span class="num">I</span>
-          <div><h3 class="h3">Le joueur</h3><p class="who">Pour progresser en ranked, seul, avec méthode.</p></div>
-          <ul class="feature-list">
-            <li><strong>Sessions à objectif</strong> : 1 à 3 fondamentaux parmi 10 familles (waves, vision, trades, rotations…).</li>
-            <li><strong>Enregistrement automatique</strong> de chaque partie, détectée sans rien toucher.</li>
-            <li><strong>Review guidée</strong> : notes par objectif, commentaires horodatés sur la vidéo.</li>
-            <li><strong>Erreurs repérées</strong> automatiquement et placées sur la timeline de la VOD.</li>
-            <li><strong>Statistiques</strong> par partie, phase de lane, moyennes et progression dans le temps.</li>
-            <li><strong>Empreinte des fondamentaux</strong> : radar forme récente contre tes 40 dernières parties, KPI dédiés aux supports.</li>
-            <li><strong>Assistant à règles transparentes</strong> : il dit toujours pourquoi, sans IA payante.</li>
-            <li><strong>Multi-comptes</strong> : un seul historique pour tous tes comptes Riot.</li>
-          </ul>
-        </li>
-        <li class="workshop">
-          <span class="num">II</span>
-          <div><h3 class="h3">Le coach</h3><p class="who">Pour suivre des élèves, en séance ou à distance.</p></div>
-          <ul class="feature-list">
-            <li><strong>Groupes de coaching</strong> sur invitation, avec rôles (coach, analyste, joueur).</li>
-            <li><strong>Partage au choix du joueur</strong> : reviews, stats ou rien, réglable à tout moment.</li>
-            <li><strong>Commentaires horodatés</strong> sur les reviews, fil de discussion coach ↔ joueur.</li>
-            <li><strong>Objectifs assignés</strong> avec échéance, repris en un clic à la session suivante.</li>
-            <li><strong>Plans de développement</strong> individuels et suivi des entretiens.</li>
-            <li><strong>Rapports hebdomadaires</strong> et alerte quand un élève décroche.</li>
-          </ul>
-        </li>
-        <li class="workshop">
-          <span class="num">III</span>
-          <div><h3 class="h3">L'équipe</h3><p class="who">Pour les rosters amateurs et semi-pro qui s'entraînent sérieusement.</p></div>
-          <ul class="feature-list">
-            <li><strong>Planning</strong> façon agenda, disponibilités et créneaux communs, export calendrier.</li>
-            <li><strong>Scrims</strong> : préparation, checklist, analyse d'après-match.</li>
-            <li><strong>Drafts, pools de champions</strong> et synergies du roster.</li>
-            <li><strong>Scouting adverse</strong> à partir des Riot ID que tu saisis.</li>
-            <li><strong>Review collective de VOD</strong>, débrief transcrit en local.</li>
-            <li><strong>Bot Discord</strong> et app web mobile pour suivre depuis n'importe où.</li>
-          </ul>
-        </li>
-      </ol>
     </div>
   </section>
-
-  <section class="section" aria-labelledby="boucle-title">
-    <div class="wrap">
-      <div class="section-head">
-        <h2 id="boucle-title" class="display h2">Une boucle.<br>Quatre gestes.</h2>
-        <p>Les joueurs qui progressent ne jouent pas forcément plus : ils jouent avec un objectif, se revoient et mesurent. Ascend fait le travail ingrat entre deux parties.</p>
-      </div>
-      <ol class="loop">
-        <li><span class="num">01</span><h3>Choisis un objectif</h3><p>Ascend t'en propose un d'après tes dernières parties. Tu peux le changer.</p></li>
-        <li><span class="num">02</span><h3>Joue normalement</h3><p>La partie est détectée et filmée. Rien ne s'affiche pendant que tu joues.</p></li>
-        <li><span class="num">03</span><h3>Revois l'essentiel</h3><p>Les moments clés sont déjà marqués. Tu notes ton objectif en deux minutes.</p></li>
-        <li><span class="num">04</span><h3>Mesure</h3><p>Tes 15 dernières parties contre tes 40 dernières : tu vois si ça marche.</p></li>
-      </ol>
+<section class="sec" id="micro-revue" aria-labelledby="h-micro-revue">
+    <header class="sec-head"><span class="sec-n mono" aria-hidden="true">2</span><h2 id="h-micro-revue">La micro-revue en 45 secondes</h2></header>
+    <div class="sec-body">
+      <p class="intro">Une review complète prend vingt minutes, et la plupart des joueurs n’en font aucune. La micro-revue ne montre que ce qui a pesé sur le résultat, et se termine avant la file suivante.</p>
+      <dl class="ledger"><div><dt>3 moments au plus</dt><dd>Les plus coûteux de la partie, espacés d’au moins 25 secondes. S’il n’y en a aucun, Ascend le dit et te laisse lancer la suivante.</dd></div><div><dt>Trois déclencheurs</dt><dd>Une mort suivie, dans les 90 secondes, d’un objectif perdu ou d’un net recul de tes chances. Un objectif majeur pris par l’adversaire alors que tu étais vivant, sans ward de ta part ni contrepartie ailleurs. Un retard à 10:00 : plus de 15 CS ou de 400 XP de moins que ton vis-à-vis.</dd></div><div><dt>Douze schémas reconnus</dt><dd>Gank sur un timer prévisible à 2:30, recall désynchronisé, shutdown donné en premier dans un fight, roam mid payé en plaques, support dans la fosse au lieu du goulet d’étranglement.</dd></div><div><dt>Le garbage time ne compte pas</dt><dd>Quand la partie était déjà jouée au moment de l’action, à plus de 85 % ou à moins de 18 % d’après l’or, l’XP et les objectifs, le moment est écarté : il ne t’apprendrait rien.</dd></div><div><dt>Une décision assumée n’est pas une erreur</dt><dd>Chaque question garde une sortie « justifié ». Elle est notée, jamais comptée contre toi.</dd></div><div><dt>Aucune IA, aucun envoi</dt><dd>Des règles écrites à l’avance, exécutées sur ton PC, sans connexion. La même partie donne toujours les mêmes moments.</dd></div><div><dt>53 fiches au Codex</dt><dd>Après ta réponse, le Codex donne la règle tactique et un objectif d’entraînement précis. Quelques fiches montrent la séquence dans un match professionnel officiel.</dd></div></dl>
+      <p class="back"><a href="#piece-a">Revenir à la pièce A</a></p>
     </div>
   </section>
-
-  <section class="section" aria-labelledby="fonctions-title">
-    <div class="wrap">
-      <h2 id="fonctions-title" class="kicker">En détail</h2>
-
+<section class="sec" id="labo" aria-labelledby="h-labo">
+    <header class="sec-head"><span class="sec-n mono" aria-hidden="true">3</span><h2 id="h-labo">Le Labo d’erreurs</h2></header>
+    <div class="sec-body">
       <div class="split">
-        <div>
-          <h3>Ce qui te fait gagner.<br><span class="signal">Pas juste des moyennes.</span></h3>
-          <p>L'onglet Analyse lit tes 50 dernières parties et répond aux vraies questions : sur quel champion tu gagnes, ce qui change dans ton jeu quand tu perds, à quelle heure tu joues le mieux, si tu enchaînes mal après une défaite.</p>
-          <ul class="checks">
-            <li><b>Victoires vs défaites</b> : morts, KDA, farm et vision côte à côte, avec ton levier n°1.</li>
-            <li><b>Gestion du tilt</b> : ton taux de victoire juste après une défaite, dans la même session.</li>
-            <li><b>Échantillons honnêtes</b> : moins de 3 parties, c'est grisé. Pas de fausse certitude.</li>
-          </ul>
-        </div>
-        <figure class="shot">
-          <img src="/assets/shots/insights-fr.webp" width="1600" height="1000" alt="Onglet Analyse : à retenir, pool de champions, victoires contre défaites, taux de victoire selon la durée, l'heure et après une défaite." loading="lazy">
-          <figcaption><span>Statistiques → Analyse</span></figcaption>
-        </figure>
+        <p class="intro">Chaque erreur taguée arrive ici, qu’elle vienne de toi, de la micro-revue ou du détecteur automatique. Le Labo répond à trois questions : laquelle revient le plus, combien elle te coûte, à quel moment de la partie elle arrive.</p>
+        <ul class="figures"><li><b class="mono">26</b><span>erreurs au catalogue, rangées en quatre familles</span></li><li><b class="mono">15</b><span>repérées sans toi, sur la chronologie officielle du match</span></li><li><b class="mono">2 parties</b><span>au minimum de chaque côté pour afficher un écart de taux de victoire</span></li></ul>
       </div>
-
-      <div class="split reverse">
-        <div>
-          <h3>La VOD est déjà<br>annotée.</h3>
-          <p>Après chaque partie, Ascend croise la vidéo avec la chronologie officielle du match : morts, objectifs, combats. Les erreurs probables sont marquées, avec une explication que tu valides ou rejettes.</p>
-          <ul class="checks">
-            <li><b>Bibliothèque d'erreurs</b> : chaque erreur taguée nourrit tes statistiques d'erreurs récurrentes.</li>
-            <li><b>Clips et marque-pages</b> pour garder un moment, le partager ou l'envoyer à ton coach.</li>
-            <li><b>Tes vidéos restent sur ton PC.</b> Elles ne sont jamais envoyées sur nos serveurs.</li>
-          </ul>
-        </div>
-        <div class="timeline" role="img" aria-label="Illustration d'une timeline de VOD avec trois moments repérés : un first blood à 3 min 22, une séquence sans farm à 23 min 10 et une mort avant le Baron à 34 min 15.">
-          <div class="mono muted" style="font-size: 11px; letter-spacing: .12em;">WUKONG VS DIANA · 48:25</div>
-          <div class="timeline-bar"><div class="played"></div>
-            <span class="marker good" style="left: 7%"></span><span class="marker bad" style="left: 48%"></span><span class="marker bad" style="left: 71%"></span>
-          </div>
-          <div class="timeline-legend"><span><i style="background: var(--win)"></i>impact positif</span><span><i style="background: var(--signal)"></i>erreur probable</span></div>
-          <div style="margin-top: 14px;">
-            <div class="moment good"><span class="t">03:22</span><div>First blood sécurisé en 2v2<p>+400 or, bonne gestion de wave avant l'action.</p></div></div>
-            <div class="moment"><span class="t">23:10</span><div>3 min 30 sans farmer<p>Regroupement au mid pendant que la side lane pousse seule.</p></div></div>
-            <div class="moment"><span class="t">34:15</span><div>Mort avant le Baron, sans Flash<p>Engagement à 1 contre 3 dans une rivière sans vision.</p></div></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="split">
-        <div>
-          <h3>Un assistant qui<br>explique tout.</h3>
-          <p>Pas d'IA générative, pas d'abonnement. L'assistant applique des règles de coaching écrites à l'avance, sur tes propres chiffres. Chaque conseil montre les parties d'où il vient. Tu indiques s'il t'a été utile, et il s'ajuste.</p>
-          <ul class="checks">
-            <li><b>Expériences mesurables</b> : « 10 parties à moins de 5 morts », suivies automatiquement.</li>
-            <li><b>Évaluations périodiques</b> pour recalibrer tes objectifs.</li>
-          </ul>
-        </div>
-        <div class="insight">
-          <span class="tag">FOCUS PRIORITAIRE · 40 DERNIÈRES PARTIES</span>
-          <p class="msg">Ton CS/min baisse (6,1 contre 7,0 visé). Quelques minutes de last-hit avant de lancer la file t'aideront.</p>
-          <p class="why"><b>Pourquoi ?</b> Sur tes 12 dernières défaites, tu perds en moyenne 1,2 CS/min entre la 15e et la 28e minute, soit environ 270 pièces d'or à 15 minutes.</p>
-        </div>
-      </div>
-
-      <div class="split reverse">
-        <div>
-          <h3>Ton app,<br>à ta façon.</h3>
-          <p>Huit thèmes de couleurs, des fonds d'écran avec filtre de couleur ou un fond uni, appliqués en direct. Un profil qui garde la trace de ton travail dans l'app : niveau d'entraînement et titres gagnés en faisant tes reviews.</p>
-        </div>
-        <figure class="shot">
-          <img src="/assets/shots/appearance-fr.webp" width="1600" height="1000" alt="Réglages d'apparence : thèmes de couleurs, fonds d'écran, filtre de couleur et aperçu en direct." loading="lazy">
-          <figcaption><span>Réglages → Apparence</span></figcaption>
-        </figure>
-      </div>
+      <figure class="piece" id="piece-c">
+      <figcaption class="piece-cap"><span class="piece-ref mono">Pièce C</span><span class="piece-what">Le Labo d’erreurs sur 30 jours. Filtre par famille, puis ouvre une erreur.</span><span class="piece-demo">Compte de démonstration</span></figcaption>
+      <div class="piece-frame app" data-exhibit="lab" role="group" aria-label="Pièce C"><div class="lab">
+    <dl class="lab-kpis"><div><dt>Erreurs taguées</dt><dd class="">36</dd><dd class="kpi-sub">sur 14 parties analysées</dd></div><div><dt>Par partie</dt><dd class="">2,6</dd><dd class="kpi-sub">en moyenne</dd></div><div><dt>Erreur n°1</dt><dd class="is-text">Pas de ward avant l’objectif</dd><dd class="kpi-sub">13 fois · 36 % du total</dd></div><div><dt>Phase la plus touchée</dt><dd class="is-text">Milieu</dd><dd class="kpi-sub">50 % de tes erreurs</dd></div></dl>
+    <div class="lab-cols">
+      <section class="panel lab-rank">
+        <h3 class="panel-title">Classement par fréquence</h3>
+        <div class="chips" role="group" aria-label="Familles d’erreurs"><button class="chip" aria-pressed="true" data-act="family" data-f="all" data-k="fam-all">Toutes</button><button class="chip" aria-pressed="false" data-act="family" data-f="deaths" data-k="fam-deaths"><i class="fam fam-deaths"></i>Positionnement &amp; morts</button><button class="chip" aria-pressed="false" data-act="family" data-f="vision" data-k="fam-vision"><i class="fam fam-vision"></i>Vision &amp; carte</button><button class="chip" aria-pressed="false" data-act="family" data-f="tempo" data-k="fam-tempo"><i class="fam fam-tempo"></i>Tempo &amp; économie</button><button class="chip" aria-pressed="false" data-act="family" data-f="mechanics" data-k="fam-mechanics"><i class="fam fam-mechanics"></i>Mécaniques &amp; laning</button></div>
+        <ol class="ranks"><li><button class="rank is-current" data-act="open" data-slug="no-ward-pre-obj" data-k="row-no-ward-pre-obj" aria-pressed="true">
+      <span class="rank-name"><i class="fam fam-vision"></i>Pas de ward avant l’objectif</span>
+      <span class="rank-bar"><i style="width:100%"></i></span>
+      <span class="rank-count">13×</span><span class="rank-share">36 %</span>
+      <span class="rank-delta is-cost" title="Écart de taux de victoire : parties avec cette erreur vs parties analysées sans">−27 pts</span>
+    </button></li><li><button class="rank" data-act="open" data-slug="forgot-trinket" data-k="row-forgot-trinket" aria-pressed="false">
+      <span class="rank-name"><i class="fam fam-vision"></i>Trinket oublié</span>
+      <span class="rank-bar"><i style="width:46%"></i></span>
+      <span class="rank-count">6×</span><span class="rank-share">17 %</span>
+      <span class="rank-delta is-cost" title="Écart de taux de victoire : parties avec cette erreur vs parties analysées sans">−4 pts</span>
+    </button></li><li><button class="rank" data-act="open" data-slug="death-before-objective" data-k="row-death-before-objective" aria-pressed="false">
+      <span class="rank-name"><i class="fam fam-deaths"></i>Mort avant un objectif perdu</span>
+      <span class="rank-bar"><i style="width:38%"></i></span>
+      <span class="rank-count">5×</span><span class="rank-share">14 %</span>
+      <span class="rank-delta is-cost" title="Écart de taux de victoire : parties avec cette erreur vs parties analysées sans">−36 pts</span>
+    </button></li><li><button class="rank" data-act="open" data-slug="overstay" data-k="row-overstay" aria-pressed="false">
+      <span class="rank-name"><i class="fam fam-tempo"></i>Overstay</span>
+      <span class="rank-bar"><i style="width:31%"></i></span>
+      <span class="rank-count">4×</span><span class="rank-share">11 %</span>
+      <span class="rank-delta is-cost" title="Écart de taux de victoire : parties avec cette erreur vs parties analysées sans">−25 pts</span>
+    </button></li><li><button class="rank" data-act="open" data-slug="caught-out" data-k="row-caught-out" aria-pressed="false">
+      <span class="rank-name"><i class="fam fam-deaths"></i>Pris seul</span>
+      <span class="rank-bar"><i style="width:23%"></i></span>
+      <span class="rank-count">3×</span><span class="rank-share">8 %</span>
+      <span class="rank-delta is-cost" title="Écart de taux de victoire : parties avec cette erreur vs parties analysées sans">−55 pts</span>
+    </button></li><li><button class="rank" data-act="open" data-slug="bad-positioning" data-k="row-bad-positioning" aria-pressed="false">
+      <span class="rank-name"><i class="fam fam-deaths"></i>Mauvais placement</span>
+      <span class="rank-bar"><i style="width:15%"></i></span>
+      <span class="rank-count">2×</span><span class="rank-share">6 %</span>
+      <span class="rank-delta" title="Écart de taux de victoire : parties avec cette erreur vs parties analysées sans">+8 pts</span>
+    </button></li><li><button class="rank" data-act="open" data-slug="cs-deficit" data-k="row-cs-deficit" aria-pressed="false">
+      <span class="rank-name"><i class="fam fam-mechanics"></i>Retard de CS à 10 min</span>
+      <span class="rank-bar"><i style="width:15%"></i></span>
+      <span class="rank-count">2×</span><span class="rank-share">6 %</span>
+      <span class="rank-delta is-cost" title="Écart de taux de victoire : parties avec cette erreur vs parties analysées sans">−50 pts</span>
+    </button></li><li><button class="rank" data-act="open" data-slug="unused-gold" data-k="row-unused-gold" aria-pressed="false">
+      <span class="rank-name"><i class="fam fam-tempo"></i>Mort avec l’or non dépensé</span>
+      <span class="rank-bar"><i style="width:8%"></i></span>
+      <span class="rank-count">1×</span><span class="rank-share">3 %</span>
+      <span class="rank-delta is-none" title="Écart de taux de victoire : parties avec cette erreur vs parties analysées sans">—</span>
+    </button></li></ol>
+        <p class="panel-sub">De gauche à droite : occurrences, part du total, écart de taux de victoire entre les parties avec et sans l’erreur.</p>
+      </section>
+      <section class="panel lab-inspect" aria-live="polite">
+        <h3 class="lab-name">Pas de ward avant l’objectif</h3>
+        <p class="lab-family"><i class="fam fam-vision"></i>Vision &amp; carte</p>
+        <p class="panel-sub">13 fois sur 9 parties · 36 % de tes erreurs.</p>
+        <p class="lab-cost">Tu gagnes 33 % des parties où elle arrive, contre 60 % des autres parties analysées.</p>
+        <h4 class="panel-kicker">Quand elle arrive</h4>
+        <dl class="phases"><div><dt>Début<small>0–14 min</small></dt><dd>2</dd><dd class="bar"><i style="width:22%"></i></dd></div><div><dt>Milieu<small>14–25 min</small></dt><dd>9</dd><dd class="bar"><i style="width:100%"></i></dd></div><div><dt>Fin<small>25 min et +</small></dt><dd>2</dd><dd class="bar"><i style="width:22%"></i></dd></div></dl>
+        <p class="panel-sub">Prescription pour la phase où elle arrive le plus : Milieu</p>
+        <article class="fiche fiche-flat">
+          <p class="fiche-kind"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 4.5h10.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3V4.5z"/><path d="M5 17a3 3 0 0 1 3-3h10.5"/></svg>Conseil Codex</p>
+          <h4 class="fiche-title">Ton clear doit finir du côté de l’objectif</h4>
+          <p class="fiche-rule">Planifie ton chemin pour être à côté de la fosse 45 s avant le spawn : trinket dans le buisson d’entrée ennemi, puis passe en Balayeur si ton support couvre déjà la vision profonde.</p>
+          <div class="fiche-drill"><span>Objectif d’entraînement</span><p>Avant chaque objectif : être dans la rivière concernée à −0:45 avec ton trinket encore chargé.</p></div>
+        </article>
+        <h4 class="panel-kicker">Derniers moments</h4>
+        <ul class="lab-moments"><li><span class="mono">24:58</span><span>partie nº 14</span><span class="res res-s">D</span></li><li><span class="mono">15:30</span><span>partie nº 14</span><span class="res res-s">D</span></li><li><span class="mono">24:10</span><span>partie nº 12</span><span class="res res-s res-w">V</span></li></ul>
+        <p class="lab-hint"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.6"/></svg>Fais-en ton objectif : Ascend suit cette erreur sur tes prochaines parties et te dit si elle recule.</p>
+      </section>
+    </div>
+  </div></div>
+      
+    </figure>
+      <p class="outro">L’écart se lit en points de taux de victoire : les parties où l’erreur arrive, contre les autres parties analysées. Une erreur peut devenir l’objectif de tes prochaines sessions ; Ascend la suit et te dit si elle recule.</p>
     </div>
   </section>
-
-  <section id="equipes" class="section" aria-labelledby="equipes-title">
-    <div class="wrap">
-      <div class="section-head">
-        <h2 id="equipes-title" class="display h2">Pour les coachs<br>et les équipes.</h2>
-        <p>Tout ce qu'un staff fait aujourd'hui entre Discord, un tableur et trois sites de stats, réuni au même endroit. Sur le PC pour l'analyse, sur le téléphone pour le planning.</p>
+<section class="sec" id="empreinte" aria-labelledby="h-empreinte">
+    <header class="sec-head"><span class="sec-n mono" aria-hidden="true">4</span><h2 id="h-empreinte">L’empreinte des fondamentaux</h2></header>
+    <div class="sec-body">
+      <p class="intro">Neuf axes, deux fenêtres : tes 15 dernières parties et tes 40 dernières. L’écart entre les deux tracés, c’est ta forme du moment.</p>
+      <figure class="piece" id="piece-d">
+      <figcaption class="piece-cap"><span class="piece-ref mono">Pièce D</span><span class="piece-what">L’empreinte des fondamentaux. Passe un axe en revue, ou change de rôle.</span><span class="piece-demo">Compte de démonstration</span></figcaption>
+      <div class="piece-frame app" data-exhibit="radar" role="group" aria-label="Pièce D"><div class="rd">
+    <div class="rd-chart">
+      <div class="rd-top">
+        <h3 class="panel-title">Empreinte des fondamentaux</h3><span class="mono rd-score">Score : 49/100</span>
       </div>
-      <div class="team-cols">
-        <div>
-          <h3>ORGANISER</h3>
-          <ul>
-            <li><b>Planning partagé</b>Vue semaine façon agenda, rappels la veille et une heure avant.</li>
-            <li><b>Disponibilités</b>Récurrentes, avec créneaux communs calculés pour tout le roster.</li>
-            <li><b>Annonces et tâches</b>Notifications avec heures calmes réglables.</li>
-            <li><b>Recrutement</b>Candidats, grille d'évaluation, décision.</li>
-          </ul>
-        </div>
-        <div>
-          <h3>PRÉPARER</h3>
-          <ul>
-            <li><b>Drafts</b>Préparations partagées, liées aux scrims.</li>
-            <li><b>Pools de champions</b>Niveau de maîtrise et synergies du roster.</li>
-            <li><b>Scouting</b>Champions et menaces d'une équipe adverse, à partir de son historique public.</li>
-            <li><b>Stats de scrims et tournois</b>Parties personnalisées agrégées par joueur.</li>
-          </ul>
-        </div>
-        <div>
-          <h3>DÉBRIEFER</h3>
-          <ul>
-            <li><b>Review collective</b>Commentaires sur la VOD, actions et assignations.</li>
-            <li><b>Transcription locale</b>Le débrief vocal est retranscrit sur ton PC, rien n'est envoyé.</li>
-            <li><b>Bien-être</b>Check-in énergie/humeur/sommeil, partagé seulement si le joueur l'accepte.</li>
-            <li><b>Rapports</b>Hebdomadaires, joueur et équipe, exportables.</li>
-          </ul>
-        </div>
-      </div>
+      <svg class="rd-svg" viewBox="0 0 320 320" role="img" aria-label="Empreinte des fondamentaux">
+        <polygon class="rd-ring" points="160.0,134.0 176.7,140.1 185.6,155.5 182.5,173.0 168.9,184.4 151.1,184.4 137.5,173.0 134.4,155.5 143.3,140.1"/><polygon class="rd-ring" points="160.0,108.0 193.4,120.2 211.2,151.0 205.0,186.0 177.8,208.9 142.2,208.9 115.0,186.0 108.8,151.0 126.6,120.2"/><polygon class="rd-ring" points="160.0,82.0 210.1,100.2 236.8,146.5 227.5,199.0 186.7,233.3 133.3,233.3 92.5,199.0 83.2,146.5 109.9,100.2"/><polygon class="rd-ring" points="160.0,56.0 226.8,80.3 262.4,141.9 250.1,212.0 195.6,257.7 124.4,257.7 69.9,212.0 57.6,141.9 93.2,80.3"/><line class="rd-spoke" x1="160" y1="160" x2="160.0" y2="56.0"/><line class="rd-spoke" x1="160" y1="160" x2="226.8" y2="80.3"/><line class="rd-spoke" x1="160" y1="160" x2="262.4" y2="141.9"/><line class="rd-spoke" x1="160" y1="160" x2="250.1" y2="212.0"/><line class="rd-spoke" x1="160" y1="160" x2="195.6" y2="257.7"/><line class="rd-spoke" x1="160" y1="160" x2="124.4" y2="257.7"/><line class="rd-spoke" x1="160" y1="160" x2="69.9" y2="212.0"/><line class="rd-spoke" x1="160" y1="160" x2="57.6" y2="141.9"/><line class="rd-spoke" x1="160" y1="160" x2="93.2" y2="80.3"/>
+        <polygon class="rd-snap" points="160.0,117.4 200.1,112.2 212.2,150.8 203.2,185.0 180.3,215.7 153.6,177.6 106.0,191.2 114.9,152.1 124.6,117.8"/>
+        <polygon class="rd-recent" points="160.0,111.1 194.8,118.6 210.2,151.2 206.8,187.0 181.7,219.6 151.5,183.5 114.1,186.5 111.9,151.5 118.6,110.6"/>
+        <circle class="rd-dot" cx="160.0" cy="111.1" r="3"/><circle class="rd-dot" cx="194.8" cy="118.6" r="3"/><circle class="rd-dot" cx="210.2" cy="151.2" r="3"/><circle class="rd-dot" cx="206.8" cy="187.0" r="3"/><circle class="rd-dot" cx="181.7" cy="219.6" r="3"/><circle class="rd-dot" cx="151.5" cy="183.5" r="3"/><circle class="rd-dot" cx="114.1" cy="186.5" r="3"/><circle class="rd-dot" cx="111.9" cy="151.5" r="3"/><circle class="rd-dot" cx="118.6" cy="110.6" r="3"/><g class="rd-axis" data-act="axis" data-hover="hover" data-a="kda"><circle cx="160.0" cy="33.1" r="20"/><text x="160.0" y="37.1" text-anchor="middle">KDA</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="csm"><circle cx="241.6" cy="62.8" r="20"/><text x="241.6" y="66.8" text-anchor="start">CS/m</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="goldm"><circle cx="285.0" cy="138.0" r="20"/><text x="285.0" y="142.0" text-anchor="start">Gold/m</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="dmgm"><circle cx="269.9" cy="223.4" r="20"/><text x="269.9" y="227.4" text-anchor="start">DMG/m</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="kp"><circle cx="203.4" cy="279.2" r="20"/><text x="203.4" y="283.2" text-anchor="start">KP</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="fb"><circle cx="116.6" cy="279.2" r="20"/><text x="116.6" y="283.2" text-anchor="end">FB</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="cs15"><circle cx="50.1" cy="223.4" r="20"/><text x="50.1" y="227.4" text-anchor="end">CS@15</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="xp15"><circle cx="35.0" cy="138.0" r="20"/><text x="35.0" y="142.0" text-anchor="end">XP@15</text></g><g class="rd-axis" data-act="axis" data-hover="hover" data-a="gold15"><circle cx="78.4" cy="62.8" r="20"/><text x="78.4" y="66.8" text-anchor="end">Gold@15</text></g>
+      </svg>
+      <p class="rd-legend"><span><i class="lg lg-recent"></i>Récent (15 games)</span><span><i class="lg lg-snap"></i>Snapshot (40 games)</span></p>
+      <p class="rd-readout" aria-live="polite">Survole un axe, ou choisis-le dans le tableau.</p>
+    </div>
+    <div class="rd-side">
+      <div class="segs" role="group" aria-label="Rôle"><button class="seg" aria-pressed="true" data-act="role" data-r="carry" data-k="role-carry">Top, jungle, mid, ADC</button><button class="seg" aria-pressed="false" data-act="role" data-r="support" data-k="role-support">Support</button></div>
+      <table class="rd-table">
+        <thead><tr><th scope="col">Axe</th><th scope="col">15 parties</th><th scope="col">40 parties</th><th scope="col">Écart</th></tr></thead>
+        <tbody><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="kda" data-k="axis-kda" aria-pressed="false">KDA</button></th>
+      <td>2,83</td><td>2,45</td><td class="gap is-good">+0,38</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="csm" data-k="axis-csm" aria-pressed="false">CS/m</button></th>
+      <td>6,1</td><td>6,6</td><td class="gap">−0,5</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="goldm" data-k="axis-goldm" aria-pressed="false">Gold/m</button></th>
+      <td>398 g</td><td>404 g</td><td class="gap">−6 g</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="dmgm" data-k="axis-dmgm" aria-pressed="false">DMG/m</button></th>
+      <td>612</td><td>588</td><td class="gap is-good">+24</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="kp" data-k="axis-kp" aria-pressed="false">KP</button></th>
+      <td>61 %</td><td>57 %</td><td class="gap is-good">+4 %</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="fb" data-k="axis-fb" aria-pressed="false">FB</button></th>
+      <td>24 %</td><td>18 %</td><td class="gap is-good">+6 %</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="cs15" data-k="axis-cs15" aria-pressed="false">CS@15</button></th>
+      <td>96</td><td>104</td><td class="gap">−8</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="xp15" data-k="axis-xp15" aria-pressed="false">XP@15</button></th>
+      <td>6 850 XP</td><td>6 720 XP</td><td class="gap is-good">+130 XP</td></tr><tr class="">
+      <th scope="row"><button data-act="axis" data-hover="hover" data-a="gold15" data-k="axis-gold15" aria-pressed="false">Gold@15</button></th>
+      <td>5 980 g</td><td>5 610 g</td><td class="gap is-good">+370 g</td></tr></tbody>
+      </table>
+      <p class="panel-sub">Les échelles sont fixes, identiques pour tous les joueurs : l’empreinte ne te compare à personne.</p>
+    </div>
+  </div></div>
+      
+    </figure>
+      <div class="pair"><p>Les supports ont leurs propres axes : vision, présence en fight, soins, boucliers et contrôles. Le farm ne dit rien de leur partie.</p><p>L’empreinte complète une auto-évaluation de 38 fondamentaux, rangés en 7 familles. Quand tes chiffres s’éloignent de ce que tu avais déclaré, Ascend te propose de la refaire.</p></div>
     </div>
   </section>
-
-  <section id="donnees-riot" class="section" aria-labelledby="riot-title">
-    <div class="wrap">
-      <div class="section-head">
-        <h2 id="riot-title" class="display h2">Comment Ascend<br>utilise les données Riot.</h2>
-        <p>Ascend s'appuie sur l'API officielle de Riot Games, en lecture seule, et respecte ses règles d'utilisation. Voici précisément ce que l'application demande, et ce qu'elle ne fait jamais.</p>
-      </div>
-      <div class="facts">
-        <div class="fact"><h3>Après la partie, jamais pendant</h3><p>Ascend n'affiche rien en jeu : pas d'overlay, pas d'information sur les adversaires, aucun avantage en direct. L'API locale <code>Live Client Data</code> du jeu sert uniquement à savoir quand une partie commence et se termine, pour lancer et arrêter l'enregistrement.</p></div>
-        <div class="fact"><h3>La clé reste sur nos serveurs</h3><p>L'application n'embarque aucune clé d'API. Les requêtes passent par un relais Ascend (HTTPS) qui ajoute la clé, n'autorise qu'une liste fermée d'appels en lecture et limite le volume par compte.</p></div>
-        <div class="fact"><h3>Les données de match sont mises en cache</h3><p>Chaque match n'est demandé qu'une fois, puis gardé sur ton PC. Cela respecte les limites de débit de Riot et accélère l'app.</p></div>
-        <div class="fact"><h3>Pas de classement maison</h3><p>Ascend n'estime pas de MMR et ne remplace pas le classement officiel. Le rang affiché est celui que Riot fournit.</p></div>
-        <div class="fact"><h3>Ce que tu choisis de partager</h3><p>Tes données de coaching restent privées. Un coach ou un coéquipier ne voit que ce que tu as accepté de partager avec son groupe, et tu peux retirer ce partage à tout moment.</p></div>
-        <div class="fact"><h3>Données publiques seulement</h3><p>Le scouting utilise uniquement l'historique public des Riot ID que tu saisis. Ascend ne cherche pas à identifier des joueurs anonymes.</p></div>
-      </div>
-      <div class="endpoints table-scroll">
-        <table>
-          <caption class="kicker" style="text-align: left; padding: 16px 16px 0; margin: 0;">Appels à l'API Riot Games</caption>
-          <thead><tr><th scope="col">API</th><th scope="col">Pourquoi</th></tr></thead>
-          <tbody>
-            <tr><td><code>ACCOUNT-V1</code></td><td>Retrouver ton compte (et celui de tes coéquipiers ou adversaires scoutés) à partir d'un Riot ID.</td></tr>
-            <tr><td><code>SUMMONER-V4</code></td><td>Afficher le niveau et l'icône d'invocateur.</td></tr>
-            <tr><td><code>LEAGUE-V4</code></td><td>Afficher le rang classé officiel.</td></tr>
-            <tr><td><code>CHAMPION-MASTERY-V4</code></td><td>Construire le pool de champions d'un joueur.</td></tr>
-            <tr><td><code>MATCH-V5</code> (matches, timeline)</td><td>Statistiques d'après-partie, valeurs à 15 minutes, placement des moments clés sur la VOD, statistiques de scrims.</td></tr>
-          </tbody>
+<section class="sec" id="paliers" aria-labelledby="h-paliers">
+    <header class="sec-head"><span class="sec-n mono" aria-hidden="true">5</span><h2 id="h-paliers">Les paliers de pratique</h2></header>
+    <div class="sec-body">
+      <p class="intro">Huit paliers, de Recrue à Légende. Ils mesurent le travail fait dans l’application : reviews, micro-revues, évaluations. Gagner ne fait rien monter. Se revoir, si.</p>
+      <div class="tiers-frame" data-exhibit="tiers"><div class="tiers">
+    <ol class="stairs" aria-label="Paliers de pratique, par niveau Ascend"><li style="--h:10">
+      <button class="step" data-act="tier" data-id="recrue" data-k="tier-recrue" aria-pressed="false">
+        <span class="step-name">Recrue</span><span class="step-level mono">niv. 1</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li><li style="--h:15">
+      <button class="step" data-act="tier" data-id="initie" data-k="tier-initie" aria-pressed="false">
+        <span class="step-name">Initié</span><span class="step-level mono">niv. 3</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li><li style="--h:23">
+      <button class="step" data-act="tier" data-id="adepte" data-k="tier-adepte" aria-pressed="false">
+        <span class="step-name">Adepte</span><span class="step-level mono">niv. 6</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li><li style="--h:34">
+      <button class="step is-current is-player" data-act="tier" data-id="stratege" data-k="tier-stratege" aria-pressed="true">
+        <span class="step-name">Stratège</span><span class="step-level mono">niv. 10</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li><li style="--h:47">
+      <button class="step" data-act="tier" data-id="virtuose" data-k="tier-virtuose" aria-pressed="false">
+        <span class="step-name">Virtuose</span><span class="step-level mono">niv. 15</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li><li style="--h:60">
+      <button class="step" data-act="tier" data-id="sage" data-k="tier-sage" aria-pressed="false">
+        <span class="step-name">Sage</span><span class="step-level mono">niv. 20</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li><li style="--h:79">
+      <button class="step" data-act="tier" data-id="oracle" data-k="tier-oracle" aria-pressed="false">
+        <span class="step-name">Oracle</span><span class="step-level mono">niv. 27</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li><li style="--h:100">
+      <button class="step" data-act="tier" data-id="legende" data-k="tier-legende" aria-pressed="false">
+        <span class="step-name">Légende</span><span class="step-level mono">niv. 35</span>
+        <span class="step-bar" aria-hidden="true"></span>
+      </button></li></ol>
+    <div class="tier-detail" aria-live="polite">
+      <h3 class="tier-name">Stratège</h3>
+      <p class="tier-level mono">niveau 10</p>
+      <ul><li>1 675 XP cumulés depuis le niveau 1.</li><li>Soit environ 34 reviews de partie complètes, ou 56 micro-revues.</li><li>Débloque 1 icône de profil.</li></ul>
+      <p class="tier-you">Le compte de démonstration est ici, au niveau 10.</p>
+    </div>
+  </div></div>
+      <div class="split split-even">
+        <table class="grid-table xp">
+          <caption>Ce qui rapporte de l’XP</caption>
+          <tbody><tr><th scope="row">Review de partie</th><td class="num mono">+50 XP</td></tr><tr><th scope="row">Micro-revue terminée</th><td class="num mono">+30 XP</td></tr><tr><th scope="row">Évaluation des fondamentaux</th><td class="num mono">+100 XP</td></tr></tbody>
         </table>
+        <div class="prose"><p>Ce n’est pas un classement. Les règles de Riot Games interdisent les classements parallèles et Ascend n’en propose pas : les paliers ne disent rien de ton niveau en jeu, et leurs noms ne ressemblent à ceux d’aucune échelle classée.</p><p>Les titres de profil se gagnent de la même façon : 10 reviews, 25 enregistrements, 30 clips.</p></div>
       </div>
     </div>
   </section>
-
-  <section class="section" aria-labelledby="vie-privee-title">
-    <div class="wrap">
-      <div class="section-head">
-        <h2 id="vie-privee-title" class="display h2">Tes données<br>t'appartiennent.</h2>
-        <p>Ascend fonctionne d'abord sur ton PC. Le compte sert à sauvegarder, synchroniser tes appareils et travailler avec ton coach ou ton équipe. <a href="/confidentialite.html">Lire la politique de confidentialité</a>.</p>
-      </div>
-      <div class="facts">
-        <div class="fact"><h3>Local d'abord</h3><p>Sessions, reviews, notes et statistiques vivent dans l'application. Elle reste utilisable hors ligne.</p></div>
-        <div class="fact"><h3>Vidéos jamais envoyées</h3><p>Les enregistrements restent sur ton disque. Tu choisis ce que tu publies (par exemple sur ta chaîne YouTube).</p></div>
-        <div class="fact"><h3>Hébergement en Europe</h3><p>Comptes et sauvegardes chez Supabase, région Union européenne / Suisse. Aucune donnée vendue, aucune publicité.</p></div>
-        <div class="fact"><h3>Export et suppression</h3><p>Exporte toutes tes données en un fichier. Supprime ton compte et tes sauvegardes en un clic, depuis l'app.</p></div>
-      </div>
+<section class="sec" id="modes" aria-labelledby="h-modes">
+    <header class="sec-head"><span class="sec-n mono" aria-hidden="true">6</span><h2 id="h-modes">Joueur, coach, équipe</h2></header>
+    <div class="sec-body">
+      <p class="intro">Ascend est né comme un outil d’auto-coaching. Il sert aujourd’hui trois usages, avec une règle commune : chacun ne voit que ce que l’autre a choisi de partager.</p>
+      <table class="grid-table matrix">
+        <thead><tr><td></td><th scope="col">Joueur<small>Seul, en classé, avec méthode.</small></th><th scope="col">Coach<small>Des élèves, en séance ou à distance.</small></th><th scope="col">Équipe<small>Un roster qui s’entraîne sérieusement.</small></th></tr></thead>
+        <tbody>
+          <tr class="matrix-group"><th colspan="4" scope="rowgroup">S’entraîner</th></tr>
+          <tr><th scope="row">Session à objectif</th><td data-label="Joueur">1 à 3 fondamentaux, proposés d’après tes dernières parties.</td><td data-label="Coach">Assigne un objectif avec échéance ; l’élève le reprend en un clic.</td><td data-label="Équipe">Sessions d’équipe, avec review de fin de partie.</td></tr><tr><th scope="row">Enregistrement et VOD</th><td data-label="Joueur">Chaque partie filmée sans rien toucher, moments clés déjà marqués.</td><td data-label="Coach">Commente les reviews partagées, à la seconde près.</td><td data-label="Équipe">Review collective de la VOD, débrief retranscrit sur le PC.</td></tr>
+        </tbody><tbody>
+          <tr class="matrix-group"><th colspan="4" scope="rowgroup">Se corriger</th></tr>
+          <tr><th scope="row">Micro-revue</th><td data-label="Joueur">Trois moments, un clic chacun, une fiche du Codex.</td><td data-label="Coach">Voit chaque réponse à son horodatage, la valide ou la corrige.</td><td data-label="Équipe">Ajoute les règles de l’équipe au Codex : elles passent avant les fiches générales.</td></tr><tr><th scope="row">Labo d’erreurs et empreinte</th><td data-label="Joueur">Tes erreurs classées par coût, ton radar sur 15 et 40 parties.</td><td data-label="Coach">L’erreur dominante et la forme de chaque élève sur un seul écran.</td><td data-label="Équipe">Statistiques combinées du roster, scrims et tournois compris.</td></tr>
+        </tbody><tbody>
+          <tr class="matrix-group"><th colspan="4" scope="rowgroup">S’organiser</th></tr>
+          <tr><th scope="row">Suivi</th><td data-label="Joueur">Tu choisis ce que tu partages, groupe par groupe.</td><td data-label="Coach">Plans de développement, rapports hebdomadaires, alerte quand un élève décroche.</td><td data-label="Équipe">Bien-être (énergie, humeur, sommeil), partagé seulement si le joueur l’accepte.</td></tr><tr><th scope="row">Planning et préparation</th><td class="is-none" data-label="Joueur"><span class="vh">Non concerné</span><span aria-hidden="true">—</span></td><td class="is-none" data-label="Coach"><span class="vh">Non concerné</span><span aria-hidden="true">—</span></td><td data-label="Équipe">Agenda, disponibilités et créneaux communs. Scrims, drafts, pools de champions, scouting adverse.</td></tr><tr><th scope="row">Hors du PC</th><td data-label="Joueur">L’app web, pour relire ses reviews.</td><td data-label="Coach">App web sur téléphone.</td><td data-label="Équipe">App web sur téléphone et bot Discord.</td></tr>
+        </tbody>
+      </table>
+      <p class="outro">L’app web couvre les reviews, le coaching, le planning et les scrims sur tous les appareils. Elle n’enregistre pas les parties. <a href="https://nexusmind-web.nexusmind-riot-proxy.workers.dev">Ouvrir l’app web</a></p>
     </div>
   </section>
-
-  <section id="faq" class="section faq" aria-labelledby="faq-title">
-    <div class="wrap">
-      <h2 id="faq-title" class="display h2" style="margin-bottom: 32px;">Questions</h2>
-      <details><summary>Ascend est-il gratuit ?</summary><p>Oui. Toutes les fonctionnalités décrites ici sont gratuites pendant la bêta, et une version gratuite complète restera toujours disponible.</p></details>
-      <details><summary>Comment obtenir un accès ?</summary><p>La bêta est sur invitation : un code d'accès, ou le code d'une équipe ou d'un groupe de coaching qui t'invite. Demande-le à <span class="placeholder">[E-MAIL DE CONTACT]</span>.</p></details>
-      <details><summary>Est-ce autorisé par Riot Games ?</summary><p>Ascend utilise l'API publique officielle de Riot Games et respecte ses règles : aucune modification du jeu, aucune information pendant la partie, aucun avantage en direct. Ascend n'est pas approuvé par Riot Games (voir la mention en bas de page).</p></details>
-      <details><summary>Est-ce que ça marche sur Mac ?</summary><p>L'application de bureau est disponible pour Windows 10 et 11. L'app web (reviews, coaching, planning, scrims) fonctionne sur tous les appareils, mais n'enregistre pas les parties.</p></details>
-      <details><summary>Est-ce que l'enregistrement ralentit le jeu ?</summary><p>La capture utilise l'encodeur matériel de ta carte graphique quand il est disponible. La qualité, les images par seconde et le dossier sont réglables, et l'enregistrement automatique peut être désactivé.</p></details>
-      <details><summary>Mes coéquipiers voient-ils mes statistiques ?</summary><p>Seulement si tu le décides. Le partage se règle groupe par groupe (reviews, statistiques, données d'équipe, bien-être) et se retire à tout moment.</p></details>
-      <details><summary>Y a-t-il de l'IA ?</summary><p>Non pour le cœur de l'app : l'assistant applique des règles de coaching transparentes. La transcription vocale des débriefs utilise un modèle qui tourne sur ton PC ; rien n'est envoyé à un service d'IA.</p></details>
+<section class="sec" id="themes" aria-labelledby="h-themes">
+    <header class="sec-head"><span class="sec-n mono" aria-hidden="true">7</span><h2 id="h-themes">Les thèmes</h2></header>
+    <div class="sec-body">
+      <p class="intro">Huit thèmes de couleurs, et le tien : tu choisis trois couleurs, Ascend calcule les autres en gardant le texte lisible. Cinq fonds d’écran, ta propre image si tu préfères, ou un fond uni. Tout s’applique en direct, sans redémarrer.</p>
+      <figure class="piece" id="piece-e">
+        <figcaption class="piece-cap"><span class="piece-ref mono">Pièce E</span><span class="piece-what">L’apparence. Change l’encre de l’application.</span></figcaption>
+        <div class="piece-frame" data-themes><div class="th">
+    <div class="th-side">
+      <fieldset class="th-presets">
+        <legend>Thèmes proposés</legend>
+        <label class="sw">
+      <input type="radio" name="theme" value="p0" checked><span class="sw-chip" aria-hidden="true"><i style="background:#0D0A06"></i><i style="background:#D4A24C"></i><i style="background:#3E8E7E"></i></span><span>Ambre</span>
+    </label><label class="sw">
+      <input type="radio" name="theme" value="p1"><span class="sw-chip" aria-hidden="true"><i style="background:#060B10"></i><i style="background:#4C9ED4"></i><i style="background:#3EC2D4"></i></span><span>Bleu acier</span>
+    </label><label class="sw">
+      <input type="radio" name="theme" value="p2"><span class="sw-chip" aria-hidden="true"><i style="background:#100607"></i><i style="background:#C23B3B"></i><i style="background:#D4753E"></i></span><span>Carmin</span>
+    </label><label class="sw">
+      <input type="radio" name="theme" value="p3"><span class="sw-chip" aria-hidden="true"><i style="background:#0A0610"></i><i style="background:#A24CD4"></i><i style="background:#8E6AD4"></i></span><span>Violet</span>
+    </label><label class="sw">
+      <input type="radio" name="theme" value="p4"><span class="sw-chip" aria-hidden="true"><i style="background:#0F080B"></i><i style="background:#E07AA0"></i><i style="background:#5FB89A"></i></span><span>Rose et jade</span>
+    </label><label class="sw">
+      <input type="radio" name="theme" value="p5"><span class="sw-chip" aria-hidden="true"><i style="background:#0E0B05"></i><i style="background:#F0C24A"></i><i style="background:#2FC1B8"></i></span><span>Sable</span>
+    </label><label class="sw">
+      <input type="radio" name="theme" value="p6"><span class="sw-chip" aria-hidden="true"><i style="background:#070B0F"></i><i style="background:#B8DDF5"></i><i style="background:#9AD8F0"></i></span><span>Givre</span>
+    </label><label class="sw">
+      <input type="radio" name="theme" value="p7"><span class="sw-chip" aria-hidden="true"><i style="background:#070A05"></i><i style="background:#8EE04A"></i><i style="background:#C9772F"></i></span><span>Vert acide</span>
+    </label>
+        <label class="sw sw-own">
+          <input type="radio" name="theme" value="custom"><span class="sw-chip" aria-hidden="true"><i style="background:#0E0F14"></i><i style="background:#FF6B3D"></i><i style="background:#4FB3D9"></i></span><span>Le tien</span>
+        </label>
+      </fieldset>
+      <fieldset class="th-custom">
+        <legend>Le tien</legend>
+        <label class="th-field"><span>Fond</span><input type="color" name="base" value="#0E0F14"></label><label class="th-field"><span>Couleur principale</span><input type="color" name="accent" value="#FF6B3D"></label><label class="th-field"><span>Couleur secondaire</span><input type="color" name="secondary" value="#4FB3D9"></label>
+      </fieldset>
+    </div>
+    <div class="th-sample app" data-sample role="img" aria-label="Aperçu du thème" style="--app-bg:#0D0A06;--app-surface:#1C140C;--app-panel:#2A1D11;--app-line:#4A3A24;--app-line-strong:#8A6A34;--app-accent:#D4A24C;--app-accent-hi:#F5E3BE;--app-second:#3E8E7E;--app-text:#B5A68C;--app-text-hi:#F5E3BE">
+      <ul class="th-nav"><li class="is-on">Tableau de bord</li><li>Session</li><li>Revue</li><li>Labo d’erreurs</li></ul>
+      <div class="th-main">
+        <div class="panel">
+          <p class="panel-kicker">Session active</p>
+          <p class="th-label">Objectif actuel</p>
+          <p class="db-objective">Gestion des waves, Contrôle de la vision</p>
+          <div class="meter"><i style="width:64%"></i></div>
+          <p class="panel-sub"><span class="mono">225/351 XP</span> Niveau 10</p>
+          <p class="th-actions"><span class="app-btn app-btn-solid">Continuer la session</span><span class="th-link">Voir la progression</span></p>
+        </div>
+        <dl class="db-stats"><div><dt>Parties</dt><dd>84</dd></div><div><dt>Taux de victoire</dt><dd>55 %</dd></div><div><dt>KDA moyen</dt><dd>3,47</dd></div><div><dt>Obj. réussis</dt><dd>72 %</dd></div></dl>
+      </div>
+    </div>
+  </div></div>
+      </figure>
+      <p class="outro">Ton image de fond reste sur ton PC : elle n’est jamais envoyée en ligne.</p>
     </div>
   </section>
-
-  <section class="cta-band" aria-labelledby="cta-title">
-    <div class="wrap">
-      <h2 id="cta-title" class="display h2">Ta prochaine partie<br>compte double.</h2>
-      <div>
-        <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases">Télécharger pour Windows</a>
-        <p class="release-meta" data-version style="margin-top: 10px;">Windows 10/11 · bêta sur invitation</p>
-      </div>
+<section class="sec sec-annex" id="riot" aria-labelledby="h-riot">
+    <header class="sec-head"><h2 id="h-riot">Ce qu’Ascend fait des données Riot</h2></header>
+    <div class="sec-body">
+      <p class="intro">Ascend s’appuie sur l’API officielle de Riot Games, en lecture seule, et respecte ses règles d’utilisation. Voici précisément ce que l’application demande, et ce qu’elle ne fait jamais.</p>
+      <dl class="ledger"><div><dt>Après la partie, jamais pendant</dt><dd>Ascend n’affiche rien en jeu : pas d’overlay, pas d’information sur les adversaires, aucun avantage en direct. L’API locale Live Client Data du jeu sert uniquement à savoir quand une partie commence et se termine, pour lancer et arrêter l’enregistrement.</dd></div><div><dt>La clé reste sur nos serveurs</dt><dd>L’application n’embarque aucune clé d’API. Les requêtes passent par un relais Ascend (HTTPS) qui ajoute la clé, n’autorise qu’une liste fermée d’appels en lecture et limite le volume par compte.</dd></div><div><dt>Les données de match sont mises en cache</dt><dd>Chaque match n’est demandé qu’une fois, puis gardé sur ton PC. Cela respecte les limites de débit de Riot et accélère l’application.</dd></div><div><dt>Pas de classement maison</dt><dd>Ascend n’estime pas de MMR et ne remplace pas le classement officiel. L’estimation de tes chances de victoire sert seulement à écarter le garbage time après la partie ; elle n’est jamais affichée comme une note.</dd></div><div><dt>Ce que tu choisis de partager</dt><dd>Tes données de coaching restent privées. Un coach ou un coéquipier ne voit que ce que tu as accepté de partager avec son groupe, et tu peux retirer ce partage à tout moment.</dd></div><div><dt>Données publiques seulement</dt><dd>Le scouting utilise uniquement l’historique public des Riot ID que tu saisis. Ascend ne cherche pas à identifier des joueurs anonymes.</dd></div></dl>
+      <table class="grid-table api">
+        <caption>Appels à l’API Riot Games</caption>
+        <thead><tr><th scope="col">API</th><th scope="col">Pourquoi</th></tr></thead>
+        <tbody><tr><th scope="row" class="mono">ACCOUNT-V1</th><td>Retrouver ton compte, et celui de tes coéquipiers ou des adversaires que tu scoutes, à partir d’un Riot ID.</td></tr><tr><th scope="row" class="mono">SUMMONER-V4</th><td>Afficher le niveau et l’icône d’invocateur.</td></tr><tr><th scope="row" class="mono">LEAGUE-V4</th><td>Afficher ton classement officiel, tel que Riot le fournit.</td></tr><tr><th scope="row" class="mono">CHAMPION-MASTERY-V4</th><td>Construire le pool de champions d’un joueur.</td></tr><tr><th scope="row" class="mono">MATCH-V5 (matches, timeline)</th><td>Statistiques d’après-partie, valeurs à 15 minutes, moments critiques de la micro-revue, statistiques de scrims.</td></tr></tbody>
+      </table>
     </div>
   </section>
-</main>
-
-<footer class="site-footer">
-  <div class="wrap">
-    <div class="footer-grid">
-      <div>
-        <a class="brand" href="/">ASCEND<span>.</span></a>
-        <p style="margin: 10px 0 0; max-width: 360px;">L'outil de progression des joueurs, coachs et équipes de League of Legends.</p>
+<section class="sec sec-annex" id="donnees" aria-labelledby="h-donnees">
+    <header class="sec-head"><h2 id="h-donnees">Tes données t’appartiennent</h2></header>
+    <div class="sec-body">
+      <p class="intro">Ascend fonctionne d’abord sur ton PC. Le compte sert à sauvegarder, à synchroniser tes appareils et à travailler avec ton coach ou ton équipe.</p>
+      <dl class="ledger"><div><dt>Local d’abord</dt><dd>Sessions, reviews, notes et statistiques vivent dans l’application. Elle reste utilisable hors ligne.</dd></div><div><dt>Vidéos jamais envoyées</dt><dd>Les enregistrements restent sur ton disque. Tu choisis ce que tu publies, par exemple sur ta chaîne YouTube.</dd></div><div><dt>Hébergement en Europe</dt><dd>Comptes et sauvegardes chez Supabase, région Union européenne et Suisse. Aucune donnée vendue, aucune publicité.</dd></div><div><dt>Export et suppression</dt><dd>Exporte toutes tes données en un fichier. Supprime ton compte et tes sauvegardes en un clic, depuis l’application.</dd></div></dl>
+      <p class="back"><a href="/confidentialite.html">Lire la politique de confidentialité</a></p>
+    </div>
+  </section>
+<section class="sec sec-annex" id="questions" aria-labelledby="h-questions">
+    <header class="sec-head"><h2 id="h-questions">Questions</h2></header>
+    <div class="sec-body">
+      <div class="faq"><details><summary>Ascend est-il gratuit ?</summary><p>Oui. Toutes les fonctionnalités décrites ici sont gratuites pendant la bêta, et une version gratuite complète restera toujours disponible.</p></details><details><summary>Comment obtenir un accès ?</summary><p>La bêta est sur invitation. Un membre peut créer un code à usage unique, valable 14 jours. Le code d’une équipe ou d’un groupe de coaching qui t’invite ouvre aussi l’accès.</p></details><details><summary>Est-ce autorisé par Riot Games ?</summary><p>Ascend utilise l’API publique officielle de Riot Games et respecte ses règles : aucune modification du jeu, aucune information pendant la partie, aucun avantage en direct. Ascend n’est pas approuvé par Riot Games (voir la mention en bas de page).</p></details><details><summary>Est-ce que ça marche sur Mac ?</summary><p>L’application de bureau est disponible pour Windows 10 et 11. L’app web (reviews, coaching, planning, scrims) fonctionne sur tous les appareils, mais n’enregistre pas les parties.</p></details><details><summary>Est-ce que l’enregistrement ralentit le jeu ?</summary><p>La capture utilise l’encodeur matériel de ta carte graphique quand il est disponible. La qualité, les images par seconde et le dossier sont réglables, et l’enregistrement automatique peut être désactivé.</p></details><details><summary>Mes coéquipiers voient-ils mes statistiques ?</summary><p>Seulement si tu le décides. Le partage se règle groupe par groupe (reviews, statistiques, données d’équipe, bien-être) et se retire à tout moment.</p></details><details><summary>Y a-t-il de l’IA ?</summary><p>Pas dans le cœur de l’application : la micro-revue et l’assistant appliquent des règles de coaching écrites à l’avance, que tu peux lire. La transcription vocale des débriefs utilise un modèle qui tourne sur ton PC ; rien n’est envoyé à un service d’IA.</p></details><details><summary>La micro-revue se trompe-t-elle ?</summary><p>Elle propose, tu décides. Elle ne voit que la chronologie du match, relevée chaque minute par Riot : quand les données ne prouvent rien, elle se tait. Et chaque moment garde sa sortie « justifié ».</p></details></div>
+    </div>
+  </section>
+<section class="final" aria-labelledby="h-final">
+    <h2 id="h-final"><span class="ln">Joue une partie.</span> <span class="ln">Revois-la en 45 secondes.</span></h2>
+    <p class="lead">Installe Ascend, joue comme d’habitude, puis ouvre la micro-revue. Tu sauras si l’outil te sert avant la fin de la soirée.</p>
+    <div class="final-cta">
+      <a class="btn btn-primary" data-download href="https://github.com/ExCiiD/nexusmind/releases/download/v1.0.0-beta.1/Ascend-Setup-1.0.0-beta.1.exe"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg><span>Télécharger pour Windows</span></a>
+      <dl class="final-facts"><div><dt>Version</dt><dd class="mono"><span data-version>1.0.0-beta.1</span></dd></div><div><dt>Taille</dt><dd class="mono"><span data-size>331 Mo</span></dd></div><div><dt>Système</dt><dd class="mono">Windows 10 et 11</dd></div></dl>
+    </div>
+    <p class="sheet-note">Un code d’invitation est demandé à la première connexion. Le code d’une équipe ou d’un groupe de coaching ouvre aussi l’accès.</p>
+  </section>
+    </main>
+    <footer class="foot">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <p class="brand" aria-hidden="true">ASCEND</p>
+        <p>L’outil de progression des joueurs, coachs et équipes de League of Legends.</p>
       </div>
-      <div>
-        <h2>PRODUIT</h2>
-        <ul>
-          <li><a data-download href="https://github.com/ExCiiD/nexusmind/releases">Télécharger (Windows)</a></li>
-          <li><a href="https://nexusmind-web.nexusmind-riot-proxy.workers.dev">App web</a></li>
-          <li><a href="https://github.com/ExCiiD/nexusmind/releases">Notes de version</a></li>
-        </ul>
-      </div>
-      <div>
-        <h2>LÉGAL</h2>
-        <ul>
-          <li><a href="/conditions.html">Conditions d'utilisation</a></li>
+      <nav id="sommaire" aria-label="Sommaire">
+        <h2 class="foot-h">Sommaire</h2>
+        <ul class="foot-list foot-list-2"><li><a href="#methode">Méthode</a></li><li><a href="#micro-revue">Micro-revue</a></li><li><a href="#labo">Labo d’erreurs</a></li><li><a href="#empreinte">Empreinte</a></li><li><a href="#paliers">Paliers</a></li><li><a href="#modes">Joueur, coach, équipe</a></li><li><a href="#themes">Thèmes</a></li><li><a href="#riot">Données Riot</a></li><li><a href="#donnees">Tes données</a></li><li><a href="#questions">Questions</a></li></ul>
+      </nav>
+      <nav aria-label="Légal">
+        <h2 class="foot-h">Légal</h2>
+        <ul class="foot-list">
+          <li><a href="/conditions.html">Conditions d’utilisation</a></li>
           <li><a href="/confidentialite.html">Politique de confidentialité</a></li>
-          <li>Contact : <span class="placeholder">[E-MAIL DE CONTACT]</span></li>
+          <li><a href="https://github.com/ExCiiD/nexusmind/releases">Toutes les versions</a></li>
+          <li><a href="https://nexusmind-web.nexusmind-riot-proxy.workers.dev">Ouvrir l’app web</a></li>
         </ul>
-      </div>
+      </nav>
     </div>
-    <p class="legal-notice" lang="en">Ascend isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.</p>
-    <p class="legal-notice" style="margin-top: 8px; padding-top: 0; border-top: 0;">Ascend n'est pas approuvé par Riot Games et ne reflète pas les opinions de Riot Games ni de quiconque officiellement impliqué dans la production ou la gestion des propriétés de Riot Games. Riot Games et toutes les propriétés associées sont des marques commerciales ou déposées de Riot Games, Inc.</p>
+    <p class="riot-notice" lang="en">Ascend isn’t endorsed by Riot Games and doesn’t reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.</p>
+    <p class="riot-notice">Ascend n’est pas approuvé par Riot Games et ne reflète pas les opinions de Riot Games ni de quiconque officiellement impliqué dans la production ou la gestion des propriétés de Riot Games. Riot Games et toutes les propriétés associées sont des marques commerciales ou des marques déposées de Riot Games, Inc.</p>
+  </footer>
   </div>
-</footer>
-<script src="/assets/site.js" defer></script>
+</div>
+<script type="application/json" id="data-micro">{"lang":"fr","first":2,"xp":30,"moments":[{"key":"early-deficit@195","clock":"3:15","zone":"Ta jungle","line":"full clear passif pendant que tes lanes avaient la prio, +420 g pour ta botlane à 3:00","label":"Invade manqué","map":{"x":3600,"y":7200},"options":[{"id":"cs-deficit","outcome":"mistake","main":"Occasion manquée : j'ai continué mon full clear passif alors que mes lanes mid/bot avaient une prio totale pour invade","sub":"Retard de CS à 10 min","fiche":"codex_jgl_3camps_mid_cross_bot_invade"},{"id":"bad-threat-assessment","outcome":"mistake","main":"J'ai mal lu l'état des lanes","sub":"Menace mal évaluée","fiche":"codex_mechanics_mid_6archetypes_3v3_synergy"},{"id":"justified:noInvadeWindow","outcome":"justified","main":"Pas de fenêtre réelle (summoners adverses up, prio fragile) : clear justifié","sub":"Décision justifiée : ne compte pas contre toi","fiche":null}],"other":{"overstay":"codex_jgl_pathing_integrity_reset_cycle","dove-tower":"dive-any-early","face-checked":"facecheck-any-any","no-vision-objective":"vision-noobj-any-any","solo-baron-died":null,"bad-lane-opening":"opening-any-early","bad-wave-sync":"wavesync-any-mid","bad-trade":"trade-any-early","wasted-summoner":"summoner-any-any","whiff-skillshot":"skillshot-any-any","bad-positioning":"codex_jgl_3camps_mid_cross_bot_invade","bad-kiting":null,"bad-threat-assessment":"codex_mechanics_mid_6archetypes_3v3_synergy","bad-engage-angle":"engage-any-late","bad-dmg-maximisation":null,"forgot-trinket":"codex_macro_early_obj_setup_asymmetry","no-ward-pre-obj":"codex_macro_early_obj_setup_asymmetry","walked-into-ward":"enemyward-any-mid","death-before-objective":"codex_macro_early_obj_setup_asymmetry","caught-out":"caught-jungle-early","late-back":"lateback-any-mid","unused-gold":"codex_mechanics_wave_slow_fast_rotation_timer","cs-deficit":"codex_jgl_3camps_mid_cross_bot_invade","xp-deficit":"xp-any-early","behind-on-levels-death":"codex_tempo_territorial_vs_order_vs_economic","bad-rune-choice":null}},{"key":"absent-objective@910","clock":"15:10","zone":"Rivière haute","line":"l'ennemi prend le Dragon pendant que tu arrives en retard, 2100 unités parcourues vers la fosse dans les 25 dernières secondes, aucun cross-map en contrepartie","label":"Cross-map manqué","map":{"x":5700,"y":7800},"options":[{"id":"overstay","outcome":"mistake","main":"Retard de tempo : j'ai tapé une tour ou une wave de trop avant de recall au lieu d'être sur l'objectif (ou d'assumer un vrai cross-map)","sub":"Overstay","fiche":"codex_macro_obj_tempo_vs_tower_greed"},{"id":"no-ward-pre-obj","outcome":"mistake","main":"Aucune ward pour préparer","sub":"Pas de ward avant l'objectif","fiche":"vision-obj-jungle-mid"},{"id":"justified:notContestable","outcome":"justified","main":"Pas contestable : bon choix de le laisser","sub":"Décision justifiée : ne compte pas contre toi","fiche":null}],"other":{"overstay":"overstay-any-mid","dove-tower":"dive-any-early","face-checked":"facecheck-any-any","no-vision-objective":"vision-noobj-any-any","solo-baron-died":null,"bad-lane-opening":"opening-any-early","bad-wave-sync":"wavesync-any-mid","bad-trade":"codex_mental_low_energy_anti_tilt_protocol","wasted-summoner":"codex_mental_low_energy_anti_tilt_protocol","whiff-skillshot":"skillshot-any-any","bad-positioning":"codex_macro_131_jungle_hover_assignment","bad-kiting":null,"bad-threat-assessment":"threat-any-mid","bad-engage-angle":"engage-any-late","bad-dmg-maximisation":null,"forgot-trinket":"trinket-any-any","no-ward-pre-obj":"vision-obj-jungle-mid","walked-into-ward":"enemyward-any-mid","death-before-objective":"death-obj-any-mid","caught-out":"caught-any-mid","late-back":"lateback-any-mid","unused-gold":"codex_macro_obj_tempo_vs_tower_greed","cs-deficit":"codex_tempo_single_action_window_wave_cheating","xp-deficit":"xp-any-early","behind-on-levels-death":"levels-any-mid","bad-rune-choice":null}},{"key":"critical-death@1528","clock":"25:28","zone":"Rivière haute","line":"mort 30 s avant la perte du Baron, 1650 g en poche, seul contre 3","label":"Mort critique","map":{"x":5600,"y":10000},"options":[{"id":"no-ward-pre-obj","outcome":"mistake","main":"Mauvais setup d'objectif : entrée directe en rivière sans passer par le mid (ou 3v3 forcé en retard au lieu de prendre le mid à 3)","sub":"Pas de ward avant l'objectif","fiche":"codex_macro_early_obj_setup_asymmetry"},{"id":"overstay","outcome":"mistake","main":"Overstay après mon action","sub":"Overstay","fiche":"codex_macro_baron_balance_system"},{"id":"justified:stealAttempt","outcome":"justified","main":"50/50 de smite justifié","sub":"Décision justifiée : ne compte pas contre toi","fiche":null}],"other":{"overstay":"codex_macro_baron_balance_system","dove-tower":"dive-any-early","face-checked":"facecheck-any-any","no-vision-objective":"vision-noobj-any-any","solo-baron-died":null,"bad-lane-opening":"opening-any-early","bad-wave-sync":"wavesync-any-mid","bad-trade":"trade-any-early","wasted-summoner":"summoner-any-any","whiff-skillshot":"skillshot-any-any","bad-positioning":"codex_macro_baron_balance_system","bad-kiting":null,"bad-threat-assessment":"threat-any-mid","bad-engage-angle":"engage-any-late","bad-dmg-maximisation":null,"forgot-trinket":"trinket-any-any","no-ward-pre-obj":"vision-obj-any-late","walked-into-ward":"enemyward-any-mid","death-before-objective":"codex_vision_baron_chokepoint_support_zoning","caught-out":"caught-any-late","late-back":"lateback-any-mid","unused-gold":"gold-any-any","cs-deficit":"codex_jgl_3camps_mid_cross_bot_invade","xp-deficit":"xp-any-early","behind-on-levels-death":"levels-any-mid","bad-rune-choice":null}}],"fiches":{"codex_jgl_3camps_mid_cross_bot_invade":{"headline":"Transition 3 camps → traversée mid → invade du buff sur prio bot","rule":"Quand ta botlane domine lourdement le niveau 1-2 (wave qui crash sous la tour ennemie, summoners adverses brûlés) et que ton mid a du setup : interromps ton premier full clear après 3 camps (niveau 3). Traverse directement par la mid lane pour forcer le sort de mobilité du mid ou du jungler adverse, puis enchaîne immédiatement dans le quadrant botside ennemi pour voler son Red/Blue buff avec la couverture de tes deux lanes prioritaires.","drill":"Regarde l'état de la botlane pendant ton 2e camp : si le crash bot est garanti, planifie une sortie à 3 camps pour invade le buff opposé.","objective":"CS / Pathing jgler","video":true},"codex_mechanics_mid_6archetypes_3v3_synergy":{"headline":"Les 6 archétypes de matchup & primauté du triangle 3v3 (mid-jungle-support)","rule":"Dès l'écran de chargement, verrouille ton mode opératoire pour éliminer l'hésitation : (A) ton 1v1 dépend toujours de la synergie 3v3 (mid + jungle + support). Un matchup gagnant en 1v1 devient injouable si leur trio écrase le tien. (B) Identifie ton archétype parmi les 6 : (1) autonomie (prio permanente), (2) alternant (la prio bascule selon des paliers précis de niveaux ou d'items : ne force jamais pendant ton creux), (3) sustain (échanger tes PV contre la mana adverse avec Bouclier de Doran + Second souffle), (4) shove & fight (push permanent pour attaquer le jungler ennemi en 2v1), (5) spike (survie pure à 10 CS/min jusqu'à 2 items à 15 min), (6) précision/mana (ta barre de mana = tes munitions ; chaque sort raté est une perte sèche).","drill":"Pendant l'écran de chargement, nomme l'archétype exact de ton matchup (1 à 6) et détermine qui gagne le 3v3 mid-jungle-support.","objective":"Connaissance du match-up","video":false},"codex_jgl_pathing_integrity_reset_cycle":{"headline":"Intégrité du cycle de clear : ignorer un camp isolé pour garder le pathing vers ta strong side","rule":"Après un play early (invade ou gank réussi côté bot), ne retourne PAS faire un camp isolé restant dans ton quadrant bot si tes camps topside viennent de respawn. Faire ce camp isolé te met hors tempo et inverse ton prochain cycle en bot-to-top (loin de ta strong side bot). Monte directement contrôler le jungler adverse sur le topside (Carapateur top), clean ton topside, recall pour acheter ton composant, puis redescends top-to-bot vers ton buff restant et le Dragon.","drill":"Après un gank ou un invade early, reprends toujours ton clear par le quadrant qui te fait finir ton pathing du côté de ta strong side.","objective":"CS / Pathing jgler","video":true},"dive-any-early":{"headline":"Pas de dive sans wave sous la tour","rule":"Avant de dive, il faut au moins 3 sbires alliés sous la tour ennemie et une cible sous 40 % PV sans sort de fuite. Sinon la tour te cible dès le premier coup.","drill":"5 parties : 0 mort sous une tour ennemie avant 14 min.","objective":"Calibrage de l'agressivité","video":false},"facecheck-any-any":{"headline":"Pas de buisson sans info","rule":"Entre dans un buisson non visible seulement si 4 ennemis sont visibles ou si un tank y passe en premier. Sinon : trinket, pink, Balayeur ou compétence de reconnaissance avant.","drill":"5 parties : 0 mort sur un face-check.","objective":"Contrôle de la vision","video":false},"vision-noobj-any-any":{"headline":"Pas de fight d'objectif sans le flanc couvert","rule":"Avant de commencer l'objectif, identifie le chemin par lequel l'ennemi arrive en flanc (jungle ennemie la plus proche) et place-y un ward. L'objectif se lance seulement quand ce flanc est visible.","drill":"Sur chaque objectif : nomme à voix haute le flanc à surveiller avant de taper le monstre.","objective":"Contrôle de la vision","video":false},"opening-any-early":{"headline":"Décide le plan des 3 premières waves en sélection","rule":"Avant le chargement : qui gagne le niveau 2 ? Où commence le jungler ennemi ? Si tu perds le niveau 2, ne te bats pas pour la première wave : last-hit et attends ta 3ᵉ wave.","drill":"5 parties : note en sélection qui gagne le niveau 2 et vérifie après la partie.","objective":"Connaissance du match-up","video":false},"wavesync-any-mid":{"headline":"Rotation = wave poussée d'abord","rule":"Avant de rejoindre un objectif, pousse ta wave jusqu'à la tour ennemie. Sans prio, tu arrives après eux, et ton laner adverse arrive avant toi.","drill":"Chaque objectif : ta wave a crashé avant que tu quittes la lane.","objective":"Gestion des waves pour les objectifs","video":false},"trade-any-early":{"headline":"Trade quand son sort clé est en cooldown","rule":"Identifie le sort qui gagne leurs trades (dash, CC, bouclier). Attaque dans les 3–5 s après qu'il l'a utilisé sur un sbire ou sur toi, et recule dès qu'il revient.","drill":"5 parties : chaque trade engagé en lane suit un cooldown adverse identifié.","objective":"Trades","video":false},"summoner-any-any":{"headline":"Flash pour survivre ou pour tuer, jamais « au cas où »","rule":"Un Flash gâché coûte 5 min de jeu prudent. Utilise-le seulement si sans lui tu meurs à coup sûr, ou si avec lui le kill est garanti (dégâts suffisants, pas de bouclier adverse disponible).","drill":"Après chaque Flash, note : sauvé / kill / gâché. Objectif : 0 gâché sur 5 parties.","objective":"Sorts d'invocateur","video":false},"skillshot-any-any":{"headline":"Ta skillshot clé part sur une cible qui ne peut pas bouger","rule":"Garde ton sort décisif (CC, exécution) pour une cible déjà ralentie, en animation ou coincée contre un mur. Lancée sur un ennemi libre à portée max, elle rate une fois sur deux et ouvre la fenêtre adverse.","drill":"5 parties : avant chaque sort clé, attends un CC, un auto ou un dash adverse.","objective":"Maîtrise","video":false},"engage-any-late":{"headline":"Engage par le côté, pas par la face","rule":"Un engage frontal touche leur frontline. Avant de lancer, décale-toi dans le brouillard sur le flanc pour atteindre leur carry, et vérifie que 3 alliés peuvent suivre en moins de 2 s.","drill":"5 parties : chaque engage lancé avec au moins 3 alliés à portée.","objective":"Positionnement pré-combat","video":false},"codex_macro_early_obj_setup_asymmetry":{"headline":"Setup d'objectif : en avance (recall T-60 s + opening mid) vs en retard (surnombre mid à 3)","rule":"Adapte le setup du Dragon à l'état du 3v3 : (1) EN AVANCE : recall à T-60 s, le support sort de base directement vers le mid (« opening mid ») pour débloquer la wave centrale et éclairer toute la rivière en premier. (2) EN RETARD (3v3 bot perdu) : ne va pas mourir dans la rivière bot. Groupe à 3 sur la mid lane pour prendre la prio centrale de force. Le midlaner ennemi doit alors décaler dans la rivière pour défendre ses wards, ce qui donne à ton midlaner le first move sur la wave suivante et force l'équipe ennemie à reculer malgré sa prio bot.","drill":"À T-60 s du Dragon : passe systématiquement par la mid lane avant la rivière. Si le 3v3 bot est perdant, surcharge le mid à 3 pour casser le tempo adverse.","objective":"Gestion des waves pour les objectifs","video":true},"enemyward-any-mid":{"headline":"Ton chemin doit éviter leurs wards connues","rule":"Après chaque sweep ou ward ennemie vue, mémorise sa zone et contourne-la pour tes rotations et tes ganks. Un pink sur leur chemin de ward favori te rend invisible.","drill":"Chaque partie : 1 pink sur un spot de ward ennemi déjà repéré.","objective":"Utilisation du brouillard","video":false},"caught-jungle-early":{"headline":"Pas d'invade sans savoir où est l'autre jungler","rule":"Avant d'entrer dans la jungle ennemie, déduis son côté de départ (leash, premier camp vu, lane qui a reçu de l'aide). Invade uniquement le côté opposé, et quand tes laners proches ont la prio.","drill":"Avant chaque invade : écris (ou dis) le côté probable du jungler ennemi.","objective":"Jungle tracking","video":false},"lateback-any-mid":{"headline":"Back sur la wave, pas sur ta barre de vie","rule":"Back juste après avoir fait crasher ta wave sous la tour ennemie. Un recall en jungle ennemie, ou dans un buisson sans vision, se fait interrompre : la mort la plus chère du jeu.","drill":"Chaque back : wave poussée + recall dans ta moitié de carte.","objective":"Timing du rappel","video":false},"codex_mechanics_wave_slow_fast_rotation_timer":{"headline":"Règle slow → fast, chronomètre de rotation (20 s / 45 s) & préparation side à T-60 s","rule":"16 CS valent l'or d'un kill sans augmenter ton shutdown. (1) LOI SLOW → FAST : devant ta tour, fais toujours un slow push (last-hit au dernier moment) pour cumuler 2 waves qui te protègent des ganks et des trades. Dès que la wave suivante arrive près de la tour adverse, passe en fast push (tous tes sorts) pour crash vite, sortir de la zone de danger et débloquer ton recall ou ta rotation. (2) CHRONOMÈTRE DE ROTATION : quand tu décales après un crash, tu as 20 s si l'ennemi push, ou 45 s s'il te suit, avant que le bounce-back ne meure sous ta tour. (3) À T-60 s d'un objectif, push toujours la side lane OPPOSÉE à l'objectif.","drill":"Applique le cycle « slow push wave 1 → fast push wave 2 → recall ou roam de moins de 30 s » pour tenir plus de 7,5 CS/min.","objective":"Gestion des waves","video":false},"xp-any-early":{"headline":"Reste dans la portée d'XP pendant que la wave meurt","rule":"Même sans last-hit, rester à 1 400 unités des sbires qui meurent te donne l'XP. Ne back pas et ne roam pas pendant qu'une wave complète meurt devant ta tour.","drill":"5 parties : pas plus de 400 XP de retard à 10:00.","objective":"Gestion des waves","video":false},"codex_tempo_territorial_vs_order_vs_economic":{"headline":"Les 3 tempos : territorial (espace), d'ordre (premier arrivé) & économique réel (PV/mana/XP)","rule":"Ne confonds jamais l'or total avec ta puissance réelle à l'instant T : (1) TEMPO ÉCONOMIQUE RÉEL = items achetés × PV actuels × mana actuel × niveau (1 niveau d'XP vaut environ 800 g de stats brutes ; un joueur à 15 % PV ou sans mana a un tempo économique nul, il est « virtuellement mort »). N'utilise jamais ta Barrière ou ton Heal à 5 % PV : claque-les au-dessus de 30 % PV pour conserver ta capacité à rester sur la carte. (2) TEMPO D'ORDRE = être sur la zone 5 s avant l'ennemi. (3) TEMPO TERRITORIAL = avoir la vision posée et la wave poussée. On utilise son tempo économique pour gagner le wave management, qui débloque le tempo d'ordre et le territoire.","drill":"Évalue le rapport de force en regardant d'abord le niveau d'XP et les barres de PV/mana, avant les items. Utilise tes summoners défensifs au-dessus de 30 % PV pour préserver ton temps de présence sur la carte.","objective":"Gestion des ressources","video":false},"codex_macro_obj_tempo_vs_tower_greed":{"headline":"Tempo d'objectif (T-45 s) vs greed de tour en side lane","rule":"Après un kill ou un avantage pris en side lane à moins de 45 s d'un Dragon/Baron, deux seules options existent : (1) push la wave instantanément, LAISSER la tour ennemie en vie et recall immédiatement dans le buisson pour dépenser ton or et être sur l'objectif à l'heure. (2) Si tu restes taper la tour, ton équipe DOIT renoncer au Dragon immédiatement et jouer un pur cross-map (prendre la wave mid, envahir les camps opposés et taper la T2). L'erreur fatale est de finir la T1 et recall à T-10 s avec 1500 g en poche pendant que ton équipe attend dans la rivière : vous perdez à la fois la fenêtre d'engage et le cross-map.","drill":"À T-45 s d'un objectif, interdiction de taper une tour en side lane si l'équipe prévoit de jouer l'objectif : push la wave en un sort et recall immédiatement.","objective":"Tempo","video":false},"vision-obj-jungle-mid":{"headline":"Ton clear doit finir du côté de l'objectif","rule":"Planifie ton chemin pour être à côté de la fosse 45 s avant le spawn : trinket dans le buisson d'entrée ennemi, puis passe en Balayeur si ton support couvre déjà la vision profonde.","drill":"Avant chaque objectif : être dans la rivière concernée à −0:45 avec ton trinket encore chargé.","objective":"Contrôle de la vision","video":false},"overstay-any-mid":{"headline":"Après un gain : convertis ou reset","rule":"Un kill ou une tour ouvre 30 s. Utilise-les pour un objectif proche ou pour back, jamais pour \"un camp de plus\" en jungle ennemie. Si tu n'as pas d'objectif à moins de 30 s de marche, back.","drill":"5 parties : après chaque kill/tour, décision en 5 s — objectif ou back.","objective":"Tempo","video":false},"codex_mental_low_energy_anti_tilt_protocol":{"headline":"Protocole basse énergie / anti-tilt : simplifier le jeu sous fatigue cognitive","rule":"Quand tu joues fatigué, tard le soir ou après une défaite frustrante, ta bande passante cognitive baisse : vouloir jouer sur les mécaniques pures ou le limit testing garantit la défaite. Bascule immédiatement sur 3 règles à faible coût d'énergie : (1) NEUTRALISATION DES WAVES : push ta wave et recule immédiatement dans le brouillard, sans chercher à poke sous la tour ennemie. (2) RESPECT À 100 % DES MOUVEMENTS SUSPECTS : si un ennemi s'avance bizarrement vers toi, considère systématiquement que son jungler est derrière lui et recule sans vérifier. (3) ÉCONOMIE DE FLASH : interdiction d'utiliser ton Flash sur une escarmouche isolée ; garde-le exclusivement pour les grands teamfights d'objectifs.","drill":"En session de fatigue ou après une défaite : zéro duel mécanique forcé, regarde la minimap entre chaque wave et communique par 3 pings sur le trajet ennemi.","objective":"Résilience","video":false},"codex_macro_131_jungle_hover_assignment":{"headline":"Déploiement 1-3-1 : bloc de 3 en jungle, ADC au mid, catcher en couverture","rule":"Quand ton side laner domine son 1v1 et que l'opposé est inatteignable, joue un 1-3-1 serré sur 2 lanes + le quadrant de jungle entre les deux (1 top, 3 jungle, 1 mid). Assigne ton ADC seul sur la wave mid pour qu'il prenne les ressources et waveclear, et place ton midlaner à CC/burst dans le groupe de 3 en jungle avec le jungler et le support. Ce bloc de 3 contrôle toute la vision du quadrant et peut en 3 secondes soit défendre sa side lane, soit punir et tuer tout ennemi qui tente de traverser.","drill":"En mid game, laisse la wave mid à l'ADC et groupe mid + jungle + support dans le quadrant de jungle côté strong side pour verrouiller la vision et les rotations.","objective":"Positionnement lors des rotations","video":true},"threat-any-mid":{"headline":"Respecte les paliers : niveau 6, premier objet","rule":"Avant de te battre, compare niveau et objets (Tab). Si l'ennemi vient de backer avec un objet complet ou d'atteindre le 6 avant toi, ne retrade pas avant ton propre back.","drill":"À chaque back ennemi visible : regarde son achat sur Tab.","objective":"Évaluation des menaces","video":false},"trinket-any-any":{"headline":"Un trinket chargé est une ward perdue","rule":"Dès que tes 2 charges sont pleines, pose la première sur le chemin de gank vers ta lane (rivière ou tri-buisson). Avant de mourir, le trinket aurait dû montrer qui arrivait.","drill":"5 parties : jamais 2 charges de trinket en stock plus de 30 s.","objective":"Contrôle de la vision","video":false},"death-obj-any-mid":{"headline":"Mourir 60 s avant un objectif, c'est l'offrir","rule":"Dans les 90 s qui précèdent un dragon ou une Baron, aucun 1v1, aucun face-check, aucune plate. Ta seule mission : arriver vivant, full HP, avec ta wave poussée.","drill":"5 parties : 0 mort dans les 90 s qui précèdent un objectif.","objective":"Tempo","video":false},"caught-any-mid":{"headline":"Side lane : compte les ennemis avant chaque pas","rule":"Si moins de 3 ennemis sont visibles, ne dépasse pas la rivière en side lane. Pousse jusqu'à la moitié, puis reviens vers ta tour. Le compte se fait sur la minimap, pas sur l'écran.","drill":"5 parties : 0 mort seul dans la moitié ennemie de la carte.","objective":"Conscience de la carte","video":false},"codex_tempo_single_action_window_wave_cheating":{"headline":"Fenêtre de tempo à action unique & cheating waves","rule":"Le tempo fonctionne par fenêtres à action unique : quand l'adversaire montre une action d'un côté (gank, objectif, recall), tu gagnes une fenêtre de tempo pour faire UNE seule action (invade OU dive OU objectif OU reset). Vouloir encaisser deux actions sur une seule fenêtre (prendre le Dragon PUIS rester push une wave sans reset) redonne l'avantage de temps aux ennemis qui sortent de base avec leurs items. En défense ou avant un objectif, couper une wave ennemie très haut (cheat la wave) détruit instantanément le tour de jeu et la capacité de siège ou de dive adverse.","drill":"Une seule action par fenêtre de tempo : après avoir encaissé un avantage (kill, tour ou objectif), fais ton reset immédiatement, avant que l'ennemi ne sorte de base.","objective":"Tempo","video":false},"levels-any-mid":{"headline":"Deux niveaux de retard = pas de 1v1","rule":"Avec 2 niveaux de moins, tu as environ un sort de rang en moins et 150 PV de moins. Joue avec ton équipe et farm les waves sûres jusqu'à recoller.","drill":"Avant chaque fight, compare les niveaux (Tab) : 0 duel accepté à −2 niveaux.","objective":"Évaluation des menaces","video":false},"codex_macro_baron_balance_system":{"headline":"Baron powerplay : système de balance (1-3-1), ignorer la side sans menace, zéro recall","rule":"Pour maximiser un Baron : (1) ZÉRO RECALL tant que l'équipe a ses PV, sa mana et ses ultimes. (2) Assigne un 1-3-1 sur 2 lanes (ex. mid + jungle + bot) avec les meilleurs waveclears/carries sur les waves et les tanks/bruisers en couverture dans la jungle, en ignorant l'ennemi en top s'il n'a pas la vitesse de push pour menacer la base (il sera forcé de recall). (3) SYSTÈME DE BALANCE : surcharger le bot force l'ennemi à défendre bot, le mid en profite pour prendre la T1. Quand l'ennemi disparaît du bot pour aller mid, le bot recule d'un cran sans forcer la T3 à l'aveugle. Si l'ennemi engage à 3 sur ton midlaner et claque ses ultimes, le bot punit immédiatement en prenant l'inhibiteur bot, puis toute l'équipe pivote à 5 au mid sans recall pour le 2e inhibiteur.","drill":"Sous Baron, maintiens la pression simultanée sur 2 lanes sans recall. N'avance que quand les défenseurs ennemis sont visibles sur l'autre lane (système de balance).","objective":"Prise de décision","video":true},"vision-obj-any-late":{"headline":"Après 25 min, la vision se gagne avec les waves","rule":"On ne ward plus la Baron en face-check. Pousse d'abord les waves bot et mid, puis entre à deux avec Balayeur + pink. Sans waves poussées, laisse l'objectif et prends l'opposé.","drill":"5 parties : ne rentre jamais seul dans une zone de Baron/Ancestral sans vision active.","objective":"Contrôle de la vision","video":false},"codex_vision_baron_chokepoint_support_zoning":{"headline":"Géométrie du Baron et du Dragon : contrôle des choke points & zonage par le support","rule":"Le fond de la fosse du Baron ou du Dragon est un piège prévisible où toute l'équipe subit les sorts de zone. Seuls l'ADC et le jungler doivent taper le Baron. En tant que support, mage de contrôle ou bruiser, tu ne dois JAMAIS taper le Baron ni le regarder : place-toi en amont, devant les choke points d'accès (banana bush, pixel bush, couloir du Blue/Red), dans le brouillard de guerre. Ton rôle est de verrouiller l'entrée : forcer l'équipe ennemie à traverser un entonnoir sous tes contrôles de foule avant même qu'elle ne voie l'objectif.","drill":"Sur chaque Baron ou Dragon en mid/late game, ne reste jamais groupé à 5 dans la fosse : sors du pit pour tenir le buisson d'entrée (choke point) et bloquer l'accès ennemi.","objective":"Positionnement pré-combat","video":false},"caught-any-late":{"headline":"Après 25 min, une mort isolée = une Baron","rule":"En late, les timers de mort dépassent 40 s : assez pour Baron ou Ancestral. Ne farm la side que si l'objectif suivant est à plus de 60 s, et toujours avec ton équipe entre toi et l'ennemi.","drill":"Après 25 min : vérifie le timer du prochain objectif avant chaque side.","objective":"Conscience de la carte","video":false},"gold-any-any":{"headline":"1 400 g en poche = back, pas fight","rule":"Au-delà de 1 300–1 400 g, un composant complet t'attend en boutique. Regarde ton or à chaque wave ; si un fight se prépare et que tu peux backer avant, back d'abord.","drill":"5 parties : 0 mort avec plus de 1 400 g non dépensés.","objective":"Timing du rappel","video":false}},"families":[{"id":"deaths","label":"Positionnement & morts"},{"id":"vision","label":"Vision & carte"},{"id":"tempo","label":"Tempo & économie"},{"id":"mechanics","label":"Mécaniques & laning"}],"tags":[{"slug":"overstay","label":"Overstay","family":"tempo"},{"slug":"dove-tower","label":"Dive sous tour","family":"deaths"},{"slug":"face-checked","label":"Face-check de buisson","family":"vision"},{"slug":"no-vision-objective","label":"Objectif sans vision","family":"vision"},{"slug":"solo-baron-died","label":"Baron en solo / mort","family":"deaths"},{"slug":"bad-lane-opening","label":"Mauvais début de lane","family":"mechanics"},{"slug":"bad-wave-sync","label":"Mauvaise synchro de wave","family":"tempo"},{"slug":"bad-trade","label":"Mauvais trade","family":"mechanics"},{"slug":"wasted-summoner","label":"Sort d'invocateur gâché","family":"mechanics"},{"slug":"whiff-skillshot","label":"Skillshot clé ratée","family":"mechanics"},{"slug":"bad-positioning","label":"Mauvais placement","family":"deaths"},{"slug":"bad-kiting","label":"Mauvais kiting","family":"mechanics"},{"slug":"bad-threat-assessment","label":"Menace mal évaluée","family":"deaths"},{"slug":"bad-engage-angle","label":"Mauvais angle d'engage","family":"deaths"},{"slug":"bad-dmg-maximisation","label":"Dégâts mal maximisés","family":"mechanics"},{"slug":"forgot-trinket","label":"Trinket oublié","family":"vision"},{"slug":"no-ward-pre-obj","label":"Pas de ward avant l'objectif","family":"vision"},{"slug":"walked-into-ward","label":"Passé dans une ward ennemie","family":"vision"},{"slug":"death-before-objective","label":"Mort avant un objectif perdu","family":"deaths"},{"slug":"caught-out","label":"Pris seul","family":"deaths"},{"slug":"late-back","label":"Back trop tard","family":"tempo"},{"slug":"unused-gold","label":"Mort avec l'or non dépensé","family":"tempo"},{"slug":"cs-deficit","label":"Retard de CS à 10 min","family":"mechanics"},{"slug":"xp-deficit","label":"Retard d'XP sur l'adversaire","family":"mechanics"},{"slug":"behind-on-levels-death","label":"Mort en retard de niveaux","family":"deaths"},{"slug":"bad-rune-choice","label":"Mauvais choix de runes","family":"mechanics"}],"pits":{"baron":{"x":5007,"y":10471},"dragon":{"x":9866,"y":4414},"radius":2800},"s":{"title":"Micro-review 45 s","subtitle":"Les 3 moments qui t'ont le plus coûté. Un clic par moment.","queue":"Moments à revoir","question":"Qu'est-ce qui a coûté ce moment ?","other":"Autre cause…","otherTitle":"Choisis la cause","otherJustified":"Ce n'était pas une erreur : décision assumée","assumed":"Décision assumée : ce n'était pas une erreur","cancel":"Annuler","justifiedBadge":"Décision justifiée : ne compte pas contre toi","justifiedDone":"Noté comme justifié : ce moment ne compte pas dans tes stats d'erreurs.","next":"Moment suivant","done":"Micro-review terminée","doneXp":"+{{xp}} XP Ascend","doneSummary":"{{mistakes}} erreur(s) taguée(s), {{justified}} décision(s) justifiée(s).","codexTitle":"Conseil Codex","drill":"Objectif d'entraînement","prepare":"Préparer ma prochaine session","noVod":"Pas de VOD pour cette partie : position sur la carte au moment clé.","mapLabel":"Position sur la carte au moment clé","familiesLabel":"Familles d’erreurs","restart":"Recommencer la démonstration","prepareDone":"Dans l’application, ta prochaine session s’ouvre avec cet objectif : {{objective}}.","codexVideo":"Dans l'application, cette fiche montre aussi la séquence dans un match professionnel officiel.","you":"toi"}}</script>
+<script type="application/json" id="data-dashboard">{"lang":"fr","name":"Kaito","role":"Jungle","form":[{"win":false,"letter":"D","label":"partie nº 5, défaite"},{"win":true,"letter":"V","label":"partie nº 6, victoire"},{"win":false,"letter":"D","label":"partie nº 7, défaite"},{"win":false,"letter":"D","label":"partie nº 8, défaite"},{"win":true,"letter":"V","label":"partie nº 9, victoire"},{"win":true,"letter":"V","label":"partie nº 10, victoire"},{"win":false,"letter":"D","label":"partie nº 11, défaite"},{"win":true,"letter":"V","label":"partie nº 12, victoire"},{"win":false,"letter":"D","label":"partie nº 13, défaite"},{"win":false,"letter":"D","label":"partie nº 14, défaite"}],"formWinrate":"40 % de victoires","formDelta":"(−15 pts vs global)","stats":[{"label":"Parties","value":"84"},{"label":"Taux de victoire","value":"55 %"},{"label":"KDA moyen","value":"3,47"},{"label":"Obj. réussis","value":"72 %"}],"session":{"title":"Session active","objectives":"Gestion des waves, Contrôle de la vision","objectivesLow":"Résilience, Gestion des waves, Contrôle de la vision","games":"4 parties jouées cette session"},"level":{"title":"Progression","level":"Niveau 10","tier":"Stratège","xp":"225/351 XP","pct":64,"toNext":"Plus que 126 XP avant le niveau 11"},"calib":{"title":"Calibration flash","due":"16 parties depuis ta dernière calibration : 10 secondes pour vérifier ton ressenti.","question":"Quel fondamental t'a le plus coûté récemment ?","families":[{"id":"deaths","label":"Positionnement & morts"},{"id":"vision","label":"Vision & carte"},{"id":"tempo","label":"Tempo & économie"},{"id":"mechanics","label":"Mécaniques & laning"}],"results":{"deaths":"Tu pensais « Positionnement & morts » (28 %), mais tes micro-reviews disent « Vision & carte » (53 %).","vision":"Bien vu : tes données pointent aussi vers « Vision & carte » (53 % de tes erreurs).","tempo":"Tu pensais « Tempo & économie » (14 %), mais tes micro-reviews disent « Vision & carte » (53 %).","mechanics":"Tu pensais « Mécaniques & laning » (6 %), mais tes micro-reviews disent « Vision & carte » (53 %)."},"distTitle":"Répartition de tes erreurs sur tes 14 dernières parties","dist":[{"label":"Vision & carte","share":53},{"label":"Positionnement & morts","share":28},{"label":"Tempo & économie","share":14},{"label":"Mécaniques & laning","share":6}]},"low":{"title":"Session basse énergie détectée","reason":"2 défaites d'affilée dans cette session.","rules":"Le protocole simplifie ton jeu en 3 règles : neutraliser les waves, respecter chaque mouvement suspect, garder ton Flash pour les teamfights d'objectif.","activate":"Activer sur la session en cours","active":"Protocole basse énergie actif sur la session en cours","done":"Objectif de session : Résilience, puis Gestion des waves, Contrôle de la vision."},"s":{"welcome":"Bon retour,","formLine":"Sur tes 10 dernières parties :","form":"Forme","mainRole":"Rôle principal :","formLabel":"Résultats des dix dernières parties, de la plus ancienne à la plus récente"}}</script>
+<script type="application/json" id="data-lab">{"lang":"fr","families":[{"id":"deaths","label":"Positionnement & morts"},{"id":"vision","label":"Vision & carte"},{"id":"tempo","label":"Tempo & économie"},{"id":"mechanics","label":"Mécaniques & laning"}],"kpis":[{"label":"Erreurs taguées","value":"36","sub":"sur 14 parties analysées"},{"label":"Par partie","value":"2,6","sub":"en moyenne"},{"label":"Erreur n°1","value":"Pas de ward avant l'objectif","sub":"13 fois · 36 % du total","text":true},{"label":"Phase la plus touchée","value":"Milieu","sub":"50 % de tes erreurs","text":true}],"rows":[{"slug":"no-ward-pre-obj","label":"Pas de ward avant l'objectif","family":"vision","count":13,"share":36,"bar":100,"delta":-27,"deltaLabel":"−27 pts","inspector":{"family":"Vision & carte","summary":"13 fois sur 9 parties · 36 % de tes erreurs.","cost":"Tu gagnes 33 % des parties où elle arrive, contre 60 % des autres parties analysées.","phases":[{"label":"Début","range":"0–14 min","count":2,"pct":22},{"label":"Milieu","range":"14–25 min","count":9,"pct":100},{"label":"Fin","range":"25 min et +","count":2,"pct":22}],"prescTitle":"Prescription pour la phase où elle arrive le plus : Milieu","fiche":{"headline":"Ton clear doit finir du côté de l'objectif","rule":"Planifie ton chemin pour être à côté de la fosse 45 s avant le spawn : trinket dans le buisson d'entrée ennemi, puis passe en Balayeur si ton support couvre déjà la vision profonde.","drill":"Avant chaque objectif : être dans la rivière concernée à −0:45 avec ton trinket encore chargé."},"moments":[{"clock":"24:58","label":"partie nº 14","win":false,"letter":"D"},{"clock":"15:30","label":"partie nº 14","win":false,"letter":"D"},{"clock":"24:10","label":"partie nº 12","win":true,"letter":"V"}]}},{"slug":"forgot-trinket","label":"Trinket oublié","family":"vision","count":6,"share":17,"bar":46,"delta":-4,"deltaLabel":"−4 pts","inspector":{"family":"Vision & carte","summary":"6 fois sur 5 parties · 17 % de tes erreurs.","cost":"Tu gagnes 40 % des parties où elle arrive, contre 44 % des autres parties analysées.","phases":[{"label":"Début","range":"0–14 min","count":5,"pct":100},{"label":"Milieu","range":"14–25 min","count":1,"pct":20},{"label":"Fin","range":"25 min et +","count":0,"pct":0}],"prescTitle":"Prescription pour la phase où elle arrive le plus : Début","fiche":{"headline":"Setup d'objectif : en avance (recall T-60 s + opening mid) vs en retard (surnombre mid à 3)","rule":"Adapte le setup du Dragon à l'état du 3v3 : (1) EN AVANCE : recall à T-60 s, le support sort de base directement vers le mid (« opening mid ») pour débloquer la wave centrale et éclairer toute la rivière en premier. (2) EN RETARD (3v3 bot perdu) : ne va pas mourir dans la rivière bot. Groupe à 3 sur la mid lane pour prendre la prio centrale de force. Le midlaner ennemi doit alors décaler dans la rivière pour défendre ses wards, ce qui donne à ton midlaner le first move sur la wave suivante et force l'équipe ennemie à reculer malgré sa prio bot.","drill":"À T-60 s du Dragon : passe systématiquement par la mid lane avant la rivière. Si le 3v3 bot est perdant, surcharge le mid à 3 pour casser le tempo adverse."},"moments":[{"clock":"10:40","label":"partie nº 11","win":false,"letter":"D"},{"clock":"7:40","label":"partie nº 10","win":true,"letter":"V"},{"clock":"8:30","label":"partie nº 8","win":false,"letter":"D"}]}},{"slug":"death-before-objective","label":"Mort avant un objectif perdu","family":"deaths","count":5,"share":14,"bar":38,"delta":-36,"deltaLabel":"−36 pts","inspector":{"family":"Positionnement & morts","summary":"5 fois sur 5 parties · 14 % de tes erreurs.","cost":"Tu gagnes 20 % des parties où elle arrive, contre 56 % des autres parties analysées.","phases":[{"label":"Début","range":"0–14 min","count":0,"pct":0},{"label":"Milieu","range":"14–25 min","count":2,"pct":67},{"label":"Fin","range":"25 min et +","count":3,"pct":100}],"prescTitle":"Prescription pour la phase où elle arrive le plus : Fin","fiche":{"headline":"Géométrie du Baron et du Dragon : contrôle des choke points & zonage par le support","rule":"Le fond de la fosse du Baron ou du Dragon est un piège prévisible où toute l'équipe subit les sorts de zone. Seuls l'ADC et le jungler doivent taper le Baron. En tant que support, mage de contrôle ou bruiser, tu ne dois JAMAIS taper le Baron ni le regarder : place-toi en amont, devant les choke points d'accès (banana bush, pixel bush, couloir du Blue/Red), dans le brouillard de guerre. Ton rôle est de verrouiller l'entrée : forcer l'équipe ennemie à traverser un entonnoir sous tes contrôles de foule avant même qu'elle ne voie l'objectif.","drill":"Sur chaque Baron ou Dragon en mid/late game, ne reste jamais groupé à 5 dans la fosse : sors du pit pour tenir le buisson d'entrée (choke point) et bloquer l'accès ennemi."},"moments":[{"clock":"25:28","label":"partie nº 14","win":false,"letter":"D"},{"clock":"27:00","label":"partie nº 13","win":false,"letter":"D"},{"clock":"21:30","label":"partie nº 8","win":false,"letter":"D"}]}},{"slug":"overstay","label":"Overstay","family":"tempo","count":4,"share":11,"bar":31,"delta":-25,"deltaLabel":"−25 pts","inspector":{"family":"Tempo & économie","summary":"4 fois sur 4 parties · 11 % de tes erreurs.","cost":"Tu gagnes 25 % des parties où elle arrive, contre 50 % des autres parties analysées.","phases":[{"label":"Début","range":"0–14 min","count":0,"pct":0},{"label":"Milieu","range":"14–25 min","count":4,"pct":100},{"label":"Fin","range":"25 min et +","count":0,"pct":0}],"prescTitle":"Prescription pour la phase où elle arrive le plus : Milieu","fiche":{"headline":"Après un gain : convertis ou reset","rule":"Un kill ou une tour ouvre 30 s. Utilise-les pour un objectif proche ou pour back, jamais pour \"un camp de plus\" en jungle ennemie. Si tu n'as pas d'objectif à moins de 30 s de marche, back.","drill":"5 parties : après chaque kill/tour, décision en 5 s — objectif ou back."},"moments":[{"clock":"21:00","label":"partie nº 13","win":false,"letter":"D"},{"clock":"14:40","label":"partie nº 9","win":true,"letter":"V"},{"clock":"18:25","label":"partie nº 7","win":false,"letter":"D"}]}},{"slug":"caught-out","label":"Pris seul","family":"deaths","count":3,"share":8,"bar":23,"delta":-55,"deltaLabel":"−55 pts","inspector":{"family":"Positionnement & morts","summary":"3 fois sur 3 parties · 8 % de tes erreurs.","cost":"Tu gagnes 0 % des parties où elle arrive, contre 55 % des autres parties analysées.","phases":[{"label":"Début","range":"0–14 min","count":0,"pct":0},{"label":"Milieu","range":"14–25 min","count":1,"pct":50},{"label":"Fin","range":"25 min et +","count":2,"pct":100}],"prescTitle":"Prescription pour la phase où elle arrive le plus : Fin","fiche":{"headline":"Après 25 min, une mort isolée = une Baron","rule":"En late, les timers de mort dépassent 40 s : assez pour Baron ou Ancestral. Ne farm la side que si l'objectif suivant est à plus de 60 s, et toujours avec ton équipe entre toi et l'ennemi.","drill":"Après 25 min : vérifie le timer du prochain objectif avant chaque side."},"moments":[{"clock":"29:05","label":"partie nº 14","win":false,"letter":"D"},{"clock":"16:30","label":"partie nº 8","win":false,"letter":"D"},{"clock":"25:10","label":"partie nº 5","win":false,"letter":"D"}]}},{"slug":"bad-positioning","label":"Mauvais placement","family":"deaths","count":2,"share":6,"bar":15,"delta":8,"deltaLabel":"+8 pts","inspector":{"family":"Positionnement & morts","summary":"2 fois sur 2 parties · 6 % de tes erreurs.","cost":"Tu gagnes 50 % des parties où elle arrive, contre 42 % des autres parties analysées.","phases":[{"label":"Début","range":"0–14 min","count":0,"pct":0},{"label":"Milieu","range":"14–25 min","count":0,"pct":0},{"label":"Fin","range":"25 min et +","count":2,"pct":100}],"prescTitle":"Prescription pour la phase où elle arrive le plus : Fin","fiche":{"headline":"Baron powerplay : système de balance (1-3-1), ignorer la side sans menace, zéro recall","rule":"Pour maximiser un Baron : (1) ZÉRO RECALL tant que l'équipe a ses PV, sa mana et ses ultimes. (2) Assigne un 1-3-1 sur 2 lanes (ex. mid + jungle + bot) avec les meilleurs waveclears/carries sur les waves et les tanks/bruisers en couverture dans la jungle, en ignorant l'ennemi en top s'il n'a pas la vitesse de push pour menacer la base (il sera forcé de recall). (3) SYSTÈME DE BALANCE : surcharger le bot force l'ennemi à défendre bot, le mid en profite pour prendre la T1. Quand l'ennemi disparaît du bot pour aller mid, le bot recule d'un cran sans forcer la T3 à l'aveugle. Si l'ennemi engage à 3 sur ton midlaner et claque ses ultimes, le bot punit immédiatement en prenant l'inhibiteur bot, puis toute l'équipe pivote à 5 au mid sans recall pour le 2e inhibiteur.","drill":"Sous Baron, maintiens la pression simultanée sur 2 lanes sans recall. N'avance que quand les défenseurs ennemis sont visibles sur l'autre lane (système de balance)."},"moments":[{"clock":"30:10","label":"partie nº 12","win":true,"letter":"V"},{"clock":"27:20","label":"partie nº 3","win":false,"letter":"D"}]}},{"slug":"cs-deficit","label":"Retard de CS à 10 min","family":"mechanics","count":2,"share":6,"bar":15,"delta":-50,"deltaLabel":"−50 pts","inspector":{"family":"Mécaniques & laning","summary":"2 fois sur 2 parties · 6 % de tes erreurs.","cost":"Tu gagnes 0 % des parties où elle arrive, contre 50 % des autres parties analysées.","phases":[{"label":"Début","range":"0–14 min","count":2,"pct":100},{"label":"Milieu","range":"14–25 min","count":0,"pct":0},{"label":"Fin","range":"25 min et +","count":0,"pct":0}],"prescTitle":"Prescription pour la phase où elle arrive le plus : Début","fiche":{"headline":"Transition 3 camps → traversée mid → invade du buff sur prio bot","rule":"Quand ta botlane domine lourdement le niveau 1-2 (wave qui crash sous la tour ennemie, summoners adverses brûlés) et que ton mid a du setup : interromps ton premier full clear après 3 camps (niveau 3). Traverse directement par la mid lane pour forcer le sort de mobilité du mid ou du jungler adverse, puis enchaîne immédiatement dans le quadrant botside ennemi pour voler son Red/Blue buff avec la couverture de tes deux lanes prioritaires.","drill":"Regarde l'état de la botlane pendant ton 2e camp : si le crash bot est garanti, planifie une sortie à 3 camps pour invade le buff opposé."},"moments":[{"clock":"10:00","label":"partie nº 11","win":false,"letter":"D"},{"clock":"10:00","label":"partie nº 2","win":false,"letter":"D"}]}},{"slug":"unused-gold","label":"Mort avec l'or non dépensé","family":"tempo","count":1,"share":3,"bar":8,"delta":null,"deltaLabel":"—","inspector":{"family":"Tempo & économie","summary":"1 fois sur 1 partie · 3 % de tes erreurs.","cost":null,"phases":[{"label":"Début","range":"0–14 min","count":0,"pct":0},{"label":"Milieu","range":"14–25 min","count":1,"pct":100},{"label":"Fin","range":"25 min et +","count":0,"pct":0}],"prescTitle":"Prescription pour la phase où elle arrive le plus : Milieu","fiche":{"headline":"Tempo d'objectif (T-45 s) vs greed de tour en side lane","rule":"Après un kill ou un avantage pris en side lane à moins de 45 s d'un Dragon/Baron, deux seules options existent : (1) push la wave instantanément, LAISSER la tour ennemie en vie et recall immédiatement dans le buisson pour dépenser ton or et être sur l'objectif à l'heure. (2) Si tu restes taper la tour, ton équipe DOIT renoncer au Dragon immédiatement et jouer un pur cross-map (prendre la wave mid, envahir les camps opposés et taper la T2). L'erreur fatale est de finir la T1 et recall à T-10 s avec 1500 g en poche pendant que ton équipe attend dans la rivière : vous perdez à la fois la fenêtre d'engage et le cross-map.","drill":"À T-45 s d'un objectif, interdiction de taper une tour en side lane si l'équipe prévoit de jouer l'objectif : push la wave en un sort et recall immédiatement."},"moments":[{"clock":"23:40","label":"partie nº 7","win":false,"letter":"D"}]}}],"s":{"all":"Toutes","families":"Familles d’erreurs","rankingTitle":"Classement par fréquence","none":"Aucune erreur de cette famille sur la période.","costTitle":"Écart de taux de victoire : parties avec cette erreur vs parties analysées sans","when":"Quand elle arrive","momentsTitle":"Derniers moments","actionHint":"Fais-en ton objectif : Ascend suit cette erreur sur tes prochaines parties et te dit si elle recule.","codexTitle":"Conseil Codex","drill":"Objectif d'entraînement","legend":"De gauche à droite : occurrences, part du total, écart de taux de victoire entre les parties avec et sans l'erreur.","noGap":"échantillon trop petit"}}</script>
+<script type="application/json" id="data-radar">{"lang":"fr","roles":[{"id":"carry","label":"Top, jungle, mid, ADC"},{"id":"support","label":"Support"}],"sets":{"carry":{"score":"Score : 49/100","points":[{"key":"kda","label":"KDA","recent":"2,83","snapshot":"2,45","rs":47,"ss":41,"gap":"+0,38","good":true,"readout":"KDA : 2,83 sur tes 15 dernières parties, 2,45 sur les 40 dernières."},{"key":"csm","label":"CS/m","recent":"6,1","snapshot":"6,6","rs":52,"ss":60,"gap":"−0,5","good":false,"readout":"CS/m : 6,1 sur tes 15 dernières parties, 6,6 sur les 40 dernières."},{"key":"goldm","label":"Gold/m","recent":"398 g","snapshot":"404 g","rs":49,"ss":51,"gap":"−6 g","good":false,"readout":"Gold/m : 398 g sur tes 15 dernières parties, 404 g sur les 40 dernières."},{"key":"dmgm","label":"DMG/m","recent":"612","snapshot":"588","rs":52,"ss":48,"gap":"+24","good":true,"readout":"DMG/m : 612 sur tes 15 dernières parties, 588 sur les 40 dernières."},{"key":"kp","label":"KP","recent":"61 %","snapshot":"57 %","rs":61,"ss":57,"gap":"+4 %","good":true,"readout":"KP : 61 % sur tes 15 dernières parties, 57 % sur les 40 dernières."},{"key":"fb","label":"FB","recent":"24 %","snapshot":"18 %","rs":24,"ss":18,"gap":"+6 %","good":true,"readout":"FB : 24 % sur tes 15 dernières parties, 18 % sur les 40 dernières."},{"key":"cs15","label":"CS@15","recent":"96","snapshot":"104","rs":51,"ss":60,"gap":"−8","good":false,"readout":"CS@15 : 96 sur tes 15 dernières parties, 104 sur les 40 dernières."},{"key":"xp15","label":"XP@15","recent":"6 850 XP","snapshot":"6 720 XP","rs":47,"ss":44,"gap":"+130 XP","good":true,"readout":"XP@15 : 6 850 XP sur tes 15 dernières parties, 6 720 XP sur les 40 dernières."},{"key":"gold15","label":"Gold@15","recent":"5 980 g","snapshot":"5 610 g","rs":62,"ss":53,"gap":"+370 g","good":true,"readout":"Gold@15 : 5 980 g sur tes 15 dernières parties, 5 610 g sur les 40 dernières."}]},"support":{"score":"Score : 54/100","points":[{"key":"kda","label":"KDA","recent":"2,70","snapshot":"2,83","rs":45,"ss":47,"gap":"−0,13","good":false,"readout":"KDA : 2,70 sur tes 15 dernières parties, 2,83 sur les 40 dernières."},{"key":"kp","label":"KP","recent":"64 %","snapshot":"61 %","rs":64,"ss":58,"gap":"+3 %","good":true,"readout":"KP : 64 % sur tes 15 dernières parties, 61 % sur les 40 dernières."},{"key":"deaths","label":"Morts","recent":"5,4","snapshot":"4,7","rs":51,"ss":61,"gap":"+0,7","good":false,"readout":"Morts : 5,4 sur tes 15 dernières parties, 4,7 sur les 40 dernières."},{"key":"vspm","label":"Vision/min","recent":"2,3","snapshot":"2,0","rs":62,"ss":50,"gap":"+0,3","good":true,"readout":"Vision/min : 2,3 sur tes 15 dernières parties, 2,0 sur les 40 dernières."},{"key":"vsdiff","label":"Écart vision","recent":"9","snapshot":"4","rs":53,"ss":42,"gap":"+5","good":true,"readout":"Écart vision : 9 sur tes 15 dernières parties, 4 sur les 40 dernières."},{"key":"pinks","label":"Pinks","recent":"4,1","snapshot":"3,4","rs":51,"ss":43,"gap":"+0,7","good":true,"readout":"Pinks : 4,1 sur tes 15 dernières parties, 3,4 sur les 40 dernières."},{"key":"wardkill","label":"Wards détruites","recent":"3,2","snapshot":"2,6","rs":53,"ss":43,"gap":"+0,6","good":true,"readout":"Wards détruites : 3,2 sur tes 15 dernières parties, 2,6 sur les 40 dernières."},{"key":"healshield","label":"Soins+boucliers/min","recent":"310","snapshot":"285","rs":62,"ss":57,"gap":"+25","good":true,"readout":"Soins+boucliers/min : 310 sur tes 15 dernières parties, 285 sur les 40 dernières."},{"key":"cc","label":"CC/min","recent":"1,4","snapshot":"1,5","rs":47,"ss":50,"gap":"−0,1","good":false,"readout":"CC/min : 1,4 sur tes 15 dernières parties, 1,5 sur les 40 dernières."}]}},"s":{"title":"Empreinte des fondamentaux","recentLabel":"Récent (15 games)","snapshotLabel":"Snapshot (40 games)","roleLabel":"Rôle","colAxis":"Axe","colRecent":"15 parties","colSnapshot":"40 parties","colGap":"Écart","readoutIdle":"Survole un axe, ou choisis-le dans le tableau.","scale":"Les échelles sont fixes, identiques pour tous les joueurs : l'empreinte ne te compare à personne."}}</script>
+<script type="application/json" id="data-tiers">{"lang":"fr","current":"stratege","tiers":[{"id":"recrue","label":"Recrue","level":"niveau 1","levelShort":"niv. 1","height":10,"detail":["Le point de départ : tout le monde commence ici.","Rien à débloquer à ce palier : les cinq premières icônes de profil sont libres."]},{"id":"initie","label":"Initié","level":"niveau 3","levelShort":"niv. 3","height":15,"detail":["214 XP cumulés depuis le niveau 1.","Soit environ 5 reviews de partie complètes, ou 8 micro-revues.","Débloque 1 icône de profil."]},{"id":"adepte","label":"Adepte","level":"niveau 6","levelShort":"niv. 6","height":23,"detail":["672 XP cumulés depuis le niveau 1.","Soit environ 14 reviews de partie complètes, ou 23 micro-revues.","Débloque 1 icône de profil."]},{"id":"stratege","label":"Stratège","level":"niveau 10","levelShort":"niv. 10","height":34,"detail":["1 675 XP cumulés depuis le niveau 1.","Soit environ 34 reviews de partie complètes, ou 56 micro-revues.","Débloque 1 icône de profil."]},{"id":"virtuose","label":"Virtuose","level":"niveau 15","levelShort":"niv. 15","height":47,"detail":["4 045 XP cumulés depuis le niveau 1.","Soit environ 81 reviews de partie complètes, ou 135 micro-revues.","Débloque 1 icône de profil."]},{"id":"sage","label":"Sage","level":"niveau 20","levelShort":"niv. 20","height":60,"detail":["8 813 XP cumulés depuis le niveau 1.","Soit environ 177 reviews de partie complètes, ou 294 micro-revues.","Débloque 2 icônes de profil."]},{"id":"oracle","label":"Oracle","level":"niveau 27","levelShort":"niv. 27","height":79,"detail":["24 560 XP cumulés depuis le niveau 1.","Soit environ 492 reviews de partie complètes, ou 819 micro-revues.","Débloque 1 icône de profil."]},{"id":"legende","label":"Légende","level":"niveau 35","levelShort":"niv. 35","height":100,"detail":["76 521 XP cumulés depuis le niveau 1.","Soit environ 1 531 reviews de partie complètes, ou 2 551 micro-revues.","Débloque 1 icône de profil."]}],"s":{"scaleLabel":"Paliers de pratique, par niveau Ascend","you":"Le compte de démonstration est ici, au niveau 10."}}</script>
+<script type="application/json" id="data-themes">{"presets":{"p0":[["--app-bg","#0D0A06"],["--app-surface","#1C140C"],["--app-panel","#2A1D11"],["--app-line","#4A3A24"],["--app-line-strong","#8A6A34"],["--app-accent","#D4A24C"],["--app-accent-hi","#F5E3BE"],["--app-second","#3E8E7E"],["--app-text","#B5A68C"],["--app-text-hi","#F5E3BE"]],"p1":[["--app-bg","#060B10"],["--app-surface","#0C1620"],["--app-panel","#132233"],["--app-line","#223C4A"],["--app-line-strong","#3E6E8A"],["--app-accent","#4C9ED4"],["--app-accent-hi","#BEE3F5"],["--app-second","#3EC2D4"],["--app-text","#8CA8B5"],["--app-text-hi","#BEE3F5"]],"p2":[["--app-bg","#100607"],["--app-surface","#200C0D"],["--app-panel","#331316"],["--app-line","#4A2224"],["--app-line-strong","#8A3E3E"],["--app-accent","#C23B3B"],["--app-accent-hi","#F5C4BE"],["--app-second","#D4753E"],["--app-text","#B58C8C"],["--app-text-hi","#F5C4BE"]],"p3":[["--app-bg","#0A0610"],["--app-surface","#160C20"],["--app-panel","#221333"],["--app-line","#3A224A"],["--app-line-strong","#6A3E8A"],["--app-accent","#A24CD4"],["--app-accent-hi","#E3BEF5"],["--app-second","#8E6AD4"],["--app-text","#A68CB5"],["--app-text-hi","#E3BEF5"]],"p4":[["--app-bg","#0F080B"],["--app-surface","#1C0F15"],["--app-panel","#2B1620"],["--app-line","#4A2836"],["--app-line-strong","#8A4A66"],["--app-accent","#E07AA0"],["--app-accent-hi","#F8D2E1"],["--app-second","#5FB89A"],["--app-text","#B596A3"],["--app-text-hi","#F8D2E1"]],"p5":[["--app-bg","#0E0B05"],["--app-surface","#1D170A"],["--app-panel","#2D2410"],["--app-line","#4F4019"],["--app-line-strong","#9A7A2E"],["--app-accent","#F0C24A"],["--app-accent-hi","#FFF0C2"],["--app-second","#2FC1B8"],["--app-text","#BFAE84"],["--app-text-hi","#FFF0C2"]],"p6":[["--app-bg","#070B0F"],["--app-surface","#0F161D"],["--app-panel","#18222D"],["--app-line","#2C3B48"],["--app-line-strong","#5E7C94"],["--app-accent","#B8DDF5"],["--app-accent-hi","#EEF7FD"],["--app-second","#9AD8F0"],["--app-text","#9DAEBB"],["--app-text-hi","#EEF7FD"]],"p7":[["--app-bg","#070A05"],["--app-surface","#0F150B"],["--app-panel","#182212"],["--app-line","#2E4620"],["--app-line-strong","#5A8A34"],["--app-accent","#8EE04A"],["--app-accent-hi","#DDF8C4"],["--app-second","#C9772F"],["--app-text","#9FB58C"],["--app-text-hi","#DDF8C4"]]}}</script>
+<script type="application/json" id="data-release">{"version":"1.0.0-beta.1","api":"https://api.github.com/repos/ExCiiD/nexusmind/releases?per_page=5","sizeUnit":"Mo","locale":"fr-FR"}</script>
 </body>
 </html>

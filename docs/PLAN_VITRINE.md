@@ -1,8 +1,14 @@
 # Plan — site vitrine Ascend
 
-> **État (17/11/2026)** : site construit dans `site/` (HTML/CSS statiques, sans build ni script tiers) — direction graphique « A · Rapport de scouting » choisie par l'utilisateur, avec le contenu « ateliers » de B (joueur / coach / équipe) ; la carte joueur n'est volontairement pas mise en avant. Pages : `/` et `/en/`, `/conditions.html`, `/confidentialite.html`, `/en/terms.html`, `/en/privacy.html`, 404. Section « Comment Ascend utilise les données Riot » (APIs appelées, relais, pas d'info en jeu, pas de MMR) pensée pour la demande de clé **Production**. Captures réelles via le harness (`.harness/shots.mjs`). Reste avant mise en ligne : remplacer les placeholders `[DOMAINE]`, `[E-MAIL DE CONTACT]`, `[NOM DE L'ÉDITEUR]`, `[ADRESSE / PAYS]`, puis `cd site && npx wrangler deploy` + domaine. Les textes légaux du site (v0.2) sont plus complets que ceux de l'app (`src/legal/*.md`, v0.1) : à resynchroniser.
+> **État (18/11/2026, version 1.0.0-beta.1)** : site reconstruit dans `site/` pour la bêta 1.0.
+> Direction « rapport de scouting » (Big Shoulders Display, Inter, JetBrains Mono, filets fins, un seul accent `#D4A24C` sur `#0D0A06` / `#1C140C`).
+> Pages générées par `npm run site:build` (`site/build.mjs`, sans dépendance hors esbuild) : `/` et `/en/`, les quatre pages légales, 404.
+> Cinq aperçus interactifs (micro-revue, tableau de bord, Labo d'erreurs, empreinte des fondamentaux, thèmes) plus l'escalier des paliers : ils sont rendus par le code de l'application lui-même (`site/src/engine.ts`), sur un compte de démonstration inventé (`site/src/demo.mjs`).
+> Bouton de téléchargement direct vers l'installeur de la release (`site/src/release.mjs`), mis à jour dans le navigateur si GitHub publie une version plus récente.
+> Règles de design, structure des fichiers et contrôles du build : `site/DESIGN.md`. Aperçu local avec les en-têtes de production : `npm run site:preview`.
+> Reste avant mise en ligne : remplir les mentions entre crochets des pages légales (éditeur, adresse, contact), attacher le domaine et renseigner `SITE_URL` dans `site/site.config.mjs`, puis `cd site && npx wrangler deploy`. Les textes légaux du site (v0.2) sont plus complets que ceux de l'app (`src/legal/*.md`, v0.1) : à resynchroniser.
 
-> Front-end généré avec **Gemini 4** (code) et **Midjourney** (visuels). Ce document est le brief : objectifs, structure, textes, visuels (prompts), contraintes, technique et lancement.
+> Les sections 4 et 5 ci-dessous (palette bleu nuit, Midjourney, Astro/Tailwind) sont le brief d'origine, conservé pour mémoire : la direction retenue et la technique actuelle sont décrites dans `site/DESIGN.md`. Les objectifs, les publics, la structure et les contraintes de droits restent valables.
 
 ---
 

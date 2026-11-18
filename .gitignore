@@ -20,3 +20,6 @@ web/dist/
 !.env.example
 
 .claude/settings.local.json
+
+# Showcase site: bundle of the app modules used by site/build.mjs
+site/.cache/

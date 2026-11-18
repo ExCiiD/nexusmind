@@ -1,0 +1,97 @@
+/*
+ * Ascend showcase site — base layer: fonts, tokens, reset, type.
+ * Direction: "scouting report" (site/DESIGN.md). Dark ink, hairline rules,
+ * three typefaces with fixed jobs, one signal colour.
+ */
+
+@font-face { font-family: 'Big Shoulders Display'; src: url('/assets/fonts/big-shoulders-display.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('/assets/fonts/inter.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: 'JetBrains Mono'; src: url('/assets/fonts/jetbrains-mono.woff2') format('woff2'); font-weight: 100 800; font-display: swap; }
+
+:root {
+  /* Ink and paper */
+  --ink: #0D0A06;
+  --surface: #1C140C;
+  --rule: #3A2C18;
+  --rule-strong: #6B5330;
+  /* Text */
+  --text-hi: #F5E3BE;
+  --text: #B5A68C;
+  --text-low: #978769;
+  /* The one signal */
+  --accent: #D4A24C;
+  --accent-hover: #E4B766;
+
+  --display: 'Big Shoulders Display', 'Arial Narrow', 'Helvetica Neue Condensed', Impact, sans-serif;
+  --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  --gutter: clamp(1.25rem, 4vw, 3.5rem);
+  --indent: 3.5rem;
+  --rail: 15rem;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+
+html {
+  background: var(--ink);
+  color-scheme: dark;
+  scrollbar-color: var(--rule-strong) var(--ink);
+  scroll-padding-top: 1.5rem;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  background: var(--ink);
+  color: var(--text);
+  font: 400 1rem/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  caret-color: var(--accent);
+  accent-color: var(--accent);
+}
+
+::selection { background: var(--accent); color: var(--ink); }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+[tabindex="-1"]:focus { outline: none; }
+
+img, svg { max-width: 100%; }
+ul, ol { padding: 0; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+table { border-collapse: collapse; }
+th { font-weight: inherit; text-align: left; }
+summary { cursor: pointer; }
+
+a { color: var(--text-hi); text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 0.22em; }
+a:hover { color: var(--accent-hover); }
+
+h1, h2 { font-family: var(--display); font-weight: 800; color: var(--text-hi); text-transform: uppercase; letter-spacing: 0.012em; text-wrap: balance; }
+h1 { font-size: clamp(3.4rem, 9.4vw, 6rem); line-height: 0.9; }
+h2 { font-size: clamp(2.2rem, 4.8vw, 3.5rem); line-height: 0.95; }
+h3 { font: 600 1rem/1.4 var(--sans); color: var(--text-hi); }
+p { text-wrap: pretty; }
+
+.ln { display: block; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.ico { flex: none; }
+
+.vh { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.skip { position: absolute; left: 1rem; top: -4rem; z-index: 50; padding: 0.625rem 1rem; background: var(--accent); color: var(--ink); font-weight: 600; text-decoration: none; }
+.skip:focus { top: 1rem; color: var(--ink); }
+
+/* Buttons of the site itself: square, flat, one colour. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.625rem; padding: 0.8125rem 1.125rem; font: 600 0.9375rem/1.2 var(--sans); text-decoration: none; border: 1px solid transparent; }
+.btn-primary { background: var(--accent); color: var(--ink); }
+.btn-primary:hover { background: var(--accent-hover); color: var(--ink); }
+.btn-primary:active { background: var(--text-hi); }
+.btn-primary:focus-visible { outline-color: var(--text-hi); }
+.btn-sm { padding: 0.5rem 0.75rem; font-size: 0.8125rem; gap: 0.4375rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}

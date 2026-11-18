@@ -12,7 +12,7 @@ import globals from 'globals'
 
 export default tseslint.config(
   {
-    ignores: ['out/**', 'release/**', 'dist/**', 'web/dist/**', 'prisma-client/**', '**/node_modules/**', 'test-results/**', 'playwright-report/**', 'resources/**', '**/.wrangler/**', '.claude/**', '.harness/**'],
+    ignores: ['out/**', 'release/**', 'dist/**', 'web/dist/**', 'prisma-client/**', '**/node_modules/**', 'test-results/**', 'playwright-report/**', 'resources/**', '**/.wrangler/**', '.claude/**', '.harness/**', 'site/.cache/**', 'site/public/assets/site.js'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -42,6 +42,15 @@ export default tseslint.config(
   {
     files: ['**/scripts/**/*.mjs', '*.config.{js,ts,mjs}'],
     languageOptions: { globals: globals.node },
+  },
+  // Showcase site (site/): a Node build script, modules shared by the build and the browser, one browser entry.
+  {
+    files: ['site/*.mjs', 'site/src/**/*.mjs'],
+    languageOptions: { globals: globals.node },
+  },
+  {
+    files: ['site/src/client/**/*.js'],
+    languageOptions: { globals: globals.browser },
   },
   // Must come last so these override the TypeScript presets above.
   {
