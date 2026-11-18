@@ -14,8 +14,8 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/useUserStore'
-import { buildQcm, choiceStats, type QcmCard, type QcmOption } from '@/lib/microReview/smartQcm'
-import { codexById, codexFor } from '@/lib/microReview/codex'
+import { buildQcm, choiceStats, retiredOption, type QcmCard, type QcmOption } from '@/lib/microReview/smartQcm'
+import { codexById, codexFor, isRetiredCodex } from '@/lib/microReview/codex'
 import { phaseOf, fmtClock } from '@/lib/mistakeInsights'
 import { deriveOffsetSec } from '@/lib/eventSync'
 import type { CriticalMoment } from '@/lib/microReview/anomalyDetector'
@@ -68,11 +68,13 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
 
   const moments = useMemo(() => data?.analysis?.moments ?? [], [data])
   const stats = useMemo(() => (data ? choiceStats(data.pastAnswers, data.role, data.champion) : undefined), [data])
-  const lowEnergy = !!data?.lowEnergy?.active
-  const cards = useMemo(() => moments.map((m) => buildQcm(m, stats, { lowEnergy })), [moments, stats, lowEnergy])
+  const cards = useMemo(() => moments.map((m) => buildQcm(m, stats)), [moments, stats])
   const moment = moments[index] ?? null
   const card = cards[index] ?? null
   const answer = moment ? answers[moment.key] : undefined
+  // An answer given with a diagnosis since withdrawn is shown back as it was recorded, after the card's own options.
+  const legacy = card ? retiredOption(card.options, answer) : null
+  const options = card ? (legacy ? [...card.options, legacy] : card.options) : []
   const allDone = moments.length > 0 && moments.every((m) => answers[m.key])
   // Next unanswered moment after the current one, wrapping around (-1 when all are answered).
   const nextOpen = moments.map((_, i) => (index + 1 + i) % moments.length).find((i) => i !== index && !answers[moments[i].key]) ?? -1
@@ -137,7 +139,7 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
   // Counted on today's moments: an answer to a moment an older analysis had is not part of this review.
   const justifiedCount = moments.filter((m) => answers[m.key]?.outcome === 'justified').length
   // The diagnosis picked may point at a specific Codex entry (coach clips); otherwise the best one for the tag.
-  const chosenCodexId = answer && !answer.viaOther ? card?.options.find((o) => o.reason === answer.reason && o.tagSlug === answer.tagSlug)?.codexId : undefined
+  const chosenCodexId = answer && !answer.viaOther ? options.find((o) => o.reason === answer.reason && o.tagSlug === answer.tagSlug)?.codexId : undefined
   const chosenEntry = (chosenCodexId ? codexById(chosenCodexId) : null) ?? (answer?.tagSlug ? codexFor(answer.tagSlug, data.role, phaseOf(moment!.gameTimeSec), teamRules) : null)
 
   return (
@@ -178,17 +180,17 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
                 onConfirm={(other) => submit(moment, card, { other })} />
             ) : (
               <div className="space-y-1.5" role="group" aria-label={t('microReview.question')}>
-                {card.options.map((o) => {
-                  // Two readings of one tag may sit on the card (e.g. "caught alone" and the low-energy protocol): the reason tells them apart.
+                {options.map((o) => {
+                  // Two readings of one tag may sit on the card (a second reading, or a withdrawn diagnosis shown back): the reason tells them apart.
                   const selected = !!answer && !answer.viaOther && (o.tagSlug
-                    ? answer.tagSlug === o.tagSlug && (answer.reason == null || answer.reason === o.reason || !card.options.some((x) => x.tagSlug === o.tagSlug && x.reason === answer.reason))
+                    ? answer.tagSlug === o.tagSlug && (answer.reason == null || answer.reason === o.reason || !options.some((x) => x.tagSlug === o.tagSlug && x.reason === answer.reason))
                     : answer.outcome === 'justified' && answer.reason === o.reason)
                   const main = t(`microReview.reason.${o.reason}`, { tag: tagLabel(t, o.tagSlug) })
                   const sub = o.outcome === 'justified' ? t('microReview.justifiedBadge') : o.promoted ? t('microReview.promoted') : tagLabel(t, o.tagSlug, tags.find((x) => x.slug === o.tagSlug)?.label)
                   // The tag name under the button only when it adds something to the reason.
                   const showSub = !main.toLowerCase().includes(sub.toLowerCase())
                   return (
-                    <button key={o.id} disabled={!!busy} onClick={() => submit(moment, card, { option: o })} aria-pressed={selected}
+                    <button key={o.id} disabled={!!busy || o === legacy} onClick={() => submit(moment, card, { option: o })} aria-pressed={selected}
                       className={cn('flex w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors disabled:opacity-60',
                         selected ? 'border-hextech-gold bg-hextech-gold/15 text-hextech-gold-bright' : 'border-hextech-border-dim bg-hextech-elevated/60 text-hextech-text-bright hover:border-hextech-gold/60')}>
                       {busy === o.id ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <span className={cn('h-2 w-2 shrink-0 rounded-full', o.outcome === 'justified' ? 'bg-hextech-green' : 'bg-hextech-red')} />}
@@ -228,7 +230,7 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
                     <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-hextech-green" />{t('microReview.justifiedDone')}
                   </p>
                 ) : chosenEntry ? (
-                  <CodexCard entry={chosenEntry} onPrepare={() => prepare(chosenEntry)} />
+                  <CodexCard entry={chosenEntry} onPrepare={isRetiredCodex(chosenEntry.id) ? undefined : () => prepare(chosenEntry)} />
                 ) : (
                   <p className="text-xs text-hextech-text-dim">{t('codex.none')}</p>
                 )}

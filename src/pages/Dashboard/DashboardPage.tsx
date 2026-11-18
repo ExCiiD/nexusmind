@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useUserStore } from '@/store/useUserStore'
@@ -8,7 +8,6 @@ import { CoachingPatternCard } from '@/components/Coaching/CoachingPatternCard'
 import { ReassessmentBanner } from '@/components/Coaching/ReassessmentBanner'
 import { AssistantCard } from '@/components/Assistant/AssistantCard'
 import { WeeklyCodex } from '@/components/MicroReview/WeeklyCodex'
-import { LowEnergyPrompt } from '@/components/MicroReview/LowEnergyPrompt'
 import { ProgressChart } from '@/components/Charts/ProgressChart'
 import { FundamentalsRadarChart } from '@/components/Charts/FundamentalsRadarChart'
 import { buildFundamentalsRadar, overallRadarScore, radarAxesForRole } from '@/lib/fundamentalsRadarCore'
@@ -23,7 +22,6 @@ import {
   ShieldCheck,
   Eye,
   Trophy,
-  ClipboardCheck,
   Clock,
   ChevronRight,
   Shield,
@@ -39,7 +37,7 @@ import {
 import type { MistakeTopTagEntry } from '@/lib/ipc'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { useTranslation } from 'react-i18next'
-import { formatKDA, formatGameTime, getLevelFromXp, cn } from '@/lib/utils'
+import { formatKDA, formatGameTime, cn } from '@/lib/utils'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
 
 interface RecentGame {
@@ -63,6 +61,63 @@ interface RecentGame {
 export const panelClass =
   'rounded-2xl border border-hextech-border-dim/70 panel-surface backdrop-blur-sm shadow-lg'
 
+/** `space-y-6` between the cards of a column. */
+const COLUMN_GAP_PX = 24
+/** Any of these means the user is reading: the balanced card stops moving. */
+const READING_EVENTS = ['wheel', 'pointerdown', 'keydown', 'touchstart'] as const
+
+/**
+ * Column for the card that reads well on either side (the coaching patterns).
+ * The two stacks' heights depend on the data: a running session adds a chart
+ * on the left, the weekly Assistant card on the right is long or absent. The
+ * card goes where the two columns end closest to each other, so neither side
+ * ends on a large void while the other one needs a scroll.
+ *
+ * Measured while the dashboard's cards arrive (each loads on its own, the page
+ * is moving anyway), then fixed for good at the user's first scroll, click or
+ * key press, or 4 s after the last change: the card never moves under the
+ * user's eyes. Stacked columns (narrow window) keep the default.
+ */
+function useBalancedSide(
+  left: RefObject<HTMLElement>,
+  right: RefObject<HTMLElement>,
+  card: RefObject<HTMLElement>,
+  ready: boolean,
+): 'left' | 'right' {
+  const [side, setSide] = useState<'left' | 'right'>('left')
+  useEffect(() => {
+    const l = left.current
+    const r = right.current
+    if (!ready || !l || !r || typeof ResizeObserver === 'undefined') return
+    let done = false
+    let settle: ReturnType<typeof setTimeout> | undefined
+    const measure = () => {
+      if (l.offsetTop !== r.offsetTop) return // one column under the other
+      const c = card.current
+      const cardSpace = c && c.offsetHeight > 0 ? c.offsetHeight + COLUMN_GAP_PX : 0
+      const inLeft = !!c && l.contains(c)
+      const leftBase = l.offsetHeight - (inLeft ? cardSpace : 0)
+      const rightBase = r.offsetHeight - (inLeft ? 0 : cardSpace)
+      setSide(leftBase <= rightBase ? 'left' : 'right')
+      clearTimeout(settle)
+      settle = setTimeout(stop, 4000)
+    }
+    const observer = new ResizeObserver(measure)
+    const stop = () => {
+      if (done) return
+      done = true
+      observer.disconnect()
+      clearTimeout(settle)
+      for (const e of READING_EVENTS) window.removeEventListener(e, stop, true)
+    }
+    observer.observe(l)
+    observer.observe(r)
+    for (const e of READING_EVENTS) window.addEventListener(e, stop, true)
+    return stop
+  }, [left, right, card, ready])
+  return side
+}
+
 export function DashboardPage() {
   const { t } = useTranslation()
   const user = useUserStore((s) => s.user)
@@ -76,6 +131,10 @@ export function DashboardPage() {
   const allFundamentals = useLocalizedFundamentals().flatMap((c) => c.fundamentals)
   const [recentGames, setRecentGames] = useState<RecentGame[]>([])
   const [snapshots, setSnapshots] = useState<any[]>([])
+  const leftColumn = useRef<HTMLDivElement>(null)
+  const rightColumn = useRef<HTMLDivElement>(null)
+  const patternsBox = useRef<HTMLDivElement>(null)
+  const patternsSide = useBalancedSide(leftColumn, rightColumn, patternsBox, !!user)
 
   useEffect(() => {
     loadActiveSession()
@@ -152,7 +211,7 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-12">
         {/* ── Left column ── */}
-        <div className="space-y-6 xl:col-span-8">
+        <div ref={leftColumn} className="space-y-6 xl:col-span-8">
           <SessionHero
             active={!!activeSession}
             objectiveName={objectiveName}
@@ -212,18 +271,19 @@ export function DashboardPage() {
           {statDiffs.length >= 2 && <StatDiffsCard diffs={statDiffs} onViewAll={() => navigate('/stats')} />}
 
           {/* In the left column (not full-width below the grid): the right
-              column is taller, and this card fills the gap it left. */}
+              column is usually the taller one, and this card fills the gap. */}
           <MistakeFrequencyCard onViewAll={() => navigate('/stats/mistakes')} />
+          {/* The patterns go to whichever column ends first (useBalancedSide):
+              stuck under the Assistant card, they took a scroll past an empty
+              left column. `empty:hidden`: no gap while the card has nothing. */}
+          {patternsSide === 'left' && <div ref={patternsBox} className="empty:hidden"><CoachingPatternCard /></div>}
         </div>
 
-        {/* ── Right column ── */}
-        <div className="space-y-6 xl:col-span-4">
-          <ProgressionCard totalXp={user.xp} onAssessment={() => navigate('/assessment')} />
+        {/* ── Right column ── (level and XP live in the sidebar: no card here) */}
+        <div ref={rightColumn} className="space-y-6 xl:col-span-4">
           <FundamentalsRadarCard role={user.mainRole} />
-          {/* Assistant, proactive: tilt / weak daypart → low-energy protocol as the session objective */}
-          <LowEnergyPrompt context="dashboard" />
           <AssistantCard moment="weekly" footer={<WeeklyCodex role={user.mainRole} />} />
-          <CoachingPatternCard />
+          {patternsSide === 'right' && <div ref={patternsBox} className="empty:hidden"><CoachingPatternCard /></div>}
         </div>
       </div>
 
@@ -365,44 +425,6 @@ function KpiCard({ icon: Icon, label, value, unit, badge, footer, tone, accentVa
   )
 }
 
-/* ─── Progression (XP) ─── */
-
-function ProgressionCard({ totalXp, onAssessment }: { totalXp: number; onAssessment: () => void }) {
-  const { t } = useTranslation()
-  const { level, currentXp, nextLevelXp } = getLevelFromXp(totalXp)
-  const pct = Math.min(100, Math.round((currentXp / nextLevelXp) * 100))
-  return (
-    <section className={cn(panelClass, 'space-y-4 p-5')}>
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-bold text-hextech-text-bright">{t('dashboard.progress')}</h3>
-        <span className="rounded-md border border-hextech-gold/25 bg-hextech-gold/10 px-2 py-0.5 font-mono text-xs text-hextech-gold-bright">
-          {currentXp} / {nextLevelXp} XP
-        </span>
-      </div>
-      <div className="space-y-2.5 rounded-xl border border-hextech-border-dim/60 bg-hextech-black/50 p-3.5">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-hextech-gold bg-hextech-gold/20 font-mono text-sm font-bold text-hextech-gold-bright shadow-[0_0_12px_rgba(0,0,0,0.3)]">
-            {level}
-          </div>
-          <div>
-            <div className="text-xs font-bold text-hextech-text-bright">{t('dashboard.progression.level', { level })}</div>
-            <div className="text-[11px] text-hextech-text">
-              {t('dashboard.progression.toNext', { xp: nextLevelXp - currentXp, level: level + 1 })}
-            </div>
-          </div>
-        </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-hextech-elevated">
-          <div className="h-full rounded-full bg-gradient-to-r from-hextech-gold to-hextech-gold-bright transition-all duration-500" style={{ width: `${pct}%` }} />
-        </div>
-      </div>
-      <Button variant="outline" size="sm" className="w-full gap-2 border-hextech-gold/40 text-hextech-gold hover:bg-hextech-gold/10" onClick={onAssessment}>
-        <ClipboardCheck className="h-4 w-4" />
-        {t('dashboard.fullAssessmentButton')}
-      </Button>
-    </section>
-  )
-}
-
 /**
  * "Empreinte des fondamentaux" — compares the user's recent form (avg of
  * the last 15 games) against their longer snapshot (avg of the last 40
@@ -421,7 +443,9 @@ function FundamentalsRadarCard({ role }: { role: string | null }) {
 
   if (data === undefined) {
     return (
-      <section className={cn(panelClass, 'flex items-center justify-center gap-2 p-6 text-xs text-hextech-text-dim')}>
+      // About the loaded card's height: the column below does not jump when
+      // the Riot round-trip ends.
+      <section className={cn(panelClass, 'flex min-h-[22rem] items-center justify-center gap-2 p-6 text-xs text-hextech-text-dim')}>
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
         {t('dashboard.radar.loading')}
       </section>
@@ -495,6 +519,13 @@ function FundamentalsRadarCard({ role }: { role: string | null }) {
                       style={{ width: `${p.recentScore ?? 0}%`, opacity: 0.9 }}
                     />
                   </div>
+                  {p.recentParts && (
+                    <p className="mt-1.5 font-mono text-[10px] text-hextech-text-dim">
+                      {p.recentParts
+                        .map((part) => `${t(`dashboard.radar.parts.${part.key}`)} ${fmtNum(Math.round(part.value))}${part.weight === 1 ? '' : ` × ${part.weight.toLocaleString()}`}`)
+                        .join(' + ')}
+                    </p>
+                  )}
                 </div>
               )
             })}

@@ -5,7 +5,6 @@ import type { PastAnswer, QcmSummary } from './smartQcm'
 import type { VerificationResult } from './objectiveVerification'
 import type { CalibrationGap, FamilyShare } from './calibration'
 import type { MistakeFamily } from '../mistakeInsights'
-import type { GameLowEnergy } from './lowEnergy'
 
 export type AnswerOutcome = 'mistake' | 'justified' | 'custom'
 
@@ -45,8 +44,6 @@ export interface MicroReviewPayload {
   answers: MicroReviewAnswerView[]
   /** The player's past answers for this role (local learning). */
   pastAnswers: PastAnswer[]
-  /** The game was played in low-energy conditions (2+ losses before it in its session, night, weak daypart). */
-  lowEnergy: GameLowEnergy
   recording: MicroReviewRecording | null
 }
 

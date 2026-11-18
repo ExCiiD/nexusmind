@@ -101,3 +101,18 @@ export const PIT_FIGHT_RADIUS = 3000
 /** Standing within this distance of the pit centre = inside the pit (not holding a choke point). */
 export const PIT_INSIDE_RADIUS = 900
 export const pitCenter = (pit: Pit): Point => (pit === 'baron' ? BARON_PIT : DRAGON_PIT)
+
+// ── Turrets (V5) ────────────────────────────────────────────────────────
+/** Outer (T1) turrets, by owning team and lane, as Riot's BUILDING_KILL events place them. */
+export const OUTER_TURRETS: Record<TeamId, Record<'TOP' | 'MID' | 'BOT', Point>> = {
+  100: { TOP: { x: 981, y: 10441 }, MID: { x: 5846, y: 6396 }, BOT: { x: 10504, y: 1029 } },
+  200: { TOP: { x: 4318, y: 13875 }, MID: { x: 8955, y: 8510 }, BOT: { x: 13866, y: 4505 } },
+}
+
+// ── Base platform (V6) ──────────────────────────────────────────────────
+/** "In base" as the V6 brief draws it: x and y under 2000 for blue, over 12800 for red (fountain and nexus platform). */
+export const BASE_BOX = { blueMax: 2000, redMin: 12800 } as const
+export function inBaseBox(p: Point | null | undefined, team: TeamId): boolean {
+  if (!p) return false
+  return team === 100 ? p.x < BASE_BOX.blueMax && p.y < BASE_BOX.blueMax : p.x > BASE_BOX.redMin && p.y > BASE_BOX.redMin
+}

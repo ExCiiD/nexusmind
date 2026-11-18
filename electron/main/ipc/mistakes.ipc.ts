@@ -22,6 +22,7 @@ import { nextTuning } from '../mistakeTuning'
 import { mistakeDuplicateIndex } from '../mistakeDedupe'
 import { ensureGameAnalysis } from './microReview.ipc'
 import { isGarbageTime, winProbAt } from '../../../src/lib/microReview/winProbability'
+import { mistakeSlug } from '../../../src/lib/mistakeSlug'
 
 /** Games analysed per Mistake Lab load when their analysis is not cached yet (cached timelines only, no Riot call). */
 const ANALYSIS_BACKFILL = 10
@@ -56,11 +57,21 @@ export function registerMistakeHandlers() {
 
   ipcMain.handle('mistake:create-tag', async (_e, args: { label: string; category: string; icon?: string; color?: string }) => {
     if (!args.label?.trim()) throw new Error('Label required')
+    const label = args.label.trim().slice(0, 60)
     const category = TAG_CATEGORIES.has(args.category) ? args.category : 'micro'
-    // Derive a slug from the label so manual creates don't collide with
-    // built-ins. Suffix with a short random tail if a slug already exists.
     const prisma = getPrisma()
-    const base = args.label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'custom'
+    // Naming a personal tag that already exists gives that tag back (as the
+    // micro-review's "Autre cause" does): no "-1" twin for the same words. An
+    // archived one comes back into the list instead of being duplicated.
+    const existing = await prisma.mistakeTag.findFirst({ where: { label, isBuiltIn: false } })
+    if (existing) {
+      return existing.archivedAt
+        ? prisma.mistakeTag.update({ where: { id: existing.id }, data: { archivedAt: null } })
+        : existing
+    }
+    // Slug derived from the label (shared algorithm, see mistakeSlug); a
+    // numeric suffix only when the slug is already taken, e.g. by a built-in.
+    const base = mistakeSlug(label)
     let slug = base
     let i = 1
     while (await prisma.mistakeTag.findUnique({ where: { slug } })) {
@@ -69,7 +80,7 @@ export function registerMistakeHandlers() {
     return prisma.mistakeTag.create({
       data: {
         slug,
-        label: args.label.trim(),
+        label,
         category,
         icon: args.icon ?? null,
         color: args.color ?? null,

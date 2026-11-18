@@ -155,7 +155,7 @@ export function ProfileCard({ prefs, stats, titles, displayName, riotId, mainRol
         {/* Showcase */}
         {showcase.length > 0 && (
           <div className="mt-4">
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-hextech-text-dim">{t('profile.card.showcase')}</h3>
+            <h3 className="font-mono mb-2 text-[10px] font-semibold uppercase tracking-widest text-hextech-text-dim">{t('profile.card.showcase')}</h3>
             <div className="grid grid-cols-3 gap-2">
               {showcase.map((title) => <ShowcaseMedal key={title.id} title={title} />)}
             </div>

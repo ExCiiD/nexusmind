@@ -1,0 +1,28 @@
+[
+  {
+    "id": "codex_mental_low_energy_anti_tilt_protocol",
+    "role": "any",
+    "mistakeSlug": "caught-out",
+    "mistakeSlugs": [
+      "bad-positioning",
+      "bad-trade",
+      "wasted-summoner"
+    ],
+    "phase": "mid",
+    "radarAxis": "kda",
+    "fundamentalId": "resilience",
+    "headline": {
+      "fr": "Protocole basse énergie / anti-tilt : simplifier le jeu sous fatigue cognitive",
+      "en": "Low-energy / anti-tilt protocol: simplify the game under cognitive fatigue"
+    },
+    "tacticalRule": {
+      "fr": "Quand tu joues fatigué, tard le soir ou après une défaite frustrante, ta bande passante cognitive baisse : vouloir jouer sur les mécaniques pures ou le limit testing garantit la défaite. Bascule immédiatement sur 3 règles à faible coût d'énergie : (1) NEUTRALISATION DES WAVES : push ta wave et recule immédiatement dans le brouillard, sans chercher à poke sous la tour ennemie. (2) RESPECT À 100 % DES MOUVEMENTS SUSPECTS : si un ennemi s'avance bizarrement vers toi, considère systématiquement que son jungler est derrière lui et recule sans vérifier. (3) ÉCONOMIE DE FLASH : interdiction d'utiliser ton Flash sur une escarmouche isolée ; garde-le exclusivement pour les grands teamfights d'objectifs.",
+      "en": "When you play tired, late at night or after a frustrating loss, your cognitive bandwidth drops: trying to win on pure mechanics or limit testing guarantees the loss. Switch immediately to 3 low-energy rules: (1) NEUTRALISE WAVES: push your wave and step straight back into the fog, without trying to poke under the enemy tower. (2) RESPECT EVERY SUSPICIOUS MOVE: if an enemy walks up to you oddly, always assume their jungler is behind them and back off without checking. (3) FLASH ECONOMY: no Flash on an isolated skirmish; keep it exclusively for the big objective teamfights."
+    },
+    "drillObjective": {
+      "fr": "En session de fatigue ou après une défaite : zéro duel mécanique forcé, regarde la minimap entre chaque wave et communique par 3 pings sur le trajet ennemi.",
+      "en": "In a tired session or after a loss: zero forced mechanical duel, look at the minimap between every wave and communicate with 3 pings on the enemy path."
+    },
+    "videoExamples": []
+  }
+]

@@ -711,7 +711,7 @@ function SideColumn({
     // parent (`flex-1`) sized for it. The flex children below divide
     // that height proportionally so all 10 slots get equal-ish rows.
     <Card className={cn('p-2 border-l-4 h-full flex flex-col min-h-0 overflow-hidden', sideBorder)}>
-      <h3 className={cn('text-xs font-bold uppercase tracking-wider mb-2 pb-1 flex items-center justify-between shrink-0', sideText)}>
+      <h3 className={cn('font-mono text-xs font-bold uppercase tracking-wider mb-2 pb-1 flex items-center justify-between shrink-0', sideText)}>
         <span>{label}</span>
         {isMySide && (
           <span className="text-[9px] font-bold bg-hextech-gold/20 text-hextech-gold border border-hextech-gold/40 rounded px-1 py-0.5">
@@ -736,10 +736,10 @@ function SideColumn({
           >
             <p className={cn(
               'text-[10px] uppercase tracking-wider mb-1 font-semibold flex items-center gap-1.5 shrink-0',
-              phase.type === 'ban' ? 'text-red-300/80' : 'text-emerald-300/80',
+              phase.type === 'ban' ? 'text-neutral-300/80' : 'text-emerald-300/80',
             )}>
               {/* Tiny color dot mirrors the slot tint for instant association */}
-              <span className={cn('h-1.5 w-1.5 rounded-full', phase.type === 'ban' ? 'bg-red-400' : 'bg-emerald-400')} />
+              <span className={cn('h-1.5 w-1.5 rounded-full', phase.type === 'ban' ? 'bg-neutral-400' : 'bg-emerald-400')} />
               {phase.label}
             </p>
             {/* Inner column: distribute the phase's allocated height
@@ -841,7 +841,8 @@ function RoleBadge({ role, champions }: { role: string; champions: string[] }) {
  * grid pick. Click an option to promote it to leading; the X removes it.
  *
  * Visual identity:
- *   - Bans:  red-tinted background + Ban icon overlay on each option
+ *   - Bans:  neutral grey background (never a side colour: on a red theme a
+ *            red ban box read as a red-side pick) + Ban icon overlay on each option
  *   - Picks: side-tinted background (blue or red) — matches the team color
  */
 function MultiOptionSlot({
@@ -859,7 +860,7 @@ function MultiOptionSlot({
   // Distinct backgrounds make pick vs ban obvious at a glance without needing
   // to read the section header. Active slot always wins (gold ring).
   const baseBg = isBan
-    ? 'bg-red-950/40 border-red-900/60 hover:bg-red-950/60'
+    ? 'bg-neutral-500/15 border-neutral-500/40 hover:bg-neutral-500/25'
     : side === 'blue'
       ? 'bg-blue-950/40 border-blue-900/60 hover:bg-blue-950/60'
       : 'bg-red-900/30 border-red-800/50 hover:bg-red-900/40'
@@ -880,7 +881,7 @@ function MultiOptionSlot({
     >
       <span className={cn(
         'text-[10px] font-bold w-6 text-center shrink-0 leading-tight',
-        isActive ? 'text-hextech-gold' : isBan ? 'text-red-300/70' : side === 'blue' ? 'text-blue-300/70' : 'text-red-300/70',
+        isActive ? 'text-hextech-gold' : isBan ? 'text-neutral-300/70' : side === 'blue' ? 'text-blue-300/70' : 'text-red-300/70',
       )}>
         {isBan ? `B${slot.index + 1}` : `P${slot.index + 1}`}
       </span>
@@ -1061,7 +1062,7 @@ function PoolSidebar({
   const { t } = useTranslation()
   return (
     <Card className="p-2 h-full overflow-y-auto">
-      <h3 className="text-xs font-bold uppercase tracking-wider text-hextech-text-dim mb-2 flex items-center gap-1.5">
+      <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-hextech-text-dim mb-2 flex items-center gap-1.5">
         <Target className="h-3 w-3" />
         {t('team.draft.poolSidebar', { defaultValue: 'Champion pools' })}
       </h3>

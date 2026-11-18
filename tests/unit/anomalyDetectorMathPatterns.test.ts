@@ -121,7 +121,8 @@ describe('pattern — jungle overchase (2:30–8:00)', () => {
     expect(patterns(chase(300_000, { pos: { x: 3500, y: 7000 } }))).toEqual([]) // own jungle
     expect(patterns(chase(300_000, { extra: [kill(295_000, 6, 2)] }))).toEqual([]) // got a kill during the chase
     const farmed = (i: number, pid: number) => (pid === 2 ? { position: ENEMY_SIDE, jungleMinionsKilled: i * 4 } : undefined)
-    expect(patterns(chase(300_000, { frame: farmed }))).toEqual([]) // took camps
+    // Took camps: not a chase. Dead in the enemy jungle after a camp, it is the V7 invade death instead (microReviewV7.test.ts).
+    expect(patterns(chase(300_000, { frame: farmed }))).toEqual(['jungle-invade-death'])
     // On the enemy side for less than 20 s: still home at 4:00, dead at 4:10.
     const justCrossed = (i: number, pid: number) => (pid === 2 ? { position: i <= 4 ? { x: 3500, y: 7000 } : ENEMY_SIDE } : undefined)
     expect(patterns(chase(250_000, { frame: justCrossed }))).toEqual([])
@@ -472,7 +473,8 @@ describe('pattern — bad rotation (laners, before 14:00)', () => {
   const roam = (o: { k?: number; me?: number; from?: P; to?: P; cs?: number; xp?: number; extra?: any[] } = {}) => {
     const k = o.k ?? 5
     const me = o.me ?? 3
-    return buildGame({ minutes: 18, me, events: o.extra ?? [],
+    // A ward at 1:00 keeps the support's V6 "no ward by 1:45" moment (microReviewV6.test.ts) out of these cases.
+    return buildGame({ minutes: 18, me, events: [ward(60_000, me), ...(o.extra ?? [])],
       frame: (i, pid) => {
         if (pid !== me) return undefined
         if (i === k) return { position: o.from ?? { x: 7400, y: 7600 } }
@@ -604,7 +606,8 @@ describe('pattern — choke points: in the pit instead of zoning (from 14:00)', 
     const foes = me <= 5 ? [7, 8] : [3, 4]
     return buildGame({ minutes: 30, me, champions: o.champions,
       frame: o.frame ?? ((i, pid) => (pid === me && i >= M - 1 && i <= M + 1 ? { position: { x: pit.x + (o.playerDist ?? 899), y: pit.y } } : undefined)),
-      events: o.events?.(t0, near) ?? [kill(t0, allies[0], foes[0], [], near), kill(t0 + (o.gap ?? 10_000), allies[1], foes[1], [], near)] })
+      // The player wards at 1:00: the support's V6 "no ward by 1:45" moment (microReviewV6.test.ts) is not what is tested here.
+      events: [ward(60_000, me), ...(o.events?.(t0, near) ?? [kill(t0, allies[0], foes[0], [], near), kill(t0 + (o.gap ?? 10_000), allies[1], foes[1], [], near)])] })
   }
   it('a support inside the pit (d < 900) when a lost fight breaks out within 3000 units', () => {
     expect(withPattern(pitFight(), 'pit-chokepoint')).toMatchObject({

@@ -21,7 +21,7 @@ import {
 } from '@/lib/appearance'
 
 const THEME_SWATCHES: Record<Exclude<ColorTheme, 'custom'>, [string, string, string]> = {
-  hextech: ['#0D0A06', '#D4A24C', '#3E8E7E'],
+  hextech: ['#0D0A06', '#D4A24C', '#E4C285'],
   piltover: ['#060B10', '#4C9ED4', '#3EC2D4'],
   noxus: ['#100607', '#C23B3B', '#D4753E'],
   void: ['#0A0610', '#A24CD4', '#8E6AD4'],

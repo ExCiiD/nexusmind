@@ -16,7 +16,7 @@
 import type { ContestedObjective } from './anomalyDetector'
 
 export type VerificationStatus = 'passed' | 'failed' | 'unknown'
-export type RuleId = 'ward-before-objectives' | 'no-isolated-death' | 'gold-spent' | 'no-overstay' | 'cs-at-10' | 'positioning' | 'trades' | 'mechanics' | 'low-energy'
+export type RuleId = 'ward-before-objectives' | 'no-isolated-death' | 'gold-spent' | 'no-overstay' | 'cs-at-10' | 'positioning' | 'trades' | 'mechanics'
 
 export interface VerificationInput {
   /** Slugs of every Mistake recorded for the game. */
@@ -51,9 +51,6 @@ export const RULES: Rule[] = [
   { id: 'positioning', fundamentals: ['positioning', 'prefight_positioning', 'rotation_positioning', 'spacing', 'threat_assessment'], tags: ['bad-positioning', 'bad-threat-assessment', 'bad-engage-angle'] },
   { id: 'trades', fundamentals: ['trades', 'aggression_calibration', 'limits_knowledge'], tags: ['bad-trade'] },
   { id: 'mechanics', fundamentals: ['mastery', 'summoner_spells'], tags: ['whiff-skillshot', 'bad-kiting', 'wasted-summoner'] },
-  // Low-energy protocol (session objective on "resilience"): no isolated death, no forced duel, no wasted Flash.
-  // The micro-review's low-energy diagnosis records `caught-out` (LOW_ENERGY_TAG), so answering it fails the rule.
-  { id: 'low-energy', fundamentals: ['resilience'], tags: ['caught-out', 'bad-trade', 'wasted-summoner'] },
 ]
 
 export const CS_DIFF_LIMIT = -15

@@ -11,6 +11,15 @@
  * shown on hover/in the detail modal are the actual numbers.
  */
 
+/** One term of an axis that adds several stats up (see `fightImpactParts`). */
+export interface RadarAxisPart {
+  key: string
+  /** Per-minute average of this stat. */
+  value: number
+  /** Share of `value` that counts in the axis. */
+  weight: number
+}
+
 export interface RadarAxisDef {
   key: string
   label: string
@@ -19,6 +28,8 @@ export interface RadarAxisDef {
   max: number
   /** Path into the `computeAverages()` result. */
   pick: (s: any) => number | null
+  /** Terms of the axis when it is a sum, for the detail view. */
+  parts?: (s: any) => RadarAxisPart[] | null
 }
 
 /** Order matches the reference design: KDA, CS/m, Gold/m, DMG/m, KP, FB,
@@ -42,12 +53,59 @@ export const RADAR_AXES: RadarAxisDef[] = [
 ]
 
 /**
+ * Share of the damage a support absorbs (Riot `damageSelfMitigated`: what its
+ * resistances and shields soaked up) that counts in its fight impact.
+ */
+export const FIGHT_IMPACT_ABSORBED_WEIGHT = 0.4
+
+/**
+ * "Fight impact" of a support, per minute: heals + shields on teammates,
+ * damage to champions and 40% of the damage absorbed.
+ *
+ * It replaces a heal+shield axis that only an enchanter could fill. Measured
+ * on the 6,029 support performances of 3,015 cached ranked games (Nov. 2026):
+ * half of them had under 100 heal+shield per minute, and the champion picked
+ * explained 71% of that number. The sum below puts the three styles level
+ * (enchanters 895, poke mages 848, engage supports 851 on average) and stays
+ * almost as tied to winning as the old axis: it is 0.33 standard deviation
+ * higher in wins than in losses of the same champion, against 0.36.
+ *
+ * Why absorbed and not received: raw damage taken is much higher in losses
+ * (0.58 standard deviation), so counting it would reward getting punished.
+ * The 0.4 weight is the one that levels the styles (0.33 leaves engage
+ * supports 11% short, 0.5 puts them ahead).
+ *
+ * Returns null when a term is unknown rather than counting it as zero.
+ */
+export function fightImpactParts(s: any): RadarAxisPart[] | null {
+  const combat = s?.combat
+  const healShield = combat?.healShieldPerMin ?? null
+  const damage = combat?.damagePerMin ?? null
+  // Averages computed before the per-minute field existed only carry the total.
+  const minutes = s?.meta?.avgDuration > 0 ? s.meta.avgDuration / 60 : null
+  const absorbed = combat?.damageMitigatedPerMin ?? (combat?.damageMitigated != null && minutes ? combat.damageMitigated / minutes : null)
+  if (healShield == null || damage == null || absorbed == null) return null
+  return [
+    { key: 'healShield', value: healShield, weight: 1 },
+    { key: 'damage', value: damage, weight: 1 },
+    { key: 'absorbed', value: absorbed, weight: FIGHT_IMPACT_ABSORBED_WEIGHT },
+  ]
+}
+
+export function fightImpactPerMin(s: any): number | null {
+  const parts = fightImpactParts(s)
+  return parts ? Math.round(parts.reduce((sum, p) => sum + p.value * p.weight, 0)) : null
+}
+
+/**
  * Support (`UTILITY`) axes: the laner KPIs (CS, gold, damage) say nothing
  * about a support's impact. These measure what a support controls —
  * fight presence (KP, KDA), staying alive, vision (own score, the gap vs.
- * the opposing support, control wards, wards cleared) and utility, split
- * so both styles score fairly: heals + shields for enchanters, crowd
- * control for engage supports. Same first-pass calibration caveat as above.
+ * the opposing support, control wards, wards cleared), fight impact
+ * whatever the style (see `fightImpactParts`) and crowd control.
+ * Same first-pass calibration caveat as above, except for fight impact,
+ * whose 400-1300 scale comes from the measured distribution (10% of support
+ * games are under 545, half under 837, 10% above 1,228).
  */
 export const SUPPORT_RADAR_AXES: RadarAxisDef[] = [
   {
@@ -61,7 +119,7 @@ export const SUPPORT_RADAR_AXES: RadarAxisDef[] = [
   { key: 'vsdiff', label: 'Vision diff', unit: '', min: -15, max: 30, pick: (s) => s?.vision?.visionScoreAdvantage ?? null },
   { key: 'pinks', label: 'Pinks', unit: '', min: 0, max: 8, pick: (s) => s?.vision?.controlWardsPurchased ?? null },
   { key: 'wardkill', label: 'Wards killed', unit: '', min: 0, max: 6, pick: (s) => s?.vision?.wardsDestroyed ?? null },
-  { key: 'healshield', label: 'Heal+Shield/m', unit: '', min: 0, max: 500, pick: (s) => s?.combat?.healShieldPerMin ?? null },
+  { key: 'impact', label: 'Fight impact/m', unit: '', min: 400, max: 1300, pick: fightImpactPerMin, parts: fightImpactParts },
   { key: 'cc', label: 'CC/m', unit: '', min: 0, max: 3, pick: (s) => s?.combat?.ccPerMin ?? null },
 ]
 
@@ -80,6 +138,9 @@ export interface RadarAxisPoint {
   /** 0-100, clamped — null stays null (no line drawn through that axis). */
   recentScore: number | null
   snapshotScore: number | null
+  /** Only on an axis that adds several stats up: its terms (null when unknown). */
+  recentParts?: RadarAxisPart[] | null
+  snapshotParts?: RadarAxisPart[] | null
 }
 
 function normalize(value: number | null, min: number, max: number): number | null {
@@ -100,6 +161,7 @@ export function buildFundamentalsRadar(recent: any | null, snapshot: any | null,
       snapshotRaw,
       recentScore: normalize(recentRaw, axis.min, axis.max),
       snapshotScore: normalize(snapshotRaw, axis.min, axis.max),
+      ...(axis.parts ? { recentParts: recent ? axis.parts(recent) : null, snapshotParts: snapshot ? axis.parts(snapshot) : null } : {}),
     }
   })
 }

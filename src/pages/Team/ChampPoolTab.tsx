@@ -439,7 +439,7 @@ export function ChampPoolTab({ team, onChange }: Props) {
         {/* Champion grid */}
         <Card className="p-3 max-h-[78vh] overflow-y-auto">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-hextech-text-dim">
+            <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-hextech-text-dim">
               {t('team.pool.allChampions', { defaultValue: 'All champions' })}
               <span className="ml-2 text-hextech-text-dim/60">({filteredChampions.length})</span>
             </h3>
@@ -474,7 +474,7 @@ export function ChampPoolTab({ team, onChange }: Props) {
             return (
               <>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-hextech-text-dim">
+                  <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-hextech-text-dim">
                     {t('team.pool.poolTitle', { defaultValue: 'Pool' })} {roleFilter} ({roleEntries.length})
                   </h3>
                   {poolLoading && <Loader2 className="h-3 w-3 animate-spin text-hextech-text-dim" />}

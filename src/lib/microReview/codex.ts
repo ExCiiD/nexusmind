@@ -7,6 +7,7 @@
  */
 
 import raw from './codex.json'
+import retiredRaw from './codexRetired.json'
 import { phaseOf, type Phase } from '../mistakeInsights'
 
 export type CodexRole = 'any' | 'TOP' | 'JUNGLE' | 'MIDDLE' | 'BOTTOM' | 'UTILITY'
@@ -100,7 +101,14 @@ export interface CodexEntry {
   groupId?: string
 }
 
-export const CODEX: CodexEntry[] = (raw as unknown as CodexEntry[]).map((e) => ({ ...e, source: 'builtin' as const, videoExamples: sanitizeVideos(e.videoExamples, e.id) }))
+const builtin = (list: unknown): CodexEntry[] => (list as CodexEntry[]).map((e) => ({ ...e, source: 'builtin' as const, videoExamples: sanitizeVideos(e.videoExamples, e.id) }))
+export const CODEX: CodexEntry[] = builtin(raw)
+/**
+ * Fiches withdrawn from the product: never ranked by codexFor, never offered, not counted. They stay readable by id only,
+ * so an answer recorded with them still shows the fiche it pointed at — the low-energy protocol, withdrawn on
+ * 18/11/2026 (1.0.0-beta.1 answers carry it).
+ */
+export const CODEX_RETIRED: CodexEntry[] = builtin(retiredRaw)
 
 export function normalizeRole(role: string | null | undefined): CodexRole {
   const r = (role ?? '').toUpperCase()
@@ -140,7 +148,30 @@ export function codexFor(
   return eligible.sort((a, b) => rank(a) - rank(b))[0] ?? null
 }
 
-export const codexById = (id: string): CodexEntry | null => CODEX.find((e) => e.id === id) ?? null
+/**
+ * Ids that no longer have an entry of their own, and the entry that took
+ * their content. Answers and session notes saved with an old id keep
+ * resolving; the V5 brief's ids resolve to the fiche they were merged into.
+ */
+export const CODEX_ALIASES: Readonly<Record<string, string>> = {
+  // Internal duplicates merged (Nov. 2026).
+  'trade-any-early': 'codex_mechanics_trading_4laws_cooldown_punish',
+  'overstay-any-mid': 'codex_tempo_single_action_window_wave_cheating',
+  // V5 fiches whose concept already had a fiche.
+  codex_mechanics_triple_cd_sync_malphite_camille: 'codex_mechanics_trading_4laws_cooldown_punish',
+  codex_mechanics_two_step_posturing_and_lane_side_minion_rule: 'codex_mechanics_lane_quadrants_minion_wall',
+  codex_tempo_back_priority_freeze_recall_4minion_rule_cheater: 'overstay-any-early',
+  codex_mechanics_cs_priority_matrix_spell_discipline_proxy: 'cs-any-early',
+  codex_tempo_attacking_tp_and_slow_motion_dive_and_lead_protection: 'dive-any-early',
+}
+
+export const codexById = (id: string): CodexEntry | null => {
+  const key = CODEX_ALIASES[id] ?? id
+  return CODEX.find((e) => e.id === key) ?? CODEX_RETIRED.find((e) => e.id === key) ?? null
+}
+
+/** A withdrawn fiche: shown for the answers that carry it, never offered as the next session's objective. */
+export const isRetiredCodex = (id: string): boolean => CODEX_RETIRED.some((e) => e.id === id)
 
 /** Phase in which a set of occurrence times concentrates (ties → earliest). */
 export function dominantPhase(gameTimesSec: number[]): Phase | null {

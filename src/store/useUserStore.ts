@@ -30,6 +30,8 @@ interface User {
   recordAudioDesktopDevice: string | null
   recordAudioMic: boolean
   recordAudioMicDevice: string | null
+  recordInBackground: boolean
+  reviewPopup: boolean
 }
 
 interface UserStore {

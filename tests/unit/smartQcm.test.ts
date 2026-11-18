@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { buildQcm, contextsOf, choiceStats, promotedTag, countsAgainstPlayer, optionsFor, LOW_ENERGY_TAG, CODEX_TEMPO, CODEX_JUNGLE_CYCLE, CODEX_JUNGLE_INVADE, CODEX_OBJ_SETUP, CODEX_131, CODEX_BARON, type PastAnswer } from '../../src/lib/microReview/smartQcm'
-import { codexById } from '../../src/lib/microReview/codex'
+import { buildQcm, contextsOf, choiceStats, promotedTag, countsAgainstPlayer, optionsFor, CODEX_TEMPO, CODEX_JUNGLE_CYCLE, CODEX_JUNGLE_INVADE, CODEX_OBJ_SETUP, CODEX_131, CODEX_BARON, type PastAnswer } from '../../src/lib/microReview/smartQcm'
+import { CODEX, CODEX_RETIRED, codexById, codexFor, isRetiredCodex } from '../../src/lib/microReview/codex'
 import { ruleFor } from '../../src/lib/microReview/objectiveVerification'
 import {
   CODEX_TEMPO_LINES, CODEX_WAVE_SIDE, CODEX_SINGLE_THREAT, CODEX_TEMPO_WINDOW, CODEX_SLOW_FAST, CODEX_TRACKING, CODEX_TRADING, CODEX_FIGHTS,
-  CODEX_3_TEMPOS, CODEX_ASYMMETRY, CODEX_CHOKEPOINT, CODEX_ARCHETYPES, CODEX_ROAM_CHECK, CODEX_LOW_ENERGY, ecoDeficit, type QcmContext,
+  CODEX_3_TEMPOS, CODEX_ASYMMETRY, CODEX_CHOKEPOINT, CODEX_ARCHETYPES, CODEX_ROAM_CHECK, QCM_CONTEXTS, RETIRED_OPTIONS, retiredOption, ecoDeficit, type QcmContext,
 } from '../../src/lib/microReview/smartQcm'
 
 const ALL_CONTEXTS: QcmContext[] = ['objective', 'gold', 'isolated', 'duel', 'teamfight', 'absent', 'early-cs', 'early-xp', 'hesitation', 'jungle-cycle',
   'jungle-passive', 'rotation', 'baron-siege', 'tempo-recall', 'tempo-front', 'gank-timer', 'carry-first', 'jungle-window', 'bad-rotation', 'duel-early', 'outnumbered',
-  'chokepoint', 'mid-roam', 'eco-tempo', 'side-overextend', 'early-3v3', 'low-energy']
+  'chokepoint', 'mid-roam', 'eco-tempo', 'side-overextend', 'early-3v3']
 import type { CriticalMoment, MomentFacts } from '../../src/lib/microReview/anomalyDetector'
 import { tagFamily } from '../../src/lib/mistakeInsights'
 
@@ -81,7 +81,7 @@ describe('buildQcm', () => {
     expect([...wanted].filter((id) => !seen.has(id))).toEqual([])
   })
   it('every context offers at least two diagnoses, and at most one way out', () => {
-    for (const c of ALL_CONTEXTS.filter((x) => x !== 'low-energy')) {
+    for (const c of ALL_CONTEXTS) {
       const list = optionsFor(c)
       expect(list, c).toHaveLength(3)
       expect(list.filter((o) => o.outcome === 'mistake').length, c).toBeGreaterThanOrEqual(2)
@@ -313,59 +313,59 @@ describe('V4 fiches — qcmTrigger options', () => {
     // After the laning phase the same death is a plain "isolated" one.
     expect(contextsOf(at({ alliesNearby: 0, enemiesInvolved: 2 }, { gameTimeSec: 14 * 60, zone: 'mid-lane' }))).toEqual(['isolated'])
   })
-  it('low-energy game: the protocol is choice [2] of every death, never of another trigger', () => {
-    const death = at({ alliesNearby: 0, enemiesInvolved: 3 }, { gameTimeSec: 20 * 60, zone: 'mid-lane' })
-    const plain = buildQcm(death)
-    const low = buildQcm(death, undefined, { lowEnergy: true })
-    expect(plain.options.some((o) => o.codexId === CODEX_LOW_ENERGY)).toBe(false)
-    expect(low.options).toHaveLength(3)
-    expect(low.options[0]).toEqual(plain.options[0])
-    // 'caught-out' is already choice [1] ("isolated"): the protocol is another reading of the same tag, with its own id.
-    expect(plain.options[0]).toMatchObject({ id: 'caught-out', reason: 'noMinimap' })
-    expect(low.options[1]).toMatchObject({ id: 'caught-out#lowEnergy', tagSlug: 'caught-out', reason: 'lowEnergy', codexId: CODEX_LOW_ENERGY })
-    expect(low.contexts[1]).toBe('low-energy')
-    expect(new Set(low.options.map((o) => o.id)).size).toBe(3)
-    // Keeps the justified way out, drops the plain mistake.
-    expect(low.options[2]).toMatchObject({ outcome: 'justified' })
-    const absent = buildQcm(at({ objective: 'dragon' }, {}, 'absent-objective'), undefined, { lowEnergy: true })
-    expect(absent.options.some((o) => o.codexId === CODEX_LOW_ENERGY)).toBe(false)
-  })
-  it('low-energy game: on a card of three fiches, the protocol replaces the last one', () => {
-    const duel = buildQcm(at({ alliesNearby: 0, enemiesInvolved: 1 }, { gameTimeSec: 7 * 60, zone: 'mid-lane' }), undefined, { lowEnergy: true })
-    expect(duel.options.map((o) => o.tagSlug)).toEqual(['bad-trade', 'caught-out', 'bad-positioning'])
-    expect(duel.options.map((o) => o.codexId)).toEqual([CODEX_TRADING, CODEX_LOW_ENERGY, CODEX_WAVE_SIDE])
-  })
-  it('low-energy game: the diagnosis always records the same tag, the one its session objective is checked against', () => {
-    expect(LOW_ENERGY_TAG).toBe('caught-out')
-    expect(ruleFor('resilience')).toMatchObject({ id: 'low-energy' })
-    expect(ruleFor('resilience')!.tags).toContain(LOW_ENERGY_TAG)
-    expect(codexById(CODEX_LOW_ENERGY)!.mistakeSlug).toBe(LOW_ENERGY_TAG)
-    const shapes: Array<[MomentFacts, Partial<CriticalMoment>]> = [
-      [{ alliesNearby: 0, enemiesInvolved: 1 }, { gameTimeSec: 7 * 60, zone: 'mid-lane' }], // three fiches, none on caught-out
-      [{ alliesNearby: 0, enemiesInvolved: 3 }, { gameTimeSec: 20 * 60, zone: 'mid-lane' }], // caught-out already choice [1]
-      [{ alliesNearby: 2, enemiesInvolved: 4 }, { gameTimeSec: 30 * 60 }],
-      [{ alliesNearby: 0, enemiesInvolved: 2, hpPct: 20 }, { gameTimeSec: 19 * 60, zone: 'top-lane', territory: 'enemy' }], // eco-tempo + side-overextend + isolated
-      [{ pattern: 'gank-timer', gankWindow: 1 }, { gameTimeSec: 150 }],
-    ]
-    for (const [facts, over] of shapes) {
-      const plain = buildQcm(at(facts, over))
-      const low = buildQcm(at(facts, over), undefined, { lowEnergy: true })
-      expect(low.options[1]).toMatchObject({ id: 'caught-out#lowEnergy', tagSlug: LOW_ENERGY_TAG, codexId: CODEX_LOW_ENERGY })
-      // Choice [1] and the justified way out (when there is one) are untouched.
-      expect(low.options[0]).toEqual(plain.options[0])
-      expect(low.options.filter((o) => o.outcome === 'justified')).toEqual(plain.options.filter((o) => o.outcome === 'justified'))
-    }
-  })
   it('never produces two options with the same id, and always 3 options on a death', () => {
     const shapes: MomentFacts[] = [
       { alliesNearby: 0, enemiesInvolved: 1 }, { alliesNearby: 0, enemiesInvolved: 3 }, { alliesNearby: 2, enemiesInvolved: 4 },
       { nearObjective: true, objectiveLost: 'baron', goldInPocket: 1650, alliesNearby: 0, enemiesInvolved: 2, hpPct: 20, levelDeficit: 2, secondsSinceOwnPlay: 10 },
       { alliedBaron: true, alliesNearby: 1, enemiesInvolved: 3 }, { pattern: 'gank-timer', gankWindow: 1 }, { pattern: 'fed-carry-first' }, { pattern: 'tempo-front-isolated' },
     ]
-    for (const facts of shapes) for (const t of [5 * 60, 16 * 60, 30 * 60]) for (const lowEnergy of [false, true]) {
-      const c = buildQcm(at(facts, { gameTimeSec: t }), undefined, { lowEnergy })
+    for (const facts of shapes) for (const t of [5 * 60, 16 * 60, 30 * 60]) {
+      const c = buildQcm(at(facts, { gameTimeSec: t }))
       expect(c.options).toHaveLength(3)
       expect(new Set(c.options.map((o) => o.id)).size).toBe(3)
     }
+  })
+})
+
+describe('the low-energy protocol is withdrawn (18/11/2026)', () => {
+  const RETIRED = 'codex_mental_low_energy_anti_tilt_protocol'
+  const death: CriticalMoment = { ...moment({ alliesNearby: 0, enemiesInvolved: 3 }), gameTimeSec: 20 * 60, zone: 'mid-lane' }
+  const recorded = { tagSlug: 'caught-out', reason: 'lowEnergy', viaOther: false }
+
+  it('no context, no option, no session-objective rule, no fiche in the Codex', () => {
+    expect(QCM_CONTEXTS as readonly string[]).not.toContain('low-energy')
+    const facts = [{}, { hpPct: 20 }, { secondsSinceOwnPlay: 10 }, { playerWarded: true }, { midOnWave: true }, { nearObjective: true }]
+    for (const c of QCM_CONTEXTS) for (const f of facts) for (const o of optionsFor(c, f)) {
+      expect(o.reason, c).not.toBe('lowEnergy')
+      expect(o.codexId, c).not.toBe(RETIRED)
+    }
+    expect(ruleFor('resilience')).toBeNull()
+    expect(CODEX.some((e) => e.id === RETIRED || e.fundamentalId === 'resilience')).toBe(false)
+  })
+  it('codexFor never prescribes it, whatever the tag, role or phase', () => {
+    const slugs = new Set(CODEX_RETIRED.flatMap((e) => [e.mistakeSlug, ...(e.mistakeSlugs ?? [])]))
+    expect(slugs.size).toBeGreaterThan(0)
+    for (const slug of slugs) for (const role of ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY', null]) for (const phase of ['early', 'mid', 'late', null] as const) {
+      expect(isRetiredCodex(codexFor(slug, role, phase)?.id ?? '')).toBe(false)
+    }
+  })
+  it('an answer recorded with it still reads back: same tag, same reason, same fiche', () => {
+    const card = buildQcm(death)
+    expect(card.options.some((o) => o.reason === 'lowEnergy')).toBe(false)
+    expect(retiredOption(card.options, recorded)).toMatchObject({ id: 'caught-out#lowEnergy', outcome: 'mistake', tagSlug: 'caught-out', reason: 'lowEnergy', codexId: RETIRED })
+    // Its id never collides with an option of the card (the plain "caught alone" reading is choice [1] here).
+    expect(card.options[0]).toMatchObject({ id: 'caught-out', reason: 'noMinimap' })
+    expect(card.options.map((o) => o.id)).not.toContain(RETIRED_OPTIONS[0].id)
+    expect(codexById(RETIRED)).toMatchObject({ id: RETIRED, mistakeSlug: 'caught-out', fundamentalId: 'resilience' })
+    expect(isRetiredCodex(RETIRED)).toBe(true)
+  })
+  it('only for that answer: another reason, "Autre cause…", no answer, or an option still on the card', () => {
+    const card = buildQcm(death)
+    expect(retiredOption(card.options, { tagSlug: 'caught-out', reason: 'noMinimap', viaOther: false })).toBeNull()
+    expect(retiredOption(card.options, { ...recorded, tagSlug: 'bad-trade' })).toBeNull()
+    expect(retiredOption(card.options, { ...recorded, viaOther: true })).toBeNull()
+    expect(retiredOption(card.options, { ...recorded, reason: null })).toBeNull()
+    expect(retiredOption(card.options, null)).toBeNull()
+    expect(retiredOption([...card.options, RETIRED_OPTIONS[0]], recorded)).toBeNull()
   })
 })

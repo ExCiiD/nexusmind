@@ -7,8 +7,9 @@ import { buildGame, at } from '../unit/microReviewFixtures'
  * Micro-review, end to end in the real app: the cached timeline is analysed
  * in the main process, the Review page shows the guided QCM, answers reach
  * the Mistake Library (a `justified` one does not), the Codex fiche and the
- * XP appear, the Mistake Lab shows the prescription, and the low-energy
- * protocol becomes the running session's objective in one click.
+ * XP appear, and the Mistake Lab shows the prescription. The low-energy
+ * protocol is withdrawn: no prompt anywhere, but an answer recorded with it
+ * still reads back with its fiche.
  */
 
 const ROOT = resolve(__dirname, '..', '..')
@@ -36,12 +37,7 @@ function timelineFixture() {
 let gameId = ''
 let sessionId = ''
 
-/**
- * Yesterday afternoon, local time. The games must not end at night: a game
- * played between 0 h and 6 h is a low-energy one, and the micro-review then
- * offers the protocol in place of the second diagnosis — whatever the hour
- * this suite runs at, the cards below must be the daytime ones.
- */
+/** Yesterday, local time: the seeded games end before the suite runs, whatever the hour. */
 function yesterdayAt(hour: number, minute: number): Date {
   const d = new Date()
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1, hour, minute)
@@ -164,30 +160,43 @@ test.describe('guided micro-review', () => {
     expect(ctx.pageErrors).toEqual([])
   })
 
-  test('Dashboard: two losses in a row → the low-energy protocol becomes the session objective', async () => {
-    await goto(ctx.page, '/')
-    const prompt = ctx.page.getByTestId('low-energy-dashboard')
-    await expect(prompt).toBeVisible({ timeout: 15_000 })
-    await expect(prompt).toContainText('2 losses in a row in this session')
-    await prompt.getByRole('button', { name: /Activate on the running session/ }).click()
-    await expect(prompt).toContainText('Low-energy protocol active on the running session')
-
+  test('Dashboard, Session, Stats: no low-energy prompt after two losses in a row (protocol withdrawn)', async () => {
+    for (const route of ['/', '/session', '/stats']) {
+      await goto(ctx.page, route)
+      await expect(ctx.page.locator('main')).toBeVisible({ timeout: 15_000 })
+      await expect(ctx.page.locator('[data-testid^="low-energy"]')).toHaveCount(0)
+      await expect(ctx.page.getByText(/Low-energy protocol/)).toHaveCount(0)
+    }
     const prisma = prismaFor(dir)
     try {
       const session = await prisma.session.findUniqueOrThrow({ where: { id: sessionId } })
-      expect(session.objectiveId).toBe('resilience')
-      expect(JSON.parse(session.objectiveIds)).toEqual(['resilience', 'vision_control'])
-      expect(session.customNote).toContain('Low-energy protocol')
+      expect(JSON.parse(session.objectiveIds)).toEqual(['vision_control'])
     } finally {
       await prisma.$disconnect()
     }
     expect(ctx.pageErrors).toEqual([])
   })
 
-  test('Session: the protocol shows as active, and Stats → Analysis renders its panels', async () => {
-    await goto(ctx.page, '/session')
-    await expect(ctx.page.getByTestId('low-energy-session')).toContainText('Low-energy protocol active on the running session')
-    await goto(ctx.page, '/stats')
+  test('Review: an answer recorded with the withdrawn protocol still reads back, with its fiche', async () => {
+    // What a 1.0.0-beta.1 player recorded on a tired evening: the protocol, on the death.
+    const prisma = prismaFor(dir)
+    try {
+      await prisma.microReviewAnswer.update({
+        where: { gameId_momentKey: { gameId, momentKey: 'critical-death@1528' } },
+        data: { outcome: 'mistake', tagSlug: 'caught-out', reason: 'lowEnergy', viaOther: false },
+      })
+    } finally {
+      await prisma.$disconnect()
+    }
+    await goto(ctx.page, `/review?gameId=${gameId}`)
+    const panel = ctx.page.getByTestId('micro-review')
+    await expect(panel.getByTestId('micro-review-done')).toBeVisible({ timeout: 20_000 })
+    await panel.getByRole('button', { name: /25:28/ }).click()
+    await expect(panel.getByRole('button', { name: /Overload \/ fatigue/, pressed: true })).toBeVisible()
+    await expect(panel.getByRole('button', { name: /Caught alone/, pressed: true })).toHaveCount(0)
+    await expect(panel.getByTestId('codex-card')).toContainText('Low-energy / anti-tilt protocol')
+    // Shown, never offered again: no "set up my next session" from it.
+    await expect(panel.getByTestId('codex-card').getByRole('button', { name: /Set up my next session/ })).toHaveCount(0)
     expect(ctx.pageErrors).toEqual([])
   })
 

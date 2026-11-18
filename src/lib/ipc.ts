@@ -759,6 +759,8 @@ export interface DetailedGameStats {
     damageTakenPercent: number
     /** Heals + shields on teammates per minute. */
     healShieldPerMin?: number
+    /** Damage absorbed (Riot damageSelfMitigated) per minute. */
+    damageMitigatedPerMin?: number
     /** Crowd-control score (Riot timeCCingOthers) per minute. */
     ccPerMin?: number
   }

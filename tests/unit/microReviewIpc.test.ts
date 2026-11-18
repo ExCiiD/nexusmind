@@ -2,8 +2,8 @@
  * Integration: the micro-review through its real IPC handlers, on a
  * throw-away SQLite database built by the real migrations — analysis cache,
  * QCM answers (mistake / justified / custom), what re-answering undoes, XP
- * granted once, objective verification, low-energy context, calibration
- * flash, and the garbage-time flag of the Mistake Lab.
+ * granted once, objective verification, calibration flash, and the
+ * garbage-time flag of the Mistake Lab.
  */
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
 import { rmSync } from 'fs'
@@ -37,7 +37,7 @@ import { splitSqlStatements } from '../../electron/main/database'
 import { readFileSync } from 'fs'
 import { seedBuiltInMistakeTags } from '../../electron/main/seeds/mistakeTags'
 import { BUILT_IN_MISTAKE_TAGS } from '../../src/lib/mistakeTagCatalog'
-import { optionsFor, type QcmContext } from '../../src/lib/microReview/smartQcm'
+import { optionsFor, QCM_CONTEXTS, RETIRED_OPTIONS } from '../../src/lib/microReview/smartQcm'
 import { BARON_PIT, DRAGON_PIT } from '../../src/lib/microReview/geometry'
 import { buildGame, at } from './microReviewFixtures'
 
@@ -49,7 +49,7 @@ const invoke = (channel: string, ...args: unknown[]) => {
 
 const DEATH_KEY = 'critical-death@1528'
 const DRAGON_KEY = 'absent-objective@910'
-/** A local afternoon: no "late night" low-energy reason whatever the machine's time zone. */
+/** End of the games that give no other date: a local afternoon. */
 const AFTERNOON = new Date(2026, 10, 10, 15, 0)
 
 /** Top laner: enemy dragon at 15:30 without a ward, then a death next to Baron 30 s before it is lost. */
@@ -118,17 +118,15 @@ describe('database', () => {
     expect(cols).toContain('mistakeOrigin')
     expect(await prisma.mistakeTag.count({ where: { isBuiltIn: true } })).toBe(BUILT_IN_MISTAKE_TAGS.length)
   })
-  it('every diagnosis the QCM can offer points at a seeded tag and passes the IPC schema', async () => {
+  it('every diagnosis the QCM can offer (or shows back for an old answer) points at a seeded tag and passes the IPC schema', async () => {
     const slugs = new Set((await getPrisma().mistakeTag.findMany()).map((t) => t.slug))
-    const contexts: QcmContext[] = ['objective', 'gold', 'isolated', 'duel', 'teamfight', 'absent', 'early-cs', 'early-xp', 'hesitation', 'jungle-cycle', 'jungle-passive',
-      'rotation', 'baron-siege', 'tempo-recall', 'tempo-front', 'gank-timer', 'carry-first', 'jungle-window', 'bad-rotation', 'duel-early', 'outnumbered', 'chokepoint', 'mid-roam',
-      'eco-tempo', 'side-overextend', 'early-3v3', 'low-energy']
-    for (const c of contexts) {
-      for (const o of [...optionsFor(c), ...optionsFor(c, { nearObjective: true, secondsSinceOwnPlay: 5 })]) {
-        if (o.tagSlug) expect(slugs.has(o.tagSlug), `${c}: ${o.tagSlug}`).toBe(true)
-        expect(o.reason, `${c}: ${o.reason}`).toMatch(/^[A-Za-z0-9]+$/)
-        expect(o.reason.length).toBeLessThanOrEqual(40)
-      }
+    const variants = [{}, { nearObjective: true, secondsSinceOwnPlay: 5 }, { hpPct: 20, playerWarded: true, midOnWave: true }]
+    const options = [...QCM_CONTEXTS.flatMap((c) => variants.flatMap((f) => optionsFor(c, f).map((o) => [c, o] as const))), ...RETIRED_OPTIONS.map((o) => ['retired', o] as const)]
+    expect(options.length).toBeGreaterThan(150)
+    for (const [c, o] of options) {
+      if (o.tagSlug) expect(slugs.has(o.tagSlug), `${c}: ${o.tagSlug}`).toBe(true)
+      expect(o.reason, `${c}: ${o.reason}`).toMatch(/^[A-Za-z0-9]+$/)
+      expect(o.reason.length).toBeLessThanOrEqual(40)
     }
   })
 })
@@ -137,7 +135,8 @@ describe('microreview:get', () => {
   it('analyses the cached timeline and returns the moments, in game order', async () => {
     const p = await invoke('microreview:get', gameId)
     expect(p.analysis.moments.map((m: any) => m.key)).toEqual([DRAGON_KEY, DEATH_KEY])
-    expect(p).toMatchObject({ champion: 'Champ1', role: 'TOP', win: false, answers: [], pastAnswers: [], recording: null, lowEnergy: { active: false, reasons: [] } })
+    expect(p).toMatchObject({ champion: 'Champ1', role: 'TOP', win: false, answers: [], pastAnswers: [], recording: null })
+    expect(p).not.toHaveProperty('lowEnergy') // the low-energy protocol is withdrawn
     expect(p.analysis.contested).toHaveLength(2)
     expect(p.analysis.moments[1].facts).toMatchObject({ objectiveLost: 'baron', objectiveLostAfterSec: 30, nearObjective: true, enemiesInvolved: 3 })
   })
@@ -278,44 +277,20 @@ describe('microreview:verify-objectives', () => {
   it('checks each session objective against the game', async () => {
     const res = await invoke('microreview:verify-objectives', gameId)
     expect(res.overall).toBe(false)
+    // The second objective, "resilience", has no rule since the low-energy protocol was withdrawn: it is not judged.
     expect(res.results).toEqual([
       // 2 enemy objectives, but the top laner was dead for the Baron: only the dragon is theirs to ward — and it was not.
       { fundamentalId: 'vision_control', ruleId: 'ward-before-objectives', failedTags: [], objectivesWarded: 0, objectivesTotal: 1, status: 'failed' },
-      // Low-energy protocol: none of its tags in this game, and the game was reviewed.
-      { fundamentalId: 'resilience', ruleId: 'low-energy', failedTags: [], status: 'passed' },
     ])
   })
   it('a tagged mistake of the rule fails it', async () => {
-    await answer(DEATH_KEY, { tagSlug: 'caught-out', reason: 'noMinimap' })
+    await answer(DEATH_KEY, { tagSlug: 'no-vision-objective', reason: 'unwardedFlank' })
     const res = await invoke('microreview:verify-objectives', gameId)
-    expect(res.results[1]).toMatchObject({ ruleId: 'low-energy', status: 'failed', failedTags: ['caught-out'] })
+    expect(res.results[0]).toMatchObject({ ruleId: 'ward-before-objectives', status: 'failed', failedTags: ['no-vision-objective'] })
+    expect(res.results).toHaveLength(1)
   })
   it('returns null for an unknown game', async () => {
     expect(await invoke('microreview:verify-objectives', 'missing-game')).toBeNull()
-  })
-})
-
-describe('low-energy context of a game', () => {
-  it('flags a game played right after two losses of its session', async () => {
-    const prisma = getPrisma()
-    const session = await prisma.session.create({ data: { userId, objectiveId: 'tempo', objectiveIds: '["tempo"]', status: 'completed' } })
-    await addGame({ sessionId: session.id, win: false, gameEndAt: new Date(2026, 10, 12, 14, 0), fixture: null })
-    await addGame({ sessionId: session.id, win: false, gameEndAt: new Date(2026, 10, 12, 14, 40), fixture: null })
-    const third = await addGame({ sessionId: session.id, win: true, gameEndAt: new Date(2026, 10, 12, 15, 20) })
-    // Two losses right before it — and the player's 3 earlier afternoon games are all losses (0 % < 45 %).
-    expect((await invoke('microreview:get', third.id)).lowEnergy).toEqual({ active: true, reasons: ['loss-streak', 'bad-hour'] })
-    // A win in between resets the streak (the afternoon stays a weak slot: 1 win in 3).
-    await prisma.game.updateMany({ where: { sessionId: session.id, gameEndAt: new Date(2026, 10, 12, 14, 40) }, data: { win: true } })
-    expect((await invoke('microreview:get', third.id)).lowEnergy).toEqual({ active: true, reasons: ['bad-hour'] })
-    // With a second afternoon win the slot is at 2 in 3: nothing left to flag.
-    await prisma.game.updateMany({ where: { sessionId: session.id, gameEndAt: new Date(2026, 10, 12, 14, 0) }, data: { win: true } })
-    expect((await invoke('microreview:get', third.id)).lowEnergy).toEqual({ active: false, reasons: [] })
-  })
-  it('flags a game that ended at night', async () => {
-    const prisma = getPrisma()
-    const session = await prisma.session.create({ data: { userId, objectiveId: 'tempo', objectiveIds: '["tempo"]', status: 'completed' } })
-    const night = await addGame({ sessionId: session.id, gameEndAt: new Date(2026, 10, 13, 2, 30) })
-    expect((await invoke('microreview:get', night.id)).lowEnergy.reasons).toContain('late-night')
   })
 })
 

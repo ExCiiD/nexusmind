@@ -22,12 +22,23 @@ import type { CriticalMoment, MomentFacts } from './anomalyDetector'
 import type { Zone } from './geometry'
 
 export type QcmOutcome = 'mistake' | 'justified'
-export type QcmContext =
-  | 'objective' | 'gold' | 'isolated' | 'duel' | 'teamfight'
-  | 'absent' | 'early-cs' | 'early-xp'
-  | 'hesitation' | 'jungle-cycle' | 'jungle-passive' | 'rotation' | 'baron-siege'
-  | 'tempo-recall' | 'tempo-front' | 'gank-timer' | 'carry-first' | 'jungle-window' | 'bad-rotation' | 'duel-early' | 'outnumbered'
-  | 'chokepoint' | 'mid-roam' | 'eco-tempo' | 'side-overextend' | 'early-3v3' | 'low-energy'
+/** Every QCM context (tests iterate this list, so a new context is never left unchecked). */
+export const QCM_CONTEXTS = [
+  'objective', 'gold', 'isolated', 'duel', 'teamfight',
+  'absent', 'early-cs', 'early-xp',
+  'hesitation', 'jungle-cycle', 'jungle-passive', 'rotation', 'baron-siege',
+  'tempo-recall', 'tempo-front', 'gank-timer', 'carry-first', 'jungle-window', 'bad-rotation', 'duel-early', 'outnumbered',
+  'chokepoint', 'mid-roam', 'eco-tempo', 'side-overextend', 'early-3v3',
+  // V5 — laning phase.
+  'tower-dive', 'level-spike', 'back-timer', 'range-melee', 'cheater-recall',
+  // V6 — roles.
+  'support-ward', 'support-level2', 'team-reset', 'trade-recall', 'adc-reopen', 'baron-recall', 'inhib-dive',
+  // V7–V10 — jungle, mid, engage support.
+  'jgl-first-recall', 'jgl-gank-camps-up', 'jgl-weakside', 'jgl-invade-death', 'jgl-dragon-tank', 'jgl-compensation', 'jgl-boots',
+  'jgl-t1', 'jgl-herald', 'jgl-fled', 'jgl-outsmited', 'mid-ahead-wave', 'mid-reset-trap', 'mid-wave-loss',
+  'sup-post6', 'sup-scuttle', 'sup-weakside',
+] as const
+export type QcmContext = typeof QCM_CONTEXTS[number]
 
 export interface QcmOption {
   /** Unique within the card: the tag slug, `justified:<reason>`, or `<tag>#<reason>` for a second reading of a tag already on the card. */
@@ -56,12 +67,6 @@ export interface QcmCard {
   options: QcmOption[]
 }
 
-/** What the micro-review knows about the game beyond the timeline. */
-export interface QcmEnv {
-  /** The game was played in low-energy conditions (loss streak, night, weak daypart) — see lowEnergy.ts. */
-  lowEnergy?: boolean
-}
-
 const mistake = (tagSlug: string, reason: string): QcmOption => ({ id: tagSlug, outcome: 'mistake', tagSlug, reason })
 const justified = (reason: string): QcmOption => ({ id: `justified:${reason}`, outcome: 'justified', tagSlug: null, reason })
 const linked = (tagSlug: string, reason: string, codexId: string): QcmOption => ({ ...mistake(tagSlug, reason), codexId })
@@ -86,7 +91,38 @@ export const CODEX_ASYMMETRY = 'codex_macro_pressure_asymmetry_next_midwave'
 export const CODEX_CHOKEPOINT = 'codex_vision_baron_chokepoint_support_zoning'
 export const CODEX_ARCHETYPES = 'codex_mechanics_mid_6archetypes_3v3_synergy'
 export const CODEX_ROAM_CHECK = 'codex_tempo_roam_check_systematic_fog'
-export const CODEX_LOW_ENERGY = 'codex_mental_low_energy_anti_tilt_protocol'
+// V5 (laning phase). Fiches merged into an existing one keep that one's id (see CODEX_ALIASES in codex.ts).
+export const CODEX_DIVE = 'dive-any-early'
+export const CODEX_BACK_TIMER = 'overstay-any-early'
+export const CODEX_LEVEL_SPIKE = 'codex_mechanics_levelup_timers_7th_14th_minion_premove'
+export const CODEX_RANGE_MELEE = 'codex_mechanics_range_vs_melee_100to0_vs_volatility'
+export const CODEX_VOLATILITY = 'codex_tempo_lane_volatility_control_short_vs_long'
+/** HP (percent) at the last snapshot under which a gank death also reads as a lane left too volatile. */
+export const VOLATILE_HP_PCT = 50
+// V6 (roles). The ADC laning fiche (codex_adc_wave_support_synergy_14gold_trap_1300g_buy_mid_rotation) has no
+// detector: wave position, item charges and last-hits are not in the timeline. It answers its tag ("Autre cause…").
+export const CODEX_SUPPORT_EARLY = 'codex_support_3bush_warding_level2_stacks_aftershock_punish'
+export const CODEX_TEAM_SYNC = 'codex_tempo_team_sync_wave_crash_and_1caster_hold'
+export const CODEX_ADC_MIDGAME = 'codex_adc_7mid_plays_useless_zone_vision_feint_reopen_rule'
+export const CODEX_JUNGLE_DISCIPLINE = 'codex_jgl_3camp_longsword_base_no_cleanse_punish_baron_grouping'
+// V7–V10. Each detector case points to the fiche whose text teaches it (the brief sometimes filed a case under a
+// neighbouring fiche: post-level-6 bot lane and weak-side wards are taught by the support mid-game fiche). The engage
+// support micro fiche (Zone C crash, CC chain) and the gank-execution part of the clear fiche have no detector: spell
+// casts, minion waves and Scuttle Crabs are not in the timeline. They answer their tags ("Autre cause…").
+export const CODEX_JGL_CLEAR = 'codex_jgl_t25s_recall_camps_up_90rule_weakside_first'
+export const CODEX_JGL_INVADE_ORDER = 'codex_jgl_red_yellow_green_invade_and_2dragon_scenarios'
+export const CODEX_JGL_GANK = 'codex_jgl_clear_ministeps_gank_spell_order_int_check'
+export const CODEX_JGL_MINUS = 'codex_jgl_match_trade_minimize_plus_minus_greed_rounds'
+export const CODEX_JGL_ECONOMY = 'codex_jgl_triple_tonic_pickaxe_6th_camp_recall_530_double_smite'
+export const CODEX_JGL_T1_HERALD = 'codex_jgl_leave_t1_at_1hp_combat_herald_pocket_pink'
+export const CODEX_JGL_NEVER_FLEE = 'codex_jgl_crab_level6_sacrifice_never_flee_invade_post_crab_routing'
+export const CODEX_JGL_INVADE_STOP = 'codex_jgl_invade_stop_rule_wait_midwave_fake_invade'
+export const CODEX_JGL_VISION = 'codex_jgl_yellow_trinket_10min_pink_over_dragon_wall_herald_decoy'
+export const CODEX_JGL_SMITE = 'codex_jgl_burst_before_smite_animation_and_j4_chogath_combat_combos'
+export const CODEX_MID_MICRO = 'codex_mid_hud_keystone_tracking_ahead_of_wave_punish_2points_q_lvl3'
+export const CODEX_MID_WAVES = 'codex_mid_sync_minion_hp_lvl1_offense_as_defense_reset_trap'
+export const CODEX_SUP_POST_CRASH = 'codex_support_post_crash_tribush_trap_315_hover_grubs_bush_recall'
+export const CODEX_SUP_POST6 = 'codex_support_post6_fog_shadow_mid_push_weakside_camp_defense_vision_square'
 
 const tempoGreed = () => linked('overstay', 'tempoGreed', CODEX_TEMPO)
 const setupFail = () => linked('no-ward-pre-obj', 'setupFail', CODEX_OBJ_SETUP)
@@ -100,13 +136,25 @@ const MID_GAME_FROM = 14 * 60
 const MID_GAME_TO = 25 * 60
 /** "Passé 15 minutes": side-lane depth is dictated by mid priority. */
 const SIDE_LANE_FROM = 15 * 60
-/** Tag recorded by the low-energy diagnosis — always the same one, so the session objective can be checked against it. */
-export const LOW_ENERGY_TAG = 'caught-out'
-/** The low-energy diagnosis: its own id, since another reading of the same tag may sit on the card. */
-const lowEnergyOption = (): QcmOption => ({ ...linked(LOW_ENERGY_TAG, 'lowEnergy', CODEX_LOW_ENERGY), id: `${LOW_ENERGY_TAG}#lowEnergy` })
+
+/**
+ * Diagnoses no longer offered. An answer recorded with one keeps reading as it was (its text, its fiche): the card shows
+ * it back from this table when no option of the card has its tag and reason. The low-energy protocol, offered on every
+ * death of a game played tired until 1.0.0-beta.1, was withdrawn on 18/11/2026.
+ */
+export const RETIRED_OPTIONS: readonly QcmOption[] = [
+  { id: 'caught-out#lowEnergy', outcome: 'mistake', tagSlug: 'caught-out', reason: 'lowEnergy', codexId: 'codex_mental_low_energy_anti_tilt_protocol' },
+]
+
+/** The retired diagnosis an answer was given with, when the card no longer offers it. */
+export function retiredOption(options: readonly QcmOption[], answer: { tagSlug: string | null; reason: string | null; viaOther: boolean } | null | undefined): QcmOption | null {
+  if (!answer || answer.viaOther || answer.reason == null) return null
+  if (options.some((o) => o.tagSlug === answer.tagSlug && o.reason === answer.reason)) return null
+  return RETIRED_OPTIONS.find((o) => o.tagSlug === answer.tagSlug && o.reason === answer.reason) ?? null
+}
 
 /** The matrix: each context's diagnoses, most likely first. */
-export function optionsFor(context: QcmContext, facts: Pick<MomentFacts, 'nearObjective' | 'secondsSinceOwnPlay' | 'playerWarded'> = {}): QcmOption[] {
+export function optionsFor(context: QcmContext, facts: Pick<MomentFacts, 'nearObjective' | 'secondsSinceOwnPlay' | 'playerWarded' | 'hpPct' | 'midOnWave'> = {}): QcmOption[] {
   const nearObjective = !!facts.nearObjective
   switch (context) {
     // Death near a lost objective: setup (vision / mid opening), tempo (tower greed vs cross-map), or a justified 50/50.
@@ -129,7 +177,46 @@ export function optionsFor(context: QcmContext, facts: Pick<MomentFacts, 'nearOb
     case 'duel': return [mistake('bad-trade', 'mechanics'), mistake('bad-threat-assessment', 'powerSpike'), mistake('forgot-trinket', 'trinket')]
     case 'duel-early': return [linked('bad-trade', 'tradingLaws', CODEX_TRADING), linked('bad-positioning', 'waveSide', CODEX_WAVE_SIDE), linked('bad-threat-assessment', 'archetypeTrough', CODEX_ARCHETYPES)]
     case 'early-3v3': return [linked('bad-trade', 'archetype3v3', CODEX_ARCHETYPES), mistake('caught-out', 'noMinimap'), mistake('forgot-trinket', 'trinketUnused')]
-    case 'gank-timer': return [linked('caught-out', 'gankTimer', CODEX_TRACKING), mistake('forgot-trinket', 'trinketUnused'), mistake('bad-wave-sync', 'waveState')]
+    // Ganked low on HP: the second reading is the lane left volatile before the gank, not the wave.
+    case 'gank-timer': return facts.hpPct != null && facts.hpPct < VOLATILE_HP_PCT
+      ? [linked('caught-out', 'gankTimer', CODEX_TRACKING), linked('bad-trade', 'laneVolatility', CODEX_VOLATILITY), mistake('forgot-trinket', 'trinketUnused')]
+      : [linked('caught-out', 'gankTimer', CODEX_TRACKING), mistake('forgot-trinket', 'trinketUnused'), mistake('bad-wave-sync', 'waveState')]
+    // V5 — laning phase.
+    case 'tower-dive': return [linked('dove-tower', 'diveOneForOne', CODEX_DIVE), mistake('overstay', 'overstay'), justified('diveTrade')]
+    case 'level-spike': return [linked('bad-threat-assessment', 'levelSpike', CODEX_LEVEL_SPIKE), mistake('bad-lane-opening', 'laneOpening'), mistake('bad-wave-sync', 'waveState')]
+    case 'back-timer': return [linked('overstay', 'backTimer', CODEX_BACK_TIMER), mistake('unused-gold', 'unspentGold'), mistake('caught-out', 'noMinimap')]
+    case 'range-melee': return [linked('bad-trade', 'rangeMelee', CODEX_RANGE_MELEE), linked('bad-positioning', 'waveSide', CODEX_WAVE_SIDE), linked('bad-threat-assessment', 'archetypeTrough', CODEX_ARCHETYPES)]
+    case 'cheater-recall': return [linked('late-back', 'cheaterRecall', CODEX_BACK_TIMER), mistake('bad-wave-sync', 'waveState'), mistake('xp-deficit', 'xpLost')]
+    // V6 — roles. Each brief trigger is choice [1]; the second reading is the fiche that already covered the overlapping concept.
+    case 'support-ward': return [linked('forgot-trinket', 'supportEarly', CODEX_SUPPORT_EARLY), mistake('bad-lane-opening', 'laneOpening'), justified('trinketSaved')]
+    case 'support-level2': return [linked('bad-positioning', 'supportEarly', CODEX_SUPPORT_EARLY), linked('bad-threat-assessment', 'levelSpike', CODEX_LEVEL_SPIKE), mistake('bad-lane-opening', 'laneOpening')]
+    case 'team-reset': return [linked('caught-out', 'pressureDesync', CODEX_TEAM_SYNC), mistake('bad-wave-sync', 'waveState'), mistake('forgot-trinket', 'trinketUnused')]
+    case 'trade-recall': return [linked('bad-trade', 'tradeRecall', CODEX_TEAM_SYNC), setupFail(), justified('forcedRecall')]
+    case 'adc-reopen': return [linked('caught-out', 'adcReopen', CODEX_ADC_MIDGAME), linked('bad-positioning', 'assignment131', CODEX_131), justified('crossMapPressure')]
+    case 'baron-recall': return [linked('overstay', 'baronRecall', CODEX_JUNGLE_DISCIPLINE), linked('bad-positioning', 'baronSiege', CODEX_BARON), justified('forcedRecall')]
+    case 'inhib-dive': return [linked('overstay', 'inhibDive', CODEX_JUNGLE_DISCIPLINE), linked('bad-positioning', 'singleThreat', CODEX_SINGLE_THREAT), justified('endPush')]
+    // V7–V10 — jungle, mid, engage support.
+    case 'jgl-first-recall': return [linked('cs-deficit', 'lateFirstRecall', CODEX_JGL_CLEAR), linked('overstay', 'cycleBreak', CODEX_JUNGLE_CYCLE), justified('stayedForPlay')]
+    case 'jgl-gank-camps-up': return [linked('cs-deficit', 'campsUpGank', CODEX_JGL_CLEAR), linked('bad-engage-angle', 'gankExecution', CODEX_JGL_GANK), justified('gankTrade')]
+    case 'jgl-weakside': return [linked('cs-deficit', 'weakSideFirst', CODEX_JGL_CLEAR), linked('forgot-trinket', 'yellowTrinket', CODEX_JGL_VISION), justified('crossMapPressure')]
+    // The mid laner held by their wave reads as the second-camp greed first; otherwise as the invade order.
+    case 'jgl-invade-death': return facts.midOnWave
+      ? [linked('overstay', 'invadeGreed', CODEX_JGL_INVADE_STOP), linked('caught-out', 'invadeOrder', CODEX_JGL_INVADE_ORDER), justified('invadeWorth')]
+      : [linked('caught-out', 'invadeOrder', CODEX_JGL_INVADE_ORDER), linked('overstay', 'invadeGreed', CODEX_JGL_INVADE_STOP), justified('invadeWorth')]
+    // Second readings are a different cause, never a rewording of choice [1]: the secure lost at the smite, the setup of the objective.
+    case 'jgl-dragon-tank': return [linked('death-before-objective', 'dragonScenarios', CODEX_JGL_INVADE_ORDER), linked('bad-dmg-maximisation', 'burstSmite', CODEX_JGL_SMITE), justified('stealAttempt')]
+    case 'jgl-compensation': return [linked('caught-out', 'compensation', CODEX_JGL_MINUS), setupFail(), justified('stealAttempt')]
+    case 'jgl-boots': return [linked('unused-gold', 'earlyBoots', CODEX_JGL_ECONOMY), justified('bootsNeeded')]
+    case 'jgl-t1': return [linked('overstay', 'leaveT1', CODEX_JGL_T1_HERALD), justified('t1Worth')]
+    case 'jgl-herald': return [linked('bad-positioning', 'heraldUnused', CODEX_JGL_T1_HERALD), mistake('caught-out', 'noMinimap'), justified('goodEngage')]
+    case 'jgl-fled': return [linked('bad-trade', 'neverFlee', CODEX_JGL_NEVER_FLEE), linked('forgot-trinket', 'yellowTrinket', CODEX_JGL_VISION), justified('fleeNeeded')]
+    case 'jgl-outsmited': return [linked('bad-dmg-maximisation', 'burstSmite', CODEX_JGL_SMITE), setupFail(), justified('stealAttempt')]
+    case 'mid-ahead-wave': return [linked('bad-trade', 'aheadOfWave', CODEX_MID_MICRO), mistake('caught-out', 'noMinimap'), mistake('bad-threat-assessment', 'powerSpike')]
+    case 'mid-reset-trap': return [linked('overstay', 'resetTrap', CODEX_MID_WAVES), mistake('bad-trade', 'lostTrades'), mistake('caught-out', 'noMinimap')]
+    case 'mid-wave-loss': return [linked('cs-deficit', 'midWaveLoss', CODEX_MID_WAVES), mistake('bad-trade', 'lostTrades'), linked('bad-threat-assessment', 'archetypeTrough', CODEX_ARCHETYPES)]
+    case 'sup-post6': return [linked('bad-positioning', 'post6Fog', CODEX_SUP_POST6), mistake('bad-wave-sync', 'absentNoRotate'), justified('laneNeeded')]
+    case 'sup-scuttle': return [linked('bad-positioning', 'hover315', CODEX_SUP_POST_CRASH), mistake('bad-wave-sync', 'absentNoRotate'), justified('notContestable')]
+    case 'sup-weakside': return [linked('forgot-trinket', 'weakSideWard', CODEX_SUP_POST6), justified('withJungler')]
     case 'outnumbered': return [linked('bad-positioning', 'badFightChoice', CODEX_FIGHTS), mistake(nearObjective ? 'no-vision-objective' : 'face-checked', 'unwardedFlank'), justified('goodEngage')]
     case 'teamfight': return [mistake('bad-positioning', 'positioning'), mistake(nearObjective ? 'no-vision-objective' : 'face-checked', 'unwardedFlank'), justified('goodEngage')]
     case 'early-cs': return [mistake('cs-deficit', 'csMissed'), mistake('bad-wave-sync', 'waveState'), mistake('bad-trade', 'lostTrades')]
@@ -139,7 +226,6 @@ export function optionsFor(context: QcmContext, facts: Pick<MomentFacts, 'nearOb
     case 'jungle-cycle': return [linked('overstay', 'cycleBreak', CODEX_JUNGLE_CYCLE), mistake('cs-deficit', 'campsLost'), justified('invadeWorth')]
     case 'jungle-passive': return [linked('cs-deficit', 'passiveClear', CODEX_JUNGLE_INVADE), mistake('bad-threat-assessment', 'misreadPrio'), justified('noInvadeWindow')]
     case 'jungle-window': return [linked('cs-deficit', 'tempoWindowUnused', CODEX_TEMPO_WINDOW), mistake('bad-threat-assessment', 'misreadPrio'), justified('noTempoWindow')]
-    case 'low-energy': return [lowEnergyOption()]
   }
 }
 
@@ -165,6 +251,35 @@ export function contextsOf(m: CriticalMoment): QcmContext[] {
     case 'bad-rotation': return ['bad-rotation']
     case 'mid-roam-plates': return ['mid-roam']
     case 'pit-chokepoint': return ['chokepoint']
+    case 'tower-dive-one-for-one': return ['tower-dive']
+    case 'level-up-spike': return ['level-spike']
+    case 'back-timer-missed': return ['back-timer']
+    case 'range-melee-volatility': return ['range-melee']
+    case 'cheater-recall': return ['cheater-recall']
+    case 'support-no-early-ward': return ['support-ward']
+    case 'support-level2-allin': return ['support-level2']
+    case 'gank-during-team-reset': return ['team-reset']
+    case 'low-hp-recall-before-objective': return ['trade-recall']
+    case 'adc-solo-sidelane-reopen': return ['adc-reopen']
+    case 'jungle-baron-recall': return ['baron-recall']
+    case 'inhib-forced-dive': return ['inhib-dive']
+    case 'jungle-late-first-recall': return ['jgl-first-recall']
+    case 'jungle-camps-up-gank': return ['jgl-gank-camps-up']
+    case 'jungle-weakside-stolen': return ['jgl-weakside']
+    case 'jungle-invade-death': return ['jgl-invade-death']
+    case 'jungle-dragon-tank-death': return ['jgl-dragon-tank']
+    case 'jungle-compensation-death': return ['jgl-compensation']
+    case 'jungle-early-boots': return ['jgl-boots']
+    case 'jungle-side-t1-destroyed': return ['jgl-t1']
+    case 'jungle-herald-unused-death': return ['jgl-herald']
+    case 'jungle-fled-invade': return ['jgl-fled']
+    case 'jungle-outsmited': return ['jgl-outsmited']
+    case 'mid-ahead-of-wave-death': return ['mid-ahead-wave']
+    case 'mid-reset-trap-death': return ['mid-reset-trap']
+    case 'mid-passive-wave-loss': return ['mid-wave-loss']
+    case 'support-botlane-leech': return ['sup-post6']
+    case 'support-absent-scuttle': return ['sup-scuttle']
+    case 'support-weakside-unwarded': return ['sup-weakside']
     default: break
   }
   if (m.trigger === 'absent-objective') return ['absent']
@@ -250,6 +365,9 @@ export function promotedTag(stats: ChoiceStats, exclude: string[]): string | nul
 
 // ── Card ────────────────────────────────────────────────────────────────
 
+/** Game clock "m:ss" of a second count. */
+const clockOf = (sec: number): string => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
+
 /** Factual one-liner: only what the timeline establishes (never a guess about intent or ward location). */
 function summaryOf(m: CriticalMoment): QcmSummary {
   const f = m.facts
@@ -301,6 +419,114 @@ function summaryOf(m: CriticalMoment): QcmSummary {
       head = { key: 'passiveClear' }
       if (f.botGoldLead != null) extras.push({ key: 'botLead', params: { gold: f.botGoldLead } })
       break
+    case 'tower-dive-one-for-one':
+      head = { key: 'diveOneForOne', params: { sec: f.killGapSec ?? 0 } }
+      break
+    case 'level-up-spike':
+      head = { key: 'levelSpike', params: { level: f.spikeLevel ?? 2 } }
+      break
+    case 'back-timer-missed':
+      head = { key: 'backTimer' }
+      if (f.hpPct != null) extras.push({ key: 'hpBefore', params: { pct: f.hpPct, sec: f.hpSnapshotAgeSec ?? 0 } })
+      if (f.goldInPocket) extras.push({ key: 'gold', params: { gold: f.goldInPocket } })
+      break
+    case 'range-melee-volatility':
+      head = { key: f.attackType === 'melee' ? 'meleeChunked' : 'rangedChunked', params: { pct: f.laneHpPct ?? 0 } }
+      if (f.attackType === 'melee' && f.opponentHpPct != null) extras.push({ key: 'opponentHp', params: { pct: f.opponentHpPct } })
+      break
+    case 'cheater-recall':
+      head = { key: 'cheaterRecall', params: { pct: f.recallHpPct ?? 0 } }
+      if (f.levelsBehind) extras.push({ key: 'levelsBehind', params: { count: f.levelsBehind } })
+      break
+    case 'support-no-early-ward':
+      head = { key: 'supportNoWard' }
+      break
+    case 'support-level2-allin':
+      head = { key: f.junglerInvolved ? 'supportLevel2Gank' : 'supportLevel2', params: { mine: f.myLevel ?? 1, theirs: f.enemyLevel ?? 2 } }
+      break
+    case 'gank-during-team-reset':
+      head = { key: 'teamResetGank' }
+      if (f.alliesHome) extras.push({ key: 'alliesHome', params: { n: f.alliesHome } })
+      break
+    case 'low-hp-recall-before-objective':
+      head = { key: 'tradeRecall', params: { pct: f.recallHpPct ?? 0, sec: f.spawnInSec ?? 0, objective: f.objective ?? 'dragon' } }
+      if (f.opponentHpPct != null) extras.push({ key: 'opponentHp', params: { pct: f.opponentHpPct } })
+      if (f.alliesDown) extras.push({ key: 'alliesDown', params: { count: f.alliesDown } })
+      break
+    case 'adc-solo-sidelane-reopen':
+      head = { key: 'adcReopen', params: { sec: f.sinceBaseSec ?? 0 } }
+      if (f.midInBase) extras.push({ key: 'midInBase' })
+      break
+    case 'jungle-baron-recall':
+      head = { key: 'baronRecall' }
+      if (f.alliesDown) extras.push({ key: 'alliesDown', params: { count: f.alliesDown } })
+      if (f.goldInPocket) extras.push({ key: 'gold', params: { gold: f.goldInPocket } })
+      break
+    case 'inhib-forced-dive':
+      head = { key: 'inhibDive', params: { sec: f.inhibGapSec ?? 0 } }
+      break
+    // V7–V10.
+    case 'jungle-late-first-recall':
+      head = { key: 'lateFirstRecall' }
+      if (f.firstBackSec != null) extras.push({ key: 'firstBack', params: { clock: clockOf(f.firstBackSec) } })
+      break
+    case 'jungle-camps-up-gank':
+      head = { key: 'campsUpGank' }
+      if (f.jungleCsLost) extras.push({ key: 'jungleCsLost', params: { cs: f.jungleCsLost } })
+      break
+    case 'jungle-weakside-stolen':
+      head = { key: 'weakSideStolen' }
+      if (f.campsStolenCs) extras.push({ key: 'campsStolen', params: { cs: f.campsStolenCs } })
+      break
+    case 'jungle-invade-death':
+      head = { key: 'invadeDeath' }
+      if (f.campsTakenCs) extras.push({ key: 'campsTaken', params: { cs: f.campsTakenCs } })
+      if (f.midOnWave) extras.push({ key: 'midOnWave' })
+      break
+    case 'jungle-dragon-tank-death':
+      head = { key: 'dragonTank', params: { pct: f.dragonDamagePct ?? 0 } }
+      break
+    case 'jungle-compensation-death':
+      head = { key: 'compensation', params: { sec: f.deathGapSec ?? 0, objective: f.objective ?? 'dragon' } }
+      if (f.enemiesInvolved) extras.push({ key: 'outnumbered', params: { n: f.enemiesInvolved } })
+      break
+    case 'jungle-early-boots':
+      head = { key: 'earlyBoots', params: { clock: clockOf(f.bootsSec ?? 0) } }
+      break
+    case 'jungle-side-t1-destroyed':
+      head = { key: 'sideT1', params: { lane: f.turretLane === 'TOP' ? 'top' : 'bot' } }
+      break
+    case 'jungle-herald-unused-death':
+      head = { key: 'heraldUnused', params: { sec: f.heraldAgoSec ?? 0 } }
+      break
+    case 'jungle-fled-invade':
+      head = { key: 'fledInvade', params: { pct: f.hpPct ?? 0, theirs: f.opponentHpPct ?? 0 } }
+      break
+    case 'jungle-outsmited':
+      head = { key: 'outsmited', params: { objective: f.objective ?? 'dragon' } }
+      if (f.playerDistance != null) extras.push({ key: 'distance', params: { distance: Math.round(f.playerDistance / 100) * 100 } })
+      break
+    case 'mid-ahead-of-wave-death':
+      head = { key: 'aheadOfWave', params: { sec: f.sinceBaseSec ?? 0 } }
+      break
+    case 'mid-reset-trap-death':
+      head = { key: f.resetResource === 'mana' ? 'resetTrapMana' : 'resetTrapHp', params: { pct: f.resetLowPct ?? 0, sec: f.enemyBackSec ?? 0 } }
+      break
+    case 'mid-passive-wave-loss':
+      head = { key: 'midWaveLoss', params: { cs: f.csDiff6 ?? 0 } }
+      extras.push({ key: 'skillsSpread' })
+      break
+    case 'support-botlane-leech':
+      head = { key: 'botLeech', params: { n: f.laneSnapshots ?? 0 } }
+      if (f.kpPct != null) extras.push({ key: 'killParticipation', params: { pct: f.kpPct } })
+      break
+    case 'support-absent-scuttle':
+      head = { key: 'absentScuttle' }
+      if (f.playerDistance != null) extras.push({ key: 'distance', params: { distance: Math.round(f.playerDistance / 100) * 100 } })
+      break
+    case 'support-weakside-unwarded':
+      head = { key: 'weakSideUnwarded', params: { cs: f.campsStolenCs ?? 0 } }
+      break
     case 'jungle-overchase':
     case 'jungle-counter-tempo':
       head = { key: f.pattern === 'jungle-overchase' ? 'overchase' : 'counterTempo' }
@@ -335,9 +561,8 @@ function summaryOf(m: CriticalMoment): QcmSummary {
  * Card for one moment.
  * `stats`: the player's past answers for this role/champion — orders mistake
  * options by habit and promotes a frequent "Autre cause…" pick into the top 3.
- * `env.lowEnergy`: on a death, the low-energy protocol becomes choice [2].
  */
-export function buildQcm(m: CriticalMoment, stats?: ChoiceStats, env?: QcmEnv): QcmCard {
+export function buildQcm(m: CriticalMoment, stats?: ChoiceStats): QcmCard {
   const contexts = contextsOf(m)
   const lists = contexts.map((c) => optionsFor(c, m.facts))
   // Round-robin across contexts: every context's best guess, then their
@@ -370,19 +595,6 @@ export function buildQcm(m: CriticalMoment, stats?: ChoiceStats, env?: QcmEnv): 
       const idx = options.map((o) => (o.outcome === 'mistake' && !o.codexId ? 'swap' : 'keep')).lastIndexOf('swap')
       if (idx >= 0) options = options.map((o, i) => (i === idx ? { ...mistake(promo, 'habit'), promoted: true } : o))
     }
-  }
-
-  // Low-energy game: the protocol is offered on every death, as choice [2].
-  // It takes the place of the second diagnosis: choice [1] and the `justified` way out stay.
-  if (env?.lowEnergy && m.trigger === 'critical-death') {
-    const next = [options[0], lowEnergyOption(), ...options.slice(1)]
-    if (next.length > 3) {
-      const after = next.map((o, i) => ({ o, i })).filter((x) => x.i > 1 && x.o.outcome === 'mistake')
-      const drop = after.filter((x) => !x.o.codexId).pop() ?? after.pop()
-      next.splice(drop ? drop.i : next.length - 1, 1)
-    }
-    options = next
-    contexts.splice(1, 0, 'low-energy')
   }
   return { momentKey: m.key, contexts, summary: summaryOf(m), options }
 }

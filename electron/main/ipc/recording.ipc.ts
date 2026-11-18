@@ -3,6 +3,7 @@ import { getPrisma } from '../database'
 import { z } from 'zod'
 import { validatedHandle, id, httpsUrl, youtubeUrl as youtubeUrlSchema } from './validate'
 import { getActiveRecorder } from '../recorderBackend'
+import { enterRecordingBackground, leaveRecordingBackground } from '../windowFocus'
 import {
   recordingManager,
   isFfmpegAvailable,
@@ -902,7 +903,7 @@ export function registerRecordingHandlers() {
     return { ...status, ffmpegAvailable: isFfmpegAvailable() }
   })
 
-  ipcMain.handle('recording:start-capture', async () => {
+  ipcMain.handle('recording:start-capture', async (event) => {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })
 
@@ -931,6 +932,10 @@ export function registerRecordingHandlers() {
       audioMicEnabled: micEnabled,
       audioMicDevice: micDeviceName,
     })
+    // Settings → Recording → "arrière-plan" (windowFocus.ts), undone on stop-capture.
+    if (path && (user?.recordInBackground ?? true)) {
+      enterRecordingBackground(BrowserWindow.fromWebContents(event.sender))
+    }
     return { started: !!path, filePath: path }
   })
 
@@ -977,6 +982,7 @@ export function registerRecordingHandlers() {
     //   2) waitForDone() blocks until ffmpeg/remux completes (or 90s timeout)
     //   3) probe + poll until the file demuxes cleanly
     //   4) only THEN persist + link, so the UI never sees a 0:00 file
+    leaveRecordingBackground()
     const activeRecorder = getActiveRecorder()
     const initialPath = activeRecorder.stopRecording()
     if (!initialPath) return { stopped: false }

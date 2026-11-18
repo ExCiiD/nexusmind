@@ -52,10 +52,8 @@ describe('verifyObjective — other rules', () => {
   it('returns null for fundamentals without a measurable rule', () => {
     expect(verifyObjective('shotcalling_communication', { tags: [], contested: [], reviewed: true })).toBeNull()
   })
-  it('low-energy protocol (resilience): no isolated death, forced trade or wasted summoner', () => {
-    expect(verifyObjective('resilience', { tags: ['overstay'], contested: [], reviewed: true })).toMatchObject({ ruleId: 'low-energy', status: 'passed', failedTags: [] })
-    expect(verifyObjective('resilience', { tags: ['caught-out', 'wasted-summoner'], contested: [], reviewed: true })).toMatchObject({ status: 'failed', failedTags: ['caught-out', 'wasted-summoner'] })
-    expect(verifyObjective('resilience', { tags: [], contested: [], reviewed: false })!.status).toBe('unknown')
+  it('resilience has no rule since the low-energy protocol was withdrawn', () => {
+    expect(verifyObjective('resilience', { tags: ['caught-out', 'wasted-summoner'], contested: [], reviewed: true })).toBeNull()
   })
   it('only targets real fundamentals', () => {
     const ids = new Set(FUNDAMENTALS.flatMap((c) => c.fundamentals.map((f) => f.id)))
@@ -177,7 +175,8 @@ describe('AscendCodex — official videos only', () => {
     expect(codexFor('overstay', 'JUNGLE', 'early')!.id).toBe('codex_jgl_pathing_integrity_reset_cycle')
     expect(codexFor('cs-deficit', 'JUNGLE', 'early')!.id).toBe('codex_jgl_3camps_mid_cross_bot_invade')
     expect(codexFor('bad-positioning', 'TOP', 'late')!.id).toBe('codex_macro_baron_balance_system')
-    expect(codexFor('overstay', 'MIDDLE', 'mid')!.id).toBe('overstay-any-mid')
+    // overstay-any-mid was merged into the single-action tempo window (same rule), which took its place.
+    expect(codexFor('overstay', 'MIDDLE', 'mid')!.id).toBe('codex_tempo_single_action_window_wave_cheating')
   })
 })
 
@@ -197,8 +196,8 @@ describe('AscendCodex — V3 fiches (third-party analyses, text only)', () => {
 
 describe('AscendCodex — V4 fiches & terminology', () => {
   const ids = ['codex_tempo_territorial_vs_order_vs_economic', 'codex_macro_pressure_asymmetry_next_midwave', 'codex_vision_baron_chokepoint_support_zoning',
-    'codex_mechanics_mid_6archetypes_3v3_synergy', 'codex_tempo_roam_check_systematic_fog', 'codex_mental_low_energy_anti_tilt_protocol']
-  it('adds the 6 fiches, bilingual, text only', () => {
+    'codex_mechanics_mid_6archetypes_3v3_synergy', 'codex_tempo_roam_check_systematic_fog']
+  it('adds the fiches, bilingual, text only (the sixth, the low-energy protocol, was withdrawn)', () => {
     for (const id of ids) {
       const e = codexById(id)!
       expect(e, id).not.toBeNull()
@@ -222,7 +221,8 @@ describe('AscendCodex — V4 fiches & terminology', () => {
     expect(fr).not.toMatch(/\bvagues?\b/i)
     expect(fr).not.toMatch(/temps de recharge|contre-gank/i)
   })
-  it('the low-energy protocol is a session objective on the resilience fundamental', () => {
-    expect(codexById('codex_mental_low_energy_anti_tilt_protocol')!.fundamentalId).toBe('resilience')
+  it('the withdrawn low-energy fiche is out of the Codex but still readable by id (answers recorded with it)', () => {
+    expect(CODEX.some((e) => e.id === 'codex_mental_low_energy_anti_tilt_protocol')).toBe(false)
+    expect(codexById('codex_mental_low_energy_anti_tilt_protocol')).toMatchObject({ fundamentalId: 'resilience', videoExamples: [] })
   })
 })

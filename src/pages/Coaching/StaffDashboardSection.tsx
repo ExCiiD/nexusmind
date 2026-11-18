@@ -1,10 +1,31 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Loader2, LayoutDashboard } from 'lucide-react'
+import { AlertTriangle, Info, Loader2, LayoutDashboard } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { Group } from '@/lib/collab'
 import type { DashboardAlert, PlayerDashboardRow } from '@/lib/staffDashboard'
+
+/** A column title whose computation is explained on hover (and on keyboard focus). */
+function HelpHeader({ label, help }: { label: string; help: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex cursor-help items-center gap-1 uppercase tracking-wide underline decoration-hextech-text-dim/60 decoration-dotted underline-offset-4 hover:text-hextech-text-bright focus-visible:text-hextech-text-bright focus-visible:outline-none"
+        >
+          {label}
+          <Info className="h-3 w-3 shrink-0" aria-hidden />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" align="start" className="max-w-xs px-3 py-2 text-xs font-normal leading-relaxed">
+        {help}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
 
 /** E2 (docs/PLAN_GESTION_EQUIPE.md): one row per player, shared by desktop + web. */
 export function StaffDashboardSection({ staffGroups }: { staffGroups: Group[] }) {
@@ -47,14 +68,19 @@ export function StaffDashboardSection({ staffGroups }: { staffGroups: Group[] })
         ) : rows.length === 0 ? (
           <p className="text-sm text-hextech-text-dim">{t('team.dashboard.noPlayers', { defaultValue: 'No players in this group yet.' })}</p>
         ) : (
+          <TooltipProvider delayDuration={150}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-hextech-border-dim text-left text-xs uppercase tracking-wide text-hextech-text-dim">
                   <th className="py-2 pr-3">{t('team.dashboard.col.player', { defaultValue: 'Player' })}</th>
-                  <th className="py-2 pr-3">{t('team.dashboard.col.form', { defaultValue: 'Form (10)' })}</th>
+                  <th className="py-2 pr-3">
+                    <HelpHeader label={t('team.dashboard.col.form', { defaultValue: 'Form (10)' })} help={t('team.dashboard.colHelp.form')} />
+                  </th>
                   <th className="py-2 pr-3">{t('team.dashboard.col.mood', { defaultValue: 'Mood' })}</th>
-                  <th className="py-2 pr-3">{t('team.dashboard.col.perfIndex', { defaultValue: 'Perf index' })}</th>
+                  <th className="py-2 pr-3">
+                    <HelpHeader label={t('team.dashboard.col.perfIndex', { defaultValue: 'Perf index' })} help={t('team.dashboard.colHelp.perfIndex')} />
+                  </th>
                   <th className="py-2 pr-3">{t('team.dashboard.col.week', { defaultValue: 'This week' })}</th>
                   <th className="py-2 pr-3">{t('team.dashboard.col.reviews', { defaultValue: 'Reviews' })}</th>
                   <th className="py-2 pr-3">{t('team.dashboard.col.mistake', { defaultValue: 'Dominant mistake' })}</th>
@@ -111,6 +137,7 @@ export function StaffDashboardSection({ staffGroups }: { staffGroups: Group[] })
               </tbody>
             </table>
           </div>
+          </TooltipProvider>
         )}
       </CardContent>
     </Card>

@@ -312,7 +312,7 @@ function DiffChart({ data, dataKey, title, unit, onSeek }: { data: any[]; dataKe
             <CartesianGrid strokeDasharray="3 3" stroke="#2A1D11" />
             <XAxis dataKey="minute" tick={{ fill: '#B5A68C', fontSize: 10 }} tickFormatter={(v) => `${v}m`} />
             <YAxis tick={{ fill: '#B5A68C', fontSize: 10 }} tickFormatter={(v) => `${v > 0 ? '+' : ''}${v}`} />
-            <ReferenceLine y={0} stroke="#6b5c44" />
+            <ReferenceLine y={0} stroke="#978769" />
             <RTooltip
               contentStyle={{ background: '#0a0e13', border: '1px solid #2A1D11', borderRadius: 6, fontSize: 11 }}
               labelStyle={{ color: '#D4A24C' }}

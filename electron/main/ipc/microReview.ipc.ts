@@ -21,8 +21,6 @@ import { ensureMatchCache } from './stats.ipc'
 import { analyzeGame, isSupportedGame, type GameAnalysis } from '../../../src/lib/microReview/anomalyDetector'
 import { verifySessionObjectives } from '../../../src/lib/microReview/objectiveVerification'
 import { CALIBRATION_EVERY, calibrationDue, calibrationGap, measuredDistribution } from '../../../src/lib/microReview/calibration'
-import { gameLowEnergy } from '../../../src/lib/microReview/lowEnergy'
-import type { InsightGame } from '../../../src/lib/statsInsights'
 import { tagFamily, FAMILIES, type MistakeFamily } from '../../../src/lib/mistakeInsights'
 import type {
   CalibrationResult, CalibrationStatus, MicroReviewAnswerResult, MicroReviewAnswerView, MicroReviewPayload, ObjectiveVerificationPayload,
@@ -30,8 +28,8 @@ import type {
 import { microReviewPushAnswer } from '../cloud/collab'
 import { momentWindow } from '../mistakeDedupe'
 
-/** Bump when the detector's output changes, to recompute cached analyses. */
-export const ANALYSIS_VERSION = 5
+/** Bump when the detector's output changes, to recompute cached analyses. 6: V5 laning + V6 role patterns; 7: V7–V10 jungle, mid and support patterns. */
+export const ANALYSIS_VERSION = 7
 export const MICRO_REVIEW_XP = 30
 
 async function userPuuids(userId: string): Promise<string[]> {
@@ -146,18 +144,6 @@ export function registerMicroReviewHandlers(): void {
       prisma.microReviewAnswer.findMany({ where: { gameId }, orderBy: { gameTimeSec: 'asc' } }),
       prisma.microReviewAnswer.findMany({ where: { userId, role }, select: { role: true, champion: true, tagSlug: true, viaOther: true }, orderBy: { createdAt: 'desc' }, take: 500 }),
     ])
-    // Low-energy context: what happened before this game in its session, and the player's recent dayparts.
-    const [sessionBefore, recent] = await Promise.all([
-      prisma.game.findMany({ where: { sessionId: game.sessionId, gameEndAt: { lt: game.gameEndAt } }, orderBy: { gameEndAt: 'asc' }, select: { win: true } }),
-      prisma.game.findMany({
-        where: { session: { userId }, isSessionEligible: true, gameEndAt: { lt: game.gameEndAt } },
-        orderBy: { gameEndAt: 'desc' }, take: 50,
-        select: { matchId: true, champion: true, kills: true, deaths: true, assists: true, cs: true, visionScore: true, duration: true, win: true, gameEndAt: true },
-      }),
-    ])
-    const history: InsightGame[] = recent.map((g) => ({ ...g, gameEndAt: g.gameEndAt.toISOString() }))
-    const lowEnergy = gameLowEnergy({ gameEndAt: game.gameEndAt, resultsBefore: sessionBefore.map((g) => g.win), history })
-
     const rec = game.recording
     return {
       gameId, matchId: game.matchId, champion: game.champion, role, win: game.win,
@@ -165,7 +151,6 @@ export function registerMicroReviewHandlers(): void {
       analysis, reason,
       answers: answers.map(toView),
       pastAnswers: past,
-      lowEnergy,
       recording: rec ? { id: rec.id, filePath: rec.filePath, youtubeUrl: rec.youtubeUrl, startOffsetSec: rec.startOffsetSec, createdAt: rec.createdAt.toISOString() } : null,
     }
   })

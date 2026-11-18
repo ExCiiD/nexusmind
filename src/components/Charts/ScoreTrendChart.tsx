@@ -39,13 +39,13 @@ export function ScoreTrendChart({ data, scoreName, previousScoreName }: ScoreTre
         <Tooltip
           contentStyle={{
             backgroundColor: '#1C140C',
-            border: '1px solid #4A3A24',
+            border: '1px solid #3A2C18',
             borderRadius: '8px',
             color: '#F5E3BE',
           }}
         />
         {data.some((d) => d.previousScore !== undefined) && (
-          <Bar dataKey="previousScore" fill="#4A3A24" radius={[4, 4, 0, 0]} name={previousScoreName ?? t('charts.previous')} />
+          <Bar dataKey="previousScore" fill="#6B5330" radius={[4, 4, 0, 0]} name={previousScoreName ?? t('charts.previous')} />
         )}
         <Bar dataKey="score" fill="#D4A24C" radius={[4, 4, 0, 0]} name={scoreName ?? t('charts.current')} />
       </BarChart>

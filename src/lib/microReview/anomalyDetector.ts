@@ -17,17 +17,40 @@
  *                      previous 90 s and without a cross-map trade;
  *   early-deficit      at 10:00, csDiff < −15 or xpDiff < −400 against the
  *                      direct opponent, with fewer than 2 takedowns.
- * Every candidate is dropped when P(win) just before it is < 0.18 or > 0.85.
+ * Every candidate is dropped when P(win) just before it is < 0.18 or > 0.85,
+ * except, above 0.85, the jungle patterns of GARBAGE_CEILING_EXEMPT (V6).
  *
  * Patterns (facts.pattern) refine a trigger without a new trigger name:
- *   on critical-death    gank-timer, pit-chokepoint, fed-carry-first,
- *                        tempo-front-isolated
- *   on absent-objective  tempo-hesitation, tempo-late-recall, pit-chokepoint
- *   on early-deficit     jungle-overchase, jungle-counter-tempo,
+ *   on critical-death    tower-dive-one-for-one, level-up-spike,
+ *                        support-level2-allin, mid-ahead-of-wave-death,
+ *                        mid-reset-trap-death, back-timer-missed,
+ *                        gank-during-team-reset, gank-timer,
+ *                        range-melee-volatility, jungle-dragon-tank-death,
+ *                        inhib-forced-dive, jungle-herald-unused-death,
+ *                        jungle-invade-death, pit-chokepoint,
+ *                        adc-solo-sidelane-reopen, jungle-compensation-death,
+ *                        fed-carry-first, tempo-front-isolated
+ *   on absent-objective  low-hp-recall-before-objective, jungle-outsmited,
+ *                        tempo-hesitation, support-absent-scuttle,
+ *                        jungle-baron-recall, tempo-late-recall, pit-chokepoint
+ *   on early-deficit     mid-passive-wave-loss, support-no-early-ward,
+ *                        support-botlane-leech, support-weakside-unwarded,
+ *                        jungle-overchase, jungle-counter-tempo,
  *                        jungle-passive-clear, jungle-window-unpunished,
- *                        bad-rotation, mid-roam-plates
+ *                        jungle-late-first-recall, jungle-early-boots,
+ *                        jungle-camps-up-gank, jungle-weakside-stolen,
+ *                        jungle-fled-invade, jungle-side-t1-destroyed,
+ *                        bad-rotation, mid-roam-plates, cheater-recall
+ * A death gets at most one pattern: they are tried in the order above, the
+ * most specific first, so one death never yields two concurrent readings
+ * (a death read as a Dragon tank or a compensation is not an overchase too).
+ * Likewise one lost fight, one enemy objective or one lane deficit yields one
+ * moment: the forced back before an objective and the lost smite claim that
+ * objective, the jungler's Baron recall claims that fight, the mid lane
+ * given away at 6:00 replaces the 10:00 deficit.
  * Every threshold lives in DETECTOR_SPEC and is asserted, on both sides of
- * its boundary, by tests/unit/anomalyDetectorMath*.test.ts.
+ * its boundary, by tests/unit/anomalyDetectorMath*.test.ts and
+ * tests/unit/microReviewV5|V6|V7.test.ts.
  *
  * Resolution limits, by construction of Riot's timeline:
  *   - participant positions, gold, XP, CS and HP are 60 s snapshots.
@@ -36,30 +59,65 @@
  *     until it respawns, then leaves its fountain toward the next snapshot.
  *     A detour inside one minute that no event marks cannot be seen;
  *   - jungle camps are a per-minute counter: a camp taken in the same minute
- *     as a chase (before it, or after a respawn) cancels the overchase;
+ *     as a chase (before it, or after a respawn) cancels the overchase; which
+ *     camp it was, when it died and the Scuttle Crabs are not in the data. A
+ *     camp stolen is the enemy jungler's counter rising while two snapshots
+ *     in a row show them in the same quadrant of our jungle;
+ *   - there is no spell-cast event (dash, Smite, ultimate) and no minion
+ *     wave: an order of spells or the state of a wave is never read;
  *   - WARD_PLACED has no coordinates (the player's position is used);
- *   - there is no recall, damage or minion-wave event; bounties are
- *     estimated from the kill streak.
+ *   - there is no recall, rune, passive, item-charge or minion-wave event; a
+ *     recall is read from the champion standing in its base, or from an
+ *     ITEM_PURCHASED while alive (the shop only sells in base — checked on
+ *     cached games), which dates the arrival, not the start of the channel;
+ *     Teleport casts are a whole-game count; bounties are estimated from the
+ *     kill streak;
+ *   - damage exists only on a death (victimDamageReceived, which names the
+ *     Dragon among its sources);
+ *   - there is no item catalogue: "3 completed items" is read as 10 000 g
+ *     spent (total gold earned minus gold in pocket). Item ids are logged:
+ *     boots (1001) bought, the Eye of the Herald (3513) leaving its holder's
+ *     inventory when used or expired — its pick-up is not logged.
  * When the data cannot prove a pattern, the detector stays silent.
  */
 
 import {
-  ALLY_RADIUS, FOUNTAIN, OBJECTIVE_RADIUS, WARD_RADIUS, PIT_FIGHT_RADIUS, PIT_INSIDE_RADIUS,
-  dist, laneOf, nearestPit, pitCenter, tempoLineD, territoryOf, zoneOf,
+  ALLY_RADIUS, FOUNTAIN, OBJECTIVE_RADIUS, OUTER_TURRETS, WARD_RADIUS, PIT_FIGHT_RADIUS, PIT_INSIDE_RADIUS,
+  dist, inBaseBox, laneOf, nearestPit, pitCenter, tempoLineD, territoryOf, zoneOf,
   type LaneBucket, type Pit, type Point, type TeamId, type Territory, type Zone,
 } from './geometry'
 import {
-  OBJECTIVE_WEIGHT, frameClock, isGarbageTime, objectiveKindOf, winProbabilityTrack,
+  GARBAGE_HIGH, OBJECTIVE_WEIGHT, frameClock, isGarbageTime, objectiveKindOf, winProbabilityTrack,
   type ObjectiveKind,
 } from './winProbability'
-import { isControlMage } from './championClasses'
+import { attackTypeOf, isControlMage } from './championClasses'
 
 export type MomentTrigger = 'critical-death' | 'absent-objective' | 'early-deficit'
 
-export type MomentPattern =
-  | 'tempo-hesitation' | 'jungle-overchase' | 'jungle-counter-tempo' | 'jungle-passive-clear'
-  | 'tempo-late-recall' | 'tempo-front-isolated' | 'gank-timer' | 'fed-carry-first'
-  | 'jungle-window-unpunished' | 'bad-rotation' | 'pit-chokepoint' | 'mid-roam-plates'
+/** Every pattern the detector can set (tests iterate this list, so a new pattern is never left untested). */
+export const MOMENT_PATTERNS = [
+  'tempo-hesitation', 'jungle-overchase', 'jungle-counter-tempo', 'jungle-passive-clear',
+  'tempo-late-recall', 'tempo-front-isolated', 'gank-timer', 'fed-carry-first',
+  'jungle-window-unpunished', 'bad-rotation', 'pit-chokepoint', 'mid-roam-plates',
+  // V5 — laning phase.
+  'tower-dive-one-for-one', 'level-up-spike', 'back-timer-missed', 'range-melee-volatility', 'cheater-recall',
+  // V6 — roles.
+  'support-no-early-ward', 'support-level2-allin', 'gank-during-team-reset', 'low-hp-recall-before-objective',
+  'adc-solo-sidelane-reopen', 'jungle-baron-recall', 'inhib-forced-dive',
+  // V7–V10 — jungle, mid, engage support.
+  'jungle-late-first-recall', 'jungle-camps-up-gank', 'jungle-weakside-stolen', 'jungle-invade-death', 'jungle-dragon-tank-death',
+  'jungle-compensation-death', 'jungle-early-boots', 'jungle-side-t1-destroyed', 'jungle-herald-unused-death', 'jungle-fled-invade',
+  'jungle-outsmited', 'mid-ahead-of-wave-death', 'mid-reset-trap-death', 'mid-passive-wave-loss',
+  'support-botlane-leech', 'support-absent-scuttle', 'support-weakside-unwarded',
+] as const
+export type MomentPattern = typeof MOMENT_PATTERNS[number]
+
+/**
+ * Kept above the garbage-time ceiling (P(win) > 0.85): throwing a won game is the very mistake they describe, and a
+ * team holding Baron or that has just taken an inhibitor is almost always above it (cached games: 24 of 26 inhibitor
+ * dives, 82 % of Barons). The floor (P(win) < 0.18) still applies to them.
+ */
+export const GARBAGE_CEILING_EXEMPT: readonly MomentPattern[] = ['jungle-baron-recall', 'inhib-forced-dive']
 
 /** Every numeric rule of the detector (seconds, map units, gold, ratios). */
 export const DETECTOR_SPEC = {
@@ -77,6 +135,97 @@ export const DETECTOR_SPEC = {
   rotation: { untilSec: 840, awaySec: 30, cs: 8, xp: 350, deathGuardSec: 45 },
   pit: { fromSec: 840, fightRadius: PIT_FIGHT_RADIUS, insideRadius: PIT_INSIDE_RADIUS, beforeSec: 15, fightGapSec: 20 },
   midRoam: { untilSec: 840, plates: 1, cs: 10, minOffAxis: 2600 },
+  // V5 — laning phase.
+  /** Kills the lane opponent within 850 units of a standing enemy T1, dies within 4 s, enemy jungler not involved. */
+  dive: { untilSec: 840, turretRadius: 850, afterKillSec: 4 },
+  /** Killed by the lane opponent within 10 s of their level 2 or 3, while still below that level. */
+  levelSpike: { untilSec: 270, windowSec: 10, levels: [2, 3] },
+  /** Under 35 % HP with 800+ gold in lane, then dead in the river / jungle within 40 s, before 10:00. */
+  backTimer: { untilSec: 600, hpPct: 35, gold: 800, withinSec: 40 },
+  /** 1v1 death to the lane opponent before 8:00: ranged under 60 % HP at level ≤ 3, or melee under 50 % at level ≤ 4 against a ranged above 85 %. */
+  rangeMelee: { untilSec: 480, rangedHp: 60, rangedMaxLevel: 3, meleeHp: 50, meleeMaxLevel: 4, opponentHp: 85 },
+  /** In base at 3:00 (back between 2:35 and 3:15) from above 75 % HP at 2:00, no Teleport cast, 1+ level behind at 4:00. */
+  cheaterRecall: { atSec: 180, anchorSec: 155, hpBeforeSec: 120, hpPct: 75, levelAtSec: 240, levelDeficit: 1, teleportSpellId: 12 },
+  // V6 — roles.
+  /** Support: no ward of their own by 1:45 (champion objects aside); or killed 2:05–2:40 below the level of an enemy in the fight. */
+  supportEarly: { wardBySec: 105, deathFromSec: 125, deathToSec: 160 },
+  /** Laner ganked before 14:00 in the enemy half of their lane while 2+ allies, the jungler or a bot laner among them, stood in base in the 15 s before. */
+  teamReset: { untilSec: 840, lookbackSec: 15, alliesHome: 2 },
+  /**
+   * Back under 40 % HP 0–35 s before a dragon / Voidgrubs spawn, an opponent under 60 % on the same snapshot (the trade
+   * was mutual), then a fight lost at that pit before the player is back (30 s after shopping). The channel (8 s) is
+   * counted back from the first purchase of the visit (purchases less than 30 s apart are one visit).
+   */
+  tradeRecall: { untilSec: 840, hpPct: 40, opponentHpPct: 60, beforeSpawnSec: 35, channelSec: 8, returnSec: 30, visitGapSec: 30 },
+  /** ADC after 14:00: killed alone in a side lane across the river at most 45 s after reaching it, the walk from base counted as 45 s. */
+  adcReopen: { fromSec: 840, walkSec: 45, withinSec: 45 },
+  /** Jungler ahead (KDA > 3, or 10 000 g spent ≈ 3 items) in base or in their own jungle during the team's Baron buff while 3+ allies stand in the enemy half and 2+ die there. */
+  baronRecall: { kda: 3, goldSpent: 10_000, alliesForward: 3, alliesDown: 2, fightWindowSec: 30, awayBeforeSec: 30, awayAfterSec: 15 },
+  /** Jungler killed in the enemy base within 15 s after an enemy inhibitor falls. */
+  inhibDive: { withinSec: 15 },
+  /** Spawn timers of the patches analysed (15.20–16.22, checked on cached games): dragon at 5:00 then 5:00 after each kill, one Voidgrub camp at 8:00. */
+  spawns: { firstDragonSec: 300, dragonRespawnSec: 300, grubsSec: 480 },
+  // V7–V10 — jungle, mid, engage support.
+  /** Jungler still on the map at 4:05 (1st camp back up, so the T-25 s recall was missed): no back after 1:00, no takedown, no death. */
+  jungleFirstBack: { bySec: 245, startSec: 60 },
+  /**
+   * A gank that cost the camps (the brief's "deficit of 8 jungle CS"), from 2:00 to 12:00: the jungler in a lane with an
+   * enemy within 2500 on a snapshot, no takedown and no death in the minute that follows, and 8+ jungle CS lost on the
+   * enemy jungler over that minute. Whether the camps were "up", or stolen, is not in the data.
+   */
+  gankCost: { fromSec: 120, untilSec: 720, cs: 8, enemyRadius: 2500 },
+  /**
+   * Our camps stolen, proven: from 2:00, the enemy jungler gains 8+ jungle CS between two snapshots while standing in the
+   * same quadrant of our jungle at both. Read as the weak side left behind before 16:00 (the player shopped — starting
+   * items aside — from the minute before to the end of that minute, then is on the other side), and for the support before
+   * 18:00 (our jungler top side, no ward of theirs in our bot-side jungle in the 120 s before).
+   */
+  campsStolen: { cs: 8, fromSec: 120, weakSideUntilSec: 960, supportUntilSec: 1080, wardLookbackSec: 120 },
+  /**
+   * Jungler dead in the enemy jungle before 16:00, alone or with one ally (not a team fight), after taking a camp (4+ jungle
+   * CS between the snapshot a minute before the death and the one after it), no takedown in the 30 s before, not an overchase.
+   */
+  invadeDeath: { untilSec: 960, noTakedownSec: 30, campCs: 4, maxAllies: 1, midRadius: 2500 },
+  /** Jungler dead within 3000 of the Dragon pit between 5:00 and 12:00, the Dragon having dealt 60 %+ of their max HP (under 40 % left), enemies in the fight. */
+  dragonTank: { fromSec: 300, untilSec: 720, damageShare: 0.6 },
+  /**
+   * Compensation death: an ally fell within 3000 units in the 15 s before, 2+ more enemies on the jungler's death than
+   * allies alive around them, and the enemy takes an epic monster at that pit within 60 s. Without the objective the
+   * brief's "or a skirmish" matches 1.25 deaths per jungle game on cached games (0.17 with it): no longer a pattern.
+   */
+  compensation: { windowSec: 15, allyRadius: 3000, outnumberedBy: 2, objectiveWithinSec: 60 },
+  /** Boots (item 1001) bought by the jungler before 8:00 without a kill. */
+  earlyBoots: { untilSec: 480, itemId: 1001 },
+  /** The jungler last-hits an enemy side-lane T1 between 14:00 (plates gone) and 20:00 while a tower had already fallen. */
+  sideTower: { fromSec: 840, untilSec: 1200 },
+  /**
+   * Jungler dead in a fight 14:00–19:30 while holding the Eye of the Herald (item 3513). Riot logs no pick-up, but the eye
+   * leaving an inventory (used, or expired about 300 s after the kill) is an ITEM_DESTROYED naming its holder: the jungler
+   * held it at that death when that event is theirs and comes after it. Deaths in the 20 s after the Herald fell (the
+   * time the eye lies on the ground) are the Herald fight itself, not a fight entered with the eye.
+   */
+  heraldEye: { fromSec: 840, untilSec: 1170, itemId: 3513, pickupSec: 20 },
+  /**
+   * Fled an invade: before 15:00, a snapshot shows the jungler under 15 % HP in their own jungle, the enemy jungler within
+   * 2000 above 70 % and an ally of ours within 2000; the jungler is alive 15 s later and the enemy jungler takes 4+
+   * jungle CS that minute.
+   */
+  fledInvade: { untilSec: 900, hpPct: 15, enemyHpPct: 70, radius: 2000, aliveSec: 15, campCs: 4 },
+  /** Enemy Dragon / Elder / Herald / Baron taken while the jungler, alive, stood within 900 of the pit. */
+  outsmite: { pitRadius: 900 },
+  /** Mid laner dead in the mid lane before 12:00 at most 45 s after leaving base (a purchase after 1:00, or a respawn). */
+  aheadOfWave: { untilSec: 720, afterBaseSec: 45, startSec: 60 },
+  /**
+   * Reset trap: the enemy mid backs first; the player, under 30 % HP or mana on the snapshot before (a mana pool over 200,
+   * so not energy, rage or flow), does not back and dies within 90 s; before 12:00.
+   */
+  resetTrap: { untilSec: 720, lowPct: 30, stayedSec: 45, withinSec: 90, manaPoolMin: 200 },
+  /** Mid laner 12+ CS behind at 6:00 with no basic spell at 2 points at level 3 and fewer than 2 takedowns (kills pay for CS, as at 10:00). */
+  midWaveLoss: { atSec: 360, csDiff: -12, takedowns: 2 },
+  /** Support level 6+ at 9:00, within 2000 of the ADC in the bot lane on 6 of the 7 snapshots 9:00–15:00 (over 75 %), under 45 % kill participation at 15:00. */
+  supportLeech: { fromSec: 540, untilSec: 900, level: 6, radius: 2000, snapshots: 6, kp: 0.45 },
+  /** Our jungler dead in the bot river between 3:25 and 3:50, the support more than 2000 away and without a takedown around it. */
+  supportScuttle: { fromSec: 205, untilSec: 230, radius: 2000 },
 } as const
 
 export interface MomentFacts {
@@ -123,7 +272,7 @@ export interface MomentFacts {
   xpDiffJungle?: number
   /** jungle-passive-clear: bot duo gold lead at 3:00. */
   botGoldLead?: number
-  /** tempo lines: forward allies who died in the fight / allies still home. */
+  /** tempo lines: forward allies who died in the fight / allies still home (gank-during-team-reset: allies in base in the 15 s before). */
   alliesHigh?: number
   alliesHome?: number
   /** gank-timer: which window (1 = 2:25–3:00, 2 = 3:15–4:25); wards are best effort (no coordinates in the timeline). */
@@ -141,8 +290,58 @@ export interface MomentFacts {
   platesLost?: number
   roamSide?: 'top' | 'bot'
   enemyGrubs?: boolean
-  /** pit-chokepoint: allies who died in the pit fight. */
+  /** pit-chokepoint, low-hp-recall-before-objective, jungle-baron-recall: allies who died in the fight the player missed or lost. */
   alliesDown?: number
+  /** tower-dive-one-for-one: seconds between the player's kill and their death, lane of the enemy T1. */
+  killGapSec?: number
+  turretLane?: 'TOP' | 'MID' | 'BOT'
+  /** level-up-spike: the level the lane opponent had just reached (2 or 3). */
+  spikeLevel?: number
+  /** range-melee-volatility: the player's attack type and the HP of the snapshot that decided the lane. */
+  attackType?: 'melee' | 'ranged'
+  laneHpPct?: number
+  opponentHpPct?: number
+  /** cheater-recall: HP at 2:00 and levels behind the lane opponent at 4:00 (low-hp-recall-before-objective: HP on the snapshot before the back). */
+  recallHpPct?: number
+  levelsBehind?: number
+  /** support-level2-allin: the support's level and the highest level among the enemies in the fight (LEVEL_UP events); the enemy jungler took part. */
+  myLevel?: number
+  enemyLevel?: number
+  junglerInvolved?: boolean
+  /** low-hp-recall-before-objective: seconds between the start of the back and the spawn. */
+  spawnInSec?: number
+  /** adc-solo-sidelane-reopen: seconds since the player left base; the mid laner was in base meanwhile. */
+  sinceBaseSec?: number
+  midInBase?: boolean
+  /** inhib-forced-dive: seconds between the inhibitor and the death. */
+  inhibGapSec?: number
+  // V7–V10.
+  /** jungle-late-first-recall: the first back after 1:00 (s), null when there was none. */
+  firstBackSec?: number | null
+  /** jungle-camps-up-gank: jungle CS lost on the enemy jungler over the minute of the gank (their gain minus the player's). */
+  jungleCsLost?: number
+  /** jungle-weakside-stolen, support-weakside-unwarded: jungle CS the enemy jungler took in our jungle that minute. */
+  campsStolenCs?: number
+  /** jungle-invade-death: jungle CS the player took around the death; their mid laner was on the mid lane, away from it. */
+  campsTakenCs?: number
+  midOnWave?: boolean
+  /** jungle-dragon-tank-death: damage the Dragon dealt, in percent of max HP. */
+  dragonDamagePct?: number
+  /** jungle-compensation-death: seconds between the ally's death and the player's. */
+  deathGapSec?: number
+  /** jungle-early-boots: when the boots were bought (s). */
+  bootsSec?: number
+  /** jungle-herald-unused-death: seconds since the player took the Herald. */
+  heraldAgoSec?: number
+  /** mid-reset-trap-death: the low resource on the snapshot of the enemy back, and the seconds from that back to the death. */
+  resetResource?: 'hp' | 'mana'
+  resetLowPct?: number
+  enemyBackSec?: number
+  /** mid-passive-wave-loss: CS behind the lane opponent at 6:00. */
+  csDiff6?: number
+  /** support-botlane-leech: snapshots 9:00–15:00 next to the ADC in the bot lane (of 7), kill participation at 15:00 (percent). */
+  laneSnapshots?: number
+  kpPct?: number
 }
 
 export interface CriticalMoment {
@@ -203,6 +402,8 @@ export interface DetectorSelector {
 export const MAX_MOMENTS = DETECTOR_SPEC.maxMoments
 export const SUMMONERS_RIFT_MAP_ID = 11
 const EPIC: ObjectiveKind[] = ['dragon', 'elder', 'baron', 'herald', 'grubs', 'atakhan']
+/** Objectives the jungler secures with Smite and can lose to the enemy one (V7). */
+const OUTSMITE_KINDS: ObjectiveKind[] = ['dragon', 'elder', 'herald', 'baron']
 const HESITATION_KINDS: ObjectiveKind[] = ['dragon', 'elder', 'baron', 'grubs']
 const PATTERN_BONUS = 0.12
 /** Baron buff duration (the 3 min powerplay). */
@@ -300,6 +501,12 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
   const goldOf = (i: number, id: number) => Number(pframe(i, id)?.totalGold) || 0
   const csOf = (i: number, id: number) => (Number(pframe(i, id)?.minionsKilled) || 0) + (Number(pframe(i, id)?.jungleMinionsKilled) || 0)
   const xpOf = (i: number, id: number) => Number(pframe(i, id)?.xp) || 0
+  const levelOf = (i: number, id: number) => Number(pframe(i, id)?.level) || 0
+  /** HP percent of a snapshot, null when the timeline carries no champion stats. */
+  const hpPctOf = (i: number, id: number): number | null => {
+    const s = pframe(i, id)?.championStats
+    return s && Number(s.healthMax) > 0 ? Math.round((Number(s.health) / Number(s.healthMax)) * 100) : null
+  }
 
   // ── Lives: where every champion fell, and when it came back ───────────
   const lives = new Map<number, Life[]>()
@@ -356,6 +563,79 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     ((e.type === 'CHAMPION_KILL' || e.type === 'BUILDING_KILL') && involves(e, pid)) ||
     (e.type === 'TURRET_PLATE_DESTROYED' && e.killerId === pid)).map((e) => e.timestamp as number)
 
+  // V6 helpers. The shop only sells in base: a purchase dates a base visit between two snapshots.
+  const shops = new Map<number, number[]>()
+  for (const e of events) {
+    if (e.type !== 'ITEM_PURCHASED' || typeof e.participantId !== 'number') continue
+    shops.set(e.participantId, [...(shops.get(e.participantId) ?? []), e.timestamp])
+  }
+  const shopsOf = (id: number): number[] => shops.get(id) ?? []
+  /** Stood in its base at some point of [from, to] (a purchase, or a snapshot on the fountain platform) and is alive at `to`. */
+  const homeIn = (id: number, from: number, to: number): boolean => {
+    if (deadAt(id, to)) return false
+    if (shopsOf(id).some((t) => t >= from && t <= to)) return true
+    const side: TeamId = teamOf(id) === 200 ? 200 : 100
+    for (let i = 0; i <= clock.last; i++) if (clock.ts(i) >= from && clock.ts(i) <= to && inBaseBox(pframe(i, id)?.position, side)) return true
+    return false
+  }
+  const levelUps = events.filter((e) => e.type === 'LEVEL_UP')
+  /** Level at `ms` from the LEVEL_UP events (exact time), not from the per-minute snapshot. */
+  const levelAtMs = (id: number, ms: number): number => 1 + levelUps.filter((e) => e.participantId === id && e.timestamp <= ms).length
+  const roleOfId = (id: number): string => positionOf(parts.find((p) => p.participantId === id))
+  /** The lane of the player's role (supports play bot); null for a jungler. */
+  const myLaneBucket: LaneBucket | null = role === 'TOP' ? 'TOP' : role === 'MIDDLE' ? 'MID' : role === 'BOTTOM' || role === 'UTILITY' ? 'BOT' : null
+  /** The support's level-2 fight was already reported as a death: the missing early ward is then the same story. */
+  let supportLevel2Death = false
+  /** Jungler deaths the death loop read with a V7 pattern that outranks the V4 overchase reading of the same death. */
+  const readDeaths = new Set<number>()
+
+  // V7–V10 helpers.
+  const jungleCsOf = (i: number, id: number) => Number(pframe(i, id)?.jungleMinionsKilled) || 0
+  const allyByRole = (r: string): number | undefined => parts.find((p) => p.teamId === team && p.participantId !== pid && positionOf(p) === r)?.participantId
+  /** Purchases that start a base visit (none in the 30 s before), after the starting items. */
+  const visitsOf = (id: number): number[] => shopsOf(id).filter((t, n, all) => t > 60_000 && (n === 0 || t - all[n - 1] >= S.tradeRecall.visitGapSec * 1000))
+  /** When the player last left base before `ms`: their last purchase after `afterMs`, or their last respawn; null when neither. */
+  const baseExitBefore = (ms: number, afterMs = -Infinity): number | null => {
+    const shop = [...shopsOf(pid)].reverse().find((t) => t <= ms && t > afterMs) ?? -Infinity
+    const respawn = Math.max(-Infinity, ...(lives.get(pid) ?? []).filter((l) => l.respawn <= ms).map((l) => l.respawn))
+    const left = Math.max(shop, respawn)
+    return Number.isFinite(left) ? left : null
+  }
+  /** Mana percent of a snapshot; null for pools of 200 or less (energy, rage, flow…) and champions without a resource. */
+  const manaPctOf = (i: number, id: number): number | null => {
+    const s = pframe(i, id)?.championStats
+    return s && Number(s.powerMax) > S.resetTrap.manaPoolMin ? Math.round((Number(s.power) / Number(s.powerMax)) * 100) : null
+  }
+  const sideOf = (p: Point): 'top' | 'bot' => (p.y > p.x ? 'top' : 'bot')
+  /** Minutes [k, k+1] in which the enemy jungler takes 8+ jungle CS standing in the same quadrant of our jungle at both snapshots. */
+  const steals: Array<{ k: number; cs: number; side: 'top' | 'bot' }> = []
+  if (enemyJungler != null) {
+    const inOurs = (p: Point | null | undefined): p is Point => p != null && territoryOf(p, team) === 'own' && laneOf(p) === 'JUNGLE'
+    for (let k = S.campsStolen.fromSec / 60; k + 1 <= clock.last; k++) {
+      const a = pframe(k, enemyJungler)?.position as Point | undefined
+      const b = pframe(k + 1, enemyJungler)?.position as Point | undefined
+      if (!inOurs(a) || !inOurs(b) || sideOf(a) !== sideOf(b)) continue
+      const cs = jungleCsOf(k + 1, enemyJungler) - jungleCsOf(k, enemyJungler)
+      if (cs >= S.campsStolen.cs) steals.push({ k, cs, side: sideOf(b) })
+    }
+  }
+  /**
+   * The V4 overchase test of a death (jungle, 2:30–8:00): the 20 s before it across the river or in the enemy jungle, no
+   * takedown, no camp between the snapshot before the chase and the one after the death. Section 4 reports it; the V7
+   * invade death leaves such deaths to it.
+   */
+  const isOverchaseDeath = (d: any): boolean => {
+    const J = S.jungle
+    const ts: number = d.timestamp
+    if (role !== 'JUNGLE' || ts < J.fromSec * 1000 || ts > J.toSec * 1000) return false
+    const start = ts - J.overchaseSec * 1000
+    const awayFromHome = (p: Point | null | undefined) => p != null && territoryOf(p, team) !== 'own'
+    const path = Array.from({ length: J.overchaseSec / J.sampleSec }, (_, n) => posAt(pid, start + n * J.sampleSec * 1000))
+    if (!awayFromHome(d.position ?? posAt(pid, ts)) || !path.every(awayFromHome) || takedownIn(start, ts)) return false
+    // Camps are a per-minute counter: any camp between the snapshot before the chase and the one after the death cancels it.
+    return !(jungleCsOf(clock.indexAt(ts) + 1, pid) > jungleCsOf(clock.indexAt(start), pid))
+  }
+
   // Objectives (ours = taken by our team / an enemy building destroyed).
   const objectives = events.map((e) => {
     const kind = objectiveKindOf(e)
@@ -372,7 +652,8 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
    */
   const add = (trigger: MomentTrigger, ms: number, pos: Point | null, severity: number, facts: MomentFacts, winProbAfter: number | null = null, gateMs = ms): boolean => {
     const before = track.before(gateMs)
-    if (isGarbageTime(before)) {
+    const exempt = before != null && before > GARBAGE_HIGH && facts.pattern != null && GARBAGE_CEILING_EXEMPT.includes(facts.pattern)
+    if (isGarbageTime(before) && !exempt) {
       garbageDiscarded++
       return false
     }
@@ -468,8 +749,98 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     let pattern: MomentPattern | undefined
     const extra: Partial<MomentFacts> = {}
 
+    const opp: number | null = laneOpponent?.participantId ?? null
+    const junglerInFight = enemyJungler != null && (involved.includes(enemyJungler) ||
+      ((d.victimDamageReceived ?? []) as any[]).some((x) => x?.participantId === enemyJungler))
+
+    // V5 — 1-for-1 tower dive: the player kills the lane opponent next to a standing enemy T1 and dies within 4 s, without the enemy jungler.
+    if (opp != null && sec < S.dive.untilSec && !junglerInFight) {
+      const myKill = [...kills].reverse().find((e) => e.killerId === pid && e.victimId === opp && e.timestamp <= ts && ts - e.timestamp <= S.dive.afterKillSec * 1000)
+      const enemyTeam: TeamId = team === 100 ? 200 : 100
+      const lane = myKill?.position ? (['TOP', 'MID', 'BOT'] as const).find((l) => dist(myKill.position, OUTER_TURRETS[enemyTeam][l]) <= S.dive.turretRadius) : undefined
+      const standing = lane && !events.some((e) => e.type === 'BUILDING_KILL' && e.towerType === 'OUTER_TURRET' && e.teamId === enemyTeam &&
+        e.laneType === `${lane}_LANE` && e.timestamp < myKill.timestamp)
+      if (lane && standing) {
+        pattern = 'tower-dive-one-for-one'
+        Object.assign(extra, { killGapSec: Math.round((ts - myKill.timestamp) / 1000), turretLane: lane })
+      }
+    }
+
+    // V5 — level-up spike: killed by the lane opponent right after their level 2 or 3, still a level below.
+    if (!pattern && opp != null && sec <= S.levelSpike.untilSec && d.killerId === opp && !junglerInFight) {
+      const up = [...events].reverse().find((e) => e.type === 'LEVEL_UP' && e.participantId === opp && (S.levelSpike.levels as readonly number[]).includes(e.level) &&
+        e.timestamp <= ts && ts - e.timestamp <= S.levelSpike.windowSec * 1000)
+      if (up && levelAtMs(pid, ts) < up.level) {
+        pattern = 'level-up-spike'
+        Object.assign(extra, { spikeLevel: up.level })
+      }
+    }
+
+    // V6 — support, level-2 fight lost: killed 2:05–2:40 while below the level of an enemy in the fight (gank or all-in).
+    const SE = S.supportEarly
+    if (!pattern && role === 'UTILITY' && sec >= SE.deathFromSec && sec <= SE.deathToSec && involved.length > 0) {
+      const mine = levelAtMs(pid, ts)
+      const theirs = Math.max(...involved.map((id) => levelAtMs(id, ts)))
+      if (theirs > mine) {
+        pattern = 'support-level2-allin'
+        supportLevel2Death = true
+        Object.assign(extra, { myLevel: mine, enemyLevel: theirs, ...(junglerInFight ? { junglerInvolved: true } : {}) })
+      }
+    }
+
+    // V9 — mid laner caught right out of base: dead in the mid lane at most 45 s after leaving it, before 12:00 (ahead of the new wave).
+    const AW = S.aheadOfWave
+    if (!pattern && role === 'MIDDLE' && sec < AW.untilSec && pos && laneOf(pos) === 'MID' && zoneOf(pos, team) !== 'own-base' && killerIsChamp) {
+      const left = baseExitBefore(ts, AW.startSec * 1000)
+      if (left != null && ts - left <= AW.afterBaseSec * 1000) {
+        pattern = 'mid-ahead-of-wave-death'
+        Object.assign(extra, { sinceBaseSec: Math.round((ts - left) / 1000) })
+      }
+    }
+
+    // V9 — reset trap: the enemy mid backed first; the player, low on HP or mana, stayed in lane and died within 90 s.
+    const RT = S.resetTrap
+    if (!pattern && role === 'MIDDLE' && opp != null && sec < RT.untilSec) {
+      const back = visitsOf(opp).filter((r) => r <= ts && ts - r <= RT.withinSec * 1000 && !downIn(opp, r - 60_000, r)).pop()
+      if (back != null && !shopsOf(pid).some((t) => t >= back - RT.stayedSec * 1000 && t <= ts)) {
+        const k = clock.indexAt(back)
+        const hp = hpPctOf(k, pid)
+        const mana = manaPctOf(k, pid)
+        const low = hp != null && hp < RT.lowPct ? { resetResource: 'hp' as const, resetLowPct: hp }
+          : mana != null && mana < RT.lowPct ? { resetResource: 'mana' as const, resetLowPct: mana } : null
+        if (low) {
+          pattern = 'mid-reset-trap-death'
+          Object.assign(extra, { ...low, enemyBackSec: Math.round((ts - back) / 1000) })
+        }
+      }
+    }
+
+    // V5 — back timer missed: low HP with gold in lane, then dead in the river or jungle instead of recalling.
+    if (!pattern && isLaner && sec < S.backTimer.untilSec && pos) {
+      const age = (ts - clock.ts(fi)) / 1000
+      const hp = hpPctOf(fi, pid)
+      const at = pframe(fi, pid)?.position as Point | undefined
+      if (hp != null && hp < S.backTimer.hpPct && age >= S.death.hpSnapshotMinAgeSec && age <= S.backTimer.withinSec &&
+          (Number(pframe(fi, pid)?.currentGold) || 0) >= S.backTimer.gold && at && laneOf(at) !== 'JUNGLE' && laneOf(pos) === 'JUNGLE') {
+        pattern = 'back-timer-missed'
+      }
+    }
+
+    // V6 — ganked in the enemy half of the lane while the team was resetting: 2+ allies in base in the 15 s before,
+    // the jungler or a bot laner among them. A gank = an enemy other than the lane opponents took part.
+    const TR = S.teamReset
+    if (!pattern && myLaneBucket && sec < TR.untilSec && pos && territoryOf(pos, team) === 'enemy' && laneOf(pos) === myLaneBucket) {
+      const laneRoles = myLaneBucket === 'BOT' ? ['BOTTOM', 'UTILITY'] : [role]
+      const ganked = junglerInFight || involved.some((id) => !laneRoles.includes(roleOfId(id)))
+      const home = ganked ? allies.filter((a) => homeIn(a, ts - TR.lookbackSec * 1000, ts)) : []
+      if (home.length >= TR.alliesHome && home.some((a) => ['JUNGLE', 'BOTTOM', 'UTILITY'].includes(roleOfId(a)))) {
+        pattern = 'gank-during-team-reset'
+        Object.assign(extra, { alliesHome: home.length })
+      }
+    }
+
     // Gank on a predictable jungle timer (laners): 2:25–3:00, or 3:15–4:25 without a deep ward.
-    if (isLaner && enemyJungler != null && involved.includes(enemyJungler)) {
+    if (!pattern && isLaner && enemyJungler != null && involved.includes(enemyJungler)) {
       const w1 = sec >= S.gank.window1[0] && sec <= S.gank.window1[1]
       const w2 = sec >= S.gank.window2[0] && sec <= S.gank.window2[1]
       if (w1 || w2) {
@@ -482,6 +853,76 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       }
     }
 
+    // V5 — range vs melee: a 1v1 death to the lane opponent before 8:00, after the lane's HP war was lost.
+    if (!pattern && opp != null && sec < S.rangeMelee.untilSec && d.killerId === opp && assisters.length === 0) {
+      const mine = attackTypeOf(me.championName)
+      const theirs = attackTypeOf(laneOpponent.championName)
+      if (mine && theirs && mine !== theirs) {
+        const R = S.rangeMelee
+        for (let i = 1; i <= fi && clock.ts(i) < ts; i++) {
+          const hp = hpPctOf(i, pid)
+          const oppHp = hpPctOf(i, opp)
+          const lvl = levelOf(i, pid)
+          const lost = mine === 'ranged'
+            ? hp != null && hp < R.rangedHp && lvl <= R.rangedMaxLevel
+            : hp != null && oppHp != null && hp < R.meleeHp && oppHp > R.opponentHp && lvl <= R.meleeMaxLevel
+          if (lost) {
+            pattern = 'range-melee-volatility'
+            Object.assign(extra, { attackType: mine, laneHpPct: hp, ...(oppHp != null ? { opponentHpPct: oppHp } : {}) })
+            break
+          }
+        }
+      }
+    }
+
+    // V7 — jungler dead on a Dragon tanked between 5:00 and 12:00: the Dragon took 60 %+ of their max HP, enemies in the fight.
+    const DT = S.dragonTank
+    if (!pattern && role === 'JUNGLE' && sec >= DT.fromSec && sec <= DT.untilSec && pos && dist(pos, pitCenter('dragon')) < S.pit.fightRadius && involved.length > 0) {
+      const max = Number(pframe(fi, pid)?.championStats?.healthMax) || 0
+      const dragon = ((d.victimDamageReceived ?? []) as any[]).filter((x) => x?.type === 'MONSTER' && /dragon/i.test(String(x?.name ?? '')))
+        .reduce((s, x) => s + (Number(x.physicalDamage) || 0) + (Number(x.magicDamage) || 0) + (Number(x.trueDamage) || 0), 0)
+      if (max > 0 && dragon / max >= DT.damageShare) {
+        pattern = 'jungle-dragon-tank-death'
+        Object.assign(extra, { dragonDamagePct: Math.round((dragon / max) * 100) })
+      }
+    }
+
+    // V6 — jungler dead in the enemy base within 15 s after an enemy inhibitor fell: a dive forced instead of leaving.
+    if (!pattern && role === 'JUNGLE' && pos && zoneOf(pos, team) === 'enemy-base') {
+      const inhib = [...events].reverse().find((e) => e.type === 'BUILDING_KILL' && e.buildingType === 'INHIBITOR_BUILDING' && e.teamId !== team &&
+        e.timestamp < ts && ts - e.timestamp <= S.inhibDive.withinSec * 1000)
+      if (inhib) {
+        pattern = 'inhib-forced-dive'
+        Object.assign(extra, { inhibGapSec: Math.round((ts - inhib.timestamp) / 1000) })
+      }
+    }
+
+    // V7 — jungler dead in a fight 14:00–19:30 with the Eye of the Herald in their pocket: the team took the Herald before, and
+    // the eye left the jungler's own inventory (ITEM_DESTROYED: used or expired) only after this death.
+    const HE = S.heraldEye
+    if (!pattern && role === 'JUNGLE' && sec >= HE.fromSec && sec <= HE.untilSec && involved.length > 0) {
+      const herald = [...objectives].reverse().find((o) => o.ours && o.kind === 'herald' && o.ts < ts)
+      const gone = herald ? events.find((e) => e.type === 'ITEM_DESTROYED' && e.itemId === HE.itemId && e.timestamp > herald.ts) : undefined
+      if (herald && gone && gone.participantId === pid && gone.timestamp > ts && ts - herald.ts >= HE.pickupSec * 1000) {
+        pattern = 'jungle-herald-unused-death'
+        Object.assign(extra, { heraldAgoSec: Math.round((ts - herald.ts) / 1000) })
+      }
+    }
+
+    // V7/V8 — jungler dead invading before 16:00: in the enemy jungle, alone or with one ally, after taking a camp, no takedown
+    // in the 30 s before, not an overchase.
+    const IV = S.invadeDeath
+    if (!pattern && role === 'JUNGLE' && sec < IV.untilSec && pos && territoryOf(pos, team) === 'enemy' && laneOf(pos) === 'JUNGLE' && involved.length > 0 &&
+        alliesNearby <= IV.maxAllies && !takedownIn(ts - IV.noTakedownSec * 1000, ts) && !isOverchaseDeath(d)) {
+      const taken = jungleCsOf(clock.indexAt(ts) + 1, pid) - jungleCsOf(clock.indexAt(ts - 60_000), pid)
+      if (taken >= IV.campCs) {
+        const mid = allyByRole('MIDDLE')
+        const mp = mid != null && !deadAt(mid, ts) ? posAt(mid, ts) : null
+        pattern = 'jungle-invade-death'
+        Object.assign(extra, { campsTakenCs: taken, ...(mp && laneOf(mp) === 'MID' && dist(mp, pos) > IV.midRadius ? { midOnWave: true } : {}) })
+      }
+    }
+
     // Support / control mage standing in the pit instead of holding a choke point (the death is part of the pit fight).
     if (!pattern && isZoner) {
       const fight = pitFightOf(d)
@@ -490,6 +931,35 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
         Object.assign(extra, { alliesDown: fight.allyDeaths })
       }
     }
+
+    // V6 — ADC re-opening a side lane alone: dead with no ally around, in a side lane across the river, at most
+    // 45 s of walk + 45 s after leaving base (the last purchase, or the respawn when nothing was bought).
+    const AR = S.adcReopen
+    if (!pattern && role === 'BOTTOM' && sec > AR.fromSec && pos && alliesNearby === 0 && territoryOf(pos, team) === 'enemy' && (laneOf(pos) === 'TOP' || laneOf(pos) === 'BOT')) {
+      const left = baseExitBefore(ts)
+      if (left != null && ts - left <= (AR.walkSec + AR.withinSec) * 1000) {
+        pattern = 'adc-solo-sidelane-reopen'
+        const mid = allyByRole('MIDDLE')
+        Object.assign(extra, { sinceBaseSec: Math.round((ts - left) / 1000), ...(mid != null && homeIn(mid, left, ts) ? { midInBase: true } : {}) })
+      }
+    }
+
+    // V7 — compensation death: an ally had just fallen next to an objective (the team was in "minus"); the jungler fought on
+    // outnumbered, died, and the enemy took the objective.
+    const CP = S.compensation
+    if (!pattern && role === 'JUNGLE' && pos) {
+      const first = allyDeaths.find((e) => e.timestamp < ts && ts - e.timestamp <= CP.windowSec * 1000 && e.position && dist(e.position, pos) <= CP.allyRadius)
+      const taken = objectives.find((o) => !o.ours && EPIC.includes(o.kind) && o.ts >= ts && o.ts <= ts + CP.objectiveWithinSec * 1000 &&
+        dist(pos, o.pos ?? pitCenter(o.kind === 'dragon' || o.kind === 'elder' ? 'dragon' : 'baron')) <= OBJECTIVE_RADIUS)
+      const alive = allies.filter((a) => !deadAt(a, ts) && within(posAt(a, ts), pos, S.death.allyRadius)).length
+      if (first && taken && involved.length >= alive + CP.outnumberedBy) {
+        pattern = 'jungle-compensation-death'
+        Object.assign(extra, { deathGapSec: Math.round((ts - first.timestamp) / 1000), objective: taken.kind })
+      }
+    }
+
+    // A death read as a Dragon tank or a compensation is not also an overchase (section 4): one death, one reading.
+    if (pattern === 'jungle-dragon-tank-death' || pattern === 'jungle-compensation-death') readDeaths.add(ts)
 
     // The fed carry is the first to die in a teamfight that is then lost.
     if (!pattern) {
@@ -560,6 +1030,50 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     add('critical-death', ts, pos, severity, facts, after)
   }
 
+  // ── 1b. Forced back before an objective (V6): low after a mutual trade, the player backs just before a dragon or
+  // Voidgrubs spawn and the team loses the fight at that pit without them. The objective is then this story (section 2).
+  const recallClaims: Array<{ pit: Pit; from: number; to: number }> = []
+  {
+    const R = S.tradeRecall
+    const P = S.spawns
+    const spawns: Array<{ ts: number; kind: 'dragon' | 'grubs' }> = [
+      { ts: P.firstDragonSec * 1000, kind: 'dragon' }, { ts: P.grubsSec * 1000, kind: 'grubs' },
+      ...objectives.filter((o) => o.kind === 'dragon').map((o) => ({ ts: o.ts + P.dragonRespawnSec * 1000, kind: 'dragon' as const })),
+    ]
+    // Whose HP makes the trade mutual: the lane opponent(s) — both enemy bot laners for the bot lane — or the enemy jungler.
+    const rivalRoles = myLaneBucket === 'BOT' ? ['BOTTOM', 'UTILITY'] : role ? [role] : []
+    const rivals = enemies.filter((id) => rivalRoles.includes(roleOfId(id)))
+    const buys = shopsOf(pid)
+    for (let k = 0; k < buys.length; k++) {
+      const shop = buys[k]
+      // The first purchase of a visit, alive for the minute before it (a respawn is not a back).
+      if ((k > 0 && shop - buys[k - 1] < R.visitGapSec * 1000) || downIn(pid, shop - 60_000, shop)) continue
+      const recall = shop - R.channelSec * 1000
+      if (recall >= R.untilSec * 1000) break
+      const spawn = spawns.find((s) => s.ts >= recall && s.ts - recall <= R.beforeSpawnSec * 1000)
+      if (!spawn) continue
+      const fi = clock.indexAt(recall)
+      const at = pframe(fi, pid)?.position as Point | undefined
+      const hp = hpPctOf(fi, pid)
+      if (!at || zoneOf(at, team) === 'own-base' || hp == null || hp >= R.hpPct) continue
+      const theirs = rivals.map((id) => hpPctOf(fi, id)).filter((v): v is number => v != null && v < R.opponentHpPct)
+      if (theirs.length === 0) continue
+      const pit: Pit = spawn.kind === 'dragon' ? 'dragon' : 'baron'
+      const back = shop + R.returnSec * 1000
+      const near = kills.filter((e) => e.timestamp >= recall && e.timestamp <= back && e.position && dist(e.position, pitCenter(pit)) < S.pit.fightRadius)
+      const down = near.filter((e) => teamOf(e.victimId) === team)
+      if (down.length === 0 || down.length <= near.length - down.length) continue
+      const first: number = down[0].timestamp
+      const before = track.before(first)
+      const after = track.at(back + 60_000)
+      recallClaims.push({ pit, from: recall, to: back + 60_000 })
+      add('absent-objective', recall, at, 0.1 + down.length * 0.04 + (before != null && after != null ? Math.max(0, before - after) : 0), {
+        pattern: 'low-hp-recall-before-objective', objective: spawn.kind, recallHpPct: hp, opponentHpPct: Math.min(...theirs),
+        spawnInSec: Math.round((spawn.ts - recall) / 1000), alliesDown: down.length, nearestPit: pit,
+      }, after, first)
+    }
+  }
+
   // ── 2. Enemy epic objectives: hesitation / absent ─────────────────────
   const contested: ContestedObjective[] = []
   /** Enemy epic kills this section turned into a moment (the jungle tempo window must not report them twice). */
@@ -583,6 +1097,12 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     })
     if (o.ours) continue
 
+    // A forced back before this objective (section 1b) already tells the story of this fight.
+    if (recallClaims.some((c) => c.pit === pitName && o.ts >= c.from && o.ts <= c.to)) {
+      claimed.add(o.ts)
+      continue
+    }
+
     // Alive? A death shortly before is trigger 1's business.
     if (diedBefore(S.death.windowSec)) continue
 
@@ -590,6 +1110,15 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     const after = track.at(o.ts + 60_000)
     const drop = before != null && after != null ? Math.max(0, before - after) : 0
     const pAtKill = posAt(pid, o.ts)
+
+    // V7 — the jungler, alive in the pit, loses the objective to the enemy smite (it is not an absence).
+    if (role === 'JUNGLE' && OUTSMITE_KINDS.includes(o.kind) && pAtKill && dist(pAtKill, pitPos) < S.outsmite.pitRadius) {
+      claimed.add(o.ts)
+      add('absent-objective', o.ts - 10_000, pAtKill, 0.06 * OBJECTIVE_WEIGHT[o.kind] + drop + 0.05, {
+        pattern: 'jungle-outsmited', objective: o.kind, playerDistance: Math.round(dist(pAtKill, pitPos)), nearestPit: pitName, nearObjective: true,
+      }, after, o.ts)
+      continue
+    }
 
     // Tempo hesitation: out of tempo at T−30 s, yet neither set up nor cross-mapped (the player lived the whole window).
     const H = S.hesitation
@@ -636,6 +1165,23 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     }, after, o.ts)
   }
 
+  // ── 3a. Mid lane given away (V9): 12+ CS behind at 6:00 without 2 points in one basic spell at level 3. That is the
+  // lane's CS story: the 10:00 deficit (section 3) is then not reported a second time.
+  let midWaveLoss = false
+  if (role === 'MIDDLE' && laneOpponent && frames.length > S.midWaveLoss.atSec / 60) {
+    const k = S.midWaveLoss.atSec / 60
+    const diff = csOf(k, pid) - csOf(k, laneOpponent.participantId)
+    const ups = events.filter((e) => e.type === 'SKILL_LEVEL_UP' && e.participantId === pid && (e.levelUpType ?? 'NORMAL') === 'NORMAL').slice(0, 3)
+    const doubled = ups.some((e, n) => ups.findIndex((x) => x.skillSlot === e.skillSlot) !== n)
+    const takedowns = kills.filter((e) => e.timestamp <= k * 60_000 && involves(e, pid)).length
+    if (diff <= S.midWaveLoss.csDiff && ups.length === 3 && !doubled && takedowns < S.midWaveLoss.takedowns) {
+      // Same scale as the 10:00 deficit (1 CS = 0.01).
+      midWaveLoss = add('early-deficit', k * 60_000, pframe(k, pid)?.position ?? null, Math.min(0.2, -diff / 100), {
+        pattern: 'mid-passive-wave-loss', csDiff6: diff, opponentChampion: laneOpponent.championName ?? null,
+      })
+    }
+  }
+
   // ── 3. Early deficit at 10:00 (laners with a direct opponent) ─────────
   let laneAt10: GameAnalysis['laneAt10'] = null
   const atFrame = S.early.atSec / 60
@@ -647,12 +1193,82 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       const xpDiff = Math.round(xpOf(atFrame, pid) - xpOf(atFrame, laneOpponent.participantId))
       laneAt10 = { csDiff, xpDiff }
       const takedowns = kills.filter((e) => e.timestamp <= S.early.atSec * 1000 && involves(e, pid)).length
-      if ((csDiff < S.early.csDiff || xpDiff < S.early.xpDiff) && takedowns < S.early.takedowns) {
+      if (!midWaveLoss && (csDiff < S.early.csDiff || xpDiff < S.early.xpDiff) && takedowns < S.early.takedowns) {
         const severity = Math.min(0.3, Math.abs(Math.min(0, csDiff)) / 100 + Math.abs(Math.min(0, xpDiff)) / 4000)
         add('early-deficit', S.early.atSec * 1000, mine.position ?? null, severity, {
           csDiff10: csDiff, xpDiff10: xpDiff, takedownsBefore10: takedowns, opponentChampion: laneOpponent.championName ?? null,
         })
       }
+    }
+  }
+
+  // ── 3b. Cheater recall that backfired (V5, laners with a direct opponent) ──
+  // A back between 2:35 and 3:15 (standing in base on the 3:00 snapshot) from high HP, without
+  // Teleport, then a level behind at 4:00: the opponent kept the bigger wave. Riot only counts
+  // Teleport casts for the whole game, so any cast keeps the detector silent.
+  if (laneOpponent && frames.length > S.cheaterRecall.levelAtSec / 60) {
+    const C = S.cheaterRecall
+    const opp: number = laneOpponent.participantId
+    const atBase = pframe(C.atSec / 60, pid)?.position as Point | undefined
+    const hpBefore = hpPctOf(C.hpBeforeSec / 60, pid)
+    const tpSlot = [1, 2].find((k) => me[`summoner${k}Id`] === C.teleportSpellId)
+    const tpCast = tpSlot != null && !(Number(me[`summoner${tpSlot}Casts`]) === 0)
+    const behind = levelOf(C.levelAtSec / 60, opp) - levelOf(C.levelAtSec / 60, pid)
+    if (atBase && zoneOf(atBase, team) === 'own-base' && hpBefore != null && hpBefore > C.hpPct && !tpCast &&
+        behind >= C.levelDeficit && !downIn(pid, C.hpBeforeSec * 1000, C.levelAtSec * 1000)) {
+      add('early-deficit', C.anchorSec * 1000, atBase, 0.12 + Math.min(0.08, behind * 0.04), {
+        pattern: 'cheater-recall', recallHpPct: hpBefore, levelsBehind: behind, opponentChampion: laneOpponent.championName ?? null,
+      })
+    }
+  }
+
+  // ── 3c. Support without a ward of their own by 1:45 (V6) — unless the level-2 fight already made the point ──
+  if (role === 'UTILITY' && !supportLevel2Death && frames.length > 2) {
+    const by = S.supportEarly.wardBySec * 1000
+    if (!myWards.some((w) => w.ts <= by) && !downIn(pid, 0, by)) add('early-deficit', by, posAt(pid, by), 0.06, { pattern: 'support-no-early-ward' })
+  }
+
+  // ── 3d. Engage support (V10): glued to the ADC after level 6, missing at the 3:30 Scuttle Crab, weak side unwarded ──
+  if (role === 'UTILITY') {
+    const adc = allyByRole('BOTTOM')
+    const jg = allyByRole('JUNGLE')
+    const L = S.supportLeech
+    if (adc != null && clock.last >= L.untilSec / 60 && levelOf(L.fromSec / 60, pid) >= L.level) {
+      let near = 0
+      for (let k = L.fromSec / 60; k <= L.untilSec / 60; k++) {
+        const a = pframe(k, pid)?.position as Point | undefined
+        const b = pframe(k, adc)?.position as Point | undefined
+        if (a && b && dist(a, b) <= L.radius && laneOf(a) === 'BOT') near++
+      }
+      const teamKills = kills.filter((e) => e.timestamp <= L.untilSec * 1000 && teamOf(e.killerId) === team).length
+      const kp = teamKills > 0 ? kills.filter((e) => e.timestamp <= L.untilSec * 1000 && involves(e, pid)).length / teamKills : 0
+      if (near >= L.snapshots && kp < L.kp) {
+        add('early-deficit', L.fromSec * 1000, pframe(L.fromSec / 60, pid)?.position ?? null, 0.08, { pattern: 'support-botlane-leech', laneSnapshots: near, kpPct: Math.round(kp * 100) })
+      }
+    }
+
+    // Our jungler dead in the bot river 3:25–3:50 while the support stood more than 2000 away, without a takedown around it.
+    const SC = S.supportScuttle
+    const fall = jg != null ? kills.find((e) => e.victimId === jg && e.timestamp >= SC.fromSec * 1000 && e.timestamp <= SC.untilSec * 1000 && e.position && zoneOf(e.position, team) === 'bot-river') : undefined
+    const here = fall && !deadAt(pid, fall.timestamp) ? posAt(pid, fall.timestamp) : null
+    if (fall && here && dist(here, fall.position) > SC.radius && !takedownIn(fall.timestamp - 10_000, fall.timestamp + 10_000)) {
+      const at = fall.timestamp - 10_000
+      const before = track.before(fall.timestamp)
+      const after = track.at(fall.timestamp + 60_000)
+      add('absent-objective', at, posAt(pid, at), 0.1 + (before != null && after != null ? Math.max(0, before - after) : 0), {
+        pattern: 'support-absent-scuttle', playerDistance: Math.round(dist(here, fall.position)),
+      }, after, fall.timestamp)
+    }
+
+    // Our bot-side camps stolen while our jungler played top side, with no ward of the support in our bot-side jungle in the 120 s before.
+    const CS = S.campsStolen
+    for (const s of steals) {
+      if (s.side !== 'bot' || s.k * 60 >= CS.supportUntilSec || jg == null) continue
+      if (![pframe(s.k, jg)?.position, pframe(s.k + 1, jg)?.position].some((p) => p != null && sideOf(p) === 'top')) continue
+      const from = s.k * 60_000 - CS.wardLookbackSec * 1000
+      const warded = myWards.some((w) => w.ts >= from && w.ts <= (s.k + 1) * 60_000 && w.pos != null &&
+        territoryOf(w.pos, team) === 'own' && laneOf(w.pos) === 'JUNGLE' && sideOf(w.pos) === 'bot')
+      if (!warded && add('early-deficit', s.k * 60_000, pframe(s.k, pid)?.position ?? null, 0.1, { pattern: 'support-weakside-unwarded', campsStolenCs: s.cs })) break
     }
   }
 
@@ -673,18 +1289,11 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     // A — overchase ending in a death: the 20 s before it across the river or in the enemy jungle, with no takedown and no camp…
     let chased = false
     for (const d of myDeaths) {
+      if (readDeaths.has(d.timestamp) || !isOverchaseDeath(d)) continue
       const ts: number = d.timestamp
-      if (ts < J.fromSec * 1000 || ts > J.toSec * 1000) continue
       const start = ts - J.overchaseSec * 1000
-      const pos: Point | null = d.position ?? posAt(pid, ts)
-      const posStart = posAt(pid, start)
-      const path = Array.from({ length: J.overchaseSec / J.sampleSec }, (_, n) => posAt(pid, start + n * J.sampleSec * 1000))
-      if (!away(pos) || !path.every(away)) continue
-      if (takedownIn(start, ts)) continue
-      // Camps are a per-minute counter: any camp between the snapshot before the chase and the one after the death cancels it.
-      if (camps(clock.indexAt(ts) + 1) > camps(clock.indexAt(start))) continue
       chased = true
-      jungle(start, posStart, 'jungle-overchase', 0.22, { xpDiffJungle: xpDiffAt(clock.indexAt(ts) + 1) ?? undefined })
+      jungle(start, posAt(pid, start), 'jungle-overchase', 0.22, { xpDiffJungle: xpDiffAt(clock.indexAt(ts) + 1) ?? undefined })
     }
     // …or in the XP lead over the enemy jungler lost on the next frame (alive all along: a death is case A's business).
     if (!chased) {
@@ -745,6 +1354,118 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
         if (jungle(e.timestamp, mine, 'jungle-window-unpunished', 0.14, { playerDistance: Math.round(dist(mine, e.position)) })) break
       }
     }
+
+    // V7 — still on the map at 4:05 (1st camp back up): no back after 1:00, no takedown, no death. A timeline without any
+    // purchase of the player (real games always log the starting items) cannot tell a back: silent then.
+    const FB = S.jungleFirstBack
+    const firstBack = shopsOf(pid).find((t) => t > FB.startSec * 1000) ?? null
+    if (shopsOf(pid).length > 0 && (firstBack == null || firstBack > FB.bySec * 1000) && clock.last * 60 > FB.bySec &&
+        !takedownIn(0, FB.bySec * 1000) && !myDeaths.some((d) => d.timestamp <= FB.bySec * 1000)) {
+      jungle(FB.bySec * 1000, posAt(pid, FB.bySec * 1000), 'jungle-late-first-recall', 0.07, { firstBackSec: firstBack != null ? Math.round(firstBack / 1000) : null })
+    }
+
+    // V8.2 — boots bought before 8:00 without a kill (the shop proves the fountain).
+    const EB = S.earlyBoots
+    const boots = events.find((e) => e.type === 'ITEM_PURCHASED' && e.participantId === pid && e.itemId === EB.itemId && e.timestamp < EB.untilSec * 1000)
+    if (boots && !kills.some((e) => e.killerId === pid && e.timestamp <= boots.timestamp)) {
+      jungle(boots.timestamp, FOUNTAIN[team], 'jungle-early-boots', 0.06, { bootsSec: Math.round(boots.timestamp / 1000) })
+    }
+
+    // V7 — a gank that cost the camps (2:00–12:00): in a lane next to an enemy on a snapshot, no takedown and no death in the
+    // minute that follows, and 8+ jungle CS lost on the enemy jungler meanwhile.
+    const GK = S.gankCost
+    if (enemyJungler != null) {
+      for (let k = GK.fromSec / 60; k * 60 < GK.untilSec && k + 1 <= clock.last; k++) {
+        const t0 = k * 60_000
+        const here = pframe(k, pid)?.position as Point | undefined
+        if (!here || laneOf(here) === 'JUNGLE' || zoneOf(here, team) === 'own-base' || zoneOf(here, team) === 'enemy-base') continue
+        if (!enemies.some((e) => !deadAt(e, t0) && within(pframe(k, e)?.position, here, GK.enemyRadius))) continue
+        if (takedownIn(t0, t0 + 60_000) || deadAt(pid, t0) || downIn(pid, t0, t0 + 60_000)) continue
+        const lost = (jungleCsOf(k + 1, enemyJungler) - jungleCsOf(k, enemyJungler)) - (jungleCsOf(k + 1, pid) - jungleCsOf(k, pid))
+        if (lost < GK.cs) continue
+        if (jungle(t0, here, 'jungle-camps-up-gank', 0.1 + Math.min(0.06, (lost - GK.cs) / 100), { jungleCsLost: lost })) break
+      }
+    }
+
+    // V7 — the weak side left behind (before 16:00): our camps stolen (`steals`: proven by two snapshots) right after a back
+    // — a purchase, starting items aside, from the minute before to the end of that minute — while the player, alive, is on
+    // the other side of the map.
+    const CS = S.campsStolen
+    for (const s of steals) {
+      const t0 = s.k * 60_000
+      if (t0 >= CS.weakSideUntilSec * 1000) break
+      const next = pframe(s.k + 1, pid)?.position as Point | undefined
+      const backed = shopsOf(pid).some((t) => t > S.jungleFirstBack.startSec * 1000 && t >= t0 - 60_000 && t <= t0 + 60_000)
+      if (!backed || next == null || sideOf(next) === s.side || downIn(pid, t0, t0 + 60_000)) continue
+      if (jungle(t0, next, 'jungle-weakside-stolen', 0.1 + Math.min(0.06, (s.cs - CS.cs) / 100), { campsStolenCs: s.cs })) break
+    }
+
+    // V8 — fled an invade at very low HP (before 15:00), leaving the camp to an enemy jungler still healthy, an ally close by.
+    const FL = S.fledInvade
+    if (enemyJungler != null) {
+      for (let k = 1; k * 60 < FL.untilSec && k + 1 <= clock.last; k++) {
+        const mine = pframe(k, pid)?.position as Point | undefined
+        const theirs = pframe(k, enemyJungler)?.position as Point | undefined
+        const hp = hpPctOf(k, pid)
+        const theirHp = hpPctOf(k, enemyJungler)
+        if (!mine || !theirs || hp == null || theirHp == null || hp >= FL.hpPct || theirHp <= FL.enemyHpPct) continue
+        if (territoryOf(mine, team) !== 'own' || laneOf(mine) !== 'JUNGLE' || dist(mine, theirs) > FL.radius) continue
+        if (deadAt(pid, k * 60_000) || downIn(pid, k * 60_000, k * 60_000 + FL.aliveSec * 1000)) continue
+        if (!allies.some((a) => !deadAt(a, k * 60_000) && within(pframe(k, a)?.position, mine, FL.radius))) continue
+        if (jungleCsOf(k + 1, enemyJungler) - jungleCsOf(k, enemyJungler) < FL.campCs) continue
+        if (jungle(k * 60_000, mine, 'jungle-fled-invade', 0.1, { hpPct: hp, opponentHpPct: theirHp })) break
+      }
+    }
+
+    // V8.2 — an enemy side-lane T1 last-hit between 14:00 and 20:00 although a tower had already fallen (leave it at 1 HP).
+    const ST = S.sideTower
+    const firstTower = events.find((e) => e.type === 'BUILDING_KILL' && e.buildingType === 'TOWER_BUILDING')
+    const t1 = firstTower && events.find((e) => e.type === 'BUILDING_KILL' && e.towerType === 'OUTER_TURRET' && e.teamId !== team && e.killerId === pid &&
+      (e.laneType === 'TOP_LANE' || e.laneType === 'BOT_LANE') && e.timestamp > ST.fromSec * 1000 && e.timestamp <= ST.untilSec * 1000 && e.timestamp > firstTower.timestamp)
+    if (t1) jungle(t1.timestamp, (t1.position as Point | undefined) ?? posAt(pid, t1.timestamp), 'jungle-side-t1-destroyed', 0.07, { turretLane: t1.laneType === 'TOP_LANE' ? 'TOP' : 'BOT' })
+  }
+
+  // ── 4b. Ahead jungler away during the Baron buff while the team fights forward (V6) — claims that fight (section 5) ──
+  const claimedFights = new Set<number>()
+  if (role === 'JUNGLE') {
+    const B = S.baronRecall
+    for (const baron of objectives.filter((o) => o.ours && o.kind === 'baron')) {
+      const end = baron.ts + BARON_BUFF_MS
+      const bi = clock.indexAt(baron.ts)
+      const spent = goldOf(bi, pid) - (Number(pframe(bi, pid)?.currentGold) || 0)
+      if (!(statsBefore(baron.ts).kda > B.kda || spent >= B.goldSpent)) continue
+      for (const d0 of allyDeaths) {
+        const t0: number = d0.timestamp
+        if (t0 <= baron.ts || t0 > end) continue
+        const until = t0 + B.fightWindowSec * 1000
+        // The fight: 2+ allies dead in the enemy half within 30 s, more than the enemy lost, with 3+ allies forward when it broke out.
+        const fight = allyDeaths.filter((e) => e.timestamp >= t0 && e.timestamp <= until && e.position && territoryOf(e.position, team) === 'enemy')
+        if (fight.length < B.alliesDown || fight.length <= enemyDeaths.filter((e) => e.timestamp >= t0 && e.timestamp <= until).length) continue
+        const forward = allies.filter((a) => {
+          const p = deadAt(a, t0 - 1000) ? null : posAt(a, t0 - 1000)
+          return p != null && territoryOf(p, team) === 'enemy'
+        }).length
+        if (forward < B.alliesForward) continue
+        // The jungler: alive, not in the fight, and in base (a purchase around it) or clearing their own jungle away from it.
+        if (deadAt(pid, t0) || kills.some((e) => e.timestamp >= t0 && e.timestamp <= until && involves(e, pid))) continue
+        const recalled = shopsOf(pid).find((t) => t >= t0 - B.awayBeforeSec * 1000 && t <= t0 + B.awayAfterSec * 1000)
+        const here = posAt(pid, t0)
+        const k = clock.indexAt(t0)
+        const farming = here != null && territoryOf(here, team) === 'own' && laneOf(here) === 'JUNGLE' &&
+          (Number(pframe(k + 1, pid)?.jungleMinionsKilled) || 0) > (Number(pframe(k, pid)?.jungleMinionsKilled) || 0) &&
+          !fight.some((e) => within(here, e.position, ALLY_RADIUS))
+        if (recalled == null && !farming) continue
+        const anchor = recalled != null ? Math.max(baron.ts, recalled - S.tradeRecall.channelSec * 1000) : Math.max(baron.ts, t0 - 15_000)
+        for (const e of fight) claimedFights.add(e.timestamp)
+        const before = track.before(t0)
+        const after = track.at(t0 + 60_000)
+        add('absent-objective', anchor, posAt(pid, anchor), 0.12 + fight.length * 0.04 + (before != null && after != null ? Math.max(0, before - after) : 0), {
+          pattern: 'jungle-baron-recall', alliesDown: fight.length, alliedBaron: true,
+          goldInPocket: Math.round(Number(snapshotAt(pid, anchor)?.currentGold) || 0),
+        }, after, t0)
+        break
+      }
+    }
   }
 
   // ── 5. Tempo line (> 15 min): the forward group dies while the player recalled late ──
@@ -757,6 +1478,8 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       const high = allyDeaths.filter((e) => e.timestamp >= ts && e.timestamp <= ts + T.fightWindowSec * 1000 &&
         e.position && tempoLineD(e.position, team) > T.alliesHigh)
       if (high.length < T.minAllies) continue
+      // The jungler's Baron recall (section 4b) already reports this fight.
+      if (high.some((e) => claimedFights.has(e.timestamp))) continue
       lastFight = ts
       const at = ts - T.goldLookbackSec * 1000
       const dNow = tempoD(posAt(pid, ts))

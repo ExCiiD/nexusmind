@@ -11,23 +11,29 @@
  * tokens it needs to change. `--hextech-red`/`--hextech-green` are never
  * redefined per theme: they carry a fixed semantic meaning (loss/danger,
  * win/success) across the whole app, independent of the cosmetic theme.
+ *
+ * The default theme is the showcase site's palette (site/DESIGN.md): ink and
+ * surface, its two rules for borders, its three text levels (the low one
+ * keeps 4.5:1 on every surface) and gold as the one signal. The site has no
+ * second accent, so the app's secondary slots stay in the same family: a pale
+ * gold (`cyan`) and the site's strong rule (`teal`) instead of teal greens.
  */
 :root {
   --hextech-black: #0D0A06;
   --hextech-dark: #1C140C;
   --hextech-elevated: #2A1D11;
   --hextech-panel: #2A1D11;
-  --hextech-border: #8A6A34;
-  --hextech-border-dim: #4A3A24;
-  --hextech-cyan: #3E8E7E;
-  --hextech-teal: #2B6358;
+  --hextech-border: #6B5330;
+  --hextech-border-dim: #3A2C18;
+  --hextech-cyan: #E4C285;
+  --hextech-teal: #6B5330;
   --hextech-gold: #D4A24C;
   --hextech-gold-bright: #F5E3BE;
   --hextech-red: #E24C3A;
   --hextech-green: #6FA84A;
   --hextech-text: #B5A68C;
   --hextech-text-bright: #F5E3BE;
-  --hextech-text-dim: #6B5C44;
+  --hextech-text-dim: #978769;
   --hextech-blue: #241A10;
   --hextech-blue-bright: #E8B86B;
 }
@@ -302,4 +308,43 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+}
+
+/*
+ * Titles, app-wide: the condensed display face of the planning screens
+ * (Big Shoulders Display, heavy, capitals). Written outside the Tailwind
+ * layers and more specific than a utility class on purpose: a title cannot
+ * drift back to the body face because it also carries `font-bold` or
+ * `tracking-tight`. To opt a heading out, give it `font-sans` or `font-mono`
+ * (small uppercase kickers are mono, as on the planning screens);
+ * `normal-case` keeps the face but leaves the casing alone.
+ */
+:is(h1, h2, h3):not(.font-sans):not(.font-mono),
+.font-display:not(.font-sans):not(.font-mono) {
+  font-family: theme('fontFamily.condensed');
+  font-weight: 800;
+  letter-spacing: 0.012em;
+}
+
+:is(h1, h2, h3):not(.font-sans):not(.font-mono):not(.normal-case),
+.font-display:not(.font-sans):not(.font-mono):not(.normal-case) {
+  text-transform: uppercase;
+}
+
+/* Page titles: condensed capitals read one step smaller than the body face. */
+h1:not(.font-sans):not(.font-mono) {
+  font-size: 1.875rem;
+  line-height: 1;
+}
+
+/* Same for the small section titles: at 14 and 16 px they were lighter than
+   the body copy sitting right under them. */
+:is(h2, h3).text-sm:not(.font-sans):not(.font-mono) {
+  font-size: 1.0625rem;
+  line-height: 1.375rem;
+}
+
+:is(h2, h3).text-base:not(.font-sans):not(.font-mono) {
+  font-size: 1.1875rem;
+  line-height: 1.5rem;
 }

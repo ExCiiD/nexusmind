@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { useDiscordWebhooks, type DiscordWebhook } from '@/hooks/useDiscordWebhooks'
 import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Target, Video, Circle, FolderOpen, X, Pencil, Check, FlaskConical, Youtube, Volume2, Mic, AlertTriangle, ExternalLink } from 'lucide-react'
 import { AppearanceCard } from './AppearanceCard'
+import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import type { AudioDevicesSummary } from '@/lib/ipc'
 
@@ -151,12 +152,22 @@ export function SettingsPage() {
     }
   }
 
+  // Minimizing during the recording is the main process's job (Settings →
+  // "arrière-plan pendant l'enregistrement", electron/main/windowFocus.ts).
   const handleManualRecord = async () => {
     if (isRecording) {
       await window.api.stopCapture()
     } else {
-      const r = await window.api.startCapture()
-      if (r?.started) await window.api.minimizeWindow()
+      await window.api.startCapture()
+    }
+  }
+
+  const saveWindowSetting = async (patch: { recordInBackground?: boolean; reviewPopup?: boolean }) => {
+    try {
+      await window.api.updateUser(patch)
+      await loadUser()
+    } catch (err: any) {
+      toast({ title: err.message ?? 'Error', variant: 'destructive' })
     }
   }
 
@@ -254,7 +265,7 @@ export function SettingsPage() {
               <p className="text-sm font-medium text-hextech-text-bright">Auto-record games</p>
               <p className="text-xs text-hextech-text-dim mt-0.5">
                 Starts recording when LoL launches, stops and saves when the game ends. For best results, use{' '}
-                <span className="text-hextech-text/90">borderless</span> or <span className="text-hextech-text/90">windowed</span> mode in League — exclusive fullscreen can produce a black capture with some setups. Ascend minimizes while recording so it does not appear on your footage.
+                <span className="text-hextech-text/90">borderless</span> or <span className="text-hextech-text/90">windowed</span> mode in League — exclusive fullscreen can produce a black capture with some setups.
               </p>
             </div>
             <button
@@ -272,6 +283,26 @@ export function SettingsPage() {
                 )}
               />
             </button>
+          </div>
+
+          {/* What Ascend's own window does around a recorded game (both auto and manual). */}
+          <div className="space-y-3 border-t border-hextech-border-dim/40 pt-3">
+            <WindowSettingRow
+              id="record-in-background"
+              title={t('settings.recordWindow.background.title')}
+              desc={t('settings.recordWindow.background.desc')}
+              checked={user?.recordInBackground ?? true}
+              disabled={!user}
+              onChange={(v) => saveWindowSetting({ recordInBackground: v })}
+            />
+            <WindowSettingRow
+              id="review-popup"
+              title={t('settings.recordWindow.reviewPopup.title')}
+              desc={t('settings.recordWindow.reviewPopup.desc')}
+              checked={user?.reviewPopup ?? true}
+              disabled={!user}
+              onChange={(v) => saveWindowSetting({ reviewPopup: v })}
+            />
           </div>
 
           {/* Live recording indicator */}
@@ -1008,6 +1039,26 @@ export function SettingsPage() {
 
       {/* ── Danger Zone — destructive bulk cleanups ──────────────────────────── */}
       <DangerZoneCard />
+    </div>
+  )
+}
+
+/** One on/off setting of the recording card: title, explanation, switch. */
+function WindowSettingRow({ id, title, desc, checked, disabled, onChange }: {
+  id: string
+  title: string
+  desc: string
+  checked: boolean
+  disabled?: boolean
+  onChange: (value: boolean) => void
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <label htmlFor={id} className="text-sm font-medium text-hextech-text-bright">{title}</label>
+        <p id={`${id}-desc`} className="mt-0.5 text-xs text-hextech-text-dim">{desc}</p>
+      </div>
+      <Switch id={id} checked={checked} disabled={disabled} onCheckedChange={onChange} aria-describedby={`${id}-desc`} className="mt-0.5" />
     </div>
   )
 }

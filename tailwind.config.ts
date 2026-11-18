@@ -70,14 +70,23 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['"Beaufort for LOL"', 'Inter', 'system-ui', 'sans-serif'],
-        // Condensed display + mono (self-hosted, OFL) — the direction chosen for
-        // the site and the redesigned screens (planning).
+        // Condensed display + mono (self-hosted, OFL): the typography of the
+        // planning screens, applied to the whole app since 1.0.0-beta.2. Every
+        // title (h1-h3, card and dialog titles, `font-display`) is set in the
+        // condensed face by the heading rule at the end of src/index.css.
+        display: ['"Big Shoulders Display"', '"Arial Narrow"', 'Inter', 'sans-serif'],
         condensed: ['"Big Shoulders Display"', '"Arial Narrow"', 'Inter', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'Consolas', 'monospace'],
       },
+      // Boxes (cards, panels, dialogs, tiles) are 8 px everywhere: `rounded-lg`,
+      // `-xl`, `-2xl` and `-3xl` all resolve to the same radius on purpose, so no
+      // screen can drift back to a softer corner. Pills and avatars keep
+      // `rounded-full`; small chips keep `rounded` / `rounded-sm` (4 px).
       borderRadius: {
-        lg: '0.75rem',
+        '3xl': '0.5rem',
+        '2xl': '0.5rem',
+        xl: '0.5rem',
+        lg: '0.5rem',
         md: '0.5rem',
         sm: '0.25rem',
       },

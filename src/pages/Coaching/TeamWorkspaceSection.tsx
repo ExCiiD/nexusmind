@@ -56,7 +56,7 @@ export function TeamWorkspaceSection({ staffGroups }: { staffGroups: Group[] }) 
           <>
             {data.roster.length > 0 && (
               <section>
-                <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-hextech-text-dim">
+                <h3 className="font-mono mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-hextech-text-dim">
                   <Shield className="h-3.5 w-3.5" />{t('team.workspace.roster', { defaultValue: 'Roster' })}
                 </h3>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -82,7 +82,7 @@ export function TeamWorkspaceSection({ staffGroups }: { staffGroups: Group[] }) 
             )}
             {data.drafts.length > 0 && (
               <section>
-                <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-hextech-text-dim">
+                <h3 className="font-mono mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-hextech-text-dim">
                   <Swords className="h-3.5 w-3.5" />{t('team.workspace.drafts', { defaultValue: 'Drafts' })}
                 </h3>
                 <ul className="space-y-1">
@@ -99,7 +99,7 @@ export function TeamWorkspaceSection({ staffGroups }: { staffGroups: Group[] }) 
             )}
             {data.scouting.length > 0 && (
               <section>
-                <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-hextech-text-dim">
+                <h3 className="font-mono mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-hextech-text-dim">
                   <Target className="h-3.5 w-3.5" />{t('team.workspace.scouting', { defaultValue: 'Scouting' })}
                 </h3>
                 <ul className="space-y-1">

@@ -44,7 +44,7 @@ export function WinrateChart({ wins, losses }: WinrateChartProps) {
           <Tooltip
             contentStyle={{
               backgroundColor: '#1C140C',
-              border: '1px solid #4A3A24',
+              border: '1px solid #3A2C18',
               borderRadius: '8px',
               color: '#F5E3BE',
             }}

@@ -292,7 +292,7 @@ function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay
       </div>
 
       <div>
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-hextech-text-dim">{t('mistakeLab.inspector.when')}</h3>
+        <h3 className="font-mono mb-2 text-[11px] font-semibold uppercase tracking-wider text-hextech-text-dim">{t('mistakeLab.inspector.when')}</h3>
         <div className="grid grid-cols-3 gap-2">
           {PHASES.map((p) => {
             const share = Math.round((phases[p] / total) * 100)
@@ -318,7 +318,7 @@ function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay
       </div>
 
       <div>
-        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-hextech-text-dim">{t('mistakeLab.inspector.moments')}</h3>
+        <h3 className="font-mono mb-2 text-[11px] font-semibold uppercase tracking-wider text-hextech-text-dim">{t('mistakeLab.inspector.moments')}</h3>
         <ul className="divide-y divide-hextech-border-dim/50 rounded-lg border border-hextech-border-dim">
           {moments.map((o) => (
             <li key={o.id} className="flex items-center gap-3 px-3 py-2">

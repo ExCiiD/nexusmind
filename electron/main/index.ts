@@ -32,6 +32,7 @@ import { recordingManager, isFfmpegAvailable, generateThumbnailForRecording, mer
 import { wgcRecorder } from './wgcRecorder'
 import { RECORDER_BACKEND, getActiveRecorder } from './recorderBackend'
 import { resolveMicDeviceName } from './audio'
+import { bringToFront, enterRecordingBackground, leaveRecordingBackground } from './windowFocus'
 import { registerAuthHandlers } from './ipc/auth.ipc'
 import { registerSessionHandlers } from './ipc/session.ipc'
 import { registerReviewHandlers } from './ipc/review.ipc'
@@ -461,11 +462,9 @@ async function bootstrap() {
   setupAutoUpdater()
 
   gameDetector = new GameDetector(
-    // onGameEnd: called after Riot API confirms the match
+    // onGameEnd: called once the game is over, after onGameRawEnd has
+    // stopped and finalized the recording (the Riot API enrich follows).
     async (matchData) => {
-      mainWindow?.show()
-      mainWindow?.focus()
-
       const activeRecorder = getActiveRecorder()
       const pendingRecording = activeRecorder.getPendingRecording()
 
@@ -570,6 +569,18 @@ async function bootstrap() {
 
       mainWindow?.webContents.send('game:ended', payload)
 
+      // Settings → Recording → "Ouvrir la review": Ascend comes to the front on
+      // the review page (the renderer opens it on `game:ended`, same rule as
+      // here: GameEndNav). Only when a review opens: no pop-up for a game
+      // that has nothing to review.
+      if (matchData.game?.id && matchData.isSessionEligible !== false) {
+        const popup = await getPrisma().user
+          .findFirst({ where: { isActive: true }, select: { reviewPopup: true } })
+          .then((u) => u?.reviewPopup ?? true)
+          .catch(() => true)
+        if (popup) bringToFront(mainWindow)
+      }
+
       if (matchData.isSessionEligible === false) {
         console.log('[main] Non-eligible queue — session review prompts may be suppressed in UI')
       }
@@ -595,6 +606,7 @@ async function bootstrap() {
           console.warn('[main] Mic enabled but no input device resolved — auto-record will have no microphone track')
         }
 
+        const inBackground = user.recordInBackground ?? true
         const snapshot = {
           recordingPath: user.recordingPath,
           recordQuality: user.recordQuality,
@@ -633,6 +645,8 @@ async function bootstrap() {
             if (path) {
               mainWindow?.webContents.send('recording:started')
               console.log('[main] Recording started →', path)
+              // Settings → Recording → "arrière-plan": out of the game's way until onGameRawEnd.
+              if (inBackground) enterRecordingBackground(mainWindow)
             } else {
               console.warn('[main] startRecording() returned null — recorder unavailable')
             }
@@ -653,6 +667,10 @@ async function bootstrap() {
 
     // onGameRawEnd: fires immediately when live client stops (before Riot API match resolution)
     async () => {
+      // The game is over: Ascend gets its normal pace back before the
+      // finalize below, whatever happens to the recording.
+      leaveRecordingBackground()
+
       // If the user quit the game (or it crashed) during the pre-spawn delay,
       // cancel the scheduled ffmpeg spawn — otherwise we'd start recording
       // after the game is already over.

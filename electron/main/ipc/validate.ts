@@ -91,6 +91,8 @@ export const userUpdateSchema = z
     recordAudioDesktopDevice: shortText(256).nullable(),
     recordAudioMic: z.boolean(),
     recordAudioMicDevice: shortText(256).nullable(),
+    recordInBackground: z.boolean(),
+    reviewPopup: z.boolean(),
   })
   .partial()
   .strip()

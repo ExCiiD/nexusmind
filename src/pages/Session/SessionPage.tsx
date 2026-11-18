@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { SessionPrefillState } from '@/components/MicroReview/usePrepareSession'
-import { LowEnergyPrompt } from '@/components/MicroReview/LowEnergyPrompt'
 import { ChampionMatchup } from '@/components/ChampionMatchup'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -420,9 +419,6 @@ export function SessionPage() {
           <p className="text-sm text-hextech-text mt-1">{t('session.activeLock')}</p>
         </div>
 
-        {/* 2 losses in a row / weak daypart → switch the session to the low-energy protocol in one click */}
-        <LowEnergyPrompt context="session" />
-
         <Card className="border-hextech-green/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -775,19 +771,6 @@ export function SessionPage() {
             </Button>
           </CardContent>
         </Card>
-      )}
-
-      {/* Tilt / weak daypart detected before launching: one click pre-fills the low-energy protocol */}
-      {step === 'objectives' && (
-        <LowEnergyPrompt
-          context="session"
-          onPrefill={(a) =>
-            handleApplyTemplate({
-              id: 'low-energy-protocol', name: '', nameFr: '', description: '', descriptionFr: '',
-              objectiveIds: a.objectiveIds, selectedKpiIds: a.selectedKpiIds, customNote: a.customNote,
-            })
-          }
-        />
       )}
 
       {/* Objectives assigned by a coach (W3) — one click pre-fills the session */}

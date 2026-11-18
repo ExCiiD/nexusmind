@@ -1269,6 +1269,7 @@ function computeAverages(statsArray: any[]) {
       damageMitigated: sum((s) => s.combat.damageMitigated),
       damageTakenPercent: sum((s) => s.combat.damageTakenPercent),
       healShieldPerMin: sum((s) => s.combat.healShieldPerMin ?? null),
+      damageMitigatedPerMin: sum((s) => s.combat.damageMitigatedPerMin ?? null),
       ccPerMin: sum((s) => s.combat.ccPerMin ?? null),
     },
     objectives: {

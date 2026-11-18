@@ -52,6 +52,16 @@
       "errorDuplicate": "Ce compte est déjà lié.",
       "errorMain": "Ce compte est votre compte principal."
     },
+    "recordWindow": {
+      "background": {
+        "title": "Passer Ascend en arrière-plan pendant l'enregistrement",
+        "desc": "Ascend se réduit dès que l'enregistrement démarre et se met au ralenti : plus d'affichage, des minuteries espacées. Le processeur et la carte graphique restent au jeu. La capture tourne à part et n'est pas ralentie."
+      },
+      "reviewPopup": {
+        "title": "Ouvrir la review à la fin de la partie",
+        "desc": "Dès que la partie est finie et son enregistrement finalisé, Ascend passe au premier plan sur la page de review."
+      }
+    },
     "backup": {
       "title": "Sauvegarde & Sync",
       "desc": "Exporte tes sessions, reviews et stats pour les partager entre PC.",
@@ -150,7 +160,6 @@
       "statGapDesc": "Vos stats récentes se sont nettement déplacées sur {{n}} fondamentaux par rapport à votre dernière auto-évaluation. Elle mérite une mise à jour.",
       "cta": "Commencer l'évaluation"
     },
-    "fullAssessmentButton": "Bilan complet des fondamentaux",
     "activeSession": {
       "title": "Session active",
       "objective": "Objectif actuel",
@@ -169,7 +178,6 @@
       "avgKda": "KDA moyen",
       "objSuccess": "Obj. réussis"
     },
-    "progress": "Progression",
     "viewProgress": "Voir la progression",
     "sessionProgress": {
       "title": "Progression des objectifs de session",
@@ -197,8 +205,13 @@
         "vsdiff": "Écart vision",
         "pinks": "Pinks",
         "wardkill": "Wards détruites",
-        "healshield": "Soins+boucliers/min",
+        "impact": "Impact en fight/min",
         "cc": "CC/min"
+      },
+      "parts": {
+        "healShield": "Soins et boucliers",
+        "damage": "Dégâts",
+        "absorbed": "Dégâts absorbés"
       }
     },
     "header": {
@@ -223,10 +236,6 @@
       "lossShort": "D",
       "lastN": "{{wr}}% sur les {{count}} dern.",
       "objHint": "objectifs de session validés"
-    },
-    "progression": {
-      "level": "Niveau {{level}}",
-      "toNext": "Plus que {{xp}} XP avant le niveau {{level}}"
     },
     "mistakes": {
       "title": "Erreurs récurrentes (7 jours)",
@@ -1116,6 +1125,10 @@
         "objective": "Objectif",
         "alerts": "Alertes"
       },
+      "colHelp": {
+        "form": "Taux de victoire sur les 10 dernières parties du joueur. Entre parenthèses : l'écart, en points, avec la moyenne de ce même taux chez les joueurs du groupe.",
+        "perfIndex": "Dernière auto-évaluation des fondamentaux du joueur : la moyenne de ses notes (de 1 à 10), multipliée par 10, donc sur 100. « — » tant que le joueur n'a pas fait de bilan. C'est une note que le joueur se donne, pas une mesure tirée de ses parties."
+      },
       "vsTeam": "vs équipe",
       "games": "{{count}} partie(s)",
       "pending": "en attente",
@@ -1417,7 +1430,7 @@
     }
   },
   "coaching": {
-    "title": "Équipes & coaching",
+    "title": "Coaching & Management",
     "subtitle": "Partagez vos reviews avec un coach ou votre équipe, recevez des retours et des objectifs.",
     "unavailable": "Connectez-vous à votre compte Ascend pour utiliser les équipes et le coaching.",
     "tabs": {
@@ -3378,7 +3391,50 @@
       "alliesDown_other": "{{count}} alliés morts dans le fight",
       "hpBefore": "{{pct}} % PV {{sec}} s avant",
       "levelDeficit_one": "{{count}} niveau de retard sur ton tueur",
-      "levelDeficit_other": "{{count}} niveaux de retard sur ton tueur"
+      "levelDeficit_other": "{{count}} niveaux de retard sur ton tueur",
+      "diveOneForOne": "kill sous sa tour, mort {{sec}} s après",
+      "levelSpike": "tué juste après son passage niveau {{level}}",
+      "backTimer": "bas en PV avec de l'or, mort en décalant",
+      "rangedChunked": "en range, tombé à {{pct}} % PV avant le niveau 4",
+      "meleeChunked": "en mêlée, tombé à {{pct}} % PV avant le niveau 5",
+      "opponentHp": "adversaire à {{pct}} % PV",
+      "cheaterRecall": "back vers 2:35–3:15 à {{pct}} % PV, sans TP",
+      "levelsBehind_one": "{{count}} niveau de retard à 4:00",
+      "levelsBehind_other": "{{count}} niveaux de retard à 4:00",
+      "supportNoWard": "aucune ward posée avant 1:45",
+      "supportLevel2": "tué au niveau {{mine}} contre un niveau {{theirs}}",
+      "supportLevel2Gank": "tué au niveau {{mine}} contre un niveau {{theirs}}, jungler adverse dans le fight",
+      "teamResetGank": "gank subi dans la moitié adverse de ta lane",
+      "tradeRecall": "back à {{pct}} % PV {{sec}} s avant l'apparition {{objectiveOf}}",
+      "adcReopen": "seul en side lane, mort {{sec}} s après ta sortie de base",
+      "midInBase": "ton mid était en base",
+      "baronRecall": "hors du fight sous Baron pendant que ta team poussait",
+      "inhibDive": "mort sous leurs tourelles {{sec}} s après l'inhibiteur",
+      "lateFirstRecall": "toujours sur la carte à 4:05, sans kill ni back",
+      "firstBack": "1er back à {{clock}}",
+      "campsUpGank": "une minute en lane sans kill ni assist",
+      "jungleCsLost": "{{cs}} CS de jungle perdus sur le jungler adverse",
+      "weakSideStolen": "ta jungle weak side volée juste après ton back",
+      "campsStolen": "{{cs}} CS de jungle pris chez toi par le jungler adverse",
+      "invadeDeath": "mort dans la jungle adverse après y avoir pris un camp",
+      "campsTaken": "{{cs}} CS de jungle pris autour de la mort",
+      "midOnWave": "ton mid était sur sa wave",
+      "dragonTank": "mort au Dragon, qui t'a retiré {{pct}} % de tes PV",
+      "compensation": "mort {{sec}} s après un allié, avant la perte {{objectiveOf}}",
+      "earlyBoots": "bottes achetées à {{clock}}, sans kill",
+      "sideT1": "T1 {{lane}} détruite après 14:00, la 1re tour déjà tombée",
+      "heraldUnused": "mort {{sec}} s après la prise du Héraut, l'œil encore en poche",
+      "fledInvade": "à {{pct}} % PV dans ta jungle face au jungler adverse à {{theirs}} %",
+      "outsmited": "l'ennemi prend {{objectiveThe}} alors que tu étais dans la fosse",
+      "aheadOfWave": "mort en lane {{sec}} s après ta sortie de base",
+      "resetTrapHp": "resté en lane à {{pct}} % PV après le back adverse, mort {{sec}} s plus tard",
+      "resetTrapMana": "resté en lane à {{pct}} % de mana après le back adverse, mort {{sec}} s plus tard",
+      "midWaveLoss": "{{cs}} CS à 6:00 face à ton vis-à-vis",
+      "skillsSpread": "1 point dans chaque sort au niveau 3",
+      "botLeech": "collé à ton ADC en botlane sur {{n}} relevés sur 7 entre 9:00 et 15:00",
+      "killParticipation": "{{pct}} % de participation aux kills à 15:00",
+      "absentScuttle": "ton jungler meurt au Carapateur du bas sans toi",
+      "weakSideUnwarded": "{{cs}} CS pris dans votre jungle bot, sans ward de ta part"
     },
     "reason": {
       "noWard": "Pas de ward avant l'objectif",
@@ -3440,7 +3496,50 @@
       "roamCheck": "Roam à perte : j'ai forcé un roam sans valider les critères de rentabilité (plaques et waves perdues contre une action non garantie)",
       "lowEnergy": "Surcharge / fatigue : j'ai tenté un play mécanique complexe (ou ignoré un mouvement suspect ennemi) alors que je devais neutraliser la wave simplement",
       "lateReset": "Reset trop tardif : j'ai gardé mon or au lieu de recall avec ma team",
-      "assumed": "Décision assumée : ce n'était pas une erreur"
+      "assumed": "Décision assumée : ce n'était pas une erreur",
+      "diveOneForOne": "Dive précipité : j'ai lancé tous mes sorts sous sa tour et fini en 1-pour-1 au lieu d'attendre son sort défensif (ou je l'ai forcé en ayant déjà l'avance)",
+      "diveTrade": "1-pour-1 assumé : le kill valait ma mort (plate, wave ou shutdown)",
+      "levelSpike": "Piégé par un level-up : j'ai accepté l'échange alors qu'il allait passer niveau 2 (7e sbire) ou niveau 3 (2e sbire de la wave canon) pendant le fight",
+      "backTimer": "Back timer raté : bas en PV avec de l'or, j'ai décalé en rivière ou en jungle au lieu de recall",
+      "laneVolatility": "Volatilité mal gérée : j'ai accepté des trades longs qui m'ont mis à mi-vie contre un all-in ou un jungler agressif en early",
+      "rangeMelee": "Erreur range contre mêlée : en range, j'ai perdu trop de PV (aggro des sbires) ; en mêlée, je me suis laissé grignoter sans rendre la lane volatile ni crash",
+      "cheaterRecall": "Mauvais cheater recall : j'ai back haut en PV, sans TP et sans avoir entamé l'adversaire, et il a gardé la grosse wave",
+      "supportEarly": "Erreur fondamentale support niveau 1-2 : mauvaise ward de buisson au niveau 1, charges d'item support gaspillées sur la 1re wave, ou 20 s sans Aftershock adverse non punies",
+      "trinketSaved": "Trinket gardé exprès pour le gank de 2:30 : choix assumé",
+      "pressureDesync": "Désynchronisation de pression : j'ai push pendant que mon équipe était en reset ou que mon jungler farmait à l'opposé",
+      "tradeRecall": "Désynchronisation de pression : un trade mutuel à mi-vie m'a forcé à back juste avant l'escarmouche de l'objectif",
+      "forcedRecall": "Back obligatoire : sans PV ni mana, je serais mort en restant",
+      "adcReopen": "Erreur de re-open / zone useless : je suis allé push une side lane seul en sortant de base (ou je suis resté inactif au milieu du mid après ma wave)",
+      "baronRecall": "Erreur décisionnelle jungle : j'ai recall (ou farmé ma jungle) sous Baron en étant fed, et ma team s'est fait prendre en 4v5",
+      "inhibDive": "Erreur décisionnelle jungle : dive forcé sous leurs tourelles alors que l'inhibiteur était donné gratuitement",
+      "endPush": "Fin de partie tentée : le Nexus était à portée",
+      "lateFirstRecall": "Structure de clear brisée : je n'ai pas recall à T-25 s du respawn de mon 1er camp et j'ai retardé mon 2e cycle",
+      "stayedForPlay": "Je suis resté pour un play prévu (Carapateur, gank ou couverture d'une lane)",
+      "campsUpGank": "Gank incertain avec mes camps en vie : moins de 90 % de chances, et le jungler adverse a pris 2 camps d'avance pendant ce temps",
+      "gankExecution": "Exécution du gank : j'ai gaspillé mon dash d'entrée au lieu de couper la trajectoire à pied",
+      "gankTrade": "Le gank a coûté un Flash ou un summoner adverse : échange assumé",
+      "weakSideFirst": "Weak side oubliée : je suis parti vers ma strong side sans vider mes camps weak side, et ils ont été volés",
+      "yellowTrinket": "Pas d'info sur le jungler adverse : trinket jaune pas utilisé sur ses camps (ou Sweeper pris trop tôt)",
+      "invadeGreed": "Greed du 2e camp en invade : après le 1er camp volé, j'ai forcé le suivant sans que la wave mid soit poussée (ni gardé mon dash pour fuir)",
+      "invadeOrder": "Ordre d'invade inversé : j'ai fait mes camps ou le Carapateur avant d'entrer chez lui (front-to-back au lieu de rouge → jaune → vert)",
+      "dragonScenarios": "Dragon suicidaire : je l'ai tanké avec les ennemis à côté, hors des 2 seuls scénarios (avantage prouvé ou vision purgée)",
+      "compensation": "Mort par compensation : un allié venait de tomber et j'ai forcé en infériorité au lieu de trade à l'opposé ou de minimize sur mes camps",
+      "earlyBoots": "Bottes trop tôt : achetées à 0 kill avant mon 1er item, elles ont retardé ma Pioche ou mon Phage pour le duel de 5:30-7:00",
+      "bootsNeeded": "Bottes nécessaires : la distance des ganks, le kite ou le matchup les exigeaient",
+      "leaveT1": "T1 détruite au lieu de la laisser à 1 PV : elle aurait mangé la wave alliée et forcé le rebond",
+      "t1Worth": "Tour rentable : elle ouvrait un objectif ou la carte",
+      "heraldUnused": "Héraut gaspillé : mort en escarmouche avec l'œil du Héraut en poche, sans l'utiliser pour engager ou fuir",
+      "neverFlee": "Fuite d'invade : j'ai fui à très bas PV en abandonnant mes camps au lieu de vider mes dégâts pour le kill de mon allié",
+      "fleeNeeded": "Fuite obligatoire : mon allié ne pouvait pas arriver à temps",
+      "burstSmite": "Smite désynchronisé : j'ai lancé mon Smite avant mon sort de burst, laissant une fenêtre de vol",
+      "aheadOfWave": "Devant ma wave : en revenant de base, j'ai dépassé mes sbires et pris le combat sans bouclier de sbires",
+      "resetTrap": "Piégé par un reset trap : il a back en premier et je suis resté en lane sans PV ni mana, incapable de crasher ma wave",
+      "midWaveLoss": "Lane subie : je n'ai pas synchronisé la mort des sbires au niveau 1 ni mis 2 points dans mon sort de waveclear au niveau 3",
+      "post6Fog": "Resté en botlane après le niveau 6 : j'ai partagé l'XP de mon ADC au lieu de jouer dans le fog avec mon jungler et mon mid",
+      "laneNeeded": "Mon ADC ne pouvait pas tenir seul (matchup ou retard)",
+      "hover315": "Absent au Carapateur de 3:30 : je suis resté dans les buissons du bas au lieu de hover le haut de la wave dès 3:15",
+      "weakSideWard": "Camps weak side non couverts : pas de ward à l'entrée de notre jungle bot pendant que mon jungler jouait en topside",
+      "withJungler": "J'accompagnais mon jungler sur l'objectif topside"
     },
     "tag": {
       "overstay": "Overstay",
@@ -3505,7 +3604,36 @@
       "bad-rotation": "Mauvaise rotation",
       "jungle-window-unpunished": "Fenêtre de tempo non punie",
       "pit-chokepoint": "Choke point",
-      "mid-roam-plates": "Roam à perte"
+      "mid-roam-plates": "Roam à perte",
+      "tower-dive-one-for-one": "Dive en 1-pour-1",
+      "level-up-spike": "Level-up adverse",
+      "back-timer-missed": "Back timer raté",
+      "range-melee-volatility": "Range contre mêlée",
+      "cheater-recall": "Cheater recall puni",
+      "support-no-early-ward": "Pas de ward niveau 1",
+      "support-level2-allin": "Niveau 2 perdu (support)",
+      "gank-during-team-reset": "Push pendant le reset allié",
+      "low-hp-recall-before-objective": "Back forcé avant objectif",
+      "adc-solo-sidelane-reopen": "Re-open seul en side lane",
+      "jungle-baron-recall": "Recall sous Baron",
+      "inhib-forced-dive": "Dive après l'inhibiteur",
+      "jungle-late-first-recall": "Premier back tardif",
+      "jungle-camps-up-gank": "Gank à perte",
+      "jungle-weakside-stolen": "Weak side volée",
+      "jungle-invade-death": "Mort en invade",
+      "jungle-dragon-tank-death": "Dragon tanké à mort",
+      "jungle-compensation-death": "Mort par compensation",
+      "jungle-early-boots": "Bottes trop tôt",
+      "jungle-side-t1-destroyed": "T1 de side lane détruite",
+      "jungle-herald-unused-death": "Héraut gaspillé",
+      "jungle-fled-invade": "Fuite d'invade",
+      "jungle-outsmited": "Smite perdu",
+      "mid-ahead-of-wave-death": "Devant sa wave",
+      "mid-reset-trap-death": "Piégé par un reset trap",
+      "mid-passive-wave-loss": "Lane subie",
+      "support-botlane-leech": "Resté en botlane après le niveau 6",
+      "support-absent-scuttle": "Absent au Carapateur de 3:30",
+      "support-weakside-unwarded": "Weak side non couverte"
     },
     "otherJustified": "Ce n'était pas une erreur : décision assumée",
     "unsupported": "La micro-review ne couvre que les parties classiques sur la Faille de l'invocateur."
@@ -3545,8 +3673,7 @@
       "cs-at-10": "Écart de CS à 10:00 ≥ −15 ({{cs}}), 0 tag de retard",
       "positioning": "0 erreur de placement taguée",
       "trades": "0 mauvais trade tagué",
-      "mechanics": "0 erreur mécanique taguée",
-      "low-energy": "Protocole basse énergie : 0 mort isolée, 0 trade forcé, 0 summoner gâché"
+      "mechanics": "0 erreur mécanique taguée"
     },
     "status": {
       "passed": "Validé",
@@ -3588,8 +3715,16 @@
       "group": "Groupe",
       "empty": "Aucune règle d'équipe. Ajoute la première ci-dessous.",
       "mistake": "Erreur visée",
+      "mistakePlaceholder": "Tape une erreur, ou survole une famille",
       "fundamental": "Fondamental à travailler",
-      "roleLabel": "Rôle",
+      "fundamentalPlaceholder": "Tape un fondamental, ou survole une famille",
+      "completion": "Tab ou Entrée pour compléter : {{value}}",
+      "suggestions": "Suggestions : {{family}}",
+      "noSuggestion": "Aucune suggestion dans cette famille.",
+      "newMistake": "Nouvelle erreur : elle sera ajoutée à ta bibliothèque d'erreurs.",
+      "newMistakeFamily": "Famille :",
+      "unknownFundamental": "Aucun fondamental ne porte ce nom : choisis-en un dans les suggestions.",
+      "rolesLabel": "Rôles concernés",
       "phaseLabel": "Phase",
       "headline": "Titre court (ex. « Pink avant chaque drake »)",
       "rule": "Règle tactique : quoi faire, quand, où",
@@ -3611,24 +3746,5 @@
         "late": "Fin"
       }
     }
-  },
-  "lowEnergy": {
-    "name": "Protocole basse énergie",
-    "title": "Session basse énergie détectée",
-    "lossStreakSession_one": "{{count}} défaite dans cette session.",
-    "lossStreakSession_other": "{{count}} défaites d'affilée dans cette session.",
-    "lossStreak_one": "{{count}} défaite sur ta dernière partie.",
-    "lossStreak_other": "{{count}} défaites d'affilée sur tes dernières parties.",
-    "badHour": "Créneau actuel, {{daypart}} : {{wr}} % de victoires sur {{count}} parties.",
-    "riskySlots": "Sous 45 % de victoires : {{slots}}.",
-    "slot": "{{daypart}} ({{wr}} % sur {{count}} parties)",
-    "currentSlot": "C'est ton créneau actuel.",
-    "afterLoss": "Après une défaite, tu ne gagnes que {{wr}} % de la partie suivante ({{count}} parties).",
-    "rules": "Le protocole simplifie ton jeu en 3 règles : neutraliser les waves, respecter chaque mouvement suspect, garder ton Flash pour les teamfights d'objectif.",
-    "activate": "Activer le protocole basse énergie",
-    "activateNow": "Activer sur la session en cours",
-    "activeOnSession": "Protocole basse énergie actif sur la session en cours",
-    "prefilled": "Objectif et note pré-remplis ci-dessous",
-    "error": "Impossible de mettre à jour la session. Réessaie."
   }
 }

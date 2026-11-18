@@ -414,7 +414,7 @@ function ProgressionLineChart({
         <XAxis dataKey="date" tick={{ fill: '#B5A68C', fontSize: 11 }} />
         <YAxis tick={{ fill: '#B5A68C', fontSize: 11 }} />
         <RTooltip
-          contentStyle={{ backgroundColor: '#2A1D11', border: '1px solid #4A3A24', borderRadius: 8 }}
+          contentStyle={{ backgroundColor: '#2A1D11', border: '1px solid #3A2C18', borderRadius: 8 }}
           labelStyle={{ color: '#F5E3BE' }}
         />
         <Legend />

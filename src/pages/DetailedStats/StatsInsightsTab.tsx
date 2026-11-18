@@ -16,7 +16,6 @@ import {
   type Bucket,
   type SplitMetric,
 } from '@/lib/statsInsights'
-import { LowEnergyPrompt } from '@/components/MicroReview/LowEnergyPrompt'
 
 const panel = 'rounded-2xl border border-hextech-border-dim/70 panel-surface p-5 shadow-lg backdrop-blur-sm'
 
@@ -121,7 +120,6 @@ export function StatsInsightsTab() {
         <section className={panel}>
           <Header icon={Sun} title={t('statsInsights.daypart.title')} desc={t('statsInsights.daypart.desc')} />
           <BucketList buckets={winrateByDaypart(games)} labelKey="statsInsights.daypart" />
-          <LowEnergyPrompt context="daypart" history={games} />
         </section>
         <section className={panel}>
           <Header icon={Brain} title={t('statsInsights.tilt.title')} desc={t('statsInsights.tilt.desc')} />
@@ -129,7 +127,6 @@ export function StatsInsightsTab() {
           <p className="mt-3 text-[11px] text-hextech-text-dim">
             {t('statsInsights.tilt.streak', { count: tilt.longestLossStreak })}
           </p>
-          <LowEnergyPrompt context="tilt" history={games} />
         </section>
       </div>
     </div>

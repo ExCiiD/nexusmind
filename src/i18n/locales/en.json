@@ -52,6 +52,16 @@
       "errorDuplicate": "This account is already linked.",
       "errorMain": "This account is already your main account."
     },
+    "recordWindow": {
+      "background": {
+        "title": "Send Ascend to the background while recording",
+        "desc": "Ascend minimizes as soon as the recording starts and slows itself down: nothing drawn, timers spaced out. The CPU and graphics card are left to the game. The capture runs separately and is not slowed down."
+      },
+      "reviewPopup": {
+        "title": "Open the review when the game ends",
+        "desc": "As soon as the game is over and its recording finalized, Ascend comes to the front on the review page."
+      }
+    },
     "backup": {
       "title": "Backup & Sync",
       "desc": "Export your sessions, reviews and stats to share between PCs.",
@@ -150,7 +160,6 @@
       "statGapDesc": "Your recent stats have clearly shifted on {{n}} fundamentals compared to your last self-assessment. Worth updating it.",
       "cta": "Start Assessment"
     },
-    "fullAssessmentButton": "Full skill assessment",
     "activeSession": {
       "title": "Active Session",
       "objective": "Current Objective",
@@ -169,7 +178,6 @@
       "avgKda": "Avg KDA",
       "objSuccess": "Obj. Success"
     },
-    "progress": "Progress",
     "viewProgress": "View Progress",
     "sessionProgress": {
       "title": "Session objective progress",
@@ -197,8 +205,13 @@
         "vsdiff": "Vision diff",
         "pinks": "Control wards",
         "wardkill": "Wards killed",
-        "healshield": "Heal+shield/min",
+        "impact": "Fight impact/min",
         "cc": "CC/min"
+      },
+      "parts": {
+        "healShield": "Heals and shields",
+        "damage": "Damage",
+        "absorbed": "Damage absorbed"
       }
     },
     "header": {
@@ -223,10 +236,6 @@
       "lossShort": "L",
       "lastN": "{{wr}}% over last {{count}}",
       "objHint": "session objectives met"
-    },
-    "progression": {
-      "level": "Level {{level}}",
-      "toNext": "{{xp}} XP to level {{level}}"
     },
     "mistakes": {
       "title": "Recurring mistakes (7 days)",
@@ -1116,6 +1125,10 @@
         "objective": "Objective",
         "alerts": "Alerts"
       },
+      "colHelp": {
+        "form": "Win rate over the player's last 10 games. In brackets: the gap, in points, with the average of that same rate across the group's players.",
+        "perfIndex": "The player's latest fundamentals self-assessment: the average of their scores (1 to 10), times 10, so out of 100. “—” until the player has done an assessment. It is the player's own rating, not a measure taken from their games."
+      },
       "vsTeam": "vs team",
       "games": "{{count}} games",
       "pending": "pending",
@@ -1417,7 +1430,7 @@
     }
   },
   "coaching": {
-    "title": "Teams & coaching",
+    "title": "Coaching & Management",
     "subtitle": "Share your reviews with a coach or your team, get feedback and objectives.",
     "unavailable": "Sign in to your Ascend account to use teams and coaching.",
     "tabs": {
@@ -3378,7 +3391,50 @@
       "alliesDown_other": "{{count}} allies died in the fight",
       "hpBefore": "{{pct}} % HP {{sec}} s before",
       "levelDeficit_one": "{{count}} level behind your killer",
-      "levelDeficit_other": "{{count}} levels behind your killer"
+      "levelDeficit_other": "{{count}} levels behind your killer",
+      "diveOneForOne": "kill under their tower, dead {{sec}} s later",
+      "levelSpike": "killed right after their level {{level}}",
+      "backTimer": "low HP with gold, died on the way out",
+      "rangedChunked": "ranged, down to {{pct}} % HP before level 4",
+      "meleeChunked": "melee, down to {{pct}} % HP before level 5",
+      "opponentHp": "opponent at {{pct}} % HP",
+      "cheaterRecall": "back around 2:35–3:15 at {{pct}} % HP, no TP",
+      "levelsBehind_one": "{{count}} level behind at 4:00",
+      "levelsBehind_other": "{{count}} levels behind at 4:00",
+      "supportNoWard": "no ward placed before 1:45",
+      "supportLevel2": "killed at level {{mine}} against a level {{theirs}}",
+      "supportLevel2Gank": "killed at level {{mine}} against a level {{theirs}}, enemy jungler in the fight",
+      "teamResetGank": "ganked in the enemy half of your lane",
+      "tradeRecall": "back at {{pct}} % HP {{sec}} s before {{objectiveThe}} spawned",
+      "adcReopen": "alone in a side lane, dead {{sec}} s after leaving base",
+      "midInBase": "your mid laner was in base",
+      "baronRecall": "out of the fight during Baron while your team pushed",
+      "inhibDive": "dead under their towers {{sec}} s after the inhibitor",
+      "lateFirstRecall": "still on the map at 4:05, no kill and no back",
+      "firstBack": "1st back at {{clock}}",
+      "campsUpGank": "a minute in lane with no kill or assist",
+      "jungleCsLost": "{{cs}} jungle CS lost to the enemy jungler",
+      "weakSideStolen": "your weak-side jungle stolen right after your back",
+      "campsStolen": "{{cs}} jungle CS taken in your jungle by the enemy jungler",
+      "invadeDeath": "dead in the enemy jungle after taking a camp there",
+      "campsTaken": "{{cs}} jungle CS taken around the death",
+      "midOnWave": "your mid laner was on their wave",
+      "dragonTank": "dead at the Dragon, which took {{pct}} % of your HP",
+      "compensation": "dead {{sec}} s after an ally, before losing {{objectiveThe}}",
+      "earlyBoots": "boots bought at {{clock}}, without a kill",
+      "sideT1": "{{lane}} T1 destroyed after 14:00, the first tower already down",
+      "heraldUnused": "dead {{sec}} s after the Herald was taken, the eye still in your pocket",
+      "fledInvade": "at {{pct}} % HP in your jungle against the enemy jungler at {{theirs}} %",
+      "outsmited": "the enemy takes {{objectiveThe}} while you stood in the pit",
+      "aheadOfWave": "dead in lane {{sec}} s after leaving base",
+      "resetTrapHp": "stayed in lane at {{pct}} % HP after the enemy back, dead {{sec}} s later",
+      "resetTrapMana": "stayed in lane at {{pct}} % mana after the enemy back, dead {{sec}} s later",
+      "midWaveLoss": "{{cs}} CS at 6:00 against your opponent",
+      "skillsSpread": "1 point in each spell at level 3",
+      "botLeech": "next to your ADC in bot lane on {{n}} of the 7 snapshots between 9:00 and 15:00",
+      "killParticipation": "{{pct}} % kill participation at 15:00",
+      "absentScuttle": "your jungler dies at the bottom Scuttle Crab without you",
+      "weakSideUnwarded": "{{cs}} CS taken in your bot jungle, no ward of yours"
     },
     "reason": {
       "noWard": "No ward before the objective",
@@ -3440,7 +3496,50 @@
       "roamCheck": "Losing roam: I forced a roam without checking it would pay off (plates and waves lost for an unguaranteed play)",
       "lowEnergy": "Overload / fatigue: I tried a complex mechanical play (or ignored a suspicious enemy move) when I should simply have neutralised the wave",
       "lateReset": "Late reset: I sat on my gold instead of recalling with my team",
-      "assumed": "My call: this was not a mistake"
+      "assumed": "My call: this was not a mistake",
+      "diveOneForOne": "Rushed dive: I threw every spell under their tower and ended 1-for-1 instead of waiting for their defensive spell (or I forced it while already ahead)",
+      "diveTrade": "Accepted 1-for-1: the kill was worth my death (plate, wave or shutdown)",
+      "levelSpike": "Caught by a level-up: I took the trade while they were about to reach level 2 (7th minion) or level 3 (2nd minion of the cannon wave) mid-fight",
+      "backTimer": "Missed back timer: low on HP with gold, I moved into the river or jungle instead of recalling",
+      "laneVolatility": "Volatility misjudged: I took long trades that left me at half HP against a strong all-in or an aggressive early jungler",
+      "rangeMelee": "Ranged against melee mistake: as the ranged champion I lost too much HP (minion aggro); as the melee I let them chip me without making the lane volatile or crashing",
+      "cheaterRecall": "Bad cheater recall: I backed at high HP, without TP and without chunking the opponent, and they kept the big wave",
+      "supportEarly": "Support level 1-2 fundamentals: wrong level-1 bush ward, support item charges wasted on the 1st wave, or the 20 s without the enemy Aftershock left unpunished",
+      "trinketSaved": "Trinket saved on purpose for the 2:30 gank: my call",
+      "pressureDesync": "Pressure out of sync: I pushed while my team was resetting or my jungler was farming the other side",
+      "tradeRecall": "Pressure out of sync: a mutual trade at half HP forced me to back right before the objective skirmish",
+      "forcedRecall": "Forced back: with no HP or mana left, staying meant dying",
+      "adcReopen": "Re-open / useless-zone mistake: I went to push a side lane alone straight out of base (or stood idle in the middle of mid after my wave)",
+      "baronRecall": "Jungle decision mistake: I recalled (or farmed my jungle) during Baron while fed, and my team got caught 4v5",
+      "inhibDive": "Jungle decision mistake: a forced dive under their towers although the inhibitor was given for free",
+      "endPush": "Going for the end: the Nexus was within reach",
+      "lateFirstRecall": "Broken clear structure: I did not recall at T-25 s of my 1st camp's respawn and delayed my 2nd cycle",
+      "stayedForPlay": "I stayed for a planned play (Scuttle Crab, gank or covering a lane)",
+      "campsUpGank": "An uncertain gank with my camps up: under 90 % odds, and the enemy jungler got 2 camps ahead meanwhile",
+      "gankExecution": "Gank execution: I wasted my dash on the way in instead of cutting the path on foot",
+      "gankTrade": "The gank burned an enemy Flash or summoner: an accepted trade",
+      "weakSideFirst": "Weak side forgotten: I went to my strong side without clearing my weak-side camps, and they were stolen",
+      "yellowTrinket": "No info on the enemy jungler: yellow trinket not used on their camps (or Sweeper taken too early)",
+      "invadeGreed": "Second-camp greed on an invade: after stealing the first camp I forced the next one without the mid wave pushed (or my dash kept to escape)",
+      "invadeOrder": "Invade order reversed: I took my camps or the Scuttle Crab before going in (front to back instead of red → yellow → green)",
+      "dragonScenarios": "Suicidal Dragon: I tanked it with the enemies next to it, outside the only 2 scenarios (proven lead or cleared vision)",
+      "compensation": "Compensation death: an ally had just fallen and I forced while outnumbered instead of trading on the other side or minimizing on my camps",
+      "earlyBoots": "Boots too early: bought at 0 kills before my 1st item, they delayed my Pickaxe or Phage for the 5:30-7:00 duel",
+      "bootsNeeded": "Boots needed: gank distance, kiting or the matchup called for them",
+      "leaveT1": "T1 destroyed instead of leaving it at 1 HP: it would have eaten the allied wave and forced the bounce",
+      "t1Worth": "Worth the tower: it opened an objective or the map",
+      "heraldUnused": "Wasted Herald: died in a skirmish with the Eye of the Herald in my pocket, unused to engage or escape",
+      "neverFlee": "Fled the invade: I ran at very low HP leaving my camps instead of dumping my damage for my ally's kill",
+      "fleeNeeded": "Had to flee: my ally could not arrive in time",
+      "burstSmite": "Smite out of sync: I cast Smite before my burst spell, leaving a window to steal",
+      "aheadOfWave": "Ahead of my wave: coming back from base I walked past my minions and took the fight without a minion shield",
+      "resetTrap": "Caught in a reset trap: they backed first and I stayed in lane low on HP or mana, unable to crash my wave",
+      "midWaveLoss": "Lane given away: I did not sync the minion deaths at level 1 nor put 2 points into my waveclear spell at level 3",
+      "post6Fog": "Stayed bot after level 6: I shared my ADC's XP instead of playing in the fog with my jungler and mid",
+      "laneNeeded": "My ADC could not hold the lane alone (matchup or deficit)",
+      "hover315": "Missing at the 3:30 Scuttle Crab: I stayed in the bottom bushes instead of hovering the top of the wave from 3:15",
+      "weakSideWard": "Weak-side camps uncovered: no ward at the entrance of our bot jungle while my jungler played top side",
+      "withJungler": "I was with my jungler on the top-side objective"
     },
     "tag": {
       "overstay": "Overstay",
@@ -3505,7 +3604,36 @@
       "bad-rotation": "Bad rotation",
       "jungle-window-unpunished": "Unpunished tempo window",
       "pit-chokepoint": "Choke point",
-      "mid-roam-plates": "Losing roam"
+      "mid-roam-plates": "Losing roam",
+      "tower-dive-one-for-one": "1-for-1 dive",
+      "level-up-spike": "Enemy level-up",
+      "back-timer-missed": "Missed back timer",
+      "range-melee-volatility": "Ranged against melee",
+      "cheater-recall": "Punished cheater recall",
+      "support-no-early-ward": "No level-1 ward",
+      "support-level2-allin": "Level 2 lost (support)",
+      "gank-during-team-reset": "Pushed during a team reset",
+      "low-hp-recall-before-objective": "Forced back before an objective",
+      "adc-solo-sidelane-reopen": "Solo side-lane re-open",
+      "jungle-baron-recall": "Recall during Baron",
+      "inhib-forced-dive": "Dive after the inhibitor",
+      "jungle-late-first-recall": "Late first back",
+      "jungle-camps-up-gank": "Costly gank",
+      "jungle-weakside-stolen": "Weak side stolen",
+      "jungle-invade-death": "Died invading",
+      "jungle-dragon-tank-death": "Dragon tanked to death",
+      "jungle-compensation-death": "Compensation death",
+      "jungle-early-boots": "Boots too early",
+      "jungle-side-t1-destroyed": "Side-lane T1 destroyed",
+      "jungle-herald-unused-death": "Herald wasted",
+      "jungle-fled-invade": "Fled the invade",
+      "jungle-outsmited": "Lost the smite",
+      "mid-ahead-of-wave-death": "Ahead of the wave",
+      "mid-reset-trap-death": "Caught in a reset trap",
+      "mid-passive-wave-loss": "Lane given away",
+      "support-botlane-leech": "Stayed bot after level 6",
+      "support-absent-scuttle": "Missing at the 3:30 Scuttle",
+      "support-weakside-unwarded": "Weak side uncovered"
     },
     "otherJustified": "This was not a mistake: it was my call",
     "unsupported": "The micro-review only covers classic games on Summoner's Rift."
@@ -3545,8 +3673,7 @@
       "cs-at-10": "CS gap at 10:00 ≥ −15 ({{cs}}), 0 deficit tag",
       "positioning": "0 tagged positioning mistake",
       "trades": "0 tagged bad trade",
-      "mechanics": "0 tagged mechanical mistake",
-      "low-energy": "Low-energy protocol: 0 isolated death, 0 forced trade, 0 wasted summoner"
+      "mechanics": "0 tagged mechanical mistake"
     },
     "status": {
       "passed": "Passed",
@@ -3588,8 +3715,16 @@
       "group": "Group",
       "empty": "No team rule yet. Add the first one below.",
       "mistake": "Target mistake",
+      "mistakePlaceholder": "Type a mistake, or hover a family",
       "fundamental": "Fundamental to work on",
-      "roleLabel": "Role",
+      "fundamentalPlaceholder": "Type a fundamental, or hover a family",
+      "completion": "Tab or Enter to complete: {{value}}",
+      "suggestions": "Suggestions: {{family}}",
+      "noSuggestion": "No suggestion in this family.",
+      "newMistake": "New mistake: it will be added to your mistake library.",
+      "newMistakeFamily": "Family:",
+      "unknownFundamental": "No fundamental has this name: pick one from the suggestions.",
+      "rolesLabel": "Roles concerned",
       "phaseLabel": "Phase",
       "headline": "Short title (e.g. \"Control ward before every drake\")",
       "rule": "Tactical rule: what to do, when, where",
@@ -3611,24 +3746,5 @@
         "late": "Late"
       }
     }
-  },
-  "lowEnergy": {
-    "name": "Low-energy protocol",
-    "title": "Low-energy session detected",
-    "lossStreakSession_one": "{{count}} loss in this session.",
-    "lossStreakSession_other": "{{count}} losses in a row in this session.",
-    "lossStreak_one": "{{count}} loss in your last game.",
-    "lossStreak_other": "{{count}} losses in a row in your last games.",
-    "badHour": "Current slot, {{daypart}}: {{wr}} % win rate over {{count}} games.",
-    "riskySlots": "Under 45 % win rate: {{slots}}.",
-    "slot": "{{daypart}} ({{wr}} % over {{count}} games)",
-    "currentSlot": "That is your current slot.",
-    "afterLoss": "After a loss, you only win {{wr}} % of the next game ({{count}} games).",
-    "rules": "The protocol simplifies your game to 3 rules: neutralise waves, respect every suspicious move, keep your Flash for objective teamfights.",
-    "activate": "Activate the low-energy protocol",
-    "activateNow": "Activate on the running session",
-    "activeOnSession": "Low-energy protocol active on the running session",
-    "prefilled": "Objective and note pre-filled below",
-    "error": "Could not update the session. Try again."
   }
 }

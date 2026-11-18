@@ -38,6 +38,10 @@ model User {
   recordAudioDesktopDevice String?
   recordAudioMic         Boolean      @default(false)
   recordAudioMicDevice   String?
+  /// Minimize Ascend and let Chromium throttle it while a game is recorded (electron/main/windowFocus.ts).
+  recordInBackground     Boolean      @default(true)
+  /// Bring Ascend to the front on the review page once a game and its recording are over.
+  reviewPopup            Boolean      @default(true)
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
   sessions           Session[]

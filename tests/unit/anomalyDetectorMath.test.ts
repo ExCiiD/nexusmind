@@ -63,6 +63,37 @@ describe('spec constants', () => {
       rotation: { untilSec: 840, awaySec: 30, cs: 8, xp: 350, deathGuardSec: 45 },
       pit: { fromSec: 840, fightRadius: 3000, insideRadius: 900, beforeSec: 15, fightGapSec: 20 },
       midRoam: { untilSec: 840, plates: 1, cs: 10, minOffAxis: 2600 },
+      // V5 (laning phase) — boundaries tested in microReviewV5.test.ts.
+      dive: { untilSec: 840, turretRadius: 850, afterKillSec: 4 },
+      levelSpike: { untilSec: 270, windowSec: 10, levels: [2, 3] },
+      backTimer: { untilSec: 600, hpPct: 35, gold: 800, withinSec: 40 },
+      rangeMelee: { untilSec: 480, rangedHp: 60, rangedMaxLevel: 3, meleeHp: 50, meleeMaxLevel: 4, opponentHp: 85 },
+      cheaterRecall: { atSec: 180, anchorSec: 155, hpBeforeSec: 120, hpPct: 75, levelAtSec: 240, levelDeficit: 1, teleportSpellId: 12 },
+      // V6 (roles) — boundaries tested in microReviewV6.test.ts.
+      supportEarly: { wardBySec: 105, deathFromSec: 125, deathToSec: 160 },
+      teamReset: { untilSec: 840, lookbackSec: 15, alliesHome: 2 },
+      tradeRecall: { untilSec: 840, hpPct: 40, opponentHpPct: 60, beforeSpawnSec: 35, channelSec: 8, returnSec: 30, visitGapSec: 30 },
+      adcReopen: { fromSec: 840, walkSec: 45, withinSec: 45 },
+      baronRecall: { kda: 3, goldSpent: 10000, alliesForward: 3, alliesDown: 2, fightWindowSec: 30, awayBeforeSec: 30, awayAfterSec: 15 },
+      inhibDive: { withinSec: 15 },
+      spawns: { firstDragonSec: 300, dragonRespawnSec: 300, grubsSec: 480 },
+      // V7–V10 (jungle, mid, engage support) — boundaries tested in microReviewV7.test.ts.
+      jungleFirstBack: { bySec: 245, startSec: 60 },
+      gankCost: { fromSec: 120, untilSec: 720, cs: 8, enemyRadius: 2500 },
+      campsStolen: { cs: 8, fromSec: 120, weakSideUntilSec: 960, supportUntilSec: 1080, wardLookbackSec: 120 },
+      invadeDeath: { untilSec: 960, noTakedownSec: 30, campCs: 4, maxAllies: 1, midRadius: 2500 },
+      dragonTank: { fromSec: 300, untilSec: 720, damageShare: 0.6 },
+      compensation: { windowSec: 15, allyRadius: 3000, outnumberedBy: 2, objectiveWithinSec: 60 },
+      earlyBoots: { untilSec: 480, itemId: 1001 },
+      sideTower: { fromSec: 840, untilSec: 1200 },
+      heraldEye: { fromSec: 840, untilSec: 1170, itemId: 3513, pickupSec: 20 },
+      fledInvade: { untilSec: 900, hpPct: 15, enemyHpPct: 70, radius: 2000, aliveSec: 15, campCs: 4 },
+      outsmite: { pitRadius: 900 },
+      aheadOfWave: { untilSec: 720, afterBaseSec: 45, startSec: 60 },
+      resetTrap: { untilSec: 720, lowPct: 30, stayedSec: 45, withinSec: 90, manaPoolMin: 200 },
+      midWaveLoss: { atSec: 360, csDiff: -12, takedowns: 2 },
+      supportLeech: { fromSec: 540, untilSec: 900, level: 6, radius: 2000, snapshots: 6, kp: 0.45 },
+      supportScuttle: { fromSec: 205, untilSec: 230, radius: 2000 },
     })
     expect(MAX_MOMENTS).toBe(3)
     expect([GARBAGE_LOW, GARBAGE_HIGH]).toEqual([0.18, 0.85])
@@ -618,7 +649,8 @@ describe('trigger 3 — early deficit at 10:00', () => {
   it('compares with the direct opponent, on both sides, laners only', () => {
     expect(run(lane({ minionsKilled: 40 }, [], 8)).moments[0].facts.opponentChampion).toBe('Champ3')
     expect(run(lane({ minionsKilled: 0 }, [], 2)).moments).toHaveLength(0) // jungler
-    expect(run(lane({ minionsKilled: 0 }, [], 5)).moments).toHaveLength(0) // support
+    // Support: no 10:00 deficit (no direct opponent). Its only moment here is the V6 "no ward by 1:45" (the fixture places none).
+    expect(run(lane({ minionsKilled: 0 }, [], 5)).moments.map((m) => m.facts.pattern)).toEqual(['support-no-early-ward'])
     expect(run(lane({ minionsKilled: 0 }, [], 5)).laneAt10).toBeNull()
   })
   it('needs a 10:00 snapshot', () => {
