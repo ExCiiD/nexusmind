@@ -32,11 +32,13 @@ import { NotificationBell } from '@/components/Notifications/NotificationBell'
 import { AscendMark } from '@/components/Brand/AscendMark'
 import { TierAvatar, useProfilePrefs } from '@/components/Profile/ProfileCard'
 import { tierForLevel } from '@/lib/profile'
+import { useShareProfileLook } from '@/hooks/useShareProfileLook'
 
 export function Sidebar() {
   const { t } = useTranslation()
   const user = useUserStore((s) => s.user)
   const profilePrefs = useProfilePrefs(user?.id)
+  useShareProfileLook(profilePrefs)
   const clearUser = useUserStore((s) => s.clearUser)
   const activeSession = useSessionStore((s) => s.activeSession)
   const [isRecording, setIsRecording] = useState(false)

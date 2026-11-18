@@ -5,6 +5,7 @@ import type {
   GroupKind,
   GroupRole,
   GroupSharing,
+  MemberLook,
   PlayerSessionView,
   ReviewComment,
 } from './collab'
@@ -73,6 +74,41 @@ export async function updateMyMemberProfile(sb: SupabaseClient, uid: string, gro
   await sb.from('group_members').update({ display_name: id.displayName, riot_id: id.riotId }).eq('group_id', groupId).eq('user_id', uid)
 }
 
+// ── Profile looks (Team → Roster player cards) ──────────────────────────────
+// The icon and banner a player picked on their Profile page, copied on each
+// of their memberships so their teammates' roster cards show them. Columns
+// added by migration 20261118160000_member_profile_look; before it, reads
+// come back empty and writes report false instead of failing the caller.
+
+/** Ids of the app's own artwork only (src/lib/profile.ts), never a URL. */
+export const LOOK_ID = /^[a-z0-9_-]{1,32}$/
+
+export async function setMyLook(sb: SupabaseClient, uid: string, look: { iconId: string; bannerId: string }): Promise<boolean> {
+  if (!LOOK_ID.test(look.iconId) || !LOOK_ID.test(look.bannerId)) return false
+  const { error } = await sb.from('group_members')
+    .update({ profile_icon: look.iconId, profile_banner: look.bannerId })
+    .eq('user_id', uid)
+  return !error
+}
+
+export async function listMemberLooks(sb: SupabaseClient, uid: string): Promise<MemberLook[]> {
+  const { data: memberships, error } = await sb.from('group_members').select('group_id').eq('user_id', uid)
+  if (error || !memberships?.length) return []
+  const { data, error: looksError } = await sb.from('group_members')
+    .select('user_id, riot_id, profile_icon, profile_banner')
+    .in('group_id', memberships.map((m) => m.group_id))
+  if (looksError) return []
+  const byUser = new Map<string, MemberLook>()
+  for (const r of data ?? []) {
+    const iconId = typeof r.profile_icon === 'string' && LOOK_ID.test(r.profile_icon) ? r.profile_icon : null
+    const bannerId = typeof r.profile_banner === 'string' && LOOK_ID.test(r.profile_banner) ? r.profile_banner : null
+    const known = byUser.get(r.user_id)
+    if (known && (known.iconId || known.bannerId)) continue
+    byUser.set(r.user_id, { userId: r.user_id, riotId: r.riot_id ?? known?.riotId ?? null, iconId, bannerId })
+  }
+  return [...byUser.values()]
+}
+
 export async function createGroup(sb: SupabaseClient, name: string, kind: GroupKind): Promise<string> {
   const { data, error } = await sb.rpc('create_group', { p_name: name, p_kind: kind })
   if (error) fail(error, 'create group failed')
@@ -97,6 +133,13 @@ export async function joinGroup(sb: SupabaseClient, code: string, id: MemberIden
 export async function setCaptain(sb: SupabaseClient, groupId: string, userId: string, isCaptain: boolean): Promise<void> {
   const { error } = await sb.rpc('set_captain', { p_group: groupId, p_user: userId, p_value: isCaptain })
   if (error) fail(error, 'set captain failed')
+}
+
+/** Owner-only (enforced by the `set_member_role` RPC): gives a member
+ *  another role. The owner's own role never changes from here. */
+export async function setMemberRole(sb: SupabaseClient, groupId: string, userId: string, role: Exclude<GroupRole, 'owner'>): Promise<void> {
+  const { error } = await sb.rpc('set_member_role', { p_group: groupId, p_user: userId, p_role: role })
+  if (error) fail(error, 'set member role failed')
 }
 
 export async function leaveGroup(sb: SupabaseClient, uid: string, groupId: string): Promise<void> {

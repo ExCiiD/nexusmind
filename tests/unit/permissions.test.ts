@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isLegacyStaff, canEditCalendar, canManageSession } from '../../src/lib/permissions'
+import { isLegacyStaff, canEditCalendar, canManageSession, canChangeRoles, ASSIGNABLE_ROLES } from '../../src/lib/permissions'
 import type { GroupRole } from '../../src/lib/collab'
 
 const ROLES: GroupRole[] = ['owner', 'coach', 'manager', 'analyst', 'player']
@@ -12,7 +12,20 @@ describe('isLegacyStaff', () => {
 
 describe('canEditCalendar', () => {
   it('is true for owner/coach/manager, false for analyst/player', () => {
-    expect(ROLES.filter(canEditCalendar)).toEqual(['owner', 'coach', 'manager'])
+    expect(ROLES.filter((r) => canEditCalendar(r))).toEqual(['owner', 'coach', 'manager'])
+  })
+
+  it('gives the captain the manager\'s hand, whatever their role', () => {
+    expect(canEditCalendar('player', true)).toBe(true)
+    expect(canEditCalendar('analyst', true)).toBe(true)
+    expect(canEditCalendar('player', false)).toBe(false)
+  })
+})
+
+describe('canChangeRoles', () => {
+  it('is the owner\'s alone', () => {
+    expect(ROLES.filter(canChangeRoles)).toEqual(['owner'])
+    expect(ASSIGNABLE_ROLES).not.toContain('owner')
   })
 })
 

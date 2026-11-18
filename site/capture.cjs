@@ -150,7 +150,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /**
  * Thumbnails for the recordings the harness lists (it has no video files):
- * the app's own schematic map (MiniMap.tsx, no game art) with the moment of
+ * the app's own schematic map (MiniMap.tsx's offline drawing, no game art) with the moment of
  * a fight, a different one per file. Served to the page on the app's media
  * scheme, `nxm://`.
  */
@@ -456,6 +456,9 @@ app.on('window-all-closed', () => {})
 app.whenReady().then(async () => {
   protocol.handle('nxm', (request) => {
     const art = new URL(request.url).searchParams.get('art')
+    // Riot's minimap (micro-review MiniMap.tsx): refused, so the app falls
+    // back to its own schematic of the map, as it does offline.
+    if (art && /\/img\/map\//.test(decodeURIComponent(art))) return new Response('', { status: 404 })
     return new Response(art ? artTile(art) : thumbnail(request.url), { headers: { 'content-type': 'image/svg+xml' } })
   })
   session.defaultSession.webRequest.onBeforeRequest({ urls: RIOT_ART }, (details, done) => done({ redirectURL: `nxm://art/?art=${encodeURIComponent(details.url)}` }))

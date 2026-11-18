@@ -64,6 +64,10 @@ export interface DevPlanApi {
   devPlanGetForPlayer: (groupId: string, playerId: string) => Promise<DevPlan | null>
   devPlanCreate: (groupId: string, playerId: string, title: string, axes: NewAxisInput[], period?: NewDevPlanPeriod) => Promise<string>
   devPlanSetAxisStatus: (axisId: string, status: AxisStatus) => Promise<void>
+  /** Staff only: another axis on an existing plan (3 at most, at a free position). */
+  devPlanAddAxis: (planId: string, axis: NewAxisInput) => Promise<void>
+  /** Staff only: removes an axis and the player's progress on it. */
+  devPlanDeleteAxis: (axisId: string) => Promise<void>
   devPlanAddCheckin: (planId: string, note: string) => Promise<void>
   /** The player marking their own progress — RLS enforces "own plan only", so this is safe to expose to every role. */
   devPlanSetProgress: (axisId: string, input: { playerMarkedDone?: boolean; playerNote?: string | null }) => Promise<void>

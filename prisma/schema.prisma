@@ -310,6 +310,10 @@ model Team {
   // Distinguishes "my team" (false) from "opponent teams scouted for prep" (true)
   isOpponent  Boolean  @default(false)
   scoutNotes  String?  // markdown for opponent intel
+  /// The cloud group (Coaching & Management) this team is the roster of: the
+  /// group picked in the header shows this team in Coaching and Stats
+  /// collectives. One team per group (team:link-group keeps it so).
+  groupId     String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   members     TeamMember[]
@@ -317,6 +321,7 @@ model Team {
   customGames CustomGame[]
 
   @@index([userId])
+  @@index([groupId])
 }
 
 /**
@@ -405,6 +410,17 @@ model ChampionPoolEntry {
   // 20-game minimum so a 2-game sample can't fake a 10.0 KDA. Null for
   // legacy/manual entries or mastery-only entries with 0 games.
   kda         Float?
+  // First and last analysed game on this champion in this role, written by
+  // auto-fill / scouting. They drive the "new" tier (picked up less than two
+  // weeks ago, 10+ games since) and the drop of a main not played for 30
+  // days (src/lib/threatCore.ts). Null for manual, mastery-only and pre-v2
+  // entries.
+  firstPlayedAt DateTime?
+  lastPlayedAt  DateTime?
+  // The tier the rule computed last time. `tier` differing from it means
+  // the user picked the tier by hand: auto-fill and the start-up refresh
+  // then leave it alone. Null until the entry is tiered by the v2 rule.
+  autoTier    String?
   updatedAt   DateTime @updatedAt
 
   @@index([memberId, role])

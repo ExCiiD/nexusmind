@@ -83,6 +83,29 @@ function broadcastAuth(session: Session | null): void {
  * Valid access token for the current user (refreshed if needed), or null
  * when nobody is signed in. Used by the Riot proxy and backups.
  */
+/**
+ * The signed-in user's id, from the local session: no network call. Every
+ * cloud helper used to ask the server instead (auth.getUser), on every
+ * call — about a thousand requests an hour per running app, each one a
+ * database read on Supabase, which helped exhaust the project's disk I/O
+ * budget on 18 November 2026. The server still checks the token on every
+ * query (RLS); this id only scopes our own requests.
+ */
+export async function getSessionUserId(): Promise<string | null> {
+  if (!isCloudConfigured()) return null
+  const { data } = await getSupabase().auth.getSession()
+  const session = data.session
+  if (!session || session.user.is_anonymous) return null
+  return session.user.id
+}
+
+/** getSessionUserId, or LOGIN_REQUIRED when nobody is signed in. */
+export async function requireSessionUserId(): Promise<string> {
+  const uid = await getSessionUserId()
+  if (!uid) throw new Error('LOGIN_REQUIRED')
+  return uid
+}
+
 export async function getAccessToken(): Promise<string | null> {
   if (!isCloudConfigured()) return null
   const { data } = await getSupabase().auth.getSession()

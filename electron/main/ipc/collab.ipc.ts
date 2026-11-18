@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { validatedHandle } from './validate'
 import * as collab from '../cloud/collab'
+import { LOOK_ID } from '../../../src/lib/collabCore'
 
 const uuid = z.string().uuid()
 const recordId = z.string().min(1).max(128)
@@ -19,10 +20,14 @@ export function registerCollabHandlers() {
   validatedHandle('collab:delete-group', z.tuple([uuid, z.literal('DELETE')]), (_e, groupId) => collab.deleteGroup(groupId))
   validatedHandle('collab:remove-member', z.tuple([uuid, uuid]), (_e, groupId, userId) => collab.removeMember(groupId, userId))
   validatedHandle('collab:set-captain', z.tuple([uuid, uuid, z.boolean()]), (_e, groupId, userId, isCaptain) => collab.setCaptain(groupId, userId, isCaptain))
+  validatedHandle('collab:set-member-role', z.tuple([uuid, uuid, role]), (_e, groupId, userId, r) => collab.setMemberRole(groupId, userId, r))
   validatedHandle('collab:set-sharing', z.tuple([uuid, z.object({ shareReviews: z.boolean(), shareStats: z.boolean(), shareTeam: z.boolean(), shareWellbeing: z.boolean() })]),
     (_e, groupId, s) => collab.setSharing(groupId, s))
 
   validatedHandle('collab:player-sessions', z.tuple([uuid]), (_e, playerId) => collab.getPlayerSessions(playerId))
+  const lookId = z.string().regex(LOOK_ID)
+  validatedHandle('collab:set-my-look', z.tuple([z.object({ iconId: lookId, bannerId: lookId })]), (_e, look) => collab.setMyLook(look))
+  validatedHandle('collab:list-member-looks', z.tuple([]), () => collab.listMemberLooks())
 
   validatedHandle('collab:list-comments', z.tuple([recordId, uuid.optional()]),
     (_e, reviewId, playerId) => collab.listComments(reviewId, playerId))
@@ -65,6 +70,8 @@ export function registerCollabHandlers() {
   validatedHandle('devplan:create', z.tuple([uuid, uuid, z.string().trim().min(1).max(80), z.array(axisInput).min(1).max(3), devPlanPeriod]),
     (_e, groupId, playerId, title, axes, period) => collab.devPlanCreate(groupId, playerId, title, axes, period))
   validatedHandle('devplan:set-axis-status', z.tuple([uuid, axisStatus]), (_e, axisId, status) => collab.devPlanSetAxisStatus(axisId, status))
+  validatedHandle('devplan:add-axis', z.tuple([uuid, axisInput]), (_e, planId, axis) => collab.devPlanAddAxis(planId, axis))
+  validatedHandle('devplan:delete-axis', z.tuple([uuid]), (_e, axisId) => collab.devPlanDeleteAxis(axisId))
   validatedHandle('devplan:add-checkin', z.tuple([uuid, z.string().trim().min(1).max(4000)]), (_e, planId, note) => collab.devPlanAddCheckin(planId, note))
   validatedHandle('devplan:set-progress', z.tuple([uuid, z.object({
     playerMarkedDone: z.boolean().optional(),
@@ -86,6 +93,8 @@ export function registerCollabHandlers() {
   validatedHandle('calendar:create-event', z.tuple([uuid, eventInput]), (_e, groupId, input) => collab.calendarCreateEvent(groupId, input))
   validatedHandle('calendar:update-event', z.tuple([uuid, eventInput]), (_e, id, input) => collab.calendarUpdateEvent(id, input))
   validatedHandle('calendar:delete-event', z.tuple([uuid]), (_e, id) => collab.calendarDeleteEvent(id))
+  validatedHandle('calendar:respond', z.tuple([uuid, z.enum(['confirmed', 'declined']), z.string().trim().max(300).nullable().optional()]),
+    (_e, eventId, status, note) => collab.calendarRespond(eventId, status, note))
 
   const eventRequestInput = z.object({
     eventName: z.string().trim().min(1).max(120), peopleConcerned: z.array(z.string().trim().min(1).max(80)).max(30),

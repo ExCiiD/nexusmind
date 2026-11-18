@@ -12,11 +12,23 @@ export type NotificationType =
   | 'objective_overdue'
   | 'wellbeing_alert'
   | 'mention'
+  | 'review_pending'
+  | 'scrim_low_availability'
+  | 'scrim_availability_missing'
+  | 'dev_plan_period_ending'
+  | 'weekly_load_alert'
+  | 'calendar_event_request'
+  | 'event_declined'
+  | 'event_confirmed'
 
+/** Every type the server sends — kept in step with the `notifications_type_check`
+ *  constraint (supabase/migrations/20261118195000_notification_types_fix.sql). */
 export const NOTIFICATION_TYPES: NotificationType[] = [
   'review_comment', 'objective_assigned', 'scrim_created', 'scrim_updated',
   'scrim_reminder_24h', 'scrim_reminder_1h', 'player_inactive',
   'task_assigned', 'objective_overdue', 'wellbeing_alert', 'mention',
+  'review_pending', 'scrim_low_availability', 'scrim_availability_missing', 'dev_plan_period_ending',
+  'weekly_load_alert', 'calendar_event_request', 'event_declined', 'event_confirmed',
 ]
 
 export interface AppNotification {

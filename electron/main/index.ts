@@ -39,6 +39,7 @@ import { registerReviewHandlers } from './ipc/review.ipc'
 import { registerAssessmentHandlers } from './ipc/assessment.ipc'
 import { registerAnalyticsHandlers } from './ipc/analytics.ipc'
 import { registerStatsHandlers, prefetchGameAnalysis } from './ipc/stats.ipc'
+import { recoverStrandedGames } from './strandedGames'
 import { registerAccountHandlers } from './ipc/account.ipc'
 import { registerDevHandlers } from './ipc/dev.ipc'
 import { registerRecordingHandlers } from './ipc/recording.ipc'
@@ -47,7 +48,7 @@ import { registerShareHandlers } from './ipc/share.ipc'
 import { registerCoachingHandlers } from './ipc/coaching.ipc'
 import { registerYoutubeHandlers } from './ipc/youtube.ipc'
 import { registerBackupHandlers } from './ipc/backup.ipc'
-import { registerTeamHandlers, retierLowSampleFlexEntries } from './ipc/team.ipc'
+import { registerTeamHandlers, refreshAutoTiers } from './ipc/team.ipc'
 import { registerMistakeHandlers } from './ipc/mistakes.ipc'
 import { registerMicroReviewHandlers } from './ipc/microReview.ipc'
 import { registerBookmarkHandlers } from './ipc/bookmarks.ipc'
@@ -219,6 +220,22 @@ async function stopSystemAudioCapture(): Promise<SystemAudioResult | null> {
  *  roster-overlap against the full match participants, which Phase 4's
  *  per-game stats fetch already does and can re-validate against.
  */
+/** What follows a game's match-v5 enrichment, from the detector or from
+ *  the stranded-game recovery: the renderer refreshes (authoritative
+ *  win/loss instead of the provisional placeholder), the timeline and the
+ *  automatic mistakes come in without waiting for the review, and a live
+ *  team session gets the match. */
+async function afterGameEnriched(info: { gameId: string; matchId: string; win: boolean; queueType: string }): Promise<void> {
+  try {
+    mainWindow?.webContents.send('game:updated', info)
+    console.log(`[main] Enrich complete → game:updated emitted (gameId=${info.gameId}, win=${info.win}, queue=${info.queueType})`)
+  } catch (err) {
+    console.warn('[main] Failed to emit game:updated:', err)
+  }
+  prefetchGameAnalysis(info.gameId).catch((err) => console.warn('[main] post-game analysis failed:', (err as Error)?.message))
+  reportGameToLiveTeamSessions(info).catch((err) => console.warn('[main] reportGameToLiveTeamSessions failed:', (err as Error)?.message))
+}
+
 async function reportGameToLiveTeamSessions(info: { matchId: string; queueType: string }): Promise<void> {
   if (!isCloudConfigured()) return
   try {
@@ -453,9 +470,10 @@ async function bootstrap() {
   // overwriting user-edited ones. Fire-and-forget; if it fails we still
   // boot the UI (the user can manually add tags).
   seedBuiltInMistakeTags().catch((err) => console.warn('[seed] mistake tags failed:', err))
-  // One-time cleanup: re-tier pre-existing "flex" pool entries that are
-  // really just 1-9 game noise under the revised flex threshold.
-  retierLowSampleFlexEntries().catch((err) => console.warn('[seed] flex retiering failed:', err))
+  // Champion pools: entries tiered by the v1 rule move to v2 once, and
+  // "new" picks older than two weeks turn into a regular tier. Hand-picked
+  // tiers stay (src/lib/threatCore.ts, team.ipc.ts refreshAutoTiers).
+  refreshAutoTiers().catch((err) => console.warn('[seed] pool tier refresh failed:', err))
 
   createWindow()
   registerDevHandlers(mainWindow!)
@@ -797,21 +815,21 @@ async function bootstrap() {
     // refresh signal to the renderer so the session view / dashboard
     // pick up the authoritative win/loss instead of the placeholder
     // `win: false` set when the provisional row was created.
-    async (info) => {
-      try {
-        mainWindow?.webContents.send('game:updated', info)
-        console.log(`[main] Enrich complete → game:updated emitted (gameId=${info.gameId}, win=${info.win}, queue=${info.queueType})`)
-      } catch (err) {
-        console.warn('[main] Failed to emit game:updated:', err)
-      }
-      // Timeline + automatic mistake detection, without waiting for the review.
-      prefetchGameAnalysis(info.gameId).catch((err) => console.warn('[main] post-game analysis failed:', (err as Error)?.message))
-      // Team sessions (Phase 3): if this user has a live session, link this matchId into it.
-      reportGameToLiveTeamSessions(info).catch((err) => console.warn('[main] reportGameToLiveTeamSessions failed:', (err as Error)?.message))
-    },
+    afterGameEnriched,
   )
 
   gameDetector.start()
+
+  // Provisional games whose Riot lookup failed at game end (Riot slow,
+  // network or session down): found again, merged with the imported copy,
+  // then the same post-game work as above (strandedGames.ts).
+  const recover = () => {
+    recoverStrandedGames(afterGameEnriched)
+      .then((r) => { if (r.recovered) console.log(`[stranded] ${r.recovered}/${r.stranded} recovered (${r.merged} merged)`) })
+      .catch((err) => console.warn('[stranded] recovery failed:', (err as Error)?.message))
+  }
+  setTimeout(recover, 60_000)
+  setInterval(recover, 20 * 60_000)
 }
 
 app.whenReady().then(bootstrap).catch((err) => {

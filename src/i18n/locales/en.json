@@ -6,7 +6,7 @@
     "history": "History",
     "detailedStats": "Detailed Stats",
     "analytics": "Analytics",
-    "team": "Team",
+    "team": "Team stats",
     "settings": "Settings",
     "help": "Help",
     "mistakes": "Mistakes",
@@ -999,7 +999,39 @@
       "empty": "Empty slot",
       "memberAdded": "Member added",
       "confirmRemove": "Remove this member from the roster?",
-      "bulkImport": "Import from multi-link"
+      "bulkImport": "Import from multi-link",
+      "roles": {
+        "TOP": "Top",
+        "JUNGLE": "Jungle",
+        "MID": "Mid",
+        "ADC": "ADC",
+        "SUPPORT": "Support"
+      },
+      "card": {
+        "best": "Best champions",
+        "bestHelp": "The {{n}} best win rates among their {{pool}} most-played champions ({{min}} games or more), from this season's games fetched from Riot. The number on each icon: games played.",
+        "games_one": "From {{count}} game",
+        "games_other": "From {{count}} games",
+        "championLine_one": "{{count}} game · {{wins}} W / {{losses}} L · {{winRate}}% win rate",
+        "championLine_other": "{{count}} games · {{wins}} W / {{losses}} L · {{winRate}}% win rate",
+        "lowSample": "Under {{min}} games: the win rate is only a hint.",
+        "noLook": "The icon and banner picked on their Ascend profile show here once this account is in one of your groups.",
+        "noChampions": "Champions not fetched yet.",
+        "noRiotId": "Add their Riot ID (name and tag) to fetch their champions.",
+        "fetch": "Fetch",
+        "fetching": "Fetching champions…",
+        "fetchJob": "Champions — {{team}} · {{name}}",
+        "edit": "Edit",
+        "remove": "Remove from roster",
+        "add": "Add a player",
+        "save": "Save",
+        "displayName": "Display name",
+        "gameName": "Game name",
+        "tag": "Tag",
+        "addFailed": "Could not add this player",
+        "removeFailed": "Could not remove this player",
+        "updateFailed": "Could not save the changes"
+      }
     },
     "import": {
       "title": "Import players from multi-search link",
@@ -1047,7 +1079,19 @@
       "autoFillJobLabel": "Auto-fill — {{team}}",
       "autoFillAllSummaryShort": "{{upserted}} champions · {{matches}} games scanned",
       "autoFillCancelled": "Auto-fill cancelled",
-      "autoFillCancelledDesc": "{{upserted}} champions added before stopping."
+      "autoFillCancelledDesc": "{{upserted}} champions added before stopping.",
+      "tierHelp": {
+        "main": "Main: the core of the pool. 12+ games and top 3 of the role (or 15% of its games), 25% of a short history (6+ games), or a 60%+ adjusted win rate over 20+ games.",
+        "new": "New: picked up less than 2 weeks ago and already played 10+ times, with no earlier games or mastery showing they played it before. Turns into a regular tier after 2 weeks.",
+        "comfort": "Comfort: a safe pick. 8+ games at a 50%+ adjusted win rate, 25+ games, or 200k+ mastery.",
+        "flex": "Flex: playable if needed. 5+ games, or 100k+ mastery.",
+        "learning": "Learning: a few games only. Hidden in Draft Sim."
+      },
+      "tierHelpNote": "Adjusted win rate: pulled toward 50% on small samples (3 wins out of 3 count as 61%). A main or comfort not played for 30 days drops one tier. A tier you pick by hand stays through auto-fill.",
+      "tierRules": "Tier rules",
+      "handPicked": "Tier picked by hand: auto-fill keeps it (rule says: {{tier}})",
+      "newSince_one": "picked up {{count}} day ago",
+      "newSince_other": "picked up {{count}} days ago"
     },
     "scope": {
       "title": "How thorough should the fetch be?",
@@ -1098,7 +1142,8 @@
       "threatRed": "100+ games, dominant pick, or 65%+ WR / 4+ KDA (20+ games)",
       "threatOrange": "300k+ mastery",
       "threatYellow": "flex threat — 2+ players individually dangerous on it",
-      "threatPrioPick": "priority pick/ban — a threat on both teams"
+      "threatPrioPick": "priority pick/ban — a threat on both teams",
+      "threatNew": "new pick: 10+ games on a champion picked up less than 2 weeks ago"
     },
     "dashboard": {
       "noTeam": "Select or create a team first.",
@@ -1142,7 +1187,9 @@
         "inactive": "Inactive",
         "review_backlog": "Review backlog",
         "objective_failing": "Objective failing"
-      }
+      },
+      "basedOnTotal": "Average of {{n}} games: {{flex}} flex · {{scrim}} scrim · {{tournament}} tournament",
+      "basedOnAll": "Average of {{n}} games (flex, scrim and tournament)"
     },
     "custom": {
       "imported": "Game imported",
@@ -1298,6 +1345,32 @@
       "drafts": "Drafts",
       "picks": "picks",
       "scouting": "Scouting"
+    },
+    "statsTitle": "Team stats",
+    "statsSubtitle": "The stats of the picked group’s team: flex, scrim and tournament together, then each source.",
+    "localHint": "The roster is managed in Coaching & Management → Team workspace, once the team is linked to a group.",
+    "link": {
+      "title": "Link a team to “{{name}}”",
+      "desc": "The group’s Team workspace, Champion Pool, Draft Sim and Team stats use a team of this computer. Link one of your teams, or create the group’s: it takes the roster the group published, if any.",
+      "pick": "Team",
+      "players_one": "{{count}} player",
+      "players_other": "{{count}} players",
+      "link": "Link this team",
+      "or": "or",
+      "create": "Create the “{{name}}” team",
+      "created": "Team “{{name}}” created and linked to the group",
+      "failed": "Couldn’t link the team"
+    },
+    "space": {
+      "publishFailed": "The roster couldn’t be published to the group",
+      "added": "{{name}} is on the roster",
+      "addFailed": "Couldn’t add",
+      "toPlaceTitle_one": "{{count}} group player not on the roster",
+      "toPlaceTitle_other": "{{count}} group players not on the roster",
+      "toPlaceDesc": "They joined the group: pick their role to add them to the team. Champion Pool, Draft Sim and Team stats follow.",
+      "role": "Role",
+      "taken": "taken",
+      "add": "Add"
     }
   },
   "common": {
@@ -1476,7 +1549,14 @@
       "unsetCaptain": "Remove captain",
       "leave": "Leave group",
       "delete": "Delete group",
-      "deleteConfirm": "Delete \"{{name}}\" for every member? Comments and assigned objectives will be deleted."
+      "deleteConfirm": "Delete \"{{name}}\" for every member? Comments and assigned objectives will be deleted.",
+      "changeRole": "{{name}}’s role",
+      "roleChanged": "{{name}} is now {{role}}",
+      "mine_one": "Your group",
+      "mine_other": "Your groups ({{count}})",
+      "mineDesc": "The group picked here or at the top of the page is the one Coaching & Management and Team stats show.",
+      "memberCount_one": "{{count}} member",
+      "memberCount_other": "{{count}} members"
     },
     "sharing": {
       "title": "What this group can see",
@@ -1564,7 +1644,9 @@
       "FORBIDDEN": "You don't have permission to do this.",
       "TOO_MANY_GROUPS": "You already own the maximum number of groups (10).",
       "LOGIN_REQUIRED": "Sign in to your Ascend account first.",
-      "generic": "Something went wrong. Check your connection and try again."
+      "generic": "Something went wrong. Check your connection and try again.",
+      "NOT_CONCERNED": "This event isn’t one of yours.",
+      "EVENT_OVER": "This event is already over."
     },
     "dossier": {
       "pickPlayer": "Player",
@@ -1607,6 +1689,9 @@
       "counts": "{{games}} games · {{reviews}} reviews",
       "w": "W",
       "l": "L"
+    },
+    "switcher": {
+      "label": "Group"
     }
   },
   "assistant": {
@@ -2000,7 +2085,10 @@
     "pickFundamental": "Pick a fundamental",
     "targetPlaceholder": "Target for this axis…",
     "addAxis": "Add axis",
-    "create": "Create plan"
+    "create": "Create plan",
+    "noAxes": "No axis this quarter.",
+    "deleteAxis": "Delete this axis",
+    "confirmDeleteAxis": "Delete?"
   },
   "planning": {
     "title": "Planning",
@@ -2082,7 +2170,9 @@
         "day": "Full day ({{from}}h–{{to}}h)"
       },
       "hoverAdd": "+ Add ({{h}}h)",
-      "hoverFree": "+ Book"
+      "hoverFree": "+ Book",
+      "declined_one": "{{count}} absent",
+      "declined_other": "{{count}} absent"
     },
     "popup": {
       "kicker": "Quick planning",
@@ -2173,10 +2263,33 @@
       "free": "Free",
       "unknown": "Unconfirmed",
       "edit": "Edit",
-      "confirmDelete": "Confirm?"
+      "confirmDelete": "Confirm?",
+      "confirmed": "Present",
+      "declined": "Absent"
     },
     "legend": "Legend",
-    "legendFree": "All starters free"
+    "legendFree": "All starters free",
+    "respond": {
+      "title": "Your attendance",
+      "confirm": "I’ll be there",
+      "decline": "I can’t come",
+      "notePlaceholder": "Reason (optional)",
+      "send": "Tell the staff",
+      "youConfirmed": "Your attendance is confirmed.",
+      "youDeclined": "The staff knows you can’t come."
+    },
+    "players": {
+      "title": "Players’ availability",
+      "none": "No players in this group yet.",
+      "free": "{{day}}: {{hours}}",
+      "off": "{{day}}: unavailable",
+      "unknown": "{{day}}: nothing set",
+      "legendFree": "Free",
+      "legendOff": "Unavailable",
+      "legendUnknown": "Not set",
+      "fromRoster": "Starters of the roster published to the group.",
+      "fromGroup": "Every player of the group: no roster with linked accounts has been published."
+    }
   },
   "teamSession": {
     "notFound": "No team session found for this event — open it from Planning.",
@@ -2536,6 +2649,14 @@
       "calendar_event_request": {
         "title": "Event request",
         "body": "{{requestedByName}} requested an event: \"{{eventName}}\""
+      },
+      "event_declined": {
+        "title": "Absence reported",
+        "body": "{{playerName}} can’t make it to “{{eventTitle}}” ({{scheduledAt}}){{noteSuffix}}"
+      },
+      "event_confirmed": {
+        "title": "Coming after all",
+        "body": "{{playerName}} will be at “{{eventTitle}}” after all ({{scheduledAt}})"
       }
     }
   },

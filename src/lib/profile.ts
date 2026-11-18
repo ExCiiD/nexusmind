@@ -6,7 +6,9 @@
  * Progression is about *using the app*, not the LoL rank: the tier follows
  * the Ascend level (XP from reviews, sessions, assessments…), and titles
  * come from counters returned by `profile:get-stats`. Customization is a
- * per-device preference keyed by user id (no sync yet — see ROADMAP).
+ * per-device preference keyed by user id (no sync yet — see ROADMAP); only
+ * the icon and banner leave the device, copied to the player's cloud groups
+ * for their teammates' roster cards (src/hooks/useShareProfileLook.ts).
  */
 import { getLevelFromXp } from './utils'
 import { BACKGROUND_IMAGES } from './appearance'

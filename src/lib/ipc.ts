@@ -187,7 +187,7 @@ export interface LanePhaseDiag {
 }
 
 export type TeamRole = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'
-export type PoolTier = 'main' | 'comfort' | 'flex' | 'learning'
+export type PoolTier = 'main' | 'new' | 'comfort' | 'flex' | 'learning'
 
 export interface ChampionPoolEntry {
   id: string
@@ -207,6 +207,12 @@ export interface ChampionPoolEntry {
    *  champion+role. Feeds the "high winrate or KDA" threat signal — see
    *  src/lib/threatCore.ts. Null for legacy/manual/mastery-only entries. */
   kda?: number | null
+  /** First and last analysed game on this champion in this role (auto-fill /
+   *  scout); they give the "new" tier and the drop of a main left aside. */
+  firstPlayedAt?: string | Date | null
+  lastPlayedAt?: string | Date | null
+  /** Tier the rule computed last; `tier` differing from it was set by hand. */
+  autoTier?: string | null
   updatedAt: string
 }
 
@@ -231,6 +237,8 @@ export interface Team {
   notes?: string | null
   isOpponent: boolean
   scoutNotes?: string | null
+  /** The cloud group this team is the roster of (Coaching & Management), if any. */
+  groupId?: string | null
   createdAt: string
   updatedAt: string
   members?: TeamMember[]
@@ -294,6 +302,8 @@ export interface TeamSynergyStats {
   membersWithGames: number
   players: SynergyPlayerStats[]
   fetchedAt: number
+  /** Combined stats only (team:compute-combined-stats): the games averaged, per source. */
+  sources?: { flex: number; scrim: number; tournament: number }
 }
 
 export interface DraftPrep {
@@ -612,6 +622,8 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   getTeam: (id: string) => Promise<Team | null>
   createTeam: (data: { name: string; tag?: string; logo?: string; notes?: string; isOpponent?: boolean }) => Promise<Team>
   updateTeam: (id: string, data: Partial<{ name: string; tag: string | null; logo: string | null; notes: string | null; isOpponent: boolean; scoutNotes: string | null }>) => Promise<Team>
+  /** Makes the team the roster of a cloud group (null unlinks); the group's previous team is released. */
+  linkTeamToGroup: (teamId: string, groupId: string | null) => Promise<Team>
   deleteTeam: (id: string) => Promise<{ ok: true }>
   addTeamMember: (teamId: string, data: { displayName: string; ign?: string; tagLine?: string; region?: string; role: string; puuid?: string }) => Promise<TeamMember>
   updateTeamMember: (memberId: string, data: Partial<{ displayName: string; ign: string | null; tagLine: string | null; region: string | null; role: string; puuid: string | null }>) => Promise<TeamMember>

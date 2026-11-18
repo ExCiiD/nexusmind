@@ -1,6 +1,6 @@
 import { BrowserWindow } from 'electron'
 import { getPrisma } from '../database'
-import { getSupabase, getAccessToken, isCloudConfigured } from '../cloud/supabase'
+import { getSupabase, isCloudConfigured, getSessionUserId } from '../cloud/supabase'
 import { SyncEngine, SyncError, type PushRecord, type RemoteRecord, type SyncRemote, type SyncStatus } from './syncEngine'
 import { hasLiveSessionForUser } from '../../../src/lib/teamSessionsCore'
 
@@ -61,7 +61,7 @@ const INTERVAL_MS = 30_000
  *  building a Realtime/websocket transport (a deliberate decision: this
  *  app has no Realtime infra anywhere, and the confirmed design is to
  *  reuse the existing poll/push sync, just shortened while it matters). */
-const FAST_INTERVAL_MS = 7_500
+const FAST_INTERVAL_MS = 15_000 // was 7.5 s, see the team-session polls (18/11/2026)
 /** After a local change, sync soon but not on every keystroke. */
 const DEBOUNCE_MS = 5_000
 
@@ -87,11 +87,10 @@ export function getSyncStatus(): SyncStatus {
   return status
 }
 
+/** The signed-in user, from the local session (no server round trip:
+ *  this ran on every sync cycle, every 7.5 to 30 seconds). */
 export async function currentUserId(): Promise<string | null> {
-  const token = await getAccessToken()
-  if (!token) return null
-  const { data } = await getSupabase().auth.getUser(token)
-  return data.user?.id ?? null
+  return getSessionUserId()
 }
 
 /** One sync cycle; concurrent calls share the same run. */

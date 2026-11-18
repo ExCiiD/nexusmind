@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, Download, Link2, Loader2, Pencil, Plus, RotateCw, Trash2, Users, X } from 'lucide-react'
+import { CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, Copy, Download, Link2, Loader2, Pencil, Plus, RotateCw, Trash2, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
 import { canEditCalendar as canEditCalendarRole } from '@/lib/permissions'
-import { eventsToICS, type AvailabilityException, type AvailabilityRule, type CalendarEvent, type CalendarSubscription, type CommonFreeWindow } from '@/lib/calendar'
+import { eventsToICS, type AvailabilityException, type AvailabilityRule, type CalendarEvent, type CalendarSubscription, type CommonFreeWindow, type EventResponseStatus } from '@/lib/calendar'
 import { findCommonAvailability } from '@/lib/calendarCore'
 import type { ScrimSummary } from '@/lib/scrims'
 import { WeekGrid, GRID_MODES, type GridMode, type HourRange } from '@/components/Planning/WeekGrid'
-import { KIND_STYLE, availableAnyTime, availableCount, localDateKey } from '@/lib/planningView'
+import {
+  KIND_STYLE, availableAnyTime, canRespond, dayAvailability, localDateKey, planningPlayers, presenceOf, windowLabel, type Presence,
+} from '@/lib/planningView'
 import type { CalendarEventKind } from '@/lib/calendar'
 import { cn } from '@/lib/utils'
 import { EventPopup } from '@/components/Planning/EventPopup'
@@ -49,14 +51,16 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
   const { toast } = useToast()
   const [groupId, setGroupId] = useState(groups[0]?.id ?? null)
   const group = groups.find((g) => g.id === groupId)
-  const canEdit = !!group && canEditCalendarRole(group.myRole)
+  const myMember = group?.members.find((m) => m.userId === myUserId)
+  // The captain has the manager's hand on the planning (permissions.ts).
+  const canEdit = !!group && canEditCalendarRole(group.myRole, myMember?.isCaptain ?? false)
 
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const [events, setEvents] = useState<CalendarEvent[] | null>(null)
   const [scrims, setScrims] = useState<ScrimSummary[]>([])
   const [rules, setRules] = useState<AvailabilityRule[]>([])
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([])
-  const [starterIds, setStarterIds] = useState<string[]>([])
+  const [rosterStarterIds, setRosterStarterIds] = useState<string[]>([])
   const [creatingRange, setCreatingRange] = useState<HourRange | null>(null)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -84,7 +88,7 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
       setScrims(sc.filter((s) => !ev.some((e) => e.linkedScrimId === s.id)))
       setRules(r)
       setExceptions(ex)
-      setStarterIds(shared.roster.filter((m) => m.status === 'starter' && m.userId).map((m) => m.userId as string))
+      setRosterStarterIds(shared.roster.filter((m) => m.status === 'starter' && m.userId).map((m) => m.userId as string))
       setRoster(shared.roster.filter((m) => m.userId).map((m) => ({ userId: m.userId as string, displayName: m.displayName, role: m.role })))
     } catch (err) {
       setEvents([])
@@ -96,7 +100,21 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
 
   if (groups.length === 0) return null
 
-  const commonFree: CommonFreeWindow[] = starterIds.length > 0 ? findCommonAvailability(rules, exceptions, starterIds, toDateKey(weekStart)) : []
+  // Starters of the published roster, or every player of the group when no
+  // roster with linked accounts was published (planningView.planningPlayers).
+  const followed = planningPlayers(rosterStarterIds, group?.members ?? [])
+  const starterIds = followed.ids
+  const respond = async (eventId: string, status: EventResponseStatus, note?: string | null) => {
+    try {
+      await window.api.calendarRespond(eventId, status, note ?? null)
+      toast({ title: t(status === 'confirmed' ? 'planning.respond.youConfirmed' : 'planning.respond.youDeclined'), variant: 'gold' })
+      load()
+    } catch (err) {
+      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
+    }
+  }
+
+  const commonFree: CommonFreeWindow[] =starterIds.length > 0 ? findCommonAvailability(rules, exceptions, starterIds, toDateKey(weekStart)) : []
   const myExceptions = exceptions.filter((e) => e.userId === myUserId)
   const selected = (events ?? []).find((e) => e.id === selectedId) ?? null
   const toMin = (hm: string) => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3, 5))
@@ -290,13 +308,24 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
                 rules={rules}
                 exceptions={exceptions}
                 canEdit={canEdit}
+                myUserId={myUserId}
                 nameOf={nameOf}
+                onRespond={(status, note) => respond(selected.id, status, note)}
                 onClose={() => setSelectedId(null)}
                 onEdit={() => setEditingEvent(selected)}
                 onDelete={deleteSelected}
               />
             )}
           </section>
+
+          <PlayersAvailability
+            ids={starterIds}
+            fromRoster={followed.fromRoster}
+            days={days}
+            rules={rules}
+            exceptions={exceptions}
+            nameOf={(id) => roster.find((r) => r.userId === id)?.displayName || nameOf(id)}
+          />
 
           {/* Legend */}
           <section className="panel-surface rounded-xl border border-hextech-border-dim p-4">
@@ -333,27 +362,43 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
   )
 }
 
-/** Side panel for the event clicked in the grid: details + who is free. */
-function EventInspector({ event, roster, members, rules, exceptions, canEdit, nameOf, onClose, onEdit, onDelete }: {
+const PRESENCE_STYLE: Record<Presence, string> = {
+  confirmed: 'bg-hextech-green/25 text-hextech-green',
+  declined: 'bg-hextech-red/20 text-hextech-red',
+  free: 'bg-hextech-green/10 text-hextech-green/80',
+  unknown: 'bg-amber-400/15 text-amber-300',
+}
+
+/** Side panel for the event clicked in the grid: details, who will be
+ *  there, and — for an attendee — "I'll be there" / "I can't come". */
+function EventInspector({ event, roster, members, rules, exceptions, canEdit, myUserId, nameOf, onRespond, onClose, onEdit, onDelete }: {
   event: CalendarEvent
   roster: Array<{ userId: string; displayName: string; role: string }>
   members: Group['members']
   rules: AvailabilityRule[]
   exceptions: AvailabilityException[]
   canEdit: boolean
+  myUserId: string
   nameOf: (id: string) => string
+  onRespond: (status: EventResponseStatus, note?: string | null) => Promise<void>
   onClose: () => void
   onEdit: () => void
   onDelete: () => void
 }) {
   const { t, i18n } = useTranslation()
   const [confirming, setConfirming] = useState(false)
-  useEffect(() => setConfirming(false), [event.id])
+  const [declining, setDeclining] = useState(false)
+  const [note, setNote] = useState('')
+  const [sending, setSending] = useState(false)
+  useEffect(() => { setConfirming(false); setDeclining(false); setNote('') }, [event.id])
   const accent = (KIND_STYLE[event.kind] ?? KIND_STYLE.other).accent
   const start = new Date(event.startsAt)
-  const startMin = start.getHours() * 60 + start.getMinutes()
-  const durMin = (Date.parse(event.endsAt) - start.getTime()) / 60000
-  const key = toDateKey(start)
+  const mine = event.responses?.find((r) => r.userId === myUserId) ?? null
+  const answerable = canRespond(event, myUserId)
+  const send = async (status: EventResponseStatus, withNote?: string) => {
+    setSending(true)
+    try { await onRespond(status, withNote?.trim() || null); setDeclining(false) } finally { setSending(false) }
+  }
   const ids = event.attendeeUserIds.length ? event.attendeeUserIds
     : members.filter((m) => event.attendeeScope === 'whole_team'
       || (event.attendeeScope === 'all_players' && m.role === 'player')
@@ -374,21 +419,52 @@ function EventInspector({ event, roster, members, rules, exceptions, canEdit, na
         </p>
       </div>
       {event.notes && <p className="whitespace-pre-wrap rounded-md border border-hextech-border-dim bg-hextech-black/30 p-2 text-xs text-hextech-text">{event.notes}</p>}
+      {answerable && (
+        <div className="space-y-2 rounded-md border border-hextech-border-dim bg-hextech-black/30 p-2.5">
+          <div className="font-mono text-[10px] font-bold uppercase tracking-wider text-hextech-text">{t('planning.respond.title')}</div>
+          <div className="flex gap-2">
+            <Button size="sm" variant={mine?.status === 'confirmed' ? 'default' : 'outline'} className="flex-1 gap-1" disabled={sending}
+              onClick={() => send('confirmed')}>
+              <Check className="h-3.5 w-3.5" />{t('planning.respond.confirm')}
+            </Button>
+            <Button size="sm" variant="outline" disabled={sending}
+              className={cn('flex-1 gap-1', mine?.status === 'declined' && 'border-hextech-red/60 bg-hextech-red/15 text-hextech-red hover:text-hextech-red')}
+              onClick={() => setDeclining((v) => !v)}>
+              <X className="h-3.5 w-3.5" />{t('planning.respond.decline')}
+            </Button>
+          </div>
+          {declining && (
+            <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); send('declined', note) }}>
+              <Input autoFocus value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} placeholder={t('planning.respond.notePlaceholder')} className="h-8 text-xs" />
+              <Button size="sm" type="submit" disabled={sending} className="shrink-0">{t('planning.respond.send')}</Button>
+            </form>
+          )}
+          {mine && !declining && (
+            <p className={cn('text-[11px]', mine.status === 'declined' ? 'text-hextech-red' : 'text-hextech-green')}>
+              {mine.status === 'declined' ? t('planning.respond.youDeclined') : t('planning.respond.youConfirmed')}
+              {mine.status === 'declined' && mine.note && <span className="text-hextech-text-dim"> — « {mine.note} »</span>}
+            </p>
+          )}
+        </div>
+      )}
       {ids.length > 0 && (
         <div>
           <div className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-hextech-text">{t('planning.inspector.presence')}</div>
           <ul className="space-y-1">
             {ids.map((id) => {
-              const free = availableCount(rules, exceptions, [id], key, startMin, startMin + Math.min(durMin, 60)) === 1
+              const { presence, note: why } = presenceOf(event, id, rules, exceptions)
               const r = roster.find((x) => x.userId === id)
               return (
-                <li key={id} className="flex items-center justify-between gap-2 text-xs">
-                  <span className="min-w-0 truncate text-hextech-text-bright">
-                    {r?.displayName || nameOf(id)}{r?.role && <span className="ml-1 font-mono text-[10px] uppercase text-hextech-text-dim">{r.role}</span>}
-                  </span>
-                  <span className={cn('shrink-0 rounded px-1.5 font-mono text-[9px] font-bold uppercase', free ? 'bg-hextech-green/20 text-hextech-green' : 'bg-amber-400/15 text-amber-300')}>
-                    {free ? t('planning.inspector.free') : t('planning.inspector.unknown')}
-                  </span>
+                <li key={id} className="text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate text-hextech-text-bright">
+                      {r?.displayName || nameOf(id)}{r?.role && <span className="ml-1 font-mono text-[10px] uppercase text-hextech-text-dim">{r.role}</span>}
+                    </span>
+                    <span className={cn('shrink-0 rounded px-1.5 font-mono text-[9px] font-bold uppercase', PRESENCE_STYLE[presence])}>
+                      {t(`planning.inspector.${presence}`)}
+                    </span>
+                  </div>
+                  {why && <p className="mt-0.5 truncate text-[11px] text-hextech-text-dim" title={why}>« {why} »</p>}
                 </li>
               )
             })}
@@ -402,6 +478,74 @@ function EventInspector({ event, roster, members, rules, exceptions, canEdit, na
         </div>
       )}
     </div>
+  )
+}
+
+/** Each followed player's week: free (with the hours on hover), marked
+ *  unavailable, or nothing said. What the staff reads to plan. */
+function PlayersAvailability({ ids, fromRoster, days, rules, exceptions, nameOf }: {
+  ids: string[]
+  fromRoster: boolean
+  days: Date[]
+  rules: AvailabilityRule[]
+  exceptions: AvailabilityException[]
+  nameOf: (id: string) => string
+}) {
+  const { t, i18n } = useTranslation()
+  const dayName = (d: Date) => d.toLocaleDateString(i18n.language, { weekday: 'short' }).replace('.', '')
+  return (
+    <section className="panel-surface rounded-xl border border-hextech-border-dim p-4">
+      <h3 className="mb-3 flex items-center gap-1.5 border-b border-hextech-border-dim pb-2 font-condensed text-lg font-extrabold uppercase text-hextech-text-bright">
+        <CalendarCheck className="h-4 w-4 shrink-0 text-hextech-gold" />{t('planning.players.title')}
+      </h3>
+      {ids.length === 0 ? (
+        <p className="text-xs text-hextech-text-dim">{t('planning.players.none')}</p>
+      ) : (
+        <table className="w-full table-fixed border-separate border-spacing-[3px] text-xs">
+          <thead>
+            <tr>
+              <th className="w-[38%]" />
+              {days.map((d) => (
+                <th key={d.toISOString()} className="font-mono text-[9px] font-semibold uppercase text-hextech-text-dim">{dayName(d).slice(0, 2)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {ids.map((id) => (
+              <tr key={id}>
+                <td className="truncate pr-1 text-hextech-text-bright" title={nameOf(id)}>{nameOf(id)}</td>
+                {days.map((d) => {
+                  const day = dayAvailability(rules, exceptions, id, toDateKey(d))
+                  const label = day.state === 'free'
+                    ? t('planning.players.free', { day: dayName(d), hours: day.windows.map(windowLabel).join(', ') })
+                    : day.state === 'off'
+                      ? t('planning.players.off', { day: dayName(d) }) + (day.note ? ` — « ${day.note} »` : '')
+                      : t('planning.players.unknown', { day: dayName(d) })
+                  return (
+                    <td key={d.toISOString()} className="p-0">
+                      <div
+                        title={label}
+                        aria-label={`${nameOf(id)} · ${label}`}
+                        className={cn('h-5 rounded-sm border',
+                          day.state === 'free' && 'border-hextech-green/60 bg-hextech-green/35',
+                          day.state === 'off' && 'border-hextech-red/50 bg-hextech-red/25',
+                          day.state === 'unknown' && 'border-dashed border-hextech-border-dim')}
+                      />
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-hextech-text-dim">
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border border-hextech-green/60 bg-hextech-green/35" />{t('planning.players.legendFree')}</span>
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border border-hextech-red/50 bg-hextech-red/25" />{t('planning.players.legendOff')}</span>
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border border-dashed border-hextech-border-dim" />{t('planning.players.legendUnknown')}</span>
+      </div>
+      {ids.length > 0 && <p className="mt-1.5 text-[10px] text-hextech-text-dim">{t(fromRoster ? 'planning.players.fromRoster' : 'planning.players.fromGroup')}</p>}
+    </section>
   )
 }
 

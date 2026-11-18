@@ -1,11 +1,25 @@
 /**
- * Summoner's Rift geometry (15000 × 15000, blue base at (0,0), red base at
- * (14800,14800)). Pure helpers shared by the anomaly detector and the QCM
- * generator. Coordinates are Riot's timeline coordinates.
+ * Summoner's Rift geometry (about 15000 × 15000, blue base at (0,0), red base
+ * at (14800,14800)). Pure helpers shared by the anomaly detector, the QCM
+ * generator and the micro-review minimap. Coordinates are Riot's timeline
+ * coordinates.
  */
 
 export interface Point { x: number; y: number }
 export type TeamId = 100 | 200
+
+/** What Riot's minimap of Summoner's Rift (Data Dragon `img/map/map11.png`)
+ *  covers, in timeline coordinates — Riot's own map data for map 11. */
+export const RIFT_BOUNDS = { minX: -120, minY: -120, maxX: 14870, maxY: 14980 } as const
+
+/** A game position on the minimap, as fractions of its width and height
+ *  (0 to 1, y pointing down as on screen). */
+export function toMinimap(p: Point): { x: number; y: number } {
+  return {
+    x: (p.x - RIFT_BOUNDS.minX) / (RIFT_BOUNDS.maxX - RIFT_BOUNDS.minX),
+    y: 1 - (p.y - RIFT_BOUNDS.minY) / (RIFT_BOUNDS.maxY - RIFT_BOUNDS.minY),
+  }
+}
 
 /** Baron / Herald / Voidgrubs pit (top side of the river). */
 export const BARON_PIT: Point = { x: 5007, y: 10471 }
@@ -107,6 +121,24 @@ export const pitCenter = (pit: Pit): Point => (pit === 'baron' ? BARON_PIT : DRA
 export const OUTER_TURRETS: Record<TeamId, Record<'TOP' | 'MID' | 'BOT', Point>> = {
   100: { TOP: { x: 981, y: 10441 }, MID: { x: 5846, y: 6396 }, BOT: { x: 10504, y: 1029 } },
   200: { TOP: { x: 4318, y: 13875 }, MID: { x: 8955, y: 8510 }, BOT: { x: 13866, y: 4505 } },
+}
+
+/** Every turret, as Riot's BUILDING_KILL events place them: per lane outer,
+ *  inner and inhibitor turrets, then the two nexus turrets. Drawn on the
+ *  minimap; the outer ones are OUTER_TURRETS. */
+export const TURRETS: Record<TeamId, Point[]> = {
+  100: [
+    OUTER_TURRETS[100].TOP, { x: 1512, y: 6699 }, { x: 1169, y: 4287 },
+    OUTER_TURRETS[100].MID, { x: 5048, y: 4812 }, { x: 3651, y: 3696 },
+    OUTER_TURRETS[100].BOT, { x: 6919, y: 1483 }, { x: 4281, y: 1253 },
+    { x: 1748, y: 2270 }, { x: 2177, y: 1807 },
+  ],
+  200: [
+    OUTER_TURRETS[200].TOP, { x: 7943, y: 13411 }, { x: 10481, y: 13650 },
+    OUTER_TURRETS[200].MID, { x: 9767, y: 10113 }, { x: 11134, y: 11207 },
+    OUTER_TURRETS[200].BOT, { x: 13327, y: 8226 }, { x: 13624, y: 10572 },
+    { x: 12611, y: 13084 }, { x: 13052, y: 12612 },
+  ],
 }
 
 // ── Base platform (V6) ──────────────────────────────────────────────────

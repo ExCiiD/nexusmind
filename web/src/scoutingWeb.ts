@@ -1,14 +1,15 @@
 import { sb } from './supabase'
 import * as riot from './riotWeb'
 import { aggregateChampionPlays, winRateOf, kdaOf } from '@/lib/scoutingCore'
-import { computeAutoTier } from '@/lib/threatCore'
+import { tierPool } from '@/lib/threatCore'
 import { championPlaysRole, type Role } from '@/lib/championRoles'
 import { updateRosterMember, upsertPoolEntry, listPoolForMember, removePoolEntry } from '@/lib/teamCore'
 import { RIOT_LIMITS } from '@/lib/riotLimits'
 
 /**
  * Web equivalents of team.ipc.ts's `team:scout-member` / `team:auto-fill-pool`
- * (E14) — same combined-signal tiering (threatCore.computeAutoTier, E12),
+ * (E14) — same tiering (threatCore.tierPool, v2) except the "new" tier,
+ * which the shared tables (team_pool_entries.tier) don't accept yet,
  * same role normalization and KDA computation (scoutingCore.ts), fetched
  * through the browser Riot client (riotWeb.ts) instead of the desktop's
  * cached, rate-limited one. See riotWeb.ts for why that's intentionally
@@ -58,7 +59,7 @@ export async function scoutMemberWeb(
     if (key) masteryByKey.set(key, m.championPoints)
   }
 
-  const { agg, sameRoleCount } = aggregateChampionPlays(matches, matchIds, puuid, { roleOnly, memberRole: member.role })
+  const { agg, sameRoleCount, history } = aggregateChampionPlays(matches, matchIds, puuid, { roleOnly, memberRole: member.role })
 
   // Cleanup: drop previously auto-scouted entries no longer in the fresh
   // scan, same intent as the desktop handler — keeps the pool tight to the
@@ -72,13 +73,19 @@ export async function scoutMemberWeb(
     }
   }
 
+  const entries = Array.from(agg.values())
+  const tiers = tierPool(entries.map((e) => ({
+    championKey: e.championKey, role: e.role, games: e.count, winRate: winRateOf(e),
+    masteryPoints: masteryByKey.get(e.championKey) ?? null, firstPlayedAt: e.firstAt ?? null, lastPlayedAt: e.lastAt ?? null,
+  })), { historyFrom: history.from, historyTo: history.to, allowNew: false })
+
   let upserted = 0
-  for (const entry of agg.values()) {
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]
     const winRate = winRateOf(entry)
     const masteryPoints = masteryByKey.get(entry.championKey) ?? null
     const kda = kdaOf(entry)
-    const tier = computeAutoTier({ games: entry.count, masteryPoints, winRate, isTop5InRole: false })
-    await upsertPoolEntry(sb, member.id, entry.championKey, entry.role, { tier, playRate: entry.count, winRate, masteryPoints, kda })
+    await upsertPoolEntry(sb, member.id, entry.championKey, entry.role, { tier: tiers[i], playRate: entry.count, winRate, masteryPoints, kda })
     upserted++
   }
   return { upserted, totalMatches: matchIds.length, sameRoleCount }
@@ -105,7 +112,7 @@ export async function autoFillPoolWeb(
   const matchIds = allSeasonIds.slice(0, matchCount)
 
   const matches = matchIds.length > 0 ? await riot.getMatchesBulk(matchIds, region) : new Map<string, any>()
-  const { agg } = aggregateChampionPlays(matches, matchIds, puuid, { roleOnly, memberRole: member.role })
+  const { agg, history } = aggregateChampionPlays(matches, matchIds, puuid, { roleOnly, memberRole: member.role })
 
   // Mastery-only champions: attach to every role already played this
   // season, or seed a new entry in the primary role when the champion
@@ -135,21 +142,19 @@ export async function autoFillPoolWeb(
     }
   }
 
-  const top5InRole = new Set(
-    Array.from(agg.values())
-      .filter((e) => e.role === primaryRole && e.count > 0)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-      .map((e) => e.championKey),
-  )
+  const entries = Array.from(agg.values())
+  const tiers = tierPool(entries.map((e) => ({
+    championKey: e.championKey, role: e.role, games: e.count, winRate: e.count > 0 ? winRateOf(e) : null,
+    masteryPoints: e.masteryPoints || null, firstPlayedAt: e.firstAt ?? null, lastPlayedAt: e.lastAt ?? null,
+  })), { historyFrom: history.from, historyTo: history.to, allowNew: false })
 
   let upserted = 0
-  for (const entry of agg.values()) {
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]
     const winRate = entry.count > 0 ? winRateOf(entry) : null
     const kda = entry.count > 0 ? kdaOf(entry) : null
-    const tier = computeAutoTier({ games: entry.count, masteryPoints: entry.masteryPoints || null, winRate, isTop5InRole: top5InRole.has(entry.championKey) })
     const masteryPoints = entry.masteryPoints > 0 ? entry.masteryPoints : null
-    await upsertPoolEntry(sb, member.id, entry.championKey, entry.role, { tier, playRate: entry.count, winRate, masteryPoints, kda })
+    await upsertPoolEntry(sb, member.id, entry.championKey, entry.role, { tier: tiers[i], playRate: entry.count, winRate, masteryPoints, kda })
     upserted++
   }
   return { upserted, matchesUsed: matchIds.length, masteriesUsed: masteries.length }

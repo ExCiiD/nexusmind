@@ -30,6 +30,17 @@ export interface ChampionAgg {
   assists: number
   /** Lifetime mastery points, attached separately (see attachMastery). */
   masteryPoints: number
+  /** First and last analysed game on this champion in this role (ms), when
+   *  the match payloads carry a time — they feed the tier rule's recency. */
+  firstAt?: number | null
+  lastAt?: number | null
+}
+
+/** Start time of a match-v5 game (ms), null when the payload has none. */
+export function matchStartOf(match: any): number | null {
+  const info = match?.info
+  const t = info?.gameStartTimestamp ?? info?.gameCreation ?? info?.gameEndTimestamp
+  return typeof t === 'number' && t > 0 ? t : null
 }
 
 /** Extracts the participant matching `puuid` from a raw match-v5 payload, or null. */
@@ -54,16 +65,23 @@ export function aggregateChampionPlays(
   matchIds: string[],
   puuid: string,
   opts: { roleOnly?: boolean; memberRole?: string } = {},
-): { agg: Map<string, ChampionAgg>; sameRoleCount: number; failed: number } {
+): { agg: Map<string, ChampionAgg>; sameRoleCount: number; failed: number; history: { from: number | null; to: number | null } } {
   const agg = new Map<string, ChampionAgg>()
   let sameRoleCount = 0
   let failed = 0
+  // Span of every analysed game, any role (the tier rule's history bounds).
+  const history = { from: null as number | null, to: null as number | null }
   const memberRole = (opts.memberRole || '').toUpperCase()
   for (const id of matchIds) {
     const match = matches.get(id)
     if (!match) { failed++; continue }
     const p = participantFor(match, puuid)
     if (!p) continue
+    const at = matchStartOf(match)
+    if (at != null) {
+      history.from = history.from == null ? at : Math.min(history.from, at)
+      history.to = history.to == null ? at : Math.max(history.to, at)
+    }
     const role = normalizeRole(p.teamPosition || p.individualPosition)
     if (!role || role === 'UNKNOWN' || role === 'INVALID' || role === 'NONE') continue
     if (opts.roleOnly && memberRole && role !== memberRole) continue
@@ -76,14 +94,19 @@ export function aggregateChampionPlays(
       existing.kills += p.kills ?? 0
       existing.deaths += p.deaths ?? 0
       existing.assists += p.assists ?? 0
+      if (at != null) {
+        existing.firstAt = existing.firstAt == null ? at : Math.min(existing.firstAt, at)
+        existing.lastAt = existing.lastAt == null ? at : Math.max(existing.lastAt, at)
+      }
     } else {
       agg.set(key, {
         championKey: p.championName, role, count: 1, wins: p.win ? 1 : 0,
         kills: p.kills ?? 0, deaths: p.deaths ?? 0, assists: p.assists ?? 0, masteryPoints: 0,
+        firstAt: at, lastAt: at,
       })
     }
   }
-  return { agg, sameRoleCount, failed }
+  return { agg, sameRoleCount, failed, history }
 }
 
 /**

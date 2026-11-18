@@ -453,6 +453,19 @@ export function getCurrentSeasonStart(): Date {
 }
 
 /**
+ * Match IDs played between two Unix timestamps (seconds), every queue —
+ * one call. Used to find the match a provisional game was (strandedGames.ts).
+ */
+export async function getMatchIdsBetween(puuid: string, region: string, startSec: number, endSec: number, count = 20): Promise<string[]> {
+  const routing = REGION_TO_ROUTING[region] || 'europe'
+  const ids = await riotFetchWithRoutingFallback(
+    `/lol/match/v5/matches/by-puuid/${puuid}/ids?startTime=${Math.floor(startSec)}&endTime=${Math.floor(endSec)}&start=0&count=${count}`,
+    routing,
+  )
+  return Array.isArray(ids) ? ids : []
+}
+
+/**
  * Paginated fetch of match IDs for a single queue, since a Unix timestamp.
  * Iterates 100-at-a-time until either an empty page is returned (no more
  * games in window) or maxPages is reached. We expose a hard cap to keep

@@ -120,6 +120,7 @@ const api = {
   collabDeleteGroup: (groupId: string, confirm: 'DELETE') => ipcRenderer.invoke('collab:delete-group', groupId, confirm),
   collabRemoveMember: (groupId: string, userId: string) => ipcRenderer.invoke('collab:remove-member', groupId, userId),
   collabSetCaptain: (groupId: string, userId: string, isCaptain: boolean) => ipcRenderer.invoke('collab:set-captain', groupId, userId, isCaptain),
+  collabSetMemberRole: (groupId: string, userId: string, role: 'coach' | 'manager' | 'analyst' | 'player') => ipcRenderer.invoke('collab:set-member-role', groupId, userId, role),
   teamSessionsListForGroup: (groupId: string) => ipcRenderer.invoke('team-session:list-for-group', groupId),
   teamSessionGetByEvent: (calendarEventId: string) => ipcRenderer.invoke('team-session:get-by-event', calendarEventId),
   teamSessionStart: (id: string, responsibleUserIds: string[], queueFilter: string | null) => ipcRenderer.invoke('team-session:start', id, responsibleUserIds, queueFilter),
@@ -138,6 +139,8 @@ const api = {
   collabSetSharing: (groupId: string, s: { shareReviews: boolean; shareStats: boolean; shareTeam: boolean; shareWellbeing: boolean }) =>
     ipcRenderer.invoke('collab:set-sharing', groupId, s),
   collabPlayerSessions: (playerId: string) => ipcRenderer.invoke('collab:player-sessions', playerId),
+  collabSetMyLook: (look: { iconId: string; bannerId: string }) => ipcRenderer.invoke('collab:set-my-look', look),
+  collabListMemberLooks: () => ipcRenderer.invoke('collab:list-member-looks'),
   collabListComments: (reviewId: string, playerId?: string) => ipcRenderer.invoke('collab:list-comments', reviewId, playerId),
   collabMyOpenComments: () => ipcRenderer.invoke('collab:my-open-comments'),
   collabAddComment: (c: unknown) => ipcRenderer.invoke('collab:add-comment', c),
@@ -168,6 +171,8 @@ const api = {
     ipcRenderer.invoke('devplan:create', groupId, playerId, title, axes, period),
   devPlanSetAxisStatus: (axisId: string, status: 'active' | 'done' | 'dropped') =>
     ipcRenderer.invoke('devplan:set-axis-status', axisId, status),
+  devPlanAddAxis: (planId: string, axis: unknown) => ipcRenderer.invoke('devplan:add-axis', planId, axis),
+  devPlanDeleteAxis: (axisId: string) => ipcRenderer.invoke('devplan:delete-axis', axisId),
   devPlanAddCheckin: (planId: string, note: string) => ipcRenderer.invoke('devplan:add-checkin', planId, note),
   devPlanSetProgress: (axisId: string, input: { playerMarkedDone?: boolean; playerNote?: string | null }) =>
     ipcRenderer.invoke('devplan:set-progress', axisId, input),
@@ -178,6 +183,7 @@ const api = {
   calendarCreateEvent: (groupId: string, input: unknown) => ipcRenderer.invoke('calendar:create-event', groupId, input),
   calendarUpdateEvent: (id: string, input: unknown) => ipcRenderer.invoke('calendar:update-event', id, input),
   calendarDeleteEvent: (id: string) => ipcRenderer.invoke('calendar:delete-event', id),
+  calendarRespond: (eventId: string, status: 'confirmed' | 'declined', note?: string | null) => ipcRenderer.invoke('calendar:respond', eventId, status, note ?? null),
   availabilityListRules: (groupId: string) => ipcRenderer.invoke('availability:list-rules', groupId),
   availabilitySetRule: (groupId: string, input: unknown) => ipcRenderer.invoke('availability:set-rule', groupId, input),
   availabilityDeleteRule: (id: string) => ipcRenderer.invoke('availability:delete-rule', id),
@@ -433,6 +439,7 @@ const api = {
   createTeam: (data: { name: string; tag?: string; logo?: string; notes?: string; isOpponent?: boolean }) =>
     ipcRenderer.invoke('team:create', data),
   updateTeam: (id: string, data: Record<string, unknown>) => ipcRenderer.invoke('team:update', id, data),
+  linkTeamToGroup: (teamId: string, groupId: string | null) => ipcRenderer.invoke('team:link-group', teamId, groupId),
   deleteTeam: (id: string) => ipcRenderer.invoke('team:delete', id),
   addTeamMember: (teamId: string, data: { displayName: string; ign?: string; tagLine?: string; region?: string; role: string; puuid?: string }) =>
     ipcRenderer.invoke('team:add-member', teamId, data),

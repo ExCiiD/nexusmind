@@ -1,11 +1,14 @@
 import { verifyDiscordRequest } from './verify'
-import { jsonResponse, postChannelMessage } from './discordApi'
+import { jsonResponse, postChannelMessage, sendDirectMessage } from './discordApi'
 import { adminClient } from './supabaseAdmin'
 import {
   handleLinkTeam, handleLinkMe, handleSetChannel, handleCalendar, handleScrims, handleCommonAvailability, handleAvailability,
   type Interaction,
 } from './handlers'
-import { listGuildsWithNotifyChannel, markNotifiedOnce, listRecentTeamNotifications, resolveDisplayNames, listRecentAnnouncements } from '../../../src/lib/discordBotCore'
+import {
+  listGuildsWithNotifyChannel, markNotifiedOnce, listRecentTeamNotifications, resolveDisplayNames, listRecentAnnouncements,
+  listPendingDirectNotifications, markDirectMessageSent, directMessageText,
+} from '../../../src/lib/discordBotCore'
 import { listEvents, listAvailabilityRules, listAvailabilityExceptions, findCommonAvailability } from '../../../src/lib/calendarCore'
 import { listScrimsForGroup } from '../../../src/lib/scrimsCore'
 import { getSharedTeam } from '../../../src/lib/teamCore'
@@ -61,6 +64,18 @@ export default {
     const in24h = new Date(now.getTime() + 24 * 3_600_000)
     const weekAhead = new Date(now.getTime() + 7 * 86_400_000)
     const dayAgo = new Date(now.getTime() - 24 * 3_600_000)
+
+    // Direct messages (18 November 2026): a player's absence to an event
+    // (or their return) reaches every staff member who linked Discord with
+    // /link-me, once, whether or not the team linked a server.
+    try {
+      for (const n of await listPendingDirectNotifications(sb, dayAgo.toISOString())) {
+        if (!(await markDirectMessageSent(sb, n.id))) continue
+        if (n.discordUserId) await sendDirectMessage(env.DISCORD_BOT_TOKEN, n.discordUserId, directMessageText(n))
+      }
+    } catch (err) {
+      console.error('[discord-bot] direct messages failed', (err as Error)?.message)
+    }
 
     for (const guild of guilds) {
       if (!guild.notifyChannelId) continue

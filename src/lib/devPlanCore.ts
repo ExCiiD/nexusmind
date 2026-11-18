@@ -86,6 +86,20 @@ export async function createDevPlan(
   return plan.id
 }
 
+/** Staff only (RLS dev_plan_axes_write_staff): adds an axis to an existing
+ *  plan, at a free position (a plan holds 3 at most). */
+export async function addAxis(sb: SupabaseClient, planId: string, axis: NewAxisInput): Promise<void> {
+  const { error } = await sb.from('dev_plan_axes')
+    .insert({ plan_id: planId, fundamental_id: axis.fundamentalId, target_text: axis.targetText, position: axis.position })
+  if (error) fail(error, 'add axis')
+}
+
+/** Staff only: removes an axis of the quarter, with the player's progress on it (cascade). */
+export async function deleteAxis(sb: SupabaseClient, axisId: string): Promise<void> {
+  const { error } = await sb.from('dev_plan_axes').delete().eq('id', axisId)
+  if (error) fail(error, 'delete axis')
+}
+
 export async function setAxisStatus(sb: SupabaseClient, axisId: string, status: AxisStatus): Promise<void> {
   const { error } = await sb.from('dev_plan_axes').update({ status }).eq('id', axisId)
   if (error) fail(error, 'set axis status')

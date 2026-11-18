@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { validatedHandle } from './validate'
-import { getSupabase, getAccessToken } from '../cloud/supabase'
+import { getSupabase, requireSessionUserId } from '../cloud/supabase'
 import * as core from '../../../src/lib/notificationsCore'
 
 /**
@@ -10,11 +10,8 @@ import * as core from '../../../src/lib/notificationsCore'
  */
 
 async function me(): Promise<string> {
-  const token = await getAccessToken()
-  if (!token) throw new Error('LOGIN_REQUIRED')
-  const { data } = await getSupabase().auth.getUser(token)
-  if (!data.user) throw new Error('LOGIN_REQUIRED')
-  return data.user.id
+  // Local session, no server round trip (supabase.ts getSessionUserId).
+  return requireSessionUserId()
 }
 
 const uuid = z.string().uuid()

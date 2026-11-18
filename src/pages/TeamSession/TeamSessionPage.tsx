@@ -30,7 +30,7 @@ const QUEUE_FILTERS: SessionQueueFilter[] = ['flex', 'scrim', 'ranked5', 'all']
 /** While the session isn't ended, mirrors the fast-poll cadence used by
  *  electron/main/sync/syncService.ts so every concerned device reflects a
  *  start/end/objectives change without a manual refresh. */
-const FAST_POLL_MS = 7_500
+const FAST_POLL_MS = 15_000 // was 7.5 s: four such loops overloaded the Supabase disk I/O budget (18/11/2026)
 
 /** Team sessions (Phase 3, Planning rework — docs/PLAN_GESTION_EQUIPE.md
  *  §9): opened from a Planning calendar event (scrim/flex/tournament/

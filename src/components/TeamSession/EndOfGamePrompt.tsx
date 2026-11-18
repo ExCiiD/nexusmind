@@ -11,7 +11,7 @@ import { gamesAwaitingDecision, planEndOfGame } from '@/lib/teamSessionReviewsCo
 import { cn } from '@/lib/utils'
 import type { TeamSession, TeamSessionGame } from '@/lib/teamSessions'
 
-const FAST_POLL_MS = 7_500
+const FAST_POLL_MS = 15_000 // was 7.5 s: four such loops overloaded the Supabase disk I/O budget (18/11/2026)
 const SLOW_POLL_MS = 30_000
 
 interface Pending { session: TeamSession; game: TeamSessionGame; index: number; title: string }

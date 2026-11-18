@@ -6,6 +6,8 @@ import {
   buildPrioPickMap,
   withPrioPicks,
   computeAutoTier,
+  tierPool,
+  adjustedWinRate,
   type ChampionStat,
   type ThreatPoolMember,
 } from '../../src/lib/threatCore'
@@ -156,36 +158,157 @@ describe('buildPrioPickMap / withPrioPicks', () => {
   })
 })
 
-describe('computeAutoTier', () => {
-  it('assigns main for a top-5-in-role champion regardless of other stats', () => {
-    expect(computeAutoTier({ games: 4, masteryPoints: 0, winRate: null, isTop5InRole: true })).toBe('main')
+const DAY = 86_400_000
+const NOW = Date.UTC(2026, 10, 18, 12)
+
+describe('adjustedWinRate', () => {
+  it('pulls small samples toward 50 %', () => {
+    expect(adjustedWinRate(3, 100)).toBeCloseTo(61.5, 1)
+    expect(adjustedWinRate(50, 60)).toBeCloseTo(58.3, 1)
+    expect(adjustedWinRate(0, 50)).toBeNull()
+    expect(adjustedWinRate(10, null)).toBeNull()
+  })
+})
+
+describe('computeAutoTier (v2)', () => {
+  const base = { games: 0, winRate: null as number | null, masteryPoints: null as number | null, now: NOW }
+
+  describe('new', () => {
+    const pick = {
+      ...base, games: 12, winRate: 58,
+      firstPlayedAt: NOW - 9 * DAY, lastPlayedAt: NOW - DAY, historyFrom: NOW - 40 * DAY, historyTo: NOW - DAY,
+    }
+    it('makes a champion picked up 9 days ago and played 12 times "new"', () => {
+      expect(computeAutoTier(pick)).toBe('new')
+    })
+    it('needs 10 games', () => {
+      expect(computeAutoTier({ ...pick, games: 9 })).not.toBe('new')
+    })
+    it('stops after 14 days', () => {
+      expect(computeAutoTier({ ...pick, firstPlayedAt: NOW - 15 * DAY })).not.toBe('new')
+    })
+    it('is not new when the first game sits at the very start of the analysed history', () => {
+      expect(computeAutoTier({ ...pick, historyFrom: NOW - 10 * DAY })).not.toBe('new')
+    })
+    it('is not new when lifetime mastery tells an older story (a comeback)', () => {
+      expect(computeAutoTier({ ...pick, masteryPoints: 250_000 })).not.toBe('new')
+    })
+    it('accepts the mastery those games can explain', () => {
+      expect(computeAutoTier({ ...pick, masteryPoints: 40_000 })).toBe('new')
+    })
+    it('can be switched off (shared cloud tables have no "new" tier)', () => {
+      expect(computeAutoTier({ ...pick, allowNew: false })).not.toBe('new')
+    })
   })
 
-  it('assigns main for high mastery alone', () => {
-    expect(computeAutoTier({ games: 0, masteryPoints: 320_000, winRate: null, isTop5InRole: false })).toBe('main')
+  describe('main', () => {
+    it('takes 12+ games in the top 3 of the role', () => {
+      expect(computeAutoTier({ ...base, games: 30, winRate: 50, rankInRole: 2, roleShare: 0.12 })).toBe('main')
+    })
+    it('takes 12+ games making 15 % of the role, outside the top 3', () => {
+      expect(computeAutoTier({ ...base, games: 14, winRate: 50, rankInRole: 4, roleShare: 0.16 })).toBe('main')
+    })
+    it('takes a quarter of a short history (6+ games)', () => {
+      expect(computeAutoTier({ ...base, games: 7, winRate: 57, rankInRole: 1, roleShare: 0.35 })).toBe('main')
+    })
+    it('takes a crushing adjusted win rate over 20+ games', () => {
+      expect(computeAutoTier({ ...base, games: 22, winRate: 77, rankInRole: 6, roleShare: 0.05 })).toBe('main')
+    })
+    it('no longer makes the most-played champion a main on 4 games', () => {
+      expect(computeAutoTier({ ...base, games: 4, winRate: 75, rankInRole: 1, roleShare: 0.2 })).not.toBe('main')
+    })
+    it('no longer makes a main out of lifetime mastery alone (7 games, 43 %, 450k)', () => {
+      expect(computeAutoTier({ ...base, games: 7, winRate: 43, masteryPoints: 450_000, rankInRole: 6, roleShare: 0.03 })).toBe('comfort')
+    })
+    it('keeps the v1 top-5 flag readable as "top 3" for old callers', () => {
+      expect(computeAutoTier({ ...base, games: 15, winRate: 50, isTop5InRole: true })).toBe('main')
+    })
   })
 
-  it('assigns main for a strong winrate once the sample is large enough', () => {
-    expect(computeAutoTier({ games: 22, masteryPoints: 0, winRate: 68, isTop5InRole: false })).toBe('main')
+  describe('comfort', () => {
+    it('takes 8+ games at an adjusted 50 %', () => {
+      expect(computeAutoTier({ ...base, games: 9, winRate: 56, rankInRole: 5, roleShare: 0.06 })).toBe('comfort')
+    })
+    it('takes 25+ games even with a poor win rate', () => {
+      expect(computeAutoTier({ ...base, games: 27, winRate: 41, rankInRole: 4, roleShare: 0.1 })).toBe('comfort')
+    })
+    it('caps a mastery-only champion at comfort', () => {
+      expect(computeAutoTier({ ...base, games: 0, masteryPoints: 320_000 })).toBe('comfort')
+    })
   })
 
-  it('does not let a tiny winrate sample fake "main"', () => {
-    expect(computeAutoTier({ games: 3, masteryPoints: 0, winRate: 100, isTop5InRole: false })).not.toBe('main')
+  describe('flex and learning', () => {
+    it('makes a losing 8-game record flex, not comfort', () => {
+      expect(computeAutoTier({ ...base, games: 8, winRate: 25, rankInRole: 5, roleShare: 0.05 })).toBe('flex')
+    })
+    it('makes 5 games flex', () => {
+      expect(computeAutoTier({ ...base, games: 5, winRate: 20 })).toBe('flex')
+    })
+    it('makes 100k+ mastery flex', () => {
+      expect(computeAutoTier({ ...base, games: 0, masteryPoints: 120_000 })).toBe('flex')
+    })
+    it('keeps a 3-game 100 % sample in learning', () => {
+      expect(computeAutoTier({ ...base, games: 3, winRate: 100, masteryPoints: 20_000 })).toBe('learning')
+    })
   })
 
-  it('assigns comfort for 50+ games with no other signal', () => {
-    expect(computeAutoTier({ games: 55, masteryPoints: 0, winRate: 48, isTop5InRole: false })).toBe('comfort')
+  describe('recency', () => {
+    const main = { ...base, games: 40, winRate: 55, rankInRole: 1, roleShare: 0.3 }
+    it('drops a main left aside for 30+ days while the player kept playing', () => {
+      expect(computeAutoTier({ ...main, lastPlayedAt: NOW - 45 * DAY, historyTo: NOW - DAY })).toBe('comfort')
+    })
+    it('keeps the main when the player was away from the game too', () => {
+      expect(computeAutoTier({ ...main, lastPlayedAt: NOW - 45 * DAY, historyTo: NOW - 40 * DAY })).toBe('main')
+    })
+    it('drops a stale comfort to flex', () => {
+      expect(computeAutoTier({ ...base, games: 27, winRate: 50, rankInRole: 4, roleShare: 0.1, lastPlayedAt: NOW - 60 * DAY, historyTo: NOW })).toBe('flex')
+    })
+  })
+})
+
+describe('tierPool', () => {
+  it('ranks and shares champions per role', () => {
+    const pool = [
+      { championKey: 'Orianna', role: 'MID', games: 40, winRate: 55, masteryPoints: null },
+      { championKey: 'Azir', role: 'MID', games: 25, winRate: 52, masteryPoints: null },
+      { championKey: 'Ahri', role: 'MID', games: 14, winRate: 50, masteryPoints: null },
+      { championKey: 'Syndra', role: 'MID', games: 13, winRate: 54, masteryPoints: null },
+      { championKey: 'Taliyah', role: 'MID', games: 8, winRate: 50, masteryPoints: null },
+      { championKey: 'Gnar', role: 'TOP', games: 13, winRate: 46, masteryPoints: null },
+    ]
+    expect(tierPool(pool, { now: NOW })).toEqual(['main', 'main', 'main', 'comfort', 'comfort', 'main'])
   })
 
-  it('assigns learning for a low-mastery, zero-game mastery-only entry', () => {
-    expect(computeAutoTier({ games: 0, masteryPoints: 15_000, winRate: null, isTop5InRole: false })).toBe('learning')
+  it('finds a new pick from the entries’ own dates', () => {
+    const pool = [
+      { championKey: 'Viego', role: 'JUNGLE', games: 30, winRate: 55, masteryPoints: null, firstPlayedAt: NOW - 60 * DAY, lastPlayedAt: NOW - DAY },
+      { championKey: 'Ambessa', role: 'JUNGLE', games: 11, winRate: 64, masteryPoints: null, firstPlayedAt: NOW - 5 * DAY, lastPlayedAt: NOW - DAY },
+    ]
+    expect(tierPool(pool, { now: NOW })).toEqual(['main', 'new'])
+    expect(tierPool(pool, { now: NOW, allowNew: false })[1]).not.toBe('new')
+  })
+})
+
+describe('new picks in the Draft Sim', () => {
+  const newStat = (games = 11) => stat({ championKey: 'Hwei', role: 'MID', games, tier: 'new', firstPlayedAt: Date.now() - 6 * DAY })
+
+  it('assesses a recent pickup as "new"', () => {
+    const r = assessMemberChampionThreat(newStat(), { isDominant: false, roleShare: 0.1 })
+    expect(r.level).toBe('new')
+    expect(r.reason).toBe('11g in 6d')
   })
 
-  it('assigns learning instead of flex for a one-off, low-sample champion (noise, not a real pick)', () => {
-    expect(computeAutoTier({ games: 2, masteryPoints: 1000, winRate: 50, isTop5InRole: false })).toBe('learning')
+  it('keeps red above new', () => {
+    const r = assessMemberChampionThreat(newStat(120), { isDominant: false, roleShare: 0.1 })
+    expect(r.level).toBe('red')
   })
 
-  it('falls back to flex once a champion has enough games to be a real (if occasional) pick', () => {
-    expect(computeAutoTier({ games: 12, masteryPoints: 1000, winRate: 40, isTop5InRole: false })).toBe('flex')
+  it('shows new in the team map, below the real threats, and never as a priority pick', () => {
+    // Sael's real main keeps Hwei from being the dominant pick (that alone would be red).
+    const opp = buildTeamThreatMap({ members: [{ displayName: 'Sael', role: 'MID', champPool: [stat({ championKey: 'Syndra', role: 'MID', games: 80 }), newStat()] }] })
+    expect(opp.get('Hwei')?.level).toBe('new')
+    expect(opp.get('Hwei')?.members).toEqual(['Sael'])
+    const mine = buildTeamThreatMap({ members: [{ displayName: 'Nyra', role: 'MID', champPool: [stat({ championKey: 'Hwei', role: 'MID', games: 120 })] }] })
+    expect(buildPrioPickMap(mine, opp).size).toBe(0)
   })
 })

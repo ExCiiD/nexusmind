@@ -24,6 +24,25 @@ export function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 }
 
+/** Opens (or reuses) the direct-message channel with a Discord user and
+ *  posts there. Someone who doesn't accept DMs from this bot's servers just
+ *  doesn't get it: false, logged, never thrown. */
+export async function sendDirectMessage(botToken: string, discordUserId: string, content: string): Promise<boolean> {
+  const res = await fetch('https://discord.com/api/v10/users/@me/channels', {
+    method: 'POST',
+    headers: { Authorization: `Bot ${botToken}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ recipient_id: discordUserId }),
+  })
+  if (!res.ok) {
+    console.error('[discord-bot] open DM failed', res.status, await res.text().catch(() => ''))
+    return false
+  }
+  const channel = (await res.json().catch(() => null)) as { id?: string } | null
+  if (!channel?.id) return false
+  await postChannelMessage(botToken, channel.id, content)
+  return true
+}
+
 /** Posts a message to a channel using the bot token — used by the
  *  reminder cron (not a reply to an interaction, so it needs the full
  *  REST API rather than an interaction response). */

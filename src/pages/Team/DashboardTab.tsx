@@ -221,10 +221,11 @@ export function DashboardTab({ team }: Props) {
         <DashboardLayout
           players={sortedPlayers}
           matchCount={stats.matchCount}
-          basedOnLabel={t('team.dashboard.basedOnFlex', {
-            defaultValue: 'Averages from {{n}} flex games',
-            n: stats.matchCount,
-          })}
+          // Total of the three sources (team:compute-combined-stats): say so,
+          // with what it's made of when the cache knows it.
+          basedOnLabel={stats.sources
+            ? t('team.dashboard.basedOnTotal', { n: stats.matchCount, flex: stats.sources.flex, scrim: stats.sources.scrim, tournament: stats.sources.tournament })
+            : t('team.dashboard.basedOnAll', { n: stats.matchCount })}
         />
       )}
 

@@ -1,4 +1,4 @@
-import { getSupabase, getAccessToken, getSupabaseUrl } from './supabase'
+import { getSupabase, getAccessToken, getSupabaseUrl, requireSessionUserId } from './supabase'
 import { getPrisma } from '../database'
 import * as core from '../../../src/lib/collabCore'
 import * as dashboard from '../../../src/lib/staffDashboardCore'
@@ -18,7 +18,7 @@ import type { MicroVerdictInput, TeamCodexRuleInput } from '../../../src/lib/mic
 import type { DiscussionSubjectType } from '../../../src/lib/discussion'
 import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
 import type { AxisStatus, NewAxisInput, NewDevPlanPeriod } from '../../../src/lib/devPlan'
-import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput, NewEventRequestInput, EventRequestStatus } from '../../../src/lib/calendar'
+import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput, NewEventRequestInput, EventRequestStatus, EventResponseStatus } from '../../../src/lib/calendar'
 import type { AssignmentStatus, NewVodAssignmentInput, NewVodCommentInput, NewVodSessionInput } from '../../../src/lib/vodReview'
 import type { NewWellbeingCheckinInput } from '../../../src/lib/wellbeing'
 import type { NewTaskInput, TaskStatus } from '../../../src/lib/teamOps'
@@ -32,11 +32,8 @@ import type { NewTrialCandidateInput, NewTrialEvaluationInput, TrialStatus } fro
  */
 
 async function me(): Promise<string> {
-  const token = await getAccessToken()
-  if (!token) throw new Error('LOGIN_REQUIRED')
-  const { data } = await getSupabase().auth.getUser(token)
-  if (!data.user) throw new Error('LOGIN_REQUIRED')
-  return data.user.id
+  // Local session, no server round trip (supabase.ts getSessionUserId).
+  return requireSessionUserId()
 }
 
 async function localIdentity(): Promise<core.MemberIdentity> {
@@ -45,22 +42,73 @@ async function localIdentity(): Promise<core.MemberIdentity> {
   return { displayName: u.displayName || u.summonerName, riotId: u.tagLine ? `${u.summonerName}#${u.tagLine}` : u.summonerName }
 }
 
-export const listMyGroups = async () => core.listMyGroups(getSupabase(), await me())
+// ── Profile look (Team → Roster player cards) ──────────────────────────────
+// The profile icon and banner live in the renderer (per-device preference);
+// it reports them here, and they are copied to every membership of the
+// signed-in player: right away, after creating or joining a group, and on
+// the next group listing after a sign-in. One try per look and account,
+// retried after 10 minutes when it failed (offline, or the columns are not
+// there yet).
+
+type Look = { iconId: string; bannerId: string }
+let myLook: Look | null = null
+let lastLookTry: { key: string; at: number; ok: boolean } | null = null
+const LOOK_RETRY_MS = 10 * 60_000
+
+async function signedInUid(): Promise<string | null> {
+  const token = await getAccessToken().catch(() => null)
+  return token ? me().catch(() => null) : null
+}
+
+async function shareLook(uid: string, force = false): Promise<boolean> {
+  if (!myLook) return false
+  const key = `${uid}|${myLook.iconId}|${myLook.bannerId}`
+  if (!force && lastLookTry?.key === key && (lastLookTry.ok || Date.now() - lastLookTry.at < LOOK_RETRY_MS)) return lastLookTry.ok
+  const ok = await core.setMyLook(getSupabase(), uid, myLook).catch(() => false)
+  lastLookTry = { key, at: Date.now(), ok }
+  return ok
+}
+
+export async function setMyLook(look: Look): Promise<boolean> {
+  myLook = look
+  const uid = await signedInUid()
+  return uid ? shareLook(uid) : false
+}
+
+export async function listMemberLooks() {
+  const uid = await signedInUid()
+  return uid ? core.listMemberLooks(getSupabase(), uid) : []
+}
+
+export async function listMyGroups() {
+  const uid = await me()
+  const groups = await core.listMyGroups(getSupabase(), uid)
+  if (groups.length > 0) void shareLook(uid)
+  return groups
+}
 
 export async function createGroup(name: string, kind: GroupKind): Promise<string> {
   const sb = getSupabase()
   const id = await core.createGroup(sb, name, kind)
-  await core.updateMyMemberProfile(sb, await me(), id, await localIdentity()).catch(() => {})
+  const uid = await me()
+  await core.updateMyMemberProfile(sb, uid, id, await localIdentity()).catch(() => {})
+  await shareLook(uid, true)
   return id
 }
 
 export const createInvite = (groupId: string, role: Exclude<GroupRole, 'owner'>, days: number) =>
   core.createInvite(getSupabase(), groupId, role, days)
-export const joinGroup = async (code: string) => core.joinGroup(getSupabase(), code, await localIdentity())
+export async function joinGroup(code: string): Promise<string> {
+  const id = await core.joinGroup(getSupabase(), code, await localIdentity())
+  const uid = await signedInUid()
+  if (uid) await shareLook(uid, true)
+  return id
+}
 export const leaveGroup = async (groupId: string) => core.leaveGroup(getSupabase(), await me(), groupId)
 export const deleteGroup = (groupId: string) => core.deleteGroup(getSupabase(), groupId)
 export const removeMember = (groupId: string, userId: string) => core.removeMember(getSupabase(), groupId, userId)
 export const setCaptain = (groupId: string, userId: string, isCaptain: boolean) => core.setCaptain(getSupabase(), groupId, userId, isCaptain)
+export const setMemberRole = (groupId: string, userId: string, role: Exclude<GroupRole, 'owner'>) => core.setMemberRole(getSupabase(), groupId, userId, role)
 export const setSharing = async (groupId: string, s: GroupSharing) => core.setSharing(getSupabase(), await me(), groupId, s)
 export const getPlayerSessions = (playerId: string) => core.getPlayerSessions(getSupabase(), playerId)
 export const listComments = async (reviewId: string, playerId?: string) =>
@@ -81,6 +129,8 @@ export const devPlanGetForPlayer = (groupId: string, playerId: string) => devPla
 export const devPlanCreate = (groupId: string, playerId: string, title: string, axes: NewAxisInput[], period?: NewDevPlanPeriod) =>
   devPlan.createDevPlan(getSupabase(), groupId, playerId, title, axes, period)
 export const devPlanSetAxisStatus = (axisId: string, status: AxisStatus) => devPlan.setAxisStatus(getSupabase(), axisId, status)
+export const devPlanAddAxis = (planId: string, axis: NewAxisInput) => devPlan.addAxis(getSupabase(), planId, axis)
+export const devPlanDeleteAxis = (axisId: string) => devPlan.deleteAxis(getSupabase(), axisId)
 export const devPlanAddCheckin = (planId: string, note: string) => devPlan.addCheckin(getSupabase(), planId, note)
 export const devPlanSetProgress = (axisId: string, input: { playerMarkedDone?: boolean; playerNote?: string | null }) =>
   devPlan.setProgress(getSupabase(), axisId, input)
@@ -90,6 +140,7 @@ export const calendarGetEvent = (id: string) => calendar.getEvent(getSupabase(),
 export const calendarCreateEvent = (groupId: string, input: NewEventInput) => calendar.createEvent(getSupabase(), groupId, input)
 export const calendarUpdateEvent = (id: string, input: NewEventInput) => calendar.updateEvent(getSupabase(), id, input)
 export const calendarDeleteEvent = (id: string) => calendar.deleteEvent(getSupabase(), id)
+export const calendarRespond = (eventId: string, status: EventResponseStatus, note?: string | null) => calendar.respondToEvent(getSupabase(), eventId, status, note)
 export const availabilityListRules = (groupId: string) => calendar.listAvailabilityRules(getSupabase(), groupId)
 export const availabilitySetRule = (groupId: string, input: NewAvailabilityRuleInput) => calendar.setAvailabilityRule(getSupabase(), groupId, input)
 export const availabilityDeleteRule = (id: string) => calendar.deleteAvailabilityRule(getSupabase(), id)

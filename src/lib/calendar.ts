@@ -25,9 +25,22 @@ export interface CalendarEvent {
   attendeeScope: AttendeeScope
   /** The resolved, snapshotted attendee list (see AttendeeScope doc above). */
   attendeeUserIds: string[]
+  /** Who said they'll be there or can't come (calendar_event_responses). */
+  responses?: EventResponse[]
   createdBy: string
   createdAt: string
   updatedAt: string
+}
+
+export type EventResponseStatus = 'confirmed' | 'declined'
+
+/** A player's answer to an event, set with respond_to_calendar_event. */
+export interface EventResponse {
+  userId: string
+  status: EventResponseStatus
+  /** Why they can't come, when they said. */
+  note: string | null
+  respondedAt: string
 }
 
 export interface NewEventInput {
@@ -175,6 +188,8 @@ export interface CalendarApi {
   calendarCreateEvent: (groupId: string, input: NewEventInput) => Promise<string>
   calendarUpdateEvent: (id: string, input: NewEventInput) => Promise<void>
   calendarDeleteEvent: (id: string) => Promise<void>
+  /** "I'll be there" / "I can't come" — management is told about an absence. */
+  calendarRespond: (eventId: string, status: EventResponseStatus, note?: string | null) => Promise<void>
   availabilityListRules: (groupId: string) => Promise<AvailabilityRule[]>
   availabilitySetRule: (groupId: string, input: NewAvailabilityRuleInput) => Promise<string>
   availabilityDeleteRule: (id: string) => Promise<void>

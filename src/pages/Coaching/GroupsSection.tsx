@@ -9,15 +9,61 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group, type GroupKind, type GroupRole } from '@/lib/collab'
 import { cn } from '@/lib/utils'
-import { isLegacyStaff } from '@/lib/permissions'
+import { ASSIGNABLE_ROLES, canChangeRoles, isLegacyStaff } from '@/lib/permissions'
+import { useActiveGroupStore } from '@/store/useActiveGroupStore'
 
 interface Props {
   groups: Group[]
+  /** The group picked in the page header: the one shown in detail. */
+  active: Group | null
   myUserId: string
   reload: () => Promise<void>
 }
 
-export function GroupsSection({ groups, myUserId, reload }: Props) {
+/** Every group in one block: three rows visible, the rest scrolls. A row
+ *  picks the group for the whole page (and Stats collectives). */
+function GroupList({ groups, active }: { groups: Group[]; active: Group | null }) {
+  const { t } = useTranslation()
+  const setGroupId = useActiveGroupStore((s) => s.setGroupId)
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Users className="h-5 w-5 text-hextech-gold" />{t('coaching.groups.mine', { count: groups.length })}
+        </CardTitle>
+        <CardDescription>{t('coaching.groups.mineDesc')}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {/* 3 rows of 3rem + 2 gaps of 0.375rem; more groups scroll inside. */}
+        <ul className="max-h-[9.75rem] space-y-1.5 overflow-y-auto pr-1">
+          {groups.map((g) => {
+            const on = g.id === active?.id
+            return (
+              <li key={g.id}>
+                <button
+                  type="button"
+                  onClick={() => setGroupId(g.id)}
+                  aria-pressed={on}
+                  className={cn(
+                    'flex h-12 w-full items-center gap-3 rounded-lg border px-3 text-left text-sm transition-colors',
+                    on ? 'border-hextech-gold bg-hextech-gold/10' : 'border-hextech-border-dim hover:bg-hextech-elevated',
+                  )}
+                >
+                  <span className={cn('min-w-0 flex-1 truncate font-medium', on ? 'text-hextech-gold-bright' : 'text-hextech-text-bright')}>{g.name}</span>
+                  <span className="shrink-0 rounded bg-hextech-elevated px-2 py-0.5 text-xs text-hextech-text-dim">{t(`coaching.kinds.${g.kind}`)}</span>
+                  <span className="shrink-0 rounded bg-hextech-gold/10 px-2 py-0.5 text-xs text-hextech-gold">{t(`coaching.roles.${g.myRole}`)}</span>
+                  <span className="w-20 shrink-0 text-right font-mono text-[11px] text-hextech-text-dim">{t('coaching.groups.memberCount', { count: g.members.length })}</span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </CardContent>
+    </Card>
+  )
+}
+
+export function GroupsSection({ groups, active, myUserId, reload }: Props) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const [name, setName] = useState('')
@@ -97,7 +143,10 @@ export function GroupsSection({ groups, myUserId, reload }: Props) {
         </CardContent>
       </Card>
 
-      {groups.map((g) => {
+      {groups.length > 0 && <GroupList groups={groups} active={active} />}
+
+      {/* The group picked (here or in the page header) in detail. */}
+      {active && [active].map((g) => {
         // Inviting (create_group_invite RPC) is still is_group_staff-gated —
         // a manager would see this UI but get a server-side 403 otherwise.
         const staff = isLegacyStaff(g.myRole)
@@ -119,7 +168,24 @@ export function GroupsSection({ groups, myUserId, reload }: Props) {
                       {m.userId === myUserId && <span className="ml-1 text-xs text-hextech-text-dim">({t('coaching.comments.you')})</span>}
                     </span>
                     <span className="flex items-center gap-2 text-xs text-hextech-text-dim">
-                      {roleLabel(m.role)}
+                      {canChangeRoles(g.myRole) && m.role !== 'owner' && m.userId !== myUserId ? (
+                        <Select
+                          value={m.role}
+                          disabled={busy !== null}
+                          onValueChange={(v) => run(`role-${m.userId}`, async () => {
+                            await window.api.collabSetMemberRole(g.id, m.userId, v as Exclude<GroupRole, 'owner'>)
+                            await reload()
+                            toast({ title: t('coaching.groups.roleChanged', { name: m.displayName || m.riotId || '—', role: roleLabel(v as GroupRole) }) })
+                          })}
+                        >
+                          <SelectTrigger className="h-7 w-32 text-xs" aria-label={t('coaching.groups.changeRole', { name: m.displayName || m.riotId || '—' })}>
+                            {busy === `role-${m.userId}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <SelectValue />}
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ASSIGNABLE_ROLES.map((r) => <SelectItem key={r} value={r}>{roleLabel(r)}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      ) : roleLabel(m.role)}
                       {g.myRole === 'owner' ? (
                         <button
                           title={m.isCaptain ? t('coaching.groups.unsetCaptain') : t('coaching.groups.setCaptain')}

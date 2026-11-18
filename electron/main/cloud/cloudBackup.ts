@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
-import { getSupabase, getAccessToken } from './supabase'
+import { getSupabase, getAccessToken, requireSessionUserId } from './supabase'
 import { getPrisma } from '../database'
 import {
   BACKUP_VERSION,
@@ -45,11 +45,8 @@ function setLastCloudBackupAt(iso: string): void {
 }
 
 async function requireUserId(): Promise<string> {
-  const token = await getAccessToken()
-  if (!token) throw new Error('LOGIN_REQUIRED')
-  const { data } = await getSupabase().auth.getUser(token)
-  if (!data.user) throw new Error('LOGIN_REQUIRED')
-  return data.user.id
+  // Local session, no server round trip (supabase.ts getSessionUserId).
+  return requireSessionUserId()
 }
 
 export async function createCloudBackup(): Promise<CloudBackupRow> {

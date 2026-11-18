@@ -17,6 +17,15 @@ export interface GroupMember {
   joinedAt: string
 }
 
+/** The profile icon and banner a group member picked on their Profile page
+ *  (ids from src/lib/profile.ts), shown on the roster's player cards. */
+export interface MemberLook {
+  userId: string
+  riotId: string | null
+  iconId: string | null
+  bannerId: string | null
+}
+
 export interface GroupSharing {
   shareReviews: boolean
   shareStats: boolean
@@ -101,8 +110,14 @@ export interface CollabApi extends DevPlanApi {
   collabRemoveMember: (groupId: string, userId: string) => Promise<void>
   /** Owner-only; see src/lib/permissions.ts for what the flag grants. */
   collabSetCaptain: (groupId: string, userId: string, isCaptain: boolean) => Promise<void>
+  /** Owner-only; the owner's own role never changes from here. */
+  collabSetMemberRole: (groupId: string, userId: string, role: Exclude<GroupRole, 'owner'>) => Promise<void>
   collabSetSharing: (groupId: string, s: GroupSharing) => Promise<void>
   collabPlayerSessions: (playerId: string) => Promise<PlayerSessionView[]>
+  /** Shares my profile icon and banner with my groups; false when signed out or refused. */
+  collabSetMyLook: (look: { iconId: string; bannerId: string }) => Promise<boolean>
+  /** Looks of everyone in my groups (player cards); empty when signed out. */
+  collabListMemberLooks: () => Promise<MemberLook[]>
   collabListComments: (reviewId: string, playerId?: string) => Promise<ReviewComment[]>
   collabMyOpenComments: () => Promise<ReviewComment[]>
   collabAddComment: (c: {
@@ -122,7 +137,7 @@ export interface CollabApi extends DevPlanApi {
 /** Stable error codes thrown by the main process → i18n keys. */
 export function collabErrorKey(err: unknown): string {
   const msg = (err as Error)?.message ?? ''
-  for (const code of ['INVITE_INVALID', 'FORBIDDEN', 'TOO_MANY_GROUPS', 'LOGIN_REQUIRED']) {
+  for (const code of ['INVITE_INVALID', 'NOT_CONCERNED', 'EVENT_OVER', 'FORBIDDEN', 'TOO_MANY_GROUPS', 'LOGIN_REQUIRED']) {
     if (msg.includes(code)) return `coaching.errors.${code}`
   }
   if (msg.includes('invalid code')) return 'coaching.errors.INVITE_INVALID'

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
-import { Search, X, Trash2, Wand2, Loader2 } from 'lucide-react'
+import { Search, X, Trash2, Wand2, Loader2, Info, Pin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAllChampions } from '@/hooks/useAllChampions'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
@@ -11,6 +11,8 @@ import type { Team, TeamMember, ChampionPoolEntry } from '@/lib/ipc'
 import { compareByRole } from '@/lib/championRoles'
 import { ScopeDialog, type FetchScope } from '@/components/team/ScopeDialog'
 import { useBackgroundJobsStore } from '@/store/useBackgroundJobsStore'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { TIERS, isTier, type Tier } from '@/lib/threatCore'
 
 export type Role = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'
 const ROLES: Role[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
@@ -25,12 +27,13 @@ const ROLE_ICON_URLS: Record<Role, string> = {
   SUPPORT: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-utility.png',
 }
 
-const TIERS = ['main', 'comfort', 'flex', 'learning'] as const
-type Tier = (typeof TIERS)[number]
+// The five tiers and their rules live in src/lib/threatCore.ts (shared with
+// auto-fill, scouting and the Draft Sim).
 
 // Tier visual identity — used for both compact pills and the hover picker.
 const TIER_COLORS: Record<Tier, { bg: string; border: string; text: string; ring: string; glow: string }> = {
   main:     { bg: 'bg-emerald-500/20', border: 'border-emerald-500', text: 'text-emerald-300', ring: 'ring-emerald-500/50', glow: 'shadow-emerald-500/40' },
+  new:      { bg: 'bg-teal-400/20',    border: 'border-teal-300',    text: 'text-teal-200',    ring: 'ring-teal-300/50',    glow: 'shadow-teal-400/40' },
   comfort:  { bg: 'bg-blue-500/20',    border: 'border-blue-500',    text: 'text-blue-300',    ring: 'ring-blue-500/50',    glow: 'shadow-blue-500/40' },
   flex:     { bg: 'bg-yellow-500/20',  border: 'border-yellow-500',  text: 'text-yellow-300',  ring: 'ring-yellow-500/50',  glow: 'shadow-yellow-500/40' },
   learning: { bg: 'bg-zinc-500/20',    border: 'border-zinc-500',    text: 'text-zinc-300',    ring: 'ring-zinc-500/50',    glow: 'shadow-zinc-500/40' },
@@ -422,17 +425,37 @@ export function ChampPoolTab({ team, onChange }: Props) {
       </Card>
 
       {/* Tier legend — gives at-a-glance meaning to the colored borders */}
+      <TooltipProvider delayDuration={150}>
       <div className="flex items-center gap-2 text-[10px] text-hextech-text-dim px-1">
         <span className="uppercase tracking-wider font-semibold">{t('team.pool.legend', { defaultValue: 'Tiers' })}:</span>
         {TIERS.map((tier) => (
-          <span key={tier} className={cn('px-2 py-0.5 rounded border', TIER_COLORS[tier].bg, TIER_COLORS[tier].border, TIER_COLORS[tier].text, 'font-semibold uppercase')}>
-            {tier}
-          </span>
+          <Tooltip key={tier}>
+            <TooltipTrigger asChild>
+              <button type="button" className={cn('px-2 py-0.5 rounded border cursor-help focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold', TIER_COLORS[tier].bg, TIER_COLORS[tier].border, TIER_COLORS[tier].text, 'font-semibold uppercase')}>
+                {tier}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="start" className="max-w-xs px-3 py-2 leading-relaxed">
+              {t(`team.pool.tierHelp.${tier}`)}
+            </TooltipContent>
+          </Tooltip>
         ))}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" className="inline-flex items-center gap-1 cursor-help hover:text-hextech-text-bright focus-visible:text-hextech-text-bright focus-visible:outline-none">
+              <Info className="h-3 w-3" aria-hidden />
+              {t('team.pool.tierRules')}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="start" className="max-w-sm px-3 py-2 leading-relaxed">
+            {t('team.pool.tierHelpNote')}
+          </TooltipContent>
+        </Tooltip>
         <span className="ml-auto italic">
           {t('team.pool.clickHint', { defaultValue: 'Click a champion to assign a tier · Esc to close' })}
         </span>
       </div>
+      </TooltipProvider>
 
       {/* Main layout: champion grid takes most space, pool sidebar is sticky */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-3">
@@ -469,6 +492,7 @@ export function ChampPoolTab({ team, onChange }: Props) {
             to the DB. The total count reflects only this role's entries
             so users always see "what does this player play as <role>". */}
         <Card className="p-3 max-h-[78vh] overflow-y-auto space-y-3 xl:sticky xl:top-3">
+          <TooltipProvider delayDuration={150}>
           {(() => {
             const roleEntries = pool.filter((p) => p.role === roleFilter)
             return (
@@ -493,13 +517,20 @@ export function ChampPoolTab({ team, onChange }: Props) {
                   const tierEntries = roleEntries.filter((p) => p.tier === tier)
                   return (
                     <div key={tier}>
-                      <div className={cn(
-                        'px-2 py-1 rounded border text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center justify-between',
-                        TIER_COLORS[tier].bg, TIER_COLORS[tier].border, TIER_COLORS[tier].text,
-                      )}>
-                        <span>{tier}</span>
-                        <span className="opacity-70">({tierEntries.length})</span>
-                      </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div tabIndex={0} className={cn(
+                            'px-2 py-1 rounded border text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center justify-between cursor-help focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold',
+                            TIER_COLORS[tier].bg, TIER_COLORS[tier].border, TIER_COLORS[tier].text,
+                          )}>
+                            <span>{tier}</span>
+                            <span className="opacity-70">({tierEntries.length})</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" align="start" className="max-w-xs px-3 py-2 leading-relaxed">
+                          {t(`team.pool.tierHelp.${tier}`)}
+                        </TooltipContent>
+                      </Tooltip>
                       {tierEntries.length === 0 ? (
                         <p className="text-[10px] text-hextech-text-dim italic px-2">{t('team.pool.empty', { defaultValue: 'Empty' })}</p>
                       ) : (
@@ -515,6 +546,7 @@ export function ChampPoolTab({ team, onChange }: Props) {
               </>
             )
           })()}
+          </TooltipProvider>
         </Card>
       </div>
 
@@ -540,7 +572,7 @@ function ChampionCard({
   onRemove: () => void
 }) {
   const iconUrl = useChampionIconUrl(champion.key)
-  const tier = existing?.tier as Tier | undefined
+  const tier: Tier | undefined = isTier(existing?.tier) ? existing.tier : undefined
   const colors = tier ? TIER_COLORS[tier] : null
 
   return (
@@ -720,7 +752,14 @@ function MemberRolePicker({
 }
 
 function PoolRow({ entry, onRemove }: { entry: ChampionPoolEntry; onRemove: () => void }) {
+  const { t } = useTranslation()
   const iconUrl = useChampionIconUrl(entry.championKey)
+  // A tier differing from the one the rule computed was picked by hand:
+  // auto-fill keeps it (electron/main/ipc/team.ipc.ts writeTieredPool).
+  const handPicked = !!entry.autoTier && entry.autoTier !== entry.tier
+  const newSinceDays = entry.tier === 'new' && entry.firstPlayedAt
+    ? Math.max(1, Math.round((Date.now() - new Date(entry.firstPlayedAt).getTime()) / 86_400_000))
+    : null
   return (
     <div className="flex items-center gap-2 bg-white/5 rounded px-2 py-1 group hover:bg-white/10 transition-colors">
       {iconUrl && <img src={iconUrl} alt={entry.championKey} className="h-7 w-7 rounded" />}
@@ -730,8 +769,14 @@ function PoolRow({ entry, onRemove }: { entry: ChampionPoolEntry; onRemove: () =
           {entry.role}
           {entry.playRate !== null && entry.playRate !== undefined && ` · ${entry.playRate}g`}
           {entry.winRate !== null && entry.winRate !== undefined && ` · ${entry.winRate}% WR`}
+          {newSinceDays !== null && ` · ${t('team.pool.newSince', { count: newSinceDays })}`}
         </p>
       </div>
+      {handPicked && (
+        <span title={t('team.pool.handPicked', { tier: entry.autoTier })} className="text-hextech-text-dim">
+          <Pin className="h-3 w-3" aria-label={t('team.pool.handPicked', { tier: entry.autoTier })} />
+        </span>
+      )}
       <button onClick={onRemove} className="opacity-0 group-hover:opacity-100 text-hextech-text-dim hover:text-red-400 transition-all">
         <Trash2 className="h-3 w-3" />
       </button>

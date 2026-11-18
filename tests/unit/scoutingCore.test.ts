@@ -29,6 +29,19 @@ describe('aggregateChampionPlays', () => {
     expect(failed).toBe(0)
   })
 
+  it('records each champion’s first and last game, and the span of every analysed game', () => {
+    const at = (t: number, m: ReturnType<typeof match>) => ({ info: { ...m.info, gameStartTimestamp: t } })
+    const matches = new Map([
+      ['m1', at(3_000, match('P1', 'Renekton', 'TOP', true))],
+      ['m2', at(1_000, match('P1', 'Renekton', 'TOP', false))],
+      ['m3', at(500, match('P1', 'Jinx', 'BOTTOM', true))],
+    ])
+    const { agg, history } = aggregateChampionPlays(matches, ['m1', 'm2', 'm3'], 'P1', { roleOnly: true, memberRole: 'TOP' })
+    expect(agg.get('Renekton|TOP')).toMatchObject({ firstAt: 1_000, lastAt: 3_000 })
+    // The off-role game is not counted, but it still tells how far back the data looks.
+    expect(history).toEqual({ from: 500, to: 3_000 })
+  })
+
   it('normalizes Riot MIDDLE/BOTTOM/UTILITY to MID/ADC/SUPPORT', () => {
     const matches = new Map([['m1', match('P1', 'Azir', 'MIDDLE', true)]])
     const { agg } = aggregateChampionPlays(matches, ['m1'], 'P1')

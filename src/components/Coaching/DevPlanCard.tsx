@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ClipboardList, Loader2, Plus } from 'lucide-react'
+import { ClipboardList, Loader2, Plus, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -71,7 +71,11 @@ export function DevPlanCard({ groupId, playerId, mode }: Props) {
               {plan.axes.map((axis) => (
                 <AxisRow key={axis.id} axis={axis} mode={mode} label={labelOf(axis.fundamentalId)} onChanged={load} />
               ))}
+              {plan.axes.length === 0 && <p className="text-sm text-hextech-text-dim">{t('devPlan.noAxes', { defaultValue: 'No axis this quarter.' })}</p>}
             </div>
+            {mode === 'staff' && plan.axes.length < 3 && (
+              <AddAxisForm planId={plan.id} usedPositions={plan.axes.map((a) => a.position)} allFundamentals={allFundamentals} onAdded={load} />
+            )}
             <CheckinSection planId={plan.id} checkins={plan.checkins} locale={i18n.language} mode={mode} onAdded={load} />
           </>
         )}
@@ -85,6 +89,18 @@ function AxisRow({ axis, mode, label, onChanged }: { axis: DevPlan['axes'][numbe
   const { toast } = useToast()
   const [note, setNote] = useState(axis.progress?.playerNote ?? '')
   const [saving, setSaving] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  const remove = async () => {
+    if (!confirmingDelete) { setConfirmingDelete(true); return }
+    try {
+      await window.api.devPlanDeleteAxis(axis.id)
+      onChanged()
+    } catch (err) {
+      setConfirmingDelete(false)
+      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
+    }
+  }
 
   const setStatus = async (status: 'active' | 'done' | 'dropped') => {
     try {
@@ -124,14 +140,21 @@ function AxisRow({ axis, mode, label, onChanged }: { axis: DevPlan['axes'][numbe
           <p className="text-sm text-hextech-text">{axis.targetText}</p>
         </div>
         {mode === 'staff' ? (
-          <Select value={axis.status} onValueChange={(v) => setStatus(v as 'active' | 'done' | 'dropped')}>
-            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">{t('devPlan.status.active', { defaultValue: 'Active' })}</SelectItem>
-              <SelectItem value="done">{t('devPlan.status.done', { defaultValue: 'Done' })}</SelectItem>
-              <SelectItem value="dropped">{t('devPlan.status.dropped', { defaultValue: 'Dropped' })}</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select value={axis.status} onValueChange={(v) => setStatus(v as 'active' | 'done' | 'dropped')}>
+              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">{t('devPlan.status.active', { defaultValue: 'Active' })}</SelectItem>
+                <SelectItem value="done">{t('devPlan.status.done', { defaultValue: 'Done' })}</SelectItem>
+                <SelectItem value="dropped">{t('devPlan.status.dropped', { defaultValue: 'Dropped' })}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button size="sm" variant="outline" onClick={remove} onBlur={() => setConfirmingDelete(false)}
+              aria-label={t('devPlan.deleteAxis', { defaultValue: 'Delete this axis' })}
+              className={cn('gap-1 text-hextech-red hover:text-hextech-red', !confirmingDelete && 'px-2')}>
+              <Trash2 className="h-3.5 w-3.5" />{confirmingDelete && t('devPlan.confirmDeleteAxis', { defaultValue: 'Delete?' })}
+            </Button>
+          </div>
         ) : (
           <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', axis.status === 'done' ? 'bg-hextech-green/10 text-hextech-green' : axis.status === 'dropped' ? 'bg-hextech-text-dim/10 text-hextech-text-dim' : 'bg-hextech-gold/10 text-hextech-gold')}>
             {t(`devPlan.status.${axis.status}`)}
@@ -154,6 +177,54 @@ function AxisRow({ axis, mode, label, onChanged }: { axis: DevPlan['axes'][numbe
       {mode === 'staff' && axis.progress?.playerNote && (
         <p className="rounded bg-hextech-elevated/30 p-2 text-xs italic text-hextech-text-dim">{axis.progress.playerNote}</p>
       )}
+    </div>
+  )
+}
+
+/** Staff: a new axis on an existing plan, at the first free position. */
+function AddAxisForm({ planId, usedPositions, allFundamentals, onAdded }: {
+  planId: string; usedPositions: number[]; allFundamentals: { id: string; label: string }[]; onAdded: () => void
+}) {
+  const { t } = useTranslation()
+  const { toast } = useToast()
+  const [open, setOpen] = useState(false)
+  const [fundamentalId, setFundamentalId] = useState('')
+  const [targetText, setTargetText] = useState('')
+  const [adding, setAdding] = useState(false)
+  const position = ([1, 2, 3] as const).find((p) => !usedPositions.includes(p))
+
+  if (!position) return null
+  if (!open) {
+    return <Button size="sm" variant="outline" onClick={() => setOpen(true)}><Plus className="mr-1 h-3.5 w-3.5" />{t('devPlan.addAxis', { defaultValue: 'Add axis' })}</Button>
+  }
+
+  const add = async () => {
+    setAdding(true)
+    try {
+      await window.api.devPlanAddAxis(planId, { fundamentalId, targetText: targetText.trim(), position })
+      setOpen(false); setFundamentalId(''); setTargetText('')
+      onAdded()
+    } catch (err) {
+      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2 rounded-lg border border-dashed border-hextech-border-dim p-3">
+      <Select value={fundamentalId} onValueChange={setFundamentalId}>
+        <SelectTrigger className="w-56"><SelectValue placeholder={t('devPlan.pickFundamental', { defaultValue: 'Pick a fundamental' })} /></SelectTrigger>
+        <SelectContent>
+          {allFundamentals.map((f) => <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <Input value={targetText} onChange={(e) => setTargetText(e.target.value)} maxLength={500} className="flex-1 min-w-[12rem]"
+        placeholder={t('devPlan.targetPlaceholder', { defaultValue: 'Target for this axis…' })} />
+      <Button size="sm" onClick={add} disabled={adding || !fundamentalId || !targetText.trim()}>
+        {adding ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-1 h-3.5 w-3.5" />}{t('devPlan.addAxis', { defaultValue: 'Add axis' })}
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>{t('common.cancel', { defaultValue: 'Cancel' })}</Button>
     </div>
   )
 }

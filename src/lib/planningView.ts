@@ -4,7 +4,7 @@
  *   - the title the popup pre-fills from the people concerned;
  *   - inline autocomplete for the title field (Tab / Enter to accept).
  */
-import type { AvailabilityException, AvailabilityRule, AttendeeScope, CalendarEventKind } from './calendar'
+import type { AvailabilityException, AvailabilityRule, AttendeeScope, CalendarEvent, CalendarEventKind } from './calendar'
 import type { GroupMember } from './collab'
 
 const toMinutes = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
@@ -31,6 +31,79 @@ export function availableCount(rules: AvailabilityRule[], exceptions: Availabili
 /** How many of `userIds` have any availability at all on `date`. */
 export function availableAnyTime(rules: AvailabilityRule[], exceptions: AvailabilityException[], userIds: string[], date: string): number {
   return userIds.filter((uid) => userWindows(rules, exceptions, uid, date).length > 0).length
+}
+
+/* ─── Whose availability the planning follows ─── */
+
+/**
+ * The players the planning counts: the starters of the roster published to
+ * the group when they're linked to an account, otherwise every member with
+ * the player role. Without that fallback a group that never published its
+ * roster showed no availability at all, even to its owner.
+ */
+export function planningPlayers(linkedStarterIds: string[], members: GroupMember[]): { ids: string[]; fromRoster: boolean } {
+  if (linkedStarterIds.length > 0) return { ids: linkedStarterIds, fromRoster: true }
+  return { ids: members.filter((m) => m.role === 'player').map((m) => m.userId), fromRoster: false }
+}
+
+export type DayAvailability =
+  | { state: 'free'; windows: Array<{ start: number; end: number }> }
+  | { state: 'off'; note: string | null }
+  | { state: 'unknown' }
+
+/** One player's day: free (with windows), marked unavailable, or nothing said. */
+export function dayAvailability(rules: AvailabilityRule[], exceptions: AvailabilityException[], userId: string, date: string): DayAvailability {
+  const ex = exceptions.find((e) => e.userId === userId && e.date === date)
+  if (ex && !ex.available) return { state: 'off', note: ex.note }
+  const windows = userWindows(rules, exceptions, userId, date)
+  return windows.length > 0 ? { state: 'free', windows } : { state: 'unknown' }
+}
+
+/** "18:00–22:00" for a window in minutes. */
+export function windowLabel(w: { start: number; end: number }): string {
+  const hm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`
+  return `${hm(w.start)}–${hm(w.end)}`
+}
+
+/* ─── Presence at an event ─── */
+
+export type Presence = 'confirmed' | 'declined' | 'free' | 'unknown'
+
+/** What the planning knows of one attendee: their answer first, otherwise
+ *  whether their availability covers the start of the event. */
+export function presenceOf(
+  event: CalendarEvent,
+  userId: string,
+  rules: AvailabilityRule[],
+  exceptions: AvailabilityException[],
+): { presence: Presence; note: string | null } {
+  const answer = event.responses?.find((r) => r.userId === userId)
+  if (answer) return { presence: answer.status, note: answer.note }
+  const start = new Date(event.startsAt)
+  const startMin = start.getHours() * 60 + start.getMinutes()
+  const durMin = (Date.parse(event.endsAt) - start.getTime()) / 60000
+  const free = availableCount(rules, exceptions, [userId], localDateKey(start), startMin, startMin + Math.min(durMin, 60)) === 1
+  return { presence: free ? 'free' : 'unknown', note: null }
+}
+
+/** Counts for an event card: present (said so, or free without answering),
+ *  declined, out of the attendees. */
+export function attendanceOf(event: CalendarEvent, rules: AvailabilityRule[], exceptions: AvailabilityException[]): { present: number; declined: number; total: number } {
+  let present = 0
+  let declined = 0
+  for (const id of event.attendeeUserIds) {
+    const { presence } = presenceOf(event, id, rules, exceptions)
+    if (presence === 'confirmed' || presence === 'free') present++
+    else if (presence === 'declined') declined++
+  }
+  return { present, declined, total: event.attendeeUserIds.length }
+}
+
+/** Whether `userId` may answer the event: one of its attendees (or any
+ *  member when it has no list), and it hasn't ended. */
+export function canRespond(event: CalendarEvent, userId: string, now = Date.now()): boolean {
+  if (Date.parse(event.endsAt) < now) return false
+  return event.attendeeUserIds.length === 0 || event.attendeeUserIds.includes(userId)
 }
 
 /* ─── Kinds ─── */

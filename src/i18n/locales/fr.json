@@ -6,7 +6,7 @@
     "history": "Historique",
     "detailedStats": "Stats détaillées",
     "analytics": "Statistiques",
-    "team": "Équipe",
+    "team": "Stats collectives",
     "settings": "Paramètres",
     "help": "Aide",
     "mistakes": "Erreurs",
@@ -999,7 +999,39 @@
       "empty": "Slot vide",
       "memberAdded": "Membre ajouté",
       "confirmRemove": "Retirer ce membre du roster ?",
-      "bulkImport": "Importer depuis un multi-link"
+      "bulkImport": "Importer depuis un multi-link",
+      "roles": {
+        "TOP": "Top",
+        "JUNGLE": "Jungle",
+        "MID": "Mid",
+        "ADC": "ADC",
+        "SUPPORT": "Support"
+      },
+      "card": {
+        "best": "Meilleurs champions",
+        "bestHelp": "Les {{n}} meilleurs winrates parmi ses {{pool}} champions les plus joués ({{min}} parties minimum), sur ses parties de la saison récupérées depuis Riot. Le chiffre sur chaque icône : parties jouées.",
+        "games_one": "Sur {{count}} partie",
+        "games_other": "Sur {{count}} parties",
+        "championLine_one": "{{count}} partie · {{wins}} V / {{losses}} D · {{winRate}} % de winrate",
+        "championLine_other": "{{count}} parties · {{wins}} V / {{losses}} D · {{winRate}} % de winrate",
+        "lowSample": "Moins de {{min}} parties : winrate indicatif.",
+        "noLook": "L'icône et la bannière choisies dans son profil Ascend s'affichent ici dès que ce compte fait partie d'un de tes groupes.",
+        "noChampions": "Champions pas encore récupérés.",
+        "noRiotId": "Ajoute son Riot ID (nom et tag) pour récupérer ses champions.",
+        "fetch": "Récupérer",
+        "fetching": "Récupération des champions…",
+        "fetchJob": "Champions — {{team}} · {{name}}",
+        "edit": "Modifier",
+        "remove": "Retirer du roster",
+        "add": "Ajouter un joueur",
+        "save": "Enregistrer",
+        "displayName": "Nom affiché",
+        "gameName": "Nom de jeu",
+        "tag": "Tag",
+        "addFailed": "Impossible d'ajouter ce joueur",
+        "removeFailed": "Impossible de retirer ce joueur",
+        "updateFailed": "Impossible d'enregistrer les modifications"
+      }
     },
     "import": {
       "title": "Importer des joueurs depuis un lien multi-search",
@@ -1047,7 +1079,19 @@
       "autoFillJobLabel": "Auto-remplissage — {{team}}",
       "autoFillAllSummaryShort": "{{upserted}} champions · {{matches}} games analysées",
       "autoFillCancelled": "Auto-remplissage annulé",
-      "autoFillCancelledDesc": "{{upserted}} champions ajoutés avant l'arrêt."
+      "autoFillCancelledDesc": "{{upserted}} champions ajoutés avant l'arrêt.",
+      "tierHelp": {
+        "main": "Main : le cœur du pool. 12+ games et top 3 du rôle (ou 15 % de ses games), 25 % d’un petit historique (6+ games), ou un winrate ajusté de 60 %+ sur 20+ games.",
+        "new": "New : champion pris il y a moins de 2 semaines et déjà joué 10 fois ou plus, sans games plus anciennes ni maîtrise qui montrent qu’il le jouait avant. Passe dans un tier classique au bout de 2 semaines.",
+        "comfort": "Comfort : pick sûr. 8+ games à 50 %+ de winrate ajusté, 25+ games, ou 200k+ de maîtrise.",
+        "flex": "Flex : jouable si besoin. 5+ games, ou 100k+ de maîtrise.",
+        "learning": "Learning : quelques games seulement. Masqué dans Draft Sim."
+      },
+      "tierHelpNote": "Winrate ajusté : ramené vers 50 % sur les petits échantillons (3 victoires sur 3 comptent pour 61 %). Un main ou un comfort pas joué depuis 30 jours descend d’un tier. Un tier choisi à la main est gardé par l’auto-remplissage.",
+      "tierRules": "Règles des tiers",
+      "handPicked": "Tier choisi à la main : l’auto-remplissage le garde (calcul : {{tier}})",
+      "newSince_one": "pris il y a {{count}} j",
+      "newSince_other": "pris il y a {{count}} j"
     },
     "scope": {
       "title": "À quel point la récupération doit être approfondie ?",
@@ -1098,7 +1142,8 @@
       "threatRed": "100+ games, pick dominant, ou 65%+ WR / 4+ KDA (20+ games)",
       "threatOrange": "300k+ mastery",
       "threatYellow": "menace flex — 2+ joueurs individuellement dangereux dessus",
-      "threatPrioPick": "pick/ban prioritaire — menace sur les deux équipes"
+      "threatPrioPick": "pick/ban prioritaire — menace sur les deux équipes",
+      "threatNew": "new pick : 10+ games sur un champion pris il y a moins de 2 semaines"
     },
     "dashboard": {
       "noTeam": "Sélectionnez ou créez une équipe d'abord.",
@@ -1142,7 +1187,9 @@
         "inactive": "Inactif",
         "review_backlog": "Reviews en retard",
         "objective_failing": "Objectif en échec"
-      }
+      },
+      "basedOnTotal": "Moyenne de {{n}} parties : {{flex}} flex · {{scrim}} scrim · {{tournament}} tournoi",
+      "basedOnAll": "Moyenne de {{n}} parties (flex, scrim et tournoi)"
     },
     "custom": {
       "imported": "Partie importée",
@@ -1298,6 +1345,32 @@
       "drafts": "Drafts",
       "picks": "picks",
       "scouting": "Scouting"
+    },
+    "statsTitle": "Stats collectives",
+    "statsSubtitle": "Les stats de l’équipe du groupe choisi : flex, scrim et tournoi ensemble, puis chaque source.",
+    "localHint": "Le roster se gère dans Coaching & Management → Espace d’équipe, une fois l’équipe liée à un groupe.",
+    "link": {
+      "title": "Associer une équipe à « {{name}} »",
+      "desc": "L’Espace d’équipe, le Champion Pool, la Draft Sim et les Stats collectives du groupe utilisent une équipe de cet ordinateur. Lie l’une de tes équipes, ou crée celle du groupe : elle reprend le roster publié dans le groupe s’il y en a un.",
+      "pick": "Équipe",
+      "players_one": "{{count}} joueur",
+      "players_other": "{{count}} joueurs",
+      "link": "Lier cette équipe",
+      "or": "ou",
+      "create": "Créer l’équipe « {{name}} »",
+      "created": "Équipe « {{name}} » créée et liée au groupe",
+      "failed": "Impossible de lier l’équipe"
+    },
+    "space": {
+      "publishFailed": "Le roster n’a pas pu être publié dans le groupe",
+      "added": "{{name}} est dans le roster",
+      "addFailed": "Ajout impossible",
+      "toPlaceTitle_one": "{{count}} joueur du groupe hors roster",
+      "toPlaceTitle_other": "{{count}} joueurs du groupe hors roster",
+      "toPlaceDesc": "Ils ont rejoint le groupe : choisis leur rôle pour les ajouter à l’équipe. Le Champion Pool, la Draft Sim et les Stats collectives suivent.",
+      "role": "Rôle",
+      "taken": "occupé",
+      "add": "Ajouter"
     }
   },
   "common": {
@@ -1476,7 +1549,14 @@
       "unsetCaptain": "Retirer le statut de capitaine",
       "leave": "Quitter le groupe",
       "delete": "Supprimer le groupe",
-      "deleteConfirm": "Supprimer « {{name}} » pour tous les membres ? Les commentaires et objectifs assignés seront supprimés."
+      "deleteConfirm": "Supprimer « {{name}} » pour tous les membres ? Les commentaires et objectifs assignés seront supprimés.",
+      "changeRole": "Rôle de {{name}}",
+      "roleChanged": "{{name}} est maintenant {{role}}",
+      "mine_one": "Ton groupe",
+      "mine_other": "Tes groupes ({{count}})",
+      "mineDesc": "Le groupe choisi ici ou en haut de page est celui de Coaching & Management et des Stats collectives.",
+      "memberCount_one": "{{count}} membre",
+      "memberCount_other": "{{count}} membres"
     },
     "sharing": {
       "title": "Ce que ce groupe peut voir",
@@ -1564,7 +1644,9 @@
       "FORBIDDEN": "Vous n'avez pas les droits pour faire cela.",
       "TOO_MANY_GROUPS": "Vous possédez déjà le nombre maximum de groupes (10).",
       "LOGIN_REQUIRED": "Connectez-vous d'abord à votre compte Ascend.",
-      "generic": "Une erreur est survenue. Vérifiez votre connexion et réessayez."
+      "generic": "Une erreur est survenue. Vérifiez votre connexion et réessayez.",
+      "NOT_CONCERNED": "Cet événement ne te concerne pas.",
+      "EVENT_OVER": "Cet événement est déjà terminé."
     },
     "dossier": {
       "pickPlayer": "Joueur suivi",
@@ -1607,6 +1689,9 @@
       "counts": "{{games}} games · {{reviews}} reviews",
       "w": "V",
       "l": "D"
+    },
+    "switcher": {
+      "label": "Groupe"
     }
   },
   "assistant": {
@@ -2000,7 +2085,10 @@
     "pickFundamental": "Choisir un fondamental",
     "targetPlaceholder": "Objectif pour cet axe…",
     "addAxis": "Ajouter un axe",
-    "create": "Créer le plan"
+    "create": "Créer le plan",
+    "noAxes": "Aucun axe ce trimestre.",
+    "deleteAxis": "Supprimer cet axe",
+    "confirmDeleteAxis": "Supprimer ?"
   },
   "planning": {
     "title": "Planning",
@@ -2082,7 +2170,9 @@
         "day": "Journée ({{from}}h–{{to}}h)"
       },
       "hoverAdd": "+ Ajouter ({{h}}h)",
-      "hoverFree": "+ Poser"
+      "hoverFree": "+ Poser",
+      "declined_one": "{{count}} absent",
+      "declined_other": "{{count}} absents"
     },
     "popup": {
       "kicker": "Planification rapide",
@@ -2173,10 +2263,33 @@
       "free": "Dispo",
       "unknown": "Non confirmé",
       "edit": "Modifier",
-      "confirmDelete": "Confirmer ?"
+      "confirmDelete": "Confirmer ?",
+      "confirmed": "Présent",
+      "declined": "Absent"
     },
     "legend": "Légende",
-    "legendFree": "Tous les titulaires dispo"
+    "legendFree": "Tous les titulaires dispo",
+    "respond": {
+      "title": "Ta présence",
+      "confirm": "Je serai là",
+      "decline": "Je ne peux pas",
+      "notePlaceholder": "Raison (facultatif)",
+      "send": "Prévenir le staff",
+      "youConfirmed": "Ta présence est confirmée.",
+      "youDeclined": "Le staff est prévenu de ton absence."
+    },
+    "players": {
+      "title": "Dispos des joueurs",
+      "none": "Aucun joueur dans ce groupe pour l’instant.",
+      "free": "{{day}} : {{hours}}",
+      "off": "{{day}} : indisponible",
+      "unknown": "{{day}} : rien d’indiqué",
+      "legendFree": "Dispo",
+      "legendOff": "Indispo",
+      "legendUnknown": "Non renseigné",
+      "fromRoster": "Titulaires du roster publié dans le groupe.",
+      "fromGroup": "Tous les joueurs du groupe : aucun roster avec comptes reliés n’a été publié."
+    }
   },
   "teamSession": {
     "notFound": "Aucune session d'équipe trouvée pour cet événement — ouvre-la depuis Planning.",
@@ -2536,6 +2649,14 @@
       "calendar_event_request": {
         "title": "Demande d'événement",
         "body": "{{requestedByName}} a demandé un événement : « {{eventName}} »"
+      },
+      "event_declined": {
+        "title": "Absence signalée",
+        "body": "{{playerName}} ne pourra pas être à « {{eventTitle}} » ({{scheduledAt}}){{noteSuffix}}"
+      },
+      "event_confirmed": {
+        "title": "Finalement présent",
+        "body": "{{playerName}} sera finalement à « {{eventTitle}} » ({{scheduledAt}})"
       }
     }
   },

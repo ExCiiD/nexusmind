@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
-import { Save, Copy, Plus, Trash2, Search, X, Ban, Users, Target, ChevronRight, AlertTriangle, Flame, Crown, Crosshair, MessageSquare } from 'lucide-react'
+import { Save, Copy, Plus, Trash2, Search, X, Ban, Users, Target, ChevronRight, AlertTriangle, Flame, Crown, Crosshair, MessageSquare, Sparkles } from 'lucide-react'
 import { DiscussionThread } from '@/components/team/DiscussionThread'
 import { cn } from '@/lib/utils'
 import { useAllChampions, type ChampionMeta } from '@/hooks/useAllChampions'
@@ -14,6 +14,8 @@ import {
   buildTeamThreatMap as buildTeamThreatMapCore,
   buildPrioPickMap,
   withPrioPicks,
+  TIER_RANK,
+  isTier,
   type ThreatLevel,
   type ChampionThreat,
   type ThreatPoolMember,
@@ -43,6 +45,8 @@ function toThreatMember(member: TeamMember): ThreatPoolMember {
       winRate: e.winRate ?? null,
       masteryPoints: e.masteryPoints ?? null,
       kda: e.kda ?? null,
+      tier: e.tier,
+      firstPlayedAt: e.firstPlayedAt ? new Date(e.firstPlayedAt).getTime() : null,
     })),
   }
 }
@@ -62,6 +66,7 @@ const THREAT_RING: Record<ThreatLevel, string> = {
   red:      'ring-2 ring-red-500 shadow-[0_0_10px_rgba(239,68,68,0.7)]',
   orange:   'ring-2 ring-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.55)]',
   yellow:   'ring-2 ring-yellow-300/90 shadow-[0_0_8px_rgba(253,224,71,0.5)]',
+  new:      'ring-2 ring-teal-300/80',
   played:   '',
 }
 
@@ -73,6 +78,7 @@ function ThreatBadge({ level }: { level: ThreatLevel }) {
   if (level === 'red') return <Flame className="h-3 w-3 text-red-400" />
   if (level === 'orange') return <Crown className="h-3 w-3 text-orange-300" />
   if (level === 'yellow') return <AlertTriangle className="h-3 w-3 text-yellow-300" />
+  if (level === 'new') return <Sparkles className="h-3 w-3 text-teal-300" />
   return null
 }
 
@@ -975,6 +981,7 @@ function ChampionPickButton({ champion, used, disabled, threat, onClick }: {
   // on hover without an extra UI element.
   const tooltipParts: string[] = [used ? `${champion.name} (already leading pick)` : champion.name]
   if (threat?.level === 'played') tooltipParts.push(`Seen in pool (${threat.members.join(', ')}) — not yet a threat`)
+  else if (threat?.level === 'new') tooltipParts.push(`NEW PICK: ${threat.reason}`)
   else if (threat) tooltipParts.push(`THREAT: ${threat.reason} — ${threat.members.join(', ')}`)
   return (
     <button
@@ -1037,6 +1044,11 @@ function ThreatLegend() {
         <span className="h-3 w-3 rounded ring-2 ring-fuchsia-400" />
         <Crosshair className="h-3 w-3 text-fuchsia-300" />
         {t('team.draft.threatPrioPick', { defaultValue: 'priority pick/ban — a threat on both teams' })}
+      </span>
+      <span className="flex items-center gap-1">
+        <span className="h-3 w-3 rounded ring-2 ring-teal-300/80" />
+        <Sparkles className="h-3 w-3 text-teal-300" />
+        {t('team.draft.threatNew', { defaultValue: 'new pick — 10+ games since picking it up less than 2 weeks ago' })}
       </span>
     </div>
   )
@@ -1126,6 +1138,7 @@ function roleOrder(r: string): number {
 
 const TIER_BG: Record<string, string> = {
   main: 'border-emerald-500/70',
+  new: 'border-teal-300/80',
   comfort: 'border-blue-500/70',
   flex: 'border-yellow-500/70',
   learning: 'border-zinc-500/70',
@@ -1153,10 +1166,10 @@ function MemberPoolBlock({ member, usedChampions }: {
   // still in the DB for the dedicated Champion Pool tab.
   const memberRole = (member.role || '').toUpperCase()
   const groups = useMemo(() => {
-    const out: Record<string, ChampionPoolEntry[]> = { main: [], comfort: [], flex: [], learning: [] }
+    const out: Record<string, ChampionPoolEntry[]> = { main: [], new: [], comfort: [], flex: [], learning: [] }
     for (const e of pool) {
       if (e.role.toUpperCase() !== memberRole) continue
-      (out[e.tier] ?? out.flex).push(e)
+      out[isTier(e.tier) ? e.tier : 'flex'].push(e)
     }
     return out
   }, [pool, memberRole])
@@ -1178,7 +1191,8 @@ function MemberPoolBlock({ member, usedChampions }: {
               No pool yet
             </p>
           ) : (
-            (['main', 'comfort', 'flex'] as const).map((tier) => {
+            // "learning" stays hidden here: champions touched a few times only.
+            (['main', 'new', 'comfort', 'flex'] as const).map((tier) => {
               const items = groups[tier]
               if (items.length === 0) return null
               return (
@@ -1285,7 +1299,7 @@ interface RoleDistribution {
  * Best-effort role attribution for each pick:
  *   1. Look the champion up in the team's members' pools. If exactly one
  *      member has it, take that member's role. If multiple have it, pick
- *      the one where it's highest-tier (main > comfort > flex > learning).
+ *      the one where it's highest-tier (main > new > comfort > flex > learning).
  *   2. If not in any pool, fall back to a tag heuristic (Marksman→ADC,
  *      Support→SUPPORT, Mage→MID, Tank→TOP, Assassin→MID, Fighter→TOP).
  *      These defaults match the most common pro mapping; users can disagree
@@ -1317,7 +1331,6 @@ function computeRoleDistribution(
   return { byRole, unknownChamps, unknown: unknownChamps.length, totalPicks: total }
 }
 
-const TIER_PRIORITY: Record<string, number> = { main: 4, comfort: 3, flex: 2, learning: 1 }
 
 function attributeRole(championKey: string, team: Team | null, champions: ChampionMeta[]): string | null {
   // 1) Search the team's pools — most accurate signal since the team has
@@ -1328,7 +1341,7 @@ function attributeRole(championKey: string, team: Team | null, champions: Champi
     for (const m of team.members) {
       const entry = m.champPool?.find((e) => e.championKey === championKey)
       if (!entry) continue
-      const score = TIER_PRIORITY[entry.tier] ?? 0
+      const score = isTier(entry.tier) ? TIER_RANK[entry.tier] : 0
       if (score > bestScore) {
         bestScore = score
         bestRole = entry.role.toUpperCase()

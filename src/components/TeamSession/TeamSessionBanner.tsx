@@ -11,7 +11,7 @@ const SLOW_POLL_MS = 30_000
  *  duplicate here since both desktop and web call the same RLS-scoped
  *  Supabase query (desktop has no equivalent cross-platform broadcast
  *  event for web to listen to). */
-const FAST_POLL_MS = 7_500
+const FAST_POLL_MS = 15_000 // was 7.5 s: four such loops overloaded the Supabase disk I/O budget (18/11/2026)
 
 /** Mounted once at app-shell level (desktop App.tsx, web WebLayout.tsx).
  *  Two kinds of persistent bottom-right cards:

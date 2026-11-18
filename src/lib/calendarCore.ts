@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   AttendeeScope, AvailabilityException, AvailabilityRule, CalendarEvent, CalendarEventRequest, CalendarSubscription,
-  CommonFreeWindow, EventRequestStatus, NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput, NewEventRequestInput,
+  CommonFreeWindow, EventRequestStatus, EventResponse, EventResponseStatus, NewAvailabilityExceptionInput, NewAvailabilityRuleInput,
+  NewEventInput, NewEventRequestInput,
 } from './calendar'
 import { generateCalendarSubscriptionToken } from './calendar'
 import type { GroupMember } from './collab'
@@ -60,13 +61,45 @@ async function attendeesByEvent(sb: SupabaseClient, eventIds: string[]): Promise
   return byEvent
 }
 
+/** Presence answers for a batch of events. Empty, not an error, when the
+ *  table isn't there yet (before 20261118200000_captain_roles_presence):
+ *  the planning keeps working without them. */
+async function responsesByEvent(sb: SupabaseClient, eventIds: string[]): Promise<Map<string, EventResponse[]>> {
+  const byEvent = new Map<string, EventResponse[]>()
+  if (eventIds.length === 0) return byEvent
+  try {
+    const { data, error } = await sb.from('calendar_event_responses')
+      .select('event_id, user_id, status, note, responded_at').in('event_id', eventIds)
+    if (error) return byEvent
+    for (const r of data ?? []) {
+      const response: EventResponse = { userId: r.user_id, status: r.status, note: r.note, respondedAt: r.responded_at }
+      byEvent.set(r.event_id, [...(byEvent.get(r.event_id) ?? []), response])
+    }
+  } catch { /* no answers rather than no planning */ }
+  return byEvent
+}
+
 export async function listEvents(sb: SupabaseClient, groupId: string, fromISO: string, toISO: string): Promise<CalendarEvent[]> {
   const { data, error } = await sb.from('calendar_events')
     .select(EVENT_SELECT).eq('group_id', groupId).gte('starts_at', fromISO).lt('starts_at', toISO).order('starts_at')
   if (error) fail(error, 'list events')
   const rows = data as EventRow[]
-  const byEvent = await attendeesByEvent(sb, rows.map((r) => r.id))
-  return rows.map((r) => toEvent(r, byEvent.get(r.id) ?? []))
+  const ids = rows.map((r) => r.id)
+  const [byEvent, answers] = await Promise.all([attendeesByEvent(sb, ids), responsesByEvent(sb, ids)])
+  return rows.map((r) => ({ ...toEvent(r, byEvent.get(r.id) ?? []), responses: answers.get(r.id) ?? [] }))
+}
+
+/**
+ * The caller's answer to an event: present, or can't come (with an optional
+ * reason). The RPC checks the event concerns them and hasn't ended, and
+ * tells the management about an absence (in-app; the Discord bot relays it
+ * as a direct message).
+ */
+export async function respondToEvent(sb: SupabaseClient, eventId: string, status: EventResponseStatus, note?: string | null): Promise<void> {
+  const { error } = await sb.rpc('respond_to_calendar_event', { p_event: eventId, p_status: status, p_note: note ?? null })
+  if (!error) return
+  for (const code of ['NOT_CONCERNED', 'EVENT_OVER']) if (error.message?.includes(code)) throw new Error(code)
+  fail(error, 'respond to event')
 }
 
 /** Single-event lookup — the one caller that doesn't already have a date
@@ -76,8 +109,8 @@ export async function getEvent(sb: SupabaseClient, id: string): Promise<Calendar
   const { data, error } = await sb.from('calendar_events').select(EVENT_SELECT).eq('id', id).maybeSingle()
   if (error) fail(error, 'get event')
   if (!data) return null
-  const byEvent = await attendeesByEvent(sb, [data.id])
-  return toEvent(data as EventRow, byEvent.get(data.id) ?? [])
+  const [byEvent, answers] = await Promise.all([attendeesByEvent(sb, [data.id]), responsesByEvent(sb, [data.id])])
+  return { ...toEvent(data as EventRow, byEvent.get(data.id) ?? []), responses: answers.get(data.id) ?? [] }
 }
 
 export async function createEvent(sb: SupabaseClient, groupId: string, input: NewEventInput): Promise<string> {

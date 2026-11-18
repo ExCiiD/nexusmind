@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "web:preview"],
       "port": 4173
+    },
+    {
+      "name": "ui-harness",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--config", ".harness/vite.config.ts"],
+      "port": 5199
     }
   ]
 }

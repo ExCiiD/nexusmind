@@ -186,6 +186,75 @@ export async function listRecentTeamNotifications(sb: SupabaseClient, groupId: s
   return (data ?? []).map((r) => ({ id: r.id, type: r.type, userId: r.user_id, data: r.data as Record<string, unknown>, createdAt: r.created_at }))
 }
 
+// ── Direct messages (18 November 2026) ─────────────────────────────────────
+
+/** In-app notifications the bot also sends as a Discord direct message to
+ *  their recipient: a player who can't come to an event (or who finally
+ *  can), for the management — see respond_to_calendar_event. */
+export const DIRECT_MESSAGE_TYPES = ['event_declined', 'event_confirmed'] as const
+export type DirectMessageType = (typeof DIRECT_MESSAGE_TYPES)[number]
+
+export interface DirectNotification {
+  id: string
+  type: DirectMessageType
+  userId: string
+  data: Record<string, unknown>
+  createdAt: string
+  /** The recipient's Discord account (/link-me), null when they never linked one. */
+  discordUserId: string | null
+}
+
+/** Direct-message notifications since `sinceIso` the bot hasn't handled yet
+ *  (discord_dm_sent), with each recipient's linked Discord account. */
+export async function listPendingDirectNotifications(sb: SupabaseClient, sinceIso: string): Promise<DirectNotification[]> {
+  const { data, error } = await sb.from('notifications')
+    .select('id, type, user_id, data, created_at')
+    .in('type', [...DIRECT_MESSAGE_TYPES])
+    .gte('created_at', sinceIso)
+    .order('created_at')
+  if (error) fail(error, 'list direct notifications')
+  const rows = data ?? []
+  if (rows.length === 0) return []
+  const [sent, links] = await Promise.all([
+    sb.from('discord_dm_sent').select('notification_id').in('notification_id', rows.map((r) => r.id)),
+    sb.from('discord_user_links').select('user_id, discord_user_id').in('user_id', [...new Set(rows.map((r) => r.user_id as string))]),
+  ])
+  if (sent.error) fail(sent.error, 'list sent direct messages')
+  if (links.error) fail(links.error, 'list discord links')
+  const done = new Set((sent.data ?? []).map((r) => r.notification_id as string))
+  const discordOf = new Map((links.data ?? []).map((r) => [r.user_id as string, r.discord_user_id as string]))
+  return rows
+    .filter((r) => !done.has(r.id))
+    .map((r) => ({
+      id: r.id, type: r.type as DirectMessageType, userId: r.user_id, data: r.data as Record<string, unknown>,
+      createdAt: r.created_at, discordUserId: discordOf.get(r.user_id) ?? null,
+    }))
+}
+
+/** Claims a notification for its direct message: false when a previous run
+ *  already did (the primary key does the work, as in markNotifiedOnce). */
+export async function markDirectMessageSent(sb: SupabaseClient, notificationId: string): Promise<boolean> {
+  const { error } = await sb.from('discord_dm_sent').insert({ notification_id: notificationId })
+  if (!error) return true
+  if (error.code === '23505') return false
+  fail(error, 'mark direct message sent')
+}
+
+/** The direct message itself — English and UTC like the bot's other posts. */
+export function directMessageText(n: Pick<DirectNotification, 'type' | 'data'>): string {
+  const name = String(n.data.playerName ?? '?')
+  const title = String(n.data.eventTitle ?? '')
+  const at = typeof n.data.scheduledAt === 'string' ? new Date(n.data.scheduledAt) : null
+  const when = at && !Number.isNaN(at.getTime())
+    ? ` — ${at.toLocaleString('en-US', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC`
+    : ''
+  if (n.type === 'event_declined') {
+    const reason = typeof n.data.note === 'string' && n.data.note ? `\nReason: ${n.data.note}` : ''
+    return `❌ **${name}** can't make it to "${title}"${when}.${reason}`
+  }
+  return `✅ **${name}** will be at "${title}" after all${when}.`
+}
+
 /**
  * New announcements for a group since `sinceIso` (Phase 2, Planning
  * rework). Unlike `listRecentTeamNotifications`, announcements aren't

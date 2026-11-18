@@ -23,14 +23,31 @@ describe('listEvents', () => {
         error: null,
       }),
       calendar_event_attendees: chain({ data: [{ event_id: 'e1', user_id: 'p1' }, { event_id: 'e1', user_id: 'p2' }], error: null }),
+      calendar_event_responses: chain({ data: [{ event_id: 'e1', user_id: 'p2', status: 'declined', note: 'Exam', responded_at: 'r' }], error: null }),
     }
     const sb = { from: vi.fn((t: string) => tables[t]) } as never
     const out = await listEvents(sb, 'g1', '2026-11-16T00:00:00Z', '2026-11-23T00:00:00Z')
     expect(out).toEqual([{
       id: 'e1', groupId: 'g1', kind: 'rest', title: 'Day off', startsAt: '2026-11-16T00:00:00Z', endsAt: '2026-11-17T00:00:00Z',
       notes: null, linkedScrimId: null, attendeeScope: 'custom', attendeeUserIds: ['p1', 'p2'],
+      responses: [{ userId: 'p2', status: 'declined', note: 'Exam', respondedAt: 'r' }],
       createdBy: 'u1', createdAt: 't', updatedAt: 't',
     }])
+  })
+
+  it('still lists the events when the answers table is missing (before its migration)', async () => {
+    const tables: Record<string, any> = {
+      calendar_events: chain({
+        data: [{ id: 'e1', group_id: 'g1', kind: 'rest', title: 'Day off', starts_at: 'a', ends_at: 'b', notes: null, linked_scrim_id: null, attendee_scope: 'custom', created_by: 'u1', created_at: 't', updated_at: 't' }],
+        error: null,
+      }),
+      calendar_event_attendees: chain({ data: [], error: null }),
+      calendar_event_responses: chain({ data: null, error: { message: 'relation "calendar_event_responses" does not exist', code: '42P01' } }),
+    }
+    const sb = { from: vi.fn((t: string) => tables[t]) } as never
+    const out = await listEvents(sb, 'g1', 'a', 'b')
+    expect(out).toHaveLength(1)
+    expect(out[0].responses).toEqual([])
   })
 
   it('throws on a read error', async () => {

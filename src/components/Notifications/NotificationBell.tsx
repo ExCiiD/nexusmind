@@ -19,6 +19,9 @@ function renderParams(data: Record<string, unknown>, locale: string): Record<str
     const d = new Date(out.scheduledAt)
     if (!Number.isNaN(d.getTime())) out.scheduledAt = d.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
   }
+  // An absence may come with its reason (event_declined).
+  const [open, close] = locale.startsWith('fr') ? ['« ', ' »'] : ['“', '”']
+  out.noteSuffix = typeof out.note === 'string' && out.note ? ` — ${open}${out.note}${close}` : ''
   return out
 }
 

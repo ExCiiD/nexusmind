@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { analyzeGame, pickMoments, deathTimerSec, type CriticalMoment } from '../../src/lib/microReview/anomalyDetector'
 import { winProbability, winProbabilityCurve, isGarbageTime, winProbAt, objectiveKindOf } from '../../src/lib/microReview/winProbability'
-import { zoneOf, territoryOf, laneOf, nearestPit, BARON_PIT, DRAGON_PIT } from '../../src/lib/microReview/geometry'
+import { zoneOf, territoryOf, laneOf, nearestPit, toMinimap, BARON_PIT, DRAGON_PIT, OUTER_TURRETS, RIFT_BOUNDS, TURRETS } from '../../src/lib/microReview/geometry'
 import { buildGame, at } from './microReviewFixtures'
 
 describe('winProbability', () => {
@@ -54,6 +54,28 @@ describe('geometry', () => {
   it('finds the nearest pit', () => {
     expect(nearestPit({ x: 5500, y: 10000 })).toEqual({ pit: 'baron', distance: expect.any(Number) })
     expect(nearestPit({ x: 9500, y: 4800 }).pit).toBe('dragon')
+  })
+  it('places game positions on Riot\'s minimap through its bounds', () => {
+    // Map corners: (minX, minY) is the bottom-left of the picture, (maxX, maxY) its top-right.
+    expect(toMinimap({ x: RIFT_BOUNDS.minX, y: RIFT_BOUNDS.minY })).toEqual({ x: 0, y: 1 })
+    expect(toMinimap({ x: RIFT_BOUNDS.maxX, y: RIFT_BOUNDS.maxY })).toEqual({ x: 1, y: 0 })
+    // The pits sit in the upper-left and lower-right river basins of the picture.
+    const baron = toMinimap(BARON_PIT)
+    const dragon = toMinimap(DRAGON_PIT)
+    expect(baron.x).toBeCloseTo(0.342, 3)
+    expect(baron.y).toBeCloseTo(0.299, 3)
+    expect(dragon.x).toBeCloseTo(0.666, 3)
+    expect(dragon.y).toBeCloseTo(0.700, 3)
+  })
+  it('lists 11 turrets per team, the outer ones first in each lane', () => {
+    for (const team of [100, 200] as const) {
+      expect(TURRETS[team]).toHaveLength(11)
+      expect(TURRETS[team]).toContain(OUTER_TURRETS[team].TOP)
+      expect(TURRETS[team]).toContain(OUTER_TURRETS[team].MID)
+      expect(TURRETS[team]).toContain(OUTER_TURRETS[team].BOT)
+      // Every turret is on its own team's half of the map.
+      for (const p of TURRETS[team]) expect(territoryOf(p, team)).toBe('own')
+    }
   })
 })
 

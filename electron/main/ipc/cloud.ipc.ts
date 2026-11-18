@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { validatedHandle } from './validate'
-import { getSupabase, isCloudConfigured, toCloudUser, getAccessToken } from '../cloud/supabase'
+import { getSupabase, isCloudConfigured, toCloudUser, getAccessToken, requireSessionUserId } from '../cloud/supabase'
 import { riotTransportMode } from '../riotTransport'
 import {
   createCloudBackup,
@@ -29,11 +29,8 @@ const inviteCode = z.string().transform(access.normaliseInviteCode).pipe(z.strin
 const WEB_URL = (import.meta.env.MAIN_VITE_WEB_URL || access.DEFAULT_WEB_URL).replace(/\/+$/, '')
 
 async function me(): Promise<string> {
-  const token = await getAccessToken()
-  if (!token) throw new Error('LOGIN_REQUIRED')
-  const { data } = await getSupabase().auth.getUser(token)
-  if (!data.user) throw new Error('LOGIN_REQUIRED')
-  return data.user.id
+  // Local session, no server round trip (supabase.ts getSessionUserId).
+  return requireSessionUserId()
 }
 
 export function registerCloudHandlers() {

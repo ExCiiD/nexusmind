@@ -4,7 +4,7 @@ import { X, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { AvailabilityException, AvailabilityRule, CalendarEvent, CommonFreeWindow } from '@/lib/calendar'
 import type { ScrimSummary } from '@/lib/scrims'
-import { KIND_STYLE, availableAnyTime, availableCount, localDateKey } from '@/lib/planningView'
+import { KIND_STYLE, attendanceOf, availableAnyTime, localDateKey } from '@/lib/planningView'
 
 export interface HourRange { day: Date; startHour: number; endHour: number }
 
@@ -191,12 +191,12 @@ export function WeekGrid({
                     const startMin = minutesOf(e.startsAt)
                     if (!visible(startMin)) return null
                     const durMin = (new Date(e.endsAt).getTime() - new Date(e.startsAt).getTime()) / 60000
-                    const att = e.attendeeUserIds.length
-                    const freeAtt = att ? availableCount(rules, exceptions, e.attendeeUserIds, key, startMin, startMin + Math.min(durMin, 60)) : 0
+                    const count = attendanceOf(e, rules, exceptions)
                     return (
                       <EventCard key={e.id} accent={(KIND_STYLE[e.kind] ?? KIND_STYLE.other).accent} tag={t(`planning.tag.${e.kind}`, { defaultValue: e.kind })}
                         time={`${shortH(startMin)}–${shortH(startMin + durMin)}`} title={e.title} notes={e.notes}
-                        attendance={att ? { free: freeAtt, total: att } : undefined}
+                        attendance={count.total ? { free: count.present, total: count.total, declined: count.declined } : undefined}
+                        declinedLabel={count.declined ? t('planning.grid.declined', { count: count.declined }) : undefined}
                         top={top(startMin)} height={(durMin / 60) * ROW} selected={selectedEventId === e.id} onClick={() => onEventClick(e)} />
                     )
                   })}
@@ -244,13 +244,15 @@ export function WeekGrid({
   )
 }
 
-function EventCard({ accent, tag, time, title, notes, attendance, top, height, selected, onClick }: {
+function EventCard({ accent, tag, time, title, notes, attendance, declinedLabel, top, height, selected, onClick }: {
   accent: string
   tag: string
   time: string
   title: string
   notes?: string | null
-  attendance?: { free: number; total: number }
+  attendance?: { free: number; total: number; declined?: number }
+  /** "1 absent", shown even on a short card: an absence must be seen. */
+  declinedLabel?: string
   top: number
   height: number
   selected?: boolean
@@ -272,6 +274,11 @@ function EventCard({ accent, tag, time, title, notes, attendance, top, height, s
         <span className={cn('max-w-[64%] rounded border px-1 font-mono text-[9px] font-semibold uppercase leading-[1.25] tracking-wide', !roomy && 'truncate')} style={{ borderColor: `${accent}66`, color: accent }}>{tag}</span>
         <span className="shrink-0 font-mono text-[10px] font-bold text-hextech-text-bright">{time}</span>
       </div>
+      {declinedLabel && (
+        <span className="mt-0.5 flex w-fit items-center gap-0.5 rounded bg-hextech-red/20 px-1 font-mono text-[9px] font-bold uppercase text-hextech-red">
+          <X className="h-2.5 w-2.5" />{declinedLabel}
+        </span>
+      )}
       <p className={cn('mt-1 font-condensed font-extrabold uppercase leading-[1.05] text-hextech-text-bright', roomy ? 'line-clamp-2 text-[15px]' : 'line-clamp-1 text-[13px]')}>{title}</p>
       {roomy && (notes || attendance) && (
         <div className="mt-auto flex items-center justify-between gap-1 border-t border-white/10 pt-1 text-[10px]">

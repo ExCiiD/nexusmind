@@ -13,7 +13,7 @@ import { getPrisma } from '../database'
 import { getMatchIds, getMatch, getAccountByRiotId, getChampionMasteries, getSeasonMatchIds } from '../riotClient'
 import { getChampionIdToKey } from '../dataDragon'
 import { championPlaysRole, type Role } from '../../../src/lib/championRoles'
-import { computeAutoTier, MIN_GAMES_FOR_FLEX, TIER_MASTERY_COMFORT } from '../../../src/lib/threatCore'
+import { tierPool, NEW_PICK_DAYS } from '../../../src/lib/threatCore'
 import { normalizeSlots, groupDuplicates, normalizeRole } from '../../../src/lib/teamIdentity'
 import { mergeMatchIdsByRecency } from '../../../src/lib/scoutingCore'
 import { RIOT_LIMITS } from '../../../src/lib/riotLimits'
@@ -202,27 +202,149 @@ async function findExistingMember(teamId: string, data: { puuid?: string; ign?: 
   return null
 }
 
+// ── Champion pool tiering (v2, src/lib/threatCore.ts) ──────────────────────
+
+/** Start time of a match-v5 game (ms), null when the payload has none. */
+function matchTime(match: any): number | null {
+  const info = match?.info
+  const t = info?.gameStartTimestamp ?? info?.gameCreation ?? info?.gameEndTimestamp
+  return typeof t === 'number' && t > 0 ? t : null
+}
+
+/** Widens a [from, to] range with one game time. */
+function stretch(range: { from: number | null; to: number | null }, t: number | null): void {
+  if (t == null) return
+  if (range.from == null || t < range.from) range.from = t
+  if (range.to == null || t > range.to) range.to = t
+}
+
+/** Per-(champion, role) plays gathered by scouting or auto-fill. */
+interface PoolAgg {
+  championKey: string
+  role: string
+  count: number
+  wins: number
+  kills: number
+  deaths: number
+  assists: number
+  /** Lifetime mastery; 0 or null when unknown. */
+  masteryPoints: number | null
+  /** First and last analysed game on this champion in this role (ms). */
+  firstAt: number | null
+  lastAt: number | null
+}
+
+function addPlay(agg: PoolAgg, participant: any, at: number | null): void {
+  agg.count++
+  if (participant.win) agg.wins++
+  agg.kills += participant.kills ?? 0
+  agg.deaths += participant.deaths ?? 0
+  agg.assists += participant.assists ?? 0
+  if (at != null) {
+    agg.firstAt = agg.firstAt == null ? at : Math.min(agg.firstAt, at)
+    agg.lastAt = agg.lastAt == null ? at : Math.max(agg.lastAt, at)
+  }
+}
+
 /**
- * One-time backfill: re-tiers already-auto-filled pool entries that were
- * classified "flex" under the old games>0-only rule but are really just
- * noise (a champion touched 1-9 times) under the revised MIN_GAMES_FOR_FLEX
- * rule in threatCore.ts. Only touches auto-filled rows (playRate stored,
- * not null — manual entries are never auto-retiered) and only rows already
- * sitting in "flex", so a champion correctly in "main"/"comfort" is never
- * touched. Idempotent: a row already "learning" never matches the where
- * clause again, so this is cheap to call on every app start.
+ * Tiers a member's freshly gathered pool with the shared rule (tierPool:
+ * rank and share per role, recency, the "new" tier) and writes it. A tier
+ * the user picked by hand (tier ≠ autoTier) stays unless `forceTiers`;
+ * autoTier always records what the rule says, so later refreshes can tell
+ * the two apart. `history` is the span of every analysed game, any role.
  */
-export async function retierLowSampleFlexEntries(): Promise<number> {
+async function writeTieredPool(
+  memberId: string,
+  entries: PoolAgg[],
+  history: { from: number | null; to: number | null },
+  forceTiers = false,
+): Promise<number> {
   const prisma = getPrisma()
-  const result = await prisma.championPoolEntry.updateMany({
+  const winRateOf = (e: PoolAgg) => (e.count > 0 ? Math.round((e.wins / e.count) * 100) : null)
+  const tiers = tierPool(
+    entries.map((e) => ({
+      championKey: e.championKey,
+      role: e.role,
+      games: e.count,
+      winRate: winRateOf(e),
+      masteryPoints: e.masteryPoints || null,
+      firstPlayedAt: e.firstAt,
+      lastPlayedAt: e.lastAt,
+    })),
+    { historyFrom: history.from, historyTo: history.to },
+  )
+  let upserted = 0
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i]
+    const tier = tiers[i]
+    const winRate = winRateOf(e)
+    const masteryPoints = e.masteryPoints && e.masteryPoints > 0 ? e.masteryPoints : null
+    const kda = e.count > 0 ? (e.kills + e.assists) / Math.max(1, e.deaths) : null
+    const firstPlayedAt = e.firstAt != null ? new Date(e.firstAt) : null
+    const lastPlayedAt = e.lastAt != null ? new Date(e.lastAt) : null
+    const where = { memberId_championKey_role: { memberId, championKey: e.championKey, role: e.role } }
+    const existing = await prisma.championPoolEntry.findUnique({ where })
+    const handPicked = !!existing && existing.autoTier != null && existing.tier !== existing.autoTier
+    await prisma.championPoolEntry.upsert({
+      where,
+      create: {
+        memberId, championKey: e.championKey, role: e.role,
+        tier, autoTier: tier, playRate: e.count, winRate, masteryPoints, kda, firstPlayedAt, lastPlayedAt,
+      },
+      update: {
+        ...(forceTiers || !handPicked ? { tier } : {}),
+        autoTier: tier,
+        playRate: e.count,
+        winRate: winRate ?? existing?.winRate ?? null,
+        masteryPoints, kda, firstPlayedAt, lastPlayedAt,
+      },
+    })
+    upserted++
+  }
+  return upserted
+}
+
+/**
+ * Re-tiers stored auto-filled / scouted entries where the stored tier may be
+ * out of date: entries never tiered by the v2 rule (autoTier null) and
+ * "new" entries whose first game is now more than NEW_PICK_DAYS old — so a
+ * new pick turns into a regular tier by itself, without a new auto-fill.
+ * Member by member (rank and share need the whole pool); hand-picked tiers
+ * stay. One query when nothing matches: cheap at start-up and on listing.
+ */
+export async function refreshAutoTiers(): Promise<number> {
+  const prisma = getPrisma()
+  const expiredBefore = new Date(Date.now() - NEW_PICK_DAYS * 86_400_000)
+  const stale = await prisma.championPoolEntry.findMany({
     where: {
-      tier: 'flex',
-      playRate: { not: null, lt: MIN_GAMES_FOR_FLEX },
-      OR: [{ masteryPoints: null }, { masteryPoints: { lt: TIER_MASTERY_COMFORT } }],
+      playRate: { not: null },
+      OR: [{ autoTier: null }, { autoTier: 'new', firstPlayedAt: { lt: expiredBefore } }],
     },
-    data: { tier: 'learning' },
+    select: { memberId: true },
+    distinct: ['memberId'],
   })
-  return result.count
+  let changed = 0
+  for (const { memberId } of stale) {
+    const pool = await prisma.championPoolEntry.findMany({ where: { memberId, playRate: { not: null } } })
+    const tiers = tierPool(pool.map((e) => ({
+      championKey: e.championKey,
+      role: e.role,
+      games: e.playRate ?? 0,
+      winRate: e.winRate,
+      masteryPoints: e.masteryPoints,
+      firstPlayedAt: e.firstPlayedAt?.getTime() ?? null,
+      lastPlayedAt: e.lastPlayedAt?.getTime() ?? null,
+    })))
+    for (let i = 0; i < pool.length; i++) {
+      const e = pool[i]
+      const next = tiers[i]
+      const handPicked = e.autoTier != null && e.tier !== e.autoTier
+      if (e.autoTier === next && (handPicked || e.tier === next)) continue
+      await prisma.championPoolEntry.update({ where: { id: e.id }, data: { autoTier: next, ...(handPicked ? {} : { tier: next }) } })
+      changed++
+    }
+  }
+  return changed
 }
 
 export function registerTeamHandlers() {
@@ -231,6 +353,8 @@ export function registerTeamHandlers() {
   ipcMain.handle('team:list', async (_e, opts?: { isOpponent?: boolean }) => {
     const prisma = getPrisma()
     const user = await getActiveUser()
+    // A "new" pick older than two weeks turns into a regular tier here.
+    await refreshAutoTiers().catch((err) => console.warn('[team] tier refresh failed:', err))
     return prisma.team.findMany({
       where: {
         userId: user.id,
@@ -243,6 +367,7 @@ export function registerTeamHandlers() {
 
   ipcMain.handle('team:get', async (_e, id: string) => {
     const prisma = getPrisma()
+    await refreshAutoTiers().catch((err) => console.warn('[team] tier refresh failed:', err))
     return prisma.team.findUnique({
       where: { id },
       include: { members: { include: { champPool: true } } },
@@ -273,6 +398,23 @@ export function registerTeamHandlers() {
   }>) => {
     const prisma = getPrisma()
     return prisma.team.update({ where: { id }, data })
+  })
+
+  /**
+   * Makes a local team the roster of a cloud group (or unlinks it with
+   * null). One team per group: whichever team held the group before is
+   * released, so the header's group picker always resolves to one team.
+   */
+  ipcMain.handle('team:link-group', async (_e, teamId: string, groupId: string | null) => {
+    if (typeof teamId !== 'string' || (groupId !== null && (typeof groupId !== 'string' || groupId.length > 64))) {
+      throw new Error('Invalid team/group')
+    }
+    const prisma = getPrisma()
+    const user = await getActiveUser()
+    if (groupId) {
+      await prisma.team.updateMany({ where: { userId: user.id, groupId, NOT: { id: teamId } }, data: { groupId: null } })
+    }
+    return prisma.team.update({ where: { id: teamId }, data: { groupId } })
   })
 
   ipcMain.handle('team:delete', async (_e, id: string) => {
@@ -381,6 +523,7 @@ export function registerTeamHandlers() {
 
   ipcMain.handle('team:pool-list', async (_e, memberId: string) => {
     const prisma = getPrisma()
+    await refreshAutoTiers().catch((err) => console.warn('[team] tier refresh failed:', err))
     return prisma.championPoolEntry.findMany({
       where: { memberId },
       orderBy: [{ tier: 'asc' }, { championKey: 'asc' }],
@@ -592,36 +735,32 @@ export function registerTeamHandlers() {
     }
     const fetchMs = Date.now() - fetchStart
     console.info(`[scout-member] ${member.displayName}: ${matchIds.length} matches, ${matches.size} resolved in ${(fetchMs / 1000).toFixed(1)}s (${(matches.size / (fetchMs / 1000)).toFixed(1)} req/s effective)`)
-    const playCount = new Map<string, { championKey: string; role: string; count: number; wins: number; kills: number; deaths: number; assists: number }>()
+    const playCount = new Map<string, PoolAgg>()
+    // Span of every analysed game, any role: tells the "new" rule how far
+    // back the data looks, and the recency rule when the player last played.
+    const history = { from: null as number | null, to: null as number | null }
     let failed = 0
     for (const id of matchIds) {
       const match = matches.get(id)
       if (!match) { failed++; continue }
       const participant = match?.info?.participants?.find((p: any) => p.puuid === puuid)
       if (!participant) continue
+      const at = matchTime(match)
+      stretch(history, at)
       const role = normalizeRole(participant.teamPosition || participant.individualPosition)
       if (!role || role === 'UNKNOWN' || role === 'INVALID' || role === 'NONE') continue
       if (roleOnly && memberRole && role !== memberRole) continue
       sameRoleCount++
       const key = `${participant.championName}|${role}`
-      const existing = playCount.get(key)
-      if (existing) {
-        existing.count++
-        if (participant.win) existing.wins++
-        existing.kills += participant.kills ?? 0
-        existing.deaths += participant.deaths ?? 0
-        existing.assists += participant.assists ?? 0
-      } else {
-        playCount.set(key, {
-          championKey: participant.championName,
-          role,
-          count: 1,
-          wins: participant.win ? 1 : 0,
-          kills: participant.kills ?? 0,
-          deaths: participant.deaths ?? 0,
-          assists: participant.assists ?? 0,
-        })
+      let entry = playCount.get(key)
+      if (!entry) {
+        entry = {
+          championKey: participant.championName, role, count: 0, wins: 0, kills: 0, deaths: 0, assists: 0,
+          masteryPoints: masteryByKey.get(participant.championName) ?? null, firstAt: null, lastAt: null,
+        }
+        playCount.set(key, entry)
       }
+      addPlay(entry, participant, at)
     }
     if (failed > 0) console.warn(`[team:scout-member] ${failed}/${matchIds.length} matches missing (cache miss + fetch fail)`)
 
@@ -650,33 +789,10 @@ export function registerTeamHandlers() {
       console.log(`[team:scout-member] cleaned ${toDelete.length} stale entries for ${member.displayName}`)
     }
 
-    let upserted = 0
-    for (const entry of playCount.values()) {
-      const winRate = Math.round((entry.wins / entry.count) * 100)
-      const masteryPoints = masteryByKey.get(entry.championKey) ?? null
-      const kda = entry.count > 0 ? (entry.kills + entry.assists) / Math.max(1, entry.deaths) : null
-      // Use the same combined-signal tier rule as auto-fill-pool (E12) to
-      // keep scouting consistent with the player's own pool view in the
-      // Champion Pool tab — no separate "top-5 in role" signal available
-      // here (scout-member doesn't rank across the whole pool), so it's
-      // approximated via mastery/games/winrate alone.
-      const tier = computeAutoTier({ games: entry.count, masteryPoints, winRate, isTop5InRole: false })
-      await prisma.championPoolEntry.upsert({
-        where: { memberId_championKey_role: { memberId, championKey: entry.championKey, role: entry.role } },
-        create: {
-          memberId,
-          championKey: entry.championKey,
-          role: entry.role,
-          tier,
-          playRate: entry.count,
-          winRate,
-          masteryPoints,
-          kda,
-        },
-        update: { playRate: entry.count, winRate, masteryPoints, kda },
-      })
-      upserted++
-    }
+    // Same rule as auto-fill-pool (tierPool: rank and share per role,
+    // recency, the "new" tier), so an opponent's pool in Draft Sim reads
+    // exactly like the player's own pool in the Champion Pool tab.
+    const upserted = await writeTieredPool(memberId, Array.from(playCount.values()), history)
 
     await saveScoutCache(memberId, allSeasonIds)
     console.info(`[scout-member] ${member.displayName}: total ${((Date.now() - scoutStart) / 1000).toFixed(1)}s · ${upserted} pool entries`)
@@ -689,17 +805,18 @@ export function registerTeamHandlers() {
    * season picks). Smarter than `scout-member` for your own roster since
    * it considers both lifetime mastery and current play patterns.
    *
-   * Tier classification is delegated to the shared, combined-signal rule in
-   * src/lib/threatCore.ts (`computeAutoTier`) — see there for the exact
-   * games/mastery/winrate thresholds, kept in one place so scouting and
-   * auto-fill can never drift apart (E12).
+   * Tier classification is delegated to the shared rule in
+   * src/lib/threatCore.ts (`tierPool`, v2) — see there for the exact
+   * thresholds, kept in one place so scouting, auto-fill and the Draft Sim
+   * can never drift apart.
    *
    * Mastery-only champions (no recent games) are bucketed into the member's
    * primary role since the API doesn't tie mastery to a role.
    *
-   * Existing entries with `pinnedTier` (set manually by the user) are
-   * preserved — auto-fill only refreshes the playRate/winRate fields for
-   * those, never overriding a user's deliberate classification.
+   * A tier the user picked by hand (tier ≠ autoTier) is preserved — auto-
+   * fill only refreshes the stats of those entries, unless the caller
+   * passes `overwriteTiers: true`. `overwriteTiers: false` also skips the
+   * clean-up of stale auto-filled entries.
    */
   ipcMain.handle('team:auto-fill-pool', async (_e, memberId: string, opts: {
     matchCount?: number
@@ -765,18 +882,10 @@ export function registerTeamHandlers() {
     ])
     const matchIds = allSeasonIds.slice(0, matchCount)
 
-    // Aggregate match data per (championKey, role)
-    interface Agg {
-      championKey: string
-      role: string
-      count: number
-      wins: number
-      masteryPoints: number
-      kills: number
-      deaths: number
-      assists: number
-    }
-    const agg = new Map<string, Agg>()
+    // Aggregate match data per (championKey, role), with the first and last
+    // game of each, and the span of every analysed game (any role).
+    const agg = new Map<string, PoolAgg>()
+    const history = { from: null as number | null, to: null as number | null }
 
     if (matchIds.length > 0) {
       // Use the shared MatchCache helper so re-running auto-fill (or having
@@ -788,29 +897,21 @@ export function registerTeamHandlers() {
         if (!match) { failed++; continue }
         const participant = match?.info?.participants?.find((p: any) => p.puuid === puuid)
         if (!participant) continue
+        const at = matchTime(match)
+        stretch(history, at)
         const role = normalizeRole(participant.teamPosition || participant.individualPosition)
         if (!role || role === 'UNKNOWN' || role === 'INVALID' || role === 'NONE') continue
         if (roleOnly && memberRole && role !== memberRole) continue
         const key = `${participant.championName}|${role}`
-        const existing = agg.get(key)
-        if (existing) {
-          existing.count++
-          if (participant.win) existing.wins++
-          existing.kills += participant.kills ?? 0
-          existing.deaths += participant.deaths ?? 0
-          existing.assists += participant.assists ?? 0
-        } else {
-          agg.set(key, {
-            championKey: participant.championName,
-            role,
-            count: 1,
-            wins: participant.win ? 1 : 0,
-            masteryPoints: 0,
-            kills: participant.kills ?? 0,
-            deaths: participant.deaths ?? 0,
-            assists: participant.assists ?? 0,
-          })
+        let entry = agg.get(key)
+        if (!entry) {
+          entry = {
+            championKey: participant.championName, role, count: 0, wins: 0, kills: 0, deaths: 0, assists: 0,
+            masteryPoints: 0, firstAt: null, lastAt: null,
+          }
+          agg.set(key, entry)
         }
+        addPlay(entry, participant, at)
       }
       if (failed > 0) console.warn(`[auto-fill] ${failed}/${matchIds.length} matches missing (cache miss + fetch fail)`)
     }
@@ -828,7 +929,7 @@ export function registerTeamHandlers() {
       if (candidates.length > 0) {
         // Apply mastery to ALL roles they've played this champ in this season
         // (one-tricks who flex into other lanes still get full credit).
-        for (const c of candidates) c.masteryPoints = Math.max(c.masteryPoints, m.championPoints)
+        for (const c of candidates) c.masteryPoints = Math.max(c.masteryPoints ?? 0, m.championPoints)
       } else if (!roleOnly || championPlaysRole(championKey, primaryRole)) {
         // Mastery-only attribution: skip champions that don't naturally play
         // the member's lane. championPlaysRole already falls back to tag-
@@ -842,6 +943,8 @@ export function registerTeamHandlers() {
           kills: 0,
           deaths: 0,
           assists: 0,
+          firstAt: null,
+          lastAt: null,
         })
       }
     }
@@ -879,67 +982,13 @@ export function registerTeamHandlers() {
       }
     }
 
-    // Pre-compute top-5 most-played in the primary role for the "main" tier.
-    // We only consider entries with >=1 actual game so a 0-count mastery-only
-    // entry can't sneak into top-5 just because the player has very few
-    // played champions.
-    const top5InRole = new Set(
-      Array.from(agg.values())
-        .filter((e) => e.role === primaryRole && e.count > 0)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5)
-        .map((e) => e.championKey),
-    )
-
-    let upserted = 0
-    for (const entry of agg.values()) {
-      const winRate = entry.count > 0 ? Math.round((entry.wins / entry.count) * 100) : null
-      // Combined-signal tier rule (E12, src/lib/threatCore.ts): top-5 most-
-      // played in role OR mastery/games/winrate thresholds, instead of the
-      // old games-or-mastery-only rule that ignored performance entirely
-      // and made tiering feel random. "learning" is now auto-assigned to
-      // 0-game, low-mastery entries instead of silently defaulting to "flex".
-      const tier = computeAutoTier({
-        games: entry.count,
-        masteryPoints: entry.masteryPoints || null,
-        winRate,
-        isTop5InRole: top5InRole.has(entry.championKey),
-      })
-      const kda = entry.count > 0 ? (entry.kills + entry.assists) / Math.max(1, entry.deaths) : null
-
-      // Find existing to preserve manual tier if overwriteTiers is false
-      const existing = await prisma.championPoolEntry.findUnique({
-        where: { memberId_championKey_role: { memberId, championKey: entry.championKey, role: entry.role } },
-      })
-
-      // playRate doubles as our "auto-fill provenance" marker for the
-      // cleanup pass above — manual adds keep it `null`, auto-fill always
-      // writes a number (even 0 for mastery-only entries). Don't change
-      // this to `entry.count || null` or stale mastery-only entries would
-      // be misclassified as manual and survive forever.
-      const masteryPoints = entry.masteryPoints > 0 ? entry.masteryPoints : null
-      await prisma.championPoolEntry.upsert({
-        where: { memberId_championKey_role: { memberId, championKey: entry.championKey, role: entry.role } },
-        create: {
-          memberId,
-          championKey: entry.championKey,
-          role: entry.role,
-          tier,
-          playRate: entry.count,
-          winRate,
-          masteryPoints,
-          kda,
-        },
-        update: {
-          ...(overwriteTiers || !existing ? { tier } : {}),
-          playRate: entry.count,
-          winRate: winRate ?? existing?.winRate ?? null,
-          masteryPoints,
-          kda,
-        },
-      })
-      upserted++
-    }
+    // Tiering (src/lib/threatCore.ts tierPool): rank and share in the role,
+    // an adjusted win rate, recency, mastery as a hint, and the "new" tier.
+    // A tier the user picked by hand stays unless the caller explicitly
+    // passes overwriteTiers: true. playRate doubles as the "auto-fill
+    // provenance" marker for the cleanup pass above: writeTieredPool always
+    // writes a number (0 for mastery-only entries), manual adds keep null.
+    const upserted = await writeTieredPool(memberId, Array.from(agg.values()), history, opts.overwriteTiers === true)
 
     await saveScoutCache(memberId, allSeasonIds)
     return {
@@ -1371,7 +1420,13 @@ export function registerTeamHandlers() {
       }
     }
 
-    return aggregateMatchLike(team, [...flexMatchLike, ...customMatchLike], minTogether)
+    // The dashboard says what the average is made of.
+    const sources = {
+      flex: flexMatchLike.length,
+      scrim: customs.filter((g) => g.gameType === 'scrim').length,
+      tournament: customs.filter((g) => g.gameType === 'tournament').length,
+    }
+    return { ...aggregateMatchLike(team, [...flexMatchLike, ...customMatchLike], minTogether), sources }
   })
 
   /**
