@@ -99,7 +99,9 @@ asks GitHub once and repoints the button when a newer installer exists.
 
 ## Online
 
-Preview: <https://nexusmind-site.nexusmind-riot-proxy.workers.dev> (Cloudflare worker `nexusmind-site`, first deployed on 18 November 2026).
+Preview: <https://ascend-site.nexusmind-riot-proxy.workers.dev> (Cloudflare worker `ascend-site`, online since 18 November 2026; it was called `nexusmind-site` for its first hours, and that address no longer answers).
+
+The second part of the address, `nexusmind-riot-proxy`, is the workers.dev name of the whole Cloudflare account. The Riot proxy, the web app and the Discord bot live under it, and released versions of the app have those addresses built in, so it is not renamed. An address without it takes a custom domain.
 
 - **Preview or public.** While `SITE_URL` is empty the site is a preview: every page carries a robots `noindex` meta tag and every response an `X-Robots-Tag: noindex` header, so it can be shared by link without being indexed with unfinished legal pages. `robots.txt` still allows the crawl on purpose: a crawler that may not fetch a page never reads its `noindex`.
 - **Page addresses.** Cloudflare serves `conditions.html` at `/conditions` and answers `/conditions.html` with a redirect, so links, alternates and the sitemap use the short addresses. `serve.mjs` follows the same rules; `npx wrangler dev` inside `site/` runs Cloudflare's own emulator when in doubt.

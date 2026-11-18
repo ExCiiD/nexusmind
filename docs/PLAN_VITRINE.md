@@ -6,7 +6,7 @@
 > Cinq aperçus interactifs (micro-revue, tableau de bord, Labo d'erreurs, empreinte des fondamentaux, thèmes) plus l'escalier des paliers : ils sont rendus par le code de l'application lui-même (`site/src/engine.ts`), sur un compte de démonstration inventé (`site/src/demo.mjs`).
 > Bouton de téléchargement direct vers l'installeur de la release (`site/src/release.mjs`), mis à jour dans le navigateur si GitHub publie une version plus récente.
 > Règles de design, structure des fichiers et contrôles du build : `site/DESIGN.md`. Aperçu local avec les en-têtes de production : `npm run site:preview`.
-> **En ligne en aperçu depuis le 18/11/2026** : <https://nexusmind-site.nexusmind-riot-proxy.workers.dev> (worker Cloudflare `nexusmind-site`). Tant que `SITE_URL` est vide dans `site/site.config.mjs`, le site se déclare non indexable (balise et en-tête `noindex`) : il se partage par lien, mais n'apparaît pas dans les moteurs de recherche.
+> **En ligne en aperçu depuis le 18/11/2026** : <https://ascend-site.nexusmind-riot-proxy.workers.dev> (worker Cloudflare `ascend-site`, d'abord nommé `nexusmind-site` : cette première adresse ne répond plus). La partie `nexusmind-riot-proxy` est le nom workers.dev du compte Cloudflare, partagé avec le proxy Riot, l'app web et le bot Discord : elle ne se renomme pas sans casser les versions déjà distribuées de l'app. Tant que `SITE_URL` est vide dans `site/site.config.mjs`, le site se déclare non indexable (balise et en-tête `noindex`) : il se partage par lien, mais n'apparaît pas dans les moteurs de recherche.
 > Mentions de l'éditeur remplies le 18/11/2026 dans les pages légales du site et dans les textes de l'app (`src/legal/*.md`) : ExCiiD, La Réunion (France), droit français, adresse de contact.
 > Reste avant ouverture aux moteurs de recherche : attacher le domaine (ou garder l'adresse workers.dev) et renseigner `SITE_URL`, puis `npm run site:build` et `cd site && npx wrangler deploy`. Les textes légaux du site (v0.2) sont plus complets que ceux de l'app (`src/legal/*.md`, v0.1) : à resynchroniser. Aucun n'a été relu par un juriste.
 
@@ -85,7 +85,7 @@ Prompt de départ suggéré pour Gemini : *« Génère un site vitrine statique 
 
 ## 6. Hébergement & domaine
 
-- Même Cloudflare que l'app web (Workers static assets) : `nexusmind-site` ; domaine personnalisé recommandé (ex. `nexusmind.gg` / `.app`), remis à plus tard le 18/11/2026.
+- Même Cloudflare que l'app web (Workers static assets) : `ascend-site` ; domaine personnalisé recommandé (ex. `nexusmind.gg` / `.app`), remis à plus tard le 18/11/2026.
 - **Clé API Production Riot** (documentation officielle lue le 18/11/2026) : Riot exige un site web vérifié, où l'on voit ce que fait le produit, ses conditions d'utilisation et sa politique de confidentialité. La vérification consiste à publier à la racine du site un fichier `riot.txt` contenant la chaîne reçue après le dépôt de la demande (ici : `site/public/riot.txt`, puis un déploiement ; à retirer une fois la vérification faite). Aucun texte officiel n'exige un domaine personnalisé. Riot écrit toutefois « domain you own » et ne dit rien des sous-domaines d'hébergeur comme workers.dev : leur acceptation n'est pas confirmée. Une clé personnelle ne permet pas d'ouvrir le produit au public. Sources : `developer.riotgames.com/docs/portal`, `developer.riotgames.com/how-to-verify-site.html`, et les articles « Production Key Applications » et « Verification for Production Applications » de `support-developer.riotgames.com`.
 - L'app web passe sous `app.<domaine>`, la vitrine sur la racine.
 

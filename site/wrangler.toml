@@ -5,10 +5,10 @@
 #   npm run site:preview        local check, with the production headers
 #   cd site && npx wrangler deploy
 #
-# Online as a preview at https://nexusmind-site.nexusmind-riot-proxy.workers.dev
+# Online as a preview at https://ascend-site.nexusmind-riot-proxy.workers.dev
 # (pages marked noindex while SITE_URL is empty in site.config.mjs).
 # To open it to search engines: set SITE_URL, rebuild, deploy.
-name = "nexusmind-site"
+name = "ascend-site"
 compatibility_date = "2025-09-01"
 
 [assets]
