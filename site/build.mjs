@@ -265,6 +265,8 @@ const ids = (html) => [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1])
 const text = (html) => html.replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ')
 /** Everything a visitor can end up reading, including what the exhibits print after an interaction. */
 const everything = (html) => html.replace(/<[^>]+>/g, ' ')
+/** Bracketed placeholders a visitor would read, such as "[PUBLISHER NAME]". */
+const bracketed = (html) => text(html).match(/\[[^\]]{2,}\]/g) ?? []
 const known = new Set(pages.map((p) => urlOf(p.file)))
 for (const p of pages) {
   const where = p.file
@@ -287,9 +289,13 @@ for (const p of pages) {
   check(!/\p{Extended_Pictographic}/u.test(everything(p.html)), `${where}: contains an emoji or pictograph`)
   check(!/[dl]['’]trade/i.test(p.html), `${where}: French elision glitch (d'trade / l'trade)`)
   check(!/\{\{|\}\}|undefined|\bNaN\b|\[object /.test(text(p.html)), `${where}: an unfilled slot or a stray value is printed`)
+  // A legal page may wait for the publisher's details while the site is a preview, never once it is public.
+  if (p.kind === 'legal' && !preview) {
+    const left = bracketed(p.html)
+    check(!left.length, `${where}: ${left.length} bracketed placeholder${left.length > 1 ? 's' : ''} left (${left.join(', ')}); complete the legal pages before giving the site a public address`)
+  }
   if (p.kind === 'home') {
-    const visible = text(p.html)
-    check(!/\[[^\]]{2,}\]/.test(visible), `${where}: a bracketed placeholder is printed on a marketing page`)
+    check(!bracketed(p.html).length, `${where}: a bracketed placeholder is printed on a marketing page`)
     // Riot policy: no official rank names, no place names from the game's universe.
     // (The radar's "Gold/m" and "Gold@15" axes are the in-game currency, as the app labels them.)
     const prose = everything(p.html).replace(/Gold(?:\/m|@15)/g, '')
@@ -299,7 +305,7 @@ for (const p of pages) {
     check(!place, `${where}: universe name in the page source: "${place?.[0]}"`)
   }
 }
-const placeholders = pages.filter((p) => p.kind === 'legal').map((p) => `${p.file}: ${(p.html.match(/class="placeholder"/g) ?? []).length}`)
+const placeholders = pages.filter((p) => p.kind === 'legal').map((p) => [p.file, bracketed(p.html).length]).filter(([, n]) => n)
 
 if (problems.length) {
   console.error(`\nSite build failed, ${problems.length} problem${problems.length > 1 ? 's' : ''}:\n${problems.map((x) => `  - ${x}`).join('\n')}\n`)
@@ -311,7 +317,9 @@ console.log(`Ascend site built in ${path.relative(repo, out)}${siteUrl ? ` for $
 for (const [rel, bytes] of emitted) console.log(`  ${rel.padEnd(26)} ${kb(bytes).padStart(9)}`)
 console.log(`  download → ${releaseUrls().download}`)
 console.log(`  facts    → ${Object.entries(data.fr.facts).map(([k, v]) => `${k} ${v}`).join(', ')}`)
-console.log(`  legal placeholders still to fill by the publisher → ${placeholders.join(', ')}`)
+console.log(placeholders.length
+  ? `  legal placeholders still to fill by the publisher → ${placeholders.map(([file, n]) => `${file}: ${n}`).join(', ')}`
+  : '  legal pages → no placeholder left')
 if (versionNote) console.log(`  ${versionNote}`)
 for (const f of ['assets/fonts/big-shoulders-display.woff2', 'assets/fonts/inter.woff2', 'assets/fonts/jetbrains-mono.woff2', 'favicon.svg']) {
   if (!(await stat(path.join(out, f)).catch(() => null))) { console.error(`missing static file: ${f}`); process.exit(1) }

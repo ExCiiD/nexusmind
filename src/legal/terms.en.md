@@ -28,4 +28,4 @@ The service is provided "as is", without any guarantee of availability or of the
 Ascend isn't endorsed by Riot Games. League of Legends and Riot Games are trademarks of Riot Games, Inc.
 
 ## 7. Changes and contact
-These terms may change; the app will let you know. Contact: [CONTACT E-MAIL].
+These terms may change; the app will let you know. Contact: exciid501@gmail.com.

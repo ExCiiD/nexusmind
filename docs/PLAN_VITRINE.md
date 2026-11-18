@@ -7,7 +7,8 @@
 > Bouton de téléchargement direct vers l'installeur de la release (`site/src/release.mjs`), mis à jour dans le navigateur si GitHub publie une version plus récente.
 > Règles de design, structure des fichiers et contrôles du build : `site/DESIGN.md`. Aperçu local avec les en-têtes de production : `npm run site:preview`.
 > **En ligne en aperçu depuis le 18/11/2026** : <https://nexusmind-site.nexusmind-riot-proxy.workers.dev> (worker Cloudflare `nexusmind-site`). Tant que `SITE_URL` est vide dans `site/site.config.mjs`, le site se déclare non indexable (balise et en-tête `noindex`) : il se partage par lien, mais n'apparaît pas dans les moteurs de recherche.
-> Reste avant ouverture aux moteurs de recherche : remplir les mentions entre crochets des pages légales (éditeur, adresse, contact), attacher le domaine (ou garder l'adresse workers.dev) et renseigner `SITE_URL`, puis `npm run site:build` et `cd site && npx wrangler deploy`. Les textes légaux du site (v0.2) sont plus complets que ceux de l'app (`src/legal/*.md`, v0.1) : à resynchroniser.
+> Mentions de l'éditeur remplies le 18/11/2026 dans les pages légales du site et dans les textes de l'app (`src/legal/*.md`) : ExCiiD, La Réunion (France), droit français, adresse de contact.
+> Reste avant ouverture aux moteurs de recherche : attacher le domaine (ou garder l'adresse workers.dev) et renseigner `SITE_URL`, puis `npm run site:build` et `cd site && npx wrangler deploy`. Les textes légaux du site (v0.2) sont plus complets que ceux de l'app (`src/legal/*.md`, v0.1) : à resynchroniser. Aucun n'a été relu par un juriste.
 
 > Les sections 4 et 5 ci-dessous (palette bleu nuit, Midjourney, Astro/Tailwind) sont le brief d'origine, conservé pour mémoire : la direction retenue et la technique actuelle sont décrites dans `site/DESIGN.md`. Les objectifs, les publics, la structure et les contraintes de droits restent valables.
 

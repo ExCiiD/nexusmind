@@ -3,8 +3,8 @@
 _Version 0.1 (bêta) — brouillon à faire valider avant la version publique._
 
 ## Qui est responsable de vos données ?
-Ascend est édité par [NOM DE L'ÉDITEUR], [ADRESSE / PAYS].
-Contact : [ADRESSE E-MAIL DE CONTACT].
+Ascend est édité par ExCiiD, La Réunion, France.
+Contact : exciid501@gmail.com.
 
 ## Ce que Ascend stocke, et où
 **Sur votre PC (par défaut).** Vos sessions, reviews, scores, notes, enregistrements vidéo et statistiques restent dans l'application, sur votre ordinateur.
@@ -36,7 +36,7 @@ Aucune donnée n'est vendue, ni utilisée à des fins publicitaires.
 ## Vos droits
 - **Accès et portabilité** : *Réglages → Sauvegarde* exporte toutes vos données dans un fichier `.nexusmind`.
 - **Effacement** : *Réglages → Compte Ascend → Supprimer mon compte* supprime immédiatement votre compte et toutes vos sauvegardes cloud. Les données présentes sur votre PC ne sont pas touchées.
-- **Rectification, opposition, réclamation** : écrivez à [ADRESSE E-MAIL DE CONTACT]. Vous pouvez aussi saisir l'autorité de protection des données de votre pays (en France : la CNIL).
+- **Rectification, opposition, réclamation** : écrivez à exciid501@gmail.com. Vous pouvez aussi saisir l'autorité de protection des données de votre pays (en France : la CNIL).
 
 ## Mentions Riot Games
 Ascend n'est ni approuvé ni sponsorisé par Riot Games et ne reflète pas les opinions de Riot Games ou de toute personne officiellement impliquée dans la production ou la gestion des propriétés de Riot Games. Riot Games et toutes les propriétés associées sont des marques commerciales ou des marques déposées de Riot Games, Inc.

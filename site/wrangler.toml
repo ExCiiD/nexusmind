@@ -7,8 +7,7 @@
 #
 # Online as a preview at https://nexusmind-site.nexusmind-riot-proxy.workers.dev
 # (pages marked noindex while SITE_URL is empty in site.config.mjs).
-# Before opening it to search engines: fill the bracketed placeholders of the
-# four legal pages (the build lists them), then set SITE_URL, rebuild, deploy.
+# To open it to search engines: set SITE_URL, rebuild, deploy.
 name = "nexusmind-site"
 compatibility_date = "2025-09-01"
 

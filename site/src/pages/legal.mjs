@@ -1,8 +1,10 @@
 /**
  * The four legal pages and the 404 page. The legal texts live in
  * site/src/legal/*.html and are published as written: only the page around
- * them comes from here. Their bracketed placeholders (publisher, address,
- * contact) can only be filled by the publisher; the build lists them.
+ * them comes from here. The publisher's details (name, place, governing law,
+ * contact address) are written in those texts; a detail still to come is
+ * written as a bracketed placeholder, which the build lists and refuses once
+ * the site has a public address.
  */
 import { esc, tx } from '../lib/html.mjs'
 

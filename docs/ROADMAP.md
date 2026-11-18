@@ -59,7 +59,7 @@ Recommandation d'objectif par règles, résumé de review déterministe, pattern
 - ✅ Proxy Riot sur **Cloudflare Worker** (choix : la bande passante Supabase gratuite ne tiendrait pas les JSON de match).
 - ✅ Sauvegarde cloud : automatique chaque jour + manuelle, 10 dernières conservées, restauration par fusion. Bucket privé, RLS par utilisateur ; protection au repos par Supabase (pas de chiffrement côté client : le partage coach de W3 en aura besoin).
 - ✅ Moteur de sauvegarde unifié (fichier + cloud) : copie toutes les colonnes du schéma courant, inclut erreurs, tags, bookmarks, customs (oubliés avant), exclut le cache Riot du cloud et les webhooks Discord.
-- ✅ RGPD : suppression du compte (Edge Function `delete-account`), export via fichier `.nexusmind`, CGU + politique de confidentialité **brouillons** dans l'app (placeholders éditeur/contact à compléter, relecture juridique conseillée).
+- ✅ RGPD : suppression du compte (Edge Function `delete-account`), export via fichier `.nexusmind`, CGU + politique de confidentialité **brouillons** dans l'app (éditeur et contact renseignés le 18/11/2026, visibles à la prochaine version ; relecture juridique conseillée).
 - ⏳ À faire par toi : modèles d'e-mail avec `{{ .Token }}`, déploiement du Worker, `MAIN_VITE_RIOT_PROXY_URL`, SMTP avant la bêta publique (`docs/CLOUD_SETUP.md`).
 - ⏳ Nettoyer les anciennes tables Supabase vides (`synced_*`, `coach_*`) en W3.
 
@@ -191,7 +191,7 @@ Demandé par l'utilisateur le 17/11/2026 (retours : « ça se voit que c'est fai
 - ⏳ Passe « audit » page par page restante (Session, Review, Historique, Analytics, Équipe, Coaching, Planning, Paramètres) : chaque page mérite son propre diagnostic (redondances, actions manquantes) au-delà des correctifs mécaniques déjà faits.
 - ⏳ Profil : stocké par appareil (localStorage) — à synchroniser (Supabase) pour l'afficher aux coéquipiers / coachs et sur le web.
 - ⏳ **Refonte graphique complète** : 3 directions maquettées (A « Rapport de scouting », B « Atelier Hextech », C « Télémétrie ») — choix utilisateur attendu, puis application app + web + vitrine.
-- 🟡 **Vitrine** : construite dans `site/` (direction A + ateliers de B, FR/EN, CGU + confidentialité, section données Riot). Reste : placeholders éditeur/contact/domaine, déploiement Cloudflare, puis demande de clé Production. Paliers du profil renommés le 17/11/2026 (noms et couleurs sans rapport avec le classement LoL) pour éviter toute lecture « classement alternatif », interdit par les règles Riot.
+- 🟡 **Vitrine** : reconstruite dans `site/` pour la bêta 1.0 (direction A, FR/EN, aperçus interactifs, CGU + confidentialité, section données Riot). En ligne en aperçu non indexable depuis le 18/11/2026 : <https://nexusmind-site.nexusmind-riot-proxy.workers.dev> ; éditeur et contact renseignés le même jour. Reste : domaine (`SITE_URL`) pour l'ouvrir aux moteurs de recherche, puis demande de clé Production. Détails : `site/DESIGN.md`. Paliers du profil renommés le 17/11/2026 (noms et couleurs sans rapport avec le classement LoL) pour éviter toute lecture « classement alternatif », interdit par les règles Riot.
 - ⏳ Appliquer la direction A à l'app desktop et à l'app web.
 
 ## Phase S — Audit de sécurité avant publication du site ⏳

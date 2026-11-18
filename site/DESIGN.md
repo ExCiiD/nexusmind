@@ -86,6 +86,7 @@ Run `npm run site:build`; it stops with a list when any of these is true:
 - a link or an asset reference leads nowhere, an id is duplicated, a page has no single `h1`, or the Riot Games notice is missing;
 - an internal link names a `.html` file (Cloudflare would answer it with a redirect);
 - a preview page is not marked `noindex`, or a public page is;
+- a legal page still prints a bracketed placeholder while the site has a public address;
 - the release metadata disagrees with `release/latest.yml` (when that file is present).
 
 ## After an app release
@@ -106,5 +107,6 @@ Preview: <https://nexusmind-site.nexusmind-riot-proxy.workers.dev> (Cloudflare w
 
 ## Still to do by the publisher
 
-- Fill the bracketed placeholders of the four legal pages (publisher name, address, contact). The build lists them.
-- Then open the site to search engines: attach a domain (or keep the workers.dev address), set `SITE_URL` in `site.config.mjs`, rebuild and deploy. The `noindex` marks go away; canonical links, absolute preview images and the sitemap appear. On a custom domain, turn on "Always Use HTTPS" in Cloudflare.
+- Open the site to search engines: attach a domain (or keep the workers.dev address), set `SITE_URL` in `site.config.mjs`, rebuild and deploy. The `noindex` marks go away; canonical links, absolute preview images and the sitemap appear. On a custom domain, turn on "Always Use HTTPS" in Cloudflare.
+- The publisher's details are in the four legal texts (`src/legal/*.html`) since 18 November 2026: publisher ExCiiD, Réunion (France), French law, a contact address. They are also in the app's own texts (`src/legal/*.md` at the repo root). A change of contact address is made in both places.
+- The legal texts are a version 0.2 that no lawyer has reviewed.

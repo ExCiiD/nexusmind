@@ -28,4 +28,4 @@ Le service est fourni « en l'état », sans garantie de disponibilité ni d'exa
 Ascend n'est ni approuvé ni sponsorisé par Riot Games. League of Legends et Riot Games sont des marques de Riot Games, Inc.
 
 ## 7. Modifications et contact
-Ces conditions peuvent évoluer ; l'application vous en informera. Contact : [ADRESSE E-MAIL DE CONTACT].
+Ces conditions peuvent évoluer ; l'application vous en informera. Contact : exciid501@gmail.com.
