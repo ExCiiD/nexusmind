@@ -667,12 +667,15 @@ export function VideoReviewPlayer({
     }
   }
 
-  const toggleMute = () => {
-    if (!videoRef.current) return
-    const next = !muted
-    videoRef.current.muted = next
+  // Reads the element rather than the `muted` state: the keyboard handler
+  // below keeps this function between renders.
+  const toggleMute = useCallback(() => {
+    const v = videoRef.current
+    if (!v) return
+    const next = !v.muted
+    v.muted = next
     setMuted(next)
-  }
+  }, [])
 
   // ── Fullscreen ───────────────────────────────────────────────────────────────
   // SECTION-BOUNDED fullscreen: the player goes position:fixed within
@@ -750,6 +753,47 @@ export function VideoReviewPlayer({
     }
   }, [isFullscreen, showControlsTemporarily])
 
+  // ── Mistake / bookmark dialogs (also opened by the X and B shortcuts) ────
+
+  /**
+   * Open the inline "+ Mistake" dialog anchored at the current video time.
+   * Computes the in-game seconds from the recording offset so the saved
+   * mistake is anchored to game time (re-aligns even if the user re-records
+   * the same game later).
+   */
+  const openMistakeDialog = useCallback(() => {
+    const v = videoRef.current
+    if (!v || !gameMeta) return
+    v.pause()
+    const vt = v.currentTime
+    // Reverse-map videoTime → game time by subtracting the same offset
+    // gameTimeToVideoTime would have added. Falls back to 0 if metadata is missing.
+    const gameEndAt = typeof gameMeta.gameEndAt === 'string' ? new Date(gameMeta.gameEndAt) : gameMeta.gameEndAt
+    const recordingCreatedAt = typeof gameMeta.recordingCreatedAt === 'string' ? new Date(gameMeta.recordingCreatedAt) : gameMeta.recordingCreatedAt
+    let offsetSec = typeof gameMeta.startOffsetSec === 'number' && Number.isFinite(gameMeta.startOffsetSec)
+      ? gameMeta.startOffsetSec
+      : (recordingCreatedAt.getTime() - (gameEndAt.getTime() - gameMeta.gameDurationSec * 1000)) / 1000
+    if (!Number.isFinite(offsetSec)) offsetSec = 0
+    const gameSec = Math.max(0, Math.floor(vt - offsetSec))
+    setMistakeAtSec(gameSec)
+    setMistakeTagId('')
+    setMistakeTagQuery('')
+    setMistakeNote('')
+    setMistakeSeverity(2)
+    setMistakeDialogOpen(true)
+    revealSidebar('mistakes')
+  }, [gameMeta, revealSidebar])
+
+  const openBookmarkDialog = useCallback(() => {
+    const v = videoRef.current
+    if (!v) return
+    v.pause()
+    setBookmarkAtMs(Math.floor(v.currentTime * 1000))
+    setBookmarkLabel('')
+    setBookmarkDialogOpen(true)
+    revealSidebar('bookmarks')
+  }, [revealSidebar])
+
   // ── Keyboard shortcuts ───────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -804,7 +848,7 @@ export function VideoReviewPlayer({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [togglePlay, skip, seekBy, speed, changeSpeed, isFullscreen, cycleSidebar, onAddMistake, gameMeta, onAddBookmark])
+  }, [togglePlay, skip, seekBy, speed, changeSpeed, isFullscreen, cycleSidebar, onAddMistake, gameMeta, onAddBookmark, toggleMute, openMistakeDialog, openBookmarkDialog])
 
   // ── Mark moment ──────────────────────────────────────────────────────────────
 
@@ -829,36 +873,7 @@ export function VideoReviewPlayer({
     setPendingNote('')
   }
 
-  // ── Mistake dialog handlers ────────────────────────────────────────────
-
-  /**
-   * Open the inline "+ Mistake" dialog anchored at the current video time.
-   * Computes the in-game seconds from the recording offset so the saved
-   * mistake is anchored to game time (re-aligns even if the user re-records
-   * the same game later).
-   */
-  function openMistakeDialog() {
-    const v = videoRef.current
-    if (!v || !gameMeta) return
-    v.pause()
-    const vt = v.currentTime
-    // Reverse-map videoTime → game time by subtracting the same offset
-    // gameTimeToVideoTime would have added. Falls back to 0 if metadata is missing.
-    const gameEndAt = typeof gameMeta.gameEndAt === 'string' ? new Date(gameMeta.gameEndAt) : gameMeta.gameEndAt
-    const recordingCreatedAt = typeof gameMeta.recordingCreatedAt === 'string' ? new Date(gameMeta.recordingCreatedAt) : gameMeta.recordingCreatedAt
-    let offsetSec = typeof gameMeta.startOffsetSec === 'number' && Number.isFinite(gameMeta.startOffsetSec)
-      ? gameMeta.startOffsetSec
-      : (recordingCreatedAt.getTime() - (gameEndAt.getTime() - gameMeta.gameDurationSec * 1000)) / 1000
-    if (!Number.isFinite(offsetSec)) offsetSec = 0
-    const gameSec = Math.max(0, Math.floor(vt - offsetSec))
-    setMistakeAtSec(gameSec)
-    setMistakeTagId('')
-    setMistakeTagQuery('')
-    setMistakeNote('')
-    setMistakeSeverity(2)
-    setMistakeDialogOpen(true)
-    revealSidebar('mistakes')
-  }
+  // ── Mistake dialog handlers (openers above the keyboard shortcuts) ─────
 
   async function saveMistake() {
     if (!onAddMistake || !mistakeTagId) return
@@ -877,16 +892,6 @@ export function VideoReviewPlayer({
     } finally {
       setSavingMistake(false)
     }
-  }
-
-  function openBookmarkDialog() {
-    const v = videoRef.current
-    if (!v) return
-    v.pause()
-    setBookmarkAtMs(Math.floor(v.currentTime * 1000))
-    setBookmarkLabel('')
-    setBookmarkDialogOpen(true)
-    revealSidebar('bookmarks')
   }
 
   async function saveBookmark() {

@@ -159,7 +159,7 @@ export function ReviewPage() {
   const saveDraft = useCallback(() => {
     if (!draftKey || saved) return
     sessionStorage.setItem(draftKey, JSON.stringify({ timelineNotes, kpiScores, kpiNotes, freeText, objectiveRespected }))
-  }, [draftKey, timelineNotes, kpiScores, freeText, objectiveRespected, saved])
+  }, [draftKey, timelineNotes, kpiScores, kpiNotes, freeText, objectiveRespected, saved])
 
   const clearDraft = useCallback(() => {
     if (draftKey) sessionStorage.removeItem(draftKey)
@@ -233,6 +233,12 @@ export function ReviewPage() {
       } catch {
         setKpiScores({})
       }
+      try {
+        const parsedKpiNotes = JSON.parse(review.kpiNotes ?? '{}')
+        setKpiNotes(parsedKpiNotes && typeof parsedKpiNotes === 'object' ? parsedKpiNotes : {})
+      } catch {
+        setKpiNotes({})
+      }
       setFreeText(review.freeText ?? '')
       setObjectiveRespected(review.objectiveRespected ?? null)
       return
@@ -256,6 +262,7 @@ export function ReviewPage() {
 
     setTimelineNotes([])
     setKpiScores({})
+    setKpiNotes({})
     setFreeText('')
     setObjectiveRespected(null)
 
@@ -273,6 +280,9 @@ export function ReviewPage() {
         .catch(() => {})
       return () => { cancelled = true }
     }
+  // Keyed on the ids on purpose: a refreshed session hands over new game
+  // objects, and re-running this would wipe what the player is typing.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession?.id, latestGame?.id])
 
   // Pre-fill "objective respected" from the experiment (never over a saved review or a draft).
