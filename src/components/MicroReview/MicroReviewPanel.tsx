@@ -28,9 +28,8 @@ import { summaryText, tagLabel } from './text'
 import { usePrepareSession } from './usePrepareSession'
 import { useTeamCodex } from './useTeamCodex'
 import { toNxmUrl } from '@/lib/mediaCore'
+import { EXCERPT_SEC, PRE_ROLL_SEC } from '@/lib/microReview/vodTiming'
 
-export const PRE_ROLL_SEC = 12
-export const EXCERPT_SEC = 15
 const panel = 'panel-surface rounded-2xl border border-hextech-border-dim/70 shadow-lg backdrop-blur-sm'
 
 const youtubeId = (url: string) => url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^&?/\s]+)/)?.[1] ?? null
