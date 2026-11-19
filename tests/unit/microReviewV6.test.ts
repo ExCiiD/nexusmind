@@ -12,7 +12,7 @@ import {
   CODEX_LEVEL_SPIKE, CODEX_OBJ_SETUP, CODEX_131, CODEX_BARON, CODEX_SINGLE_THREAT,
 } from '../../src/lib/microReview/smartQcm'
 import {
-  analyzeGame, DETECTOR_SPEC, GARBAGE_CEILING_EXEMPT, MOMENT_PATTERNS, type CriticalMoment, type MomentFacts, type MomentPattern,
+  analyzeGame, CLOCK_2025, DETECTOR_SPEC, GARBAGE_CEILING_EXEMPT, MOMENT_PATTERNS, type CriticalMoment, type MomentFacts, type MomentPattern,
 } from '../../src/lib/microReview/anomalyDetector'
 import { GARBAGE_HIGH, GARBAGE_LOW } from '../../src/lib/microReview/winProbability'
 import { BARON_PIT, BASE_BOX, DRAGON_PIT, inBaseBox, laneOf, territoryOf, zoneOf } from '../../src/lib/microReview/geometry'
@@ -217,7 +217,8 @@ const NEAR_BARON: P = { x: BARON_PIT.x, y: BARON_PIT.y + 500 }
 
 describe('detector — the V6 numbers and places', () => {
   it('are the ones of the brief, and the spawn timers measured on cached games', () => {
-    expect(DETECTOR_SPEC.supportEarly).toEqual({ wardBySec: 105, deathFromSec: 125, deathToSec: 160 })
+    expect(DETECTOR_SPEC.supportEarly).toEqual({ wardBySec: 70, deathFromSec: 90, deathToSec: 125 })
+    expect(CLOCK_2025.supportEarly).toEqual({ wardBySec: 105, deathFromSec: 125, deathToSec: 160 })
     expect(DETECTOR_SPEC.teamReset).toEqual({ untilSec: 840, lookbackSec: 15, alliesHome: 2 })
     expect(DETECTOR_SPEC.tradeRecall).toMatchObject({ untilSec: 840, hpPct: 40, beforeSpawnSec: 35 })
     expect(DETECTOR_SPEC.adcReopen).toMatchObject({ fromSec: 840, withinSec: 45 })
@@ -236,7 +237,7 @@ describe('detector — the V6 numbers and places', () => {
 })
 
 describe('pattern — support: the level-2 fight lost (2:05–2:40)', () => {
-  const S = DETECTOR_SPEC.supportEarly
+  const S = CLOCK_2025.supportEarly // fixtures are 15.x games
   const fight = (o: { deathAt?: number; ups?: Array<[number, number, number]>; killer?: number; assists?: number[]; me?: number } = {}) => buildGame({
     minutes: 8, me: o.me ?? 5,
     events: [...(o.ups ?? [[110_000, 9, 2]]).map(([t, id, lvl]) => levelUp(t, id, lvl)), kill(o.deathAt ?? at(2, 20), o.me ?? 5, o.killer ?? 9, o.assists ?? [10], BOT_OWN)],
@@ -261,7 +262,7 @@ describe('pattern — support: the level-2 fight lost (2:05–2:40)', () => {
 })
 
 describe('pattern — support: no ward of their own by 1:45', () => {
-  const S = DETECTOR_SPEC.supportEarly
+  const S = CLOCK_2025.supportEarly // fixtures are 15.x games
   const lane = (events: any[] = [], me = 5) => buildGame({ minutes: 6, me, events })
   it('a moment at 1:45; a ward placed at 1:45 or before cancels it', () => {
     expect(withPattern(lane(), 'support-no-early-ward')).toMatchObject({ trigger: 'early-deficit', gameTimeSec: S.wardBySec })

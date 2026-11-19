@@ -91,6 +91,7 @@ import {
   type ObjectiveKind,
 } from './winProbability'
 import { attackTypeOf, isControlMage } from './championClasses'
+import { deathTimerSec, gameClockOf, respawnTimeFactor, type GameClock } from './gameClock'
 
 export type MomentTrigger = 'critical-death' | 'absent-objective' | 'early-deficit'
 
@@ -119,7 +120,11 @@ export type MomentPattern = typeof MOMENT_PATTERNS[number]
  */
 export const GARBAGE_CEILING_EXEMPT: readonly MomentPattern[] = ['jungle-baron-recall', 'inhib-forced-dive']
 
-/** Every numeric rule of the detector (seconds, map units, gold, ratios). */
+/**
+ * Every numeric rule of the detector (seconds, map units, gold, ratios), on the season-2026 clock (game version 16.x:
+ * minions 0:30, camps 0:55, Scuttle 2:55). The early-game timings of 15.x games are CLOCK_2025 (35 s later), applied
+ * by detectorSpecFor; see gameClock.ts for the numbers checked on cached games.
+ */
 export const DETECTOR_SPEC = {
   maxMoments: 3,
   minSpacingSec: 25,
@@ -127,10 +132,19 @@ export const DETECTOR_SPEC = {
   absent: { wardRadius: WARD_RADIUS, wardLookbackSec: 90, crossMapSec: 60, deadBeforeSec: 110, accountableFromSec: 300 },
   early: { atSec: 600, csDiff: -15, xpDiff: -400, takedowns: 2 },
   hesitation: { notInPitSec: 30, moveFromSec: 25, approachMin: 1200, crossMapBeforeSec: 40, crossMapAfterSec: 15, towerGreedSec: 75 },
-  jungle: { fromSec: 150, toSec: 480, overchaseSec: 20, sampleSec: 5, counterTempoXp: 150, riverPlaySec: [195, 255], backAtSec: 300, passiveBotLead: 250 },
+  /**
+   * Jungle, from the end of the first clear to 8:00. Passive clear: in our half at every homeSamplesSec, no takedown
+   * until quietUntilSec, read at passiveAtSec. Counter-tempo: a river play on the riverPlaySec samples (every 15 s),
+   * from the startAtSec quadrant back to it at backAtSec, read at counterTempoAtSec.
+   */
+  jungle: {
+    fromSec: 115, toSec: 480, overchaseSec: 20, sampleSec: 5, counterTempoXp: 150, riverPlaySec: [160, 220], backAtSec: 265, passiveBotLead: 250,
+    homeSamplesSec: [85, 145, 175, 205], quietUntilSec: 205, passiveAtSec: 160, startAtSec: 85, counterTempoAtSec: 235,
+  },
   tempoLine: { fromSec: 900, alliesHigh: 0.55, userBase: 0.15, userFront: 0.65, alliesHome: 0.30, minAllies: 3, goldBefore: 1500, goldLookbackSec: 30, fightWindowSec: 30, aliveBeforeSec: 60 },
-  gank: { window1: [145, 180], window2: [195, 265], deepWardLifetimeSec: 150 },
-  tempoWindow: { fromSec: 150, untilSec: 720, distance: 8000, windowSec: 45, respawnGraceSec: 20 },
+  /** Gank on a predictable timer: the 3-camp transition (1:50–2:25), the end of the first clear (2:40–3:50). */
+  gank: { window1: [110, 145], window2: [160, 230], deepWardLifetimeSec: 150 },
+  tempoWindow: { fromSec: 115, untilSec: 720, distance: 8000, windowSec: 45, respawnGraceSec: 20 },
   carry: { bounty: 450, kda: 4, goldShare: 0.25, enemies: 3, fightRadius: 2500, lostWithinSec: 60, firstDeathSec: 10 },
   rotation: { untilSec: 840, awaySec: 30, cs: 8, xp: 350, deathGuardSec: 45 },
   pit: { fromSec: 840, fightRadius: PIT_FIGHT_RADIUS, insideRadius: PIT_INSIDE_RADIUS, beforeSec: 15, fightGapSec: 20 },
@@ -139,16 +153,23 @@ export const DETECTOR_SPEC = {
   /** Kills the lane opponent within 850 units of a standing enemy T1, dies within 4 s, enemy jungler not involved. */
   dive: { untilSec: 840, turretRadius: 850, afterKillSec: 4 },
   /** Killed by the lane opponent within 10 s of their level 2 or 3, while still below that level. */
-  levelSpike: { untilSec: 270, windowSec: 10, levels: [2, 3] },
+  levelSpike: { untilSec: 235, windowSec: 10, levels: [2, 3] },
   /** Under 35 % HP with 800+ gold in lane, then dead in the river / jungle within 40 s, before 10:00. */
   backTimer: { untilSec: 600, hpPct: 35, gold: 800, withinSec: 40 },
   /** 1v1 death to the lane opponent before 8:00: ranged under 60 % HP at level ≤ 3, or melee under 50 % at level ≤ 4 against a ranged above 85 %. */
   rangeMelee: { untilSec: 480, rangedHp: 60, rangedMaxLevel: 3, meleeHp: 50, meleeMaxLevel: 4, opponentHp: 85 },
-  /** In base at 3:00 (back between 2:35 and 3:15) from above 75 % HP at 2:00, no Teleport cast, 1+ level behind at 4:00. */
-  cheaterRecall: { atSec: 180, anchorSec: 155, hpBeforeSec: 120, hpPct: 75, levelAtSec: 240, levelDeficit: 1, teleportSpellId: 12 },
+  /**
+   * A back between 2:00 and 2:40 (a purchase in visitSec, after the starting items) from above 75 % HP at 2:00, no
+   * Teleport cast, 1+ level behind at 4:00. No snapshot falls inside that window in 2026; the 2025 clock reads the back
+   * from the 3:00 snapshot instead (atSec, standing in base: a back between 2:35 and 3:15).
+   */
+  cheaterRecall: {
+    atSec: null as number | null, visitSec: [120, 160] as readonly [number, number] | null,
+    anchorSec: 120, hpBeforeSec: 120, hpPct: 75, levelAtSec: 240, levelDeficit: 1, teleportSpellId: 12,
+  },
   // V6 — roles.
-  /** Support: no ward of their own by 1:45 (champion objects aside); or killed 2:05–2:40 below the level of an enemy in the fight. */
-  supportEarly: { wardBySec: 105, deathFromSec: 125, deathToSec: 160 },
+  /** Support: no ward of their own by 1:10 (champion objects aside); or killed 1:30–2:05 below the level of an enemy in the fight. */
+  supportEarly: { wardBySec: 70, deathFromSec: 90, deathToSec: 125 },
   /** Laner ganked before 14:00 in the enemy half of their lane while 2+ allies, the jungler or a bot laner among them, stood in base in the 15 s before. */
   teamReset: { untilSec: 840, lookbackSec: 15, alliesHome: 2 },
   /**
@@ -166,8 +187,8 @@ export const DETECTOR_SPEC = {
   /** Spawn timers of the patches analysed (15.20–16.22, checked on cached games): dragon at 5:00 then 5:00 after each kill, one Voidgrub camp at 8:00. */
   spawns: { firstDragonSec: 300, dragonRespawnSec: 300, grubsSec: 480 },
   // V7–V10 — jungle, mid, engage support.
-  /** Jungler still on the map at 4:05 (1st camp back up, so the T-25 s recall was missed): no back after 1:00, no takedown, no death. */
-  jungleFirstBack: { bySec: 245, startSec: 60 },
+  /** Jungler still on the map at 3:30 (1st camp back up, so the T-25 s recall was missed): no back after 1:00, no takedown, no death. */
+  jungleFirstBack: { bySec: 210, startSec: 60 },
   /**
    * A gank that cost the camps (the brief's "deficit of 8 jungle CS"), from 2:00 to 12:00: the jungler in a lane with an
    * enemy within 2500 on a snapshot, no takedown and no death in the minute that follows, and 8+ jungle CS lost on the
@@ -224,9 +245,37 @@ export const DETECTOR_SPEC = {
   midWaveLoss: { atSec: 360, csDiff: -12, takedowns: 2 },
   /** Support level 6+ at 9:00, within 2000 of the ADC in the bot lane on 6 of the 7 snapshots 9:00–15:00 (over 75 %), under 45 % kill participation at 15:00. */
   supportLeech: { fromSec: 540, untilSec: 900, level: 6, radius: 2000, snapshots: 6, kp: 0.45 },
-  /** Our jungler dead in the bot river between 3:25 and 3:50, the support more than 2000 away and without a takedown around it. */
-  supportScuttle: { fromSec: 205, untilSec: 230, radius: 2000 },
+  /** Our jungler dead in the bot river between 2:50 and 3:15 (Scuttle at 2:55), the support more than 2000 away and without a takedown around it. */
+  supportScuttle: { fromSec: 170, untilSec: 195, radius: 2000 },
 } as const
+
+type Widen<T> = T extends number ? number : T extends string ? string : T extends boolean ? boolean : T extends null ? null
+  : T extends readonly (infer U)[] ? readonly Widen<U>[] : { readonly [K in keyof T]: Widen<T[K]> }
+/** DETECTOR_SPEC with its numbers widened, so the 2025 clock fits the same shape. */
+export type DetectorSpec = Widen<typeof DETECTOR_SPEC>
+
+/**
+ * The 2025 clock (game version 15.x and older: minions 1:05, camps 1:30, Scuttle 3:30): every early timing of
+ * DETECTOR_SPEC 35 s later, as the detector ran until ANALYSIS_VERSION 7. Sections listed here replace theirs whole.
+ */
+export const CLOCK_2025 = {
+  jungle: {
+    ...DETECTOR_SPEC.jungle, fromSec: 150, riverPlaySec: [195, 255], backAtSec: 300,
+    homeSamplesSec: [120, 180, 210, 240], quietUntilSec: 240, passiveAtSec: 195, startAtSec: 120, counterTempoAtSec: 270,
+  },
+  gank: { ...DETECTOR_SPEC.gank, window1: [145, 180], window2: [195, 265] },
+  tempoWindow: { ...DETECTOR_SPEC.tempoWindow, fromSec: 150 },
+  levelSpike: { ...DETECTOR_SPEC.levelSpike, untilSec: 270 },
+  cheaterRecall: { ...DETECTOR_SPEC.cheaterRecall, atSec: 180, visitSec: null, anchorSec: 155 },
+  supportEarly: { wardBySec: 105, deathFromSec: 125, deathToSec: 160 },
+  jungleFirstBack: { ...DETECTOR_SPEC.jungleFirstBack, bySec: 245 },
+  supportScuttle: { ...DETECTOR_SPEC.supportScuttle, fromSec: 205, untilSec: 230 },
+} satisfies Partial<DetectorSpec>
+
+/** The rules of a game on `clock`. */
+export function detectorSpecFor(clock: GameClock): DetectorSpec {
+  return clock === 2025 ? { ...DETECTOR_SPEC, ...CLOCK_2025 } : DETECTOR_SPEC
+}
 
 export interface MomentFacts {
   // critical-death
@@ -275,7 +324,13 @@ export interface MomentFacts {
   /** tempo lines: forward allies who died in the fight / allies still home (gank-during-team-reset: allies in base in the 15 s before). */
   alliesHigh?: number
   alliesHome?: number
-  /** gank-timer: which window (1 = 2:25–3:00, 2 = 3:15–4:25); wards are best effort (no coordinates in the timeline). */
+  /**
+   * Season clock of the game, on the patterns whose timings depend on it (gank-timer, cheater-recall,
+   * support-no-early-ward, jungle-late-first-recall, support-absent-scuttle). Absent on facts of ANALYSIS_VERSION ≤ 7,
+   * which all used the 2025 clock.
+   */
+  season?: GameClock
+  /** gank-timer: which window (1 = the 3-camp transition, 2 = the end of the first clear); wards are best effort (no coordinates in the timeline). */
   gankWindow?: 1 | 2
   deepWard?: boolean
   wardedRecently?: boolean
@@ -413,21 +468,7 @@ const MID_OUTER_TURRET: Record<TeamId, Point> = { 100: { x: 5846, y: 6396 }, 200
 /** Float noise allowed on a threshold computed from unrounded probabilities. */
 const EPS = 1e-9
 
-/** Base respawn wait by level (s). */
-const BRW = [6, 6, 8, 8, 10, 12, 16, 21, 26, 32.5, 35, 37.5, 40, 42.5, 45, 47.5, 50, 52.5]
-/** Share added to the base wait as the game goes on: 0 before 15:00, then per 30 s step, capped at 50 % from 55:00. */
-export function respawnTimeFactor(minutes: number): number {
-  if (minutes < 15) return 0
-  if (minutes < 30) return Math.ceil(2 * (minutes - 15)) * 0.00425
-  if (minutes < 45) return 0.1275 + Math.ceil(2 * (minutes - 30)) * 0.003
-  if (minutes < 55) return Math.min(0.5, 0.2175 + Math.ceil(2 * (minutes - 45)) * 0.0145)
-  return 0.5
-}
-/** Respawn timer (s) of a champion of `level` dying at `minutes`. */
-export function deathTimerSec(level: number, minutes: number): number {
-  const base = BRW[Math.min(BRW.length, Math.max(1, Math.round(level))) - 1]
-  return base * (1 + respawnTimeFactor(minutes))
-}
+export { deathTimerSec, respawnTimeFactor }
 
 /** Kill gold of a champion on an n-kill streak (classic table: 2 kills → 450 g … 7+ → 1000 g). Estimate: the live bounty also depends on farm leads. */
 const BOUNTY_BY_STREAK = [300, 300, 450, 600, 700, 800, 900, 1000]
@@ -467,7 +508,8 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
   const frames: any[] = timeline?.info?.frames ?? []
   const me = resolveParticipant(match, selector)
   if (!me || frames.length < 2 || !isSupportedGame(match)) return null
-  const S = DETECTOR_SPEC
+  const season = gameClockOf(match)
+  const S = detectorSpecFor(season)
   const pid: number = me.participantId
   const team = (me.teamId === 200 ? 200 : 100) as TeamId
   const parts: any[] = match.info.participants
@@ -516,7 +558,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     if (typeof id !== 'number' || !pos) continue
     const level = Number(snapshotAt(id, e.timestamp)?.level) || 1
     const list = lives.get(id) ?? []
-    list.push({ ts: e.timestamp, pos, respawn: e.timestamp + deathTimerSec(level, e.timestamp / 60000) * 1000 })
+    list.push({ ts: e.timestamp, pos, respawn: e.timestamp + deathTimerSec(level, e.timestamp / 60000, season) * 1000 })
     lives.set(id, list)
   }
   /** Dead at `ms` (between a death and its respawn). */
@@ -620,7 +662,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     }
   }
   /**
-   * The V4 overchase test of a death (jungle, 2:30–8:00): the 20 s before it across the river or in the enemy jungle, no
+   * The V4 overchase test of a death (jungle, from the end of the first clear to 8:00): the 20 s before it across the river or in the enemy jungle, no
    * takedown, no camp between the snapshot before the chase and the one after the death. Section 4 reports it; the V7
    * invade death leaves such deaths to it.
    */
@@ -776,7 +818,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       }
     }
 
-    // V6 — support, level-2 fight lost: killed 2:05–2:40 while below the level of an enemy in the fight (gank or all-in).
+    // V6 — support, level-2 fight lost: killed 1:30–2:05 (2025: 2:05–2:40) while below the level of an enemy in the fight (gank or all-in).
     const SE = S.supportEarly
     if (!pattern && role === 'UTILITY' && sec >= SE.deathFromSec && sec <= SE.deathToSec && involved.length > 0) {
       const mine = levelAtMs(pid, ts)
@@ -839,7 +881,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       }
     }
 
-    // Gank on a predictable jungle timer (laners): 2:25–3:00, or 3:15–4:25 without a deep ward.
+    // Gank on a predictable jungle timer (laners): 1:50–2:25, or 2:40–3:50 without a deep ward (2025: 2:25–3:00, 3:15–4:25).
     if (!pattern && isLaner && enemyJungler != null && involved.includes(enemyJungler)) {
       const w1 = sec >= S.gank.window1[0] && sec <= S.gank.window1[1]
       const w2 = sec >= S.gank.window2[0] && sec <= S.gank.window2[1]
@@ -848,7 +890,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
         const deepWard = recent.some((w) => w.pos != null && zoneOf(w.pos, team) === 'enemy-jungle')
         if (w1 || !deepWard) {
           pattern = 'gank-timer'
-          Object.assign(extra, { gankWindow: w1 ? 1 : 2, deepWard, wardedRecently: recent.length > 0 })
+          Object.assign(extra, { season, gankWindow: w1 ? 1 : 2, deepWard, wardedRecently: recent.length > 0 })
         }
       }
     }
@@ -1203,32 +1245,35 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
   }
 
   // ── 3b. Cheater recall that backfired (V5, laners with a direct opponent) ──
-  // A back between 2:35 and 3:15 (standing in base on the 3:00 snapshot) from high HP, without
-  // Teleport, then a level behind at 4:00: the opponent kept the bigger wave. Riot only counts
-  // Teleport casts for the whole game, so any cast keeps the detector silent.
+  // A back between 2:00 and 2:40 (a purchase then; 2025: standing in base on the 3:00 snapshot, a back
+  // between 2:35 and 3:15) from high HP, without Teleport, then a level behind at 4:00: the opponent
+  // kept the bigger wave. Riot only counts Teleport casts for the whole game, so any cast keeps the
+  // detector silent.
   if (laneOpponent && frames.length > S.cheaterRecall.levelAtSec / 60) {
     const C = S.cheaterRecall
     const opp: number = laneOpponent.participantId
-    const atBase = pframe(C.atSec / 60, pid)?.position as Point | undefined
+    const snap = C.atSec != null ? pframe(C.atSec / 60, pid)?.position as Point | undefined : undefined
+    const visited = C.visitSec != null && visitsOf(pid).some((t) => t >= C.visitSec![0] * 1000 && t <= C.visitSec![1] * 1000)
+    const atBase: Point | undefined = snap && zoneOf(snap, team) === 'own-base' ? snap : visited ? FOUNTAIN[team] : undefined
     const hpBefore = hpPctOf(C.hpBeforeSec / 60, pid)
     const tpSlot = [1, 2].find((k) => me[`summoner${k}Id`] === C.teleportSpellId)
     const tpCast = tpSlot != null && !(Number(me[`summoner${tpSlot}Casts`]) === 0)
     const behind = levelOf(C.levelAtSec / 60, opp) - levelOf(C.levelAtSec / 60, pid)
-    if (atBase && zoneOf(atBase, team) === 'own-base' && hpBefore != null && hpBefore > C.hpPct && !tpCast &&
+    if (atBase && hpBefore != null && hpBefore > C.hpPct && !tpCast &&
         behind >= C.levelDeficit && !downIn(pid, C.hpBeforeSec * 1000, C.levelAtSec * 1000)) {
       add('early-deficit', C.anchorSec * 1000, atBase, 0.12 + Math.min(0.08, behind * 0.04), {
-        pattern: 'cheater-recall', recallHpPct: hpBefore, levelsBehind: behind, opponentChampion: laneOpponent.championName ?? null,
+        pattern: 'cheater-recall', season, recallHpPct: hpBefore, levelsBehind: behind, opponentChampion: laneOpponent.championName ?? null,
       })
     }
   }
 
-  // ── 3c. Support without a ward of their own by 1:45 (V6) — unless the level-2 fight already made the point ──
+  // ── 3c. Support without a ward of their own by 1:10 (2025: 1:45) (V6) — unless the level-2 fight already made the point ──
   if (role === 'UTILITY' && !supportLevel2Death && frames.length > 2) {
     const by = S.supportEarly.wardBySec * 1000
-    if (!myWards.some((w) => w.ts <= by) && !downIn(pid, 0, by)) add('early-deficit', by, posAt(pid, by), 0.06, { pattern: 'support-no-early-ward' })
+    if (!myWards.some((w) => w.ts <= by) && !downIn(pid, 0, by)) add('early-deficit', by, posAt(pid, by), 0.06, { pattern: 'support-no-early-ward', season })
   }
 
-  // ── 3d. Engage support (V10): glued to the ADC after level 6, missing at the 3:30 Scuttle Crab, weak side unwarded ──
+  // ── 3d. Engage support (V10): glued to the ADC after level 6, missing at the first Scuttle Crab, weak side unwarded ──
   if (role === 'UTILITY') {
     const adc = allyByRole('BOTTOM')
     const jg = allyByRole('JUNGLE')
@@ -1247,7 +1292,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       }
     }
 
-    // Our jungler dead in the bot river 3:25–3:50 while the support stood more than 2000 away, without a takedown around it.
+    // Our jungler dead in the bot river 2:50–3:15 (2025: 3:25–3:50) while the support stood more than 2000 away, without a takedown around it.
     const SC = S.supportScuttle
     const fall = jg != null ? kills.find((e) => e.victimId === jg && e.timestamp >= SC.fromSec * 1000 && e.timestamp <= SC.untilSec * 1000 && e.position && zoneOf(e.position, team) === 'bot-river') : undefined
     const here = fall && !deadAt(pid, fall.timestamp) ? posAt(pid, fall.timestamp) : null
@@ -1256,7 +1301,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       const before = track.before(fall.timestamp)
       const after = track.at(fall.timestamp + 60_000)
       add('absent-objective', at, posAt(pid, at), 0.1 + (before != null && after != null ? Math.max(0, before - after) : 0), {
-        pattern: 'support-absent-scuttle', playerDistance: Math.round(dist(here, fall.position)),
+        pattern: 'support-absent-scuttle', season, playerDistance: Math.round(dist(here, fall.position)),
       }, after, fall.timestamp)
     }
 
@@ -1272,7 +1317,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     }
   }
 
-  // ── 4. Jungle (2:30–8:00): overchase, passive clear, counter-tempo ────
+  // ── 4. Jungle (1:55–8:00; 2025: 2:30–8:00): overchase, passive clear, counter-tempo ────
   if (role === 'JUNGLE') {
     const J = S.jungle
     const xpDiffAt = (i: number): number | null => {
@@ -1315,22 +1360,23 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       .reduce((s, p) => s + (p.teamId === team ? 1 : -1) * goldOf(i, p.participantId), 0)
     const botLead = laneLead('BOTTOM', 3) + laneLead('UTILITY', 3)
     const midLead = laneLead('MIDDLE', 3)
-    const stayedHome = [120_000, 180_000, 210_000, 240_000].every((ms) => { const p = posAt(pid, ms); return p != null && territoryOf(p, team) === 'own' })
+    const stayedHome = J.homeSamplesSec.every((s) => { const p = posAt(pid, s * 1000); return p != null && territoryOf(p, team) === 'own' })
     const xp6 = xpDiffAt(6)
-    if (!chased && botLead >= J.passiveBotLead && midLead >= 0 && stayedHome && !takedownIn(0, 240_000) && xp6 != null && xp6 <= 0) {
-      jungle(195_000, posAt(pid, 195_000), 'jungle-passive-clear', 0.12, { botGoldLead: Math.round(botLead), xpDiffJungle: xp6 })
+    if (!chased && botLead >= J.passiveBotLead && midLead >= 0 && stayedHome && !takedownIn(0, J.quietUntilSec * 1000) && xp6 != null && xp6 <= 0) {
+      jungle(J.passiveAtSec * 1000, posAt(pid, J.passiveAtSec * 1000), 'jungle-passive-clear', 0.12, { botGoldLead: Math.round(botLead), xpDiffJungle: xp6 })
     }
 
-    // B — counter-tempo: a river play around 3:15–4:15, then back to the starting quadrant, behind in XP at 6:00.
-    const start = posAt(pid, 120_000)
-    const riverPlay = [195, 210, 225, 240, 255].map((s) => posAt(pid, s * 1000)).some((p) => p != null && territoryOf(p, team) === 'river')
+    // B — counter-tempo: a river play around 2:40–3:40 (2025: 3:15–4:15), then back to the starting quadrant, behind in XP at 6:00.
+    const start = posAt(pid, J.startAtSec * 1000)
+    const riverSamples = Array.from({ length: (J.riverPlaySec[1] - J.riverPlaySec[0]) / 15 + 1 }, (_, n) => J.riverPlaySec[0] + n * 15)
+    const riverPlay = riverSamples.map((s) => posAt(pid, s * 1000)).some((p) => p != null && territoryOf(p, team) === 'river')
     const back = posAt(pid, J.backAtSec * 1000)
     if (start && riverPlay && back && territoryOf(start, team) === 'own' && territoryOf(back, team) === 'own' &&
         (start.y > start.x) === (back.y > back.x) && xp6 != null && xp6 < -J.counterTempoXp) {
-      jungle(270_000, back, 'jungle-counter-tempo', 0.15 + Math.min(0.1, -xp6 / 4000), { xpDiffJungle: xp6 })
+      jungle(J.counterTempoAtSec * 1000, back, 'jungle-counter-tempo', 0.15 + Math.min(0.1, -xp6 / 4000), { xpDiffJungle: xp6 })
     }
 
-    // Tempo window not punished (2:30–12:00): the enemy jungler shows far away, nothing is taken in the next 45 s.
+    // Tempo window not punished (1:55–12:00; 2025: 2:30–12:00): the enemy jungler shows far away, nothing is taken in the next 45 s.
     if (enemyJungler != null) {
       const W = S.tempoWindow
       for (const e of events) {
@@ -1355,13 +1401,13 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       }
     }
 
-    // V7 — still on the map at 4:05 (1st camp back up): no back after 1:00, no takedown, no death. A timeline without any
+    // V7 — still on the map at 3:30 (2025: 4:05; 1st camp back up): no back after 1:00, no takedown, no death. A timeline without any
     // purchase of the player (real games always log the starting items) cannot tell a back: silent then.
     const FB = S.jungleFirstBack
     const firstBack = shopsOf(pid).find((t) => t > FB.startSec * 1000) ?? null
     if (shopsOf(pid).length > 0 && (firstBack == null || firstBack > FB.bySec * 1000) && clock.last * 60 > FB.bySec &&
         !takedownIn(0, FB.bySec * 1000) && !myDeaths.some((d) => d.timestamp <= FB.bySec * 1000)) {
-      jungle(FB.bySec * 1000, posAt(pid, FB.bySec * 1000), 'jungle-late-first-recall', 0.07, { firstBackSec: firstBack != null ? Math.round(firstBack / 1000) : null })
+      jungle(FB.bySec * 1000, posAt(pid, FB.bySec * 1000), 'jungle-late-first-recall', 0.07, { season, firstBackSec: firstBack != null ? Math.round(firstBack / 1000) : null })
     }
 
     // V8.2 — boots bought before 8:00 without a kill (the shop proves the fountain).

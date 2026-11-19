@@ -1,5 +1,7 @@
+import { deathTimerSec, gameClockOf } from '../../src/lib/microReview/gameClock'
+
 /**
- * Mistake Library — additional business rules (M5–M13, see
+ * Mistake Library — additional business rules (M5–M19, see
  * docs/AUDIT_REGLES_METIER.md §3.1).
  *
  * Pure functions over Riot Match-V5 + Timeline-V5. Every rule only claims
@@ -20,6 +22,7 @@ export type AdvancedTag =
   | 'cs-deficit'
   | 'xp-deficit'
   | 'behind-on-levels-death'
+  | 'dead-during-objective'
 
 export interface AdvancedCandidate {
   tagSlug: AdvancedTag
@@ -77,14 +80,14 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
   // ── event index ──────────────────────────────────────────────────────
   const kills: any[] = []
   const wardTimes: number[] = []
-  const objectives: Array<{ ts: number; type: string; teamId: number }> = []
+  const objectives: Array<{ ts: number; type: string; subType?: string; teamId: number }> = []
   for (const f of frames) {
     for (const ev of (f.events ?? []) as any[]) {
       if (typeof ev.timestamp !== 'number') continue
       if (ev.type === 'CHAMPION_KILL') kills.push(ev)
       else if (ev.type === 'WARD_PLACED' && ev.creatorId === pid && ev.wardType !== 'UNDEFINED') wardTimes.push(ev.timestamp)
       else if (ev.type === 'ELITE_MONSTER_KILL' && MAJOR_OBJECTIVES[ev.monsterType]) {
-        objectives.push({ ts: ev.timestamp, type: ev.monsterType, teamId: ev.killerTeamId })
+        objectives.push({ ts: ev.timestamp, type: ev.monsterType, subType: ev.monsterSubType, teamId: ev.killerTeamId })
       }
     }
   }
@@ -120,6 +123,9 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
   const champOf = (id: number) => participants.find((p) => p.participantId === id)?.championName ?? 'an enemy'
 
   const out: AdvancedCandidate[] = []
+  /** Season clock: 16.x games start 35 s earlier (minions 0:30) and respawn on the 2026 timers (gameClock.ts). */
+  const clock = gameClockOf(match)
+  const early = clock === 2025 ? 0 : 35 * SEC
 
   // ── M5 death-before-objective ────────────────────────────────────────
   for (const d of myDeaths) {
@@ -133,6 +139,37 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
       note: `Died ${Math.round((lost.ts - d.timestamp) / SEC)}s before the enemy took ${MAJOR_OBJECTIVES[lost.type]}`,
       severity,
     })
+  }
+
+  // ── M15 dead-during-objective ────────────────────────────────────────
+  // Died more than 60 s before an objective the enemy took (M5 covers the minute before) and still waiting to respawn
+  // when it fell. Respawn = base wait by level × time factor (wiki "Death", gameClock.ts), the level read from the
+  // LEVEL_UP events at the death. A ward placed or a takedown of the player's after the death means they were back
+  // earlier (a revive): silent then. A 2 s margin absorbs the event clock.
+  {
+    const levelUps: number[] = []
+    const aliveSigns: number[] = []
+    for (const f of frames) {
+      for (const ev of (f.events ?? []) as any[]) {
+        if (typeof ev.timestamp !== 'number') continue
+        if (ev.type === 'LEVEL_UP' && ev.participantId === pid) levelUps.push(ev.timestamp)
+        else if (ev.type === 'WARD_PLACED' && ev.creatorId === pid) aliveSigns.push(ev.timestamp)
+        else if (ev.type === 'CHAMPION_KILL' && ev.killerId === pid) aliveSigns.push(ev.timestamp)
+      }
+    }
+    const levelAt = (ts: number) => levelUps.length > 0 ? 1 + levelUps.filter((t) => t <= ts).length : levelOf(frameNear(ts), pid) ?? 1
+    for (const d of myDeaths) {
+      const respawnMs = d.timestamp + deathTimerSec(levelAt(d.timestamp), d.timestamp / MIN, clock) * SEC
+      const lost = objectives.find((o) => o.teamId !== player.teamId && o.ts - d.timestamp > 60 * SEC && o.ts < respawnMs - 2 * SEC)
+      if (!lost || aliveSigns.some((t) => t > d.timestamp && t <= lost.ts)) continue
+      const name = lost.type === 'DRAGON' && lost.subType === 'ELDER_DRAGON' ? 'Elder Dragon' : MAJOR_OBJECTIVES[lost.type]
+      out.push({
+        tagSlug: 'dead-during-objective',
+        gameTimeSec: Math.floor(d.timestamp / SEC),
+        note: `Still dead (${Math.round((respawnMs - lost.ts) / SEC)}s left) when the enemy took ${name} at ${mmss(lost.ts)}`,
+        severity: lost.type === 'BARON_NASHOR' || name === 'Elder Dragon' ? 3 : 2,
+      })
+    }
   }
 
   // ── M6 no-ward-pre-obj ───────────────────────────────────────────────
@@ -276,14 +313,14 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
   }
 
   // ── M19 behind-on-levels-death ──────────────────────────────────────
-  // Coaching reference: the level-2/3 transition fight (≈1:30–4:30) is won
+  // Coaching reference: the level-2/3 transition fight (≈0:55–3:55; 2025: 1:30–4:30) is won
   // by whoever hits it first — an avoidable death to someone already ahead
   // on level there is a provable, early signal, not just "got outplayed".
   // Laners + jungle only: supports don't race levels the same way.
   if (role === 'JUNGLE' || LANERS.has(role)) {
     for (const d of myDeaths) {
       const ts: number = d.timestamp
-      if (ts < 90 * SEC || ts > 270 * SEC) continue
+      if (ts < 90 * SEC - early || ts > 270 * SEC - early) continue
       const f = frameNear(ts)
       const myLevel = levelOf(f, pid)
       const killerLevel = typeof d.killerId === 'number' ? levelOf(f, d.killerId) : null

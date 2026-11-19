@@ -77,11 +77,11 @@ Déclencheur commun : la timeline de la partie est disponible (après enrichisse
 | M12 | `bad-lane-opening` | laners : (a) mort avant 4:00, ou (b) CS à 5:00 inférieur de ≥ 8 à l'adversaire, ou (c) or à 5:00 < −400 ; 2 cas sur 3 → sévérité 3 | 2-3 | ✅ |
 | M13 | `cs-deficit` *(nouveau)* | laners : CS à 10:00 inférieur de ≥ 15 à l'adversaire direct (≥ 25 → 3) | 2-3 | ✅ |
 | M14 | `xp-deficit` *(nouveau)* | 2 niveaux de retard ou plus sur l'adversaire direct à 10:00 ou 15:00 | 2 | ✅ |
-| M15 | `dead-during-objective` *(nouveau)* | mort et encore mort au moment d'un objectif majeur pris par l'ennemi (complète M5 quand la mort a lieu > 60 s avant) | 2 | reporté — nécessite une formule fiable du timer de mort (dépend du niveau et du temps de jeu) ; le risque de faux positifs est trop élevé sans elle |
+| M15 | `dead-during-objective` *(nouveau, 19/11/2026)* | mort plus de 60 s avant un objectif majeur **pris par l'ennemi** (Dragon, Héraut, larves, Baron, Atakhan ; M5 couvre la minute d'avant) et encore mort à ce moment, avec 2 s de marge : réapparition = attente de base selon le niveau à la mort (événements LEVEL_UP ; 10 / 10 / 12 / 12 / 14 / 16 / 20 / 25 / 28 / 32,5 / 35 … 52,5 s) × (1 + facteur de temps : 0 avant 15:00, ceil(2 × (min − 15)) × 0,425 % jusqu'à 30:00, 12,75 % + ceil(2 × (min − 30)) × 0,30 % jusqu'à 45:00, 21,75 % + ceil(2 × (min − 45)) × 1,45 % ensuite, plafond 50 %) — source wiki.leagueoflegends.com/en-us/Death ; silencieux si le joueur pose une ward ou fait un kill entre sa mort et l'objectif (résurrection) ; Baron / Ancien → 3. En pratique : uniquement les parties longues (il faut plus de 60 s de réapparition, soit le niveau 16+ après ~45:00) | 2-3 | ✅ |
 | M16 | `walked-into-ward` | non détectable (pas de position des wards) | — | manuel |
 | M17 | `face-checked` | non détectable fiablement (pas de buissons) | — | manuel |
 | M18 | `wasted-summoner`, `whiff-skillshot`, `bad-kiting`, `bad-engage-angle`, `bad-dmg-maximisation`, `bad-threat-assessment`, `bad-wave-sync`, `bad-rune-choice` | non observables dans les données Riot | — | manuel (le joueur les tague en VOD) |
-| M19 | `behind-on-levels-death` *(nouveau, transcription vidéo 13/11)* | laners/jungle, mort entre 1:30 et 4:30, tué par un adversaire ayant **≥ 1 niveau d'avance** (fenêtre de transition niveau 2/3) ; ≥ 2 niveaux → sévérité 3 | 2-3 | ✅ |
+| M19 | `behind-on-levels-death` *(nouveau, transcription vidéo 13/11)* | laners/jungle, mort entre 0:55 et 3:55 sur une partie 16.x (sbires à 0:30), entre 1:30 et 4:30 sur une partie 15.x, tué par un adversaire ayant **≥ 1 niveau d'avance** (fenêtre de transition niveau 2/3) ; ≥ 2 niveaux → sévérité 3 | 2-3 | ✅ |
 
 Règles transverses de la Mistake Library :
 - **MX1 — Déduplication** : une erreur auto par (tag, minute) ; les erreurs manuelles ne sont jamais touchées.
@@ -163,6 +163,6 @@ Ajouts proposés (✅ livrés avec le moteur de coaching, voir [MOTEUR_REGLES.md
 ## 5. Mise en œuvre
 
 - M5–M13 ✅ (9 nouvelles détections, 4 nouveaux tags), détection relancée automatiquement après chaque partie.
-- Moteur de coaching (voir [MOTEUR_REGLES.md](MOTEUR_REGLES.md)) : S2, R2, P2 (lot 2) puis MX2 (corrigé), MX5, R1, R4, R5, S3 (lot 3), puis AS1, AS3, AS4, AS5, M14, MX3, P1 (lot 4) ✅. M15 reporté (formule de timer de mort pas assez fiable).
+- Moteur de coaching (voir [MOTEUR_REGLES.md](MOTEUR_REGLES.md)) : S2, R2, P2 (lot 2) puis MX2 (corrigé), MX5, R1, R4, R5, S3 (lot 3), puis AS1, AS3, AS4, AS5, M14, MX3, P1 (lot 4) ✅. M15 écrit le 19/11/2026 avec la formule de réapparition du wiki (`src/lib/microReview/gameClock.ts`).
 - Lot 5 (page « Mon plan », pré-remplissage du bilan depuis les stats) ✅.
 - Les 5 lots du moteur de coaching sont livrés. Le moteur de règles métier est terminé pour cette itération ; la suite se trouve dans [PLAN_GESTION_EQUIPE.md](PLAN_GESTION_EQUIPE.md) (équipe) et [ROADMAP.md](ROADMAP.md) (reste du produit).

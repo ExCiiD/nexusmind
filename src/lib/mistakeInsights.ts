@@ -25,7 +25,7 @@ export const FAMILIES: MistakeFamily[] = ['deaths', 'vision', 'tempo', 'mechanic
 
 const FAMILY_BY_SLUG: Record<string, MistakeFamily> = {
   'forgot-trinket': 'vision', 'no-ward-pre-obj': 'vision', 'walked-into-ward': 'vision', 'face-checked': 'vision', 'no-vision-objective': 'vision',
-  'death-before-objective': 'deaths', 'caught-out': 'deaths', 'dove-tower': 'deaths', 'solo-baron-died': 'deaths', 'bad-positioning': 'deaths',
+  'death-before-objective': 'deaths', 'dead-during-objective': 'deaths', 'caught-out': 'deaths', 'dove-tower': 'deaths', 'solo-baron-died': 'deaths', 'bad-positioning': 'deaths',
   'behind-on-levels-death': 'deaths', 'bad-threat-assessment': 'deaths', 'bad-engage-angle': 'deaths',
   'overstay': 'tempo', 'late-back': 'tempo', 'unused-gold': 'tempo', 'bad-wave-sync': 'tempo',
   'cs-deficit': 'mechanics', 'xp-deficit': 'mechanics', 'bad-trade': 'mechanics', 'whiff-skillshot': 'mechanics', 'bad-kiting': 'mechanics',
