@@ -59,6 +59,10 @@ export interface GameRecord {
   killParticipation?: number | null
   /** The player's team's total gold minus the enemy team's, at game end. */
   finalGoldDiff?: number | null
+  /** Control wards bought in the game (Match-V5), null = unknown. */
+  controlWardsBought?: number | null
+  /** Seconds spent dead in the game (Match-V5 `totalTimeSpentDead`), null = unknown. */
+  timeDeadSec?: number | null
   mistakes?: MistakeRecord[]
   recordingId?: string | null
 }
@@ -82,12 +86,16 @@ export const METRICS = [
   'objectiveRespected',
   'win',
   'perfIndex',
+  /** Control wards bought in the game. */
+  'controlWards',
+  /** Share of the game spent dead, in percent (0–100). */
+  'deadPct',
 ] as const
 
 export type Metric = (typeof METRICS)[number]
 
 /** Metrics where a higher value is worse (used for "perfIndex" and wording). */
-export const LOWER_IS_BETTER: ReadonlySet<Metric> = new Set<Metric>(['deaths', 'deathsBefore10', 'deathsBefore14'])
+export const LOWER_IS_BETTER: ReadonlySet<Metric> = new Set<Metric>(['deaths', 'deathsBefore10', 'deathsBefore14', 'deadPct'])
 
 export interface GameFeatures {
   gameId: string
@@ -178,6 +186,8 @@ export function computeGameFeatures(g: GameRecord): GameFeatures {
     objectiveRespected: g.objectiveRespected == null ? null : g.objectiveRespected ? 1 : 0,
     win: g.win ? 1 : 0,
     perfIndex: null,
+    controlWards: g.controlWardsBought ?? null,
+    deadPct: g.timeDeadSec != null ? Math.min(100, (g.timeDeadSec / Math.max(g.durationSec, 1)) * 100) : null,
   }
 
   return {

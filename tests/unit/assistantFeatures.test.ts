@@ -155,7 +155,9 @@ describe('timeline extraction', () => {
 
   it('falls back to the champion when the puuid is unknown, and survives bad JSON', () => {
     expect(extractTimelineFacts(JSON.stringify(match), null, { championName: 'ahri' }).killParticipation).toBeCloseTo(80)
-    expect(extractTimelineFacts('{bad', null, { puuids: ['me'] })).toEqual({ deathTimesSec: null, killParticipation: null, lane: null, finalGoldDiff: null })
+    expect(extractTimelineFacts('{bad', null, { puuids: ['me'] })).toEqual({
+      deathTimesSec: null, killParticipation: null, lane: null, finalGoldDiff: null, controlWardsBought: null, timeDeadSec: null,
+    })
   })
 
   it('computes the final gold diff from match participants, and leaves it null when any value is missing', () => {
@@ -170,5 +172,28 @@ describe('timeline extraction', () => {
     }
     expect(extractTimelineFacts(withGold, null, { puuids: ['me'] }).finalGoldDiff).toBe(12000 + 11000 - 15000)
     expect(extractTimelineFacts(match, null, { puuids: ['me'] }).finalGoldDiff).toBeNull()
+  })
+
+  it('reads the control wards bought and the time spent dead from the match, null when Riot did not send them', () => {
+    const withVision = {
+      info: { participants: [{ participantId: 1, puuid: 'me', championName: 'Ahri', teamId: 100, kills: 3, assists: 5, win: true, visionWardsBoughtInGame: 4, totalTimeSpentDead: 162 }] },
+    }
+    expect(extractTimelineFacts(withVision, null, { puuids: ['me'] })).toMatchObject({ controlWardsBought: 4, timeDeadSec: 162 })
+    expect(extractTimelineFacts(match, null, { puuids: ['me'] })).toMatchObject({ controlWardsBought: null, timeDeadSec: null })
+    const bad = { info: { participants: [{ participantId: 1, puuid: 'me', teamId: 100, visionWardsBoughtInGame: -1, totalTimeSpentDead: 'x' }] } }
+    expect(extractTimelineFacts(bad, null, { puuids: ['me'] })).toMatchObject({ controlWardsBought: null, timeDeadSec: null })
+  })
+})
+
+describe('vision and death-time features', () => {
+  it('turns control wards bought and the time spent dead into per-game metrics', () => {
+    const f = computeGameFeatures(game({ durationSec: 1800, controlWardsBought: 3, timeDeadSec: 180 }))
+    expect(f.values.controlWards).toBe(3)
+    expect(f.values.deadPct).toBeCloseTo(10)
+    const unknown = computeGameFeatures(game({}))
+    expect(unknown.values.controlWards).toBeNull()
+    expect(unknown.values.deadPct).toBeNull()
+    // Never above 100 %, even if Riot's counter runs past the game length.
+    expect(computeGameFeatures(game({ durationSec: 600, timeDeadSec: 900 })).values.deadPct).toBe(100)
   })
 })

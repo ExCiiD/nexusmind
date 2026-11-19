@@ -43,7 +43,7 @@ export const PROBLEMS: Problem[] = [
   {
     id: 'deaths',
     fundamentalId: 'tempo',
-    rules: ['high_deaths_trend', 'pg_deaths_spike'],
+    rules: ['high_deaths_trend', 'pg_deaths_spike', 'dead_time_high', 'pg_dead_time_high'],
     mistakeTags: ['dove-tower', 'overstay'],
     driverMetric: 'deaths',
     impactPrior: { laner: 1.15, jungle: 1.15, support: 1.1 },
@@ -59,7 +59,7 @@ export const PROBLEMS: Problem[] = [
   {
     id: 'vision',
     fundamentalId: 'vision_control',
-    rules: ['vision_drop', 'pg_vision_low', 'pg_vision_high'],
+    rules: ['vision_drop', 'pg_vision_low', 'pg_vision_high', 'support_control_wards_low', 'control_wards_never', 'support_vision_benchmark', 'jungle_vision_benchmark'],
     mistakeTags: ['forgot-trinket', 'walked-into-ward', 'face-checked'],
     driverMetric: 'visionPerMin',
     impactPrior: { laner: 0.85, jungle: 1.1, support: 1.25 },
@@ -117,10 +117,10 @@ export const PROBLEMS: Problem[] = [
   },
   { id: 'self-assessment', fundamentalId: null, rules: ['kpi_bias', 'pg_self_bias', 'pg_harsh_self'], mistakeTags: [], impactPrior: EVEN, unscored: true },
   { id: 'review-habit', fundamentalId: null, rules: ['review_backlog'], mistakeTags: [], impactPrior: EVEN, unscored: true },
-  { id: 'tilt-fatigue', fundamentalId: 'resilience', rules: ['tilt_break', 'loss_streak', 'long_session'], mistakeTags: [], impactPrior: EVEN, unscored: true },
+  { id: 'tilt-fatigue', fundamentalId: 'resilience', rules: ['tilt_break', 'loss_streak', 'two_loss_stop', 'long_session', 'movement_break'], mistakeTags: [], impactPrior: EVEN, unscored: true },
   { id: 'momentum', fundamentalId: null, rules: ['win_streak'], mistakeTags: [], impactPrior: EVEN, unscored: true },
   // AS3/AS4/AS5: patterns rather than fundamentals — informational, no measurable experiment.
-  { id: 'champion-pool', fundamentalId: null, rules: ['weak_champion_pool'], mistakeTags: [], impactPrior: EVEN, unscored: true },
+  { id: 'champion-pool', fundamentalId: null, rules: ['weak_champion_pool', 'new_champion_learning'], mistakeTags: [], impactPrior: EVEN, unscored: true },
   { id: 'play-schedule', fundamentalId: null, rules: ['bad_hour_performance'], mistakeTags: [], impactPrior: EVEN, unscored: true },
   { id: 'session-fatigue', fundamentalId: null, rules: ['session_fatigue'], mistakeTags: [], impactPrior: EVEN, unscored: true },
 ]

@@ -1,6 +1,8 @@
 # Rapport — le moteur d'Ascend
 
-_18/11/2026. État du dépôt après l'intégration V7 à V10 et le retrait du protocole basse énergie. Chaque chiffre
+_19/11/2026. État du dépôt après la recherche de connaissances de novembre 2026 ([`RECHERCHE_CONNAISSANCES.md`](RECHERCHE_CONNAISSANCES.md) :
+sources, faits 2026 vérifiés, ce qui a changé et pourquoi), après l'intégration V7 à V10 et le retrait du protocole basse
+énergie. Chaque chiffre
 ci-dessous est lu dans le code : le fichier source est cité à chaque fois._
 
 ## En bref
@@ -19,7 +21,7 @@ ci-dessous est lu dans le code : le fichier source est cité à chaque fois._
 | Statistiques | radar des fondamentaux, onglet **Analyse**, classement du Labo | `src/lib/fundamentalsRadarCore.ts`, `statsInsights.ts`, `mistakeInsights.ts` |
 
 - **Quelques chiffres** : 26 erreurs au catalogue, dont 15 détectées automatiquement ; 3 déclencheurs et 41 schémas
-  reconnus par la micro-revue ; 75 fiches Codex ; 32 règles et 18 problèmes dans l'assistant ; 8 règles de
+  reconnus par la micro-revue ; 109 fiches Codex ; 41 règles et 18 problèmes dans l'assistant ; 8 règles de
   vérification d'objectif de session.
 
 ### D'où viennent les données
@@ -69,6 +71,12 @@ réapparition exact (d'où la règle M15 reportée). Quand les données ne prouv
 | Retour au premier camp | le premier camp réapparaît : un jungler encore sur la carte à 4:05 a raté le recall à T−25 s | V7 |
 | Carapateur de 3:30 | absent des données : lu à travers une mort de ton jungler dans la rivière basse entre 3:25 et 3:50 | V10 support |
 | Baron | buff de Baron de ton équipe, fights à moins de 3 000 de la fosse | V4, V6 |
+| Saison 2026 (patch 26.1 et suivants) | Baron à **20:00** (25:00 en 2025), **Atakhan supprimé** ; sbires à 0:30, camps à 0:55, Carapateur à 2:55 (35 s plus tôt qu'en 2025) ; plates à 120 g qui ne tombent plus à 14:00 ; Smite 1 000 / 1 400 ; vérifié sur 207 timelines en cache (128 de 2026) | fiches Codex et règles de l'assistant ; **pas encore** les détecteurs (voir ci-dessous) |
+
+Les détecteurs de la micro-revue gardent pour l'instant l'horloge de 2025 sur trois points : la fenêtre du Carapateur
+(V10, 3:25-3:50), les fenêtres de gank (V3, 2:25-3:00 et 3:15-4:25) et le premier back du jungler (V7, 4:05). Sur une
+partie de 2026, ils voient donc ces moments environ 35 s trop tard. Correction à faire dans `anomalyDetector.ts`
+(hors du périmètre de la mise à niveau des connaissances, détail dans `RECHERCHE_CONNAISSANCES.md` §6).
 
 ### 1.3 Économie et objets
 
@@ -187,9 +195,15 @@ Un écart de 3 000 or pèse donc plus à 15 minutes qu'à 35. Un moment pris qua
 partie était déjà jouée. Seule exception au-dessus de 85 % : le jungler qui recall sous Baron ou force un dive après un
 inhibiteur, deux façons de perdre une partie gagnée.
 
-### 1.12 Les fiches Codex (75)
+### 1.12 Les fiches Codex (109)
 
 `src/lib/microReview/codex.json`
+
+Par rôle : toutes 63 · jungle 19 · support 10 · ADC 7 · mid 5 · top 5. Par phase : début 47 · milieu 33 · fin 17 · toute
+la partie 12. Chaque tag du catalogue a maintenant une fiche pour chaque rôle et chaque phase (la recherche de novembre
+2026 a comblé `solo-baron-died`, `bad-rune-choice`, le kiting et les dégâts hors ADC et jungler, et la plupart des erreurs
+de milieu et de fin de partie qui renvoyaient à une fiche de phase de lane). Trois tags retombent encore sur une fiche
+d'une autre phase en fin de partie : `walked-into-ward`, `xp-deficit` et `behind-on-levels-death`.
 
 Chaque fiche relie **une erreur** (un tag, parfois plusieurs), **une phase** (début, milieu, fin ou toute la partie) et
 éventuellement **un rôle** à : un titre, une règle tactique (quoi faire, quand, où), un objectif mesurable pour la
@@ -293,10 +307,11 @@ chiffre trompeur.
 
 | Calcul | Règle | Ce que tu vois |
 |---|---|---|
-| Indicateurs par partie | CS/min, CS à 10 et 14, écart d'or à 10 et 14, morts avant 10 et 14 min, vision/min, KDA, KP, note de lane, KPI de review, objectif respecté, erreurs | la base de tout le reste |
+| Indicateurs par partie | CS/min, CS à 10 et 14, écart d'or à 10 et 14, morts avant 10 et 14 min, vision/min, KDA, KP, note de lane, KPI de review, objectif respecté, erreurs, **pinks achetées** et **part de la partie passée mort** (lues dans le match en cache) | la base de tout le reste |
 | Tendances personnelles | moyenne, écart-type, 5 dernières parties contre les précédentes, z-score, pente sur 10 parties | « comparé à ta moyenne sur 12 parties » |
 | Indice de performance | moyenne des z-scores des stats mesurées (pas des notes que tu te donnes) | biais d'auto-évaluation, meilleures et pires parties |
-| 32 règles déclaratives | par exemple : morts précoces dans 3 des 5 dernières parties, CS en baisse, reviews en retard, objectif sans progrès depuis 4 sessions, tilt (3 défaites d'affilée et plus de 2 h de jeu → pause de 15 min) | 3 conseils après la partie, brief de session, bilan hebdo |
+| 41 règles déclaratives | par exemple : morts précoces dans 3 des 5 dernières parties, CS en baisse, reviews en retard, objectif sans progrès depuis 4 sessions, tilt (3 défaites d'affilée et plus de 2 h de jeu → pause de 30 min) ; depuis novembre 2026 : temps passé mort ≥ 14 % de la partie, support sous 2 pinks ou 1,8 de vision/min, jungler sous 0,7 de vision/min, aucune pink dans 4 parties sur 5, 2 défaites d'affilée → pause de 30 min, longue session dès la 4e partie, 6 min de marche après 1 h de jeu, nouveau champion (moins de 5 parties) | 3 conseils après la partie, brief de session, bilan hebdo |
+| Repères calibrés | les seuils des règles de novembre 2026 viennent du taux de victoire par tranche et par rôle sur 3 004 parties classées en cache (patchs 16.1 à 16.10) : sous 5 % du temps passé mort → 84 % de victoires, 8-11 % → 50 %, 14 % ou plus → 31 % ou moins ; support sans pink → 41 %, 2 ou plus → ~51 % | des seuils qui séparent vraiment les parties gagnées des perdues |
 | Regroupement en problèmes | 18 problèmes (lane, morts, farm, vision, setup d'objectif…) ; plusieurs indices du même problème se combinent en « noisy-OR » : 1 − Π(1 − confiance) | un seul message par problème, avec toutes ses preuves |
 | Priorité | urgence × confiance (plafond 0,97) × poids appris × impact sur la victoire × persistance × actionnabilité (1, ou 0,6 sans critère mesurable) ; ×0,5 si déjà montré dans les 3 derniers jours | le **Focus** |
 | Impact sur la victoire | régression logistique locale sur tes parties, à partir de 15 parties avec au moins 4 victoires et 4 défaites ; sinon valeur par rôle fixée d'avance | « ce qui compte pour toi » (corrélation, pas garantie) |

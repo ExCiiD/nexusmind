@@ -1855,7 +1855,9 @@
       "laneScore": "Lane phase score",
       "objectiveRespected": "Objective respected",
       "kda": "KDA",
-      "goldDiff14": "Gold diff at 14 min"
+      "goldDiff14": "Gold diff at 14 min",
+      "controlWards": "Control wards bought",
+      "deadPct": "Share of the game spent dead"
     },
     "rules": {
       "early_deaths_pattern": {
@@ -1966,12 +1968,12 @@
         "v3": "Long session ({{hours}} h) and {{losses}} losses in a row: the next game is more likely to go wrong. Step away for a bit."
       },
       "loss_streak": {
-        "v1": "{{losses}} losses in a row. Take a short break and reset before queuing again.",
-        "v2": "Losing streak ({{losses}}). Breathe, drink some water, and come back with a clear head."
+        "v1": "{{losses}} losses in a row. Tilt lasts about 30 minutes on average: take a real break before queuing again.",
+        "v2": "Losing streak ({{losses}}). Step away for half an hour, drink some water, and come back with a clear head — or stop for today."
       },
       "long_session": {
-        "v1": "{{games}} games already this session. Fatigue creeps in — plan a break.",
-        "v2": "That's {{games}} games. Your focus drops with time: a short break will help."
+        "v1": "{{games}} games already this session. Win rate drops by more than 10% from the first to the last game of long sessions: plan a break or stop here.",
+        "v2": "That's {{games}} games. Your focus drops game after game: a 15-minute break, or the end of the session, will help."
       },
       "win_streak": {
         "v1": "{{wins}} wins in a row! Keep the same routine.",
@@ -1993,6 +1995,42 @@
       "session_fatigue": {
         "v1": "Across {{sessions}} sessions of 4+ games, your performance drops clearly from the 4th game on. An earlier break might help.",
         "v2": "Session fatigue detected across {{sessions}} sessions: games 4+ are clearly below the first 3."
+      },
+      "dead_time_high": {
+        "v1": "You spent {{pct}}% of your last {{n}} games dead on average. Time dead is what a death really costs: across 3,000 recent ranked games, players under 8% dead won most of their games, and fewer than a third above 14%.",
+        "v2": "{{pct}}% of each game spent dead lately ({{n}} games). Aim for under 10%: fewer deaths, and none in the minute before an objective, when the timer is long and the map is open."
+      },
+      "pg_dead_time_high": {
+        "v1": "You spent {{pct}}% of this game dead, against {{avg}}% usually. The late deaths cost the most: their respawn timers are the longest.",
+        "v2": "{{pct}}% of this game on the respawn timer (usually {{avg}}%). Look for the death that came right before a lost objective or tower."
+      },
+      "support_control_wards_low": {
+        "v1": "{{wards}} control wards per game over your last {{n}} games. Supports who buy 2 or more win clearly more often than those who buy 0 or 1: buy one on every back.",
+        "v2": "Only {{wards}} control wards per game lately ({{n}} games). Keep one on the map at all times: in your lane bush early, then at the next objective's entrance."
+      },
+      "control_wards_never": {
+        "v1": "No control ward in {{count}} of your last {{n}} games. One per back is enough: it protects your lane from ganks, or the objective you are playing for.",
+        "v2": "{{count}} of your last {{n}} games without a single control ward. Players who buy at least one win more often: add it to your first or second back."
+      },
+      "support_vision_benchmark": {
+        "v1": "{{vision}} vision score per minute over your last {{n}} games. For a support, under 1.8 goes with far more losses: aim for 2 or more.",
+        "v2": "Support vision at {{vision}} per minute lately ({{n}} games). Ward on every rotation, use your trinket on cooldown and sweep before each objective."
+      },
+      "jungle_vision_benchmark": {
+        "v1": "{{vision}} vision score per minute over your last {{n}} games. Under 0.7, a jungler plays the objectives blind: aim for 1 or more.",
+        "v2": "Jungle vision at {{vision}} per minute lately ({{n}} games). Use your trinket on cooldown and end your clears on the next objective's side with a ward."
+      },
+      "two_loss_stop": {
+        "v1": "{{losses}} losses in a row. Queuing again straight away is when the next game goes worst: take a real break (about 30 minutes) or end the session here.",
+        "v2": "Two losses back to back. Tilt lasts about half an hour on average: step away before the next game, and keep your main champion when you come back."
+      },
+      "movement_break": {
+        "v1": "{{hours}} h of play without a real pause. Stand up and walk for 6 minutes before the next game: it sharpens planning and decisions.",
+        "v2": "Over an hour in the chair ({{hours}} h). A 6-minute walk between two games does more for your focus than a seated pause."
+      },
+      "new_champion_learning": {
+        "v1": "Game {{count}} on {{champion}} in your recent history. Champions played fewer than about 20 times win less often: learn new ones in normal games first.",
+        "v2": "{{champion}} is still new for you ({{count}} recent games). Expect a learning phase of about 20 games, and judge it on deaths and CS before win rate."
       }
     },
     "focus": "Focus",
