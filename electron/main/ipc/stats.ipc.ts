@@ -128,26 +128,12 @@ function resolveAccountIconId(puuid: string, user: any, accounts: any[]): number
   return account?.profileIconId ?? 0
 }
 
+/** Snapshot schema plus the expanded opponent field with its @15 timeline data. */
 function hasCurrentDetailedStatsSchema(parsed: any): boolean {
-  return Boolean(
-    parsed &&
-    parsed.laning &&
-    Object.prototype.hasOwnProperty.call(parsed.laning, 'xpPerMin15') &&
-    Object.prototype.hasOwnProperty.call(parsed.laning, 'damage15') &&
-    Object.prototype.hasOwnProperty.call(parsed.laning, 'damagePerMin15') &&
-    Object.prototype.hasOwnProperty.call(parsed.laning, 'damageDiff15') &&
-    Object.prototype.hasOwnProperty.call(parsed.laning, 'turretPlates15') &&
-    parsed.economy &&
-    Object.prototype.hasOwnProperty.call(parsed.economy, 'xp') &&
-    Object.prototype.hasOwnProperty.call(parsed.economy, 'xpPerMin') &&
-    parsed.objectives &&
-    Object.prototype.hasOwnProperty.call(parsed.objectives, 'teamEpicMonsterDmgPercent') &&
-    Object.prototype.hasOwnProperty.call(parsed.objectives, 'turretPlates') &&
-    // Require expanded opponent field with @15 timeline data
+  return hasCurrentSnapshotSchema(parsed) &&
     Object.prototype.hasOwnProperty.call(parsed, 'opponent') &&
     (parsed.opponent === null ||
-      Object.prototype.hasOwnProperty.call(parsed.opponent, 'gold15')),
-  )
+      Object.prototype.hasOwnProperty.call(parsed.opponent, 'gold15'))
 }
 
 function hasCurrentSnapshotSchema(parsed: any): boolean {
@@ -781,7 +767,7 @@ export function registerStatsHandlers() {
     if (!user) return null
 
     const accounts = await prisma.account.findMany({ where: { userId: user.id } })
-    const mainRole = (user as any).mainRole as string | null
+    const mainRole = user.mainRole
 
     // Determine which account(s) to pull games from
     const targetAccounts: Array<{ puuid: string; region: string }> =
@@ -795,7 +781,7 @@ export function registerStatsHandlers() {
             })()
 
     // Fetch match IDs only for the target account(s)
-    const queueFilter = ((user as any).queueFilter ?? 'both') as 'soloq' | 'flex' | 'both'
+    const queueFilter = (user.queueFilter ?? 'both') as 'soloq' | 'flex' | 'both'
     const perAccountIds = await Promise.all(
       targetAccounts.map(({ puuid: p, region }) =>
         getMatchIds(p, region, 40, 0, queueFilter).catch(() => [] as string[]),
@@ -805,47 +791,7 @@ export function registerStatsHandlers() {
     if (matchIds.length === 0) return null
 
     const allPuuids = targetAccounts.map((a) => a.puuid)
-    const allStats: any[] = []
-
-    for (const matchId of matchIds) {
-      let matchData: any
-      let timelineData: any = null
-
-      const cached = await prisma.matchCache.findUnique({ where: { matchId } })
-      if (cached) {
-        matchData = JSON.parse(cached.matchJson)
-        timelineData = cached.timelineJson ? JSON.parse(cached.timelineJson) : null
-      } else {
-        try {
-          matchData = await getMatch(matchId, user.region)
-          await prisma.matchCache.upsert({
-            where: { matchId },
-            create: { matchId, matchJson: JSON.stringify(matchData) },
-            update: {},
-          })
-        } catch { continue }
-      }
-
-      if (!timelineData) {
-        try { timelineData = await getMatchTimeline(matchId, user.region) } catch { /* optional */ }
-        if (timelineData) {
-          await prisma.matchCache.update({
-            where: { matchId },
-            data: { timelineJson: JSON.stringify(timelineData) },
-          }).catch(() => {})
-        }
-      }
-
-      const resolvedPuuid = resolvePuuid(matchData, allPuuids)
-      if (!resolvedPuuid) continue
-
-      const detailed = extractDetailedStats(matchData, timelineData, resolvedPuuid)
-      if (!detailed) continue
-      if (mainRole && detailed.meta.role !== mainRole) continue
-
-      allStats.push(detailed)
-      if (allStats.length >= 20) break
-    }
+    const allStats = await fetchDetailedStatsForMatches(prisma, matchIds, allPuuids, user.region, mainRole, 20)
 
     if (allStats.length === 0) return null
 
@@ -876,7 +822,7 @@ export function registerStatsHandlers() {
     if (!user) return null
 
     const accounts = await prisma.account.findMany({ where: { userId: user.id } })
-    const mainRole = (user as any).mainRole as string | null
+    const mainRole = user.mainRole
     const { matchIds, allPuuids } = await getAggregatedMatchIds(user, accounts, 40)
     if (matchIds.length === 0) return null
 
@@ -960,7 +906,7 @@ export function registerStatsHandlers() {
     const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return []
 
-    const mainRole = (user as any).mainRole as string | null
+    const mainRole = user.mainRole
 
     // Deduplicate: keep only the earliest-created snapshot per firstGameAt (batch identity)
     const allForRole = await prisma.statsSnapshot.findMany({
@@ -1035,7 +981,7 @@ export function registerStatsHandlers() {
     const { matchIds, allPuuids } = await getAggregatedMatchIds(user, accounts, 100)
     if (matchIds.length === 0) return { created: 0 }
 
-    const mainRole = (user as any).mainRole as string | null
+    const mainRole = user.mainRole
 
     // Find the last snapshot for this specific role configuration to avoid duplicates
     const lastSnapshot = await prisma.statsSnapshot.findFirst({

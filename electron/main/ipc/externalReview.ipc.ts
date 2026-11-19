@@ -195,7 +195,7 @@ export function registerExternalReviewHandlers() {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })
 
-    const defaultPath = (user as any)?.externalRecordingPath ?? join(homedir(), 'Videos')
+    const defaultPath = user?.externalRecordingPath ?? join(homedir(), 'Videos')
 
     const result = await dialog.showOpenDialog({
       title: 'Select Recording File',

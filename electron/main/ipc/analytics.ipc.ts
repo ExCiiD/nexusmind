@@ -97,7 +97,7 @@ export function registerAnalyticsHandlers() {
 
     const resolveGameAccountInfo = (matchId: string | null): { accountName: string; accountProfileIconId: number } => {
       const defaultName = user.displayName || user.summonerName
-      const defaultIconId = (user as any).profileIconId ?? 0
+      const defaultIconId = user.profileIconId ?? 0
       if (!matchId) return { accountName: defaultName, accountProfileIconId: defaultIconId }
       const raw = cacheByMatchId.get(matchId)
       if (!raw) return { accountName: defaultName, accountProfileIconId: defaultIconId }
@@ -109,7 +109,7 @@ export function registerAnalyticsHandlers() {
         const acc = accounts.find((a) => a.puuid === matchedPuuid)
         return {
           accountName: acc?.gameName ?? defaultName,
-          accountProfileIconId: (acc as any)?.profileIconId ?? 0,
+          accountProfileIconId: acc?.profileIconId ?? 0,
         }
       } catch {
         return { accountName: defaultName, accountProfileIconId: defaultIconId }

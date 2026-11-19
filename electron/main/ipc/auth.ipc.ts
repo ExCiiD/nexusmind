@@ -165,18 +165,6 @@ export function registerAuthHandlers() {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return null
-    // Augment with columns the stale Prisma client doesn't know about yet
-    try {
-      const rows: any[] = await prisma.$queryRawUnsafe(
-        `SELECT discordWebhookUrl FROM "User" WHERE id = ?`,
-        user.id,
-      )
-      if (rows[0]) {
-        ;(user as any).discordWebhookUrl = rows[0].discordWebhookUrl ?? null
-      }
-    } catch {
-      // Column may not exist in very old DBs — ignore gracefully
-    }
     return user
   })
 

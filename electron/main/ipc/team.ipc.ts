@@ -15,7 +15,7 @@ import { getChampionIdToKey } from '../dataDragon'
 import { championPlaysRole, type Role } from '../../../src/lib/championRoles'
 import { tierPool, NEW_PICK_DAYS } from '../../../src/lib/threatCore'
 import { normalizeSlots, groupDuplicates, normalizeRole } from '../../../src/lib/teamIdentity'
-import { mergeMatchIdsByRecency } from '../../../src/lib/scoutingCore'
+import { matchStartOf, mergeMatchIdsByRecency } from '../../../src/lib/scoutingCore'
 import { RIOT_LIMITS } from '../../../src/lib/riotLimits'
 
 async function getActiveUser() {
@@ -203,13 +203,6 @@ async function findExistingMember(teamId: string, data: { puuid?: string; ign?: 
 }
 
 // ── Champion pool tiering (v2, src/lib/threatCore.ts) ──────────────────────
-
-/** Start time of a match-v5 game (ms), null when the payload has none. */
-function matchTime(match: any): number | null {
-  const info = match?.info
-  const t = info?.gameStartTimestamp ?? info?.gameCreation ?? info?.gameEndTimestamp
-  return typeof t === 'number' && t > 0 ? t : null
-}
 
 /** Widens a [from, to] range with one game time. */
 function stretch(range: { from: number | null; to: number | null }, t: number | null): void {
@@ -724,7 +717,7 @@ export function registerTeamHandlers() {
       if (!match) { failed++; continue }
       const participant = match?.info?.participants?.find((p: any) => p.puuid === puuid)
       if (!participant) continue
-      const at = matchTime(match)
+      const at = matchStartOf(match)
       stretch(history, at)
       const role = normalizeRole(participant.teamPosition || participant.individualPosition)
       if (!role || role === 'UNKNOWN' || role === 'INVALID' || role === 'NONE') continue
@@ -876,7 +869,7 @@ export function registerTeamHandlers() {
         if (!match) { failed++; continue }
         const participant = match?.info?.participants?.find((p: any) => p.puuid === puuid)
         if (!participant) continue
-        const at = matchTime(match)
+        const at = matchStartOf(match)
         stretch(history, at)
         const role = normalizeRole(participant.teamPosition || participant.individualPosition)
         if (!role || role === 'UNKNOWN' || role === 'INVALID' || role === 'NONE') continue

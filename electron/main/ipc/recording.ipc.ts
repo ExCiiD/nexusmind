@@ -58,23 +58,13 @@ function dismissPath(filePath: string): void {
   saveDismissedPaths(paths)
 }
 
-/** Deletes a recording's video file + thumbnail from disk. */
-function deleteRecordingFiles(rec: { filePath?: string | null; thumbnailPath?: string | null }) {
-  if (rec.filePath && existsSync(rec.filePath)) {
-    try { unlinkSync(rec.filePath) } catch { /* ignore */ }
+/** Deletes a recording's or a clip's video file + thumbnail from disk. */
+function deleteMediaFiles(media: { filePath?: string | null; thumbnailPath?: string | null }) {
+  if (media.filePath && existsSync(media.filePath)) {
+    try { unlinkSync(media.filePath) } catch { /* ignore */ }
   }
-  if (rec.thumbnailPath && existsSync(rec.thumbnailPath)) {
-    try { unlinkSync(rec.thumbnailPath) } catch { /* ignore */ }
-  }
-}
-
-/** Deletes a clip's video file + thumbnail from disk. */
-function deleteClipFiles(clip: { filePath?: string | null; thumbnailPath?: string | null }) {
-  if (clip.filePath && existsSync(clip.filePath)) {
-    try { unlinkSync(clip.filePath) } catch { /* ignore */ }
-  }
-  if (clip.thumbnailPath && existsSync(clip.thumbnailPath)) {
-    try { unlinkSync(clip.thumbnailPath) } catch { /* ignore */ }
+  if (media.thumbnailPath && existsSync(media.thumbnailPath)) {
+    try { unlinkSync(media.thumbnailPath) } catch { /* ignore */ }
   }
 }
 
@@ -607,8 +597,6 @@ export function registerRecordingHandlers() {
         })
         newlyOrphanedIds.push({ id: rec.id, filePath: file.path })
         orphanedCount++
-      } else if (!basename(file.path).startsWith('clip_')) {
-        console.log('[scan] Skipping file:', file.path, { inMatched, inExisting, inDismissed })
       }
     }
 
@@ -831,11 +819,11 @@ export function registerRecordingHandlers() {
     }
     for (const rec of recordings) {
       if (rec.filePath) dismissPath(rec.filePath)
-      deleteRecordingFiles(rec)
+      deleteMediaFiles(rec)
       const clips: any[] = await prisma.$queryRawUnsafe(
         `SELECT * FROM "Clip" WHERE "recordingId" = ?`, rec.id,
       )
-      for (const clip of clips) deleteClipFiles(clip)
+      for (const clip of clips) deleteMediaFiles(clip)
       await prisma.$executeRawUnsafe(`DELETE FROM "Clip" WHERE "recordingId" = ?`, rec.id)
     }
     await prisma.recording.deleteMany({ where: { gameId } })
@@ -851,11 +839,11 @@ export function registerRecordingHandlers() {
       throw new Error('Cannot delete a recording that is currently being captured.')
     }
     if (rec.filePath) dismissPath(rec.filePath)
-    deleteRecordingFiles(rec)
+    deleteMediaFiles(rec)
     const clips: any[] = await prisma.$queryRawUnsafe(
       `SELECT * FROM "Clip" WHERE "recordingId" = ?`, rec.id,
     )
-    for (const clip of clips) deleteClipFiles(clip)
+    for (const clip of clips) deleteMediaFiles(clip)
     await prisma.$executeRawUnsafe(`DELETE FROM "Clip" WHERE "recordingId" = ?`, rec.id)
     await prisma.recording.delete({ where: { id: recordingId } })
     return { success: true }
