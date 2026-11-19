@@ -84,7 +84,7 @@ describe('before the member_puuid migration (column missing, 42703)', () => {
           if (table === 'group_members') {
             memberSelects.push(cols)
             return Promise.resolve(cols.includes('puuid')
-              ? result(null, { code: '42703', message: 'no puuid' })
+              ? result(null, { code: '42703', message: 'column group_members.puuid does not exist' })
               : result([{ group_id: 'g1', user_id: 'u1', role: 'player', is_captain: false, display_name: 'A', riot_id: 'Ayura#EUW', joined_at: 't' }]))
           }
           if (table === 'groups') return Promise.resolve(result([{ id: 'g1', name: 'G', kind: 'team', logo_url: null }]))
@@ -96,8 +96,10 @@ describe('before the member_puuid migration (column missing, 42703)', () => {
     })
     const groups = await listMyGroups({ from } as never, 'u1')
     expect(groups[0].members[0]).not.toHaveProperty('puuid')
-    // With puuid and staff_roles (#39), with puuid alone, then without either.
-    expect(memberSelects).toHaveLength(3)
+    // With every optional column, then again without the one the error names (puuid and puuid_status go together).
+    expect(memberSelects).toHaveLength(2)
+    expect(memberSelects[1]).not.toContain('puuid')
+    expect(memberSelects[1]).toContain('staff_roles')
   })
 })
 

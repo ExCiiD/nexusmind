@@ -191,6 +191,7 @@ export const removeMember = (groupId: string, userId: string) => changesGroups(c
 export const setCaptain = (groupId: string, userId: string, isCaptain: boolean) => changesGroups(core.setCaptain(getSupabase(), groupId, userId, isCaptain))
 export const setMemberRole = (groupId: string, userId: string, role: Exclude<GroupRole, 'owner'>) => changesGroups(core.setMemberRole(getSupabase(), groupId, userId, role))
 export const setMemberStaffRoles = (groupId: string, userId: string, roles: StaffRole[]) => changesGroups(core.setMemberStaffRoles(getSupabase(), groupId, userId, roles))
+export const setMyAlsoPlays = (groupId: string, plays: boolean) => changesGroups(core.setMyAlsoPlays(getSupabase(), groupId, plays))
 export const setSharing = async (groupId: string, s: GroupSharing) => changesGroups(core.setSharing(getSupabase(), await me(), groupId, s))
 export const getPlayerSessions = (playerId: string) => core.getPlayerSessions(getSupabase(), playerId)
 export const listComments = async (reviewId: string, playerId?: string) =>

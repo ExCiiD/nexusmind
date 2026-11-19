@@ -34,6 +34,12 @@ export interface GroupMember {
    * member_staff_roles migration. Rights go through src/lib/permissions.ts, which reads both.
    */
   staffRoles?: StaffRole[]
+  /**
+   * An owner who also plays (group_members.also_plays, set by each owner for themself): in the team's roster like a
+   * player, and like a player-staff never reads teammates' shared wellbeing. Only ever true for an owner. Absent
+   * before the member_staff_roles migration. "Does this member play?" goes through `playsInGroup` (permissions.ts).
+   */
+  alsoPlays?: boolean
   joinedAt: string
 }
 
@@ -62,6 +68,8 @@ export interface Group {
   myRole: GroupRole
   /** #39: my staff roles on top of `myRole` (see GroupMember.staffRoles). Absent before the migration. */
   myStaffRoles?: StaffRole[]
+  /** Whether I, as an owner, also play (see GroupMember.alsoPlays). Absent before the migration. */
+  myAlsoPlays?: boolean
   members: GroupMember[]
   sharing: GroupSharing
   /** The team's logo (public URL in the group-logos bucket), set by the
@@ -152,6 +160,11 @@ export interface CollabApi extends DevPlanApi {
    * Errors: FORBIDDEN (not the owner), INVALID_ROLE, OWNER_HAS_ALL_ROLES, NOT_FOUND.
    */
   collabSetMemberStaffRoles?: (groupId: string, userId: string, roles: StaffRole[]) => Promise<StaffRole[]>
+  /**
+   * An owner says whether they also play, for themself only, and gets the stored value back. Nobody is notified.
+   * Errors: FORBIDDEN (not an owner of the group). Optional: absent on an app or web build without it.
+   */
+  collabSetMyAlsoPlays?: (groupId: string, plays: boolean) => Promise<boolean>
   collabSetSharing: (groupId: string, s: GroupSharing) => Promise<void>
   collabPlayerSessions: (playerId: string) => Promise<PlayerSessionView[]>
   /** Shares my profile icon and banner with my groups; false when signed out or refused. */

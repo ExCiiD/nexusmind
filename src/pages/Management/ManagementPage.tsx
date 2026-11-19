@@ -7,7 +7,7 @@ import { DevPlanCard } from '@/components/Coaching/DevPlanCard'
 import { MyMicroVerdictsCard } from '@/components/MicroReview/CoachMicroReviews'
 import { NotificationPrefsCard } from '@/components/Notifications/NotificationPrefsCard'
 import { NoGroupNotice, SectionTabs, TeamSectionHeader, useTabParam, useTeamSection, type SectionTab } from '@/components/team/TeamSection'
-import { isLegacyStaff } from '@/lib/permissions'
+import { isLegacyStaff, playsInGroup } from '@/lib/permissions'
 import { GroupsSection } from '@/pages/Coaching/GroupsSection'
 import { StaffDashboardSection } from '@/pages/Coaching/StaffDashboardSection'
 import { PlanningSection } from '@/pages/Coaching/PlanningSection'
@@ -66,7 +66,7 @@ export function ManagementPage() {
                   {!hasGroup && <NoGroupNotice />}
                   <AssignedObjectivesCard />
                   <MyMicroVerdictsCard />
-                  {group?.myRole === 'player' && <DevPlanCard key={`plan-${group.id}`} groupId={group.id} playerId={myUserId} mode="player" />}
+                  {group && playsInGroup({ role: group.myRole, alsoPlays: group.myAlsoPlays }) && <DevPlanCard key={`plan-${group.id}`} groupId={group.id} playerId={myUserId} mode="player" />}
                   <StaffDashboardSection key={`staff-${k}`} staffGroups={staffHere} />
                 </div>
               </PanelErrorBoundary>

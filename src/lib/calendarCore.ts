@@ -6,6 +6,7 @@ import type {
 } from './calendar'
 import { generateCalendarSubscriptionToken } from './calendar'
 import type { GroupMember } from './collab'
+import { playsInGroup } from './permissions'
 import { fail } from './supabaseErrors'
 
 /**
@@ -152,7 +153,8 @@ export async function deleteEvent(sb: SupabaseClient, id: string): Promise<void>
 export function resolveAttendeeScope(scope: AttendeeScope, members: GroupMember[], customUserIds: string[] = []): string[] {
   switch (scope) {
     case 'whole_team': return members.map((m) => m.userId)
-    case 'all_players': return members.filter((m) => m.role === 'player').map((m) => m.userId)
+    // An owner who also plays is in both lists: a player, and still staff.
+    case 'all_players': return members.filter(playsInGroup).map((m) => m.userId)
     case 'all_staff': return members.filter((m) => m.role !== 'player').map((m) => m.userId)
     case 'custom': return customUserIds
   }

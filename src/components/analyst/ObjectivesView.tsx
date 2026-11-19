@@ -157,6 +157,8 @@ export function GoldDiffChart({ curve, side }: { curve: TeamObjectivesSummary['g
       <div className="relative">
         <svg
           viewBox={`0 0 ${W} ${H}`}
+          // Fills the card's width at any size (the drawing stretches; the strokes do not: non-scaling-stroke).
+          preserveAspectRatio="none"
           className="h-44 w-full"
           role="img"
           aria-label={t('analyst.objectives.gold.aria', { values: marks.map((m) => `${m} min ${signedGold(curve.all[m]!)}`).join(', ') })}
@@ -167,12 +169,12 @@ export function GoldDiffChart({ curve, side }: { curve: TeamObjectivesSummary['g
           }}
           onMouseLeave={() => setHover(null)}
         >
-          <line x1={PAD} x2={W - PAD} y1={H / 2} y2={H / 2} className="stroke-hextech-border" strokeWidth={1} />
-          {showSides && <path d={pathOf(curve.blue, maxAbs)} fill="none" className="stroke-sky-400" strokeWidth={1} />}
-          {showSides && <path d={pathOf(curve.red, maxAbs)} fill="none" className="stroke-rose-400" strokeWidth={1} />}
-          <path d={pathOf(curve.all, maxAbs)} fill="none" className="stroke-hextech-gold" strokeWidth={2} />
+          <line x1={PAD} x2={W - PAD} y1={H / 2} y2={H / 2} className="stroke-hextech-border" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          {showSides && <path d={pathOf(curve.blue, maxAbs)} fill="none" className="stroke-sky-400" strokeWidth={1} vectorEffect="non-scaling-stroke" />}
+          {showSides && <path d={pathOf(curve.red, maxAbs)} fill="none" className="stroke-rose-400" strokeWidth={1} vectorEffect="non-scaling-stroke" />}
+          <path d={pathOf(curve.all, maxAbs)} fill="none" className="stroke-hextech-gold" strokeWidth={2} vectorEffect="non-scaling-stroke" />
           {hover != null && (
-            <line x1={PAD + (hover / last) * (W - 2 * PAD)} x2={PAD + (hover / last) * (W - 2 * PAD)} y1={PAD} y2={H - PAD} className="stroke-hextech-text-dim" strokeDasharray="3 3" />
+            <line x1={PAD + (hover / last) * (W - 2 * PAD)} x2={PAD + (hover / last) * (W - 2 * PAD)} y1={PAD} y2={H - PAD} className="stroke-hextech-text-dim" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
           )}
         </svg>
         {hover != null && curve.all[hover] != null && (

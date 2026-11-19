@@ -28,6 +28,8 @@ const one = async (sql, params) => (await db.query(sql, params)).rows[0]
 
 const u = (n) => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`
 const OWNER = u(1), COACH = u(2), PCOACH = u(3), PMANAGER = u(4), PLAYER = u(5), CAPTAIN = u(6), MANAGER_COACH = u(7), ANALYST = u(8)
+/** A second owner of the group, who also plays (also_plays). */
+const OWNER_P = u(9)
 const G = '10000000-0000-0000-0000-000000000001'
 
 /** Runs `fn` as `user` through the authenticated role, as a request would. */
@@ -113,6 +115,7 @@ await db.exec(`insert into public.groups values ('${G}', 'G', '${OWNER}')`)
 const members = [
   [OWNER, 'owner', false, 1], [COACH, 'coach', false, 5], [PCOACH, 'player', false, 2], [PMANAGER, 'player', false, 3],
   [PLAYER, 'player', false, 4], [CAPTAIN, 'player', true, 6], [MANAGER_COACH, 'manager', false, 7], [ANALYST, 'analyst', false, 8],
+  [OWNER_P, 'owner', false, 9],
 ]
 for (const [id, role, cap, day] of members) {
   await db.query(`insert into public.group_members (group_id, user_id, role, is_captain, joined_at, display_name)
@@ -180,6 +183,34 @@ for (const [label, sql] of [
   check(`the table refuses ${label}`, refused)
 }
 
+// ── The owner who also plays ─────────────────────────────────────────────────
+const playsOf = async (user) => (await one('select also_plays from public.group_members where group_id = $1 and user_id = $2', [G, user])).also_plays
+check('also_plays starts false for everyone', Number((await one('select count(*) n from public.group_members where also_plays')).n) === 0)
+check('a member cannot write also_plays directly',
+  /permission denied/.test(await fails(OWNER_P, `update public.group_members set also_plays = true where group_id = $1 and user_id = $2`, [G, OWNER_P]) ?? ''))
+check('a coach cannot say they also play (only an owner)', /FORBIDDEN/.test(await fails(COACH, 'select public.set_my_also_plays($1, true)', [G]) ?? ''))
+check('a player cannot either', /FORBIDDEN/.test(await fails(PLAYER, 'select public.set_my_also_plays($1, true)', [G]) ?? ''))
+check('null is refused', /FORBIDDEN/.test(await fails(OWNER_P, 'select public.set_my_also_plays($1, null)', [G]) ?? ''))
+check('a member of another group is refused', /FORBIDDEN/.test(await fails(u(98), 'select public.set_my_also_plays($1, true)', [G]) ?? ''))
+await db.exec('delete from public.notifications')
+const setPlays = (actor, v) => as(actor, () => db.query('select public.set_my_also_plays($1, $2) as r', [G, v]))
+check('an owner says they also play', (await setPlays(OWNER_P, true)).rows[0].r === true && (await playsOf(OWNER_P)) === true)
+check('only their own row: the other owner is unchanged', (await playsOf(OWNER)) === false)
+check('nobody is notified', Number((await one('select count(*) n from public.notifications')).n) === 0)
+await setPlays(OWNER, true)
+await setPlays(OWNER, false)
+check('an owner can stop playing', (await playsOf(OWNER)) === false)
+{
+  let refused = false
+  try { await db.exec(`insert into public.group_members (group_id, user_id, role, also_plays) values ('${G}', '${u(54)}', 'coach', true)`) } catch { refused = true }
+  check('the table refuses also_plays on a non-owner', refused)
+  refused = false
+  try { await db.query(`update public.group_members set role = 'coach' where group_id = $1 and user_id = $2`, [G, OWNER_P]) } catch { refused = true }
+  check('an owner who plays cannot be turned into another role while flagged', refused)
+}
+check('the owner who plays keeps the owner\'s rights',
+  (await as(OWNER_P, () => db.query('select private.is_group_staff($1) as v', [G]))).rows[0].v === true)
+
 // ── Rights ──────────────────────────────────────────────────────────────────
 const asBool = async (user, sql, params = []) => (await as(user, () => db.query(sql, params))).rows[0].v
 check('has_group_role: a player-coach is a coach', await asBool(PCOACH, `select private.has_group_role($1, array['coach']) as v`, [G]))
@@ -211,6 +242,11 @@ check('wellbeing: the owner, a coach and a manager-coach read it',
   (await seesWellbeing(OWNER)) && (await seesWellbeing(COACH)) && (await seesWellbeing(MANAGER_COACH)))
 check('wellbeing: a player-coach does NOT read it', !(await seesWellbeing(PCOACH)))
 check('wellbeing: a plain player does not either', !(await seesWellbeing(PLAYER)))
+check('wellbeing: an owner who plays does NOT read it, an owner who does not play does',
+  !(await seesWellbeing(OWNER_P)) && (await seesWellbeing(OWNER)))
+await setPlays(OWNER_P, false)
+check('wellbeing: the same owner reads it again once they stop playing', await seesWellbeing(OWNER_P))
+await setPlays(OWNER_P, true)
 
 // ── Fan-outs ────────────────────────────────────────────────────────────────
 await db.exec('delete from public.notifications')
@@ -222,6 +258,7 @@ await db.exec('select public.run_wellbeing_alert_check()')
 const alerted = (await db.query(`select user_id from public.notifications where type = 'wellbeing_alert'`)).rows.map((r) => r.user_id)
 check('wellbeing alert: coach and owner told, player-coach not',
   alerted.includes(COACH) && alerted.includes(OWNER) && !alerted.includes(PCOACH) && !alerted.includes(CAPTAIN), JSON.stringify(alerted))
+check('wellbeing alert: the owner who plays is not told', !alerted.includes(OWNER_P), JSON.stringify(alerted))
 
 await db.exec('delete from public.notifications')
 await db.query(`insert into public.sync_records values ($1, 'Game', now() - interval '10 days', false)`, [PCOACH])
@@ -231,6 +268,15 @@ const aboutPcoach = (await db.query(`select user_id from public.notifications wh
 const aboutPlayer = (await db.query(`select user_id from public.notifications where type = 'player_inactive' and data->>'playerId' = $1`, [PLAYER])).rows.map((r) => r.user_id)
 check('inactivity: a player-coach is not told about themself, and is told about a teammate',
   !aboutPcoach.includes(PCOACH) && aboutPlayer.includes(PCOACH) && aboutPlayer.filter((x) => x === PCOACH).length === 1, JSON.stringify({ aboutPcoach, aboutPlayer }))
+await db.exec('delete from public.notifications')
+await db.query(`insert into public.sync_records values ($1, 'Game', now() - interval '10 days', false)`, [OWNER_P])
+await db.query(`insert into public.sync_records values ($1, 'Game', now() - interval '10 days', false)`, [OWNER])
+await db.exec('select public.run_inactive_player_check()')
+const aboutOwnerP = (await db.query(`select user_id from public.notifications where type = 'player_inactive' and data->>'playerId' = $1`, [OWNER_P])).rows.map((r) => r.user_id)
+const aboutOwner = (await db.query(`select user_id from public.notifications where type = 'player_inactive' and data->>'playerId' = $1`, [OWNER])).rows.map((r) => r.user_id)
+check('inactivity: an owner who plays is checked like a player (staff told, not themself), an owner who does not is not',
+  aboutOwnerP.includes(COACH) && aboutOwnerP.includes(OWNER) && !aboutOwnerP.includes(OWNER_P) && aboutOwner.length === 0,
+  JSON.stringify({ aboutOwnerP, aboutOwner }))
 
 await db.exec('delete from public.notifications')
 await db.query(`insert into public.calendar_event_requests (group_id, requested_by, event_name) values ($1, $2, 'Scrim')`, [G, PLAYER])
@@ -276,6 +322,7 @@ await db.exec('select public.run_weekly_load_check()')
 const load = await recipients('weekly_load_alert')
 check('weekly load (reads moods): owner, coach and manager-coach told, player-coach NOT, the player not',
   load.includes(OWNER) && load.includes(COACH) && load.includes(MANAGER_COACH) && !load.includes(PCOACH) && !load.includes(CAPTAIN), JSON.stringify(load))
+check('weekly load: the owner who plays is not told', !load.includes(OWNER_P), JSON.stringify(load))
 
 for (const fn of ['run_dev_plan_period_check', 'run_scrim_availability_check', 'run_weekly_load_check', 'run_inactive_player_check', 'run_wellbeing_alert_check']) {
   check(`${fn} cannot be called through the API roles`, /permission denied/.test(await fails(PLAYER, `select public.${fn}()`) ?? ''))
@@ -332,7 +379,7 @@ await as(OWNER, () => db.query(`select public.set_member_role($1, $2, 'player')`
 await setStaff(OWNER, PCOACH, ['coach'])
 
 // ── Owner hand-over ─────────────────────────────────────────────────────────
-async function handOverCase(label, rows, expected) {
+async function handOverCase(label, rows, expected, expectPlays = undefined) {
   const g = `30000000-0000-0000-0000-${String(Math.floor(Math.random() * 1e12)).padStart(12, '0')}`
   await db.query(`insert into public.groups values ($1, 'H', $2)`, [g, OWNER])
   await db.query(`insert into public.group_members (group_id, user_id, role, joined_at) values ($1, $2, 'owner', now() - interval '1000 days')`, [g, OWNER])
@@ -341,20 +388,23 @@ async function handOverCase(label, rows, expected) {
       values ($1, $2, $3, $4, $5, now() - make_interval(days => $6))`, [g, id, role, staff, captain, daysAgo])
   }
   await db.query('select private.hand_over_groups_of($1)', [OWNER])
-  const owner = await one(`select user_id, staff_roles from public.group_members where group_id = $1 and role = 'owner' and user_id <> $2`, [g, OWNER])
-  check(`hand-over: ${label}`, owner?.user_id === expected && owner.staff_roles.length === 0, JSON.stringify(owner))
+  const owner = await one(`select user_id, staff_roles, also_plays from public.group_members where group_id = $1 and role = 'owner' and user_id <> $2`, [g, OWNER])
+  check(`hand-over: ${label}`, owner?.user_id === expected && owner.staff_roles.length === 0
+    && (expectPlays === undefined || owner.also_plays === expectPlays), JSON.stringify(owner))
   await db.query('delete from public.groups where id = $1', [g])
 }
 await handOverCase('a coach who does not play beats an older player-coach',
   [[u(20), 'player', ['coach'], false, 500], [u(21), 'coach', [], false, 10]], u(21))
-await handOverCase('a player-coach beats a manager',
-  [[u(22), 'manager', [], false, 500], [u(23), 'player', ['coach'], false, 10]], u(23))
+await handOverCase('a player-coach beats a manager, and keeps playing as owner',
+  [[u(22), 'manager', [], false, 500], [u(23), 'player', ['coach'], false, 10]], u(23), true)
+await handOverCase('a coach who does not play becomes an owner who does not play',
+  [[u(30), 'coach', [], false, 10]], u(30), false)
 await handOverCase('a player-manager beats an analyst',
   [[u(24), 'analyst', [], false, 500], [u(25), 'player', ['manager'], false, 10]], u(25))
 await handOverCase('a player-analyst beats the captain, and loses the extra role on becoming owner',
   [[u(26), 'player', [], true, 500], [u(27), 'player', ['analyst'], false, 10]], u(27))
-await handOverCase('without staff: the captain, then the oldest player',
-  [[u(28), 'player', [], false, 500], [u(29), 'player', [], true, 10]], u(29))
+await handOverCase('without staff: the captain, then the oldest player, who keeps playing',
+  [[u(28), 'player', [], false, 500], [u(29), 'player', [], true, 10]], u(29), true)
 
 console.log(failures ? `\n${failures} check(s) failed` : '\nAll checks passed')
 process.exit(failures ? 1 : 0)

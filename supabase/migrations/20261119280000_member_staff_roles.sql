@@ -18,6 +18,12 @@
 --     captain, then the longest-standing player. On a tie, a staff member
 --     who does not play comes before a player-staff.
 --   - every assignment notifies the member and the rest of the group.
+--   - the owner who also plays (also_plays, set by each owner for themself
+--     through set_my_also_plays): counted as a player wherever the group's
+--     players are listed (team roster, inactivity check), and like a
+--     player-staff never reads shared wellbeing nor gets wellbeing alerts.
+--     Only an owner can hold it (a member who plays has role = 'player').
+--     On a hand-over, a player promoted to owner keeps playing.
 --
 -- Everyone starts with '{}': rights are unchanged until the owner assigns a
 -- role. Older app versions ignore the column and keep working.
@@ -42,8 +48,13 @@ alter table public.group_members add constraint group_members_staff_roles_check 
   and (role <> 'owner' or cardinality(staff_roles) = 0)
 );
 
+-- The owner who also plays (user request, 19 November 2026). Only an owner: anyone else who plays has role = 'player'.
+alter table public.group_members add column if not exists also_plays boolean not null default false;
+alter table public.group_members drop constraint if exists group_members_also_plays_check;
+alter table public.group_members add constraint group_members_also_plays_check check (not also_plays or role = 'owner');
+
 -- Belt and braces: the table already only grants update on four profile columns.
-revoke update (staff_roles) on public.group_members from anon, authenticated;
+revoke update (staff_roles, also_plays) on public.group_members from anon, authenticated;
 
 -- 2. The single rights check ------------------------------------------------------
 
@@ -108,7 +119,7 @@ returns boolean language sql stable security definer set search_path = '' as $$
   )
 $$;
 
--- Body of 20261114050000_e6_wellbeing. A staff role AND a main role other than player.
+-- Body of 20261114050000_e6_wellbeing. A staff role AND a main role other than player, and not an owner who plays.
 create or replace function private.can_read_wellbeing(p_owner uuid)
 returns boolean language sql stable security definer set search_path = ''
 as $$
@@ -120,6 +131,7 @@ as $$
     where viewer.user_id = auth.uid()
       and viewer.user_id <> p_owner
       and viewer.role <> 'player'
+      and not viewer.also_plays
       and (viewer.role = any(array['owner', 'coach', 'analyst']) or viewer.staff_roles && array['coach', 'analyst'])
       and s.share_wellbeing = true
   )
@@ -174,8 +186,9 @@ begin
     if successor is null then
       delete from public.groups where id = g.group_id;
     else
-      -- The owner holds no extra role (check constraint).
-      update public.group_members set role = 'owner', staff_roles = '{}'
+      -- The owner holds no extra role (check constraint). A player promoted to owner keeps playing:
+      -- they stay in the team's roster (the right-hand side reads the row before the update).
+      update public.group_members set role = 'owner', staff_roles = '{}', also_plays = (role = 'player')
       where group_id = g.group_id and user_id = successor;
       update public.groups set created_by = successor
       where id = g.group_id and created_by = p_user;
@@ -277,6 +290,27 @@ $$;
 revoke all on function public.set_member_staff_roles(uuid, uuid, text[]) from public, anon;
 grant execute on function public.set_member_staff_roles(uuid, uuid, text[]) to authenticated;
 
+-- An owner says whether they also play, for themself only (each owner of the group decides for themself).
+-- Nobody is notified: the owner appears in, or leaves, the team's roster, which everyone sees.
+create or replace function public.set_my_also_plays(p_group uuid, p_plays boolean)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := (select auth.uid());
+begin
+  if v_uid is null or p_plays is null or private.group_role(p_group, v_uid) is distinct from 'owner' then
+    raise exception 'FORBIDDEN' using errcode = '42501';
+  end if;
+  update public.group_members set also_plays = p_plays where group_id = p_group and user_id = v_uid;
+  return p_plays;
+end;
+$$;
+revoke all on function public.set_my_also_plays(uuid, boolean) from public, anon;
+grant execute on function public.set_my_also_plays(uuid, boolean) to authenticated;
+
 -- 6. Notification types (list of 20261118195000_notification_types_fix plus the two above, and dossier_published
 --    of 20261119290000: the two migrations keep the same full list, so either can be applied first) ---
 
@@ -294,7 +328,7 @@ alter table public.notifications add constraint notifications_type_check check (
 -- 7. Fan-outs to the staff, read as effective roles ------------------------------------
 -- One row per member, so a player-coach gets each notification once.
 
--- Body of 20261114070000_e8_notifications_v2, two changes: a player-staff is never told about their own
+-- Body of 20261114070000_e8_notifications_v2, three changes: an owner who plays is checked like a player, a player-staff is never told about their own
 -- inactivity, and the loop variable is renamed. It was called gm, like the table alias of the first query,
 -- so the function stopped with "record gm is not assigned yet" every time it ran.
 create or replace function public.run_inactive_player_check()
@@ -307,7 +341,7 @@ begin
   for r in
     select distinct gm.group_id, gm.user_id as player_id, gm.display_name
     from public.group_members gm
-    where gm.role = 'player'
+    where gm.role = 'player' or gm.also_plays
   loop
     select max(sr.updated_at) into last_game
       from public.sync_records sr
@@ -338,7 +372,7 @@ begin
 end;
 $$;
 
--- Body of 20261114070000_e8_notifications_v2. Same readers as can_read_wellbeing: no player-staff.
+-- Body of 20261114070000_e8_notifications_v2. Same readers as can_read_wellbeing: no player-staff, no owner who plays.
 create or replace function public.run_wellbeing_alert_check()
 returns void language plpgsql security definer set search_path = '' as $$
 declare r record;
@@ -368,7 +402,7 @@ begin
     for gm in
       select user_id from public.group_members
       where group_id = r.group_id and user_id <> r.player_id
-        and role <> 'player'
+        and role <> 'player' and not also_plays
         and (role = any(array['owner', 'coach', 'analyst']) or staff_roles && array['coach', 'analyst'])
     loop
       perform private.notify(gm.user_id, 'wellbeing_alert',
@@ -595,11 +629,11 @@ begin
         and n.data->>'groupId' = r.group_id::text and n.data->>'playerId' = r.player_id::text
     ) then continue; end if;
 
-    -- It reveals a mood trend: the same readers as can_read_wellbeing, so no player-staff.
+    -- It reveals a mood trend: the same readers as can_read_wellbeing, so no player-staff, no owner who plays.
     for staffer in
       select user_id from public.group_members
       where group_id = r.group_id and user_id <> r.player_id
-        and role <> 'player'
+        and role <> 'player' and not also_plays
         and (role = any(array['owner', 'coach', 'analyst']) or staff_roles && array['coach', 'analyst'])
     loop
       perform private.notify(staffer.user_id, 'weekly_load_alert',

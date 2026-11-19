@@ -241,6 +241,8 @@ export const webApi = {
   // #39: staff roles on top of the main role (owner only, set_member_staff_roles).
   collabSetMemberStaffRoles: (groupId: string, userId: string, roles: Parameters<typeof core.setMemberStaffRoles>[3]) =>
     core.setMemberStaffRoles(sb, groupId, userId, roles),
+  // #48: the owner can also be one of the group's players.
+  collabSetMyAlsoPlays: (groupId: string, plays: boolean) => core.setMyAlsoPlays(sb, groupId, plays),
   collabDeleteGroup: (groupId: string) => core.deleteGroup(sb, groupId),
   collabRemoveMember: (groupId: string, userId: string) => core.removeMember(sb, groupId, userId),
   collabSetCaptain: (groupId: string, userId: string, isCaptain: boolean) => core.setCaptain(sb, groupId, userId, isCaptain),

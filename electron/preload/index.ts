@@ -119,6 +119,7 @@ const api = {
   collabSetCaptain: (groupId: string, userId: string, isCaptain: boolean) => ipcRenderer.invoke('collab:set-captain', groupId, userId, isCaptain),
   collabSetMemberRole: (groupId: string, userId: string, role: 'coach' | 'manager' | 'analyst' | 'player') => ipcRenderer.invoke('collab:set-member-role', groupId, userId, role),
   collabSetMemberStaffRoles: (groupId: string, userId: string, roles: Array<'coach' | 'manager' | 'analyst'>) => ipcRenderer.invoke('collab:set-member-staff-roles', groupId, userId, roles),
+  collabSetMyAlsoPlays: (groupId: string, plays: boolean) => ipcRenderer.invoke('collab:set-my-also-plays', groupId, plays),
   teamSessionGetByEvent: (calendarEventId: string) => ipcRenderer.invoke('team-session:get-by-event', calendarEventId),
   teamSessionStart: (id: string, responsibleUserIds: string[], queueFilter: string | null) => ipcRenderer.invoke('team-session:start', id, responsibleUserIds, queueFilter),
   teamSessionEnd: (id: string) => ipcRenderer.invoke('team-session:end', id),

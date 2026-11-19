@@ -25,6 +25,8 @@ export function registerCollabHandlers() {
   validatedHandle('collab:set-member-staff-roles',
     z.tuple([uuid, uuid, z.array(z.enum(['coach', 'manager', 'analyst'])).max(3).refine((a) => new Set(a).size === a.length, 'duplicate role')]),
     (_e, groupId, userId, roles) => collab.setMemberStaffRoles(groupId, userId, roles))
+  // An owner who also plays, for themself only (the RPC checks the owner).
+  validatedHandle('collab:set-my-also-plays', z.tuple([uuid, z.boolean()]), (_e, groupId, plays) => collab.setMyAlsoPlays(groupId, plays))
   validatedHandle('collab:set-sharing', z.tuple([uuid, z.object({ shareReviews: z.boolean(), shareStats: z.boolean(), shareTeam: z.boolean(), shareWellbeing: z.boolean() })]),
     (_e, groupId, s) => collab.setSharing(groupId, s))
 

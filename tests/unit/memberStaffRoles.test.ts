@@ -4,15 +4,21 @@
  * The rights themselves are checked on the database by scripts/test-member-staff-roles.mjs.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { listMyGroups, setMemberStaffRoles } from '../../src/lib/collabCore'
+import { listMyGroups, setMemberStaffRoles, setMyAlsoPlays } from '../../src/lib/collabCore'
+import { canReadWellbeing, playsInGroup } from '../../src/lib/permissions'
+import { planGroupTeamSync } from '../../src/lib/groupTeamSyncCore'
+import { resolveAttendeeScope } from '../../src/lib/calendarCore'
+import type { GroupMember } from '../../src/lib/collab'
 import { getGroupMemberRoles, isChannelStaffRole } from '../../src/lib/discordBotCore'
 
 const result = (data: unknown, error: unknown = null) => ({ data, error })
 
-/** A fake client for listMyGroups: `hasStaffColumn` false answers 42703 to any select naming staff_roles. */
-function groupsClient(hasStaffColumn: boolean) {
+/** A fake client for listMyGroups: any select naming a column of `missingColumns` answers 42703. */
+function groupsClient(missingColumns: string[] = []) {
   const selects: string[] = []
-  const missing = (cols: string) => !hasStaffColumn && cols.includes('staff_roles')
+  const missing = (cols: string) => missingColumns.some((c) => cols.includes(c))
+  // PostgREST names the first missing column it meets.
+  const missingError = (cols: string) => ({ code: '42703', message: `column group_members.${missingColumns.find((c) => cols.includes(c))} does not exist` })
   const from = (table: string) => ({
     select: (cols: string) => {
       selects.push(`${table}: ${cols}`)
@@ -20,20 +26,22 @@ function groupsClient(hasStaffColumn: boolean) {
       q.eq = () => q
       q.in = () => {
         if (table === 'group_members') {
-          if (missing(cols)) return Promise.resolve(result(null, { code: '42703', message: 'no staff_roles' }))
+          if (missing(cols)) return Promise.resolve(result(null, missingError(cols)))
           return Promise.resolve(result([
             { group_id: 'g1', user_id: 'me', role: 'player', is_captain: false, display_name: 'Me', riot_id: null, joined_at: 't',
               puuid: null, puuid_status: null, ...(cols.includes('staff_roles') ? { staff_roles: ['coach'] } : {}) },
             { group_id: 'g1', user_id: 'o', role: 'owner', is_captain: false, display_name: 'O', riot_id: null, joined_at: 't',
-              puuid: null, puuid_status: null, ...(cols.includes('staff_roles') ? { staff_roles: [] } : {}) },
+              puuid: null, puuid_status: null, ...(cols.includes('staff_roles') ? { staff_roles: [] } : {}),
+              ...(cols.includes('also_plays') ? { also_plays: true } : {}) },
           ]))
         }
         if (table === 'groups') return Promise.resolve(result([{ id: 'g1', name: 'G', kind: 'team', logo_url: null }]))
         return Promise.resolve(result([]))
       }
       q.then = (resolve: (v: unknown) => void) => resolve(missing(cols)
-        ? result(null, { code: '42703', message: 'no staff_roles' })
-        : result([{ group_id: 'g1', role: 'player', ...(cols.includes('staff_roles') ? { staff_roles: ['coach', 'bogus'] } : {}) }]))
+        ? result(null, missingError(cols))
+        : result([{ group_id: 'g1', role: 'player', ...(cols.includes('staff_roles') ? { staff_roles: ['coach', 'bogus'] } : {}),
+          ...(cols.includes('also_plays') ? { also_plays: false } : {}) }]))
       return q
     },
   })
@@ -42,7 +50,7 @@ function groupsClient(hasStaffColumn: boolean) {
 
 describe('listMyGroups and staff roles', () => {
   it('reads my staff roles and each member\'s, dropping unknown values', async () => {
-    const { client } = groupsClient(true)
+    const { client } = groupsClient()
     const [g] = await listMyGroups(client, 'me')
     expect(g.myRole).toBe('player')
     expect(g.myStaffRoles).toEqual(['coach'])
@@ -50,13 +58,29 @@ describe('listMyGroups and staff roles', () => {
     expect(g.members.find((m) => m.userId === 'o')?.staffRoles).toEqual([])
   })
 
+  it('reads also_plays: the owner who plays, false for me', async () => {
+    const [g] = await listMyGroups(groupsClient().client, 'me')
+    expect(g.myAlsoPlays).toBe(false)
+    expect(g.members.find((m) => m.userId === 'o')?.alsoPlays).toBe(true)
+  })
+
   it('before the migration: same groups, the fields left out', async () => {
-    const { client, selects } = groupsClient(false)
+    const { client, selects } = groupsClient(['staff_roles', 'also_plays'])
     const [g] = await listMyGroups(client, 'me')
     expect(g).not.toHaveProperty('myStaffRoles')
+    expect(g).not.toHaveProperty('myAlsoPlays')
     expect(g.members[0]).not.toHaveProperty('staffRoles')
+    expect(g.members[0]).not.toHaveProperty('alsoPlays')
     expect(g.members[0]).toHaveProperty('puuid') // the puuid column is still read
-    expect(selects.filter((s) => s.startsWith('group_members')).length).toBe(4) // 2 membership + 2 member selects
+    // Each select drops the column the error names: 3 membership + 3 member selects.
+    expect(selects.filter((s) => s.startsWith('group_members')).length).toBe(6)
+  })
+
+  it('a database with staff_roles but no also_plays: staff roles kept, the flag left out', async () => {
+    const [g] = await listMyGroups(groupsClient(['also_plays']).client, 'me')
+    expect(g.myStaffRoles).toEqual(['coach'])
+    expect(g).not.toHaveProperty('myAlsoPlays')
+    expect(g.members.find((m) => m.userId === 'o')).not.toHaveProperty('alsoPlays')
   })
 })
 
@@ -114,5 +138,46 @@ describe('Discord bot: effective roles', () => {
     const { client, selects } = botClient({ role: 'coach' }, true)
     expect(await getGroupMemberRoles(client, 'g', 'u')).toEqual(['coach'])
     expect(selects).toEqual(['role, staff_roles', 'role'])
+  })
+})
+
+describe('the owner who also plays', () => {
+  it('setMyAlsoPlays calls the owner-only RPC and maps FORBIDDEN', async () => {
+    const rpc = vi.fn().mockResolvedValue(result(true))
+    expect(await setMyAlsoPlays({ rpc } as never, 'g', true)).toBe(true)
+    expect(rpc).toHaveBeenCalledWith('set_my_also_plays', { p_group: 'g', p_plays: true })
+    const denied = vi.fn().mockResolvedValue(result(null, { message: 'FORBIDDEN', code: '42501' }))
+    await expect(setMyAlsoPlays({ rpc: denied } as never, 'g', true)).rejects.toThrow('FORBIDDEN')
+  })
+
+  it('playsInGroup: a player, or an owner who also plays, never a staff member with the flag', () => {
+    expect(playsInGroup({ role: 'player' })).toBe(true)
+    expect(playsInGroup({ role: 'owner', alsoPlays: true })).toBe(true)
+    expect(playsInGroup({ role: 'owner', alsoPlays: false })).toBe(false)
+    expect(playsInGroup({ role: 'owner' })).toBe(false)
+    expect(playsInGroup({ role: 'coach', alsoPlays: true })).toBe(false)
+  })
+
+  it('wellbeing: an owner who plays does not read it, as on the server', () => {
+    expect(canReadWellbeing('owner', [], true)).toBe(false)
+    expect(canReadWellbeing('owner', [], false)).toBe(true)
+    expect(canReadWellbeing('owner')).toBe(true)
+  })
+
+  it('the team built from the group takes the owner who plays, not the one who does not', () => {
+    const plan = planGroupTeamSync([
+      { role: 'owner', alsoPlays: true, displayName: 'Boss', riotId: 'Boss#EUW' },
+      { role: 'owner', alsoPlays: false, displayName: 'Other', riotId: 'Other#EUW' },
+      { role: 'player', displayName: 'P', riotId: 'P#EUW' },
+    ], [])
+    expect(plan.add.map((a) => a.ign).sort()).toEqual(['Boss', 'P'])
+  })
+
+  it('"all players" includes the owner who plays, who stays in "all staff" too', () => {
+    const m = (userId: string, role: GroupMember['role'], alsoPlays?: boolean): GroupMember =>
+      ({ userId, role, isCaptain: false, displayName: null, riotId: null, joinedAt: 't', ...(alsoPlays !== undefined ? { alsoPlays } : {}) })
+    const members = [m('o', 'owner', true), m('o2', 'owner', false), m('p', 'player'), m('c', 'coach')]
+    expect(resolveAttendeeScope('all_players', members)).toEqual(['o', 'p'])
+    expect(resolveAttendeeScope('all_staff', members)).toEqual(['o', 'o2', 'c'])
   })
 })

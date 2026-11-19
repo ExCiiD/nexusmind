@@ -42,7 +42,7 @@ formulaire (bouton *Register Product* du tableau de bord).
 | R1 | ⏳ | Une fiche existe forcément (la clé Personal en dépend), mais son type et son contenu ne sont pas lisibles depuis le dépôt | relire la fiche du portail ; créer ou convertir en produit public | **utilisateur** |
 | R2 | ✅ textes prêts | brouillons en anglais au § 4 | copier, puis ajuster au vrai formulaire | utilisateur |
 | R3 | ✅ | app desktop en bêta publique (1.0.0-beta.8), web app, CI verte, 1 656 tests | — | — |
-| R4 | ⏳ **en cours** (19/11) | Domaine acheté : **asc3nd.app**. Site public prévu sur **https://asc3nd.app**, web app sur **https://app.asc3nd.app** (branchement en cours, backend-dev + graphic-design). Avant : aperçu non indexé (`site/build.mjs:46-47`, `X-Robots-Tag: noindex` dans `site/public/_headers:8`, adresse en `workers.dev`). **À vérifier une fois en ligne :**<br>- HTTPS ;<br>- `SITE_URL` défini (balise canonique, `sitemap.xml`, `robots.txt` avec `Allow`) ;<br>- plus de `noindex` ni de `X-Robots-Tag` ;<br>- textes légaux v0.3 en ligne (`/en/privacy`, `/en/terms`, et leurs versions FR) ;<br>- mention Riot en pied de page ;<br>- liens vers le téléchargement et vers la web app. | brancher le domaine, définir `SITE_URL`, retirer le `noindex`, redéployer ; puis vérification par l'Audit | backend-dev + graphic-design, puis audit |
+| R4 | ✅ (vérifié en ligne le 20/11/2026) | Site public **https://asc3nd.app** (version a43f0ba2, contenu du commit 1947bad) et web app **https://app.asc3nd.app**, tous deux en **200 sur HTTPS**.<br>**Redirections 301** (chemin et query gardés) : `http` → `https` ; `www.asc3nd.app` → `asc3nd.app` ; ancienne adresse `ascend-site…workers.dev` → `asc3nd.app`.<br>**Indexable** : aucun `X-Robots-Tag` ; pas de `<meta robots noindex>` sauf sur la page 404 (voulu) ; `robots.txt` = `Allow: /` + `Sitemap: https://asc3nd.app/sitemap.xml` ; le sitemap liste les 10 pages FR et EN ; `<link rel="canonical">` en `https://asc3nd.app/…` sur chaque page.<br>**Textes légaux v0.3** en ligne : `/en/privacy`, `/en/terms`, `/confidentialite`, `/conditions` (« Version 0.3 · 19 novembre 2026 »).<br>**Mention Riot** dans le pied de page (`riot-notice`, `lang="en"`) de toutes les pages vérifiées, et dans les pages légales.<br>**Liens** : web app (`https://app.asc3nd.app`) et téléchargement (GitHub Releases, installeur 1.0.0-beta.9) sur toutes les pages.<br>**En-têtes** : HSTS (`max-age=31536000; includeSubDomains`), CSP, `X-Frame-Options: DENY`, `nosniff`. | — | — |
 | R5 | ⏳ | méthode inconnue avant le dépôt (souvent un fichier ou une balise sur le site) | suivre l'instruction du portail le moment venu ; prévoir 1 déploiement du site | utilisateur + graphic-design |
 | R6 | ✅ | coaching après la partie, micro-review, plan de progression, gestion d'équipe ; rien n'est automatisé en partie | argumenter (§ 4.3) | — |
 | R7 | ✅ | **Site** : pied de page de toutes les pages, CGU et politique. **App** (19/11, `src/components/legal/RiotLegalNotice.tsx`) : écran de connexion desktop et web (`CloudGate.tsx:366`), onboarding (`OnboardingPage.tsx:124`), Aide desktop (`HelpPage.tsx:192`), page Compte web (`web/src/pages/AccountPage.tsx:68`). Texte **identique au caractère près** à celui du site (271 caractères, comparaison par script) et conforme au texte officiel de Riot ; balisé `lang="en"`. Vu dans le harnais : affiché sur l'écran de connexion et dans l'Aide (680 × 36 px), contraste 5,63:1. Onboarding et page Compte web vérifiés dans le code seulement. | — | — |
@@ -55,8 +55,24 @@ formulaire (bouton *Register Product* du tableau de bord).
 | R14 | ⏳ | captures automatiques du site (`site/shots.cjs`, à remettre d'aplomb : WSC-12) | 5 ou 6 captures : micro-review, Mistake Lab, plan, Stats collectives, Planning, Scouting | graphic-design |
 | R15 | ✅ textes prêts | cas d'usage clair (scrims entre équipes, aujourd'hui importés en CSV) | inclure le § 4.4 | — |
 
-**Bloquant avant dépôt :** R4 (site public sur https://asc3nd.app, en cours). R7 et R10 sont réglés depuis le 19/11.
+**Plus aucun bloquant avant dépôt** depuis le 20/11 : R4 (site public sur https://asc3nd.app), R7 et R10 sont réglés. Restent conseillés : R13 (preuve de propriété du compte Riot), R14 (captures), R12 (confirmer la v0.3), et les chiffres `[N]` des brouillons, à remplir par l'utilisateur.
 **Fortement conseillés :** R13 (preuve du compte Riot), R14 (captures), R12 (confirmer la v0.3).
+
+### Captures pour le dossier (R14, graphic-design, 20/11/2026)
+
+Dans `docs/riot-application/`, en PNG (pour le formulaire) et WebP. App en français, version 1.0.0-beta.9, données de démo du
+harnais uniquement : joueurs et équipes fictifs (Nova, Kaito, Vexa, Nyra, Rook, Lumi, Coach Sora, Aegis Gaming…), aucun vrai
+pseudo. Régénérables : `SHOTS_FILE=./shots-riot.cjs CAPTURE_OUT=docs/riot-application npx electron site/capture.cjs`
+(harnais lancé sur le port 5199).
+
+| Fichier | Écran | Ce qu'il montre à Riot |
+|---|---|---|
+| `riot-1-dashboard.png` | Tableau de bord | Session d'entraînement délibéré, progression des objectifs, empreinte des fondamentaux, bilan de l'assistant |
+| `riot-2-micro-review.png` | Micro-review | Les 3 moments clés d'une partie (timeline match-v5) et la cause choisie par le joueur |
+| `riot-3-team-objectives.png` | Stats collectives → Objectifs | Contrôle des objectifs d'équipe, écart d'or, frise par game (timelines de nos scrims) |
+| `riot-4-opponent-dossier.png` | Coaching → Scouting → Dossier adverse | Pools, menaces et forme des 5 joueurs adverses par Riot ID ; bandeau « clé actuelle limitée à 20 games » |
+| `riot-5-planning.png` | Planning | Semaine d'équipe, scrims et créneaux communs des titulaires (aucune donnée Riot) |
+| `riot-6-team-space.png` | Espace d'équipe | Cartes joueurs du roster avec l'art de chargement des champions |
 
 ## 3. Volumétrie estimée
 

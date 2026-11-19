@@ -17,7 +17,8 @@ const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const ffmpegPath = require('ffmpeg-static')
-const SHOTS = require('./shots.cjs')
+// SHOTS_FILE picks another shot list (site/shots-riot.cjs for the Riot key application).
+const SHOTS = require(process.env.SHOTS_FILE || './shots.cjs')
 
 const HARNESS = (process.env.HARNESS_URL || 'http://localhost:5199').replace(/\/+$/, '')
 const OUT = process.env.CAPTURE_OUT || path.join(__dirname, 'public', 'media')

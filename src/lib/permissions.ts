@@ -44,11 +44,19 @@ export function canManageSession(role: GroupRole, isCaptain: boolean, staffRoles
 }
 
 /**
- * Shared wellbeing (`private.can_read_wellbeing`): a staff role AND a main role other than player. A player who
- * also coaches does not read teammates' wellbeing (user decision, 19/11/2026).
+ * Shared wellbeing (`private.can_read_wellbeing`): a staff role AND a main role other than player, and not an
+ * owner who also plays. A member who plays does not read teammates' wellbeing (user decision, 19/11/2026).
  */
-export function canReadWellbeing(role: GroupRole, staffRoles: readonly StaffRole[] = []): boolean {
-  return role !== 'player' && isLegacyStaff(role, staffRoles)
+export function canReadWellbeing(role: GroupRole, staffRoles: readonly StaffRole[] = [], alsoPlays = false): boolean {
+  return role !== 'player' && !alsoPlays && isLegacyStaff(role, staffRoles)
+}
+
+/**
+ * Whether a member plays in the group: the 'player' role, or an owner who also plays (`also_plays`). The team's
+ * roster and "all players" are built from this, as the server's inactivity check is.
+ */
+export function playsInGroup(m: { role: GroupRole | string; alsoPlays?: boolean }): boolean {
+  return m.role === 'player' || (m.role === 'owner' && m.alsoPlays === true)
 }
 
 /** #39: the staff roles the owner can add on top of a member's main role. */

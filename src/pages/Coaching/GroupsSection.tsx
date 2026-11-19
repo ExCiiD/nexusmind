@@ -236,6 +236,30 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
             </CardHeader>
             <CardContent className="space-y-4">
               {management && <GroupLogoEditor group={g} onChanged={reload} />}
+              {/* #48: the owner can also be one of the group's players. Hidden before the migration (no field) or
+                  without the IPC. The main process reloads the groups after the change. */}
+              {g.myRole === 'owner' && g.myAlsoPlays !== undefined && window.api.collabSetMyAlsoPlays && (
+                <div className="rounded-lg border border-hextech-border-dim p-3 text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 accent-hextech-gold"
+                    checked={g.myAlsoPlays}
+                    disabled={busy !== null}
+                    aria-describedby={`also-plays-hint-${g.id}`}
+                    onChange={(e) => {
+                      const plays = e.target.checked
+                      void run(`also-plays-${g.id}`, async () => {
+                        await window.api.collabSetMyAlsoPlays!(g.id, plays)
+                        await reload()
+                      })
+                    }}
+                  />
+                  <span className="font-medium text-hextech-text-bright">{t('coaching.groups.alsoPlays.label')}</span>
+                </label>
+                <p id={`also-plays-hint-${g.id}`} className="mt-1 pl-6 text-xs text-hextech-text-dim">{t('coaching.groups.alsoPlays.hint')}</p>
+                </div>
+              )}
               {/* #38: Riot ID check problems (conflict, not found), for the staff. */}
               {(staff || effectiveRoles(g.myRole, g.myStaffRoles).includes('manager')) && (
                 <RiotIdChecks
@@ -277,6 +301,10 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
                           </SelectContent>
                         </Select>
                       ) : roleLabel(m.role)}
+                      {/* #48: an owner who also plays. */}
+                      {m.role === 'owner' && m.alsoPlays && (
+                        <span className="rounded bg-hextech-elevated px-1.5 py-0.5 text-[10px] text-hextech-text">{roleLabel('player')}</span>
+                      )}
                       {/* #39: staff roles held on top of the main role. */}
                       {extraRoles(m.role, m.staffRoles).map((r) => (
                         <span key={r} className="rounded bg-hextech-gold/10 px-1.5 py-0.5 text-[10px] text-hextech-gold">{roleLabel(r)}</span>

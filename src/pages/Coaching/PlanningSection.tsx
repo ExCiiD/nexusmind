@@ -23,6 +23,7 @@ import { AnnouncementsCard } from '@/components/Planning/AnnouncementsCard'
 import { MyAvailabilityDialog } from '@/components/Planning/MyAvailabilityDialog'
 import { hmToMin } from '@/components/Planning/TimeSelect'
 import type { NameOf } from '@/hooks/useCollab'
+import { playsInGroup } from '@/lib/permissions'
 
 function startOfWeek(d: Date): Date {
   const out = new Date(d)
@@ -445,7 +446,7 @@ function EventInspector({ event, roster, members, rules, exceptions, canEdit, my
   }
   const ids = event.attendeeUserIds.length ? event.attendeeUserIds
     : members.filter((m) => event.attendeeScope === 'whole_team'
-      || (event.attendeeScope === 'all_players' && m.role === 'player')
+      || (event.attendeeScope === 'all_players' && playsInGroup(m))
       || (event.attendeeScope === 'all_staff' && m.role !== 'player')).map((m) => m.userId)
   const hm = (d: Date) => d.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
   return (

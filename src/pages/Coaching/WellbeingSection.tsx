@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
-import { canReadWellbeing } from '@/lib/permissions'
+import { canReadWellbeing, playsInGroup } from '@/lib/permissions'
 import { computeEnergyWinrateCorrelation, computeMoodDeclineAlert } from '@/lib/wellbeingCore'
 import type { WellbeingCheckin } from '@/lib/wellbeing'
 import type { NameOf } from '@/hooks/useCollab'
@@ -22,7 +22,7 @@ interface Props { groups: Group[]; myUserId: string; nameOf: NameOf }
 export function WellbeingSection({ groups, myUserId, nameOf }: Props) {
   const { t } = useTranslation()
   // #39: only staff whose main role is not player read the shared wellbeing (private.can_read_wellbeing).
-  const staffGroups = groups.filter((g) => canReadWellbeing(g.myRole, g.myStaffRoles))
+  const staffGroups = groups.filter((g) => canReadWellbeing(g.myRole, g.myStaffRoles, g.myAlsoPlays === true))
 
   return (
     <Card>
@@ -185,7 +185,7 @@ function TeamWellbeing({ staffGroups, nameOf }: { staffGroups: Group[]; nameOf: 
   useEffect(() => {
     if (!group) return
     setByPlayer(null)
-    const playerIds = group.members.filter((m) => m.role === 'player').map((m) => m.userId)
+    const playerIds = group.members.filter(playsInGroup).map((m) => m.userId)
     window.api.wellbeingListForGroup(playerIds)
       .then((rows) => {
         const map = new Map<string, WellbeingCheckin[]>()

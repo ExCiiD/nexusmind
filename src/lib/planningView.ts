@@ -6,6 +6,7 @@
  */
 import type { AvailabilityException, AvailabilityRule, AttendeeScope, CalendarEvent, CalendarEventKind } from './calendar'
 import type { GroupMember } from './collab'
+import { playsInGroup } from './permissions'
 
 const toMinutes = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
 
@@ -43,7 +44,7 @@ export function availableAnyTime(rules: AvailabilityRule[], exceptions: Availabi
  */
 export function planningPlayers(linkedStarterIds: string[], members: GroupMember[]): { ids: string[]; fromRoster: boolean } {
   if (linkedStarterIds.length > 0) return { ids: linkedStarterIds, fromRoster: true }
-  return { ids: members.filter((m) => m.role === 'player').map((m) => m.userId), fromRoster: false }
+  return { ids: members.filter(playsInGroup).map((m) => m.userId), fromRoster: false }
 }
 
 export type DayAvailability =
@@ -153,7 +154,7 @@ export function suggestTitle(scope: AttendeeScope, attendeeIds: string[], member
     return { key: 'oneOnOne', kind: 'one_on_one', name: other.displayName || other.riotId || '' }
   }
   const staff = people.filter((m) => STAFF_ROLES.has(m.role))
-  const players = people.filter((m) => m.role === 'player')
+  const players = people.filter(playsInGroup)
   if (people.length > 0 && people.length === members.length && staff.length > 0) return { key: 'teamMeeting', kind: 'meeting' }
   if (staff.length > 0 && players.length > 0) return { key: 'vodReview', kind: 'team_review' }
   if (staff.length > 0 && players.length === 0) return { key: 'staffMeeting', kind: 'meeting' }

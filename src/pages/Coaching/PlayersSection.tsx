@@ -16,6 +16,7 @@ import { collabErrorKey, type AssignedObjective, type Group, type PlayerSessionV
 import type { DevPlan } from '@/lib/devPlan'
 import type { StaffNote } from '@/lib/teamOps'
 import type { NameOf } from '@/hooks/useCollab'
+import { playsInGroup } from '@/lib/permissions'
 import {
   NOTE_TAGS, composeNote, groupByDay, mainRole, parseNote, playerStatus, reviewStats, topChampions,
   type NoteTag, type SessionDay,
@@ -40,7 +41,7 @@ export function PlayersSection({ staffGroups, myUserId, nameOf }: Props) {
     const seen = new Map<string, PlayerRef>()
     for (const g of staffGroups) {
       for (const m of g.members) {
-        if (m.role === 'player' && m.userId !== myUserId && !seen.has(m.userId)) {
+        if (playsInGroup(m) && m.userId !== myUserId && !seen.has(m.userId)) {
           seen.set(m.userId, { userId: m.userId, groupId: g.id, name: m.displayName || m.riotId || '—', group: g.name })
         }
       }

@@ -2061,6 +2061,10 @@
         "label": "Also staff:",
         "legend": "Staff roles of {{name}} on top of their main role",
         "changed": "Roles of {{name}} updated"
+      },
+      "alsoPlays": {
+        "label": "I play too",
+        "hint": "You appear in the roster. Like any staff member who plays, you no longer see your teammates’ shared wellbeing."
       }
     },
     "sharing": {

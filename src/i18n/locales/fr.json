@@ -2061,6 +2061,10 @@
         "label": "Aussi staff :",
         "legend": "Rôles de staff de {{name}} en plus de son rôle principal",
         "changed": "Rôles de {{name}} mis à jour"
+      },
+      "alsoPlays": {
+        "label": "Je joue aussi",
+        "hint": "Tu apparais dans le roster. Comme tout staff qui joue, tu ne vois plus le bien-être partagé de tes coéquipiers."
       }
     },
     "sharing": {

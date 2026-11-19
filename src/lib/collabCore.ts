@@ -64,9 +64,10 @@ export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Gro
       logoUrl: g.logo_url ?? null,
       myRole: memberships!.find((m) => m.group_id === g.id)!.role as GroupRole,
       ...staffRolesField('myStaffRoles', memberships!.find((m) => m.group_id === g.id)!.staff_roles),
+      ...alsoPlaysField('myAlsoPlays', memberships!.find((m) => m.group_id === g.id)!.also_plays),
       members: (members.data ?? [])
         .filter((m) => m.group_id === g.id)
-        .map((m) => ({ userId: m.user_id, role: m.role as GroupRole, isCaptain: !!m.is_captain, displayName: m.display_name, riotId: m.riot_id, ...(m.puuid !== undefined ? { puuid: m.puuid, puuidStatus: m.puuid_status ?? null } : {}), ...staffRolesField('staffRoles', m.staff_roles), joinedAt: m.joined_at })),
+        .map((m) => ({ userId: m.user_id, role: m.role as GroupRole, isCaptain: !!m.is_captain, displayName: m.display_name, riotId: m.riot_id, ...(m.puuid !== undefined ? { puuid: m.puuid, puuidStatus: m.puuid_status ?? null } : {}), ...staffRolesField('staffRoles', m.staff_roles), ...alsoPlaysField('alsoPlays', m.also_plays), joinedAt: m.joined_at })),
       sharing: {
         shareReviews: share?.share_reviews ?? true,
         shareStats: share?.share_stats ?? true,
@@ -79,7 +80,7 @@ export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Gro
   })
 }
 
-type MemberRow = { group_id: string; user_id: string; role: string; is_captain: boolean; display_name: string | null; riot_id: string | null; puuid?: string | null; puuid_status?: PuuidStatus | null; staff_roles?: string[] | null; joined_at: string }
+type MemberRow = { group_id: string; user_id: string; role: string; is_captain: boolean; display_name: string | null; riot_id: string | null; puuid?: string | null; puuid_status?: PuuidStatus | null; staff_roles?: string[] | null; also_plays?: boolean | null; joined_at: string }
 const MEMBER_SELECT = 'group_id, user_id, role, is_captain, display_name, riot_id, joined_at'
 type DbResult<T> = { data: T | null; error: { message: string; code?: string } | null }
 
@@ -92,23 +93,45 @@ function staffRolesField<K extends string>(key: K, raw: string[] | null | undefi
   return { [key]: roles } as { [P in K]?: StaffRole[] }
 }
 
-/** My memberships, with my staff roles once the #39 migration is in (before it the column is missing). */
-async function selectMemberships(sb: SupabaseClient, uid: string): Promise<DbResult<Array<{ group_id: string; role: string; staff_roles?: string[] | null }>>> {
-  const withStaff = await sb.from('group_members').select('group_id, role, staff_roles').eq('user_id', uid)
-  if (withStaff.error?.code === '42703') return sb.from('group_members').select('group_id, role').eq('user_id', uid)
-  return withStaff
+/** `{ [key]: flag }` when the also_plays column was read, {} before the migration (field left out). */
+function alsoPlaysField<K extends string>(key: K, raw: boolean | null | undefined): { [P in K]?: boolean } {
+  return (raw === undefined ? {} : { [key]: raw === true }) as { [P in K]?: boolean }
+}
+
+type MembershipRow = { group_id: string; role: string; staff_roles?: string[] | null; also_plays?: boolean | null }
+
+/**
+ * A select whose newest columns may not exist yet on the database (migration not applied). A missing column answers
+ * 42703 ("column group_members.x does not exist"): that column's group is dropped and the select tried again. When the
+ * message names no known column, every optional column is dropped at once. Groups go together (puuid and
+ * puuid_status come from the same migration). The select is built at run time, so the typed client cannot read its
+ * columns: the caller gives the row type.
+ */
+async function selectWithOptionalColumns<T>(
+  run: (columns: string) => PromiseLike<unknown>, base: string, optional: readonly (readonly string[])[],
+): Promise<DbResult<T>> {
+  let groups = [...optional]
+  for (;;) {
+    const res = (await run([base, ...groups.flat()].join(', '))) as DbResult<T>
+    if (res.error?.code !== '42703' || groups.length === 0) return res
+    const missing = /column (?:\w+\.)?(\w+) does not exist/.exec(res.error.message ?? '')?.[1]
+    const i = missing ? groups.findIndex((g) => g.includes(missing)) : -1
+    groups = i < 0 ? [] : groups.filter((_, j) => j !== i)
+  }
+}
+
+/** My memberships, with my staff roles and also_plays once the #39 migration is in (before it the columns are missing). */
+function selectMemberships(sb: SupabaseClient, uid: string): Promise<DbResult<MembershipRow[]>> {
+  return selectWithOptionalColumns<MembershipRow[]>((cols) => sb.from('group_members').select(cols).eq('user_id', uid),
+    'group_id, role', [['staff_roles'], ['also_plays']])
 }
 
 /** The groups' members, with the newest columns the database has: puuid (#38, member_puuid) and staff_roles
  *  (#39, member_staff_roles). A column missing gives 42703: the list is read again without it. The puuid is the
  *  stable key: a Riot ID changes when the player renames. */
 async function selectMembers(sb: SupabaseClient, ids: string[]): Promise<DbResult<MemberRow[]>> {
-  for (const extra of [', puuid, puuid_status, staff_roles', ', puuid, puuid_status', '']) {
-    // The select is built at run time, so the typed client cannot read its columns: the row type is MemberRow.
-    const res = (await sb.from('group_members').select(`${MEMBER_SELECT}${extra}`).in('group_id', ids)) as unknown as DbResult<MemberRow[]>
-    if (res.error?.code !== '42703' || extra === '') return res
-  }
-  throw new Error('unreachable')
+  return selectWithOptionalColumns<MemberRow[]>((cols) => sb.from('group_members').select(cols).in('group_id', ids),
+    MEMBER_SELECT, [['puuid', 'puuid_status'], ['staff_roles'], ['also_plays']])
 }
 
 type GroupRow = { id: string; name: string; kind: string; logo_url?: string | null }
@@ -294,6 +317,13 @@ export async function setMemberStaffRoles(sb: SupabaseClient, groupId: string, u
     fail(error, 'set member staff roles failed')
   }
   return ((data as string[] | null) ?? []).filter((r): r is StaffRole => (STAFF_ROLE_VALUES as readonly string[]).includes(r))
+}
+
+/** An owner says whether they also play, for themself only (enforced by the `set_my_also_plays` RPC). */
+export async function setMyAlsoPlays(sb: SupabaseClient, groupId: string, plays: boolean): Promise<boolean> {
+  const { data, error } = await sb.rpc('set_my_also_plays', { p_group: groupId, p_plays: plays })
+  if (error) fail(error, 'set also plays failed')
+  return data === true
 }
 
 export async function leaveGroup(sb: SupabaseClient, uid: string, groupId: string): Promise<void> {

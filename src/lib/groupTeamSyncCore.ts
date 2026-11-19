@@ -1,4 +1,5 @@
 import { riotIdKey, riotIdKeyOf } from './playerCard'
+import { playsInGroup } from './permissions'
 
 /** The five lanes a roster slot can hold, in the order free slots are filled. */
 export const LANES = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'] as const
@@ -10,6 +11,8 @@ export interface SyncGroupMember {
   riotId: string | null
   /** #38: the stable key, when the member published it (a Riot ID changes on a rename). */
   puuid?: string | null
+  /** An owner who also plays: in the team like a player (permissions.ts, playsInGroup). */
+  alsoPlays?: boolean
 }
 
 export interface SyncTeamMember {
@@ -58,7 +61,7 @@ export function splitRiotId(riotId: string): [string, string | undefined] {
  * Stats collectives, Espace d'équipe, Champion Pool and Draft Sim read the
  * local team linked to the group; since 19/11/2026 that team is no longer
  * picked or filled by hand — it mirrors the group's players (members with
- * the 'player' role and a Riot account). This works out what to change:
+ * the 'player' role, or an owner who also plays, and a Riot account). This works out what to change:
  * players missing from the team are added (lane from `preferredLane` — the
  * roster the group published — else the first free lane), and team members
  * who are not players of the group any more are removed. Lanes already set
@@ -77,7 +80,7 @@ export function planGroupTeamSync(
   const byKey = new Map<string, number>()
   const byPuuid = new Map<string, number>()
   for (const m of groupMembers) {
-    if (m.role !== 'player' || !m.riotId) continue
+    if (!playsInGroup(m) || !m.riotId) continue
     const key = riotIdKeyOf(m.riotId)
     if (!key || byKey.has(key) || (m.puuid && byPuuid.has(m.puuid))) continue
     byKey.set(key, players.length)

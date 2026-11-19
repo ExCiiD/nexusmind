@@ -9,13 +9,14 @@ import { collabErrorKey, type Group } from '@/lib/collab'
 import type { CalendarEvent } from '@/lib/calendar'
 import type { TeamSession } from '@/lib/teamSessions'
 import { cn } from '@/lib/utils'
+import { playsInGroup } from '@/lib/permissions'
 
 /** The people a meeting is for: its attendee list, else its quick-select
  *  scope resolved against the group (same rule as the Planning panel). */
 export function meetingPeople(event: CalendarEvent, members: Group['members']): string[] {
   if (event.attendeeUserIds.length > 0) return event.attendeeUserIds
   return members.filter((m) => event.attendeeScope === 'whole_team'
-    || (event.attendeeScope === 'all_players' && m.role === 'player')
+    || (event.attendeeScope === 'all_players' && playsInGroup(m))
     || (event.attendeeScope === 'all_staff' && m.role !== 'player')).map((m) => m.userId)
 }
 
