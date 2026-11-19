@@ -16,7 +16,7 @@ import * as discussion from '../../../src/lib/discussionCore'
 import * as microReview from '../../../src/lib/microReviewCloudCore'
 import type { MicroVerdictInput, TeamCodexRuleInput } from '../../../src/lib/microReview/types'
 import type { DiscussionSubjectType } from '../../../src/lib/discussion'
-import type { AssignedObjective, GroupKind, GroupRole, GroupSharing } from '../../../src/lib/collab'
+import type { AssignedObjective, GroupKind, GroupLogoImage, GroupRole, GroupSharing } from '../../../src/lib/collab'
 import type { AxisStatus, NewAxisInput, NewDevPlanPeriod } from '../../../src/lib/devPlan'
 import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput, NewEventRequestInput, EventRequestStatus, EventResponseStatus } from '../../../src/lib/calendar'
 import type { AssignmentStatus, NewVodAssignmentInput, NewVodCommentInput, NewVodSessionInput } from '../../../src/lib/vodReview'
@@ -73,6 +73,13 @@ export async function setMyLook(look: Look): Promise<boolean> {
   myLook = look
   const uid = await signedInUid()
   return uid ? shareLook(uid) : false
+}
+
+/** New team logo (or none) for a group; the previous file goes. */
+export async function setGroupLogo(groupId: string, image: GroupLogoImage | null): Promise<string | null> {
+  const sb = getSupabase()
+  const prev = await sb.from('groups').select('logo_url').eq('id', groupId).maybeSingle()
+  return core.setGroupLogo(sb, groupId, image, (prev.data as { logo_url?: string | null } | null)?.logo_url ?? null)
 }
 
 export async function listMemberLooks() {

@@ -44,7 +44,10 @@ function cspPlugin(): Plugin {
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    // onnxruntime-node (champion cut-outs) is only a transitive dependency, via
+    // @huggingface/transformers: kept external so its native binding loads
+    // from node_modules (asar-unpacked) instead of being bundled.
+    plugins: [externalizeDepsPlugin({ include: ['onnxruntime-node'] })],
     build: {
       rollupOptions: {
         input: {

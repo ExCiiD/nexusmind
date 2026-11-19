@@ -21,6 +21,10 @@ import type {
   CoachExperimentState,
   CoachObjectiveCheck,
 } from '../components/Assistant/types'
+import type { WeeklyAwards } from './weeklyAwardsCore'
+
+/** Weekly MVP / Grinder awards of a team roster (team:weekly-awards); rules in weeklyAwardsCore.ts. */
+export type { AwardKind, AwardHolder, AwardRaceEntry, WeeklyAwards } from './weeklyAwardsCore'
 
 export type GameEventType =
   | 'kill' | 'death' | 'assist'
@@ -658,6 +662,19 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
     memberId: string,
     opts?: { matchCount?: number; masteryCount?: number; overwriteTiers?: boolean; roleOnly?: boolean },
   ) => Promise<{ upserted: number; matchesUsed: number; masteriesUsed: number }>
+  /** Solo/Duo and Flex rank of each roster member (Riot league-v4, cached 5 min; force skips the cache). Desktop only. */
+  teamMemberRanks?: (teamId: string, opts?: { force?: boolean }) => Promise<import('./rankCore').MemberRankResult[]>
+  /** MVP and Grinder holders of a local team, their streaks and totals, and this week's race. Reads Riot first
+   *  (bounded wait) when the team's data is over 30 minutes old, else answers from the local database.
+   *  Desktop only: the web app has no implementation. */
+  teamWeeklyAwards?: (teamId: string) => Promise<WeeklyAwards>
+  /** Renders a looking-for-team announcement at its format's size and copies it; `save` also asks where to save
+   *  the PNG (filePath null when cancelled). Desktop only: the web app has no export. */
+  lftExportPng?: (req: { markup: string; css: string; width: number; height: number; fileName: string; action: 'save' | 'copy' }) =>
+    Promise<{ copied: true; filePath: string | null }>
+  /** The champion of a loading art cut out of its scene (local BiRefNet model, downloaded once), as a PNG data
+   *  URL; null when there is none to show. Desktop only: the web app keeps the full art. */
+  championCutout?: (championKey: string, skin?: number) => Promise<{ dataUrl: string | null }>
 
   listDrafts: () => Promise<DraftPrep[]>
   getDraft: (id: string) => Promise<DraftPrep | null>

@@ -381,6 +381,18 @@ export async function getRankedStats(
   return riotFetchJson(`${base}/lol/league/v4/entries/by-summoner/${summonerId}`)
 }
 
+/**
+ * Ranked entries (Solo/Duo, Flex…) of a PUUID: one call, no summoner id
+ * needed. An empty list for a player unranked everywhere. Read with
+ * parseLeagueEntries (src/lib/rankCore.ts).
+ */
+export async function getLeagueEntriesByPuuid(puuid: string, region: string): Promise<unknown[]> {
+  const base = PLATFORM_URLS[region]
+  if (!base) throw new Error(`Unknown region: ${region}`)
+  const entries = await riotFetchJson(`${base}/lol/league/v4/entries/by-puuid/${encodeURIComponent(puuid)}`)
+  return Array.isArray(entries) ? entries : []
+}
+
 export async function getMatchIds(
   puuid: string,
   region: string,

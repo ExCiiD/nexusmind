@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/useToast'
 import { UserPlus, Save, X, Wand2 } from 'lucide-react'
-import type { Team, TeamMember } from '@/lib/ipc'
+import type { AwardHolder, Team, TeamMember } from '@/lib/ipc'
 import type { MemberLook } from '@/lib/collab'
-import { bestChampions, lookForMember, type LookSources } from '@/lib/playerCard'
+import { bestChampions, lookForMember, mainChampion, type LookSources } from '@/lib/playerCard'
+import { useWeeklyAwards } from '@/hooks/useWeeklyAwards'
 import { useAllChampions } from '@/hooks/useAllChampions'
 import { useProfilePrefs } from '@/components/Profile/ProfileCard'
 import { useUserStore } from '@/store/useUserStore'
@@ -25,6 +26,10 @@ interface RosterTabProps {
   team: Team | null
   loading: boolean
   onChange: () => void
+  /** The cloud group's logo, on the cards' crest. */
+  logoUrl?: string | null
+  /** Extra actions for the top bar (the looking-for-team export). */
+  actions?: ReactNode
 }
 
 /** Looks the members of my cloud groups shared (empty when signed out). */
@@ -40,7 +45,7 @@ function useMemberLooks(): MemberLook[] {
   return looks
 }
 
-export function RosterTab({ team, loading, onChange }: RosterTabProps) {
+export function RosterTab({ team, loading, onChange, logoUrl, actions }: RosterTabProps) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -72,6 +77,15 @@ export function RosterTab({ team, loading, onChange }: RosterTabProps) {
 
   const runAutoFill = useBackgroundJobsStore((s) => s.runAutoFill)
   const fetching = useBackgroundJobsStore((s) => !!team && s.jobs.some((j) => j.kind === 'autoFill' && j.label.includes(team.name)))
+
+  // Weekly awards: reloaded when the roster changes.
+  const rosterKey = (team?.members ?? []).map((m) => m.id).join(',')
+  const awards = useWeeklyAwards(team?.id, rosterKey)
+  const holdersOf = useMemo(() => {
+    const by = new Map<string, AwardHolder[]>()
+    for (const h of awards?.holders ?? []) by.set(h.memberId, [...(by.get(h.memberId) ?? []), h])
+    return (memberId: string) => by.get(memberId) ?? []
+  }, [awards])
 
   if (loading) return <Card className="p-6 text-center text-hextech-text-dim">{t('common.loading')}</Card>
   if (!team) {
@@ -129,7 +143,8 @@ export function RosterTab({ team, loading, onChange }: RosterTabProps) {
     <TooltipProvider delayDuration={150}>
       <div className="space-y-3">
         {/* Top action bar — bulk import is the marquee action for fast setup */}
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          {actions}
           <Button size="sm" variant="outline" onClick={() => setBulkImportOpen(true)}>
             <Wand2 className="h-3.5 w-3.5 mr-1.5" />
             {t('team.roster.bulkImport', { defaultValue: 'Import from multi-link' })}
@@ -152,7 +167,8 @@ export function RosterTab({ team, loading, onChange }: RosterTabProps) {
           }}
         />
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {/* Room between the cards for the award frames (6 % outside each card). */}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-8 px-2 pt-2 sm:grid-cols-3 xl:grid-cols-5">
           {ROLES.map((role) => {
             const member = memberFor(role)
             if (member) {
@@ -164,6 +180,10 @@ export function RosterTab({ team, loading, onChange }: RosterTabProps) {
                   role={role}
                   look={lookForMember(member, lookSources)}
                   champions={bestChampions(member.champPool)}
+                  team={{ name: team.name, tag: team.tag, logoUrl }}
+                  artChampion={mainChampion(member.champPool)}
+                  holders={holdersOf(member.id)}
+                  totals={awards?.totals[member.id]}
                   nameOf={nameOf}
                   fetching={fetching}
                   onFetch={canFetch ? () => fetchChampions(member) : null}

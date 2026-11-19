@@ -319,6 +319,7 @@ model Team {
   members     TeamMember[]
   drafts      DraftPrep[] @relation("DraftVsTeam")
   customGames CustomGame[]
+  weeklyAwards TeamWeeklyAward[]
 
   @@index([userId])
   @@index([groupId])
@@ -657,4 +658,73 @@ model CalibrationFlash {
   createdAt   DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+// ── Weekly awards (Espace d'équipe: MVP and Grinder frames on the roster) ──
+// src/lib/weeklyAwardsCore.ts. Local only (not in SYNC_TABLES): derived from
+// Riot data, each device keeps its own.
+
+// One reading of a player's rank in one queue (league-v4). A new row only when
+// the reading changes; seenAt moves forward while it stays the same. Riot keeps
+// no LP history: the Grinder award reads the LP won over a week from here.
+model RankSnapshot {
+  id       String   @id @default(cuid())
+  puuid    String
+  // solo | flex
+  queue    String
+  tier     String
+  // IV..I, null from Master up
+  division String?
+  lp       Int
+  wins     Int
+  losses   Int
+  // rankCore.ladderScore: 400 per tier, 100 per division, LP
+  ladder   Int
+  takenAt  DateTime @default(now())
+  seenAt   DateTime @default(now())
+
+  @@index([puuid, queue, takenAt])
+}
+
+// MVP score of one player in one game (weeklyAwardsCore.scoreGame), so a
+// week's ranking never re-reads match bodies. score null: the game doesn't
+// count (other queue, remake). Recomputed when version changes.
+model PlayerGameScore {
+  id          String   @id @default(cuid())
+  puuid       String
+  matchId     String
+  queueId     Int
+  playedAt    DateTime
+  durationSec Int
+  role        String?
+  win         Boolean
+  score       Float?
+  version     Int
+  createdAt   DateTime @default(now())
+
+  @@unique([puuid, matchId])
+  @@index([puuid, playedAt])
+}
+
+// Result of one award (mvp | grinder) for one completed week of a team, so
+// streaks and totals never need recomputing. memberId / puuid null: nobody
+// qualified that week.
+model TeamWeeklyAward {
+  id        String   @id @default(cuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  kind      String
+  // Local Monday of the week, YYYY-MM-DD
+  weekKey   String
+  weekStart DateTime
+  memberId  String?
+  puuid     String?
+  value     Float?
+  games     Int?
+  // JSON: the week's ranking [{ memberId, value, games }], best first
+  raceJson  String?
+  createdAt DateTime @default(now())
+
+  @@unique([teamId, kind, weekKey])
+  @@index([teamId, weekKey])
 }

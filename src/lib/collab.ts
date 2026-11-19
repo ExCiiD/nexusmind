@@ -41,6 +41,15 @@ export interface Group {
   myRole: GroupRole
   members: GroupMember[]
   sharing: GroupSharing
+  /** The team's logo (public URL in the group-logos bucket), set by the
+   *  group's management from Coaching → Groupes. Null without one. */
+  logoUrl?: string | null
+}
+
+/** A logo image ready to upload: the app sends a 256 px WebP. */
+export interface GroupLogoImage {
+  bytes: Uint8Array
+  contentType: 'image/webp' | 'image/png' | 'image/jpeg'
 }
 
 export interface ReviewComment {
@@ -118,6 +127,9 @@ export interface CollabApi extends DevPlanApi {
   collabSetMyLook: (look: { iconId: string; bannerId: string }) => Promise<boolean>
   /** Looks of everyone in my groups (player cards); empty when signed out. */
   collabListMemberLooks: () => Promise<MemberLook[]>
+  /** Management only (owner, coach, manager, captain). Null clears the logo;
+   *  returns the new logo's URL. */
+  collabSetGroupLogo: (groupId: string, image: GroupLogoImage | null) => Promise<string | null>
   collabListComments: (reviewId: string, playerId?: string) => Promise<ReviewComment[]>
   collabMyOpenComments: () => Promise<ReviewComment[]>
   collabAddComment: (c: {

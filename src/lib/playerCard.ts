@@ -72,6 +72,50 @@ export function bestChampions(pool: ChampionPoolEntry[] | null | undefined, coun
   return { champions: best, games: total }
 }
 
+/**
+ * The champion on the card's art: the one the player has the most games on
+ * (all roles added up), then alphabetical. Null without games.
+ */
+export function mainChampion(pool: ChampionPoolEntry[] | null | undefined): string | null {
+  const games = new Map<string, number>()
+  for (const e of pool ?? []) {
+    const n = e.playRate ?? 0
+    if (n > 0) games.set(e.championKey, (games.get(e.championKey) ?? 0) + n)
+  }
+  let best: string | null = null
+  for (const [key, n] of games) {
+    if (best === null || n > games.get(best)! || (n === games.get(best)! && key.localeCompare(best) < 0)) best = key
+  }
+  return best
+}
+
+/** Length of the card the vertical name may take, in cqw (% of the card's
+ *  width): from under the role icon to the bottom margin. */
+export const NAME_SPAN_CQW = 112
+/** Advance of a capital of the display face, in em (Big Shoulders is condensed). */
+const NAME_ADVANCE_EM = 0.56
+export const NAME_MAX_CQW = 22
+
+/** Font size (cqw) of the vertical name: as big as the card allows, short
+ *  names capped so they don't swallow the card. */
+export function verticalNameSize(name: string): number {
+  const len = Math.max(4, [...name.trim()].length)
+  return Math.round(Math.min(NAME_MAX_CQW, NAME_SPAN_CQW / (len * NAME_ADVANCE_EM)) * 10) / 10
+}
+
+/** Two stable numbers in [0, 1) from an id, to shift each card's background
+ *  art so the roster's cards don't look identical. */
+export function cardSeed(id: string): [number, number] {
+  let h = 2166136261
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619) >>> 0
+  return [(h & 0xffff) / 0x10000, (h >>> 16) / 0x10000]
+}
+
+/** Data Dragon's portrait art of a champion (the loading-screen splash). */
+export function loadingArtUrl(championKey: string, skin = 0): string {
+  return `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${championKey}_${skin}.jpg`
+}
+
 /** A Riot ID folded for comparison: case and spaces don't matter. Without
  *  a tag, the name alone. */
 export function riotIdKey(name: string | null | undefined, tag?: string | null): string | null {

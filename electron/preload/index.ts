@@ -141,6 +141,8 @@ const api = {
   collabPlayerSessions: (playerId: string) => ipcRenderer.invoke('collab:player-sessions', playerId),
   collabSetMyLook: (look: { iconId: string; bannerId: string }) => ipcRenderer.invoke('collab:set-my-look', look),
   collabListMemberLooks: () => ipcRenderer.invoke('collab:list-member-looks'),
+  collabSetGroupLogo: (groupId: string, image: { bytes: Uint8Array; contentType: 'image/webp' | 'image/png' | 'image/jpeg' } | null) =>
+    ipcRenderer.invoke('collab:set-group-logo', groupId, image),
   collabListComments: (reviewId: string, playerId?: string) => ipcRenderer.invoke('collab:list-comments', reviewId, playerId),
   collabMyOpenComments: () => ipcRenderer.invoke('collab:my-open-comments'),
   collabAddComment: (c: unknown) => ipcRenderer.invoke('collab:add-comment', c),
@@ -469,6 +471,14 @@ const api = {
     ipcRenderer.invoke('team:scout-member', memberId, count, opts),
   autoFillPool: (memberId: string, opts?: { matchCount?: number; masteryCount?: number; overwriteTiers?: boolean; roleOnly?: boolean }) =>
     ipcRenderer.invoke('team:auto-fill-pool', memberId, opts),
+  // Weekly MVP / Grinder awards (src/lib/weeklyAwardsCore.ts, electron/main/weeklyAwards.ts)
+  teamWeeklyAwards: (teamId: string) => ipcRenderer.invoke('team:weekly-awards', teamId),
+  // Looking-for-team announcements (src/components/lft)
+  teamMemberRanks: (teamId: string, opts?: { force?: boolean }) => ipcRenderer.invoke('team:member-ranks', teamId, opts),
+  lftExportPng: (req: { markup: string; css: string; width: number; height: number; fileName: string; action: 'save' | 'copy' }) =>
+    ipcRenderer.invoke('lft:export-png', req),
+  // Player cards: champion cut out of its loading art (electron/main/championCutout.ts)
+  championCutout: (championKey: string, skin?: number) => ipcRenderer.invoke('champion-cutout:get', championKey, skin),
 
   listDrafts: () => ipcRenderer.invoke('draft:list'),
   getDraft: (id: string) => ipcRenderer.invoke('draft:get', id),

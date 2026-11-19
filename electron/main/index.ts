@@ -49,6 +49,8 @@ import { registerCoachingHandlers } from './ipc/coaching.ipc'
 import { registerYoutubeHandlers } from './ipc/youtube.ipc'
 import { registerBackupHandlers } from './ipc/backup.ipc'
 import { registerTeamHandlers, refreshAutoTiers } from './ipc/team.ipc'
+import { registerWeeklyAwardsHandlers } from './ipc/weeklyAwards.ipc'
+import { startWeeklyAwards } from './weeklyAwards'
 import { registerMistakeHandlers } from './ipc/mistakes.ipc'
 import { registerMicroReviewHandlers } from './ipc/microReview.ipc'
 import { registerBookmarkHandlers } from './ipc/bookmarks.ipc'
@@ -68,6 +70,8 @@ import { registerTranscriptionHandlers } from './ipc/transcription.ipc'
 import { registerFeedbackHandlers } from './ipc/feedback.ipc'
 import { registerNotificationsHandlers } from './ipc/notifications.ipc'
 import { registerTeamShareHandlers } from './ipc/teamShare.ipc'
+import { registerLftHandlers } from './ipc/lft.ipc'
+import { registerChampionCutoutHandlers } from './ipc/championCutout.ipc'
 import { seedBuiltInMistakeTags } from './seeds/mistakeTags'
 import { isMediaPathAllowed } from './mediaAccess'
 
@@ -445,6 +449,7 @@ async function bootstrap() {
   registerYoutubeHandlers()
   registerBackupHandlers()
   registerTeamHandlers()
+  registerWeeklyAwardsHandlers()
   registerMistakeHandlers()
   registerMicroReviewHandlers()
   registerBookmarkHandlers()
@@ -459,6 +464,8 @@ async function bootstrap() {
   registerFeedbackHandlers()
   registerNotificationsHandlers()
   registerTeamShareHandlers()
+  registerLftHandlers()
+  registerChampionCutoutHandlers()
   if (isCloudConfigured()) {
     startAutoCloudBackup()
     startSyncService()
@@ -830,6 +837,11 @@ async function bootstrap() {
   }
   setTimeout(recover, 60_000)
   setInterval(recover, 20 * 60_000)
+
+  // Weekly MVP / Grinder awards of the roster cards: ranks and games of the
+  // teams' members read in the background, two minutes after start then every
+  // 4 hours (weeklyAwards.ts).
+  startWeeklyAwards()
 }
 
 app.whenReady().then(bootstrap).catch((err) => {

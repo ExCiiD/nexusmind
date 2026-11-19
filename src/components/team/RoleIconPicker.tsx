@@ -1,7 +1,8 @@
 /**
  * RoleIconPicker — 5-button row of position icons, used wherever the user
  * needs to pick a role (TOP / JUNGLE / MID / ADC / SUPPORT) and a dropdown
- * would be heavier than necessary.
+ * would be heavier than necessary. The icons are the team pages' own set
+ * (RoleGlyph, src/lib/roleGlyphs.ts).
  *
  * Supports a "default" slot: pass `defaultRole` and a sixth pill renders
  * to the left with a "DEFAULT" badge. Clicking the currently-active icon
@@ -10,25 +11,12 @@
  */
 
 import { cn } from '@/lib/utils'
+import { RoleGlyph } from './RoleGlyph'
 
 export type Role = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'
 export type RoleOrAll = 'ALL' | Role
 
 const ROLES: Role[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
-
-// Community Dragon position icons — same set the live client uses in champ
-// select, so they're instantly recognizable to LoL players. Hosted on the
-// public Riot CDN. Mapping uses Riot's own position naming (bottom = ADC,
-// utility = support).
-const ICON_URLS: Record<Role, string> = {
-  TOP: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-top.png',
-  JUNGLE: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-jungle.png',
-  MID: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-middle.png',
-  ADC: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-bottom.png',
-  SUPPORT: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-utility.png',
-}
-
-export { ICON_URLS as ROLE_ICON_URLS }
 
 interface Props {
   value: RoleOrAll
@@ -60,10 +48,10 @@ export function RoleIconPicker({ value, onChange, defaultRole, size = 'md', hide
           title={defaultRole ? `Default (${defaultRole})` : 'Default'}
         >
           {defaultRole ? (
-            <img
-              src={ICON_URLS[defaultRole]}
-              alt={defaultRole}
-              className={cn('w-full h-full object-contain', value === 'ALL' ? 'opacity-100' : 'opacity-50')}
+            <RoleGlyph
+              role={defaultRole}
+              title={defaultRole}
+              className={cn('h-full w-full text-hextech-text-bright', value === 'ALL' ? 'opacity-100' : 'opacity-50')}
             />
           ) : (
             <span className="text-[9px] font-bold text-hextech-text-dim">ALL</span>
@@ -92,12 +80,12 @@ export function RoleIconPicker({ value, onChange, defaultRole, size = 'md', hide
             )}
             title={role}
           >
-            <img
-              src={ICON_URLS[role]}
-              alt={role}
+            <RoleGlyph
+              role={role}
+              title={role}
               className={cn(
-                'w-full h-full object-contain transition-opacity',
-                active ? 'opacity-100' : 'opacity-50 hover:opacity-90',
+                'h-full w-full transition-opacity',
+                active ? 'text-hextech-gold-bright opacity-100' : 'text-hextech-text-bright opacity-50 hover:opacity-90',
               )}
             />
           </button>

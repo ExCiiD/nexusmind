@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { validatedHandle } from './validate'
 import * as collab from '../cloud/collab'
-import { LOOK_ID } from '../../../src/lib/collabCore'
+import { GROUP_LOGO_MAX_BYTES, LOOK_ID } from '../../../src/lib/collabCore'
 
 const uuid = z.string().uuid()
 const recordId = z.string().min(1).max(128)
@@ -28,6 +28,11 @@ export function registerCollabHandlers() {
   const lookId = z.string().regex(LOOK_ID)
   validatedHandle('collab:set-my-look', z.tuple([z.object({ iconId: lookId, bannerId: lookId })]), (_e, look) => collab.setMyLook(look))
   validatedHandle('collab:list-member-looks', z.tuple([]), () => collab.listMemberLooks())
+  const logoImage = z.object({
+    bytes: z.instanceof(Uint8Array).refine((b) => b.byteLength > 0 && b.byteLength <= GROUP_LOGO_MAX_BYTES, 'logo too large'),
+    contentType: z.enum(['image/webp', 'image/png', 'image/jpeg']),
+  })
+  validatedHandle('collab:set-group-logo', z.tuple([uuid, logoImage.nullable()]), (_e, groupId, image) => collab.setGroupLogo(groupId, image))
 
   validatedHandle('collab:list-comments', z.tuple([recordId, uuid.optional()]),
     (_e, reviewId, playerId) => collab.listComments(reviewId, playerId))

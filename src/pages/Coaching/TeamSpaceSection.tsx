@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { GroupTeamGate } from '@/components/team/GroupTeamGate'
+import { RoleGlyph } from '@/components/team/RoleGlyph'
+import { LftExportButton } from '@/components/lft/LftExportButton'
 import { RosterTab } from '@/pages/Team/RosterTab'
 import { isLegacyStaff } from '@/lib/permissions'
 import { riotIdKey, riotIdKeyOf } from '@/lib/playerCard'
@@ -45,7 +47,7 @@ export function TeamSpaceSection({ group }: { group: Group }) {
         return (
           <div className="space-y-4">
             <MembersToPlace group={group} team={team} onAdded={changed} />
-            <RosterTab team={team} loading={false} onChange={changed} />
+            <RosterTab team={team} loading={false} onChange={changed} logoUrl={group.logoUrl} actions={<LftExportButton team={team} />} />
           </div>
         )
       }}
@@ -100,7 +102,12 @@ function MembersToPlace({ group, team, onAdded }: { group: Group; team: Team; on
                 <SelectTrigger className="h-8 w-28 text-xs" aria-label={t('team.space.role')}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {ROLES.map((r) => (
-                    <SelectItem key={r} value={r}>{t(`team.roster.roles.${r}`, { defaultValue: r })}{taken.has(r) ? ` · ${t('team.space.taken')}` : ''}</SelectItem>
+                    <SelectItem key={r} value={r}>
+                      <span className="flex items-center gap-1.5">
+                        <RoleGlyph role={r} className="h-3.5 w-3.5 text-hextech-gold" />
+                        {t(`team.roster.roles.${r}`, { defaultValue: r })}{taken.has(r) ? ` · ${t('team.space.taken')}` : ''}
+                      </span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

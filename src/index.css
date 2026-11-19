@@ -348,3 +348,49 @@ h1:not(.font-sans):not(.font-mono) {
   font-size: 1.1875rem;
   line-height: 1.5rem;
 }
+
+/* Player cards (src/components/team/AwardFrame.tsx). */
+
+/* A light band sweeps the MVP frame, then a pause. */
+@keyframes card-sheen {
+  0% { background-position: 160% 0; }
+  45%, 100% { background-position: -60% 0; }
+}
+
+/* The MVP streak flame: the body flickers from its base, a copy licks
+   upward, the core pulses, the halo breathes, sparks rise. */
+@keyframes flame-flicker {
+  0%, 100% { transform: scale(1, 1) skewX(0deg); }
+  25% { transform: scale(1.015, 1.05) skewX(-1.2deg); }
+  50% { transform: scale(0.99, 0.97) skewX(0.8deg); }
+  75% { transform: scale(1.01, 1.04) skewX(-0.6deg); }
+}
+
+@keyframes flame-lick {
+  0% { transform: translateY(0) scale(1); opacity: 0.55; }
+  100% { transform: translateY(-9%) scale(0.92, 1.08); opacity: 0; }
+}
+
+@keyframes flame-core {
+  0%, 100% { opacity: 0.85; }
+  40% { opacity: 1; }
+  70% { opacity: 0.7; }
+}
+
+@keyframes flame-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(0.97); }
+  50% { opacity: 0.95; transform: scale(1.04); }
+}
+
+@keyframes flame-spark {
+  0% { transform: translate(0, 0) scale(1); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(var(--spark-x), -16cqw) scale(0.3); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-motion {
+    animation: none !important;
+    transition: none !important;
+  }
+}

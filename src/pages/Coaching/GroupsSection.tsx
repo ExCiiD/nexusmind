@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group, type GroupKind, type GroupRole } from '@/lib/collab'
 import { cn } from '@/lib/utils'
-import { ASSIGNABLE_ROLES, canChangeRoles, isLegacyStaff } from '@/lib/permissions'
+import { ASSIGNABLE_ROLES, canChangeRoles, canEditCalendar, isLegacyStaff } from '@/lib/permissions'
+import { GroupLogo, GroupLogoEditor } from '@/components/Coaching/GroupLogo'
 import { useActiveGroupStore } from '@/store/useActiveGroupStore'
 
 interface Props {
@@ -49,6 +50,7 @@ function GroupList({ groups, active }: { groups: Group[]; active: Group | null }
                     on ? 'border-hextech-gold bg-hextech-gold/10' : 'border-hextech-border-dim hover:bg-hextech-elevated',
                   )}
                 >
+                  <GroupLogo group={g} className="h-8 w-8" />
                   <span className={cn('min-w-0 flex-1 truncate font-medium', on ? 'text-hextech-gold-bright' : 'text-hextech-text-bright')}>{g.name}</span>
                   <span className="shrink-0 rounded bg-hextech-elevated px-2 py-0.5 text-xs text-hextech-text-dim">{t(`coaching.kinds.${g.kind}`)}</span>
                   <span className="shrink-0 rounded bg-hextech-gold/10 px-2 py-0.5 text-xs text-hextech-gold">{t(`coaching.roles.${g.myRole}`)}</span>
@@ -150,16 +152,19 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
         // Inviting (create_group_invite RPC) is still is_group_staff-gated —
         // a manager would see this UI but get a server-side 403 otherwise.
         const staff = isLegacyStaff(g.myRole)
+        const management = canEditCalendar(g.myRole, !!g.members.find((m) => m.userId === myUserId)?.isCaptain)
         return (
           <Card key={g.id}>
             <CardHeader className="pb-2">
               <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+                <GroupLogo group={g} className="h-9 w-9" />
                 {g.name}
                 <span className="rounded bg-hextech-elevated px-2 py-0.5 text-xs text-hextech-text-dim">{t(`coaching.kinds.${g.kind}`)}</span>
                 <span className="rounded bg-hextech-gold/10 px-2 py-0.5 text-xs text-hextech-gold">{roleLabel(g.myRole)}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {management && <GroupLogoEditor group={g} onChanged={reload} />}
               <ul className="divide-y divide-hextech-border-dim rounded-lg border border-hextech-border-dim text-sm">
                 {g.members.map((m) => (
                   <li key={m.userId} className="flex items-center justify-between gap-2 px-3 py-2">

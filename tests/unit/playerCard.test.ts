@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
   bestChampions,
+  cardSeed,
   initialsOf,
+  mainChampion,
+  verticalNameSize,
+  NAME_MAX_CQW,
+  NAME_SPAN_CQW,
   lookForMember,
   riotIdKey,
   riotIdKeyOf,
@@ -142,5 +147,42 @@ describe('initialsOf', () => {
     expect(initialsOf('Le Chef')).toBe('LC')
     expect(initialsOf('dark_knight')).toBe('DK')
     expect(initialsOf('  ')).toBe('?')
+  })
+})
+
+describe('mainChampion', () => {
+  it('picks the champion with the most games, roles added up', () => {
+    expect(mainChampion([entry('Ahri', 6, 50, 'MID'), entry('Zed', 9, 40), entry('Ahri', 5, 60, 'TOP')])).toBe('Ahri')
+  })
+  it('breaks ties alphabetically and ignores entries without games', () => {
+    expect(mainChampion([entry('Zed', 4, 50), entry('Ahri', 4, 50), entry('Lux', null, null)])).toBe('Ahri')
+    expect(mainChampion([entry('Lux', null, null)])).toBeNull()
+    expect(mainChampion(undefined)).toBeNull()
+  })
+})
+
+describe('verticalNameSize', () => {
+  it('caps short names', () => {
+    expect(verticalNameSize('Kiro')).toBe(NAME_MAX_CQW)
+    expect(verticalNameSize('Ax')).toBe(NAME_MAX_CQW)
+  })
+  it('shrinks long names so they fit the card', () => {
+    const name = 'Unbreakablegod'
+    const size = verticalNameSize(name)
+    expect(size).toBeLessThan(NAME_MAX_CQW)
+    // the name's length (letters × advance × size) stays within the span
+    expect(name.length * 0.56 * size).toBeLessThanOrEqual(NAME_SPAN_CQW + 0.5)
+  })
+})
+
+describe('cardSeed', () => {
+  it('is stable and within [0, 1)', () => {
+    const [a, b] = cardSeed('cmabc123')
+    expect(cardSeed('cmabc123')).toEqual([a, b])
+    for (const v of [a, b]) {
+      expect(v).toBeGreaterThanOrEqual(0)
+      expect(v).toBeLessThan(1)
+    }
+    expect(cardSeed('cmabc124')).not.toEqual([a, b])
   })
 })

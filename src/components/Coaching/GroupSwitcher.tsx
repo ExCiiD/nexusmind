@@ -3,6 +3,7 @@ import { Users } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import type { Group } from '@/lib/collab'
 import { useActiveGroupStore } from '@/store/useActiveGroupStore'
+import { GroupLogo } from './GroupLogo'
 
 /**
  * The group picker of the Coaching & Management and Stats collectives page
@@ -16,6 +17,7 @@ export function GroupSwitcher({ groups, active }: { groups: Group[]; active: Gro
 
   const label = (g: Group) => (
     <span className="flex min-w-0 items-center gap-2">
+      <GroupLogo group={g} className="h-5 w-5 rounded text-[0.5rem]" />
       <span className="truncate text-hextech-text-bright">{g.name}</span>
       <span className="shrink-0 rounded bg-hextech-gold/10 px-1.5 py-px font-mono text-[10px] text-hextech-gold">{t(`coaching.roles.${g.myRole}`)}</span>
     </span>
@@ -33,6 +35,7 @@ export function GroupSwitcher({ groups, active }: { groups: Group[]; active: Gro
             {groups.map((g) => (
               <SelectItem key={g.id} value={g.id}>
                 <span className="flex items-center gap-2">
+                  <GroupLogo group={g} className="h-5 w-5 rounded text-[0.5rem]" />
                   {g.name}
                   <span className="text-[10px] text-hextech-text-dim">· {t(`coaching.kinds.${g.kind}`)} · {t(`coaching.roles.${g.myRole}`)}</span>
                 </span>

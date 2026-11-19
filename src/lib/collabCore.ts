@@ -3,6 +3,7 @@ import type {
   AssignedObjective,
   Group,
   GroupKind,
+  GroupLogoImage,
   GroupRole,
   GroupSharing,
   MemberLook,
@@ -43,7 +44,7 @@ export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Gro
   if (ids.length === 0) return []
 
   const [groups, members, sharing] = await Promise.all([
-    sb.from('groups').select('id, name, kind').in('id', ids),
+    selectGroups(sb, ids),
     sb.from('group_members').select('group_id, user_id, role, is_captain, display_name, riot_id, joined_at').in('group_id', ids),
     sb.from('group_sharing').select('group_id, share_reviews, share_stats, share_team, share_wellbeing').eq('user_id', uid).in('group_id', ids),
   ])
@@ -56,6 +57,7 @@ export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Gro
       id: g.id,
       name: g.name,
       kind: g.kind as GroupKind,
+      logoUrl: g.logo_url ?? null,
       myRole: memberships!.find((m) => m.group_id === g.id)!.role as GroupRole,
       members: (members.data ?? [])
         .filter((m) => m.group_id === g.id)
@@ -68,6 +70,55 @@ export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Gro
       },
     }
   })
+}
+
+type GroupRow = { id: string; name: string; kind: string; logo_url?: string | null }
+
+/** The groups' rows, with their logo once the group_logos migration is in
+ *  (before it the column is missing: list them without). */
+async function selectGroups(sb: SupabaseClient, ids: string[]): Promise<{ data: GroupRow[] | null; error: { message: string; code?: string } | null }> {
+  const withLogo = await sb.from('groups').select('id, name, kind, logo_url').in('id', ids)
+  if (withLogo.error?.code === '42703') return sb.from('groups').select('id, name, kind').in('id', ids)
+  return withLogo
+}
+
+// ── Team logos (Coaching → Groupes, player cards) ───────────────────────────
+// A group's logo is a file of its folder in the public group-logos bucket
+// (`<group id>/logo-<time>.<ext>`), pointed at by groups.logo_url through
+// set_group_logo (management only, see 20261119010000_group_logos.sql).
+
+export const GROUP_LOGO_BUCKET = 'group-logos'
+export const GROUP_LOGO_MAX_BYTES = 512 * 1024
+const LOGO_EXT: Record<GroupLogoImage['contentType'], string> = { 'image/webp': 'webp', 'image/png': 'png', 'image/jpeg': 'jpg' }
+
+/** The bucket path of a logo URL, when it is a file of this group's folder. */
+export function logoPathOf(url: string | null | undefined, groupId: string): string | null {
+  if (!url) return null
+  const marker = `/storage/v1/object/public/${GROUP_LOGO_BUCKET}/`
+  const i = url.indexOf(marker)
+  if (i < 0) return null
+  const path = url.slice(i + marker.length).split(/[?#]/)[0]
+  return path.startsWith(`${groupId}/`) && !path.includes('..') ? path : null
+}
+
+/**
+ * Uploads a new logo (or none) and points the group at it; the previous file
+ * is then removed, best effort. Returns the new logo's URL.
+ */
+export async function setGroupLogo(sb: SupabaseClient, groupId: string, image: GroupLogoImage | null, previousUrl?: string | null): Promise<string | null> {
+  let url: string | null = null
+  if (image) {
+    if (image.bytes.byteLength === 0 || image.bytes.byteLength > GROUP_LOGO_MAX_BYTES) throw new Error('logo too large')
+    const path = `${groupId}/logo-${Date.now()}.${LOGO_EXT[image.contentType]}`
+    const up = await sb.storage.from(GROUP_LOGO_BUCKET).upload(path, image.bytes, { contentType: image.contentType, cacheControl: '31536000', upsert: false })
+    if (up.error) fail(up.error, 'logo upload failed')
+    url = sb.storage.from(GROUP_LOGO_BUCKET).getPublicUrl(path).data.publicUrl
+  }
+  const { error } = await sb.rpc('set_group_logo', { p_group: groupId, p_url: url })
+  if (error) fail(error, 'set logo failed')
+  const old = logoPathOf(previousUrl, groupId)
+  if (old) await sb.storage.from(GROUP_LOGO_BUCKET).remove([old]).catch(() => undefined)
+  return url
 }
 
 export async function updateMyMemberProfile(sb: SupabaseClient, uid: string, groupId: string, id: MemberIdentity): Promise<void> {
