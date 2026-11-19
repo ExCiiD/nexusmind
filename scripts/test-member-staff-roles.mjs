@@ -48,6 +48,7 @@ await db.exec(`
   create schema private;
   create role anon;
   create role authenticated;
+  create role service_role;
   create function auth.uid() returns uuid language sql stable
     as $f$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $f$;
 
@@ -405,6 +406,46 @@ await handOverCase('a player-analyst beats the captain, and loses the extra role
   [[u(26), 'player', [], true, 500], [u(27), 'player', ['analyst'], false, 10]], u(27))
 await handOverCase('without staff: the captain, then the oldest player, who keeps playing',
   [[u(28), 'player', [], false, 500], [u(29), 'player', [], true, 10]], u(29), true)
+
+// ── The rollback script (supabase/rollback/20261119280000_rollback.sql) ─────
+{
+  const rollback = readFileSync(join(repo, 'supabase/rollback/20261119280000_rollback.sql'), 'utf-8')
+  await db.query(`insert into public.notifications (user_id, type, data) values ($1, 'staff_roles_changed', '{}')`, [PLAYER])
+  await db.exec(rollback)
+  await db.exec(rollback)
+  check('the rollback applies twice', true)
+  // md5(prosrc) of each replaced function, read on production before the migration (20 November 2026).
+  const production = {
+    'private.can_edit_calendar': 'b701c30706cbb2876fa3d31f6689b4b7', 'private.can_manage_session': 'b701c30706cbb2876fa3d31f6689b4b7',
+    'private.can_read_player_table': 'bc046eac77c7e883c09705498a0a72a3', 'private.can_read_wellbeing': 'af3906ac660de0eb4605d8e796e6d233',
+    'private.hand_over_groups_of': '01e0e29e81ec19007b35bc1f9c8f3529', 'private.is_discord_manager': '2f94801f4e777cbc723614972fb408b1',
+    'private.is_group_staff': '1729049b9b91aa402f83d40d117d2b4f', 'public.notify_calendar_event_request': '5981ca54298897b2f5d90767998b5ad5',
+    'public.respond_to_calendar_event': 'db43c54be243bd284db8c45a0e7d2ceb', 'public.run_dev_plan_period_check': 'c7e6e6128adf9c23f53095ded207258d',
+    'public.run_inactive_player_check': '20961200bb86045306de5cbc335a0713', 'public.run_scrim_availability_check': '0c33e2a4e8604e78309e957c0bbf4406',
+    'public.run_weekly_load_check': 'e7f18cbde6f7571bd56a84e8e47f3102', 'public.run_wellbeing_alert_check': '10172f68795bb284bff73d5f48133833',
+    'public.set_member_role': '1c7f3b2cee3ccfc8d65d0bd0a3dd0407',
+  }
+  const local = Object.fromEntries((await db.query(`select n.nspname || '.' || p.proname as f, md5(p.prosrc) as h
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname || '.' || p.proname = any($1)`, [Object.keys(production)])).rows.map((r) => [r.f, r.h]))
+  const differ = Object.keys(production).filter((f) => local[f] !== production[f])
+  check('rollback: the 15 function bodies are byte for byte the production ones', differ.length === 0, differ.join(', '))
+  const gone = (await db.query(`select p.proname from pg_proc p where p.proname in ('has_group_role', 'set_member_staff_roles', 'set_my_also_plays', 'text_array_is_distinct')`)).rows
+  check('rollback: the 4 new functions are dropped', gone.length === 0, JSON.stringify(gone))
+  const cols = (await db.query(`select column_name from information_schema.columns where table_name = 'group_members' and column_name in ('staff_roles', 'also_plays')`)).rows
+  check('rollback: staff_roles and also_plays are dropped', cols.length === 0, JSON.stringify(cols))
+  const typeCheck = (await one(`select pg_get_constraintdef(oid) d from pg_constraint where conname = 'notifications_type_check'`)).d
+  check('rollback: the notification types are the production list', !typeCheck.includes('staff_roles_changed') && typeCheck.includes('event_confirmed'), typeCheck)
+  const acl = await one(`select has_function_privilege('anon', 'public.set_captain(uuid,uuid,boolean)', 'execute') a,
+    has_function_privilege('anon', 'public.run_weekly_load_check()', 'execute') b,
+    has_function_privilege('authenticated', 'public.run_inactive_player_check()', 'execute') c,
+    has_function_privilege('service_role', 'public.run_inactive_player_check()', 'execute') d`)
+  check('rollback: the production grants are back (anon may execute again, the two run_* stay closed)',
+    acl.a === true && acl.b === true && acl.c === false && acl.d === true, JSON.stringify(acl))
+  check('rollback: a staff role is gone with its rights (a player is no coach any more)',
+    !(await as(PCOACH, () => db.query('select private.is_group_staff($1) as v', [G]))).rows[0].v)
+  await db.exec(migration)
+  check('the migration applies again after the rollback', Number((await one(`select count(*) n from information_schema.columns where table_name = 'group_members' and column_name in ('staff_roles', 'also_plays')`)).n) === 2)
+}
 
 console.log(failures ? `\n${failures} check(s) failed` : '\nAll checks passed')
 process.exit(failures ? 1 : 0)

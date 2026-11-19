@@ -1,0 +1,2 @@
+# Byte-exact rollback scripts (md5 of function bodies is checked): keep LF.
+supabase/rollback/*.sql text eol=lf
