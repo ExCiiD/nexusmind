@@ -20,6 +20,7 @@
 
 import type { CriticalMoment, MomentFacts } from './anomalyDetector'
 import type { Zone } from './geometry'
+import { CLOCK_TIMES, clockText } from './gameClock'
 
 export type QcmOutcome = 'mistake' | 'justified'
 /** Every QCM context (tests iterate this list, so a new context is never left unchecked). */
@@ -373,6 +374,9 @@ function summaryOf(m: CriticalMoment): QcmSummary {
   const f = m.facts
   const extras: SummaryPart[] = []
   let head: SummaryPart
+  // Facts without a season come from ANALYSIS_VERSION ≤ 7, which read every game on the 2025 clock.
+  const times = CLOCK_TIMES[f.season ?? 2025]
+  const span = (w: readonly [number, number]) => ({ from: clockText(w[0]), to: clockText(w[1]) })
   switch (f.pattern) {
     case 'tempo-hesitation':
       head = { key: f.towerGreed ? 'towerGreed' : 'hesitation', params: { objective: f.objective ?? 'dragon' } }
@@ -389,7 +393,7 @@ function summaryOf(m: CriticalMoment): QcmSummary {
       if (f.alliesHome) extras.push({ key: 'alliesHome', params: { n: f.alliesHome } })
       break
     case 'gank-timer':
-      head = { key: f.gankWindow === 1 ? 'gankTimer1' : 'gankTimer2' }
+      head = f.gankWindow === 1 ? { key: 'gankTimer1', params: span(times.gank1) } : { key: 'gankTimer2', params: span(times.gank2) }
       if (f.deepWard) extras.push({ key: 'deepWardUp' })
       else if (f.wardedRecently === false) extras.push({ key: 'noWardRecent' })
       break
@@ -435,11 +439,11 @@ function summaryOf(m: CriticalMoment): QcmSummary {
       if (f.attackType === 'melee' && f.opponentHpPct != null) extras.push({ key: 'opponentHp', params: { pct: f.opponentHpPct } })
       break
     case 'cheater-recall':
-      head = { key: 'cheaterRecall', params: { pct: f.recallHpPct ?? 0 } }
+      head = { key: 'cheaterRecall', params: { pct: f.recallHpPct ?? 0, ...span(times.cheaterBack) } }
       if (f.levelsBehind) extras.push({ key: 'levelsBehind', params: { count: f.levelsBehind } })
       break
     case 'support-no-early-ward':
-      head = { key: 'supportNoWard' }
+      head = { key: 'supportNoWard', params: { clock: clockText(times.supportWardBy) } }
       break
     case 'support-level2-allin':
       head = { key: f.junglerInvolved ? 'supportLevel2Gank' : 'supportLevel2', params: { mine: f.myLevel ?? 1, theirs: f.enemyLevel ?? 2 } }
@@ -467,7 +471,7 @@ function summaryOf(m: CriticalMoment): QcmSummary {
       break
     // V7–V10.
     case 'jungle-late-first-recall':
-      head = { key: 'lateFirstRecall' }
+      head = { key: 'lateFirstRecall', params: { clock: clockText(times.jungleFirstBack) } }
       if (f.firstBackSec != null) extras.push({ key: 'firstBack', params: { clock: clockOf(f.firstBackSec) } })
       break
     case 'jungle-camps-up-gank':

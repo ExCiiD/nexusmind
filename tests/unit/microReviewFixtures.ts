@@ -10,6 +10,11 @@ export interface FixtureOptions {
   /** Per-frame overrides: (frameIndex, participantId) → partial participant frame. */
   frame?: (i: number, pid: number) => Record<string, unknown> | undefined
   events?: Array<Record<string, unknown> & { type: string; timestamp: number }>
+  /**
+   * Match-V5 gameVersion. Default 15.24: the suites written before the season-2026 clock keep testing the 2025 one
+   * (tests/unit/microReviewSeason2026.test.ts covers 16.x games); null leaves the field out.
+   */
+  gameVersion?: string | null
 }
 
 const DEFAULT_POS = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY']
@@ -48,7 +53,7 @@ export function buildGame(opts: FixtureOptions = {}) {
     frames[idx].events.push(ev)
   }
   return {
-    match: { info: { participants, teams: [{ teamId: 100, win: false }, { teamId: 200, win: true }] } },
+    match: { info: { ...(opts.gameVersion === null ? {} : { gameVersion: opts.gameVersion ?? '15.24.715.2077' }), participants, teams: [{ teamId: 100, win: false }, { teamId: 200, win: true }] } },
     timeline: { info: { frames } },
     selector: { puuids: [`puuid-${opts.me ?? 2}`] },
   }

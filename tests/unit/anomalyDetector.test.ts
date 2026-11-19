@@ -229,7 +229,8 @@ describe('pickMoments', () => {
 
 describe('deathTimerSec', () => {
   it('grows with level and late game', () => {
-    expect(deathTimerSec(1, 3)).toBe(6)
+    expect(deathTimerSec(1, 3)).toBe(10)
+    expect(deathTimerSec(1, 3, 2025)).toBe(6)
     expect(deathTimerSec(18, 40)).toBeGreaterThan(deathTimerSec(18, 15))
   })
 })

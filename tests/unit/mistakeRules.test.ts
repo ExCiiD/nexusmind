@@ -191,4 +191,58 @@ describe('mistake rules M5–M13', () => {
     const support = detectAdvancedMistakes(supportTl, match('UTILITY'), { ...PLAYER, position: 'UTILITY' })
     expect(tags(support)).not.toContain('behind-on-levels-death')
   })
+
+  it('M19: the level race runs 0:55–3:55 on 16.x games (minions at 0:30), 1:30–4:30 on 15.x', () => {
+    const at = (sec: number, version?: string) => {
+      // Levels on the snapshots either side of the death (the rule reads the nearest one).
+      const level = { 1: 1, 6: 2 }
+      const death = { type: 'CHAMPION_KILL', timestamp: sec * 1000, victimId: 1, killerId: 6 }
+      const tl = timeline([{ minute: Math.floor(sec / 60), level, events: [death, ...steadyWards()] }, { minute: Math.floor(sec / 60) + 1, level }])
+      const m = { info: { ...match().info, ...(version ? { gameVersion: version } : {}) } }
+      return tags(detectAdvancedMistakes(tl, m, PLAYER)).includes('behind-on-levels-death')
+    }
+    for (const v of [undefined, '16.1.732.4020']) {
+      expect([at(54.999, v), at(55, v), at(235, v), at(235.001, v)], v).toEqual([false, true, true, false])
+    }
+    expect([at(89.999, '15.24.1'), at(90, '15.24.1'), at(270, '15.24.1'), at(270.001, '15.24.1')]).toEqual([false, true, true, false])
+  })
+})
+
+describe('mistake rule M15 — still dead when the enemy takes an objective', () => {
+  // Level 18 (17 LEVEL_UP events) dying at 50:00: 52.5 s × (1 + 21.75 % + 10 × 1.45 %) = 71.53 s of respawn.
+  const DEATH = 50 * 60_000
+  const RESPAWN_MS = 52.5 * (1 + 0.2175 + 10 * 0.0145) * 1000
+  const ups = Array.from({ length: 17 }, (_, k) => ({ type: 'LEVEL_UP', timestamp: 60_000 + k * 60_000, participantId: 1, level: k + 2 }))
+  const game = (o: { after: number; team?: number; monster?: string; subType?: string; levels?: boolean; extra?: any[] }) => {
+    const tl = timeline([{ minute: 50, events: [
+      ...(o.levels === false ? [] : ups),
+      { type: 'CHAMPION_KILL', timestamp: DEATH, victimId: 1, killerId: 7, assistingParticipantIds: [8], position: { x: 7000, y: 7000 } },
+      { type: 'ELITE_MONSTER_KILL', timestamp: DEATH + o.after, monsterType: o.monster ?? 'BARON_NASHOR', ...(o.subType ? { monsterSubType: o.subType } : {}), killerTeamId: o.team ?? 200 },
+      ...steadyWards(60).filter((w) => w.timestamp < DEATH - 30_000),
+      ...(o.extra ?? []),
+    ] }], 55)
+    return detectAdvancedMistakes(tl, match('MIDDLE', 3300), PLAYER)
+  }
+  const m15 = (out: ReturnType<typeof game>) => out.find((o) => o.tagSlug === 'dead-during-objective')
+
+  it('more than 60 s after the death (M5 covers the minute before) and before the respawn, with a 2 s margin', () => {
+    expect(m15(game({ after: 60_000 }))).toBeUndefined()
+    expect(tags(game({ after: 60_000 }))).toContain('death-before-objective')
+    expect(m15(game({ after: 60_001 }))).toMatchObject({ gameTimeSec: 3000, severity: 3 })
+    expect(m15(game({ after: 65_000 }))!.note).toBe('Still dead (7s left) when the enemy took Baron at 51:05')
+    expect(m15(game({ after: Math.floor(RESPAWN_MS) - 2000 }))).toBeDefined()
+    expect(m15(game({ after: Math.ceil(RESPAWN_MS) - 2000 }))).toBeUndefined()
+  })
+  it('Baron and Elder at severity 3, the other objectives at 2; only objectives the enemy took', () => {
+    expect(m15(game({ after: 65_000, monster: 'DRAGON', subType: 'ELDER_DRAGON' }))).toMatchObject({ severity: 3, note: expect.stringMatching(/Elder Dragon/) })
+    expect(m15(game({ after: 65_000, monster: 'DRAGON', subType: 'FIRE_DRAGON' }))).toMatchObject({ severity: 2, note: expect.stringMatching(/took Dragon/) })
+    expect(m15(game({ after: 65_000, team: 100 }))).toBeUndefined()
+  })
+  it('the level comes from the LEVEL_UP events: a level-1 respawn (10 s) never lasts a minute', () => {
+    expect(m15(game({ after: 65_000, levels: false }))).toBeUndefined()
+  })
+  it('a ward or a kill of the player after the death means they were back (a revive): silent', () => {
+    expect(m15(game({ after: 65_000, extra: [{ type: 'WARD_PLACED', creatorId: 1, wardType: 'YELLOW_TRINKET', timestamp: DEATH + 30_000 }] }))).toBeUndefined()
+    expect(m15(game({ after: 65_000, extra: [{ type: 'CHAMPION_KILL', timestamp: DEATH + 30_000, victimId: 8, killerId: 1 }] }))).toBeUndefined()
+  })
 })

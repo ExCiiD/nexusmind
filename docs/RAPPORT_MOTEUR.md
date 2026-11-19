@@ -1,8 +1,8 @@
 # Rapport — le moteur d'Ascend
 
 _19/11/2026. État du dépôt après la recherche de connaissances de novembre 2026 ([`RECHERCHE_CONNAISSANCES.md`](RECHERCHE_CONNAISSANCES.md) :
-sources, faits 2026 vérifiés, ce qui a changé et pourquoi), après l'intégration V7 à V10 et le retrait du protocole basse
-énergie. Chaque chiffre
+sources, faits 2026 vérifiés, ce qui a changé et pourquoi), après l'intégration V7 à V10, le retrait du protocole basse
+énergie et le passage des détecteurs à l'horloge de la saison 2026 (§ 1.2, règle M15 écrite). Chaque chiffre
 ci-dessous est lu dans le code : le fichier source est cité à chaque fois._
 
 ## En bref
@@ -14,13 +14,13 @@ ci-dessous est lu dans le code : le fichier source est cité à chaque fois._
 
 | Bloc | Rôle dans l'app | Code |
 |---|---|---|
-| Détecteur d'erreurs | remplit le **Labo d'erreurs** avec 15 erreurs repérées sans toi | `electron/main/mistakeDetector.ts`, `mistakeRules.ts` |
+| Détecteur d'erreurs | remplit le **Labo d'erreurs** avec 16 erreurs repérées sans toi | `electron/main/mistakeDetector.ts`, `mistakeRules.ts` |
 | Micro-revue | choisit les **3 moments** qui ont coûté le plus, propose un diagnostic en QCM, puis une fiche Codex | `src/lib/microReview/` |
 | Comparateur de phase de lane | note ta lane de **S à F** contre ton vis-à-vis sur les 14 premières minutes | `electron/main/lanePhaseAnalyzer.ts` |
 | Assistant (moteur de coaching) | conseils après la partie, brief de session, bilan hebdo, page **Mon plan**, expériences mesurées | `electron/main/assistant/` |
 | Statistiques | radar des fondamentaux, onglet **Analyse**, classement du Labo | `src/lib/fundamentalsRadarCore.ts`, `statsInsights.ts`, `mistakeInsights.ts` |
 
-- **Quelques chiffres** : 26 erreurs au catalogue, dont 15 détectées automatiquement ; 3 déclencheurs et 41 schémas
+- **Quelques chiffres** : 27 erreurs au catalogue, dont 16 détectées automatiquement ; 3 déclencheurs et 41 schémas
   reconnus par la micro-revue ; 109 fiches Codex ; 41 règles et 18 problèmes dans l'assistant ; 8 règles de
   vérification d'objectif de session.
 
@@ -37,7 +37,8 @@ Riot fournit, une fois la partie finie (Match-V5 + Timeline-V5) :
 Ce qui **n'existe pas** dans ces données, et que le moteur ne prétend donc jamais savoir : les sorts lancés (Flash,
 Smite, dash, ultime), les vagues de sbires, quel camp de jungle a été pris, les Carapateurs (Scuttle Crab), le moment
 où tu lances un recall, la position d'une ward, les positions entre deux relevés, les dégâts hors des morts, le temps de
-réapparition exact (d'où la règle M15 reportée). Quand les données ne prouvent rien, le moteur se tait.
+réapparition (il est recalculé avec la formule du wiki : attente de base selon le niveau × facteur de temps, voir M15).
+Quand les données ne prouvent rien, le moteur se tait.
 
 ---
 
@@ -68,15 +69,38 @@ réapparition exact (d'où la règle M15 reportée). Quand les données ne prouv
 | Larves du Néant | un camp à 8:00 | idem |
 | Valeur d'un objectif dans l'estimation de la partie | tour 1 · inhibiteur 1,5 · Dragon 1 · Ancien 2,5 · Héraut 0,5 · Larves 0,3 · Baron 2 · Atakhan 1 | `winProbability.ts` |
 | Œil du Héraut | objet 3513 ; il disparaît de l'inventaire à l'usage ou environ 300 s après le kill (son ramassage n'est pas journalisé) | V7, jungler mort avec l'œil en poche |
-| Retour au premier camp | le premier camp réapparaît : un jungler encore sur la carte à 4:05 a raté le recall à T−25 s | V7 |
-| Carapateur de 3:30 | absent des données : lu à travers une mort de ton jungler dans la rivière basse entre 3:25 et 3:50 | V10 support |
+| Retour au premier camp | le premier camp réapparaît : un jungler encore sur la carte à 3:30 (4:05 en 2025) a raté le recall à T−25 s | V7 |
+| Premier Carapateur (2:55 ; 3:30 en 2025) | absent des données : lu à travers une mort de ton jungler dans la rivière basse entre 2:50 et 3:15 (3:25 et 3:50 en 2025) | V10 support |
+| Réapparition | attente de base par niveau 10 / 10 / 12 / 12 / 14 / 16 / 20 / 25 / 28 / 32,5 … 52,5 s (wiki « Death ») × (1 + facteur de temps : 0 avant 15:00, puis +0,425 % par 30 s jusqu'à 30:00, +0,30 % par 30 s jusqu'à 45:00, +1,45 % par 30 s ensuite, plafond +50 %) ; les parties 15.x gardent l'ancienne table (6 / 6 / 8 / 8 / 10 / 12 / 16 / 21 / 26 s aux niveaux 1 à 9) | `gameClock.ts`, positions des morts (micro-revue), M15 |
 | Baron | buff de Baron de ton équipe, fights à moins de 3 000 de la fosse | V4, V6 |
-| Saison 2026 (patch 26.1 et suivants) | Baron à **20:00** (25:00 en 2025), **Atakhan supprimé** ; sbires à 0:30, camps à 0:55, Carapateur à 2:55 (35 s plus tôt qu'en 2025) ; plates à 120 g qui ne tombent plus à 14:00 ; Smite 1 000 / 1 400 ; vérifié sur 207 timelines en cache (128 de 2026) | fiches Codex et règles de l'assistant ; **pas encore** les détecteurs (voir ci-dessous) |
+| Saison 2026 (patch 26.1 et suivants) | Baron à **20:00** (25:00 en 2025), **Atakhan supprimé** ; sbires à 0:30, camps à 0:55, Carapateur à 2:55 (35 s plus tôt qu'en 2025) ; plates à 120 g qui ne tombent plus à 14:00 ; Smite 1 000 / 1 400 ; vérifié sur 207 timelines en cache (128 de 2026) | fiches Codex, règles de l'assistant et détecteurs (voir ci-dessous) |
 
-Les détecteurs de la micro-revue gardent pour l'instant l'horloge de 2025 sur trois points : la fenêtre du Carapateur
-(V10, 3:25-3:50), les fenêtres de gank (V3, 2:25-3:00 et 3:15-4:25) et le premier back du jungler (V7, 4:05). Sur une
-partie de 2026, ils voient donc ces moments environ 35 s trop tard. Correction à faire dans `anomalyDetector.ts`
-(hors du périmètre de la mise à niveau des connaissances, détail dans `RECHERCHE_CONNAISSANCES.md` §6).
+**Horloge de la saison.** Les détecteurs lisent la saison dans `info.gameVersion` de Match-V5 (`gameClock.ts`) :
+version 16 et plus (ou inconnue) → horloge 2026 ; 15.x et avant → horloge 2025. Sur une partie 16.x, tous les repères du
+début de partie arrivent **35 s plus tôt** (sbires 0:30 au lieu de 1:05, camps 0:55 au lieu de 1:30, Carapateur 2:55 au
+lieu de 3:30) : fenêtres de gank, Carapateur, premier back du jungler, première ward et all-in niveau 2 du support, pic
+de niveau 2/3, cheater recall, overchase, full clear passif, contre-tempo, fenêtre de tempo et course aux niveaux (M19).
+Les parties 15.x en cache gardent leurs anciennes fenêtres (`CLOCK_2025`), et les cartes citent les heures de la saison
+de la partie. Vérifié sur les parties en cache (431 en 16.x, 73 en 15.x), médianes 2026 contre 2025 : niveau 2 d'un
+laner 1:40 contre 2:11, niveau 2 du support 1:44 contre 2:16, niveau 3 du jungler 1:59 contre 2:31, premier back du
+jungler 3:45 contre 4:18, première ward du support 1:10 contre 1:47, premier back d'un laner 3:25 contre 4:00.
+`ANALYSIS_VERSION` passe à 8 : chaque analyse en cache est recalculée une fois.
+
+| Schéma (pour 100 parties-joueur, 16.x) | avant | après | 15.x (inchangé) |
+|---|---|---|---|
+| Gank sur timer | 5,43 | 5,96 | 8,63 |
+| Support sans ward à temps | 4,43 | 6,13 | 6,44 |
+| Premier back du jungler en retard | 1,11 | 3,57 | 2,33 |
+| Contre-tempo | 0,72 | 0,88 | 1,92 |
+| Full clear passif | 0,07 | 0,23 | 0,00 |
+| All-in niveau 2 du support | 0,51 | 0,23 | 0,14 |
+| Cheater recall | 0,02 | 0,07 | 0,00 |
+| Absent au Carapateur | 0,07 | 0,09 | 0,27 |
+
+Le premier back du jungler en retard passe au-dessus de son taux de 2025 (≈ 18 % des parties de jungler contre 12 %) :
+le seuil suit la règle (premier camp réapparu à 3:10, + 20 s), pas la fréquence. À surveiller avec les retours des
+joueurs. Le cheater recall de 2026 se lit sur un achat entre 2:00 et 2:40 : aucun relevé par minute ne tombe dans cette
+fenêtre (2025 : en base sur le relevé de 3:00).
 
 ### 1.3 Économie et objets
 
@@ -95,10 +119,10 @@ partie de 2026, ils voient donc ces moments environ 35 s trop tard. Correction �
 | Connaissance | Valeur codée | Où |
 |---|---|---|
 | Phases de la partie | début 0–14:00, milieu 14:00–25:00, fin 25:00+ | partout |
-| Course aux niveaux | entre 1:30 et 4:30, mourir contre un adversaire qui a au moins 1 niveau de plus | Labo, M19 |
-| Pic de niveau 2 / 3 | tué par ton vis-à-vis dans les 10 s après qu'il a pris son niveau 2 ou 3, toi encore en dessous (avant 4:30) | V5 |
+| Course aux niveaux | entre 0:55 et 3:55 (1:30 et 4:30 en 2025), mourir contre un adversaire qui a au moins 1 niveau de plus | Labo, M19 |
+| Pic de niveau 2 / 3 | tué par ton vis-à-vis dans les 10 s après qu'il a pris son niveau 2 ou 3, toi encore en dessous (avant 3:55 ; 4:30 en 2025) | V5 |
 | Distance contre mêlée | avant 8:00 : distance sous 60 % PV au niveau ≤ 3, ou mêlée sous 50 % au niveau ≤ 4 face à un distance au-dessus de 85 % | V5 (`championClasses.ts` : type d'attaque par champion) |
-| Cheater recall | en base à 3:00 (back entre 2:35 et 3:15) avec plus de 75 % PV à 2:00, sans Téléportation, 1 niveau de retard ou plus à 4:00 | V5 |
+| Cheater recall | back entre 2:00 et 2:40 (un achat ; 2025 : en base sur le relevé de 3:00, back entre 2:35 et 3:15) avec plus de 75 % PV à 2:00, sans Téléportation, 1 niveau de retard ou plus à 4:00 | V5 |
 | Dive 1 pour 1 | tu tues ton vis-à-vis à moins de 850 d'une T1 ennemie encore debout et tu meurs dans les 4 s, sans le jungler adverse, avant 14:00 | V5 |
 | Ouverture de lane | à 5:00 : mort avant 4:00, ou −8 CS, ou −400 or face au vis-à-vis | Labo, M12 |
 | Retard à 10:00 | −15 CS (Labo M13, grave à −25) ; −15 CS ou −400 XP (micro-revue, sauf 2 kills/assists ou plus) | Labo, micro-revue |
@@ -110,12 +134,12 @@ partie de 2026, ils voient donc ces moments environ 35 s trop tard. Correction �
 
 | Situation reconnue | Règle | Version |
 |---|---|---|
-| Overchase | entre 2:30 et 8:00, 20 s de l'autre côté de la rivière ou dans la jungle adverse, sans kill ni camp, puis mort | V2 |
-| Full clear passif | la bot lane a 250 or d'avance à 3:00 et le mid n'est pas derrière, mais tu restes dans ta jungle jusqu'à 4:00 sans kill, et tu n'es pas devant en XP à 6:00 : l'invade à 3 camps était là | V2 |
-| Contre-tempo | un play en rivière vers 3:15–4:15, puis retour dans ton quart de départ, et plus de 150 XP de retard sur le jungler adverse à 6:00 | V2 |
-| Fenêtre de tempo non punie | entre 2:30 et 12:00, le jungler adverse se montre à plus de 8 000 de toi et rien n'est pris dans les 45 s | V3 |
-| Timers de gank | fenêtres 2:25–3:00 et 3:15–4:25 ; une ward profonde dure 150 s | V3 |
-| Premier back | encore sur la carte à 4:05 (aucun back après 1:00, ni kill, ni mort) | V7 |
+| Overchase | entre 1:55 (2:30 en 2025) et 8:00, 20 s de l'autre côté de la rivière ou dans la jungle adverse, sans kill ni camp, puis mort | V2 |
+| Full clear passif | la bot lane a 250 or d'avance à 3:00 et le mid n'est pas derrière, mais tu restes dans ta jungle jusqu'à 3:25 (4:00 en 2025) sans kill, et tu n'es pas devant en XP à 6:00 : l'invade à 3 camps était là | V2 |
+| Contre-tempo | un play en rivière vers 2:40–3:40 (3:15–4:15 en 2025), puis retour dans ton quart de départ, et plus de 150 XP de retard sur le jungler adverse à 6:00 | V2 |
+| Fenêtre de tempo non punie | entre 1:55 (2:30 en 2025) et 12:00, le jungler adverse se montre à plus de 8 000 de toi et rien n'est pris dans les 45 s | V3 |
+| Timers de gank | fenêtres 1:50–2:25 et 2:40–3:50 (2025 : 2:25–3:00 et 3:15–4:25) ; une ward profonde dure 150 s | V3 |
+| Premier back | encore sur la carte à 3:30 (4:05 en 2025 ; aucun back après 1:00, ni kill, ni mort) | V7 |
 | Gank qui coûte les camps | entre 2:00 et 12:00 : en lane avec un ennemi à moins de 2 500, aucun kill ni mort dans la minute, et 8 CS de jungle perdus sur le jungler adverse pendant cette minute | V7 |
 | Camps volés | le jungler adverse gagne 8 CS de jungle entre deux relevés en restant dans le même quart de ta jungle | V7 (weak side) |
 | Mort en invade | avant 16:00, dans la jungle adverse, seul ou avec un allié, après avoir pris un camp (4 CS), sans kill dans les 30 s avant | V7 |
@@ -139,11 +163,11 @@ partie de 2026, ils voient donc ces moments environ 35 s trop tard. Correction �
 
 | Situation reconnue | Règle |
 |---|---|
-| Première ward | aucune ward posée par toi avant 1:45 (les wards d'objets de champion ne comptent pas) |
-| All-in niveau 2 | tué entre 2:05 et 2:40 sous le niveau d'un ennemi du fight |
+| Première ward | aucune ward posée par toi avant 1:10 (1:45 en 2025 ; les wards d'objets de champion ne comptent pas) |
+| All-in niveau 2 | tué entre 1:30 et 2:05 (2:05 et 2:40 en 2025) sous le niveau d'un ennemi du fight |
 | Goulet ou fosse | à partir de 14:00, dans la fosse (moins de 900) pendant les 15 s avant le premier kill au lieu de tenir l'entrée (support ou mage de contrôle mid) |
 | Collé à l'ADC après 6 | niveau 6 à 9:00, à moins de 2 000 de l'ADC sur 6 des 7 relevés de 9:00 à 15:00, moins de 45 % de participation aux kills à 15:00 |
-| Absent au Carapateur | ton jungler meurt dans la rivière basse entre 3:25 et 3:50, toi à plus de 2 000 |
+| Absent au premier Carapateur | ton jungler meurt dans la rivière basse entre 2:50 et 3:15 (3:25 et 3:50 en 2025), toi à plus de 2 000 |
 | Weak side non wardée | camps volés côté bot pendant que ton jungler est top, sans ward de toi dans ta jungle bot dans les 120 s avant (avant 18:00) |
 | ADC qui rouvre une side lane | après 14:00, tué seul dans une side lane de l'autre côté de la rivière au plus 45 s après l'avoir atteinte |
 | Carry donné en premier | prime de 450 or, KDA 4 ou 25 % de l'or de l'équipe, mort la première dans un fight à 3 ennemis |
@@ -341,18 +365,18 @@ chemins, puis le Labo les compte, les classe et les relie à une fiche.
 
 ### 3.1 Trois sources
 
-1. **Le détecteur automatique** : 15 règles appliquées à la chronologie Riot dès qu'elle est en cache. Ces erreurs sont
+1. **Le détecteur automatique** : 16 règles appliquées à la chronologie Riot dès qu'elle est en cache. Ces erreurs sont
    marquées « auto » (filtre « Afficher les auto-détectées »).
 2. **La micro-revue** : chaque diagnostic que tu choisis dans le QCM est une erreur du catalogue. Une réponse
    « justifié » ne crée **aucune** erreur.
 3. **Ton tag manuel** : pendant la review ou sur la vidéo, tu ajoutes une erreur à une seconde précise, avec sa gravité
    (1 à 3) et une note. Tu peux aussi créer ton propre tag.
 
-Le catalogue compte 26 erreurs. Les 11 qui ne sont pas détectables dans les données (summoner gâché, skillshot raté,
+Le catalogue compte 27 erreurs. Les 11 qui ne sont pas détectables dans les données (summoner gâché, skillshot raté,
 kiting, ward ennemie traversée, bush non vérifié, mauvaise lecture des menaces, angle d'engage, maximisation des
 dégâts, synchronisation de vague, objectif sans vision, runes) ne viennent que de la micro-revue ou de ton tag.
 
-### 3.2 Les 15 règles automatiques
+### 3.2 Les 16 règles automatiques
 
 `electron/main/mistakeDetector.ts` (M1–M4) et `electron/main/mistakeRules.ts` (M5–M19)
 
@@ -372,7 +396,8 @@ dégâts, synchronisation de vague, objectif sans vision, runes) ne viennent que
 | M12 | Mauvaise ouverture de lane | laner, à 5:00 : mort avant 4:00, ou −8 CS, ou −400 or face au vis-à-vis | 2 ; 3 si deux raisons | −9 CS et −450 or à 5:00 → gravité 3 |
 | M13 | Retard de CS à 10 min | laner : −15 CS ou plus à 10:00 face au vis-à-vis (sbires et jungle) | 2 ; 3 à −25 | 62 CS contre 80 → −18, gravité 2 |
 | M14 | Retard d'XP | laner : 2 niveaux de moins que le vis-à-vis à 10:00 ou 15:00, une fois par partie | 2 ; 3 à 3 niveaux | niveau 9 contre 11 à 15:00 |
-| M19 | Mort en retard de niveaux | laner ou jungler, mort entre 1:30 et 4:30 contre un adversaire d'au moins 1 niveau de plus | 2 ; 3 à 2 niveaux | tué niveau 2 par un niveau 3 à 3:40 |
+| M15 | Mort quand l'objectif est tombé | l'ennemi prend Dragon, Baron, Héraut, Larves ou Atakhan plus de 60 s après ta mort (M5 couvre la minute d'avant) et au moins 2 s avant ta réapparition (niveau lu sur les LEVEL_UP, formule du wiki) ; rien si tu poses une ward ou fais un kill entre les deux (résurrection) | 2 ; 3 pour Baron et Ancien | niveau 18 mort à 50:00 (71,5 s de réapparition), Baron adverse à 51:05 → gravité 3 |
+| M19 | Mort en retard de niveaux | laner ou jungler, mort entre 0:55 et 3:55 (1:30 et 4:30 sur une partie 15.x) contre un adversaire d'au moins 1 niveau de plus | 2 ; 3 à 2 niveaux | tué niveau 2 par un niveau 3 à 3:40 |
 
 Une même mort peut produire plusieurs erreurs **de tags différents** quand elle prouve plusieurs choses. Exemple : un
 mid laner tué seul par son adversaire de lane, niveau 2 contre 3, à 3:40, reçoit « mauvais trade » (M10), « mort en

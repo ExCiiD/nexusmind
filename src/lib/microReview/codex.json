@@ -1976,6 +1976,9 @@
     "id": "codex_death_timer_count_the_respawn",
     "role": "any",
     "mistakeSlug": "death-before-objective",
+    "mistakeSlugs": [
+      "dead-during-objective"
+    ],
     "phase": "late",
     "radarAxis": "deaths",
     "fundamentalId": "decision_making",

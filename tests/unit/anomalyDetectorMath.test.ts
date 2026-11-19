@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  analyzeGame, pickMoments, DETECTOR_SPEC, MAX_MOMENTS, SUMMONERS_RIFT_MAP_ID, bountyGold, deathTimerSec, isSupportedGame, respawnTimeFactor,
+  analyzeGame, pickMoments, DETECTOR_SPEC, CLOCK_2025, detectorSpecFor, MAX_MOMENTS, SUMMONERS_RIFT_MAP_ID, bountyGold, deathTimerSec, isSupportedGame, respawnTimeFactor,
   type CriticalMoment,
 } from '../../src/lib/microReview/anomalyDetector'
 import {
@@ -55,22 +55,25 @@ describe('spec constants', () => {
       absent: { wardRadius: 3500, wardLookbackSec: 90, crossMapSec: 60, deadBeforeSec: 110, accountableFromSec: 300 },
       early: { atSec: 600, csDiff: -15, xpDiff: -400, takedowns: 2 },
       hesitation: { notInPitSec: 30, moveFromSec: 25, approachMin: 1200, crossMapBeforeSec: 40, crossMapAfterSec: 15, towerGreedSec: 75 },
-      jungle: { fromSec: 150, toSec: 480, overchaseSec: 20, sampleSec: 5, counterTempoXp: 150, riverPlaySec: [195, 255], backAtSec: 300, passiveBotLead: 250 },
+      jungle: {
+        fromSec: 115, toSec: 480, overchaseSec: 20, sampleSec: 5, counterTempoXp: 150, riverPlaySec: [160, 220], backAtSec: 265, passiveBotLead: 250,
+        homeSamplesSec: [85, 145, 175, 205], quietUntilSec: 205, passiveAtSec: 160, startAtSec: 85, counterTempoAtSec: 235,
+      },
       tempoLine: { fromSec: 900, alliesHigh: 0.55, userBase: 0.15, userFront: 0.65, alliesHome: 0.30, minAllies: 3, goldBefore: 1500, goldLookbackSec: 30, fightWindowSec: 30, aliveBeforeSec: 60 },
-      gank: { window1: [145, 180], window2: [195, 265], deepWardLifetimeSec: 150 },
-      tempoWindow: { fromSec: 150, untilSec: 720, distance: 8000, windowSec: 45, respawnGraceSec: 20 },
+      gank: { window1: [110, 145], window2: [160, 230], deepWardLifetimeSec: 150 },
+      tempoWindow: { fromSec: 115, untilSec: 720, distance: 8000, windowSec: 45, respawnGraceSec: 20 },
       carry: { bounty: 450, kda: 4, goldShare: 0.25, enemies: 3, fightRadius: 2500, lostWithinSec: 60, firstDeathSec: 10 },
       rotation: { untilSec: 840, awaySec: 30, cs: 8, xp: 350, deathGuardSec: 45 },
       pit: { fromSec: 840, fightRadius: 3000, insideRadius: 900, beforeSec: 15, fightGapSec: 20 },
       midRoam: { untilSec: 840, plates: 1, cs: 10, minOffAxis: 2600 },
       // V5 (laning phase) — boundaries tested in microReviewV5.test.ts.
       dive: { untilSec: 840, turretRadius: 850, afterKillSec: 4 },
-      levelSpike: { untilSec: 270, windowSec: 10, levels: [2, 3] },
+      levelSpike: { untilSec: 235, windowSec: 10, levels: [2, 3] },
       backTimer: { untilSec: 600, hpPct: 35, gold: 800, withinSec: 40 },
       rangeMelee: { untilSec: 480, rangedHp: 60, rangedMaxLevel: 3, meleeHp: 50, meleeMaxLevel: 4, opponentHp: 85 },
-      cheaterRecall: { atSec: 180, anchorSec: 155, hpBeforeSec: 120, hpPct: 75, levelAtSec: 240, levelDeficit: 1, teleportSpellId: 12 },
+      cheaterRecall: { atSec: null, visitSec: [120, 160], anchorSec: 120, hpBeforeSec: 120, hpPct: 75, levelAtSec: 240, levelDeficit: 1, teleportSpellId: 12 },
       // V6 (roles) — boundaries tested in microReviewV6.test.ts.
-      supportEarly: { wardBySec: 105, deathFromSec: 125, deathToSec: 160 },
+      supportEarly: { wardBySec: 70, deathFromSec: 90, deathToSec: 125 },
       teamReset: { untilSec: 840, lookbackSec: 15, alliesHome: 2 },
       tradeRecall: { untilSec: 840, hpPct: 40, opponentHpPct: 60, beforeSpawnSec: 35, channelSec: 8, returnSec: 30, visitGapSec: 30 },
       adcReopen: { fromSec: 840, walkSec: 45, withinSec: 45 },
@@ -78,7 +81,7 @@ describe('spec constants', () => {
       inhibDive: { withinSec: 15 },
       spawns: { firstDragonSec: 300, dragonRespawnSec: 300, grubsSec: 480 },
       // V7–V10 (jungle, mid, engage support) — boundaries tested in microReviewV7.test.ts.
-      jungleFirstBack: { bySec: 245, startSec: 60 },
+      jungleFirstBack: { bySec: 210, startSec: 60 },
       gankCost: { fromSec: 120, untilSec: 720, cs: 8, enemyRadius: 2500 },
       campsStolen: { cs: 8, fromSec: 120, weakSideUntilSec: 960, supportUntilSec: 1080, wardLookbackSec: 120 },
       invadeDeath: { untilSec: 960, noTakedownSec: 30, campCs: 4, maxAllies: 1, midRadius: 2500 },
@@ -93,10 +96,46 @@ describe('spec constants', () => {
       resetTrap: { untilSec: 720, lowPct: 30, stayedSec: 45, withinSec: 90, manaPoolMin: 200 },
       midWaveLoss: { atSec: 360, csDiff: -12, takedowns: 2 },
       supportLeech: { fromSec: 540, untilSec: 900, level: 6, radius: 2000, snapshots: 6, kp: 0.45 },
-      supportScuttle: { fromSec: 205, untilSec: 230, radius: 2000 },
+      supportScuttle: { fromSec: 170, untilSec: 195, radius: 2000 },
     })
     expect(MAX_MOMENTS).toBe(3)
     expect([GARBAGE_LOW, GARBAGE_HIGH]).toEqual([0.18, 0.85])
+  })
+  it('15.x games keep the 2025 clock: every early timing 35 s later, nothing else moves', () => {
+    expect(CLOCK_2025).toEqual({
+      jungle: {
+        ...DETECTOR_SPEC.jungle, fromSec: 150, riverPlaySec: [195, 255], backAtSec: 300,
+        homeSamplesSec: [120, 180, 210, 240], quietUntilSec: 240, passiveAtSec: 195, startAtSec: 120, counterTempoAtSec: 270,
+      },
+      gank: { window1: [145, 180], window2: [195, 265], deepWardLifetimeSec: 150 },
+      tempoWindow: { ...DETECTOR_SPEC.tempoWindow, fromSec: 150 },
+      levelSpike: { untilSec: 270, windowSec: 10, levels: [2, 3] },
+      cheaterRecall: { atSec: 180, visitSec: null, anchorSec: 155, hpBeforeSec: 120, hpPct: 75, levelAtSec: 240, levelDeficit: 1, teleportSpellId: 12 },
+      supportEarly: { wardBySec: 105, deathFromSec: 125, deathToSec: 160 },
+      jungleFirstBack: { bySec: 245, startSec: 60 },
+      supportScuttle: { fromSec: 205, untilSec: 230, radius: 2000 },
+    })
+    const old = detectorSpecFor(2025)
+    for (const k of Object.keys(DETECTOR_SPEC) as Array<keyof typeof DETECTOR_SPEC>) {
+      expect(old[k], k).toEqual(k in CLOCK_2025 ? (CLOCK_2025 as any)[k] : DETECTOR_SPEC[k])
+    }
+    expect(detectorSpecFor(2026)).toBe(DETECTOR_SPEC)
+    // The shifted numbers are all 35 s (0:30 vs 1:05 minions, 0:55 vs 1:30 camps, 2:55 vs 3:30 Scuttle).
+    const S = DETECTOR_SPEC
+    const shifts = [
+      CLOCK_2025.jungle.fromSec - S.jungle.fromSec, CLOCK_2025.jungle.backAtSec - S.jungle.backAtSec,
+      CLOCK_2025.jungle.quietUntilSec - S.jungle.quietUntilSec, CLOCK_2025.jungle.passiveAtSec - S.jungle.passiveAtSec,
+      CLOCK_2025.jungle.startAtSec - S.jungle.startAtSec, CLOCK_2025.jungle.counterTempoAtSec - S.jungle.counterTempoAtSec,
+      ...CLOCK_2025.jungle.riverPlaySec.map((v, n) => v - S.jungle.riverPlaySec[n]),
+      ...CLOCK_2025.jungle.homeSamplesSec.map((v, n) => v - S.jungle.homeSamplesSec[n]),
+      ...CLOCK_2025.gank.window1.map((v, n) => v - S.gank.window1[n]), ...CLOCK_2025.gank.window2.map((v, n) => v - S.gank.window2[n]),
+      CLOCK_2025.tempoWindow.fromSec - S.tempoWindow.fromSec, CLOCK_2025.levelSpike.untilSec - S.levelSpike.untilSec,
+      CLOCK_2025.cheaterRecall.anchorSec - S.cheaterRecall.anchorSec,
+      CLOCK_2025.supportEarly.wardBySec - S.supportEarly.wardBySec, CLOCK_2025.supportEarly.deathFromSec - S.supportEarly.deathFromSec,
+      CLOCK_2025.supportEarly.deathToSec - S.supportEarly.deathToSec, CLOCK_2025.jungleFirstBack.bySec - S.jungleFirstBack.bySec,
+      CLOCK_2025.supportScuttle.fromSec - S.supportScuttle.fromSec, CLOCK_2025.supportScuttle.untilSec - S.supportScuttle.untilSec,
+    ]
+    expect(new Set(shifts)).toEqual(new Set([35]))
   })
 })
 
@@ -342,10 +381,21 @@ describe('supported games', () => {
 })
 
 describe('respawn timer', () => {
-  it('base wait by level, clamped to 1–18', () => {
-    expect([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map((l) => deathTimerSec(l, 10)))
+  it('base wait by level, clamped to 1–18: the wiki table on 16.x, the former table on 15.x', () => {
+    const levels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+    expect(levels.map((l) => deathTimerSec(l, 10)))
+      .toEqual([10, 10, 12, 12, 14, 16, 20, 25, 28, 32.5, 35, 37.5, 40, 42.5, 45, 47.5, 50, 52.5])
+    expect(levels.map((l) => deathTimerSec(l, 10, 2025)))
       .toEqual([6, 6, 8, 8, 10, 12, 16, 21, 26, 32.5, 35, 37.5, 40, 42.5, 45, 47.5, 50, 52.5])
-    expect([deathTimerSec(0, 5), deathTimerSec(25, 5)]).toEqual([6, 52.5])
+    expect([deathTimerSec(0, 5), deathTimerSec(25, 5)]).toEqual([10, 52.5])
+    expect([deathTimerSec(0, 5, 2025), deathTimerSec(25, 5, 2025)]).toEqual([6, 52.5])
+  })
+  it('the wiki examples (Death, read 19/11/2026)', () => {
+    expect(deathTimerSec(6, 10)).toBe(16)
+    expect(deathTimerSec(11, 20)).toBeCloseTo(35 * 1.0425, 10) // ~36.5 s
+    expect(deathTimerSec(14, 25)).toBeCloseTo(42.5 * 1.085, 10) // ~46 s
+    expect(deathTimerSec(18, 35)).toBeCloseTo(52.5 * 1.1575, 10) // ~60.8 s
+    expect(deathTimerSec(18, 55)).toBe(78.75)
   })
   it('grows with game time from 15:00, by 30 s steps, up to +50 %', () => {
     expect(respawnTimeFactor(14.99)).toBe(0)

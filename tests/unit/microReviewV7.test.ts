@@ -11,7 +11,7 @@ import {
   CODEX_JGL_T1_HERALD, CODEX_JGL_NEVER_FLEE, CODEX_JGL_INVADE_STOP, CODEX_JGL_VISION, CODEX_JGL_SMITE, CODEX_MID_MICRO, CODEX_MID_WAVES,
   CODEX_SUP_POST_CRASH, CODEX_SUP_POST6, CODEX_JUNGLE_CYCLE, CODEX_OBJ_SETUP,
 } from '../../src/lib/microReview/smartQcm'
-import { analyzeGame, DETECTOR_SPEC, MOMENT_PATTERNS, type CriticalMoment, type MomentFacts, type MomentPattern } from '../../src/lib/microReview/anomalyDetector'
+import { analyzeGame, CLOCK_2025, DETECTOR_SPEC, MOMENT_PATTERNS, type CriticalMoment, type MomentFacts, type MomentPattern } from '../../src/lib/microReview/anomalyDetector'
 import { BARON_PIT, DRAGON_PIT, laneOf, territoryOf, zoneOf } from '../../src/lib/microReview/geometry'
 import { buildGame, at } from './microReviewFixtures'
 
@@ -260,7 +260,8 @@ const NEAR_DRAGON: P = { x: DRAGON_PIT.x + 500, y: DRAGON_PIT.y }
 
 describe('detector — the V7–V10 numbers and places', () => {
   it('are the ones of the briefs', () => {
-    expect(DETECTOR_SPEC.jungleFirstBack).toEqual({ bySec: 245, startSec: 60 })
+    expect(DETECTOR_SPEC.jungleFirstBack).toEqual({ bySec: 210, startSec: 60 })
+    expect(CLOCK_2025.jungleFirstBack).toEqual({ bySec: 245, startSec: 60 })
     expect(DETECTOR_SPEC.gankCost).toEqual({ fromSec: 120, untilSec: 720, cs: 8, enemyRadius: 2500 })
     expect(DETECTOR_SPEC.campsStolen).toMatchObject({ cs: 8, weakSideUntilSec: 960, supportUntilSec: 1080 })
     expect(DETECTOR_SPEC.invadeDeath).toMatchObject({ untilSec: 960 })
@@ -275,7 +276,8 @@ describe('detector — the V7–V10 numbers and places', () => {
     expect(DETECTOR_SPEC.resetTrap).toMatchObject({ untilSec: 720, lowPct: 30 })
     expect(DETECTOR_SPEC.midWaveLoss).toEqual({ atSec: 360, csDiff: -12, takedowns: 2 })
     expect(DETECTOR_SPEC.supportLeech).toMatchObject({ fromSec: 540, untilSec: 900, level: 6, kp: 0.45 })
-    expect(DETECTOR_SPEC.supportScuttle).toMatchObject({ fromSec: 205, untilSec: 230 })
+    expect(DETECTOR_SPEC.supportScuttle).toMatchObject({ fromSec: 170, untilSec: 195 })
+    expect(CLOCK_2025.supportScuttle).toMatchObject({ fromSec: 205, untilSec: 230 })
   })
   it('reads the places it relies on', () => {
     expect([territoryOf(OUR_BOT_JUNGLE, 100), laneOf(OUR_BOT_JUNGLE), territoryOf(OUR_TOP_JUNGLE, 100), laneOf(OUR_TOP_JUNGLE)]).toEqual(['own', 'JUNGLE', 'own', 'JUNGLE'])
@@ -284,7 +286,8 @@ describe('detector — the V7–V10 numbers and places', () => {
 })
 
 describe('pattern — jungle: first back after 4:05', () => {
-  const S = DETECTOR_SPEC.jungleFirstBack
+  // Fixtures are 15.x games: the 2025 clock (microReviewSeason2026.test.ts covers 16.x).
+  const S = CLOCK_2025.jungleFirstBack
   const game = (o: { back?: number | null; me?: number; extra?: any[]; noShop?: boolean } = {}) => buildGame({ minutes: 8, me: o.me ?? 2, events: [
     ...(o.noShop ? [] : [buy(10_000, o.me ?? 2)]), ...(o.back === null || o.noShop ? [] : [buy(o.back ?? 268_000, o.me ?? 2)]), ...(o.extra ?? []),
   ] })
@@ -702,7 +705,7 @@ describe('pattern — support: glued to the ADC after level 6', () => {
 })
 
 describe('pattern — support: missing at the 3:30 Scuttle Crab', () => {
-  const S = DETECTOR_SPEC.supportScuttle
+  const S = CLOCK_2025.supportScuttle
   const scuttle = (o: { deathAt?: number; where?: P; supportAt?: P; extra?: any[] } = {}) => buildGame({ minutes: 8, me: 5,
     frame: (i, pid) => (pid === 5 && (i === 3 || i === 4) && o.supportAt ? { position: o.supportAt } : undefined),
     events: [ward(60_000, 5), kill(o.deathAt ?? 215_000, 2, 7, [10], o.where ?? BOT_RIVER), ...(o.extra ?? [])] })

@@ -192,9 +192,10 @@ respawn ». Le français reste un miroir exact de l'anglais (testé).
   `src/lib/microReview/anomalyDetector.ts` et `electron/main/mistakeRules.ts`) : fenêtre du Carapateur V10 (3:25-3:50,
   il faut maintenant ~2:50-3:15), fenêtres de gank V3 (2:25-3:00 et 3:15-4:25, environ 35 s trop tard), premier back du
   jungler V7 (4:05), poids d'Atakhan dans l'estimation de partie (sans effet en 2026 : il n'y a plus d'événement). À
-  traiter dans une session dédiée, avec `ANALYSIS_VERSION` relevé.
-- **M15 (« mort pendant l'objectif »)** : la formule fiable du respawn qui manquait est maintenant connue (section 3) ; la
-  règle reste à écrire dans `mistakeRules.ts` (hors périmètre).
+  traiter dans une session dédiée, avec `ANALYSIS_VERSION` relevé. **Fait ensuite** (branche `detectors-2026`,
+  `ANALYSIS_VERSION` 8) : horloge lue dans `gameVersion`, détail dans `RAPPORT_MOTEUR.md` § 1.2.
+- **M15 (« mort pendant l'objectif »)** : la formule fiable du respawn qui manquait est maintenant connue (section 3).
+  **Écrite ensuite** dans `mistakeRules.ts` (branche `detectors-2026`).
 - **Les contrôles de macro proposés par la recherche** (pick non converti, Baron gaspillée, objectif donné gratuitement,
   ADC seul du côté opposé, push pendant que l'équipe reset, or non dépensé à T-60) : vérifiables sur la timeline, mais ce
   sont de nouveaux détecteurs du Labo ou de la micro-revue, pas des règles de l'assistant. Listés pour une prochaine

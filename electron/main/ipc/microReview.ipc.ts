@@ -29,8 +29,8 @@ import { microReviewPushAnswer } from '../cloud/collab'
 import { momentWindow } from '../mistakeDedupe'
 import { mistakeSlug } from '../../../src/lib/mistakeSlug'
 
-/** Bump when the detector's output changes, to recompute cached analyses. 6: V5 laning + V6 role patterns; 7: V7–V10 jungle, mid and support patterns. */
-export const ANALYSIS_VERSION = 7
+/** Bump when the detector's output changes, to recompute cached analyses. 6: V5 laning + V6 role patterns; 7: V7–V10 jungle, mid and support patterns; 8: season-2026 clock (16.x games 35 s earlier, wiki respawn timers, facts.season). */
+export const ANALYSIS_VERSION = 8
 export const MICRO_REVIEW_XP = 30
 
 async function userPuuids(userId: string): Promise<string[]> {

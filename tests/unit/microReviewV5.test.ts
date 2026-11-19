@@ -10,7 +10,7 @@ import {
   buildQcm, contextsOf, optionsFor, choiceStats, QCM_CONTEXTS, CODEX_DIVE, CODEX_BACK_TIMER, CODEX_LEVEL_SPIKE, CODEX_RANGE_MELEE,
   CODEX_VOLATILITY, CODEX_TRACKING, CODEX_WAVE_SIDE, CODEX_ARCHETYPES, type QcmContext, type PastAnswer,
 } from '../../src/lib/microReview/smartQcm'
-import { analyzeGame, DETECTOR_SPEC, MOMENT_PATTERNS, type CriticalMoment, type MomentFacts, type MomentPattern } from '../../src/lib/microReview/anomalyDetector'
+import { analyzeGame, CLOCK_2025, DETECTOR_SPEC, MOMENT_PATTERNS, type CriticalMoment, type MomentFacts, type MomentPattern } from '../../src/lib/microReview/anomalyDetector'
 import { OUTER_TURRETS, laneOf, zoneOf } from '../../src/lib/microReview/geometry'
 import { attackTypeOf } from '../../src/lib/microReview/championClasses'
 import { buildGame, at } from './microReviewFixtures'
@@ -233,11 +233,13 @@ const RIVER: P = { x: 5000, y: 9500 }
 describe('detector — the V5 numbers', () => {
   it('are the ones of the brief', () => {
     expect(DETECTOR_SPEC.dive).toEqual({ untilSec: 840, turretRadius: 850, afterKillSec: 4 })
-    expect(DETECTOR_SPEC.levelSpike).toEqual({ untilSec: 270, windowSec: 10, levels: [2, 3] })
+    expect(DETECTOR_SPEC.levelSpike).toEqual({ untilSec: 235, windowSec: 10, levels: [2, 3] })
+    expect(CLOCK_2025.levelSpike).toEqual({ untilSec: 270, windowSec: 10, levels: [2, 3] })
     expect(DETECTOR_SPEC.backTimer).toEqual({ untilSec: 600, hpPct: 35, gold: 800, withinSec: 40 })
     expect(DETECTOR_SPEC.rangeMelee).toEqual({ untilSec: 480, rangedHp: 60, rangedMaxLevel: 3, meleeHp: 50, meleeMaxLevel: 4, opponentHp: 85 })
     // Recall seen at 3:00 = a back between 2:35 and 3:15; HP read at 2:00, levels at 4:00; Teleport is spell 12.
-    expect(DETECTOR_SPEC.cheaterRecall).toEqual({ atSec: 180, anchorSec: 155, hpBeforeSec: 120, hpPct: 75, levelAtSec: 240, levelDeficit: 1, teleportSpellId: 12 })
+    expect(DETECTOR_SPEC.cheaterRecall).toEqual({ atSec: null, visitSec: [120, 160], anchorSec: 120, hpBeforeSec: 120, hpPct: 75, levelAtSec: 240, levelDeficit: 1, teleportSpellId: 12 })
+    expect(CLOCK_2025.cheaterRecall).toEqual({ atSec: 180, visitSec: null, anchorSec: 155, hpBeforeSec: 120, hpPct: 75, levelAtSec: 240, levelDeficit: 1, teleportSpellId: 12 })
   })
 })
 
@@ -274,7 +276,8 @@ describe('pattern — 1-for-1 tower dive (laning phase)', () => {
 })
 
 describe('pattern — killed on the lane opponent\'s level 2 or 3', () => {
-  const S = DETECTOR_SPEC.levelSpike
+  // Fixtures are 15.x games: the 2025 clock (microReviewSeason2026.test.ts covers 16.x).
+  const S = CLOCK_2025.levelSpike
   const spike = (o: { deathAt?: number; upAt?: number; level?: number; mine?: number[]; assists?: number[] } = {}) => {
     const deathAt = o.deathAt ?? 125_000
     return buildGame({ minutes: 8, me: 1, events: [
@@ -365,7 +368,7 @@ describe('pattern — range against melee (before 8:00)', () => {
 })
 
 describe('pattern — cheater recall that backfired', () => {
-  const C = DETECTOR_SPEC.cheaterRecall
+  const C = { ...CLOCK_2025.cheaterRecall, atSec: CLOCK_2025.cheaterRecall.atSec! }
   const BASE: P = { x: 1000, y: 1000 }
   const recall = (o: { pct?: number; mine?: number; theirs?: number; where?: P; summoners?: Record<string, number>; events?: any[] } = {}) => {
     const g = buildGame({ minutes: 12, me: 1,
