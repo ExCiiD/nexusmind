@@ -1,16 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { EnergyWinrateCorrelation, NewWellbeingCheckinInput, WellbeingCheckin } from './wellbeing'
+import { fail } from './supabaseErrors'
 
 /**
  * Wellbeing & load (E6), same pattern as devPlanCore.ts. Purely server-side
  * — desktop and web call these identically.
  */
-
-function fail(error: { message: string; code?: string } | null, fallback: string): never {
-  const msg = error?.message ?? fallback
-  if (/permission|forbidden/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
-  throw new Error(msg)
-}
 
 interface CheckinRow { id: string; user_id: string; energy: number; mood: number; sleep: number; note: string | null; created_at: string }
 

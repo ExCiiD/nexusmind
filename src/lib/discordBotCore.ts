@@ -3,6 +3,7 @@ import type { DiscordGuildLink, DiscordUserLink } from './discord'
 import { generateLinkCode } from './discord'
 import type { NewAvailabilityExceptionInput } from './calendar'
 import type { Announcement } from './announcements'
+import { fail } from './supabaseErrors'
 
 /**
  * Discord bot integration (E11), same pure-function-over-a-client pattern
@@ -23,12 +24,6 @@ import type { Announcement } from './announcements'
  *     role — omitting it would violate a not-null constraint, not
  *     silently default to someone else).
  */
-
-function fail(error: { message: string; code?: string } | null, fallback: string): never {
-  const msg = error?.message ?? fallback
-  if (/permission|forbidden/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
-  throw new Error(msg)
-}
 
 const CODE_TTL_MIN_GUILD = 15
 const CODE_TTL_MIN_USER = 10

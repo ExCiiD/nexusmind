@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { MistakeTrend, PlayerWeeklyReport, ReportShare, TeamWeeklyReport } from './report'
 import { generateReportShareToken } from './report'
+import { fail } from './supabaseErrors'
 
 /**
  * Weekly (and, since 14/11/2026, tournament-period) team/player report
@@ -11,12 +12,6 @@ import { generateReportShareToken } from './report'
  */
 
 const RECENT_WINDOW = 10
-
-function fail(error: { message: string; code?: string } | null, fallback: string): never {
-  const msg = error?.message ?? fallback
-  if (/permission|forbidden/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
-  throw new Error(msg)
-}
 
 function ts(v: unknown): number {
   return typeof v === 'number' ? v : Date.parse(String(v ?? '')) || 0

@@ -337,7 +337,9 @@ export class GameDetector {
    * Runs in background after instant navigation. Fetches the real Riot Match API data,
    * updates the Game row with accurate stats (win/loss, exact CS, matchId, opponent, etc.).
    */
-  private async enrichWithMatchApi(gameStartedAt: number, snapshot: LiveSnapshot | null) {
+  // `_snapshot` (the live champion) is not used yet: matching the Riot match on
+  // it is the fix proposed in docs/AUDIT_APP_2026-11.md (E10).
+  private async enrichWithMatchApi(gameStartedAt: number, _snapshot: LiveSnapshot | null) {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return

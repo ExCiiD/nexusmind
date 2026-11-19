@@ -1,6 +1,0 @@
-export { registerAuthHandlers } from './auth.ipc'
-export { registerSessionHandlers } from './session.ipc'
-export { registerReviewHandlers } from './review.ipc'
-export { registerAssessmentHandlers } from './assessment.ipc'
-export { registerAnalyticsHandlers } from './analytics.ipc'
-export { registerAccountHandlers } from './account.ipc'

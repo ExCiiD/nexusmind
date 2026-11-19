@@ -27,6 +27,7 @@ import type {
 } from '../../../src/lib/microReview/types'
 import { microReviewPushAnswer } from '../cloud/collab'
 import { momentWindow } from '../mistakeDedupe'
+import { mistakeSlug } from '../../../src/lib/mistakeSlug'
 
 /** Bump when the detector's output changes, to recompute cached analyses. 6: V5 laning + V6 role patterns; 7: V7–V10 jungle, mid and support patterns. */
 export const ANALYSIS_VERSION = 7
@@ -98,7 +99,7 @@ async function resolveTag(slug: string | null | undefined, customLabel: string |
   const prisma = getPrisma()
   if (customLabel?.trim()) {
     const label = customLabel.trim().slice(0, 60)
-    const base = label.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'custom'
+    const base = mistakeSlug(label)
     const existing = await prisma.mistakeTag.findFirst({ where: { label, isBuiltIn: false } })
     if (existing) return existing
     let s = base

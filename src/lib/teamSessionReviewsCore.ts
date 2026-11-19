@@ -3,6 +3,7 @@ import type {
   ReviewScope, ReviewStatus, TeamSessionFeedback, TeamSessionReview, TeamSessionReviewPatch,
 } from './teamSessionReviews'
 import type { TeamSessionGame } from './teamSessions'
+import { fail } from './supabaseErrors'
 
 /**
  * Team session reviews (Phase 5, Planning rework — docs/PLAN_GESTION_EQUIPE.md
@@ -12,12 +13,6 @@ import type { TeamSessionGame } from './teamSessions'
  * not to need their own file, same choice teamSessionsCore.ts already made
  * for countdownState/queueBucket.
  */
-
-function fail(error: { message: string; code?: string } | null, fallback: string): never {
-  const msg = error?.message ?? fallback
-  if (/permission|forbidden/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
-  throw new Error(msg)
-}
 
 interface ReviewRow {
   id: string; session_id: string; game_id: string | null; scope: ReviewScope; recorded_by: string | null

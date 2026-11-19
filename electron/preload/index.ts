@@ -32,7 +32,6 @@ const api = {
     freeText?: string
     objectiveRespected: boolean
   }) => ipcRenderer.invoke('review:save', data),
-  getReviews: (sessionId: string) => ipcRenderer.invoke('review:get-by-session', sessionId),
   getGameContext: (gameId: string) => ipcRenderer.invoke('review:get-game-context', gameId),
   analyzeReviewBias: (gameId: string, objectiveIds: string[]) =>
     ipcRenderer.invoke('review:analyze-bias', { gameId, objectiveIds }),
@@ -40,7 +39,6 @@ const api = {
   saveAssessment: (scores: Array<{ fundamentalId: string; subcategoryId?: string; score: number }>) =>
     ipcRenderer.invoke('assessment:save', scores),
   getLatestAssessment: () => ipcRenderer.invoke('assessment:get-latest'),
-  getAssessmentHistory: () => ipcRenderer.invoke('assessment:get-history'),
 
   listSessions: () => ipcRenderer.invoke('sessions:list'),
 
@@ -70,16 +68,12 @@ const api = {
     }
   },
 
-  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
-  maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
-  closeWindow: () => ipcRenderer.invoke('window:close'),
 
   fetchMatchHistory: (count?: number) => ipcRenderer.invoke('riot:fetch-match-history', count),
   importGamesToSession: (matchIds: string[]) => ipcRenderer.invoke('session:import-games', matchIds),
 
   getMatchHistoryWithStatus: (count?: number) => ipcRenderer.invoke('stats:match-history', count),
   getDetailedStats: (matchId: string) => ipcRenderer.invoke('stats:get-detailed', matchId),
-  computeStatsAverages: () => ipcRenderer.invoke('stats:compute-averages'),
   getStatsSnapshots: () => ipcRenderer.invoke('stats:get-snapshots'),
   autoSnapshot: () => ipcRenderer.invoke('stats:auto-snapshot'),
   getAccountAverages: (puuid: string | null) => ipcRenderer.invoke('stats:get-account-averages', puuid),
@@ -121,15 +115,12 @@ const api = {
   collabRemoveMember: (groupId: string, userId: string) => ipcRenderer.invoke('collab:remove-member', groupId, userId),
   collabSetCaptain: (groupId: string, userId: string, isCaptain: boolean) => ipcRenderer.invoke('collab:set-captain', groupId, userId, isCaptain),
   collabSetMemberRole: (groupId: string, userId: string, role: 'coach' | 'manager' | 'analyst' | 'player') => ipcRenderer.invoke('collab:set-member-role', groupId, userId, role),
-  teamSessionsListForGroup: (groupId: string) => ipcRenderer.invoke('team-session:list-for-group', groupId),
   teamSessionGetByEvent: (calendarEventId: string) => ipcRenderer.invoke('team-session:get-by-event', calendarEventId),
   teamSessionStart: (id: string, responsibleUserIds: string[], queueFilter: string | null) => ipcRenderer.invoke('team-session:start', id, responsibleUserIds, queueFilter),
   teamSessionEnd: (id: string) => ipcRenderer.invoke('team-session:end', id),
   teamSessionGetObjectives: (sessionId: string) => ipcRenderer.invoke('team-session:get-objectives', sessionId),
   teamSessionSetObjectives: (sessionId: string, objectiveIds: string[], kpiIds: string[]) => ipcRenderer.invoke('team-session:set-objectives', sessionId, objectiveIds, kpiIds),
-  teamSessionHasLive: () => ipcRenderer.invoke('team-session:has-live'),
   teamSessionListMyLive: () => ipcRenderer.invoke('team-session:list-my-live'),
-  teamSessionReportGame: (sessionId: string, matchId: string) => ipcRenderer.invoke('team-session:report-game', sessionId, matchId),
   teamSessionListGames: (sessionId: string) => ipcRenderer.invoke('team-session:list-games', sessionId),
   teamSessionFetchMatch: (gameId: string) => ipcRenderer.invoke('team-session:fetch-match', gameId),
   teamSessionSetOurTeamId: (gameId: string, ourTeamId: 100 | 200) => ipcRenderer.invoke('team-session:set-our-team-id', gameId, ourTeamId),
@@ -326,7 +317,6 @@ const api = {
   // Recording — library (scan external folders)
   scanRecordings: () => ipcRenderer.invoke('recording:scan'),
   getRecording: (gameId: string) => ipcRenderer.invoke('recording:get', gameId),
-  getRecordingById: (recordingId: string) => ipcRenderer.invoke('recording:get-by-id', recordingId),
   linkRecordingFile: (gameId: string) => ipcRenderer.invoke('recording:link-file', gameId),
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => ipcRenderer.invoke('recording:set-youtube', gameId, youtubeUrl),
   deleteReview: (gameId: string) => ipcRenderer.invoke('review:delete', gameId),
@@ -340,7 +330,6 @@ const api = {
   refreshGameEvents: (gameId: string, forceRefetch = true) => ipcRenderer.invoke('stats:refresh-game-events', gameId, forceRefetch),
   deleteRecordingById: (recordingId: string) => ipcRenderer.invoke('recording:delete-by-id', recordingId),
   resetDismissedRecordings: () => ipcRenderer.invoke('recording:reset-dismissed'),
-  getRecordingScanPaths: () => ipcRenderer.invoke('recording:get-scan-paths'),
   listGamesWithRecordings: () => ipcRenderer.invoke('recording:list-with-games'),
   // Recording — in-app capture
   pickRecordingFolder: () => ipcRenderer.invoke('recording:pick-folder'),
@@ -398,12 +387,9 @@ const api = {
   listMistakeTags: (opts?: { includeArchived?: boolean }) => ipcRenderer.invoke('mistake:list-tags', opts),
   createMistakeTag: (args: { label: string; category: string; icon?: string; color?: string }) =>
     ipcRenderer.invoke('mistake:create-tag', args),
-  archiveMistakeTag: (tagId: string) => ipcRenderer.invoke('mistake:archive-tag', tagId),
   listMistakesByGame: (gameId: string) => ipcRenderer.invoke('mistake:list-by-game', gameId),
   createMistake: (args: { gameId: string; tagId: string; gameTimeSec: number; videoTimeMs?: number; note?: string; severity?: number; recordingId?: string }) =>
     ipcRenderer.invoke('mistake:create', args),
-  updateMistake: (args: { id: string; note?: string | null; severity?: number; tagId?: string }) =>
-    ipcRenderer.invoke('mistake:update', args),
   deleteMistake: (id: string) => ipcRenderer.invoke('mistake:delete', id),
   autoDetectMistakes: (gameId: string) => ipcRenderer.invoke('mistake:auto-detect', gameId),
   coachStartTagExperiment: (tagSlug: string) => ipcRenderer.invoke('coach:start-tag-experiment', tagSlug),
@@ -422,25 +408,17 @@ const api = {
   teamCodexDelete: (id: string) => ipcRenderer.invoke('team-codex:delete', id),
   getMistakeTopTags: (opts?: { days?: number; role?: string | null; champion?: string | null }) =>
     ipcRenderer.invoke('mistake-stats:top-tags', opts),
-  getMistakeTrend: (opts: { tagSlugs?: string[]; days?: number; role?: string | null; champion?: string | null }) =>
-    ipcRenderer.invoke('mistake-stats:trend', opts),
-  getMistakeHeatmap: (opts: { days?: number; role?: string | null; champion?: string | null }) =>
-    ipcRenderer.invoke('mistake-stats:heatmap', opts),
 
   // Bookmarks — per-recording free markers (works even on orphan recordings).
   listBookmarks: (recordingId: string) => ipcRenderer.invoke('bookmark:list-by-recording', recordingId),
   createBookmark: (args: { recordingId: string; videoTimeMs: number; label?: string; color?: string }) =>
     ipcRenderer.invoke('bookmark:create', args),
-  updateBookmark: (args: { id: string; label?: string | null; color?: string | null; videoTimeMs?: number }) =>
-    ipcRenderer.invoke('bookmark:update', args),
   deleteBookmark: (id: string) => ipcRenderer.invoke('bookmark:delete', id),
 
   // ── Team management ────────────────────────────────────────────────────────
   listTeams: (opts?: { isOpponent?: boolean }) => ipcRenderer.invoke('team:list', opts),
-  getTeam: (id: string) => ipcRenderer.invoke('team:get', id),
   createTeam: (data: { name: string; tag?: string; logo?: string; notes?: string; isOpponent?: boolean }) =>
     ipcRenderer.invoke('team:create', data),
-  updateTeam: (id: string, data: Record<string, unknown>) => ipcRenderer.invoke('team:update', id, data),
   linkTeamToGroup: (teamId: string, groupId: string | null) => ipcRenderer.invoke('team:link-group', teamId, groupId),
   deleteTeam: (id: string) => ipcRenderer.invoke('team:delete', id),
   addTeamMember: (teamId: string, data: { displayName: string; ign?: string; tagLine?: string; region?: string; role: string; puuid?: string }) =>
@@ -461,8 +439,6 @@ const api = {
     ipcRenderer.invoke('team:compute-custom-stats', teamId, gameType),
   computeCombinedStats: (teamId: string, opts?: { minTogether?: number }) =>
     ipcRenderer.invoke('team:compute-combined-stats', teamId, opts),
-  computeOpponentDashboard: (teamId: string) =>
-    ipcRenderer.invoke('team:compute-opponent-dashboard', teamId),
   listChampionPool: (memberId: string) => ipcRenderer.invoke('team:pool-list', memberId),
   upsertChampionPool: (memberId: string, championKey: string, role: string, data: Record<string, unknown>) =>
     ipcRenderer.invoke('team:pool-upsert', memberId, championKey, role, data),
@@ -481,7 +457,6 @@ const api = {
   championCutout: (championKey: string, skin?: number) => ipcRenderer.invoke('champion-cutout:get', championKey, skin),
 
   listDrafts: () => ipcRenderer.invoke('draft:list'),
-  getDraft: (id: string) => ipcRenderer.invoke('draft:get', id),
   createDraft: (data: { name: string; vsTeamId?: string | null; bluePicks?: string[]; blueBans?: string[]; redPicks?: string[]; redBans?: string[]; myTeamSide?: 'blue' | 'red'; notes?: string }) =>
     ipcRenderer.invoke('draft:create', data),
   updateDraft: (id: string, data: Record<string, unknown>) => ipcRenderer.invoke('draft:update', id, data),
@@ -548,7 +523,6 @@ const api = {
   setClipYoutubeUrl: (clipId: string, url: string) => ipcRenderer.invoke('clip:set-youtube', clipId, url),
   setClipTempShare: (clipId: string, url: string, expiryHours: number) =>
     ipcRenderer.invoke('clip:set-temp-share', clipId, url, expiryHours),
-  generateThumbnail: (recordingId: string) => ipcRenderer.invoke('recording:generate-thumbnail', recordingId),
 
   // Sharing (files + temp upload)
   sendFileToDiscord: (filePath: string, webhookUrl: string, caption?: string) =>

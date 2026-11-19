@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ChampionMatchup } from '@/components/ChampionMatchup'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,8 @@ import { criterionText } from '@/components/Assistant/ExperimentPanel'
 import type { CoachObjectiveCheck } from '@/components/Assistant/types'
 import { MatchHistoryPicker } from '@/components/Session/MatchHistoryPicker'
 import { AccountBadge } from '@/components/ui/AccountBadge'
-import { useLocalizedFundamental, useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
+import { useLocalizedFundamental, useLocalizedFundamentalList } from '@/lib/constants/useFundamentals'
+import { findFundamentalLabel } from '@/lib/fundamentals'
 import { getKPIsForObjective } from '@/lib/constants/fundamentals'
 import type { ReviewBiasSignal } from '@/lib/ipc'
 import { useTranslation } from 'react-i18next'
@@ -50,14 +51,12 @@ export function ReviewPage() {
   const activeSession = useSessionStore((s) => s.activeSession)
   const refreshSession = useSessionStore((s) => s.refreshSession)
   const loadActiveSession = useSessionStore((s) => s.loadActiveSession)
-  const clearGameEndData = useUserStore((s) => s.clearGameEndData)
   const user = useUserStore((s) => s.user)
   const navigate = useNavigate()
-  const location = useLocation()
   const [searchParams] = useSearchParams()
   const requestedGameId = searchParams.get('gameId')
   const { toast } = useToast()
-  const allFundamentals = useLocalizedFundamentals().flatMap((c) => c.fundamentals)
+  const allFundamentals = useLocalizedFundamentalList()
 
   // When a gameId is provided but there's no active session, load the game's session from DB
   const [historicContext, setHistoricContext] = useState<{ game: any; session: any } | null>(null)
@@ -107,7 +106,7 @@ export function ReviewPage() {
   }, [session])
 
   const objectiveLabelsStr = objectiveIds
-    .map((id) => allFundamentals.find((f) => f.id === id)?.label ?? id)
+    .map((id) => findFundamentalLabel(id, allFundamentals))
     .join(', ')
   const activeSubObjective = session?.subObjective
 
@@ -158,7 +157,7 @@ export function ReviewPage() {
   const saveDraft = useCallback(() => {
     if (!draftKey || saved) return
     sessionStorage.setItem(draftKey, JSON.stringify({ timelineNotes, kpiScores, kpiNotes, freeText, objectiveRespected }))
-  }, [draftKey, timelineNotes, kpiScores, freeText, objectiveRespected, saved])
+  }, [draftKey, timelineNotes, kpiScores, kpiNotes, freeText, objectiveRespected, saved])
 
   const clearDraft = useCallback(() => {
     if (draftKey) sessionStorage.removeItem(draftKey)
@@ -173,26 +172,6 @@ export function ReviewPage() {
   useEffect(() => {
     loadActiveSession()
   }, [loadActiveSession])
-
-  const postGameSetupHandledRef = useRef(false)
-
-  useEffect(() => {
-    const st = (location.state as { postGameSetup?: { title?: string } } | undefined)?.postGameSetup
-    if (!st) {
-      postGameSetupHandledRef.current = false
-      return
-    }
-    if (postGameSetupHandledRef.current) return
-    postGameSetupHandledRef.current = true
-    if (st.title) {
-      toast({
-        title: 'Après partie',
-        description: `« ${st.title} » — la VOD est liée ci-dessous.`,
-        variant: 'default',
-      })
-    }
-    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: {} })
-  }, [location.state, location.pathname, location.search, navigate, toast])
 
   useEffect(() => {
     if (!latestGame?.id || objectiveIds.length === 0) {
@@ -232,6 +211,12 @@ export function ReviewPage() {
       } catch {
         setKpiScores({})
       }
+      try {
+        const parsedKpiNotes = JSON.parse(review.kpiNotes ?? '{}')
+        setKpiNotes(parsedKpiNotes && typeof parsedKpiNotes === 'object' ? parsedKpiNotes : {})
+      } catch {
+        setKpiNotes({})
+      }
       setFreeText(review.freeText ?? '')
       setObjectiveRespected(review.objectiveRespected ?? null)
       return
@@ -255,6 +240,7 @@ export function ReviewPage() {
 
     setTimelineNotes([])
     setKpiScores({})
+    setKpiNotes({})
     setFreeText('')
     setObjectiveRespected(null)
 
@@ -272,6 +258,9 @@ export function ReviewPage() {
         .catch(() => {})
       return () => { cancelled = true }
     }
+  // Keyed on the ids on purpose: a refreshed session hands over new game
+  // objects, and re-running this would wipe what the player is typing.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession?.id, latestGame?.id])
 
   // Pre-fill "objective respected" from the experiment (never over a saved review or a draft).
@@ -555,7 +544,6 @@ export function ReviewPage() {
       setSavedGameId(latestGame.id)
       setSaved(true)
       clearDraft()
-      clearGameEndData()
       // Refresh active session if it exists; otherwise reload the historic context
       if (activeSession) {
         await refreshSession()
@@ -598,7 +586,6 @@ export function ReviewPage() {
     setRemovingGame(true)
     try {
       await window.api.deleteGame(latestGame.id)
-      clearGameEndData()
       await refreshSession()
       toast({ title: 'Game removed from session', variant: 'gold' })
       navigate('/session')

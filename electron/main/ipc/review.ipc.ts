@@ -70,22 +70,6 @@ export function registerReviewHandlers() {
     },
   )
 
-  ipcMain.handle('review:get-by-session', async (_event, sessionId: string) => {
-    const prisma = getPrisma()
-
-    const session = await prisma.session.findUnique({
-      where: { id: sessionId },
-      include: {
-        games: {
-          include: { review: true },
-          orderBy: { gameEndAt: 'asc' },
-        },
-      },
-    })
-
-    if (!session) return []
-    return session.games.filter((g) => g.review).map((g) => g.review)
-  })
 
   /** Returns a game and its parent session, even if the session is ended. Used for review from history. */
   ipcMain.handle('review:get-game-context', async (_event, gameId: string) => {

@@ -13,6 +13,7 @@ import {
   Pencil, X, ChevronLeft, ChevronRight, Play, Link2,
 } from 'lucide-react'
 import { AccountBadge } from '@/components/ui/AccountBadge'
+import { toNxmUrl } from '@/lib/mediaCore'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -92,7 +93,6 @@ function saveFolders(f: Folder[]) { localStorage.setItem(FOLDER_KEY, JSON.string
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function nxmUrl(p: string) { const n = p.replace(/\\/g, '/'); return n.startsWith('/') ? `nxm://${n}` : `nxm:///${n}` }
 function queueLabel(q: string) { return ({ soloq: 'SoloQ', flex: 'Flex', aram: 'ARAM', arena: 'Arena', custom: i18n.t('record.mode.custom'), normal: i18n.t('record.mode.normal') } as Record<string, string>)[q] ?? i18n.t('record.mode.unknown') }
 function queueBadgeColor(q: string) { return ({ soloq: 'text-hextech-gold border-hextech-gold/30', flex: 'text-blue-400 border-blue-400/30', aram: 'text-purple-400 border-purple-400/30', arena: 'text-orange-400 border-orange-400/30' } as Record<string, string>)[q] ?? 'text-hextech-text-dim border-hextech-border-dim' }
 
@@ -317,7 +317,7 @@ export function RecordPage() {
     } catch (err: any) {
       toast({ title: t('record.toast.deleteFailed'), description: err?.message ?? String(err), variant: 'destructive' })
     }
-  }, [removeSingleRecord, toast])
+  }, [removeSingleRecord, toast, t])
 
   const handleBulkDelete = useCallback(async () => {
     const ids = Array.from(selectedIds)
@@ -329,7 +329,7 @@ export function RecordPage() {
     setFolders(p => { const n = p.map(f => ({ ...f, recordingIds: f.recordingIds.filter(id => !selectedIds.has(id)) })); saveFolders(n); return n })
     setSelectedIds(new Set())
     if (failed > 0) toast({ title: t('record.toast.bulkDeleteFailed', { count: failed }), variant: 'destructive' })
-  }, [selectedIds, toast])
+  }, [selectedIds, toast, t])
 
   // ── Selection ───────────────────────────────────────────────────────────
 
@@ -537,7 +537,6 @@ export function RecordPage() {
       {!loading && filters.content !== 'clips' && folderGroups.map(({ folder, records: recs }) => (
         <RecordGroupSection
           key={folder.id}
-          groupKey={folder.id}
           label={
             editingFolderId === folder.id ? (
               <div className="flex items-center gap-1.5">
@@ -579,7 +578,6 @@ export function RecordPage() {
       {!loading && filters.content !== 'clips' && dateGroups.map(([dateKey, recs]) => (
         <RecordGroupSection
           key={dateKey}
-          groupKey={dateKey}
           label={<span className="capitalize">{formatDateLabel(dateKey)}</span>}
           records={recs}
           selectedIds={selectedIds}
@@ -725,7 +723,6 @@ export function RecordPage() {
 // ── Group section ─────────────────────────────────────────────────────────────
 
 interface RecordGroupSectionProps {
-  groupKey: string
   label: React.ReactNode
   records: RecordEntry[]
   selectedIds: Set<string>
@@ -739,7 +736,7 @@ interface RecordGroupSectionProps {
   onTryLink?: (recordingId: string) => void
 }
 
-function RecordGroupSection({ groupKey, label, records, selectedIds, collapsed, onToggleCollapse, onToggleGroupSelect, onToggleCard, onOpen, onDelete, onRemoveFromFolder, onTryLink }: RecordGroupSectionProps) {
+function RecordGroupSection({ label, records, selectedIds, collapsed, onToggleCollapse, onToggleGroupSelect, onToggleCard, onOpen, onDelete, onRemoveFromFolder, onTryLink }: RecordGroupSectionProps) {
   const ids = records.map(r => r.recordingId)
   const allSelected = ids.length > 0 && ids.every(id => selectedIds.has(id))
   const someSelected = ids.some(id => selectedIds.has(id))
@@ -838,7 +835,7 @@ function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, o
       <div className="relative w-full cursor-pointer" style={{ paddingTop: '56.25%' }} onClick={() => onOpen(r)}>
         <div className="absolute inset-0 bg-hextech-background/80">
           {r.thumbnailPath
-            ? <img src={nxmUrl(r.thumbnailPath)} alt={r.champion} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            ? <img src={toNxmUrl(r.thumbnailPath)} alt={r.champion} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
             : <div className="w-full h-full flex items-center justify-center"><Film className="h-8 w-8 text-hextech-text-dim/20" /></div>}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
         </div>
@@ -982,7 +979,7 @@ function ClipCard({ clip, onOpen, onDelete }: { clip: ClipEntry; onOpen: () => v
       <div className="relative w-full cursor-pointer" style={{ paddingTop: '56.25%' }} onClick={onOpen}>
         <div className="absolute inset-0 bg-hextech-background/80">
           {clip.thumbnailPath
-            ? <img src={nxmUrl(clip.thumbnailPath)} alt={clip.title ?? t('record.clips.clip')} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            ? <img src={toNxmUrl(clip.thumbnailPath)} alt={clip.title ?? t('record.clips.clip')} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
             : <div className="w-full h-full flex items-center justify-center"><Scissors className="h-8 w-8 text-hextech-text-dim/20" /></div>}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
         </div>

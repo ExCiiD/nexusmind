@@ -28,7 +28,7 @@ import { createReadStream, statSync, readFileSync, existsSync } from 'fs'
 import { autoUpdater } from 'electron-updater'
 import { initDatabase, getPrisma } from './database'
 import { GameDetector } from './gameDetector'
-import { recordingManager, isFfmpegAvailable, generateThumbnailForRecording, mergeAudioIntoVideo, waitUntilReadable, probeReadable, type PcmAudioFormat, type RecordingSettings } from './recorder'
+import { recordingManager, isFfmpegAvailable, generateThumbnailForRecording, mergeAudioIntoVideo, waitUntilReadable, probeReadable, type RecordingSettings } from './recorder'
 import { wgcRecorder } from './wgcRecorder'
 import { RECORDER_BACKEND, getActiveRecorder } from './recorderBackend'
 import { resolveMicDeviceName } from './audio'
@@ -329,15 +329,6 @@ function createWindow() {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
-  ipcMain.handle('window:minimize', () => mainWindow?.minimize())
-  ipcMain.handle('window:maximize', () => {
-    if (mainWindow?.isMaximized()) {
-      mainWindow.unmaximize()
-    } else {
-      mainWindow?.maximize()
-    }
-  })
-  ipcMain.handle('window:close', () => mainWindow?.close())
 }
 
 async function bootstrap() {
@@ -657,7 +648,6 @@ async function bootstrap() {
         const startDelayMs = RECORDER_BACKEND === 'wgc' ? 0 : RECORDING_START_DELAY_MS
         const activeRecorder = getActiveRecorder()
 
-        const scheduledAt = Date.now()
         if (startDelayMs > 0) {
           console.log(`[main] Deferring recording spawn by ${startDelayMs}ms (backend=${RECORDER_BACKEND}) to let LoL settle into its final presentation mode`)
         } else {
@@ -728,7 +718,7 @@ async function bootstrap() {
 
       // The WGC backend remuxes `.webm` → `.mp4` during finalize, so the final
       // on-disk path is only known after `waitForDone`. Re-read it here.
-      let finalPath = activeRecorder.getPendingRecording() ?? initialStopPath
+      const finalPath = activeRecorder.getPendingRecording() ?? initialStopPath
       console.log(`[main] Recording finalized → ${finalPath}`)
 
       const fileSize = existsSync(finalPath)
@@ -902,9 +892,6 @@ function setupAutoUpdater() {
     mainWindow?.webContents.send('updater:update-available', info?.version)
   })
 
-  autoUpdater.on('update-not-available', () => {
-    mainWindow?.webContents.send('updater:update-not-available')
-  })
 
   autoUpdater.on('download-progress', (progress) => {
     mainWindow?.webContents.send('updater:download-progress', Math.round(progress.percent))

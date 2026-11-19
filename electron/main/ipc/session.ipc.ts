@@ -123,7 +123,7 @@ export function registerSessionHandlers() {
 
     const resolveAccountInfo = (matchId: string | null): { accountName: string; accountProfileIconId: number } => {
       const defaultName = user.displayName || user.summonerName
-      const defaultIconId = (user as any).profileIconId ?? 0
+      const defaultIconId = user.profileIconId ?? 0
       if (!matchId) return { accountName: defaultName, accountProfileIconId: defaultIconId }
       const raw = cacheByMatchId.get(matchId)
       if (!raw) return { accountName: defaultName, accountProfileIconId: defaultIconId }
@@ -135,7 +135,7 @@ export function registerSessionHandlers() {
         const acc = accounts.find((a) => a.puuid === matchedPuuid)
         return {
           accountName: acc?.gameName ?? defaultName,
-          accountProfileIconId: (acc as any)?.profileIconId ?? 0,
+          accountProfileIconId: acc?.profileIconId ?? 0,
         }
       } catch {
         return { accountName: defaultName, accountProfileIconId: defaultIconId }
@@ -289,6 +289,10 @@ export function registerSessionHandlers() {
             duration: stats.duration,
             win: stats.win,
             gameEndAt: stats.gameEndAt,
+            // Same source as the post-game detector; without it imported games
+            // stayed 'unknown'. isSessionEligible keeps its default: the player
+            // picked these games for the session themselves.
+            queueType: stats.queueType ?? 'unknown',
           },
         })
         imported.push(game)

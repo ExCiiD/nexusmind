@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { extractPlayerStats } from '../../electron/main/riotClient'
 
 vi.mock('../../electron/main/keychain', () => ({

@@ -1,15 +1,8 @@
 import { app, BrowserWindow, desktopCapturer, ipcMain, screen } from 'electron'
 import { spawn } from 'child_process'
-import { createWriteStream, existsSync, mkdirSync, statSync, unlinkSync, WriteStream } from 'fs'
+import { createWriteStream, unlinkSync, WriteStream } from 'fs'
 import { join } from 'path'
-import { getFfmpegBinaryPath, type RecordingSettings } from './recorder'
-
-const QUALITY_HEIGHT: Record<string, number> = {
-  source: 0,
-  '1440p': 1440,
-  '1080p': 1080,
-  '720p': 720,
-}
+import { ensureRecordingsDir, getFfmpegBinaryPath, getFileSize, QUALITY_HEIGHT, type RecordingSettings } from './recorder'
 
 const ENCODER_BITRATE_KBPS: Record<string, number> = {
   source: 12000,
@@ -59,11 +52,7 @@ export class WgcRecorder {
   private ipcBound = false
 
   getRecordingsDir(customPath?: string | null): string {
-    const dir = customPath && customPath.trim()
-      ? customPath.trim()
-      : join(app.getPath('userData'), 'recordings')
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-    return dir
+    return ensureRecordingsDir(customPath)
   }
 
   /**
@@ -282,7 +271,7 @@ export class WgcRecorder {
       ws.end(() => {
         const elapsed = Date.now() - this.startedAt
         const webmPath = this.currentFilePath
-        const rawSize = webmPath ? safeSize(webmPath) : 0
+        const rawSize = webmPath ? getFileSize(webmPath) : 0
         console.log(`[wgcRecorder] raw webm written → ${webmPath} (${rawSize} bytes, ${elapsed}ms)`)
 
         // MediaRecorder produces a "live" WebM stream without a Duration field,
@@ -354,7 +343,7 @@ export class WgcRecorder {
       })
     })
 
-    const mp4Size = safeSize(mp4Path)
+    const mp4Size = getFileSize(mp4Path)
     try { unlinkSync(webmPath) } catch { /* ignore */ }
 
     this.currentFilePath = mp4Path
@@ -398,10 +387,6 @@ export class WgcRecorder {
     }
     this.captureWindow = null
   }
-}
-
-function safeSize(filePath: string): number {
-  try { return statSync(filePath).size } catch { return 0 }
 }
 
 export const wgcRecorder = new WgcRecorder()

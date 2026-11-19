@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app, BrowserWindow, desktopCapturer, shell } from 'electron'
+import { ipcMain, dialog, app, BrowserWindow, shell } from 'electron'
 import { getPrisma } from '../database'
 import { z } from 'zod'
 import { validatedHandle, id, httpsUrl, youtubeUrl as youtubeUrlSchema } from './validate'
@@ -58,23 +58,13 @@ function dismissPath(filePath: string): void {
   saveDismissedPaths(paths)
 }
 
-/** Deletes a recording's video file + thumbnail from disk. */
-function deleteRecordingFiles(rec: { filePath?: string | null; thumbnailPath?: string | null }) {
-  if (rec.filePath && existsSync(rec.filePath)) {
-    try { unlinkSync(rec.filePath) } catch { /* ignore */ }
+/** Deletes a recording's or a clip's video file + thumbnail from disk. */
+function deleteMediaFiles(media: { filePath?: string | null; thumbnailPath?: string | null }) {
+  if (media.filePath && existsSync(media.filePath)) {
+    try { unlinkSync(media.filePath) } catch { /* ignore */ }
   }
-  if (rec.thumbnailPath && existsSync(rec.thumbnailPath)) {
-    try { unlinkSync(rec.thumbnailPath) } catch { /* ignore */ }
-  }
-}
-
-/** Deletes a clip's video file + thumbnail from disk. */
-function deleteClipFiles(clip: { filePath?: string | null; thumbnailPath?: string | null }) {
-  if (clip.filePath && existsSync(clip.filePath)) {
-    try { unlinkSync(clip.filePath) } catch { /* ignore */ }
-  }
-  if (clip.thumbnailPath && existsSync(clip.thumbnailPath)) {
-    try { unlinkSync(clip.thumbnailPath) } catch { /* ignore */ }
+  if (media.thumbnailPath && existsSync(media.thumbnailPath)) {
+    try { unlinkSync(media.thumbnailPath) } catch { /* ignore */ }
   }
 }
 
@@ -276,7 +266,7 @@ async function backfillOrphanRecordings(opts: { recordingIds?: string[] } = {}):
   const matchDataCache = new Map<string, { data: any; region: string }>()
   async function loadMatch(matchId: string, region: string): Promise<any | null> {
     if (matchDataCache.has(matchId)) return matchDataCache.get(matchId)!.data
-    const cached = await prisma.matchCache.findUnique({ where: { matchId } })
+    const cached = await prisma.matchCache.findUnique({ where: { matchId }, select: { matchJson: true } })
     if (cached?.matchJson) {
       try {
         const parsed = JSON.parse(cached.matchJson)
@@ -440,8 +430,12 @@ async function backfillOrphanRecordings(opts: { recordingIds?: string[] } = {}):
     // BOTH matchJson and timelineJson — matchJson is already cached by
     // loadMatch() above, timelineJson is the missing piece.
     try {
-      const existingCache = await prisma.matchCache.findUnique({ where: { matchId: bestMatch.matchId } })
-      if (!existingCache?.timelineJson) {
+      // Presence check only: don't read the (multi-MB) timeline itself.
+      const hasTimeline = await prisma.matchCache.findFirst({
+        where: { matchId: bestMatch.matchId, timelineJson: { not: null } },
+        select: { id: true },
+      })
+      if (!hasTimeline) {
         const timelineData = await getMatchTimeline(bestMatch.matchId, bestMatch.region)
         if (timelineData) {
           await prisma.matchCache.upsert({
@@ -603,8 +597,6 @@ export function registerRecordingHandlers() {
         })
         newlyOrphanedIds.push({ id: rec.id, filePath: file.path })
         orphanedCount++
-      } else if (!basename(file.path).startsWith('clip_')) {
-        console.log('[scan] Skipping file:', file.path, { inMatched, inExisting, inDismissed })
       }
     }
 
@@ -752,10 +744,6 @@ export function registerRecordingHandlers() {
     return prisma.recording.findUnique({ where: { gameId } })
   })
 
-  ipcMain.handle('recording:get-by-id', async (_event, recordingId: string) => {
-    const prisma = getPrisma()
-    return prisma.recording.findUnique({ where: { id: recordingId } })
-  })
 
   ipcMain.handle('recording:link-file', async (_event, gameId: string) => {
     const prisma = getPrisma()
@@ -831,11 +819,11 @@ export function registerRecordingHandlers() {
     }
     for (const rec of recordings) {
       if (rec.filePath) dismissPath(rec.filePath)
-      deleteRecordingFiles(rec)
+      deleteMediaFiles(rec)
       const clips: any[] = await prisma.$queryRawUnsafe(
         `SELECT * FROM "Clip" WHERE "recordingId" = ?`, rec.id,
       )
-      for (const clip of clips) deleteClipFiles(clip)
+      for (const clip of clips) deleteMediaFiles(clip)
       await prisma.$executeRawUnsafe(`DELETE FROM "Clip" WHERE "recordingId" = ?`, rec.id)
     }
     await prisma.recording.deleteMany({ where: { gameId } })
@@ -851,11 +839,11 @@ export function registerRecordingHandlers() {
       throw new Error('Cannot delete a recording that is currently being captured.')
     }
     if (rec.filePath) dismissPath(rec.filePath)
-    deleteRecordingFiles(rec)
+    deleteMediaFiles(rec)
     const clips: any[] = await prisma.$queryRawUnsafe(
       `SELECT * FROM "Clip" WHERE "recordingId" = ?`, rec.id,
     )
-    for (const clip of clips) deleteClipFiles(clip)
+    for (const clip of clips) deleteMediaFiles(clip)
     await prisma.$executeRawUnsafe(`DELETE FROM "Clip" WHERE "recordingId" = ?`, rec.id)
     await prisma.recording.delete({ where: { id: recordingId } })
     return { success: true }
@@ -879,19 +867,6 @@ export function registerRecordingHandlers() {
     return { success: true }
   })
 
-  ipcMain.handle('recording:get-scan-paths', async () => {
-    const prisma = getPrisma()
-    const user = await prisma.user.findFirst({ where: { isActive: true } })
-    const paths = getRecordingPaths(user?.recordingPath)
-    if (user?.externalRecordingPath) {
-      paths['external'] = user.externalRecordingPath
-    }
-    return Object.entries(paths).map(([source, dir]) => ({
-      source,
-      dir,
-      exists: existsSync(dir),
-    }))
-  })
 
   // ── Capture control ──────────────────────────────────────────────────────────
 
@@ -1043,10 +1018,6 @@ export function registerRecordingHandlers() {
     return recordingManager.getRecordingsDir()
   })
 
-  ipcMain.handle('recording:get-desktop-source', async () => {
-    const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
-    return sources[0]?.id ?? null
-  })
 
   /**
    * Returns all recordings joined with their game/session data, sorted newest first.
@@ -1172,12 +1143,6 @@ export function registerRecordingHandlers() {
 
   // ── Thumbnail ────────────────────────────────────────────────────────────────
 
-  ipcMain.handle('recording:generate-thumbnail', async (_e, recordingId: string) => {
-    const prisma = getPrisma()
-    const rec = await prisma.recording.findUnique({ where: { id: recordingId } })
-    if (!rec?.filePath) return null
-    return generateThumbnailForRecording(recordingId, rec.filePath)
-  })
 
   // ── Clip handlers ────────────────────────────────────────────────────────────
 

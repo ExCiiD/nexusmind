@@ -23,7 +23,7 @@ import type { Team, TeamSynergyStats } from '@/lib/ipc'
 import { DashboardLayout } from './DashboardLayout'
 
 interface Props {
-  team: Team | null
+  team: Team
 }
 
 const CACHE_KEY_PREFIX = 'nexusmind:combinedStats:'
@@ -61,11 +61,6 @@ export function DashboardTab({ team }: Props) {
   // Hydrate from cache when team changes, falling back to any cached entry
   // if the selected `minTogether` doesn't have one yet.
   useEffect(() => {
-    if (!team) {
-      setStats(null)
-      hydratedTeamRef.current = null
-      return
-    }
     if (hydratedTeamRef.current === team.id) return
     const cache = loadCache(team.id)
     const match = cache[String(minTogether)]
@@ -87,7 +82,7 @@ export function DashboardTab({ team }: Props) {
   // Skipped on first visit (no stats present yet) so we don't surprise the
   // user with a long fetch.
   useEffect(() => {
-    if (!team || loading) return
+    if (loading) return
     if (hydratedTeamRef.current !== team.id) return
     const cache = loadCache(team.id)
     const cached = cache[String(minTogether)]
@@ -103,7 +98,6 @@ export function DashboardTab({ team }: Props) {
   }, [minTogether, team])
 
   const handleCompute = async () => {
-    if (!team) return
     setLoading(true)
     try {
       // Dashboard uses the combined endpoint so flex + scrim + tournament
@@ -134,14 +128,6 @@ export function DashboardTab({ team }: Props) {
     } finally {
       setLoading(false)
     }
-  }
-
-  if (!team) {
-    return (
-      <Card className="p-6 text-center text-hextech-text-dim">
-        {t('team.dashboard.noTeam', { defaultValue: 'Select or create a team first.' })}
-      </Card>
-    )
   }
 
   return (
@@ -176,7 +162,7 @@ export function DashboardTab({ team }: Props) {
           <Button
             size="sm"
             onClick={handleCompute}
-            disabled={loading || !team || (team.members ?? []).length < minTogether}
+            disabled={loading || (team.members ?? []).length < minTogether}
           >
             {loading
               ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />

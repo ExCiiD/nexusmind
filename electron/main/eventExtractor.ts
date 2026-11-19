@@ -174,7 +174,6 @@ function championKillEvent(e: RawTimelineEvent, participants: ParticipantInfo[],
   const isKiller = e.killerId === playerPid
   const isVictim = e.victimId === playerPid
   const isAssist = assists.includes(playerPid)
-  const isPlayer = isKiller || isVictim || isAssist
 
   // Player-involved → classify as kill/death/assist with their POV.
   if (isVictim) {

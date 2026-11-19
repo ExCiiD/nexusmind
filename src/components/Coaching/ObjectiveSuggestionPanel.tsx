@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Lightbulb, ChevronRight } from 'lucide-react'
-import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
+import { useLocalizedFundamentalList } from '@/lib/constants/useFundamentals'
 import type { Fundamental } from '@/lib/constants/fundamentals'
 
 interface Suggestion {
@@ -75,7 +75,7 @@ function buildSuggestions(
 }
 
 export function ObjectiveSuggestionPanel({ assessmentScores, onAccept }: ObjectiveSuggestionPanelProps) {
-  const allFundamentals = useLocalizedFundamentals().flatMap((c) => c.fundamentals)
+  const allFundamentals = useLocalizedFundamentalList()
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
 
   useEffect(() => {
@@ -86,7 +86,7 @@ export function ObjectiveSuggestionPanel({ assessmentScores, onAccept }: Objecti
     ]).then(([history, patterns]) => {
       setSuggestions(buildSuggestions(assessmentScores, allFundamentals, history, patterns?.highDeathsWarning ?? false))
     })
-  }, [assessmentScores, allFundamentals.length])
+  }, [assessmentScores, allFundamentals])
 
   if (suggestions.length === 0) return null
 

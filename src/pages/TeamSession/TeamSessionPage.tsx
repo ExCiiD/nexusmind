@@ -15,6 +15,7 @@ import { collabErrorKey } from '@/lib/collab'
 import { canManageSession } from '@/lib/permissions'
 import { FundamentalPickerDialog } from '@/components/Session/FundamentalPickerDialog'
 import { mergedFundamentalCategories, getAllFundamentalsForGroup } from '@/lib/fundamentals'
+import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { countdownState } from '@/lib/teamSessionsCore'
 import { gamesNeedingReviewPrompt } from '@/lib/teamSessionReviewsCore'
 import { TeamSessionGameCard } from '@/components/TeamSession/TeamSessionGameCard'
@@ -96,17 +97,22 @@ export function TeamSessionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only restart the interval on a status change, not on every poll's new session object
   }, [session?.status, load])
 
+  // The 1 s clock only drives the countdown of a scheduled session: no need to
+  // re-render this page every second once it is live or ended.
+  const isScheduled = session?.status === 'scheduled'
   useEffect(() => {
+    if (!isScheduled) return
     const id = setInterval(() => setNow(new Date()), 1_000)
     return () => clearInterval(id)
-  }, [])
+  }, [isScheduled])
 
   const group = useMemo(() => groups.find((g) => g.id === session?.groupId), [groups, session])
   const myMember = group?.members.find((m) => m.userId === myUserId)
   const canManage = !!group && canManageSession(group.myRole, myMember?.isCaptain ?? false)
 
-  const categories = useMemo(() => mergedFundamentalCategories(fundamentals), [fundamentals])
-  const allFundamentals = useMemo(() => getAllFundamentalsForGroup(fundamentals), [fundamentals])
+  const baseCategories = useLocalizedFundamentals()
+  const categories = useMemo(() => mergedFundamentalCategories(fundamentals, baseCategories), [fundamentals, baseCategories])
+  const allFundamentals = useMemo(() => getAllFundamentalsForGroup(fundamentals, baseCategories), [fundamentals, baseCategories])
 
   const [selectedObjectives, setSelectedObjectives] = useState<string[]>([])
   const [selectedKpiIds, setSelectedKpiIds] = useState<string[]>([])

@@ -11,7 +11,7 @@ import type { Team, TeamMember, ChampionPoolEntry, TeamSynergyStats } from '@/li
 import { BulkImportModal } from './BulkImportModal'
 import { DashboardLayout } from './DashboardLayout'
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
-import { ScopeDialog, scopeToMatchCount, type FetchScope } from '@/components/team/ScopeDialog'
+import { ScopeDialog, type FetchScope } from '@/components/team/ScopeDialog'
 import { useBackgroundJobsStore } from '@/store/useBackgroundJobsStore'
 
 const ROLES = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'] as const
@@ -59,7 +59,9 @@ export function ScoutingTab() {
     }
   }
 
-  useEffect(() => { load() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
+  // Mount only: load() picks the first opponent when none is active yet.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load() }, [])
 
   const handleCreate = async () => {
     if (!newName.trim()) return

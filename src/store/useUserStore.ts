@@ -36,20 +36,17 @@ interface User {
 
 interface UserStore {
   user: User | null
-  gameEndData: any | null
+  /** True until the first loadUser() settles (App waits for it before routing). */
   loading: boolean
 
   loadUser: () => Promise<void>
   setUser: (user: User) => void
   clearUser: () => void
-  setGameEndData: (data: any) => void
-  clearGameEndData: () => void
   addXp: (amount: number) => void
 }
 
 export const useUserStore = create<UserStore>((set, get) => ({
   user: null,
-  gameEndData: null,
   loading: true,
 
   loadUser: async () => {
@@ -64,10 +61,6 @@ export const useUserStore = create<UserStore>((set, get) => ({
   setUser: (user) => set({ user }),
 
   clearUser: () => set({ user: null }),
-
-  setGameEndData: (data) => set({ gameEndData: data }),
-
-  clearGameEndData: () => set({ gameEndData: null }),
 
   addXp: (amount) => {
     const user = get().user

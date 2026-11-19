@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Users, ListTree, Swords, Target, Loader2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -46,7 +46,7 @@ export function TeamPage() {
     if (!groupId && teamGroups.length > 0) setGroupId(teamGroups[0].id)
   }, [teamGroups, groupId])
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!groupId) return
     window.api.teamSetActiveGroup?.(groupId)
     setLoading(true)
@@ -59,9 +59,9 @@ export function TeamPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [groupId])
 
-  useEffect(() => { load() }, [groupId])
+  useEffect(() => { load() }, [load])
 
   if (collabLoading) {
     return <Loader2 className="h-6 w-6 animate-spin text-hextech-gold" />

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
 import { ExternalReviewModeStep } from './wizard/ExternalReviewModeStep'
 import { ExternalReviewCustomStep } from './wizard/ExternalReviewCustomStep'

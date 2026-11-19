@@ -29,10 +29,6 @@ const ANALYSIS_BACKFILL = 10
 
 const TAG_CATEGORIES = new Set(['macro', 'micro', 'vision', 'economy', 'draft'])
 
-function isoDay(d: Date): string {
-  return d.toISOString().slice(0, 10) // YYYY-MM-DD
-}
-
 /**
  * Case-insensitive champion filter. SQLite's default BINARY collation makes
  * Prisma `equals` case-sensitive (and `mode: 'insensitive'` is unsupported),
@@ -89,11 +85,6 @@ export function registerMistakeHandlers() {
     })
   })
 
-  ipcMain.handle('mistake:archive-tag', async (_e, tagId: string) => {
-    const prisma = getPrisma()
-    await prisma.mistakeTag.update({ where: { id: tagId }, data: { archivedAt: new Date() } })
-    return { success: true }
-  })
 
   ipcMain.handle('mistake:list-by-game', async (_e, gameId: string) => {
     const prisma = getPrisma()
@@ -131,14 +122,6 @@ export function registerMistakeHandlers() {
     })
   })
 
-  ipcMain.handle('mistake:update', async (_e, args: { id: string; note?: string | null; severity?: number; tagId?: string }) => {
-    const prisma = getPrisma()
-    const data: any = {}
-    if (args.note !== undefined) data.note = args.note?.slice(0, 1000) || null
-    if (typeof args.severity === 'number') data.severity = Math.min(3, Math.max(1, args.severity))
-    if (args.tagId) data.tagId = args.tagId
-    return prisma.mistake.update({ where: { id: args.id }, data, include: { tag: true } })
-  })
 
   ipcMain.handle('mistake:delete', async (_e, id: string) => {
     const prisma = getPrisma()
@@ -317,66 +300,5 @@ export function registerMistakeHandlers() {
       }))
   })
 
-  ipcMain.handle('mistake-stats:trend', async (_e, opts: { tagSlugs?: string[]; days?: number; role?: string | null; champion?: string | null }) => {
-    const prisma = getPrisma()
-    const days = Math.max(1, opts?.days ?? 30)
-    const since = new Date(Date.now() - days * 86_400_000)
-    const champ = (opts?.champion ?? '').trim().toLowerCase()
 
-    const all = await prisma.mistake.findMany({
-      where: {
-        createdAt: { gte: since },
-        ...(opts.tagSlugs?.length ? { tag: { slug: { in: opts.tagSlugs } } } : {}),
-        ...(opts?.role ? { game: { role: opts.role } } : {}),
-      },
-      include: { tag: true, game: { select: { champion: true } } },
-    })
-    const rows = all.filter((m) => championMatches(m.game?.champion, champ))
-
-    // Build a date matrix — every day in the window, even when empty,
-    // so the line chart renders without gaps.
-    const out: Record<string, Record<string, number>> = {}
-    for (let i = 0; i < days; i++) {
-      const d = new Date(Date.now() - i * 86_400_000)
-      out[isoDay(d)] = {}
-    }
-    for (const m of rows) {
-      const day = isoDay(m.createdAt)
-      const slug = m.tag.slug
-      out[day] = out[day] ?? {}
-      out[day][slug] = (out[day][slug] ?? 0) + 1
-    }
-    return Object.entries(out)
-      .map(([date, counts]) => ({ date, counts }))
-      .sort((a, b) => a.date.localeCompare(b.date))
-  })
-
-  ipcMain.handle('mistake-stats:heatmap', async (_e, opts: { days?: number; role?: string | null; champion?: string | null }) => {
-    const prisma = getPrisma()
-    const days = Math.max(1, opts?.days ?? 30)
-    const since = new Date(Date.now() - days * 86_400_000)
-    const champ = (opts?.champion ?? '').trim().toLowerCase()
-    const all = await prisma.mistake.findMany({
-      where: {
-        createdAt: { gte: since },
-        ...(opts?.role ? { game: { role: opts.role } } : {}),
-      },
-      include: { tag: true, game: { select: { champion: true } } },
-    })
-    const rows = all.filter((m) => championMatches(m.game?.champion, champ))
-    const out: Record<string, Record<string, number>> = {} // day → tagId → count
-    for (const m of rows) {
-      const day = isoDay(m.createdAt)
-      out[day] = out[day] ?? {}
-      out[day][m.tagId] = (out[day][m.tagId] ?? 0) + 1
-    }
-    const flat: Array<{ date: string; tagId: string; count: number; tagSlug: string; tagLabel: string }> = []
-    for (const [date, perTag] of Object.entries(out)) {
-      for (const [tagId, count] of Object.entries(perTag)) {
-        const tag = rows.find((r) => r.tagId === tagId)?.tag
-        flat.push({ date, tagId, count, tagSlug: tag?.slug ?? '', tagLabel: tag?.label ?? '' })
-      }
-    }
-    return flat
-  })
 }

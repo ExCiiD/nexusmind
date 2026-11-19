@@ -294,8 +294,6 @@ export const TIER_MASTERY_FLEX = 100_000
 /** A main or comfort not played for this long, while the player kept
  *  playing, drops one tier. */
 export const STALE_DAYS = 30
-/** @deprecated v1 threshold, kept for the start-up backfill in team.ipc.ts. */
-export const MIN_GAMES_FOR_FLEX = 10
 
 /** Win rate pulled toward 50 % by 10 imaginary games (5 won, 5 lost): 3/3
  *  reads 61 %, 30/50 reads 58 %. Null without games or win rate. */

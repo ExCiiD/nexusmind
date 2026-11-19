@@ -11,6 +11,13 @@ files:
   - prisma-client/**/*
   - prisma/schema.prisma
   - prisma/migrations/**/*
+  # Never read at runtime: transformers.js's default model cache, filled on
+  # the build machine (147 MB of whisper-tiny; the app downloads whisper-base
+  # into userData/whisper-cache), dependency source maps (~64 MB) and the
+  # typecheck's tsbuildinfo files.
+  - "!node_modules/@huggingface/transformers/.cache/**"
+  - "!**/*.map"
+  - "!out/*.tsbuildinfo"
 
 # FFmpeg 8.1 bundled to enable the upstream ddagrab ACCESS_LOST recovery
 # patch (feb 2024). ffmpeg-static 5.3.0 only ships 6.1.1, which is fatal to
@@ -21,8 +28,6 @@ extraResources:
 
 asarUnpack:
   - prisma-client/**/*
-  - node_modules/@prisma/engines/**/*
-  - node_modules/prisma/**/*
   - node_modules/ffmpeg-static/**/*
   # onnxruntime-node ships a prebuilt native .node binary per platform (used
   # by @huggingface/transformers for local Whisper transcription, Phase 5)

@@ -24,11 +24,6 @@ import {
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 
-function formatStatNumber(value: number | null | undefined, digits = 0): string {
-  if (value === null || value === undefined || Number.isNaN(value)) return '—'
-  return digits > 0 ? value.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits }) : Math.round(value).toLocaleString()
-}
-
 export function DetailedStatsPage() {
   const { t } = useTranslation()
   const { matchId } = useParams<{ matchId: string }>()

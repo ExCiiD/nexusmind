@@ -33,10 +33,6 @@ export function getSecret(service: string): string | null {
   return safeStorage.decryptString(encrypted)
 }
 
-export function hasSecret(service: string): boolean {
-  return existsSync(getKeychainPath(service))
-}
-
 export function deleteSecret(service: string): void {
   const path = getKeychainPath(service)
   if (existsSync(path)) unlinkSync(path)

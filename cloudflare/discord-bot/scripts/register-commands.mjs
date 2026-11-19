@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * One-off script: registers the bot's global slash commands with Discord.
- * Run this once after creating the bot (and again any time ../src/commands.ts
- * changes — this file keeps its own copy since it runs as plain Node, not
- * through the Worker's TS build; keep the two in sync by hand).
+ * Run this once after creating the bot, and again whenever a command's name
+ * or description changes here. The Worker routes on the command names
+ * (src/index.ts), so a new command needs a handler there too.
  *
  * Usage (from this folder):
  *   DISCORD_BOT_TOKEN=... DISCORD_APPLICATION_ID=... node scripts/register-commands.mjs

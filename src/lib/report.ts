@@ -1,4 +1,5 @@
 /** Renderer-side types for the weekly team/player report (E9). No new table — computed on demand from existing data. */
+import { randomHexToken } from './tokens'
 
 export interface MistakeTrend {
   label: string
@@ -35,9 +36,7 @@ export interface TeamWeeklyReport {
  *  calendar.ts's generateCalendarSubscriptionToken, long-lived and
  *  unguessable since there's no expiry, only explicit revocation. */
 export function generateReportShareToken(): string {
-  const bytes = new Uint8Array(20)
-  crypto.getRandomValues(bytes)
-  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+  return randomHexToken(20)
 }
 
 /** A persistent, revocable link to an already-computed report snapshot

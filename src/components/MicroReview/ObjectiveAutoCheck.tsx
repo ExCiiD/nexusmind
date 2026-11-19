@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { CheckCircle2, CircleDashed, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ObjectiveVerificationPayload } from '@/lib/microReview/types'
-import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
+import { useLocalizedFundamentalList } from '@/lib/constants/useFundamentals'
+import { findFundamentalLabel } from '@/lib/fundamentals'
 
 /**
  * Automatic post-game verification of the session objectives
@@ -12,7 +13,7 @@ import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
  */
 export function ObjectiveAutoCheck({ gameId, refreshKey, onVerdict }: { gameId: string; refreshKey: number; onVerdict?: (passed: boolean) => void }) {
   const { t } = useTranslation()
-  const fundamentals = useLocalizedFundamentals().flatMap((c) => c.fundamentals)
+  const fundamentals = useLocalizedFundamentalList()
   const [data, setData] = useState<ObjectiveVerificationPayload | null>(null)
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export function ObjectiveAutoCheck({ gameId, refreshKey, onVerdict }: { gameId: 
           <div key={r.fundamentalId} className="flex items-start gap-2 text-xs">
             <Icon className={cn('mt-0.5 h-3.5 w-3.5 shrink-0', r.status === 'passed' ? 'text-hextech-green' : r.status === 'failed' ? 'text-hextech-red' : 'text-hextech-text-dim')} />
             <span className="min-w-0">
-              <span className="font-medium text-hextech-text-bright">{fundamentals.find((f) => f.id === r.fundamentalId)?.label ?? r.fundamentalId}</span>
+              <span className="font-medium text-hextech-text-bright">{findFundamentalLabel(r.fundamentalId, fundamentals)}</span>
               <span className="text-hextech-text"> — {t(`objectiveCheck.rule.${r.ruleId}`, { warded: r.objectivesWarded ?? 0, total: r.objectivesTotal ?? 0, cs: r.csDiff10 ?? '—' })}</span>
               <span className={cn('ml-1.5 text-[10px] font-semibold', r.status === 'passed' ? 'text-hextech-green' : r.status === 'failed' ? 'text-hextech-red' : 'text-hextech-text-dim')}>{t(`objectiveCheck.status.${r.status}`)}</span>
             </span>

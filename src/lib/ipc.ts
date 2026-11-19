@@ -157,19 +157,6 @@ export interface MistakeTopTagEntry {
   lastAt: string
 }
 
-export interface MistakeTrendEntry {
-  date: string // YYYY-MM-DD
-  counts: Record<string, number>
-}
-
-export interface MistakeHeatmapEntry {
-  date: string
-  tagId: string
-  tagSlug: string
-  tagLabel: string
-  count: number
-}
-
 export interface LanePhaseDiag {
   reason:
     | 'ok'
@@ -189,9 +176,6 @@ export interface LanePhaseDiag {
   playerResolvedVia?: 'puuid' | 'champion' | 'none'
   cached?: boolean
 }
-
-export type TeamRole = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'
-export type PoolTier = 'main' | 'new' | 'comfort' | 'flex' | 'learning'
 
 export interface ChampionPoolEntry {
   id: string
@@ -366,13 +350,11 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
     freeText?: string
     objectiveRespected: boolean
   }) => Promise<any>
-  getReviews: (sessionId: string) => Promise<any[]>
   getGameContext: (gameId: string) => Promise<{ game: any; session: any } | null>
   analyzeReviewBias: (gameId: string, objectiveIds: string[]) => Promise<ReviewBiasSignal[]>
 
   saveAssessment: (scores: Array<{ fundamentalId: string; subcategoryId?: string; score: number }>) => Promise<any>
   getLatestAssessment: () => Promise<any>
-  getAssessmentHistory: () => Promise<any[]>
 
   listSessions: () => Promise<any[]>
 
@@ -419,7 +401,6 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
     accountName: string
   }>>
   getDetailedStats: (matchId: string) => Promise<DetailedGameStats>
-  computeStatsAverages: () => Promise<any>
   getStatsSnapshots: () => Promise<any[]>
   autoSnapshot: () => Promise<{ created: number }>
   getAccountAverages: (puuid: string | null) => Promise<{ averages: any; gameCount: number; firstGameAt: string; lastGameAt: string } | null>
@@ -447,9 +428,6 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   onGameEnd: (callback: (data: any) => void) => () => void
   onGameUpdated: (callback: (info: { gameId: string; matchId: string; win: boolean; queueType: string }) => void) => () => void
 
-  minimizeWindow: () => Promise<void>
-  maximizeWindow: () => Promise<void>
-  closeWindow: () => Promise<void>
 
   getAppVersion: () => Promise<string>
   getUser: () => Promise<any>
@@ -516,7 +494,6 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   // Recording — library
   scanRecordings: () => Promise<{ scanned: number; matched: number; orphaned: number; dismissed: number; backfillLinked?: number; backfillNotFound?: number; paths: Array<{ source: string; dir: string; exists: boolean }> }>
   getRecording: (gameId: string) => Promise<{ id: string; gameId: string; filePath: string | null; youtubeUrl: string | null; source: string; createdAt?: string; startOffsetSec?: number | null } | null>
-  getRecordingById: (recordingId: string) => Promise<{ id: string; gameId: string | null; filePath: string | null; youtubeUrl: string | null; source: string } | null>
   linkRecordingFile: (gameId: string) => Promise<any>
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => Promise<any>
   deleteReview: (gameId: string) => Promise<{ success: boolean }>
@@ -545,10 +522,8 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   // Mistake Library
   listMistakeTags: (opts?: { includeArchived?: boolean }) => Promise<MistakeTag[]>
   createMistakeTag: (args: { label: string; category: string; icon?: string; color?: string }) => Promise<MistakeTag>
-  archiveMistakeTag: (tagId: string) => Promise<{ success: boolean }>
   listMistakesByGame: (gameId: string) => Promise<Mistake[]>
   createMistake: (args: { gameId: string; tagId: string; gameTimeSec: number; videoTimeMs?: number; note?: string; severity?: number; recordingId?: string }) => Promise<Mistake>
-  updateMistake: (args: { id: string; note?: string | null; severity?: number; tagId?: string }) => Promise<Mistake>
   deleteMistake: (id: string) => Promise<{ success: boolean }>
   autoDetectMistakes: (gameId: string) => Promise<{ created: number; skipped: number; reason: string }>
   /** Mistake Lab: tagged occurrences with game result, game time and recording. */
@@ -567,17 +542,13 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   teamCodexAdd: import('./microReview/types').MicroReviewCloudApi['teamCodexAdd']
   teamCodexDelete: import('./microReview/types').MicroReviewCloudApi['teamCodexDelete']
   getMistakeTopTags: (opts?: { days?: number; role?: string | null; champion?: string | null }) => Promise<MistakeTopTagEntry[]>
-  getMistakeTrend: (opts: { tagSlugs?: string[]; days?: number; role?: string | null; champion?: string | null }) => Promise<MistakeTrendEntry[]>
-  getMistakeHeatmap: (opts: { days?: number; role?: string | null; champion?: string | null }) => Promise<MistakeHeatmapEntry[]>
 
   // Bookmarks
   listBookmarks: (recordingId: string) => Promise<Bookmark[]>
   createBookmark: (args: { recordingId: string; videoTimeMs: number; label?: string; color?: string }) => Promise<Bookmark>
-  updateBookmark: (args: { id: string; label?: string | null; color?: string | null; videoTimeMs?: number }) => Promise<Bookmark>
   deleteBookmark: (id: string) => Promise<{ success: boolean }>
   deleteRecordingById: (recordingId: string) => Promise<{ success: boolean }>
   resetDismissedRecordings: () => Promise<{ success: boolean }>
-  getRecordingScanPaths: () => Promise<Array<{ source: string; dir: string; exists: boolean }>>
   listGamesWithRecordings: () => Promise<Array<{
     recordingId: string
     gameId: string
@@ -623,9 +594,7 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
    *  desktop — never called there. */
   teamSetActiveGroup?: (groupId: string | null) => void
   listTeams: (opts?: { isOpponent?: boolean }) => Promise<Team[]>
-  getTeam: (id: string) => Promise<Team | null>
   createTeam: (data: { name: string; tag?: string; logo?: string; notes?: string; isOpponent?: boolean }) => Promise<Team>
-  updateTeam: (id: string, data: Partial<{ name: string; tag: string | null; logo: string | null; notes: string | null; isOpponent: boolean; scoutNotes: string | null }>) => Promise<Team>
   /** Makes the team the roster of a cloud group (null unlinks); the group's previous team is released. */
   linkTeamToGroup: (teamId: string, groupId: string | null) => Promise<Team>
   deleteTeam: (id: string) => Promise<{ ok: true }>
@@ -649,7 +618,6 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   deleteCustomGame: (id: string) => Promise<{ ok: true }>
   computeCustomStats: (teamId: string, gameType: 'scrim' | 'tournament' | 'all') => Promise<TeamSynergyStats>
   computeCombinedStats: (teamId: string, opts?: { minTogether?: number }) => Promise<TeamSynergyStats>
-  computeOpponentDashboard: (teamId: string) => Promise<TeamSynergyStats>
   listChampionPool: (memberId: string) => Promise<ChampionPoolEntry[]>
   upsertChampionPool: (memberId: string, championKey: string, role: string, data: Partial<{ tier: string; notes: string | null; playRate: number | null; winRate: number | null; masteryPoints: number | null; kda: number | null }>) => Promise<ChampionPoolEntry>
   removeChampionPoolEntry: (entryId: string) => Promise<{ ok: true }>
@@ -677,7 +645,6 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   championCutout?: (championKey: string, skin?: number) => Promise<{ dataUrl: string | null }>
 
   listDrafts: () => Promise<DraftPrep[]>
-  getDraft: (id: string) => Promise<DraftPrep | null>
   createDraft: (data: { name: string; vsTeamId?: string | null; bluePicks?: string[][] | string[]; blueBans?: string[][] | string[]; redPicks?: string[][] | string[]; redBans?: string[][] | string[]; myTeamSide?: 'blue' | 'red'; notes?: string }) => Promise<DraftPrep>
   updateDraft: (id: string, data: Partial<{ name: string; vsTeamId: string | null; bluePicks: string[][] | string[]; blueBans: string[][] | string[]; redPicks: string[][] | string[]; redBans: string[][] | string[]; myTeamSide: 'blue' | 'red'; notes: string | null }>) => Promise<DraftPrep>
   deleteDraft: (id: string) => Promise<{ ok: true }>
@@ -709,7 +676,6 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   deleteClip: (clipId: string) => Promise<{ success: boolean }>
   setClipYoutubeUrl: (clipId: string, url: string) => Promise<{ success: boolean }>
   setClipTempShare: (clipId: string, url: string, expiryHours: number) => Promise<{ success: boolean }>
-  generateThumbnail: (recordingId: string) => Promise<{ success: boolean; path?: string }>
 
   // Sharing (files + temp upload)
   sendToDiscord: (embeds: object[], webhookUrl: string) => Promise<{ success: boolean }>

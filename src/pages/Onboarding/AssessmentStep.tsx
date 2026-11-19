@@ -4,7 +4,8 @@ import { useUserStore } from '@/store/useUserStore'
 import { useToast } from '@/hooks/useToast'
 import { Loader2, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
+import { useLocalizedFundamentalList } from '@/lib/constants/useFundamentals'
+import { findFundamentalLabel } from '@/lib/fundamentals'
 
 export function AssessmentStep() {
   const { t } = useTranslation()
@@ -13,8 +14,8 @@ export function AssessmentStep() {
   // Pre-filled from stats (lot 5): fundamentals the player hasn't touched yet,
   // so a manual edit always wins and is never silently overwritten.
   const [suggested, setSuggested] = useState<string[]>([])
-  const allFundamentals = useLocalizedFundamentals().flatMap((c) => c.fundamentals)
-  const objectiveLabel = (id: string) => allFundamentals.find((f) => f.id === id)?.label ?? id
+  const allFundamentals = useLocalizedFundamentalList()
+  const objectiveLabel = (id: string) => findFundamentalLabel(id, allFundamentals)
   const loadUser = useUserStore((s) => s.loadUser)
   const { toast } = useToast()
 

@@ -1,17 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AxisStatus, DevPlan, DevPlanAxis, DevPlanCheckin, NewAxisInput, NewDevPlanPeriod } from './devPlan'
+import { fail } from './supabaseErrors'
 
 /**
  * Individual development plans (E3), same pattern as teamCore.ts/
  * notificationsCore.ts. Purely server-side — no local Prisma data, so
  * desktop and web call these identically.
  */
-
-function fail(error: { message: string; code?: string } | null, fallback: string): never {
-  const msg = error?.message ?? fallback
-  if (/permission|forbidden/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
-  throw new Error(msg)
-}
 
 interface PlanRow { id: string; group_id: string; player_id: string; title: string; period_start: string | null; period_end: string | null; created_at: string; updated_at: string }
 interface AxisRow { id: string; plan_id: string; fundamental_id: string; target_text: string; position: 1 | 2 | 3; status: AxisStatus; created_at: string; updated_at: string }

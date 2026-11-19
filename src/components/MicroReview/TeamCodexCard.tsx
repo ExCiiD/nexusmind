@@ -62,7 +62,7 @@ export function TeamCodexCard({ staffGroups }: { staffGroups: Group[] }) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const categories = useLocalizedFundamentals()
-  const [groupId, setGroupId] = useState(staffGroups[0]?.id ?? '')
+  const groupId = staffGroups[0]?.id ?? ''
   const [rules, setRules] = useState<TeamCodexRule[] | null>(null)
   const [unavailable, setUnavailable] = useState(false)
   const [tags, setTags] = useState<LibraryTag[]>([])
@@ -171,12 +171,6 @@ export function TeamCodexCard({ staffGroups }: { staffGroups: Group[] }) {
           <h3 className="flex items-center gap-2 text-base font-bold text-hextech-text-bright"><BookOpen className="h-4 w-4 text-hextech-cyan" />{t('coachMicro.codex.title')}</h3>
           <p className="mt-0.5 text-xs text-hextech-text">{t('coachMicro.codex.desc')}</p>
         </div>
-        {staffGroups.length > 1 && (
-          <select value={groupId} onChange={(e) => setGroupId(e.target.value)} aria-label={t('coachMicro.codex.group')}
-            className="h-8 rounded-md border border-hextech-border-dim bg-hextech-elevated px-2 text-xs text-hextech-text-bright">
-            {staffGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-          </select>
-        )}
       </div>
       {unavailable ? (
         <p className="mt-3 text-xs text-hextech-text-dim">{t('coachMicro.unavailable')}</p>

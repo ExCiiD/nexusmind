@@ -1,4 +1,4 @@
-import { useToast } from '@/hooks/useToast'
+import { useToastState } from '@/hooks/useToast'
 import {
   Toast,
   ToastClose,
@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/toast'
 
 export function Toaster() {
-  const { toasts } = useToast()
+  const { toasts } = useToastState()
 
   return (
     <ToastProvider>

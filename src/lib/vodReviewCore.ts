@@ -3,17 +3,12 @@ import type {
   AssignmentStatus, NewVodAssignmentInput, NewVodCommentInput, NewVodSessionInput,
   VodReviewActionItem, VodReviewAssignment, VodReviewComment, VodReviewSession,
 } from './vodReview'
+import { fail } from './supabaseErrors'
 
 /**
  * Collaborative VOD review (E5), same pattern as devPlanCore.ts/calendarCore.ts.
  * Purely server-side — desktop and web call these identically.
  */
-
-function fail(error: { message: string; code?: string } | null, fallback: string): never {
-  const msg = error?.message ?? fallback
-  if (/permission|forbidden/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
-  throw new Error(msg)
-}
 
 interface SessionRow { id: string; group_id: string; scrim_id: string | null; title: string; vod_url: string; created_by: string; created_at: string; updated_at: string }
 interface CommentRow { id: string; session_id: string; author_id: string; video_time_sec: number | null; team_tag: VodReviewComment['teamTag']; body: string; created_at: string }

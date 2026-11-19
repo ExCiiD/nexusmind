@@ -5,12 +5,7 @@ import { useUserStore } from '@/store/useUserStore'
 import { useToast } from '@/hooks/useToast'
 import { SavedAccount } from '@/lib/ipc'
 import { Loader2, Plus, RefreshCw } from 'lucide-react'
-
-const REGION_LABELS: Record<string, string> = {
-  EUW1: 'EUW', EUNE1: 'EUNE', NA1: 'NA', KR: 'KR', BR1: 'BR',
-  LA1: 'LAN', LA2: 'LAS', OC1: 'OCE', TR1: 'TR', RU: 'RU',
-  JP1: 'JP', SG2: 'SG', VN2: 'VN', TW2: 'TW', TH2: 'TH', PH2: 'PH',
-}
+import { regionShortLabels } from '@/lib/regions'
 
 interface AccountPickerStepProps {
   accounts: SavedAccount[]
@@ -47,7 +42,7 @@ export function AccountPickerStep({ accounts, onNewAccount }: AccountPickerStepP
         {accounts.map((account) => {
           const isLoading = loadingId === account.id
           const iconUrl = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${account.profileIconId}.jpg`
-          const region = REGION_LABELS[account.region] ?? account.region
+          const region = regionShortLabels[account.region] ?? account.region
           const sessionCount = account._count.sessions
 
           return (

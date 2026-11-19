@@ -1,17 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Announcement, AnnouncementDismissal, NewAnnouncementInput } from './announcements'
+import { fail } from './supabaseErrors'
 
 /**
  * Announcements (E7, moved into Planning's permission model — Phase 2 of
  * docs/PLAN_GESTION_EQUIPE.md §9). Same pattern as calendarCore.ts. Purely
  * server-side — desktop and web call these identically.
  */
-
-function fail(error: { message: string; code?: string } | null, fallback: string): never {
-  const msg = error?.message ?? fallback
-  if (/permission|forbidden/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
-  throw new Error(msg)
-}
 
 interface AnnouncementRow { id: string; group_id: string; title: string; body: string; pinned: boolean; created_by: string; created_at: string; updated_at: string }
 interface DismissalRow { announcement_id: string; user_id: string; dismissed_at: string }

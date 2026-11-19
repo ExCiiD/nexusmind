@@ -28,7 +28,6 @@ function resolveFfmpegBinary(): { path: string; source: 'bundled' | 'ffmpeg-stat
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mod = require('ffmpeg-static')
     let staticBin: string | null = typeof mod === 'string' ? mod : (mod?.default ?? null)
     if (staticBin && app.isPackaged) {
@@ -85,7 +84,8 @@ export interface RecordingSettings {
   audioMicDevice?: string | null
 }
 
-const QUALITY_HEIGHT: Record<string, number> = {
+/** Output height per recording quality setting (0 = source); shared with the WGC backend. */
+export const QUALITY_HEIGHT: Record<string, number> = {
   source: 0,
   '1440p': 1440,
   '1080p': 1080,
@@ -127,11 +127,7 @@ export class RecordingManager {
   private static readonly EARLY_CRASH_THRESHOLD_MS = 15_000
 
   getRecordingsDir(customPath?: string | null): string {
-    const dir = customPath && customPath.trim()
-      ? customPath.trim()
-      : join(app.getPath('userData'), 'recordings')
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-    return dir
+    return ensureRecordingsDir(customPath)
   }
 
   /**
@@ -663,6 +659,15 @@ export async function createClip(options: ClipOptions): Promise<string | null> {
   console.warn('[createClip] re-encode fallback failed too (code=%s):', reAttempt.code, reAttempt.stderrTail.slice(-300))
   try { if (existsSync(outputPath)) unlinkSync(outputPath) } catch { /* ignore */ }
   return null
+}
+
+/** The recordings folder (custom path, else userData/recordings), created if missing. */
+export function ensureRecordingsDir(customPath?: string | null): string {
+  const dir = customPath && customPath.trim()
+    ? customPath.trim()
+    : join(app.getPath('userData'), 'recordings')
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  return dir
 }
 
 export function getFileSize(filePath: string): number {

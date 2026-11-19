@@ -4,7 +4,6 @@ import { Loader2, Plus, Trash2, UserPlus } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
@@ -17,7 +16,7 @@ const ROLES: TrialRole[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
 export function TrialsSection({ staffGroups }: { staffGroups: Group[] }) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
-  const [groupId, setGroupId] = useState(staffGroups[0]?.id ?? null)
+  const groupId = staffGroups[0]?.id ?? null
   const [candidates, setCandidates] = useState<TrialCandidate[] | null>(null)
   const [roster, setRoster] = useState<SharedRosterMember[]>([])
 
@@ -48,12 +47,6 @@ export function TrialsSection({ staffGroups }: { staffGroups: Group[] }) {
           <CardTitle className="flex items-center gap-2 text-base">
             <UserPlus className="h-5 w-5 text-hextech-gold" />{t('trials.title', { defaultValue: 'Trials' })}
           </CardTitle>
-          {staffGroups.length > 1 && (
-            <select value={groupId ?? ''} onChange={(e) => setGroupId(e.target.value)}
-              className="rounded border border-hextech-border-dim bg-hextech-elevated px-2 py-1 text-xs text-hextech-text">
-              {staffGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-          )}
         </div>
         <CardDescription>{t('trials.desc', { defaultValue: 'Candidates on trial, with a 1-5 evaluation grid and the current starter for that role as reference.' })}</CardDescription>
       </CardHeader>

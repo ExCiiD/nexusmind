@@ -20,7 +20,6 @@ import { mergeMatchIdsByRecency } from '../../src/lib/scoutingCore'
 try {
   // Lazy require — keeps any import-time errors inside the try/catch
   // (top-level ESM imports throw before our handler sees them).
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Agent, setGlobalDispatcher } = require('undici') as typeof import('undici')
   setGlobalDispatcher(new Agent({ connections: 50, keepAliveTimeout: 30_000, keepAliveMaxTimeout: 60_000 }))
   console.info('[riotClient] Undici dispatcher boosted to 50 connections')
@@ -362,23 +361,6 @@ export async function getChampionMasteries(
   const base = PLATFORM_URLS[region]
   if (!base) throw new Error(`Unknown region: ${region}`)
   return riotFetchJson(`${base}/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=${Math.min(count, RIOT_LIMITS.MAX_MASTERY_COUNT)}`)
-}
-
-export async function getRankedStats(
-  summonerId: string,
-  region: string,
-): Promise<
-  Array<{
-    queueType: string
-    tier: string
-    rank: string
-    leaguePoints: number
-    wins: number
-    losses: number
-  }>
-> {
-  const base = PLATFORM_URLS[region]
-  return riotFetchJson(`${base}/lol/league/v4/entries/by-summoner/${summonerId}`)
 }
 
 /**

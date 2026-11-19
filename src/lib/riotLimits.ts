@@ -40,16 +40,18 @@ export const RIOT_LIMITS = {
   DEFAULT_MASTERY_COUNT: 30,
   /** Recent flex games pulled per member for synergy/combined-stats. */
   SYNERGY_MATCHES_PER_MEMBER: 100,
-  /** Opponent-dashboard: same-role games kept per scouted opponent. */
-  OPPONENT_DASHBOARD_MAX_GAMES_PER_MEMBER: 100,
-  /** How many of the season's candidate matches to hydrate per opponent
-   *  before giving up on reaching OPPONENT_DASHBOARD_MAX_GAMES_PER_MEMBER,
-   *  expressed as a multiple of it — reflects the typical ~30% same-role
-   *  hit rate so we usually stop early once enough are collected. */
-  OPPONENT_DASHBOARD_CANDIDATE_MULTIPLIER: 3,
   /** Concurrent Riot requests queued behind the rate limiter when bulk-
    *  fetching match bodies. Doesn't bottleneck a Personal key (already
    *  gated by its long-window rate limit either way) — only matters once
    *  a Product key's higher throughput makes queue depth the limiter. */
   MATCH_FETCH_CONCURRENCY: 10,
 } as const
+
+/** Scout / auto-fill depth picked in the scope dialog. */
+export type FetchScope = 'quick' | 'complete'
+
+/** The `matchCount` the scout and auto-fill IPC calls expect for a scope:
+ *  QUICK_SCOUT_MATCH_COUNT, or -1 for no cap (the entire season). */
+export function scopeToMatchCount(scope: FetchScope): number {
+  return scope === 'quick' ? RIOT_LIMITS.QUICK_SCOUT_MATCH_COUNT : -1
+}

@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import type { FetchScope } from '@/lib/riotLimits'
 
 /**
  * Scope of a fetch (champion-pool fill, opponent scout):
@@ -21,8 +22,10 @@ import { Button } from '@/components/ui/button'
  *                   Personal key this takes 20–30 min per player, so the
  *                   dialog warns explicitly before launching it. On a
  *                   Production key it's near-instant.
+ * The type and its matchCount mapping live in src/lib/riotLimits.ts (the
+ * background-jobs store uses them too); re-exported for the tabs.
  */
-export type FetchScope = 'quick' | 'complete'
+export { scopeToMatchCount, type FetchScope } from '@/lib/riotLimits'
 
 interface Props {
   open: boolean
@@ -183,11 +186,4 @@ function ScopeOption({
       </div>
     </button>
   )
-}
-
-/** Maps the scope picked in the dialog to the `matchCount` value the IPC
- *  layer expects. Centralized so frontend callers don't reinvent the
- *  mapping (and so we can bump the "quick" default in one place). */
-export function scopeToMatchCount(scope: FetchScope): number {
-  return scope === 'quick' ? 100 : -1 // -1 = no cap, fetch entire season
 }

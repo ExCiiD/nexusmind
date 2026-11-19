@@ -17,7 +17,7 @@ interface Props { groups: Group[]; myUserId: string; nameOf: (userId: string) =>
  *  Planning rework (§9) — see AnnouncementBubbleStack.tsx. */
 export function TeamOpsSection({ groups, myUserId, nameOf }: Props) {
   const { t } = useTranslation()
-  const [groupId, setGroupId] = useState(groups[0]?.id ?? null)
+  const groupId = groups[0]?.id ?? null
   const group = groups.find((g) => g.id === groupId)
   const isStaff = !!group && isLegacyStaff(group.myRole)
 
@@ -30,12 +30,6 @@ export function TeamOpsSection({ groups, myUserId, nameOf }: Props) {
           <CardTitle className="flex items-center gap-2 text-base">
             <ListTodo className="h-5 w-5 text-hextech-gold" />{t('teamOps.title', { defaultValue: 'Tasks' })}
           </CardTitle>
-          {groups.length > 1 && (
-            <select value={groupId ?? ''} onChange={(e) => setGroupId(e.target.value)}
-              className="rounded border border-hextech-border-dim bg-hextech-elevated px-2 py-1 text-xs text-hextech-text">
-              {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-          )}
         </div>
         <CardDescription>{t('teamOps.desc', { defaultValue: "Assignable to-do tasks for the group." })}</CardDescription>
       </CardHeader>

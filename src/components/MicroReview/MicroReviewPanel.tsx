@@ -27,12 +27,11 @@ import { OtherCausePicker, type OtherChoice } from './OtherCausePicker'
 import { summaryText, tagLabel } from './text'
 import { usePrepareSession } from './usePrepareSession'
 import { useTeamCodex } from './useTeamCodex'
+import { toNxmUrl } from '@/lib/mediaCore'
+import { EXCERPT_SEC, PRE_ROLL_SEC } from '@/lib/microReview/vodTiming'
 
-export const PRE_ROLL_SEC = 12
-export const EXCERPT_SEC = 15
 const panel = 'panel-surface rounded-2xl border border-hextech-border-dim/70 shadow-lg backdrop-blur-sm'
 
-const nxmUrl = (p: string) => { const n = p.replace(/\\/g, '/'); return n.startsWith('/') ? `nxm://${n}` : `nxm:///${n}` }
 const youtubeId = (url: string) => url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^&?/\s]+)/)?.[1] ?? null
 
 export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAnswered?: () => void }) {
@@ -314,7 +313,7 @@ function Excerpt({ data, moment }: { data: MicroReviewPayload; moment: CriticalM
     return (
       <div>
         <div className={frame}>
-          <video ref={ref} src={nxmUrl(rec.filePath)} muted playsInline controls className="h-full w-full"
+          <video ref={ref} src={toNxmUrl(rec.filePath)} muted playsInline controls className="h-full w-full"
             onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
             onTimeUpdate={(e) => { if (e.currentTarget.currentTime >= end) e.currentTarget.pause() }} />
         </div>

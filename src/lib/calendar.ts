@@ -1,5 +1,6 @@
 /** Renderer-side mirror of the shared planning tables (E4, extended in the
  *  Planning rework — see docs/PLAN_GESTION_EQUIPE.md §9 Phase 1). */
+import { randomHexToken } from './tokens'
 
 export type CalendarEventKind =
   | 'tournament' | 'team_review' | 'one_on_one' | 'soloq_block' | 'rest' | 'other' | 'warmup_draft'
@@ -177,9 +178,7 @@ export interface CalendarSubscription {
  *  unlike the short human-typed codes in discord.ts (short TTL, one-time
  *  use is enough security there; this token has neither). */
 export function generateCalendarSubscriptionToken(): string {
-  const bytes = new Uint8Array(20)
-  crypto.getRandomValues(bytes)
-  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+  return randomHexToken(20)
 }
 
 export interface CalendarApi {

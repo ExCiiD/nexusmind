@@ -8,13 +8,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { useSessionStore } from '@/store/useSessionStore'
-import { useUserStore } from '@/store/useUserStore'
 import { ObjectiveSuggestionPanel } from '@/components/Coaching/ObjectiveSuggestionPanel'
 import { SessionInsightPanel } from '@/components/Coaching/SessionInsightPanel'
 import { AssistantCard } from '@/components/Assistant/AssistantCard'
 import type { Fundamental, FundamentalCategory, KPI } from '@/lib/constants/fundamentals'
 import { FundamentalPickerDialog } from '@/components/Session/FundamentalPickerDialog'
-import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
+import { useLocalizedFundamentalList, useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import {
   Target, Lock, Play, Square, Loader2, X, ChevronRight, ChevronLeft,
   Swords, Eye, Clock, CheckCircle, FileSearch, Trash2, Filter, Zap, History, RotateCcw,
@@ -42,7 +41,6 @@ export function SessionPage() {
   const endSession = useSessionStore((s) => s.endSession)
   const cancelSession = useSessionStore((s) => s.cancelSession)
   const updateSessionStore = useSessionStore((s) => s.updateSession)
-  const user = useUserStore((s) => s.user)
   const navigate = useNavigate()
   // AscendCodex "Préparer ma prochaine session": objective + drill pre-filled.
   const prefill = (useLocation().state as SessionPrefillState | null)?.prefill ?? null
@@ -112,7 +110,7 @@ export function SessionPage() {
     }).catch(() => {})
   }, [loadActiveSession])
 
-  const allFundamentals = FUNDAMENTALS.flatMap((c) => c.fundamentals)
+  const allFundamentals = useLocalizedFundamentalList()
 
   // All KPIs for the selected objectives (used in step 2)
   const allKpisForObjectives = useMemo(() => {
@@ -513,13 +511,12 @@ export function SessionPage() {
         </Card>
 
         {/* Game list */}
-        <ActiveSessionGameList sessionId={activeSession.id} games={activeSession.games} onRefresh={loadActiveSession} />
+        <ActiveSessionGameList games={activeSession.games} onRefresh={loadActiveSession} />
 
         {activeSession.games.length > 0 && (
           <SessionInsightPanel
             games={activeSession.games}
             objectiveIds={activeSession.objectiveIds}
-            selectedKpiIds={activeSession.selectedKpiIds}
           />
         )}
 
@@ -615,7 +612,6 @@ export function SessionPage() {
 
               {/* Apply template */}
               <ModifyTemplateDropdown
-                allFundamentals={allFundamentals}
                 onApply={handleApplyTemplateToModify}
               />
 
@@ -814,7 +810,6 @@ export function SessionPage() {
             <KpiSelectionStep
               allKpisForObjectives={allKpisForObjectives}
               selectedKpiIds={selectedKpiIds}
-              allKpiIdPool={allKpiIdPool}
               customNote={customNote}
               setCustomNote={setCustomNote}
               toggleKpi={toggleKpi}
@@ -995,7 +990,6 @@ function ObjectiveStep({
 function KpiSelectionStep({
   allKpisForObjectives,
   selectedKpiIds,
-  allKpiIdPool,
   customNote,
   setCustomNote,
   toggleKpi,
@@ -1007,7 +1001,6 @@ function KpiSelectionStep({
 }: {
   allKpisForObjectives: Array<{ objectiveId: string; objectiveLabel: string; kpis: KPI[] }>
   selectedKpiIds: string[]
-  allKpiIdPool: string[]
   customNote: string
   setCustomNote: (v: string) => void
   toggleKpi: (id: string) => void
@@ -1208,10 +1201,8 @@ function TemplatePickerSection({
 // ─── Template Dropdown (Modify Dialog) ────────────────────────────────────────
 
 function ModifyTemplateDropdown({
-  allFundamentals,
   onApply,
 }: {
-  allFundamentals: Fundamental[]
   onApply: (tpl: SessionTemplate) => void
 }) {
   const { i18n } = useTranslation()
@@ -1255,11 +1246,9 @@ function ModifyTemplateDropdown({
 // ─── Active Session Game List ─────────────────────────────────────────────────
 
 function ActiveSessionGameList({
-  sessionId,
   games,
   onRefresh,
 }: {
-  sessionId: string
   games: any[]
   onRefresh: () => void
 }) {

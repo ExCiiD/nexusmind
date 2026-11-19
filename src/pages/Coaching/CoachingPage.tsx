@@ -70,7 +70,7 @@ export function CoachingPage() {
     { id: 'reports' as const, label: t('coaching.tabs.reports', { defaultValue: 'Weekly report' }), icon: FileBarChart, show: isStaff },
     { id: 'trials' as const, label: t('coaching.tabs.trials', { defaultValue: 'Trials' }), icon: UserPlus, show: isStaff },
     { id: 'groups' as const, label: t('coaching.tabs.groups', { defaultValue: 'Groups' }), icon: Users, show: true },
-  ]), [t, hasGroup, isStaff]).filter((x) => x.show)
+  ]).filter((x) => x.show), [t, hasGroup, isStaff])
 
   // If the active tab's section stops being relevant (another group where
   // the user isn't staff, or they left their last group), fall back to

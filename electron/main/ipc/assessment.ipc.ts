@@ -69,16 +69,5 @@ export function registerAssessmentHandlers() {
     })
   })
 
-  ipcMain.handle('assessment:get-history', async () => {
-    const prisma = getPrisma()
-    const user = await prisma.user.findFirst({ where: { isActive: true } })
-    if (!user) return []
-
-    return prisma.assessment.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'asc' },
-      include: { scores: true },
-    })
-  })
 }
 

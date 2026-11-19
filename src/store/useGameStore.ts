@@ -28,7 +28,6 @@ interface GameStore {
   progressData: ProgressPoint[]
   kpiTimeline: KpiTimelinePoint[]
   gameHistory: any[]
-  loading: boolean
 
   loadStats: () => Promise<void>
   loadProgressData: () => Promise<void>
@@ -41,15 +40,13 @@ export const useGameStore = create<GameStore>((set) => ({
   progressData: [],
   kpiTimeline: [],
   gameHistory: [],
-  loading: false,
 
   loadStats: async () => {
-    set({ loading: true })
     try {
       const stats = await window.api.getSessionStats()
-      set({ stats, loading: false })
+      set({ stats })
     } catch {
-      set({ loading: false })
+      /* keep the previous stats */
     }
   },
 
