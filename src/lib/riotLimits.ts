@@ -46,3 +46,12 @@ export const RIOT_LIMITS = {
    *  a Product key's higher throughput makes queue depth the limiter. */
   MATCH_FETCH_CONCURRENCY: 10,
 } as const
+
+/** Scout / auto-fill depth picked in the scope dialog. */
+export type FetchScope = 'quick' | 'complete'
+
+/** The `matchCount` the scout and auto-fill IPC calls expect for a scope:
+ *  QUICK_SCOUT_MATCH_COUNT, or -1 for no cap (the entire season). */
+export function scopeToMatchCount(scope: FetchScope): number {
+  return scope === 'quick' ? RIOT_LIMITS.QUICK_SCOUT_MATCH_COUNT : -1
+}

@@ -15,6 +15,7 @@ import type { Mistake, MistakeTag, Bookmark } from '@/lib/ipc'
 import { ClipSharePanel } from '@/components/Share/ClipSharePanel'
 import i18n from '@/i18n/config'
 import { useToast } from '@/hooks/useToast'
+import { formatFileSize, formatMs, toNxmUrl } from '@/lib/mediaCore'
 
 type YoutubeUploadState = 'idle' | 'uploading' | 'done' | 'error'
 type BottomTab = 'clips' | 'share'
@@ -56,17 +57,6 @@ interface ClipEntry {
   fileSize: number
 }
 
-function nxmUrl(filePath: string): string {
-  const n = filePath.replace(/\\/g, '/')
-  return n.startsWith('/') ? `nxm://${n}` : `nxm:///${n}`
-}
-
-function fmtMs(ms: number): string {
-  const s = Math.floor(ms / 1000)
-  const m = Math.floor(s / 60)
-  return `${m}:${(s % 60).toString().padStart(2, '0')}`
-}
-
 function parseMmSs(v: string): number | null {
   const p = v.split(':')
   if (p.length === 2) {
@@ -76,8 +66,6 @@ function parseMmSs(v: string): number | null {
   const sec = parseFloat(v)
   return isNaN(sec) ? null : Math.round(sec * 1000)
 }
-
-function fmtFileSize(b: number) { return b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB` }
 
 function sourceLabel(s: string) {
   return ({ capture: 'Ascend', outplayed: 'Outplayed', insightcapture: 'InsightCapture', obs: 'OBS', youtube: 'YouTube', external: i18n.t('record.source.external') } as Record<string, string>)[s] ?? i18n.t('record.filters.manual')
@@ -285,7 +273,7 @@ export function RecordPlayerPage() {
     try {
       await window.api.createBookmark({ recordingId, ...payload })
       await reloadBookmarks()
-      toast({ title: t('record.toast.bookmarkAdded'), description: t('record.toast.savedAt', { time: fmtMs(payload.videoTimeMs) }) })
+      toast({ title: t('record.toast.bookmarkAdded'), description: t('record.toast.savedAt', { time: formatMs(payload.videoTimeMs) }) })
     } catch (err) {
       toast({ title: t('record.toast.bookmarkFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
     }
@@ -418,8 +406,8 @@ export function RecordPlayerPage() {
 
   const handleClipRangeChange = useCallback((range: { startMs: number; endMs: number }) => {
     setClipRange(range)
-    setStartInput(fmtMs(range.startMs))
-    setEndInput(fmtMs(range.endMs))
+    setStartInput(formatMs(range.startMs))
+    setEndInput(formatMs(range.endMs))
   }, [])
 
   const applyStart = () => {
@@ -515,9 +503,9 @@ export function RecordPlayerPage() {
   // during creation, so it's already trimmed to the requested range.
   const activeClip = activeClipId ? clips.find((c) => c.id === activeClipId) ?? null : null
   const videoSrc = activeClip?.filePath
-    ? nxmUrl(activeClip.filePath)
+    ? toNxmUrl(activeClip.filePath)
     : recording.filePath
-      ? nxmUrl(recording.filePath)
+      ? toNxmUrl(recording.filePath)
       : null
 
   const clearClipMode = () => {
@@ -568,7 +556,7 @@ export function RecordPlayerPage() {
             {activeClip.title || t('record.clips.clip')}
           </span>
           <span className="text-[10px] font-mono text-hextech-text-dim">
-            {fmtMs(activeClip.startMs)}–{fmtMs(activeClip.endMs)}
+            {formatMs(activeClip.startMs)}–{formatMs(activeClip.endMs)}
           </span>
           <div className="flex-1" />
           <button
@@ -659,7 +647,7 @@ export function RecordPlayerPage() {
             <input type="text" value={startInput} onChange={(e) => setStartInput(e.target.value)} onBlur={applyStart} onKeyDown={(e) => e.key === 'Enter' && applyStart()}
               className="w-11 bg-transparent text-[11px] font-mono text-hextech-text text-center focus:outline-none" />
           </div>
-          <span className="text-[10px] font-mono text-hextech-text-dim/50">{fmtMs(Math.max(0, clipRange.endMs - clipRange.startMs))}</span>
+          <span className="text-[10px] font-mono text-hextech-text-dim/50">{formatMs(Math.max(0, clipRange.endMs - clipRange.startMs))}</span>
           <div className="flex items-center gap-1 rounded bg-white/5 border border-white/10 px-1.5 py-1">
             <span className="text-[9px] text-hextech-text-dim/60 uppercase">{t('record.clipEditor.out')}</span>
             <input type="text" value={endInput} onChange={(e) => setEndInput(e.target.value)} onBlur={applyEnd} onKeyDown={(e) => e.key === 'Enter' && applyEnd()}
@@ -1041,8 +1029,8 @@ function ClipRow({ clip, onDelete, onPlay, isActive }: {
           {clip.title ?? t('record.clips.clip')}
         </p>
         <div className="flex items-center gap-1.5 text-[10px] text-hextech-text-dim">
-          <span className="font-mono">{fmtMs(clip.startMs)}–{fmtMs(clip.endMs)}</span>
-          <span>{fmtFileSize(clip.fileSize)}</span>
+          <span className="font-mono">{formatMs(clip.startMs)}–{formatMs(clip.endMs)}</span>
+          <span>{formatFileSize(clip.fileSize)}</span>
         </div>
       </button>
       <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>

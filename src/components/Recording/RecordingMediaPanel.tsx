@@ -6,6 +6,7 @@ import {
   Scissors, Share2, Trash2, Youtube, ExternalLink,
   Loader2, Check, Copy,
 } from 'lucide-react'
+import { formatFileSize, formatMs } from '@/lib/mediaCore'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -24,16 +25,6 @@ type YoutubeUploadState = 'idle' | 'uploading' | 'done' | 'error'
 type MediaTab = 'clips' | 'share'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function fmtMs(ms: number): string {
-  const s = Math.floor(ms / 1000)
-  const m = Math.floor(s / 60)
-  return `${m}:${(s % 60).toString().padStart(2, '0')}`
-}
-
-function fmtFileSize(b: number): string {
-  return b < 1_048_576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1_048_576).toFixed(1)} MB`
-}
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
 
@@ -230,8 +221,8 @@ function ClipRow({ clip, onDelete }: { clip: ClipEntry; onDelete: () => void }) 
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-medium text-hextech-text-bright truncate">{clip.title ?? t('record.clips.clip')}</p>
         <div className="flex items-center gap-1.5 text-[10px] text-hextech-text-dim">
-          <span className="font-mono">{fmtMs(clip.startMs)}–{fmtMs(clip.endMs)}</span>
-          <span>{fmtFileSize(clip.fileSize)}</span>
+          <span className="font-mono">{formatMs(clip.startMs)}–{formatMs(clip.endMs)}</span>
+          <span>{formatFileSize(clip.fileSize)}</span>
         </div>
       </div>
       <div className="flex items-center gap-0.5 shrink-0">

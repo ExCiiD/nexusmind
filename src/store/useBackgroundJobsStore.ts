@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { TeamMember } from '@/lib/ipc'
-import { scopeToMatchCount, type FetchScope } from '@/components/team/ScopeDialog'
+import { scopeToMatchCount, type FetchScope } from '@/lib/riotLimits'
 
 /**
  * Type of long-running work that the global background-jobs store can host.

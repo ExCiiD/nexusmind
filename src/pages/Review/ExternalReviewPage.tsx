@@ -11,29 +11,9 @@ import { DynamicKPIForm } from '@/components/ReviewForm/DynamicKPIForm'
 import { RecordingMediaPanel } from '@/components/Recording/RecordingMediaPanel'
 import { Loader2, Check, Link2, Trash2, Square, Save } from 'lucide-react'
 import { ShareButton } from '@/components/Share/ShareButton'
+import { formatMs, parseMmSs, toNxmUrl } from '@/lib/mediaCore'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function filePathToNxmUrl(filePath: string): string {
-  const n = filePath.replace(/\\/g, '/')
-  return n.startsWith('/') ? `nxm://${n}` : `nxm:///${n}`
-}
-
-function fmtMs(ms: number): string {
-  const s = Math.floor(ms / 1000)
-  const m = Math.floor(s / 60)
-  return `${m}:${(s % 60).toString().padStart(2, '0')}`
-}
-
-function parseMmSs(v: string): number | null {
-  const p = v.split(':')
-  if (p.length === 2) {
-    const [m, s] = p.map(Number)
-    if (!isNaN(m) && !isNaN(s)) return (m * 60 + s) * 1000
-  }
-  const sec = parseFloat(v)
-  return isNaN(sec) ? null : Math.round(sec * 1000)
-}
 
 // ── External review data shape ────────────────────────────────────────────────
 
@@ -175,8 +155,8 @@ export function ExternalReviewPage() {
   // Clip editing
   const handleClipRangeChange = useCallback((range: { startMs: number; endMs: number }) => {
     setClipRange(range)
-    setStartInput(fmtMs(range.startMs))
-    setEndInput(fmtMs(range.endMs))
+    setStartInput(formatMs(range.startMs))
+    setEndInput(formatMs(range.endMs))
   }, [])
 
   const applyStart = () => {
@@ -261,7 +241,7 @@ export function ExternalReviewPage() {
       {review.filePath ? (
         <div className="space-y-2">
           <VideoReviewPlayer
-            src={filePathToNxmUrl(review.filePath)}
+            src={toNxmUrl(review.filePath)}
             notes={timelineNotes}
             onAddNote={(note) => setTimelineNotes((prev) => [...prev, note])}
             onEditNote={(index, newText) =>
@@ -291,7 +271,7 @@ export function ExternalReviewPage() {
                 />
               </div>
               <span className="text-[10px] font-mono text-hextech-text-dim/50">
-                {fmtMs(Math.max(0, clipRange.endMs - clipRange.startMs))}
+                {formatMs(Math.max(0, clipRange.endMs - clipRange.startMs))}
               </span>
               <div className="flex items-center gap-1 rounded bg-white/5 border border-white/10 px-1.5 py-1">
                 <span className="text-[9px] text-hextech-text-dim/60 uppercase">Out</span>

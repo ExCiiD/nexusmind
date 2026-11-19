@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Clock,
 } from 'lucide-react'
+import { formatFileSize } from '@/lib/mediaCore'
 
 interface Webhook {
   id: string
@@ -32,11 +33,6 @@ type ShareStrategy = 'discord_direct' | 'temp_upload'
 type UploadState = 'idle' | 'uploading' | 'done' | 'error'
 
 const MAX_DISCORD_BYTES = 8 * 1024 * 1024 // 8 MB
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}
 
 export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipSharePanelProps) {
   const { t } = useTranslation()
@@ -119,7 +115,7 @@ export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipShar
         >
           {strategy === 'discord_direct' ? t('share.strategyDirect') : t('share.strategyTemp')}
         </Badge>
-        <span className="text-[10px] text-hextech-text-dim">{formatBytes(fileSize)}</span>
+        <span className="text-[10px] text-hextech-text-dim">{formatFileSize(fileSize)}</span>
       </div>
 
       {/* Caption */}
