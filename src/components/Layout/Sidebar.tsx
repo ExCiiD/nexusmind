@@ -16,6 +16,8 @@ import {
   AlertTriangle,
   GraduationCap,
   ListTodo,
+  Briefcase,
+  Shield,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/useUserStore'
@@ -158,9 +160,12 @@ export function Sidebar() {
     {
       id: 'team',
       items: [
+        // One group drives these four pages (the switcher in each header).
+        // Team sessions are launched from Management's planning and return there.
+        { to: '/management', icon: Briefcase, label: t('nav.management'), active: path.startsWith('/management') || path.startsWith('/team-session') },
+        { to: '/team-space', icon: Shield, label: t('nav.teamSpace') },
+        { to: '/coaching', icon: GraduationCap, label: t('nav.coaching') },
         { to: '/team', icon: Users, label: t('nav.team', { defaultValue: 'Team' }), active: path === '/team' },
-        // Team sessions are launched from Coaching's planning and return there.
-        { to: '/coaching', icon: GraduationCap, label: t('nav.coaching'), active: path.startsWith('/coaching') || path.startsWith('/team-session') },
       ],
     },
     {

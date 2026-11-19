@@ -20,6 +20,8 @@ import { ExternalReviewPage } from '@/pages/Review/ExternalReviewPage'
 import { HelpPage } from '@/pages/Help/HelpPage'
 import { TeamPage } from '@/pages/Team/TeamPage'
 import { CoachingPage } from '@/pages/Coaching/CoachingPage'
+import { ManagementPage } from '@/pages/Management/ManagementPage'
+import { TeamSpacePage } from '@/pages/TeamSpace/TeamSpacePage'
 import { TeamSessionPage } from '@/pages/TeamSession/TeamSessionPage'
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
 import { GameEndNav } from '@/components/GameEndNav'
@@ -72,6 +74,8 @@ export function App() {
             <Route path="/assessment" element={<ReassessmentPage />} />
             <Route path="/team" element={<PanelErrorBoundary label="Team page"><TeamPage /></PanelErrorBoundary>} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/management" element={<PanelErrorBoundary label="Management page"><ManagementPage /></PanelErrorBoundary>} />
+            <Route path="/team-space" element={<PanelErrorBoundary label="Team workspace page"><TeamSpacePage /></PanelErrorBoundary>} />
             <Route path="/coaching" element={<PanelErrorBoundary label="Coaching page"><CoachingPage /></PanelErrorBoundary>} />
             <Route path="/team-session/:calendarEventId" element={<PanelErrorBoundary label="Team session"><TeamSessionPage /></PanelErrorBoundary>} />
             <Route path="/help" element={<HelpPage />} />
