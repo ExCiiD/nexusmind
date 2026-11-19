@@ -105,8 +105,9 @@ export async function createGroup(name: string, kind: GroupKind): Promise<string
 
 export const createInvite = (groupId: string, role: Exclude<GroupRole, 'owner'>, days: number) =>
   core.createInvite(getSupabase(), groupId, role, days)
-export async function joinGroup(code: string): Promise<string> {
-  const id = await core.joinGroup(getSupabase(), code, await localIdentity())
+export async function joinGroup(code: string, typedRiotId: string | null = null): Promise<string> {
+  const local = await localIdentity()
+  const id = await core.joinGroup(getSupabase(), code, local.riotId ? local : { ...local, riotId: typedRiotId })
   const uid = await signedInUid()
   if (uid) await shareLook(uid, true)
   return id

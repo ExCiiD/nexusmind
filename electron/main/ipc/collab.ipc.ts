@@ -14,8 +14,8 @@ export function registerCollabHandlers() {
     (_e, name, kind) => collab.createGroup(name, kind))
   validatedHandle('collab:create-invite', z.tuple([uuid, role, z.number().int().min(1).max(30)]),
     (_e, groupId, r, days) => collab.createInvite(groupId, r, days))
-  validatedHandle('collab:join', z.tuple([z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6,16}$/, 'invalid code')]),
-    (_e, code) => collab.joinGroup(code))
+  validatedHandle('collab:join', z.tuple([z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6,16}$/, 'invalid code'), z.string().trim().max(40).nullish()]),
+    (_e, code, riotId) => collab.joinGroup(code, riotId ?? null))
   validatedHandle('collab:leave', z.tuple([uuid]), (_e, groupId) => collab.leaveGroup(groupId))
   validatedHandle('collab:delete-group', z.tuple([uuid, z.literal('DELETE')]), (_e, groupId) => collab.deleteGroup(groupId))
   validatedHandle('collab:remove-member', z.tuple([uuid, uuid]), (_e, groupId, userId) => collab.removeMember(groupId, userId))

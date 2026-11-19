@@ -972,8 +972,11 @@
           "grinderValue_other": "+{{value}} LP sur {{count}} parties",
           "streak_one": "{{count}} semaine d’affilée",
           "streak_other": "{{count}} semaines d’affilée"
-        }
-      }
+        },
+        "lane": "Lane"
+      },
+      "fromGroup": "Les joueurs viennent du groupe : un joueur qui le rejoint apparaît ici, un joueur qui le quitte disparaît. Choisis la lane de chacun avec « Modifier ».",
+      "emptyFromGroup": "Invite un joueur dans le groupe pour remplir ce slot."
     },
     "import": {
       "title": "Importer des joueurs depuis un lien multi-search",
@@ -1283,19 +1286,6 @@
     },
     "statsTitle": "Stats collectives",
     "statsSubtitle": "Les stats de l’équipe du groupe choisi : flex, scrim et tournoi ensemble, puis chaque source.",
-    "localHint": "Le roster se gère dans Coaching & Management → Espace d’équipe, une fois l’équipe liée à un groupe.",
-    "link": {
-      "title": "Associer une équipe à « {{name}} »",
-      "desc": "L’Espace d’équipe, le Champion Pool, la Draft Sim et les Stats collectives du groupe utilisent une équipe de cet ordinateur. Lie l’une de tes équipes, ou crée celle du groupe : elle reprend le roster publié dans le groupe s’il y en a un.",
-      "pick": "Équipe",
-      "players_one": "{{count}} joueur",
-      "players_other": "{{count}} joueurs",
-      "link": "Lier cette équipe",
-      "or": "ou",
-      "create": "Créer l’équipe « {{name}} »",
-      "created": "Équipe « {{name}} » créée et liée au groupe",
-      "failed": "Impossible de lier l’équipe"
-    },
     "lft": {
       "button": "Annonce LFT",
       "buttonHint": "Créer une image de recherche d’équipe à partir du roster",
@@ -1438,15 +1428,14 @@
       }
     },
     "space": {
-      "publishFailed": "Le roster n’a pas pu être publié dans le groupe",
-      "added": "{{name}} est dans le roster",
-      "addFailed": "Ajout impossible",
-      "toPlaceTitle_one": "{{count}} joueur du groupe hors roster",
-      "toPlaceTitle_other": "{{count}} joueurs du groupe hors roster",
-      "toPlaceDesc": "Ils ont rejoint le groupe : choisis leur rôle pour les ajouter à l’équipe. Le Champion Pool, la Draft Sim et les Stats collectives suivent.",
-      "role": "Rôle",
-      "taken": "occupé",
-      "add": "Ajouter"
+      "publishFailed": "Le roster n’a pas pu être publié dans le groupe"
+    },
+    "noGroup": "Les stats collectives sont celles d’un groupe. Crée ton groupe ou rejoins-en un dans Coaching & Management → Groupes : l’équipe se forme avec les joueurs qui le rejoignent.",
+    "signedOut": "Connecte-toi pour voir les stats collectives de ton groupe.",
+    "sync": {
+      "failed": "Impossible de préparer l’équipe du groupe",
+      "emptyTitle": "Aucun joueur dans « {{name}} » pour l’instant",
+      "emptyDesc": "L’équipe se forme toute seule avec les membres du groupe qui ont le rôle joueur. Invite tes joueurs depuis Coaching & Management → Groupes : chacun rejoint avec son compte Riot."
     }
   },
   "common": {
@@ -1643,7 +1632,12 @@
         "failed": "Impossible de mettre à jour le logo",
         "tooBig": "Choisis une image de moins de 8 Mo.",
         "notImage": "Ce fichier n'est pas une image."
-      }
+      },
+      "joinAs": "Tu rejoins avec ton compte {{riotId}}.",
+      "riotIdLabel": "Ton Riot ID",
+      "riotIdPlaceholder": "Pseudo#TAG",
+      "riotIdHint": "Ton compte Riot est obligatoire pour rejoindre : c’est avec lui que tes stats entrent dans celles de l’équipe.",
+      "riotIdInvalid": "Riot ID attendu sous la forme Pseudo#TAG."
     },
     "sharing": {
       "title": "Ce que ce groupe peut voir",
@@ -1729,7 +1723,8 @@
       "LOGIN_REQUIRED": "Connectez-vous d'abord à votre compte Ascend.",
       "generic": "Une erreur est survenue. Vérifiez votre connexion et réessayez.",
       "NOT_CONCERNED": "Cet événement ne te concerne pas.",
-      "EVENT_OVER": "Cet événement est déjà terminé."
+      "EVENT_OVER": "Cet événement est déjà terminé.",
+      "RIOT_ACCOUNT_REQUIRED": "Associe ton compte Riot pour rejoindre un groupe."
     },
     "dossier": {
       "pickPlayer": "Joueur suivi",

@@ -12,13 +12,16 @@ import type { Plugin } from 'vite'
  *  - nxm:            local recordings / thumbnails (custom protocol)
  *  - ddragon / communitydragon: champion, item and profile icons + JSON
  *  - youtube embeds: linked VODs
+ *  - *.supabase.co (images only): team logos from Storage
  * Everything else (Riot API, Discord, Google) goes through the main process.
  */
 const RENDERER_CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: nxm: https://ddragon.leagueoflegends.com https://raw.communitydragon.org",
+  // *.supabase.co: team logos (public group-logos bucket) — without it the
+  // <img> errors and the crest falls back to the initials.
+  "img-src 'self' data: blob: nxm: https://ddragon.leagueoflegends.com https://raw.communitydragon.org https://*.supabase.co",
   "media-src 'self' blob: nxm:",
   "connect-src 'self' nxm: https://ddragon.leagueoflegends.com https://raw.communitydragon.org",
   "frame-src https://www.youtube.com https://www.youtube-nocookie.com",

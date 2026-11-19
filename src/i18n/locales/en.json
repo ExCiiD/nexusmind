@@ -972,8 +972,11 @@
           "grinderValue_other": "+{{value}} LP over {{count}} games",
           "streak_one": "{{count}} week in a row",
           "streak_other": "{{count}} weeks in a row"
-        }
-      }
+        },
+        "lane": "Lane"
+      },
+      "fromGroup": "Players come from the group: someone who joins it shows up here, someone who leaves disappears. Set each player’s lane with “Edit”.",
+      "emptyFromGroup": "Invite a player to the group to fill this slot."
     },
     "import": {
       "title": "Import players from multi-search link",
@@ -1283,19 +1286,6 @@
     },
     "statsTitle": "Team stats",
     "statsSubtitle": "The stats of the picked group’s team: flex, scrim and tournament together, then each source.",
-    "localHint": "The roster is managed in Coaching & Management → Team workspace, once the team is linked to a group.",
-    "link": {
-      "title": "Link a team to “{{name}}”",
-      "desc": "The group’s Team workspace, Champion Pool, Draft Sim and Team stats use a team of this computer. Link one of your teams, or create the group’s: it takes the roster the group published, if any.",
-      "pick": "Team",
-      "players_one": "{{count}} player",
-      "players_other": "{{count}} players",
-      "link": "Link this team",
-      "or": "or",
-      "create": "Create the “{{name}}” team",
-      "created": "Team “{{name}}” created and linked to the group",
-      "failed": "Couldn’t link the team"
-    },
     "lft": {
       "button": "LFT announcement",
       "buttonHint": "Make a looking-for-team image from the roster",
@@ -1438,15 +1428,14 @@
       }
     },
     "space": {
-      "publishFailed": "The roster couldn’t be published to the group",
-      "added": "{{name}} is on the roster",
-      "addFailed": "Couldn’t add",
-      "toPlaceTitle_one": "{{count}} group player not on the roster",
-      "toPlaceTitle_other": "{{count}} group players not on the roster",
-      "toPlaceDesc": "They joined the group: pick their role to add them to the team. Champion Pool, Draft Sim and Team stats follow.",
-      "role": "Role",
-      "taken": "taken",
-      "add": "Add"
+      "publishFailed": "The roster couldn’t be published to the group"
+    },
+    "noGroup": "Team stats belong to a group. Create your group or join one in Coaching & Management → Groups: the team is made of the players who join it.",
+    "signedOut": "Sign in to see your group’s team stats.",
+    "sync": {
+      "failed": "Couldn’t set up the group’s team",
+      "emptyTitle": "No players in “{{name}}” yet",
+      "emptyDesc": "The team builds itself from the group members with the player role. Invite your players from Coaching & Management → Groups: each one joins with their Riot account."
     }
   },
   "common": {
@@ -1643,7 +1632,12 @@
         "failed": "Could not update the logo",
         "tooBig": "Pick an image under 8 MB.",
         "notImage": "This file isn't an image."
-      }
+      },
+      "joinAs": "You’re joining with your account {{riotId}}.",
+      "riotIdLabel": "Your Riot ID",
+      "riotIdPlaceholder": "Name#TAG",
+      "riotIdHint": "Your Riot account is required to join: it’s how your stats count towards the team’s.",
+      "riotIdInvalid": "Expected a Riot ID like Name#TAG."
     },
     "sharing": {
       "title": "What this group can see",
@@ -1729,7 +1723,8 @@
       "LOGIN_REQUIRED": "Sign in to your Ascend account first.",
       "generic": "Something went wrong. Check your connection and try again.",
       "NOT_CONCERNED": "This event isn’t one of yours.",
-      "EVENT_OVER": "This event is already over."
+      "EVENT_OVER": "This event is already over.",
+      "RIOT_ACCOUNT_REQUIRED": "Link your Riot account to join a group."
     },
     "dossier": {
       "pickPlayer": "Player",

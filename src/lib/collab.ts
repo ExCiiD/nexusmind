@@ -113,7 +113,9 @@ export interface CollabApi extends DevPlanApi {
   collabListGroups: () => Promise<Group[]>
   collabCreateGroup: (name: string, kind: GroupKind) => Promise<string>
   collabCreateInvite: (groupId: string, role: Exclude<GroupRole, 'owner'>, days: number) => Promise<string>
-  collabJoin: (code: string) => Promise<string>
+  /** `riotId` ("Name#TAG") only where the app has no Riot account of its
+   *  own (the web); joining needs one either way. */
+  collabJoin: (code: string, riotId?: string | null) => Promise<string>
   collabLeave: (groupId: string) => Promise<void>
   collabDeleteGroup: (groupId: string, confirm: 'DELETE') => Promise<void>
   collabRemoveMember: (groupId: string, userId: string) => Promise<void>
@@ -149,7 +151,7 @@ export interface CollabApi extends DevPlanApi {
 /** Stable error codes thrown by the main process → i18n keys. */
 export function collabErrorKey(err: unknown): string {
   const msg = (err as Error)?.message ?? ''
-  for (const code of ['INVITE_INVALID', 'NOT_CONCERNED', 'EVENT_OVER', 'FORBIDDEN', 'TOO_MANY_GROUPS', 'LOGIN_REQUIRED']) {
+  for (const code of ['INVITE_INVALID', 'NOT_CONCERNED', 'EVENT_OVER', 'FORBIDDEN', 'TOO_MANY_GROUPS', 'LOGIN_REQUIRED', 'RIOT_ACCOUNT_REQUIRED']) {
     if (msg.includes(code)) return `coaching.errors.${code}`
   }
   if (msg.includes('invalid code')) return 'coaching.errors.INVITE_INVALID'

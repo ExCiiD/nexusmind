@@ -122,7 +122,9 @@ export async function setGroupLogo(sb: SupabaseClient, groupId: string, image: G
 }
 
 export async function updateMyMemberProfile(sb: SupabaseClient, uid: string, groupId: string, id: MemberIdentity): Promise<void> {
-  await sb.from('group_members').update({ display_name: id.displayName, riot_id: id.riotId }).eq('group_id', groupId).eq('user_id', uid)
+  // Never clears a Riot ID: the web has no account of its own to send.
+  const patch = id.riotId ? { display_name: id.displayName, riot_id: id.riotId } : { display_name: id.displayName }
+  await sb.from('group_members').update(patch).eq('group_id', groupId).eq('user_id', uid)
 }
 
 // ── Profile looks (Team → Roster player cards) ──────────────────────────────
@@ -172,7 +174,10 @@ export async function createInvite(sb: SupabaseClient, groupId: string, role: Ex
   return data as string
 }
 
+/** Joining a group needs the player's Riot account: the group's team (Stats
+ *  collectives, Espace d'équipe…) is built from its members' Riot IDs. */
 export async function joinGroup(sb: SupabaseClient, code: string, id: MemberIdentity): Promise<string> {
+  if (!id.riotId || !id.riotId.includes('#')) throw new Error('RIOT_ACCOUNT_REQUIRED')
   const { data, error } = await sb.rpc('join_group', { p_code: code, p_display_name: id.displayName, p_riot_id: id.riotId })
   if (error) fail(error, 'join failed')
   return data as string

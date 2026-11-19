@@ -1,6 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BarChart3, LayoutDashboard, Loader2, Sword, Trophy } from 'lucide-react'
+import { BarChart3, LayoutDashboard, Loader2, Sword, Trophy, Users } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import type { Team } from '@/lib/ipc'
@@ -21,8 +21,9 @@ type TabId = 'dashboard' | 'stats' | 'scrim' | 'tournament'
  * Management, whose Espace d'équipe, Champion Pool, Draft Sim and Scouting
  * tabs took over the roster and the preparation. Dashboard = flex + scrim +
  * tournament together; the three other tabs one source each.
- * Without any group (signed out, or none yet) the teams of this computer
- * are picked here instead.
+ * The team is the group's players (GroupTeamGate builds it from the members
+ * who joined with their Riot account); without a group there is nothing to
+ * show but how to get one.
  */
 export function TeamPage() {
   const { t } = useTranslation()
@@ -81,38 +82,11 @@ export function TeamPage() {
       ) : groupMode && group ? (
         <GroupTeamGate key={group.id} group={group}>{(team) => content(team)}</GroupTeamGate>
       ) : (
-        <LocalTeams>{(team) => content(team)}</LocalTeams>
+        <Card className="flex items-start gap-3 p-5">
+          <Users className="mt-0.5 h-5 w-5 shrink-0 text-hextech-gold" />
+          <p className="text-sm text-hextech-text">{t(available ? 'team.noGroup' : 'team.signedOut')}</p>
+        </Card>
       )}
-    </div>
-  )
-}
-
-/** No group: one of this computer's teams, and where the roster is managed now. */
-function LocalTeams({ children }: { children: (team: Team) => ReactNode }) {
-  const { t } = useTranslation()
-  const [teams, setTeams] = useState<Team[] | null>(null)
-  const [activeId, setActiveId] = useState<string | null>(null)
-  useEffect(() => {
-    window.api.listTeams({ isOpponent: false }).then((list) => { setTeams(list); setActiveId((id) => id ?? list[0]?.id ?? null) }).catch(() => setTeams([]))
-  }, [])
-  if (!teams) return <Loader2 className="h-5 w-5 animate-spin text-hextech-gold" />
-  const active = teams.find((x) => x.id === activeId) ?? null
-  return (
-    <div className="space-y-4">
-      <Card className="flex flex-wrap items-center gap-2 p-3">
-        <span className="text-xs font-semibold uppercase tracking-wider text-hextech-text-dim">{t('team.activeTeam', { defaultValue: 'Active team' })}:</span>
-        {teams.map((team) => (
-          <button
-            key={team.id}
-            onClick={() => setActiveId(team.id)}
-            className={cn('rounded-md px-3 py-1 text-sm font-medium transition-colors', team.id === activeId ? 'bg-hextech-gold text-black' : 'bg-white/5 text-hextech-text hover:bg-white/10')}
-          >
-            {team.name}
-          </button>
-        ))}
-        <span className="ml-auto text-xs text-hextech-text-dim">{t('team.localHint')}</span>
-      </Card>
-      {active ? children(active) : <Card className="p-6 text-center text-sm text-hextech-text-dim">{t('team.localHint')}</Card>}
     </div>
   )
 }

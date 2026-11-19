@@ -55,14 +55,14 @@ export interface CardTeam {
 
 /** The team's logo, else a crest with its tag (or initials). */
 function TeamCrest({ team }: { team: CardTeam }) {
-  const [broken, setBroken] = useState(false)
-  if (team.logoUrl && !broken) {
+  const [broken, setBroken] = useState<string | null>(null)
+  if (team.logoUrl && broken !== team.logoUrl) {
     return (
       <img
         src={team.logoUrl}
         alt={team.name}
         draggable={false}
-        onError={() => setBroken(true)}
+        onError={() => setBroken(team.logoUrl ?? null)}
         className="h-[17cqw] max-w-[44cqw] object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
       />
     )
@@ -368,7 +368,8 @@ interface PlayerCardProps {
   /** Starts the champion fetch; null when the member has no Riot ID. */
   onFetch: (() => void) | null
   onEdit: () => void
-  onRemove: () => void
+  /** Removes the member; omitted when the roster follows the group's players. */
+  onRemove?: () => void
   /** The edit form, shown on the back instead of the champions. */
   editForm?: ReactNode
 }
@@ -417,7 +418,7 @@ export function PlayerCard({
               <RoleGlyph role={role} tone="gold" className="h-[4.6cqw] w-[4.6cqw]" />
               {t(`team.roster.roles.${role}`, { defaultValue: role })}
             </span>
-            <button
+            {onRemove ? <button
               type="button"
               onClick={onRemove}
               title={t('team.roster.card.remove')}
@@ -425,7 +426,7 @@ export function PlayerCard({
               className="rounded-md border border-white/10 bg-black/60 p-[2cqw] text-hextech-text-dim transition-colors hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold"
             >
               <Trash2 className="h-[5cqw] w-[5cqw]" />
-            </button>
+            </button> : <span className="w-[9cqw]" aria-hidden />}
           </div>
 
           <div className="relative flex min-h-0 flex-1 flex-col px-[4.5cqw] pb-[4.5cqw]">

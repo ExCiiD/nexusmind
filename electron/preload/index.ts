@@ -109,7 +109,7 @@ const api = {
   collabCreateGroup: (name: string, kind: 'team' | 'coaching') => ipcRenderer.invoke('collab:create-group', name, kind),
   collabCreateInvite: (groupId: string, role: 'coach' | 'analyst' | 'player', days: number) =>
     ipcRenderer.invoke('collab:create-invite', groupId, role, days),
-  collabJoin: (code: string) => ipcRenderer.invoke('collab:join', code),
+  collabJoin: (code: string, riotId?: string | null) => ipcRenderer.invoke('collab:join', code, riotId ?? null),
   collabLeave: (groupId: string) => ipcRenderer.invoke('collab:leave', groupId),
   collabDeleteGroup: (groupId: string, confirm: 'DELETE') => ipcRenderer.invoke('collab:delete-group', groupId, confirm),
   collabRemoveMember: (groupId: string, userId: string) => ipcRenderer.invoke('collab:remove-member', groupId, userId),

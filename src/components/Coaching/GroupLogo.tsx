@@ -20,9 +20,11 @@ const LOGO_PX = 256
 const MAX_INPUT_BYTES = 8 * 1024 * 1024
 
 export function GroupLogo({ group, className }: { group: Pick<Group, 'name' | 'logoUrl'>; className?: string }) {
-  const [broken, setBroken] = useState(false)
-  if (group.logoUrl && !broken) {
-    return <img src={group.logoUrl} alt="" draggable={false} onError={() => setBroken(true)} className={cn('h-8 w-8 shrink-0 object-contain', className)} />
+  // Remembers which URL failed, so a new logo gets its own try.
+  const [broken, setBroken] = useState<string | null>(null)
+  if (group.logoUrl && broken !== group.logoUrl) {
+    const url = group.logoUrl
+    return <img src={url} alt="" draggable={false} onError={() => setBroken(url)} className={cn('h-8 w-8 shrink-0 object-contain', className)} />
   }
   return (
     <span

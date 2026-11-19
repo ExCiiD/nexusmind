@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils'
 import { ASSIGNABLE_ROLES, canChangeRoles, canEditCalendar, isLegacyStaff } from '@/lib/permissions'
 import { GroupLogo, GroupLogoEditor } from '@/components/Coaching/GroupLogo'
 import { useActiveGroupStore } from '@/store/useActiveGroupStore'
+import { useUserStore } from '@/store/useUserStore'
+import { parseRiotIdInput } from '@/lib/groupTeamSyncCore'
 
 interface Props {
   groups: Group[]
@@ -71,6 +73,12 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
   const [name, setName] = useState('')
   const [kind, setKind] = useState<GroupKind>('team')
   const [code, setCode] = useState('')
+  // The Riot account the group will know this member by: the app's own on
+  // desktop, typed on the web (which has none).
+  const user = useUserStore((s) => s.user)
+  const localRiotId = user?.summonerName && user.tagLine ? `${user.summonerName}#${user.tagLine}` : null
+  const [typedRiotId, setTypedRiotId] = useState('')
+  const joinRiotId = localRiotId ?? parseRiotIdInput(typedRiotId)
   const [busy, setBusy] = useState<string | null>(null)
   const [invites, setInvites] = useState<Record<string, string>>({})
   const [inviteRole, setInviteRole] = useState<Record<string, Exclude<GroupRole, 'owner'>>>({})
@@ -89,8 +97,10 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
   })
 
   const join = () => run('join', async () => {
-    await window.api.collabJoin(code.trim())
+    if (!joinRiotId) throw new Error('RIOT_ACCOUNT_REQUIRED')
+    await window.api.collabJoin(code.trim(), localRiotId ? null : joinRiotId)
     setCode('')
+    setTypedRiotId('')
     toast({ title: t('coaching.groups.joined'), variant: 'gold' })
     await reload()
   })
@@ -134,10 +144,18 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
               </Button>
             </div>
           </form>
-          <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); if (code.trim()) join() }}>
+          <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); if (code.trim() && joinRiotId) join() }}>
             <div className="text-sm font-medium text-hextech-text-bright">{t('coaching.groups.join')}</div>
             <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={16} placeholder="ABCD2345EF" />
-            <Button type="submit" variant="outline" disabled={!code.trim() || busy !== null}>
+            {localRiotId ? (
+              <p className="text-xs text-hextech-text-dim">{t('coaching.groups.joinAs', { riotId: localRiotId })}</p>
+            ) : (
+              <div className="space-y-1">
+                <Input value={typedRiotId} onChange={(e) => setTypedRiotId(e.target.value)} maxLength={40} placeholder={t('coaching.groups.riotIdPlaceholder')} aria-label={t('coaching.groups.riotIdLabel')} />
+                <p className={cn('text-xs', typedRiotId && !joinRiotId ? 'text-hextech-red' : 'text-hextech-text-dim')}>{t(typedRiotId && !joinRiotId ? 'coaching.groups.riotIdInvalid' : 'coaching.groups.riotIdHint')}</p>
+              </div>
+            )}
+            <Button type="submit" variant="outline" disabled={!code.trim() || !joinRiotId || busy !== null}>
               {busy === 'join' && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
               {t('coaching.groups.joinButton')}
             </Button>

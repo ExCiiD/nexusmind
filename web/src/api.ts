@@ -154,7 +154,7 @@ export const webApi = {
     return id
   },
   collabCreateInvite: (groupId: string, role: 'coach' | 'analyst' | 'player', days: number) => core.createInvite(sb, groupId, role, days),
-  collabJoin: async (code: string) => core.joinGroup(sb, code.trim().toUpperCase(), await webIdentity()),
+  collabJoin: async (code: string, riotId?: string | null) => core.joinGroup(sb, code.trim().toUpperCase(), { ...(await webIdentity()), riotId: riotId ?? null }),
   collabLeave: async (groupId: string) => core.leaveGroup(sb, await currentUserId(), groupId),
   collabSetMemberRole: (groupId: string, userId: string, role: Parameters<typeof core.setMemberRole>[3]) => core.setMemberRole(sb, groupId, userId, role),
   collabDeleteGroup: (groupId: string) => core.deleteGroup(sb, groupId),
