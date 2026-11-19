@@ -79,18 +79,31 @@ function toast({ ...props }: Toast) {
   return { id, dismiss, update }
 }
 
+const dismiss = (toastId?: string) => dispatch({ type: 'DISMISS_TOAST', toastId })
+const TOAST_ACTIONS = { toast, dismiss }
+
+/**
+ * Show or dismiss toasts. It does not subscribe to the toast list: the
+ * components that call it (about 60) no longer re-render on every toast.
+ */
 function useToast() {
+  return TOAST_ACTIONS
+}
+
+/** The toast list, for <Toaster /> only: re-renders on every toast change. */
+function useToastState(): State {
   const [state, setState] = React.useState<State>(memoryState)
 
   React.useEffect(() => {
     listeners.push(setState)
+    setState(memoryState) // a toast dispatched between render and subscription
     return () => {
       const index = listeners.indexOf(setState)
       if (index > -1) listeners.splice(index, 1)
     }
-  }, [state])
+  }, [])
 
-  return { ...state, toast, dismiss: (toastId?: string) => dispatch({ type: 'DISMISS_TOAST', toastId }) }
+  return state
 }
 
-export { useToast, toast }
+export { useToast, useToastState, toast }
