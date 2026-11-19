@@ -65,7 +65,7 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
           { id: 'situational_picks', label: 'Situational Picks', description: 'Having fallback picks when your mains are banned or countered' },
           { id: 'role_coverage', label: 'Role Coverage', description: 'No critical gaps in your pool (AP vs AD, tank vs carry)' },
           { id: 'blind_pick_safety', label: 'Blind Pick Safety', description: 'Including at least one reliable blind pick that remains playable into most matchups' },
-          { id: 'depth_over_width', label: 'Depth Over Width', description: 'Maintaining enough repetition on key champions instead of spreading games too thin' },
+          { id: 'depth_over_width', label: 'Depth Over Width', description: 'Maintaining enough repetition on key champions instead of spreading games too thin (champions played fewer than about 20 times win around 44 %)' },
         ],
       },
     ],
@@ -81,7 +81,7 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
         kpis: [
           { id: 'flash_timing', label: 'Flash Timing', description: 'Using Flash at the right moment (offensive plays, clutch escapes)' },
           { id: 'combat_spell_usage', label: 'Combat Spell Usage', description: 'Optimal Ignite/Heal/Barrier timing in trades and all-ins' },
-          { id: 'tp_macro', label: 'Teleport Macro', description: 'TP to the right location at the right time for objectives/flanks' },
+          { id: 'tp_macro', label: 'Teleport Macro', description: 'TP to the right location at the right time for objectives/flanks (the top quest Teleport has a 390 s cooldown: never spend it on one wave)' },
           { id: 'defensive_spell_discipline', label: 'Defensive Spell Discipline', description: 'Not wasting defensive summoners too late, too early, or for low-value situations' },
           { id: 'enemy_summoner_punish', label: 'Enemy Summoner Punish', description: 'Recognizing and immediately exploiting windows when enemy summoners are unavailable' },
         ],
@@ -124,10 +124,10 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
       {
         id: 'csing_pathing',
         label: 'CSing / Pathing',
-        description: 'Last-hitting efficiency, CS/min benchmarks (7+ for laners), and optimal pathing under pressure.',
+        description: 'Last-hitting efficiency, CS/min benchmarks (7+ for laners; perfect farm is about 115 CS at 10:00 in 2026), and optimal pathing under pressure.',
         kpis: [
           { id: 'last_hit_accuracy', label: 'Last Hit Accuracy', description: 'Consistently last-hitting minions including under tower' },
-          { id: 'cs_per_min', label: 'CS/min', description: 'Maintaining high CS numbers throughout the game (7+ target)' },
+          { id: 'cs_per_min', label: 'CS/min', description: 'Maintaining high CS numbers throughout the game (7+ target; laners under 60 CS at 10:00 win clearly less often)' },
           { id: 'pathing_efficiency', label: 'Pathing Efficiency', description: 'Moving efficiently between camps/lanes to maximize gold income' },
           { id: 'wave_catch_rate', label: 'Wave Catch Rate', description: 'Collecting side waves before they die unnecessarily to towers' },
           { id: 'downtime_optimization', label: 'Downtime Optimization', description: 'Filling dead time with camps, wards, resets, or wave prep instead of drifting aimlessly' },
@@ -138,7 +138,7 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
         label: 'Tempo',
         description: 'Knowing when to accelerate the game (post-kill, post-objective) vs. slowing down to reset and farm.',
         kpis: [
-          { id: 'death_regulation', label: 'Death Regulation', description: 'Spend the maximum time possible alive — avoid any avoidable death. Every death is a tempo loss for you and your team.', priority: true },
+          { id: 'death_regulation', label: 'Death Regulation', description: 'Spend the maximum time possible alive — avoid any avoidable death. Every death is a tempo loss for you and your team. Ascend measures it as the share of the game spent dead: under 8 % wins most games, 14 % or more loses most.', priority: true },
           { id: 'accelerate_timing', label: 'Accelerate Timing', description: 'Pushing advantages after kills, objectives, or first blood' },
           { id: 'slow_down_judgment', label: 'Slow Down Judgment', description: 'Recognizing when to farm and wait instead of forcing plays' },
           { id: 'reset_timing', label: 'Reset Timing', description: 'Recalling and resetting at optimal moments without losing tempo' },
@@ -170,7 +170,7 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
         kpis: [
           { id: 'tilt_management', label: 'Tilt Management', description: 'Staying calm and focused after deaths, bad plays, or teammate mistakes' },
           { id: 'playing_from_behind', label: 'Playing From Behind', description: 'Making smart, low-risk plays when your team is losing' },
-          { id: 'loss_streak_recovery', label: 'Loss Streak Recovery', description: 'Taking breaks and resetting mental after consecutive losses' },
+          { id: 'loss_streak_recovery', label: 'Loss Streak Recovery', description: 'Taking a real break (about 30 minutes) after two losses in a row instead of re-queuing at once' },
           { id: 'mistake_reset_speed', label: 'Mistake Reset Speed', description: 'Recovering mentally within the next minute instead of mentally losing the rest of the game' },
         ],
       },
@@ -181,7 +181,7 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
         kpis: [
           { id: 'never_give_up', label: 'Never Give Up', description: 'Playing to win even in hard games (enemy throws happen)' },
           { id: 'lesson_extraction', label: 'Lesson Extraction', description: 'Finding at least one takeaway from every game, win or lose' },
-          { id: 'mental_endurance', label: 'Mental Endurance', description: 'Maintaining quality play throughout long sessions' },
+          { id: 'mental_endurance', label: 'Mental Endurance', description: 'Maintaining quality play throughout sessions (performance drops game after game: plan a break or a stop around the 4th game)' },
           { id: 'discipline_under_frustration', label: 'Discipline Under Frustration', description: 'Keeping your game plan intact instead of forcing low-percentage plays out of frustration' },
         ],
       },
@@ -362,7 +362,7 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
           { id: 'recall_window', label: 'Recall Window', description: 'Choosing the right moment to recall (after crash, with good HP/mana)' },
           { id: 'cs_loss_minimization', label: 'CS Loss Minimization', description: 'Losing minimal CS during recall by timing with wave state' },
           { id: 'item_spike_recall', label: 'Item Spike Recall', description: 'Recalling when you have enough gold for a key component' },
-          { id: 'objective_sync_recall', label: 'Objective Sync Recall', description: 'Timing recalls so you return with tempo before dragon, herald, or major side-wave decisions' },
+          { id: 'objective_sync_recall', label: 'Objective Sync Recall', description: 'Timing recalls so you return with tempo before dragon, herald, or major side-wave decisions (recall around T-1:30, the far-side laner around T-2:00, to be on site 45-75 s before the spawn)' },
         ],
       },
       {
@@ -406,10 +406,10 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
         description: 'Warding in key locations early — river, tri-brush, pink wards on entrances.',
         kpis: [
           { id: 'early_warding', label: 'Early Warding', description: 'Placing first ward at a useful time and location' },
-          { id: 'pink_ward_usage', label: 'Pink Ward Usage', description: 'Buying and placing control wards in high-value spots' },
+          { id: 'pink_ward_usage', label: 'Pink Ward Usage', description: 'Buying and placing control wards in high-value spots (at least one per back; supports 2+ per game, 40 g once their quest is done)' },
           { id: 'ward_timing', label: 'Ward Timing', description: 'Warding proactively (before ganks) rather than reactively' },
           { id: 'lane_specific_warding', label: 'Lane-Specific Warding', description: 'Choosing ward spots that fit your matchup, lane state, and the enemy jungle path' },
-          { id: 'vision_refresh_cycle', label: 'Vision Refresh Cycle', description: 'Refreshing expiring or cleared vision instead of letting long blind windows happen' },
+          { id: 'vision_refresh_cycle', label: 'Vision Refresh Cycle', description: 'Refreshing expiring or cleared vision instead of letting long blind windows happen (never sit on two full trinket charges)' },
         ],
       },
       {
@@ -418,7 +418,7 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
         description: 'Using camp timers, river vision, and map information to predict the enemy jungler\'s location.',
         kpis: [
           { id: 'jungler_prediction', label: 'Jungler Prediction', description: 'Predicting which quadrant the enemy jungler is in' },
-          { id: 'camp_timer_knowledge', label: 'Camp Timer Knowledge', description: 'Knowing camp respawn timers to track jungler pathing' },
+          { id: 'camp_timer_knowledge', label: 'Camp Timer Knowledge', description: 'Knowing camp timers to track jungler pathing (2026: camps at 0:55, Scuttle Crab at 2:55, small camps back 2:15 after the kill)' },
           { id: 'position_adjustment', label: 'Position Adjustment', description: 'Adjusting lane position based on predicted jungler location' },
           { id: 'opening_info_gathering', label: 'Opening Info Gathering', description: 'Using level 1 vision, first lane states, and the jungler\'s first reveal to identify their likely opening route' },
           { id: 'jungler_cs_verification', label: 'Jungler CS Verification', description: 'Checking the enemy jungler\'s CS when seen to infer their clear, starting side, and which camps are still up' },
@@ -453,7 +453,7 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
         label: 'Level Up Timers',
         description: 'Exploiting level 2/3/6/9/11/16 power spikes by managing lane priority to hit them first.',
         kpis: [
-          { id: 'level_2_spike', label: 'Level 2 Spike', description: 'Pushing for level 2 first and trading when you hit it' },
+          { id: 'level_2_spike', label: 'Level 2 Spike', description: 'Pushing for level 2 first and trading when you hit it (7th minion in a solo lane, 9th in the bot lane duo)' },
           { id: 'level_6_spike', label: 'Level 6 Spike', description: 'Timing your level 6 power spike for a kill opportunity' },
           { id: 'xp_lead_maintenance', label: 'XP Lead Maintenance', description: 'Maintaining XP advantages through good wave management' },
           { id: 'pre_spike_preparation', label: 'Pre-Spike Preparation', description: 'Setting up the wave and spacing correctly before the level spike actually happens' },
@@ -476,6 +476,7 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
           { id: 'commit_vs_reset', label: 'Commit vs Reset', description: 'Deciding correctly when to fight and when to back off' },
           { id: 'risk_reward_assessment', label: 'Risk / Reward Assessment', description: 'Judging whether the downside of a play is acceptable compared with its realistic upside' },
           { id: 'numbers_advantage_play', label: 'Numbers Advantage Play', description: 'Recognizing and acting quickly when your team temporarily has more players on the map segment' },
+          { id: 'respawn_window_conversion', label: 'Respawn Window Conversion', description: 'Turning enemy respawn timers into the deepest reachable objective: Nexus, inhibitor, Baron, inner tower, outer tower, plates' },
         ],
       },
       {
@@ -483,7 +484,7 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
         label: 'Lane Assignment',
         description: 'Optimal role dispatch before leaving base — who goes where for maximum pressure.',
         kpis: [
-          { id: 'assignment_awareness', label: 'Assignment Awareness', description: 'Going to the correct lane after each recall or death' },
+          { id: 'assignment_awareness', label: 'Assignment Awareness', description: 'Going to the correct lane after each recall or death (after laning: ADC mid, the strongest side laner opposite the next objective)' },
           { id: 'matchup_consideration', label: 'Matchup Consideration', description: 'Assigning lanes based on who can handle the opposing laner' },
           { id: 'pressure_distribution', label: 'Pressure Distribution', description: 'Ensuring all lanes are covered and pressure is spread' },
           { id: 'objective_side_assignment', label: 'Objective-Side Assignment', description: 'Sending the right champions to the side of the map that matters for the next objective' },
