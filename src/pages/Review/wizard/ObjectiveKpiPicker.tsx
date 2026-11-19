@@ -1,6 +1,5 @@
 import { cn } from '@/lib/utils'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
-import { getKPIsForObjective } from '@/lib/constants/fundamentals'
 import { Check } from 'lucide-react'
 
 interface Props {
@@ -17,7 +16,7 @@ export function ObjectiveKpiPicker({ objectiveIds, selectedKpiIds, onToggleObjec
   const kpisForObjective = objectiveIds
     .map((id) => {
       const f = allFundamentals.find((x) => x.id === id)
-      return f ? { objectiveId: id, label: f.label, kpis: getKPIsForObjective(id) } : null
+      return f ? { objectiveId: id, label: f.label, kpis: f.kpis } : null
     })
     .filter(Boolean) as Array<{ objectiveId: string; label: string; kpis: any[] }>
 

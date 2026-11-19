@@ -15,6 +15,7 @@ import { collabErrorKey } from '@/lib/collab'
 import { canManageSession } from '@/lib/permissions'
 import { FundamentalPickerDialog } from '@/components/Session/FundamentalPickerDialog'
 import { mergedFundamentalCategories, getAllFundamentalsForGroup } from '@/lib/fundamentals'
+import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { countdownState } from '@/lib/teamSessionsCore'
 import { gamesNeedingReviewPrompt } from '@/lib/teamSessionReviewsCore'
 import { TeamSessionGameCard } from '@/components/TeamSession/TeamSessionGameCard'
@@ -109,8 +110,9 @@ export function TeamSessionPage() {
   const myMember = group?.members.find((m) => m.userId === myUserId)
   const canManage = !!group && canManageSession(group.myRole, myMember?.isCaptain ?? false)
 
-  const categories = useMemo(() => mergedFundamentalCategories(fundamentals), [fundamentals])
-  const allFundamentals = useMemo(() => getAllFundamentalsForGroup(fundamentals), [fundamentals])
+  const baseCategories = useLocalizedFundamentals()
+  const categories = useMemo(() => mergedFundamentalCategories(fundamentals, baseCategories), [fundamentals, baseCategories])
+  const allFundamentals = useMemo(() => getAllFundamentalsForGroup(fundamentals, baseCategories), [fundamentals, baseCategories])
 
   const [selectedObjectives, setSelectedObjectives] = useState<string[]>([])
   const [selectedKpiIds, setSelectedKpiIds] = useState<string[]>([])

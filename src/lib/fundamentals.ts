@@ -14,17 +14,18 @@ import type { GroupFundamental } from './teamSessions'
 
 const TEAM_CUSTOM_CATEGORY_ID = 'team_custom'
 
-export function mergedFundamentalCategories(groupFundamentals: GroupFundamental[]): FundamentalCategory[] {
-  if (groupFundamentals.length === 0) return FUNDAMENTALS
-  return [...FUNDAMENTALS, {
+/** `base`: the categories in the UI language (useLocalizedFundamentals()); English by default. */
+export function mergedFundamentalCategories(groupFundamentals: GroupFundamental[], base: FundamentalCategory[] = FUNDAMENTALS): FundamentalCategory[] {
+  if (groupFundamentals.length === 0) return base
+  return [...base, {
     id: TEAM_CUSTOM_CATEGORY_ID,
     label: 'Team Fundamentals',
     fundamentals: groupFundamentals.map((f): Fundamental => ({ id: f.id, label: f.label, description: f.description ?? '', kpis: [] })),
   }]
 }
 
-export function getAllFundamentalsForGroup(groupFundamentals: GroupFundamental[]): Fundamental[] {
-  return mergedFundamentalCategories(groupFundamentals).flatMap((c) => c.fundamentals)
+export function getAllFundamentalsForGroup(groupFundamentals: GroupFundamental[], base: FundamentalCategory[] = FUNDAMENTALS): Fundamental[] {
+  return mergedFundamentalCategories(groupFundamentals, base).flatMap((c) => c.fundamentals)
 }
 
 /** Label of a fundamental in `list` (e.g. useLocalizedFundamentalList()), else the id itself. */
