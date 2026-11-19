@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Play, FlaskConical, Check, Loader2, Search, Crosshair } from 'lucide-react'
+import { AlertTriangle, Play, FlaskConical, Check, Loader2, Search, Crosshair, Tags } from 'lucide-react'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { CodexCard } from '@/components/MicroReview/CodexCard'
@@ -24,6 +24,7 @@ import { codexFor, dominantPhase } from '@/lib/microReview/codex'
 import { useUserStore } from '@/store/useUserStore'
 import { cn } from '@/lib/utils'
 import { championLabel } from '@/lib/statsInsights'
+import { EmptyState, SkeletonKpiTiles } from '@/components/ui/data-state'
 import {
   rankMistakes,
   phaseBreakdown,
@@ -124,12 +125,9 @@ export function MistakeStatsPage() {
       </div>
 
       {occ === null ? (
-        <div className={cn(panel, 'flex items-center justify-center gap-2 py-16 text-sm text-hextech-text-dim')}><Loader2 className="h-4 w-4 animate-spin" />{t('mistakeLab.loading')}</div>
+        <SkeletonKpiTiles />
       ) : occ.length === 0 ? (
-        <div className={cn(panel, 'py-16 text-center')}>
-          <p className="text-sm text-hextech-text-bright">{t('mistakeLab.empty')}</p>
-          <p className="mt-1 text-xs text-hextech-text-dim">{t('mistakeLab.emptyHint')}</p>
-        </div>
+        <EmptyState icon={Tags} title={t('mistakeLab.empty')} description={t('mistakeLab.emptyHint')} />
       ) : (
         <>
           {/* Summary strip */}

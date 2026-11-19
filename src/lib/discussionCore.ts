@@ -9,7 +9,7 @@ import { fail } from './supabaseErrors'
  * helper, same as VodReviewSection/ScrimsPage already do).
  */
 
-interface CommentRow { id: string; group_id: string; subject_type: DiscussionSubjectType; subject_id: string; author_id: string; body: string; created_at: string }
+interface CommentRow { id: string; group_id: string; subject_type: DiscussionSubjectType; subject_id: string; author_id: string | null; body: string; created_at: string }
 const toComment = (r: CommentRow): DiscussionComment => ({
   id: r.id, groupId: r.group_id, subjectType: r.subject_type, subjectId: r.subject_id, authorId: r.author_id, body: r.body, createdAt: r.created_at,
 })

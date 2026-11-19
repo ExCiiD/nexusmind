@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +33,7 @@ function buildSuggestions(
   allFundamentals: Fundamental[],
   kpiHistory: Array<{ objectiveIds: string[] }>,
   highDeathsWarning: boolean,
+  t: TFunction,
 ): Suggestion[] {
   const recentSessions = kpiHistory.slice(0, 5)
 
@@ -51,21 +54,22 @@ function buildSuggestions(
       let priority = weakness * recencyFactor
       if (f.id === 'tempo' && highDeathsWarning) priority = 999
 
+      const score = assessmentScore
       let reason: string
       if (f.id === 'tempo' && highDeathsWarning) {
-        reason = '⚠ Moy. ≥ 5 morts/partie — Régulation des morts recommandée'
+        reason = t('coaching.suggestions.reason.highDeaths')
       } else if (assessmentScore <= 3) {
-        reason = `Score ${assessmentScore}/10 — faiblesse critique`
+        reason = t('coaching.suggestions.reason.critical', { score })
       } else if (assessmentScore <= 5) {
-        reason = `Score ${assessmentScore}/10 — priorité d'amélioration`
+        reason = t('coaching.suggestions.reason.priority', { score })
       } else if (assessmentScore <= 7) {
-        reason = `Score ${assessmentScore}/10 — marge de progression`
+        reason = t('coaching.suggestions.reason.room', { score })
       } else {
-        reason = `Score ${assessmentScore}/10 — maintien conseillé`
+        reason = t('coaching.suggestions.reason.maintain', { score })
       }
 
-      if (lastUsedIdx === 0 && f.id !== 'tempo') reason += ' · déjà travaillé la dernière session'
-      else if (neverUsed && f.id !== 'tempo') reason += ' · jamais encore travaillé'
+      if (lastUsedIdx === 0 && f.id !== 'tempo') reason += t('coaching.suggestions.reason.lastSession')
+      else if (neverUsed && f.id !== 'tempo') reason += t('coaching.suggestions.reason.neverWorked')
 
       return { id: f.id, label: f.label, assessmentScore, reason, priority, isNew: neverUsed }
     })
@@ -75,6 +79,7 @@ function buildSuggestions(
 }
 
 export function ObjectiveSuggestionPanel({ assessmentScores, onAccept }: ObjectiveSuggestionPanelProps) {
+  const { t } = useTranslation()
   const allFundamentals = useLocalizedFundamentalList()
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
 
@@ -84,9 +89,9 @@ export function ObjectiveSuggestionPanel({ assessmentScores, onAccept }: Objecti
       window.api.getKpiHistory().catch(() => [] as Array<{ objectiveIds: string[]; selectedKpiIds: string[] }>),
       window.api.getCoachingPatterns().catch(() => null),
     ]).then(([history, patterns]) => {
-      setSuggestions(buildSuggestions(assessmentScores, allFundamentals, history, patterns?.highDeathsWarning ?? false))
+      setSuggestions(buildSuggestions(assessmentScores, allFundamentals, history, patterns?.highDeathsWarning ?? false, t))
     })
-  }, [assessmentScores, allFundamentals])
+  }, [assessmentScores, allFundamentals, t])
 
   if (suggestions.length === 0) return null
 
@@ -94,11 +99,11 @@ export function ObjectiveSuggestionPanel({ assessmentScores, onAccept }: Objecti
     <Card className="border-hextech-teal/30 bg-gradient-to-b from-hextech-blue/10 to-hextech-blue/10">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <Lightbulb className="h-4 w-4 text-hextech-cyan" />
-          Objectifs suggérés
+          <Lightbulb className="h-4 w-4 text-hextech-cyan" aria-hidden />
+          {t('coaching.suggestions.title')}
         </CardTitle>
         <p className="text-xs text-hextech-text-dim">
-          Basé sur ton bilan d'évaluation et tes sessions récentes
+          {t('coaching.suggestions.subtitle')}
         </p>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -112,7 +117,7 @@ export function ObjectiveSuggestionPanel({ assessmentScores, onAccept }: Objecti
                 <span className="text-sm font-medium text-hextech-text-bright">{s.label}</span>
                 {s.isNew && (
                   <Badge variant="outline" className="text-[10px] border-hextech-cyan/40 text-hextech-cyan">
-                    Jamais travaillé
+                    {t('coaching.suggestions.neverBadge')}
                   </Badge>
                 )}
               </div>
@@ -125,8 +130,8 @@ export function ObjectiveSuggestionPanel({ assessmentScores, onAccept }: Objecti
                 onClick={() => onAccept(s.id)}
                 className="shrink-0 gap-1 text-xs text-hextech-gold hover:bg-hextech-gold/10"
               >
-                Choisir
-                <ChevronRight className="h-3 w-3" />
+                {t('coaching.suggestions.choose')}
+                <ChevronRight className="h-3 w-3" aria-hidden />
               </Button>
             )}
           </div>

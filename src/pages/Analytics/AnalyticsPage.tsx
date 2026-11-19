@@ -16,10 +16,11 @@ import { Badge } from '@/components/ui/badge'
 import { useLocalizedFundamental, useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { formatKDA, formatGameTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { TrendingUp, History, Award, BarChart3, Calendar, ClipboardList, Loader2, Info, Table2 } from 'lucide-react'
+import { TrendingUp, History, Award, BarChart3, Calendar, ClipboardList, Info, Table2, Swords, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FundamentalFilter } from './FundamentalFilter'
 import { ProgressSummary } from './ProgressSummary'
+import { EmptyState, Skeleton, SkeletonKpiTiles } from '@/components/ui/data-state'
 
 const LS_TAB_KEY = 'analytics_tab'
 const LS_FILTER_KEY = 'analytics_filter_fundamentals'
@@ -172,8 +173,9 @@ export function AnalyticsPage() {
 
   if (!dataLoaded) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-hextech-gold" />
+      <div className="space-y-4 py-2">
+        <SkeletonKpiTiles />
+        <Skeleton className="h-64 w-full" />
       </div>
     )
   }
@@ -377,9 +379,12 @@ export function AnalyticsPage() {
 
         <TabsContent value="history" className="space-y-4">
           {gameHistory.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center text-hextech-text-dim">{t('analytics.charts.noGames')}</CardContent>
-            </Card>
+            <EmptyState
+              icon={Swords}
+              title={t('analytics.state.noGamesTitle')}
+              description={t('analytics.state.noGamesDesc')}
+              action={{ label: t('history.state.createSession'), onClick: () => navigate('/session'), icon: Plus }}
+            />
           ) : (
             gameHistory.map((game: any) => (
               <Card key={game.id}>

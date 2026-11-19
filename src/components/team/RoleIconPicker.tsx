@@ -12,11 +12,10 @@
 
 import { cn } from '@/lib/utils'
 import { RoleGlyph } from './RoleGlyph'
+import { ROLES, type Role } from '@/lib/championRoles'
 
-export type Role = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'
+export type { Role }
 export type RoleOrAll = 'ALL' | Role
-
-const ROLES: Role[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
 
 interface Props {
   value: RoleOrAll
@@ -43,7 +42,7 @@ export function RoleIconPicker({ value, onChange, defaultRole, size = 'md', hide
             px,
             value === 'ALL'
               ? 'border-hextech-gold bg-hextech-gold/10 ring-1 ring-hextech-gold/40'
-              : 'border-hextech-border bg-white/5 hover:bg-white/10 hover:border-hextech-border-bright',
+              : 'border-hextech-border bg-white/5 hover:bg-white/10 hover:border-hextech-gold/50',
           )}
           title={defaultRole ? `Default (${defaultRole})` : 'Default'}
         >
@@ -76,7 +75,7 @@ export function RoleIconPicker({ value, onChange, defaultRole, size = 'md', hide
               px,
               active
                 ? 'border-hextech-gold bg-hextech-gold/10 ring-1 ring-hextech-gold/40'
-                : 'border-hextech-border bg-white/5 hover:bg-white/10 hover:border-hextech-border-bright',
+                : 'border-hextech-border bg-white/5 hover:bg-white/10 hover:border-hextech-gold/50',
             )}
             title={role}
           >

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { AccountBadge } from '@/components/ui/AccountBadge'
 import { toNxmUrl } from '@/lib/mediaCore'
+import { buildPageNumbers, getDateKey, matchesRecordFilters, parseStoredFolders } from '@/lib/recordPageCore'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -87,7 +88,7 @@ function loadFilters(): Filters {
 }
 function saveFilters(f: Filters) { try { localStorage.setItem(FILTER_KEY, JSON.stringify(f)) } catch {} }
 function loadFolders(): Folder[] {
-  try { const r = localStorage.getItem(FOLDER_KEY); return r ? JSON.parse(r) : [] } catch { return [] }
+  try { return parseStoredFolders<Folder>(localStorage.getItem(FOLDER_KEY)) } catch { return [] }
 }
 function saveFolders(f: Folder[]) { localStorage.setItem(FOLDER_KEY, JSON.stringify(f)) }
 
@@ -96,28 +97,10 @@ function saveFolders(f: Folder[]) { localStorage.setItem(FOLDER_KEY, JSON.string
 function queueLabel(q: string) { return ({ soloq: 'SoloQ', flex: 'Flex', aram: 'ARAM', arena: 'Arena', custom: i18n.t('record.mode.custom'), normal: i18n.t('record.mode.normal') } as Record<string, string>)[q] ?? i18n.t('record.mode.unknown') }
 function queueBadgeColor(q: string) { return ({ soloq: 'text-hextech-gold border-hextech-gold/30', flex: 'text-blue-400 border-blue-400/30', aram: 'text-purple-400 border-purple-400/30', arena: 'text-orange-400 border-orange-400/30' } as Record<string, string>)[q] ?? 'text-hextech-text-dim border-hextech-border-dim' }
 
-function getDateKey(dateStr: string): string {
-  // Local calendar day (not UTC): a game at 00:30 belongs to that night's day group.
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 function formatDateLabel(isoDate: string): string {
   return new Date(isoDate + 'T00:00:00').toLocaleDateString(i18n.language, {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   })
-}
-
-// ── Pagination helper ─────────────────────────────────────────────────────────
-
-/** Returns an array of page numbers and '…' ellipsis markers */
-function buildPageNumbers(current: number, total: number): Array<number | '…'> {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
-  const pages: Array<number | '…'> = [1]
-  if (current > 3) pages.push('…')
-  for (let p = Math.max(2, current - 1); p <= Math.min(total - 1, current + 1); p++) pages.push(p)
-  if (current < total - 2) pages.push('…')
-  pages.push(total)
-  return pages
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -249,15 +232,7 @@ export function RecordPage() {
     setCurrentPage(1)
   }, [])
 
-  const filtered = useMemo(() => records.filter((r) => {
-    if (filters.content === 'clips' && r.clipCount === 0) return false
-    if (filters.content === 'records' && !r.filePath) return false
-    if (filters.mode !== 'all' && r.queueType !== filters.mode) return false
-    if (filters.review === 'reviewed' && !r.hasReview) return false
-    if (filters.review === 'unreviewed' && r.hasReview) return false
-    if (filters.source !== 'all' && r.source !== filters.source) return false
-    return true
-  }), [records, filters])
+  const filtered = useMemo(() => records.filter((r) => matchesRecordFilters(r, filters)), [records, filters])
 
   // ── Grouping + Pagination ────────────────────────────────────────────────
 
@@ -746,7 +721,7 @@ function RecordGroupSection({ label, records, selectedIds, collapsed, onToggleCo
     <div className="mb-6">
       {/* Group header */}
       <div className="flex items-center gap-3 mb-3">
-        <Checkbox checked={allSelected} indeterminate={someSelected && !allSelected} onChange={onToggleGroupSelect} />
+        <Checkbox checked={allSelected} indeterminate={someSelected && !allSelected} onChange={onToggleGroupSelect} label={t('record.select.group')} />
         <button onClick={onToggleCollapse} className="flex items-center gap-2 flex-1 min-w-0 text-left">
           <span className="text-sm font-semibold text-hextech-text-bright">{label}</span>
           <span className="text-xs text-hextech-text-dim/60 shrink-0">{records.length}</span>
@@ -809,12 +784,7 @@ function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, o
       onMouseLeave={() => setConfirmDelete(false)}
     >
       {/* Checkbox — always visible */}
-      <button
-        onClick={onToggleSelect}
-        className="absolute top-1.5 left-1.5 z-20"
-      >
-        <Checkbox checked={isSelected} onChange={onToggleSelect} className="shadow-md" />
-      </button>
+      <Checkbox checked={isSelected} onChange={onToggleSelect} className="absolute top-1.5 left-1.5 z-20 shadow-md" label={t('record.select.recording', { name: r.champion })} />
 
       {/* Delete button — on hover */}
       <button
@@ -832,7 +802,15 @@ function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, o
       </button>
 
       {/* Thumbnail */}
-      <div className="relative w-full cursor-pointer" style={{ paddingTop: '56.25%' }} onClick={() => onOpen(r)}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={t('record.select.open', { name: r.champion })}
+        className="relative w-full cursor-pointer rounded-t-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        style={{ paddingTop: '56.25%' }}
+        onClick={() => onOpen(r)}
+        onKeyDown={onActivateKey(() => onOpen(r))}
+      >
         <div className="absolute inset-0 bg-hextech-background/80">
           {r.thumbnailPath
             ? <img src={toNxmUrl(r.thumbnailPath)} alt={r.champion} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -928,9 +906,13 @@ function RecordCard({ record: r, isSelected, onToggleSelect, onOpen, onDelete, o
 
 // ── Checkbox ──────────────────────────────────────────────────────────────────
 
-function Checkbox({ checked, indeterminate, onChange, className }: { checked: boolean; indeterminate?: boolean; onChange: () => void; className?: string }) {
+function Checkbox({ checked, indeterminate, onChange, className, label }: { checked: boolean; indeterminate?: boolean; onChange: () => void; className?: string; label: string }) {
   return (
-    <div
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={indeterminate && !checked ? 'mixed' : checked}
+      aria-label={label}
       onClick={e => { e.stopPropagation(); onChange() }}
       className={cn(
         'w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0',
@@ -940,10 +922,18 @@ function Checkbox({ checked, indeterminate, onChange, className }: { checked: bo
         className,
       )}
     >
-      {indeterminate && !checked && <div className="w-2 h-0.5 bg-black rounded" />}
-      {checked && <Check className="h-2.5 w-2.5 text-black" />}
-    </div>
+      {indeterminate && !checked && <span aria-hidden className="w-2 h-0.5 bg-black rounded" />}
+      {checked && <Check className="h-2.5 w-2.5 text-black" aria-hidden />}
+    </button>
   )
+}
+
+/** Enter / Space on a non-button element that acts as one (thumbnails). */
+function onActivateKey(fn: () => void) {
+  return (e: React.KeyboardEvent) => {
+    if (e.target !== e.currentTarget) return
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn() }
+  }
 }
 
 // ── Filter row ────────────────────────────────────────────────────────────────
@@ -976,7 +966,15 @@ function ClipCard({ clip, onOpen, onDelete }: { clip: ClipEntry; onOpen: () => v
   return (
     <div className="group relative rounded-lg border border-hextech-border-dim bg-hextech-dark overflow-hidden transition-all hover:border-hextech-gold/40 hover:shadow-lg hover:shadow-hextech-gold/5">
       {/* Thumbnail */}
-      <div className="relative w-full cursor-pointer" style={{ paddingTop: '56.25%' }} onClick={onOpen}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={t('record.select.open', { name: clip.title ?? t('record.clips.clip') })}
+        className="relative w-full cursor-pointer rounded-t-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        style={{ paddingTop: '56.25%' }}
+        onClick={onOpen}
+        onKeyDown={onActivateKey(onOpen)}
+      >
         <div className="absolute inset-0 bg-hextech-background/80">
           {clip.thumbnailPath
             ? <img src={toNxmUrl(clip.thumbnailPath)} alt={clip.title ?? t('record.clips.clip')} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />

@@ -1432,6 +1432,7 @@ export function VideoReviewPlayer({
             : 'flex-1 flex flex-col',
         )}
       >
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- click-to-play mouse shortcut; Space / K and the labelled play button cover the keyboard. */}
         <div
           className={cn(
             'relative bg-black cursor-pointer',
@@ -1439,6 +1440,7 @@ export function VideoReviewPlayer({
           )}
           onClick={togglePlay}
         >
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption -- game recordings have no caption track; the debrief transcription is shown separately. */}
           <video
             ref={videoRef}
             src={src}
@@ -1521,6 +1523,7 @@ export function VideoReviewPlayer({
               <span>{fmt(windowEnd)}</span>
             </div>
           )}
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- seek bar for the pointer; arrow keys seek from the keyboard. */}
           <div
             ref={progressRef}
             className="relative h-5 cursor-pointer group"
@@ -1541,6 +1544,7 @@ export function VideoReviewPlayer({
             {/* Clip range */}
             {clipping && clipRange && duration > 0 && (
               <>
+                {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- clip range drag; the In / Out time fields edit it from the keyboard. */}
                 <div
                   className="absolute top-1/2 -translate-y-1/2 h-3 group-hover:h-5 bg-hextech-teal/25 border-y border-hextech-teal/50 cursor-grab active:cursor-grabbing z-10 group/clip transition-[height] duration-100"
                   style={{
@@ -1568,6 +1572,7 @@ export function VideoReviewPlayer({
                   </div>
                 </div>
 
+                {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- clip start handle drag; the In time field edits it from the keyboard. */}
                 <div
                   className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-6 rounded bg-hextech-teal cursor-ew-resize z-20 flex items-center justify-center shadow-md"
                   style={{ left: `${timeToPercent(clipRange.startMs / 1000)}%` }}
@@ -1576,6 +1581,7 @@ export function VideoReviewPlayer({
                   <div className="w-0.5 h-3.5 bg-white/70 rounded" />
                 </div>
 
+                {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- clip end handle drag; the Out time field edits it from the keyboard. */}
                 <div
                   className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-6 rounded bg-hextech-teal cursor-ew-resize z-20 flex items-center justify-center shadow-md"
                   style={{ left: `${timeToPercent(clipRange.endMs / 1000)}%` }}

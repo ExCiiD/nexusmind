@@ -77,11 +77,15 @@ export async function unlinkMyDiscord(sb: SupabaseClient, userId: string): Promi
 
 /** Redeems a "/link-team" code: consumes it (one-time use) and upserts the
  *  guild↔group link. Returns the linked groupId, or null if the code is
- *  missing/expired. */
+ *  missing/expired. Throws GUILD_LINKED_ELSEWHERE when the server is
+ *  already linked to another group: a code from any group must not take
+ *  over a team's server (S19-03 review). Re-linking the same group is fine. */
 export async function redeemGuildLinkCode(sb: SupabaseClient, code: string, guildId: string): Promise<string | null> {
   const { data: row, error } = await sb.from('discord_guild_link_codes').select('group_id, expires_at, created_by').eq('code', code).maybeSingle()
   if (error) fail(error, 'redeem guild code')
   if (!row || new Date(row.expires_at).getTime() < Date.now()) return null
+  const existing = await resolveGuild(sb, guildId)
+  if (existing && existing.groupId !== row.group_id) throw new Error('GUILD_LINKED_ELSEWHERE')
   await sb.from('discord_guild_link_codes').delete().eq('code', code)
   const { error: upsertErr } = await sb.from('discord_guild_links')
     .upsert({ guild_id: guildId, group_id: row.group_id, linked_by: row.created_by }, { onConflict: 'guild_id' })
@@ -111,6 +115,39 @@ export async function resolveDiscordUser(sb: SupabaseClient, discordUserId: stri
   const { data, error } = await sb.from('discord_user_links').select('user_id').eq('discord_user_id', discordUserId).maybeSingle()
   if (error) fail(error, 'resolve discord user')
   return data?.user_id ?? null
+}
+
+/**
+ * S19-03: the bot writes with the service role (no RLS), so "is this
+ * Ascend user in the group the server is linked to?" is checked here.
+ * Returns their role in the group, or null when they are not a member.
+ */
+export async function getGroupMemberRole(sb: SupabaseClient, groupId: string, userId: string): Promise<string | null> {
+  const { data, error } = await sb.from('group_members').select('role').eq('group_id', groupId).eq('user_id', userId).maybeSingle()
+  if (error) fail(error, 'read group membership')
+  return (data as { role?: string } | null)?.role ?? null
+}
+
+/** Discord permission bits (https://discord.com/developers/docs/topics/permissions). */
+export const DISCORD_ADMINISTRATOR = 1n << 3n
+export const DISCORD_MANAGE_GUILD = 1n << 5n
+
+/** True when the interaction member may manage the server (Manage Server or Administrator). */
+export function canManageDiscordServer(permissions: string | undefined | null): boolean {
+  if (!permissions || !/^\d+$/.test(permissions)) return false
+  const bits = BigInt(permissions)
+  return (bits & DISCORD_ADMINISTRATOR) !== 0n || (bits & DISCORD_MANAGE_GUILD) !== 0n
+}
+
+/**
+ * The group roles that manage the team's Discord link: point the bot at a channel (/set-channel, without Discord
+ * admin rights) and unlink the server (#34). One list on both sides: the server's private.is_discord_manager
+ * (supabase/migrations/20261119230000_discord_unlink_guild.sql) uses the same roles, and a test keeps them equal.
+ */
+export const DISCORD_MANAGER_ROLES = ['owner', 'coach', 'manager'] as const
+
+export function isChannelStaffRole(role: string | null): boolean {
+  return role !== null && (DISCORD_MANAGER_ROLES as readonly string[]).includes(role)
 }
 
 export async function setNotifyChannel(sb: SupabaseClient, guildId: string, channelId: string): Promise<void> {

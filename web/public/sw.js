@@ -1,8 +1,12 @@
-// NexusMind web — minimal offline shell.
+// Ascend web — minimal offline shell.
 // Pages: network first, cached shell as fallback. Built assets (hashed
 // names): cache first. Supabase / API calls are never cached.
-const CACHE = 'nexusmind-shell-v1'
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg']
+// WSC-25: one cache per build. The web build (web/vite.config.ts, swBuildId)
+// writes the build id below into dist/sw.js, so each deployment ships a new
+// worker, and 'activate' drops the previous build's cache with its assets.
+const BUILD = '__ASCEND_BUILD_ID__'
+const CACHE = `ascend-shell-${BUILD}`
+const SHELL = ['/', '/index.html', '/manifest.webmanifest']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()))

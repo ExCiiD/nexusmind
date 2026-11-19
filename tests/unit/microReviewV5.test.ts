@@ -232,7 +232,9 @@ const RIVER: P = { x: 5000, y: 9500 }
 
 describe('detector — the V5 numbers', () => {
   it('are the ones of the brief', () => {
-    expect(DETECTOR_SPEC.dive).toEqual({ untilSec: 840, turretRadius: 850, afterKillSec: 4 })
+    // 2026: the T1 keeps its plates until it falls, so the dive window runs to 20:00 (2025: 14:00).
+    expect(DETECTOR_SPEC.dive).toEqual({ untilSec: 1200, turretRadius: 850, afterKillSec: 4 })
+    expect(CLOCK_2025.dive).toEqual({ untilSec: 840, turretRadius: 850, afterKillSec: 4 })
     expect(DETECTOR_SPEC.levelSpike).toEqual({ untilSec: 235, windowSec: 10, levels: [2, 3] })
     expect(CLOCK_2025.levelSpike).toEqual({ untilSec: 270, windowSec: 10, levels: [2, 3] })
     expect(DETECTOR_SPEC.backTimer).toEqual({ untilSec: 600, hpPct: 35, gold: 800, withinSec: 40 })
@@ -244,7 +246,8 @@ describe('detector — the V5 numbers', () => {
 })
 
 describe('pattern — 1-for-1 tower dive (laning phase)', () => {
-  const S = DETECTOR_SPEC.dive
+  // Fixtures are 15.x games: the 2025 clock (microReviewSeason2026.test.ts covers 16.x).
+  const S = CLOCK_2025.dive
   const dive = (o: { killAt?: number; deathAt?: number; offset?: number; killer?: number; assists?: number[]; damageBy?: number[]; extra?: any[] } = {}) => {
     const killAt = o.killAt ?? at(5)
     const near = { x: RED_T1_TOP.x, y: RED_T1_TOP.y - (o.offset ?? 600) }

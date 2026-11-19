@@ -169,7 +169,7 @@ const team = [
     steps: [{ wait: 500 }, { hover: { sel: 'h2, h3', text: 'Nyra' }, ms: 900 }, { scroll: 420, ms: 2000 }, { wait: 1200 }, tab('Rapport hebdo'), { wait: 2600 }],
   },
   {
-    id: 'team-draft', route: '/team', viewport: [1416, 960], out: [1062, 720],
+    id: 'team-draft', route: '/coaching', viewport: [1416, 960], out: [1062, 720],
     setup: [tab('Draft Sim'), { wait: 1500 }],
     steps: [{ wait: 500 }, { hover: 'main img[alt]', ms: 1000 }, { wait: 800 }, tab('Scouting'), { wait: 1600 }, { hover: { sel: 'h3, h2', text: 'Aegis' }, ms: 900 }, { wait: 1400 }],
   },
@@ -188,7 +188,7 @@ const demo = [
   { id: 'demo-team-stats', route: '/team', ...wide, out: [1600, 900] },
   { id: 'demo-team-vod', route: '/coaching', ...wide, out: [1280, 720], setup: VOD_SETUP, steps: vodTour },
   { id: 'demo-team-player', route: '/coaching', ...wide, out: [1280, 720], setup: [tab('Joueurs'), { wait: 1500 }], steps: [{ wait: 500 }, { hover: { sel: 'h2, h3', text: 'Nyra' }, ms: 900 }, { scroll: 420, ms: 2000 }, { wait: 1300 }, { scroll: -420, ms: 1500 }, { wait: 600 }] },
-  { id: 'demo-team-draft', route: '/team', ...wide, out: [1280, 720], setup: [tab('Draft Sim'), { wait: 1600 }], steps: [{ wait: 500 }, { hover: 'main img[alt]', ms: 1000 }, { wait: 900 }, tab('Scouting'), { wait: 1800 }, { hover: { sel: 'h3, h2', text: 'Aegis' }, ms: 900 }, { wait: 1200 }] },
+  { id: 'demo-team-draft', route: '/coaching', ...wide, out: [1280, 720], setup: [tab('Draft Sim'), { wait: 1600 }], steps: [{ wait: 500 }, { hover: 'main img[alt]', ms: 1000 }, { wait: 900 }, tab('Scouting'), { wait: 1800 }, { hover: { sel: 'h3, h2', text: 'Aegis' }, ms: 900 }, { wait: 1200 }] },
   { id: 'demo-team-staff', route: '/coaching', ...wide, out: [1600, 900], setup: [{ reveal: { sel: 'h3', text: 'Retours du coach' }, block: 'start' }] },
 ]
 

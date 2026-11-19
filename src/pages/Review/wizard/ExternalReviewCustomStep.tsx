@@ -1,6 +1,7 @@
+import { useTranslation } from 'react-i18next'
 import { Loader2, Check } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import { ObjectiveKpiPicker } from './ObjectiveKpiPicker'
 import type { WizardState } from '../ExternalReviewWizard'
 
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function ExternalReviewCustomStep({ state, onChange, creating, onCreate }: Props) {
+  const { t } = useTranslation()
   const toggleObjective = (id: string) => {
     const ids = state.objectiveIds.includes(id)
       ? state.objectiveIds.filter((x) => x !== id)
@@ -32,13 +34,14 @@ export function ExternalReviewCustomStep({ state, onChange, creating, onCreate }
     <div className="space-y-4 pt-1">
       {/* Title */}
       <div className="space-y-1">
-        <label className="text-xs font-medium text-hextech-text-dim uppercase tracking-wider">Review title</label>
+        <label htmlFor="ext-review-title" className="text-xs font-medium text-hextech-text-dim uppercase tracking-wider">{t('externalReview.custom.title')}</label>
         <input
+          id="ext-review-title"
           autoFocus
           type="text"
           value={state.title}
           onChange={(e) => onChange({ title: e.target.value })}
-          placeholder="e.g. Laning phase focus — Yone TOP"
+          placeholder={t('externalReview.custom.titlePlaceholder')}
           className="w-full rounded-md border border-hextech-border-dim bg-hextech-elevated px-3 py-2 text-sm text-hextech-text placeholder:text-hextech-text-dim/50 focus:outline-none focus:border-hextech-gold"
         />
       </div>
@@ -46,19 +49,15 @@ export function ExternalReviewCustomStep({ state, onChange, creating, onCreate }
       {/* Objective toggle */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-medium text-hextech-text-dim uppercase tracking-wider">Objective (optional)</label>
-          <button
-            onClick={() => onChange({ wantsObjective: !state.wantsObjective, objectiveIds: [], selectedKpiIds: [] })}
-            className={cn(
-              'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-              state.wantsObjective ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
-            )}
-          >
-            <span className={cn('inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform', state.wantsObjective ? 'translate-x-4' : 'translate-x-0.5')} />
-          </button>
+          <label htmlFor="ext-custom-objective" className="text-xs font-medium text-hextech-text-dim uppercase tracking-wider">{t('externalReview.objectiveOptional')}</label>
+          <Switch
+            id="ext-custom-objective"
+            checked={state.wantsObjective}
+            onCheckedChange={(v) => onChange({ wantsObjective: v, objectiveIds: [], selectedKpiIds: [] })}
+          />
         </div>
         <p className="text-[11px] text-hextech-text-dim">
-          {state.wantsObjective ? 'Pick up to 3 focus areas and the KPIs to track.' : 'Skip — review freely with marks and thoughts.'}
+          {state.wantsObjective ? t('externalReview.objectiveOn') : t('externalReview.objectiveOff')}
         </p>
 
         {state.wantsObjective && (
@@ -79,8 +78,8 @@ export function ExternalReviewCustomStep({ state, onChange, creating, onCreate }
         className="w-full"
         size="lg"
       >
-        {creating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
-        Create review
+        {creating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden /> : <Check className="h-4 w-4 mr-2" aria-hidden />}
+        {t('externalReview.custom.create')}
       </Button>
     </div>
   )

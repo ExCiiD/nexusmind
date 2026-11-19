@@ -133,8 +133,8 @@ export function TeamPage() {
           </PanelErrorBoundary>
         )}
         {tab === 'scouting' && (
-          <PanelErrorBoundary key="scouting" label="Scouting">
-            <ScoutingTab />
+          <PanelErrorBoundary key={`scouting-${groupId ?? 'none'}`} label="Scouting">
+            <ScoutingTab groupId={groupId ?? undefined} />
           </PanelErrorBoundary>
         )}
       </div>

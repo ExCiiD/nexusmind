@@ -9,8 +9,8 @@ import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
 import type { SharedRosterMember } from '@/lib/team'
 import type { TrialCandidate, TrialRole, TrialStatus } from '@/lib/trials'
+import { ROLES } from '@/lib/championRoles'
 
-const ROLES: TrialRole[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
 
 /** E10 (docs/PLAN_GESTION_EQUIPE.md): trial candidates with a 1-5 evaluation grid, staff-only. */
 export function TrialsSection({ staffGroups }: { staffGroups: Group[] }) {

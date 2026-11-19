@@ -48,12 +48,21 @@ afterAll(async () => {
 })
 
 describe('backup round-trip', () => {
-  it('cloud payloads exclude the Riot match cache', async () => {
+  // Decision M (19/11/2026): the match cache (up to 2 MB a match) left every export, file ones included.
+  it('no payload exports the Riot match cache any more (file or cloud)', async () => {
     const cloud = await buildBackupPayload({ forCloud: true })
     const file = await buildBackupPayload({ forCloud: false })
     expect(cloud.tables.MatchCache).toBeUndefined()
-    expect(file.tables.MatchCache).toBeDefined()
+    expect(file.tables.MatchCache).toBeUndefined()
+    expect(file.tables.Game).toBeDefined()
     expect(cloud.manifest.puuid).toBe('owner-puuid')
+  })
+
+  it('an older file that still contains a match cache imports it', async () => {
+    const payload = await buildBackupPayload({ forCloud: false })
+    payload.tables.MatchCache = [{ id: 'mc-old', matchId: 'EUW1_OLD_FILE', matchJson: '{"info":{}}', timelineJson: null, createdAt: new Date().toISOString() }]
+    await importBackupPayload(payload)
+    expect(await getPrisma().matchCache.findUnique({ where: { matchId: 'EUW1_OLD_FILE' } })).not.toBeNull()
   })
 
   it('restores deleted coaching data, including mistakes with a re-created tag', async () => {

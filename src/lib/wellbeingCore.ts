@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { EnergyWinrateCorrelation, NewWellbeingCheckinInput, WellbeingCheckin } from './wellbeing'
+import type { EnergyWinrateCorrelation, NewWellbeingCheckinInput, WellbeingCheckin, WellbeingConsent, WellbeingConsentVersion } from './wellbeing'
 import { fail } from './supabaseErrors'
 
 /**
@@ -104,4 +104,40 @@ export function computeEnergyWinrateCorrelation(
     lowEnergyGames: lowTotal, lowEnergyWinrate: lowTotal > 0 ? Math.round((lowWins / lowTotal) * 100) : null,
     otherGames: otherTotal, otherWinrate: otherTotal > 0 ? Math.round((otherWins / otherTotal) * 100) : null,
   }
+}
+
+// ── Consent (legal texts v0.3) ───────────────────────────────────────────────
+
+interface ConsentEventRow { granted: boolean; version: string; created_at: string }
+
+/** The consent state from the user's events, newest first (pure, tested). */
+export function consentFromEvents(events: ConsentEventRow[]): WellbeingConsent {
+  const latest = events[0]
+  if (!latest) return { status: 'none', version: null, grantedAt: null, withdrawnAt: null }
+  const lastGrant = events.find((e) => e.granted)
+  return {
+    status: latest.granted ? 'granted' : 'withdrawn',
+    version: latest.version,
+    grantedAt: lastGrant?.created_at ?? null,
+    withdrawnAt: latest.granted ? null : latest.created_at,
+  }
+}
+
+/** Current consent of `userId` (their own events: RLS lets nobody else read them). */
+export async function getConsent(sb: SupabaseClient, userId: string): Promise<WellbeingConsent> {
+  const { data, error } = await sb.from('wellbeing_consent_events')
+    .select('granted, version, created_at')
+    .eq('user_id', userId).order('created_at', { ascending: false }).limit(50)
+  if (error) fail(error, 'read consent')
+  return consentFromEvents(data as ConsentEventRow[])
+}
+
+/**
+ * Grants or withdraws the consent through set_wellbeing_consent (server time, append-only log). A withdrawal also
+ * deletes the check-ins and turns share_wellbeing off, in the same transaction, server side.
+ */
+export async function setConsent(sb: SupabaseClient, userId: string, granted: boolean, version: WellbeingConsentVersion): Promise<WellbeingConsent> {
+  const { error } = await sb.rpc('set_wellbeing_consent', { p_granted: granted, p_version: version })
+  if (error) fail(error, 'set consent')
+  return getConsent(sb, userId)
 }

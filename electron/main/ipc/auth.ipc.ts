@@ -3,7 +3,7 @@ import { getPrisma } from '../database'
 import { invalidateMediaAccessCache } from '../mediaAccess'
 import { z } from 'zod'
 import { validatedHandle, userUpdateSchema } from './validate'
-import { getAccountByRiotId, getSummonerByPuuid } from '../riotClient'
+import { getAccountByRiotId, getAccountByPuuid, getSummonerByPuuid } from '../riotClient'
 
 const GARENA_REGIONS = new Set(['VN2', 'SG2', 'TH2', 'TW2', 'PH2'])
 
@@ -80,11 +80,13 @@ export function registerAuthHandlers() {
       // Ignore Garena / network errors — use cached icon
     }
 
-    // Refresh Riot identity data
+    // Refresh Riot identity data. By puuid (#38): after a rename the stored name no longer resolves.
     let summonerName = existing.summonerName
     let tagLine = existing.tagLine
     try {
-      const account = await getAccountByRiotId(existing.summonerName, existing.tagLine, existing.region)
+      const account = existing.puuid
+        ? await getAccountByPuuid(existing.puuid, existing.region)
+        : await getAccountByRiotId(existing.summonerName, existing.tagLine, existing.region)
       summonerName = account.gameName
       tagLine = account.tagLine
     } catch {

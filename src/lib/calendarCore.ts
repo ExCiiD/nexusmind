@@ -16,12 +16,12 @@ import { fail } from './supabaseErrors'
 interface EventRow {
   id: string; group_id: string; kind: CalendarEvent['kind']; title: string; starts_at: string; ends_at: string
   notes: string | null; linked_scrim_id: string | null; attendee_scope: AttendeeScope
-  created_by: string; created_at: string; updated_at: string
+  created_by: string | null; created_at: string; updated_at: string
 }
 interface RuleRow { id: string; group_id: string; user_id: string; weekday: number; start_time: string; end_time: string }
 interface ExceptionRow { id: string; group_id: string; user_id: string; date: string; available: boolean; start_time: string | null; end_time: string | null; note: string | null }
 interface EventRequestRow {
-  id: string; group_id: string; requested_by: string; event_name: string; people_concerned: string[]
+  id: string; group_id: string; requested_by: string | null; event_name: string; people_concerned: string[]
   preferred_start: string | null; preferred_end: string | null; status: EventRequestStatus; created_at: string
 }
 
@@ -232,7 +232,7 @@ export async function deleteAvailabilityException(sb: SupabaseClient, id: string
 
 // ── Live calendar subscription (E4 v2) ──────────────────────────────────
 
-interface SubscriptionRow { id: string; group_id: string; token: string; created_by: string; created_at: string }
+interface SubscriptionRow { id: string; group_id: string; token: string; created_by: string | null; created_at: string }
 /** `baseUrl` is the project's own Supabase URL (`https://<ref>.supabase.co`)
  *  — desktop/web each know their own (electron/main/cloud/supabase.ts's
  *  `getSupabaseUrl()`, web/src/supabase.ts's `supabaseUrl`), so the ICS URL

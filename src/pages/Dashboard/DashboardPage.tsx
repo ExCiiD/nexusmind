@@ -40,6 +40,7 @@ import { findFundamentalLabel } from '@/lib/fundamentals'
 import { useTranslation } from 'react-i18next'
 import { formatKDA, formatGameTime, cn } from '@/lib/utils'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
+import { wrText } from '@/lib/winrate'
 
 interface RecentGame {
   matchId: string
@@ -182,7 +183,7 @@ export function DashboardPage() {
             {form ? (
               <>
                 <span>{t('dashboard.header.formLine', { count: form.games })}</span>
-                <span className={cn('font-mono font-semibold', form.winrate >= 50 ? 'text-hextech-green' : 'text-hextech-red')}>
+                <span className={cn('font-mono font-semibold', wrText(form.winrate, form.games))}>
                   {form.winrate}% {t('dashboard.header.winrateShort')}
                 </span>
                 {formDelta !== null && formDelta !== 0 && (

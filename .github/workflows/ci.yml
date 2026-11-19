@@ -57,6 +57,23 @@ jobs:
       - name: Build web app
         run: npm run web:build
 
+      # TE-6 / WSC-22 / CI1 (19/11/2026): the showcase site and the Cloudflare workers were never checked.
+      - name: Build showcase site
+        run: npm run site:build
+
+      # --ignore-scripts: typechecking only, so wrangler's workerd binary is not needed.
+      - name: Typecheck Discord bot worker
+        working-directory: cloudflare/discord-bot
+        run: |
+          npm ci --ignore-scripts
+          npx tsc --noEmit -p .
+
+      - name: Typecheck Riot proxy worker
+        working-directory: cloudflare/riot-proxy
+        run: |
+          npm ci --ignore-scripts
+          npx tsc --noEmit -p .
+
       - name: E2E tests (Electron)
         run: npx playwright test
 

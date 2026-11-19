@@ -15,27 +15,27 @@ import { BUILT_IN_MISTAKE_TAGS as BUILT_IN_TAGS } from '../../../src/lib/mistake
  * a background tick or migration runner.
  */
 export async function seedBuiltInMistakeTags(): Promise<{ inserted: number; existing: number }> {
+  // Audit E04: one read and one insert, not one lookup per built-in tag on every launch.
   const prisma = getPrisma()
-  let inserted = 0
-  let existing = 0
-  for (const tag of BUILT_IN_TAGS) {
-    const existed = await prisma.mistakeTag.findUnique({ where: { slug: tag.slug } })
-    if (existed) {
-      existing++
-      continue
-    }
-    await prisma.mistakeTag.create({
-      data: {
+  const known = new Set(
+    (await prisma.mistakeTag.findMany({ where: { slug: { in: BUILT_IN_TAGS.map((t) => t.slug) } }, select: { slug: true } }))
+      .map((t) => t.slug),
+  )
+  const missing = BUILT_IN_TAGS.filter((tag) => !known.has(tag.slug))
+  if (missing.length > 0) {
+    await prisma.mistakeTag.createMany({
+      data: missing.map((tag) => ({
         slug: tag.slug,
         label: tag.label,
         category: tag.category,
         icon: tag.icon ?? null,
         color: tag.color ?? null,
         isBuiltIn: true,
-      },
+      })),
     })
-    inserted++
   }
+  const inserted = missing.length
+  const existing = BUILT_IN_TAGS.length - inserted
   if (inserted > 0) console.log(`[seed] Mistake tags: ${inserted} new built-in tag(s) inserted.`)
   return { inserted, existing }
 }

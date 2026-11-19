@@ -3,17 +3,24 @@ import { useTranslation } from 'react-i18next'
 import { Copy, Loader2, LogOut, Plus, Star, Trash2, UserMinus, Users } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
+import { ToastAction } from '@/components/ui/toast'
+import { DISCORD_MANAGER_ROLES } from '@/lib/discordBotCore'
 import { collabErrorKey, type Group, type GroupKind, type GroupRole } from '@/lib/collab'
 import { cn } from '@/lib/utils'
 import { ASSIGNABLE_ROLES, canChangeRoles, canEditCalendar, isLegacyStaff } from '@/lib/permissions'
 import { GroupLogo, GroupLogoEditor } from '@/components/Coaching/GroupLogo'
+import { RiotIdChecks } from '@/components/Coaching/RiotIdChecks'
 import { useActiveGroupStore } from '@/store/useActiveGroupStore'
 import { useUserStore } from '@/store/useUserStore'
 import { parseRiotIdInput } from '@/lib/groupTeamSyncCore'
+import { useWellbeingConsent } from '@/hooks/useWellbeingConsent'
+import { WellbeingConsentDialog } from '@/components/Wellbeing/WellbeingConsentDialog'
+import { DiscordUnlinkButton } from '@/components/team/DiscordUnlinkButton'
 
 interface Props {
   groups: Group[]
@@ -80,6 +87,9 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
   const [typedRiotId, setTypedRiotId] = useState('')
   const joinRiotId = localRiotId ?? parseRiotIdInput(typedRiotId)
   const [busy, setBusy] = useState<string | null>(null)
+  const { granted: wellbeingGranted, available: consentApi, set: setWellbeingConsent } = useWellbeingConsent()
+  const [consentAskOpen, setConsentAskOpen] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<Group | null>(null)
   const [invites, setInvites] = useState<Record<string, string>>({})
   const [inviteRole, setInviteRole] = useState<Record<string, Exclude<GroupRole, 'owner'>>>({})
 
@@ -110,15 +120,53 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
     setInvites((prev) => ({ ...prev, [g.id]: c }))
   })
 
-  const sharing = (g: Group, patch: Partial<Group['sharing']>) => run(`share-${g.id}`, async () => {
-    await window.api.collabSetSharing(g.id, { ...g.sharing, ...patch })
-    await reload()
-  })
+  const sharing = async (g: Group, patch: Partial<Group['sharing']>) => {
+    setBusy(`share-${g.id}`)
+    try {
+      await window.api.collabSetSharing(g.id, { ...g.sharing, ...patch })
+      await reload()
+    } catch (err) {
+      if ((err as Error)?.message?.includes('WELLBEING_CONSENT_REQUIRED')) {
+        // Server trigger: share_wellbeing needs a granted consent.
+        toast({
+          title: t('coaching.errors.WELLBEING_CONSENT_REQUIRED'),
+          variant: 'destructive',
+          action: (
+            <ToastAction altText={t('wellbeing.consent.giveConsent')} onClick={() => setConsentAskOpen(true)}>
+              {t('wellbeing.consent.giveConsent')}
+            </ToastAction>
+          ),
+        })
+      } else {
+        toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
+      }
+    } finally {
+      setBusy(null)
+    }
+  }
 
   const roleLabel = (r: GroupRole) => t(`coaching.roles.${r}`)
 
   return (
     <div className="space-y-4">
+      <WellbeingConsentDialog
+        open={consentAskOpen}
+        onOpenChange={setConsentAskOpen}
+        onDecide={async (yes) => {
+          if (yes) await run('wellbeing-consent', async () => { await setWellbeingConsent(true) })
+          setConsentAskOpen(false)
+        }}
+      />
+      <ConfirmDialog
+        open={pendingDelete != null}
+        onOpenChange={(open) => { if (!open) setPendingDelete(null) }}
+        title={t('coaching.groups.delete')}
+        description={pendingDelete ? t('coaching.groups.deleteConfirm', { name: pendingDelete.name }) : undefined}
+        onConfirm={() => {
+          const g = pendingDelete
+          if (g) void run(`del-${g.id}`, async () => { await window.api.collabDeleteGroup(g.id, 'DELETE'); await reload() })
+        }}
+      />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -183,12 +231,27 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
             </CardHeader>
             <CardContent className="space-y-4">
               {management && <GroupLogoEditor group={g} onChanged={reload} />}
+              {/* #38: Riot ID check problems (conflict, not found), for the staff. */}
+              {(staff || g.myRole === 'manager') && (
+                <RiotIdChecks
+                  group={g}
+                  myUserId={myUserId}
+                  onRemove={g.myRole === 'owner'
+                    ? (m) => run(`rm-${m.userId}`, async () => { await window.api.collabRemoveMember(g.id, m.userId); await reload() })
+                    : undefined}
+                />
+              )}
               <ul className="divide-y divide-hextech-border-dim rounded-lg border border-hextech-border-dim text-sm">
                 {g.members.map((m) => (
                   <li key={m.userId} className="flex items-center justify-between gap-2 px-3 py-2">
                     <span className="truncate text-hextech-text-bright">
                       {m.displayName || m.riotId || '—'}
                       {m.userId === myUserId && <span className="ml-1 text-xs text-hextech-text-dim">({t('coaching.comments.you')})</span>}
+                      {(staff || g.myRole === 'manager') && (m.puuidStatus === 'conflict' || m.puuidStatus === 'not_found') && (
+                        <span className="ml-1.5 rounded bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-200">
+                          {t(m.puuidStatus === 'conflict' ? 'coaching.groups.riotChecks.badgeConflict' : 'coaching.groups.riotChecks.badgeNotFound')}
+                        </span>
+                      )}
                     </span>
                     <span className="flex items-center gap-2 text-xs text-hextech-text-dim">
                       {canChangeRoles(g.myRole) && m.role !== 'owner' && m.userId !== myUserId ? (
@@ -229,6 +292,16 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
                 ))}
               </ul>
 
+              {(DISCORD_MANAGER_ROLES as readonly string[]).includes(g.myRole) && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-hextech-border-dim p-3">
+                  <div>
+                    <div className="text-sm font-medium text-hextech-text-bright">{t('discordUnlink.sectionTitle')}</div>
+                    <p className="text-xs text-hextech-text-dim">{t('discordUnlink.sectionHint')}</p>
+                  </div>
+                  <DiscordUnlinkButton groupId={g.id} groupName={g.name} />
+                </div>
+              )}
+
               {staff && (
                 <div className="flex flex-wrap items-center gap-2">
                   <Select value={inviteRole[g.id] ?? 'player'} onValueChange={(v) => setInviteRole((p) => ({ ...p, [g.id]: v as Exclude<GroupRole, 'owner'> }))}>
@@ -264,20 +337,40 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
                     ['shareStats', 'coaching.sharing.stats'],
                     ['shareTeam', 'coaching.sharing.team'],
                     ['shareWellbeing', 'coaching.sharing.wellbeing'],
-                  ] as const).map(([key, label]) => (
-                    <label key={key} className="flex items-center justify-between gap-3 text-sm text-hextech-text">
-                      <span>{t(label)}</span>
-                      <Switch checked={g.sharing[key]} disabled={busy !== null} onCheckedChange={(v) => sharing(g, { [key]: v })} />
-                    </label>
-                  ))}
+                  ] as const).map(([key, label]) => {
+                    // CyberSecurity: wellbeing can only be shared once the user agreed to store it.
+                    // Turning it off stays possible at any time.
+                    const blocked = key === 'shareWellbeing' && consentApi && !wellbeingGranted && !g.sharing[key]
+                    return (
+                      <div key={key} className="space-y-1">
+                        <label className="flex items-center justify-between gap-3 text-sm text-hextech-text">
+                          <span>{t(label)}</span>
+                          <Switch
+                            checked={g.sharing[key]}
+                            disabled={busy !== null || blocked}
+                            onCheckedChange={(v) => sharing(g, { [key]: v })}
+                            aria-describedby={blocked ? `wb-consent-${g.id}` : undefined}
+                          />
+                        </label>
+                        {blocked && (
+                          <p id={`wb-consent-${g.id}`} className="text-xs text-hextech-text-dim">
+                            {t('wellbeing.consent.shareBlocked')}{' '}
+                            <button type="button" className="text-hextech-gold underline underline-offset-2 hover:text-hextech-gold-bright" onClick={() => setConsentAskOpen(true)}>
+                              {t('wellbeing.consent.giveConsent')}
+                            </button>
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
                   <p className="text-xs text-hextech-text-dim">{t('coaching.sharing.hint')}</p>
                 </div>
               )}
 
               <div className="flex justify-end">
                 {g.myRole === 'owner' ? (
-                  <Button size="sm" variant="ghost" className="gap-1 text-[#E24C3A]" disabled={busy !== null}
-                    onClick={() => { if (window.confirm(t('coaching.groups.deleteConfirm', { name: g.name }))) run(`del-${g.id}`, async () => { await window.api.collabDeleteGroup(g.id, 'DELETE'); await reload() }) }}>
+                  <Button size="sm" variant="ghost" className="gap-1 text-hextech-red" disabled={busy !== null}
+                    onClick={() => setPendingDelete(g)}>
                     <Trash2 className="h-3.5 w-3.5" />{t('coaching.groups.delete')}
                   </Button>
                 ) : (

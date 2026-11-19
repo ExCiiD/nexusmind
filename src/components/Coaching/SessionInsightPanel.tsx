@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart3, CheckCircle2, Clock, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react'
 import { useLocalizedFundamentalList } from '@/lib/constants/useFundamentals'
@@ -33,7 +35,7 @@ interface InsightLine {
 
 const variantStyles: Record<InsightLine['variant'], string> = {
   positive: 'text-hextech-green',
-  negative: 'text-[#E24C3A]',
+  negative: 'text-hextech-red',
   neutral: 'text-hextech-text-dim',
   warning: 'text-hextech-gold',
 }
@@ -42,7 +44,7 @@ const variantStyles: Record<InsightLine['variant'], string> = {
  * Builds live coaching insights from the current active session's game data.
  * All computations are deterministic and run client-side without any external call.
  */
-function buildSessionInsights(games: Game[]): InsightLine[] {
+function buildSessionInsights(games: Game[], t: TFunction): InsightLine[] {
   const counted = games.filter((g) => g.reviewStatus !== 'to_be_reviewed')
   if (counted.length === 0) return []
 
@@ -54,7 +56,7 @@ function buildSessionInsights(games: Game[]): InsightLine[] {
   const wr = Math.round((wins / counted.length) * 100)
   lines.push({
     icon: wr >= 50 ? TrendingUp : TrendingDown,
-    text: `${wins}W ${losses}L — ${wr}% de winrate sur la session`,
+    text: t('session.insight.record', { wins, losses, wr }),
     variant: wr >= 50 ? 'positive' : 'negative',
   })
 
@@ -64,13 +66,13 @@ function buildSessionInsights(games: Game[]): InsightLine[] {
   if (reviewed === counted.length && reviewed > 0) {
     lines.push({
       icon: CheckCircle2,
-      text: `Toutes les parties ont été reviewées (${reviewed}/${counted.length})`,
+      text: t('session.insight.allReviewed', { reviewed, total: counted.length }),
       variant: 'positive',
     })
   } else if (pending > 0) {
     lines.push({
       icon: AlertCircle,
-      text: `${pending} partie${pending > 1 ? 's' : ''} en attente de review`,
+      text: t('session.insight.pending', { count: pending }),
       variant: 'warning',
     })
   }
@@ -96,7 +98,7 @@ function buildSessionInsights(games: Game[]): InsightLine[] {
     const avgRounded = Math.round(avg * 10) / 10
     lines.push({
       icon: BarChart3,
-      text: `Moyenne KPI de la session : ${avgRounded}/10`,
+      text: t('session.insight.kpiAverage', { avg: avgRounded }),
       variant: avg >= 7 ? 'positive' : avg >= 5 ? 'neutral' : 'negative',
     })
   }
@@ -106,7 +108,7 @@ function buildSessionInsights(games: Game[]): InsightLine[] {
     const rate = Math.round((objectiveRespectedCount / reviewsWithObjectiveFlag) * 100)
     lines.push({
       icon: rate >= 60 ? CheckCircle2 : AlertCircle,
-      text: `Objectif respecté dans ${rate}% des parties reviewées`,
+      text: t('session.insight.objectiveRate', { rate }),
       variant: rate >= 60 ? 'positive' : rate >= 40 ? 'warning' : 'negative',
     })
   }
@@ -115,7 +117,7 @@ function buildSessionInsights(games: Game[]): InsightLine[] {
   if (counted.length >= 3 && reviewed < counted.length * 0.5) {
     lines.push({
       icon: Clock,
-      text: 'Moins de la moitié des parties sont reviewées — n\'oublie pas de remplir tes reviews',
+      text: t('session.insight.reviewMore'),
       variant: 'neutral',
     })
   }
@@ -124,6 +126,7 @@ function buildSessionInsights(games: Game[]): InsightLine[] {
 }
 
 export function SessionInsightPanel({ games, objectiveIds }: SessionInsightPanelProps) {
+  const { t } = useTranslation()
   const parsedObjectiveIds = useMemo(() => {
     try { return JSON.parse(objectiveIds) as string[] } catch { return [objectiveIds] }
   }, [objectiveIds])
@@ -135,8 +138,8 @@ export function SessionInsightPanel({ games, objectiveIds }: SessionInsightPanel
     .join(', ')
 
   const insights = useMemo(
-    () => buildSessionInsights(games),
-    [games],
+    () => buildSessionInsights(games, t),
+    [games, t],
   )
 
   if (insights.length === 0) return null
@@ -145,11 +148,11 @@ export function SessionInsightPanel({ games, objectiveIds }: SessionInsightPanel
     <Card className="border-hextech-cyan/20 bg-gradient-to-b from-hextech-blue/10 to-hextech-blue/10">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-hextech-cyan" />
-          Bilan en cours
+          <BarChart3 className="h-4 w-4 text-hextech-cyan" aria-hidden />
+          {t('session.insight.title')}
         </CardTitle>
         <p className="text-xs text-hextech-text-dim">
-          Session · {objectiveLabels}
+          {t('session.insight.subtitle', { objectives: objectiveLabels })}
         </p>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -157,7 +160,7 @@ export function SessionInsightPanel({ games, objectiveIds }: SessionInsightPanel
           const Icon = line.icon
           return (
             <div key={i} className="flex items-start gap-2">
-              <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', variantStyles[line.variant])} />
+              <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', variantStyles[line.variant])} aria-hidden />
               <p className={cn('text-sm', variantStyles[line.variant])}>{line.text}</p>
             </div>
           )

@@ -61,10 +61,11 @@ import { registerMicroReviewHandlers } from './ipc/microReview.ipc'
 import { registerBookmarkHandlers } from './ipc/bookmarks.ipc'
 import { registerDataHandlers } from './ipc/data.ipc'
 import { registerCloudHandlers } from './ipc/cloud.ipc'
-import { isCloudConfigured, getSupabase } from './cloud/supabase'
+import { isCloudConfigured, getSupabase, retryPendingSecretDeletes } from './cloud/supabase'
 import { listMyLiveSessions, reportSessionGame } from '../../src/lib/teamSessionsCore'
 import { startAutoCloudBackup } from './cloud/cloudBackup'
 import { startSessionAutoClose } from './sessionAutoClose'
+import { startMatchCachePurge } from './matchCachePurge'
 import { registerSyncHandlers } from './ipc/sync.ipc'
 import { registerAssistantHandlers } from './assistant/assistant.ipc'
 import { startSyncService } from './sync/syncService'
@@ -472,6 +473,8 @@ async function bootstrap() {
   }
   // S3: closes a session with no game for 45 min, local-only, no cloud needed.
   startSessionAutoClose()
+  // Decision M: old timelines of matches no game refers to (deferred, then daily).
+  startMatchCachePurge()
 
   // Idempotent — adds new built-in tags on app updates without ever
   // overwriting user-edited ones. Fire-and-forget; if it fails we still
@@ -852,6 +855,12 @@ app.whenReady().then(bootstrap).catch((err) => {
     `${(err as Error)?.message ?? String(err)}\n\nIf this happened during an update, a copy of your database taken before the update is in the "backups" folder next to it.`,
   )
   app.quit()
+})
+
+// A sign-out whose session file was locked: one more try before quitting
+// (also retried at the next launch, see cloud/supabase.ts).
+app.on('before-quit', () => {
+  try { retryPendingSecretDeletes() } catch { /* retried at next launch */ }
 })
 
 app.on('window-all-closed', () => {

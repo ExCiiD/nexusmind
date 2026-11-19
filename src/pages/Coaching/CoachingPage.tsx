@@ -69,12 +69,12 @@ export function CoachingPage() {
             )}
             {tab === 'draft' && (
               <PanelErrorBoundary key={`draft-${k}`} label="Draft sim">
-                <GroupTeamGate group={group}>{(team) => <DraftTab myTeam={team} />}</GroupTeamGate>
+                <GroupTeamGate group={group}>{(team) => <DraftTab myTeam={team} opponentsGroupId={group.id} />}</GroupTeamGate>
               </PanelErrorBoundary>
             )}
             {tab === 'scouting' && (
-              <PanelErrorBoundary key="scouting" label="Scouting">
-                <ScoutingTab />
+              <PanelErrorBoundary key={`scouting-${k}`} label="Scouting">
+                <ScoutingTab groupId={group.id} />
               </PanelErrorBoundary>
             )}
             {tab === 'players' && (

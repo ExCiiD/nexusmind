@@ -71,7 +71,12 @@ export default defineConfig({
   },
   renderer: {
     root: '.',
+    // Decision F (audit UI-08, 19/11/2026): the renderer is minified (about −43 %, 4.4 MB → ~2.5 MB) with
+    // keepNames, so stack traces in bug reports still name the functions and components; no source maps shipped.
+    esbuild: { keepNames: true },
     build: {
+      minify: 'esbuild',
+      sourcemap: false,
       rollupOptions: {
         // Two entry points:
         //  - `index.html` → main UI (React app)

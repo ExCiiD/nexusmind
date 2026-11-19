@@ -63,6 +63,7 @@ export function SuggestField({
   const pick = (text: string) => { onChange(text); setOpen(null); inputRef.current?.focus() }
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- wrapper: hover keeps the suggestion list open, Escape closes it; the input and buttons inside are the controls.
     <div
       className="relative"
       data-testid={testId}
@@ -140,6 +141,7 @@ export function SuggestField({
         <div
           id={`${id}-list`}
           role="listbox"
+          tabIndex={-1}
           aria-label={suggestionsLabel(openGroup.label)}
           className="absolute inset-x-0 top-full z-30 -mt-1 rounded-md border border-hextech-border bg-hextech-dark p-2.5 shadow-lg"
           onMouseEnter={() => clearTimeout(closeTimer.current)}

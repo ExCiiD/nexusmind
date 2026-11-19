@@ -2,10 +2,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   redeemGuildLinkCode, redeemUserLinkCode, resolveGuild, resolveDiscordUser, setNotifyChannel,
   setAvailabilityExceptionAs, clearAvailabilityExceptionAs, getMyRosterRole, findRoleReplacements,
+  getGroupMemberRole, canManageDiscordServer, isChannelStaffRole,
 } from '../../../src/lib/discordBotCore'
 import { listEvents, listAvailabilityRules, listAvailabilityExceptions, findCommonAvailability } from '../../../src/lib/calendarCore'
 import { listScrimsForGroup } from '../../../src/lib/scrimsCore'
-import { getSharedTeam } from '../../../src/lib/teamCore'
+import { getSharedTeam, getGroupRosterUserIds } from '../../../src/lib/teamCore'
 import { buildOpggUrl } from '../../../src/lib/opgg'
 import { ephemeralReply, publicReply } from './discordApi'
 
@@ -13,7 +14,8 @@ import { ephemeralReply, publicReply } from './discordApi'
 export interface Interaction {
   guild_id?: string
   channel_id?: string
-  member?: { user?: { id: string } }
+  /** `permissions`: the member's resolved permissions in this channel, as a decimal bit string. */
+  member?: { user?: { id: string }; permissions?: string }
   user?: { id: string }
   data?: { name: string; options?: InteractionOption[] }
 }
@@ -28,9 +30,21 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleString('en-US', { weekday
 
 export async function handleLinkTeam(i: Interaction, sb: SupabaseClient) {
   if (!i.guild_id) return ephemeralReply('Run this inside a server, not a DM.')
+  // S19-03 review: linking the server is for its admins.
+  if (!canManageDiscordServer(i.member?.permissions)) {
+    return ephemeralReply('Only server admins (Manage Server) can link this server to a team.')
+  }
   const code = optValue(i.data?.options, 'code')?.trim().toUpperCase()
   if (!code) return ephemeralReply('Missing code.')
-  const groupId = await redeemGuildLinkCode(sb, code, i.guild_id)
+  let groupId: string | null
+  try {
+    groupId = await redeemGuildLinkCode(sb, code, i.guild_id)
+  } catch (err) {
+    if ((err as Error).message === 'GUILD_LINKED_ELSEWHERE') {
+      return ephemeralReply('This server is already linked to another Ascend team, so it was not changed.')
+    }
+    throw err
+  }
   if (!groupId) return ephemeralReply("That code is invalid or expired — generate a new one in the app's Account page.")
   return ephemeralReply('✅ This server is now linked to your Ascend team. Run **/set-channel** in the channel where you want reminders posted.')
 }
@@ -49,6 +63,16 @@ export async function handleSetChannel(i: Interaction, sb: SupabaseClient) {
   if (!i.guild_id || !i.channel_id) return ephemeralReply('Run this inside a server channel.')
   const link = await resolveGuild(sb, i.guild_id)
   if (!link) return ephemeralReply('This server isn\'t linked yet — run **/link-team** first.')
+  // S19-03: redirecting the team's reminders is for the server's admins or
+  // the group's staff, not any member of the server.
+  if (!canManageDiscordServer(i.member?.permissions)) {
+    const discordUserId = userIdOf(i)
+    const userId = discordUserId ? await resolveDiscordUser(sb, discordUserId) : null
+    const role = userId ? await getGroupMemberRole(sb, link.groupId, userId) : null
+    if (!isChannelStaffRole(role)) {
+      return ephemeralReply('Only server admins (Manage Server) or the team\'s staff can choose the reminder channel.')
+    }
+  }
   await setNotifyChannel(sb, i.guild_id, i.channel_id)
   return publicReply('✅ Reminders and availability alerts will be posted in this channel from now on.')
 }
@@ -86,7 +110,8 @@ export async function handleScrims(i: Interaction, sb: SupabaseClient) {
     .slice(0, 5)
   if (scrims.length === 0) return publicReply('No upcoming scrims.')
 
-  const shared = await getSharedTeam(sb, link.groupId)
+  // Roster and scouted opponents only: no pools, no drafts.
+  const shared = await getSharedTeam(sb, link.groupId, { pools: false, drafts: false })
   const blocks: string[] = []
   for (const s of scrims) {
     const parts = [`⚔️ **${fmtDate(s.scheduledAt)}**${s.opponent ? ` vs ${s.opponent}` : ''}${s.boFormat ? ` — ${s.boFormat.toUpperCase()}` : ''}`]
@@ -109,8 +134,7 @@ export async function handleCommonAvailability(i: Interaction, sb: SupabaseClien
   if (!i.guild_id) return ephemeralReply('Run this inside a server.')
   const link = await resolveGuild(sb, i.guild_id)
   if (!link) return ephemeralReply('This server isn\'t linked — ask staff to run **/link-team**.')
-  const shared = await getSharedTeam(sb, link.groupId)
-  const starterUserIds = shared.roster.map((m) => m.userId).filter((id): id is string => !!id)
+  const starterUserIds = await getGroupRosterUserIds(sb, link.groupId)
   if (starterUserIds.length < 2) return publicReply('Not enough linked roster members to compare availability.')
 
   const today = new Date().toISOString().slice(0, 10)
@@ -135,6 +159,11 @@ export async function handleAvailability(i: Interaction, sb: SupabaseClient) {
   if (!userId) return ephemeralReply('Link your account first with **/link-me**.')
   const link = await resolveGuild(sb, i.guild_id)
   if (!link) return ephemeralReply('This server isn\'t linked — ask staff to run **/link-team**.')
+  // S19-03: written with the service role (no RLS): only the group's own
+  // members may mark themselves away in its planning.
+  if (!(await getGroupMemberRole(sb, link.groupId, userId))) {
+    return ephemeralReply('You are not a member of the team linked to this server.')
+  }
 
   const date = optValue(sub.options, 'date')
   if (!date || !DATE_RE.test(date)) return ephemeralReply('Give a date as YYYY-MM-DD.')

@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next'
 import { Loader2, Check, ChevronsDown } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatGameTime, formatKDA } from '@/lib/utils'
@@ -15,8 +17,9 @@ interface Props {
 }
 
 export function ExternalReviewGamesStep({ state, onChange, creating, onCreate, onLoadMore, loadingMore }: Props) {
+  const { t, i18n } = useTranslation()
   const gameDate = (iso: string) =>
-    new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+    new Date(iso).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })
 
   const toggleObjective = (id: string) => {
     const ids = state.objectiveIds.includes(id)
@@ -42,7 +45,9 @@ export function ExternalReviewGamesStep({ state, onChange, creating, onCreate, o
       <div className="max-h-44 overflow-y-auto space-y-1.5">
         {state.fetchedGames.map((g, i) => (
           <button
+            type="button"
             key={g.matchId ?? i}
+            aria-pressed={state.selectedGame?.matchId === g.matchId}
             onClick={() => onChange({ selectedGame: g })}
             className={cn(
               'w-full flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all text-sm',
@@ -51,11 +56,12 @@ export function ExternalReviewGamesStep({ state, onChange, creating, onCreate, o
                 : 'border-hextech-border-dim bg-hextech-elevated hover:border-hextech-gold/40',
             )}
           >
-            <div className={cn('w-1 h-8 rounded-full shrink-0', g.win ? 'bg-green-500' : 'bg-red-500')} />
+            <div className={cn('w-1 h-8 rounded-full shrink-0', g.win ? 'bg-green-500' : 'bg-red-500')} aria-hidden />
+            <span className="sr-only">{g.win ? t('externalReview.win') : t('externalReview.loss')}</span>
             <div className="flex-1 min-w-0">
               <span className="font-semibold text-hextech-text-bright">{g.champion}</span>
               {g.opponentChampion && (
-                <span className="text-hextech-text-dim text-xs ml-1">vs {g.opponentChampion}</span>
+                <span className="text-hextech-text-dim text-xs ml-1">{t('externalReview.vs', { champion: g.opponentChampion })}</span>
               )}
               <div className="text-[11px] text-hextech-text-dim mt-0.5">
                 {formatKDA(g.kills, g.deaths, g.assists)} · {formatGameTime(g.duration)} · {gameDate(g.gameEndAt)}
@@ -71,30 +77,27 @@ export function ExternalReviewGamesStep({ state, onChange, creating, onCreate, o
       {/* Load more */}
       <div className="flex justify-center -mt-1">
         <button
+          type="button"
           onClick={onLoadMore}
           disabled={loadingMore}
           className="flex items-center gap-1.5 text-xs text-hextech-text-dim hover:text-hextech-text transition-colors disabled:opacity-50"
         >
           {loadingMore
-            ? <Loader2 className="h-3 w-3 animate-spin" />
-            : <ChevronsDown className="h-3 w-3" />}
-          {loadingMore ? 'Loading…' : 'Load 10 more'}
+            ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+            : <ChevronsDown className="h-3 w-3" aria-hidden />}
+          {loadingMore ? t('common.loading') : t('externalReview.games.loadMore', { count: 10 })}
         </button>
       </div>
 
       {/* Objective + KPI toggle */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-medium text-hextech-text-dim uppercase tracking-wider">Objective (optional)</label>
-          <button
-            onClick={() => onChange({ wantsObjective: !state.wantsObjective, objectiveIds: [], selectedKpiIds: [] })}
-            className={cn(
-              'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-              state.wantsObjective ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
-            )}
-          >
-            <span className={cn('inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform', state.wantsObjective ? 'translate-x-4' : 'translate-x-0.5')} />
-          </button>
+          <label htmlFor="ext-games-objective" className="text-xs font-medium text-hextech-text-dim uppercase tracking-wider">{t('externalReview.objectiveOptional')}</label>
+          <Switch
+            id="ext-games-objective"
+            checked={state.wantsObjective}
+            onCheckedChange={(v) => onChange({ wantsObjective: v, objectiveIds: [], selectedKpiIds: [] })}
+          />
         </div>
 
         {state.wantsObjective && (
@@ -115,8 +118,8 @@ export function ExternalReviewGamesStep({ state, onChange, creating, onCreate, o
         className="w-full"
         size="lg"
       >
-        {creating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
-        Start review
+        {creating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden /> : <Check className="h-4 w-4 mr-2" aria-hidden />}
+        {t('externalReview.games.start')}
       </Button>
     </div>
   )

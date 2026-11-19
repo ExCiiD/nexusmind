@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest'
 import { analyzeGame, CLOCK_2025, DETECTOR_SPEC, detectorSpecFor, type CriticalMoment, type MomentFacts, type MomentPattern } from '../../src/lib/microReview/anomalyDetector'
 import { BASE_RESPAWN_SEC, CLOCK_TIMES, deathTimerSec, gameClockOf, type GameClock } from '../../src/lib/microReview/gameClock'
 import { buildQcm } from '../../src/lib/microReview/smartQcm'
+import { OUTER_TURRETS } from '../../src/lib/microReview/geometry'
 import { buildGame, at, type FixtureOptions } from './microReviewFixtures'
 
 type Game = ReturnType<typeof buildGame>
@@ -222,6 +223,38 @@ describe.each([2025, 2026] as const)('season %i — re-timed thresholds, both si
       // A purchase at 2:10 without the 3:00 snapshot in base: the 2025 rule reads the snapshot only.
       expect(recall({ visit: at(2, 10) })).toBeUndefined()
     }
+  })
+
+  // Plates no longer fall at 14:00 on 16.x games: the plate-bound rules run to 20:00 there.
+  it('1-for-1 tower dive: until 20:00 on 16.x, 14:00 on 15.x', () => {
+    const near: P = { x: OUTER_TURRETS[200].TOP.x, y: OUTER_TURRETS[200].TOP.y - 600 }
+    const dive = (killMs: number, clock?: GameClock) => withPattern(game({ minutes: 25, me: 1, events: [
+      kill(killMs, 6, 1, [], near),
+      { ...kill(killMs + 2000, 1, 0, [], near), victimDamageReceived: [{ participantId: 0, type: 'TOWER' }] },
+    ] }, clock), 'tower-dive-one-for-one')
+    expect(S.dive.untilSec).toBe(season === 2026 ? 1200 : 840)
+    expect(dive(S.dive.untilSec * 1000 - 3000)).toBeDefined()
+    expect(dive(S.dive.untilSec * 1000)).toBeUndefined()
+    // 15:00: a dive on 16.x only.
+    expect(dive(at(15, 0))).toEqual(season === 2026 ? expect.anything() : undefined)
+    expect(dive(at(15, 0), other)).toEqual(other === 2026 ? expect.anything() : undefined)
+  })
+
+  it('jungler last-hits a side-lane T1 once a tower fell: any time before 20:00 on 16.x, from 14:00 on 15.x', () => {
+    const tower = (ts: number, lane: string, killerId: number) => ({ type: 'BUILDING_KILL', timestamp: ts, buildingType: 'TOWER_BUILDING',
+      towerType: 'OUTER_TURRET', laneType: lane, teamId: 200, killerId, position: { x: 4318, y: 13875 } })
+    const side = (ts: number, clock?: GameClock) => withPattern(game({ minutes: 25, me: 2,
+      events: [tower(600_000, 'MID_LANE', 3), tower(ts, 'TOP_LANE', 2)] }, clock), 'jungle-side-t1-destroyed')
+    expect(S.sideTower).toEqual(season === 2026 ? { fromSec: 0, untilSec: 1200 } : { fromSec: 840, untilSec: 1200 })
+    // 12:00, plates still on: the laner's gold on 16.x, too early to matter on 15.x.
+    expect(side(at(12, 0))).toEqual(season === 2026 ? expect.anything() : undefined)
+    expect(side(S.sideTower.untilSec * 1000)).toBeDefined()
+    expect(side(S.sideTower.untilSec * 1000 + 1)).toBeUndefined()
+  })
+
+  it('mid roam paid in plates: the window ends at 20:00 on 16.x, 14:00 on 15.x', () => {
+    expect(S.midRoam.untilSec).toBe(season === 2026 ? 1200 : 840)
+    expect(detectorSpecFor(other).midRoam.untilSec).toBe(other === 2026 ? 1200 : 840)
   })
 })
 

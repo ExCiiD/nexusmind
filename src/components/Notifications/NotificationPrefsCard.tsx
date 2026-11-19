@@ -33,7 +33,7 @@ export function NotificationPrefsCard() {
       await window.api.notificationPrefsSet(prefs)
       toast({ title: t('notificationPrefs.saved', { defaultValue: 'Preferences saved' }), variant: 'gold' })
     } catch {
-      toast({ title: 'Error', variant: 'destructive' })
+      toast({ title: t('notificationPrefs.saveFailed'), variant: 'destructive' })
     } finally {
       setSaving(false)
     }

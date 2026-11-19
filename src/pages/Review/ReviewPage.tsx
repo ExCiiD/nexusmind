@@ -43,6 +43,7 @@ import { GameRecordingPanel } from '@/components/Recording/GameRecordingPanel'
 import { CoachFeedbackPanel } from '@/components/Coaching/CoachFeedbackPanel'
 import { MicroReviewPanel } from '@/components/MicroReview/MicroReviewPanel'
 import { ObjectiveAutoCheck } from '@/components/MicroReview/ObjectiveAutoCheck'
+import { Skeleton } from '@/components/ui/data-state'
 
 export function ReviewPage() {
   const { t } = useTranslation()
@@ -352,8 +353,10 @@ export function ReviewPage() {
   // Loading historic context
   if (loadingHistoric) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-hextech-gold" />
+      <div role="status" aria-label={t('common.loading')} className="space-y-4 py-2">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-[320px] w-full" />
+        <Skeleton className="h-40 w-full" />
       </div>
     )
   }
@@ -587,10 +590,10 @@ export function ReviewPage() {
     try {
       await window.api.deleteGame(latestGame.id)
       await refreshSession()
-      toast({ title: 'Game removed from session', variant: 'gold' })
+      toast({ title: t('review.gameRemoved'), variant: 'gold' })
       navigate('/session')
     } catch (err: any) {
-      toast({ title: 'Failed to remove game', description: err.message, variant: 'destructive' })
+      toast({ title: t('review.gameRemoveFailed'), description: err.message, variant: 'destructive' })
     } finally {
       setRemovingGame(false)
     }
@@ -756,6 +759,7 @@ export function ReviewPage() {
         </CardHeader>
         <CardContent>
           <Textarea
+            aria-label={t('review.freeText.label')}
             placeholder={t('review.freeText.placeholder')}
             value={freeText}
             onChange={(e) => setFreeText(e.target.value)}

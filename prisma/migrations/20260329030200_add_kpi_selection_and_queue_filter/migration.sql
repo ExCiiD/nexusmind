@@ -14,7 +14,7 @@ CREATE TABLE "new_Session" (
     "aiSummary" TEXT,
     CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
-INSERT INTO "new_Session" ("aiSummary", "customNote", "date", "id", "objectiveId", "objectiveIds", "status", "subObjective", "userId") SELECT "aiSummary", "customNote", "date", "id", "objectiveId", "objectiveIds", "status", "subObjective", "userId" FROM "Session";
+INSERT OR IGNORE INTO "new_Session" ("aiSummary", "customNote", "date", "id", "objectiveId", "objectiveIds", "status", "subObjective", "userId") SELECT "aiSummary", "customNote", "date", "id", "objectiveId", "objectiveIds", "status", "subObjective", "userId" FROM "Session";
 DROP TABLE "Session";
 ALTER TABLE "new_Session" RENAME TO "Session";
 CREATE INDEX "Session_userId_status_idx" ON "Session"("userId", "status");
@@ -33,7 +33,7 @@ CREATE TABLE "new_User" (
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
-INSERT INTO "new_User" ("assessmentFreqDays", "createdAt", "id", "lastActiveDate", "nextAssessmentAt", "puuid", "region", "streakDays", "summonerName", "tagLine", "updatedAt", "xp") SELECT "assessmentFreqDays", "createdAt", "id", "lastActiveDate", "nextAssessmentAt", "puuid", "region", "streakDays", "summonerName", "tagLine", "updatedAt", "xp" FROM "User";
+INSERT OR IGNORE INTO "new_User" ("assessmentFreqDays", "createdAt", "id", "lastActiveDate", "nextAssessmentAt", "puuid", "region", "streakDays", "summonerName", "tagLine", "updatedAt", "xp") SELECT "assessmentFreqDays", "createdAt", "id", "lastActiveDate", "nextAssessmentAt", "puuid", "region", "streakDays", "summonerName", "tagLine", "updatedAt", "xp" FROM "User";
 DROP TABLE "User";
 ALTER TABLE "new_User" RENAME TO "User";
 CREATE UNIQUE INDEX "User_puuid_key" ON "User"("puuid");

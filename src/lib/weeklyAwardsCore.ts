@@ -69,6 +69,7 @@
  */
 
 import { normalizeRole } from './teamIdentity'
+import { ROLES, type Role } from './championRoles'
 
 // ── Contract (re-exported by src/lib/ipc.ts) ───────────────────────────────
 
@@ -190,8 +191,9 @@ export function pendingWeeks(now: number, stored: ReadonlySet<string>): Array<{ 
 
 // ── MVP score of one game ──────────────────────────────────────────────────
 
-export const SCORE_ROLES = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'] as const
-export type ScoreRole = (typeof SCORE_ROLES)[number]
+/** The app's role list (championRoles.ts): one set of MVP weights per role. */
+export const SCORE_ROLES: readonly Role[] = ROLES
+export type ScoreRole = Role
 export const SCORE_METRICS = ['kda', 'kp', 'damage', 'gold', 'cs', 'vision'] as const
 export type ScoreMetric = (typeof SCORE_METRICS)[number]
 type MetricRow = Record<ScoreMetric, number>

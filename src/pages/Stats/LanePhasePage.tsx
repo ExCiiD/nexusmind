@@ -11,6 +11,8 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import {
   ArrowLeft, RefreshCw, Loader2, Crown, Coins, Star, Swords, Shield,
   Crosshair, Flame, Building2,
@@ -58,23 +60,25 @@ function pct(frac: number): string {
   return `${Math.round((frac || 0) * 100)}%`
 }
 
-function diagMessage(diag: LanePhaseDiag): string {
+function diagMessage(diag: LanePhaseDiag, t: TFunction): string {
+  const detail = diag.message ?? t('lanePhase.diag.unknownDetail')
   switch (diag.reason) {
-    case 'no-game':              return 'Game record not found — this lane phase report cannot be generated.'
-    case 'no-match-id':          return 'No Riot match ID linked to this game. Try linking the recording first.'
-    case 'no-user':              return 'No active user.'
-    case 'timeline-fetch-failed':return 'Riot timeline fetch failed: ' + (diag.message ?? 'unknown error')
-    case 'match-fetch-failed':   return 'Riot match fetch failed: ' + (diag.message ?? 'unknown error')
-    case 'empty-timeline':       return diag.message ?? 'Cached match data is empty.'
-    case 'no-player':            return 'Could not find the player in the match participants — the champion stored on this game may be wrong.'
-    case 'no-opponent':          return 'Could not identify a direct lane opponent (Arena / customs / role swap).'
-    case 'no-frames':            return 'Timeline has no frame data — too short to analyse.'
-    case 'bad-data':             return 'Riot data could not be parsed: ' + (diag.message ?? 'unknown format')
-    default:                     return diag.message ?? 'Unknown error.'
+    case 'no-game':              return t('lanePhase.diag.noGame')
+    case 'no-match-id':          return t('lanePhase.diag.noMatchId')
+    case 'no-user':              return t('lanePhase.diag.noUser')
+    case 'timeline-fetch-failed':return t('lanePhase.diag.timelineFetchFailed', { detail })
+    case 'match-fetch-failed':   return t('lanePhase.diag.matchFetchFailed', { detail })
+    case 'empty-timeline':       return diag.message ?? t('lanePhase.diag.emptyTimeline')
+    case 'no-player':            return t('lanePhase.diag.noPlayer')
+    case 'no-opponent':          return t('lanePhase.diag.noOpponent')
+    case 'no-frames':            return t('lanePhase.diag.noFrames')
+    case 'bad-data':             return t('lanePhase.diag.badData', { detail })
+    default:                     return diag.message ?? t('lanePhase.diag.unknown')
   }
 }
 
 export function LanePhasePage() {
+  const { t } = useTranslation()
   const { gameId } = useParams<{ gameId: string }>()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -124,14 +128,14 @@ export function LanePhasePage() {
     <div className="w-full space-y-4 py-4">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
-          <ArrowLeft className="h-4 w-4" /> Back
+          <ArrowLeft className="h-4 w-4" aria-hidden /> {t('lanePhase.back')}
         </Button>
-        <h1 className="text-xl font-semibold text-hextech-text-bright">Lane Phase Comparator</h1>
+        <h1 className="text-xl font-semibold text-hextech-text-bright">{t('lanePhase.title')}</h1>
         <div className="flex-1" />
         {gameId && (
           <Button variant="outline" size="sm" disabled={refreshing} onClick={handleRefresh} className="gap-1.5">
-            {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Refresh
+            {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <RefreshCw className="h-3.5 w-3.5" aria-hidden />}
+            {t('lanePhase.refresh')}
           </Button>
         )}
       </div>
@@ -139,8 +143,8 @@ export function LanePhasePage() {
       {loading && (
         <Card>
           <CardContent className="flex items-center gap-3 py-12 justify-center text-hextech-text-dim">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Crunching the Riot timeline…
+            <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+            {t('lanePhase.loading')}
           </CardContent>
         </Card>
       )}
@@ -148,10 +152,10 @@ export function LanePhasePage() {
       {!loading && (!report || diag?.reason !== 'ok') && diag && (
         <Card className="border-[#E24C3A]/40">
           <CardContent className="py-6 text-sm text-[#E24C3A]">
-            <p className="font-medium mb-1">No lane phase report available</p>
-            <p className="text-xs text-[#E24C3A]/80">{diagMessage(diag)}</p>
+            <p className="font-medium mb-1">{t('lanePhase.noReport')}</p>
+            <p className="text-xs text-[#E24C3A]/80">{diagMessage(diag, t)}</p>
             {diag.frameCount !== undefined && (
-              <p className="text-xs text-hextech-text-dim mt-2">Timeline frames available: {diag.frameCount}</p>
+              <p className="text-xs text-hextech-text-dim mt-2">{t('lanePhase.framesAvailable', { count: diag.frameCount })}</p>
             )}
           </CardContent>
         </Card>
@@ -171,6 +175,7 @@ export function LanePhasePage() {
 // ── Header card with grade + matchup + KPI tiles ───────────────────────────
 
 function LanePhaseHeader({ report, playerIcon, oppIcon }: { report: LanePhaseReport; playerIcon: string | null; oppIcon: string | null }) {
+  const { t } = useTranslation()
   const sc = report.scoreComponents
   const colors = GRADE_COLORS[report.grade]
   const role = ROLE_LABELS[report.player.teamPosition] ?? report.player.teamPosition ?? 'Lane'
@@ -186,11 +191,11 @@ function LanePhaseHeader({ report, playerIcon, oppIcon }: { report: LanePhaseRep
               <p className="text-sm font-semibold text-hextech-text-bright">{report.player.championName}</p>
               <p className="text-[10px] text-hextech-text-dim uppercase tracking-wider">{role}</p>
             </div>
-            <span className="text-hextech-text-dim text-sm mx-1">vs</span>
+            <span className="text-hextech-text-dim text-sm mx-1">{t('lanePhase.vs')}</span>
             {oppIcon && <img src={oppIcon} alt={report.opponent.championName} className="h-12 w-12 rounded-md border-2 border-[#E24C3A]/60" />}
             <div className="flex flex-col min-w-0">
               <p className="text-sm font-semibold text-hextech-text-bright">{report.opponent.championName}</p>
-              <p className="text-[10px] text-hextech-text-dim uppercase tracking-wider">opponent</p>
+              <p className="text-[10px] text-hextech-text-dim uppercase tracking-wider">{t('lanePhase.opponent')}</p>
             </div>
           </div>
 
@@ -198,9 +203,9 @@ function LanePhaseHeader({ report, playerIcon, oppIcon }: { report: LanePhaseRep
 
           {/* Grade pill */}
           <div className={cn('flex flex-col items-center justify-center px-5 py-2 rounded-lg border-2', colors.border, colors.bg)}>
-            <span className="text-[10px] uppercase tracking-wider text-hextech-text-dim leading-none mb-1">Lane Grade</span>
+            <span className="text-[10px] uppercase tracking-wider text-hextech-text-dim leading-none mb-1">{t('lanePhase.grade')}</span>
             <span className={cn('text-4xl font-black leading-none', colors.text)}>{report.grade}</span>
-            <span className="text-[10px] text-hextech-text-dim mt-1">score {Math.round(sc.numericScore)}/100</span>
+            <span className="text-[10px] text-hextech-text-dim mt-1">{t('lanePhase.score', { score: Math.round(sc.numericScore) })}</span>
           </div>
         </div>
 
@@ -210,13 +215,13 @@ function LanePhaseHeader({ report, playerIcon, oppIcon }: { report: LanePhaseRep
           <KpiTile icon={<Coins className="h-3.5 w-3.5" />}  label="Gold @14"   value={fmtSigned(sc.goldAt14)}   positive={sc.goldAt14 > 0} negative={sc.goldAt14 < 0} />
           <KpiTile icon={<Star className="h-3.5 w-3.5" />}   label="XP @14"     value={fmtSigned(sc.xpAt14)}     positive={sc.xpAt14 > 0} negative={sc.xpAt14 < 0} />
           <KpiTile icon={<Flame className="h-3.5 w-3.5" />}  label="DMG @14"    value={fmtSignedK(sc.dmgAt14?.diff ?? 0)} positive={(sc.dmgAt14?.diff ?? 0) > 0} negative={(sc.dmgAt14?.diff ?? 0) < 0}
-            title={`Damage to champions @14 — you ${fmtK(sc.dmgAt14?.player ?? 0)} vs opponent ${fmtK(sc.dmgAt14?.opponent ?? 0)}`} />
+            title={t('lanePhase.kpi.dmgHint', { you: fmtK(sc.dmgAt14?.player ?? 0), them: fmtK(sc.dmgAt14?.opponent ?? 0) })} />
           <KpiTile icon={<Swords className="h-3.5 w-3.5" />} label="Solo K/D"   value={`${sc.soloKD.k} / ${sc.soloKD.d}`} positive={sc.soloKD.k > sc.soloKD.d} negative={sc.soloKD.d > sc.soloKD.k} />
           <KpiTile icon={<Shield className="h-3.5 w-3.5" />} label="Plates"     value={`${sc.plates.taken} / ${sc.plates.lost}`} positive={sc.plates.taken > sc.plates.lost} negative={sc.plates.lost > sc.plates.taken} />
           <KpiTile icon={<Crosshair className="h-3.5 w-3.5" />} label="KP @14"  value={`${pct(sc.kp?.player ?? 0)} / ${pct(sc.kp?.opponent ?? 0)}`} positive={(sc.kp?.player ?? 0) > (sc.kp?.opponent ?? 0)} negative={(sc.kp?.player ?? 0) < (sc.kp?.opponent ?? 0)}
-            title="Kill participation during the laning phase (0–14 min): your kills+assists / your team's kills, vs the opponent's" />
-          <KpiTile icon={<Building2 className="h-3.5 w-3.5" />} label="Obj. dmg" value={`${fmtK(sc.objDmg?.player ?? 0)} / ${fmtK(sc.objDmg?.opponent ?? 0)}`} positive={(sc.objDmg?.player ?? 0) > (sc.objDmg?.opponent ?? 0)} negative={(sc.objDmg?.player ?? 0) < (sc.objDmg?.opponent ?? 0)}
-            title="Damage dealt to objectives (turrets, dragons, baron…) over the full game — you vs the lane opponent" />
+            title={t('lanePhase.kpi.kpHint')} />
+          <KpiTile icon={<Building2 className="h-3.5 w-3.5" />} label={t('lanePhase.kpi.objDmg')} value={`${fmtK(sc.objDmg?.player ?? 0)} / ${fmtK(sc.objDmg?.opponent ?? 0)}`} positive={(sc.objDmg?.player ?? 0) > (sc.objDmg?.opponent ?? 0)} negative={(sc.objDmg?.player ?? 0) < (sc.objDmg?.opponent ?? 0)}
+            title={t('lanePhase.kpi.objDmgHint')} />
         </div>
       </CardContent>
     </Card>
@@ -248,6 +253,7 @@ function KpiTile({ icon, label, value, positive, negative, title }: { icon: Reac
 // ── Three diff line charts (CS, Gold, XP) ──────────────────────────────────
 
 function DiffChartsGrid({ report, onSeek }: { report: LanePhaseReport; onSeek: (gameTimeSec: number) => void }) {
+  const { t } = useTranslation()
   const chartData = useMemo(
     () => report.framesByMinute.map((f) => ({
       minute: f.minute,
@@ -263,7 +269,7 @@ function DiffChartsGrid({ report, onSeek }: { report: LanePhaseReport; onSeek: (
     return (
       <Card>
         <CardContent className="py-6 text-center text-hextech-text-dim text-sm">
-          No timeline frames in the laning phase window.
+          {t('lanePhase.noFrames')}
         </CardContent>
       </Card>
     )
@@ -272,19 +278,20 @@ function DiffChartsGrid({ report, onSeek }: { report: LanePhaseReport; onSeek: (
   return (
     <div className="space-y-2">
       <p className="text-[11px] text-hextech-text-dim/80 px-1">
-        Tip: click any point on a curve to jump to that minute in the replay.
+        {t('lanePhase.chartTip')}
       </p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <DiffChart data={chartData} dataKey="csDiff"   title="CS difference"   unit=""    onSeek={onSeek} />
-        <DiffChart data={chartData} dataKey="goldDiff" title="Gold difference" unit="g"   onSeek={onSeek} />
-        <DiffChart data={chartData} dataKey="xpDiff"   title="XP difference"   unit=" xp" onSeek={onSeek} />
-        <DiffChart data={chartData} dataKey="dmgDiff"  title="Damage to champions" unit="" onSeek={onSeek} />
+        <DiffChart data={chartData} dataKey="csDiff"   title={t('lanePhase.chart.cs')} unit=""    onSeek={onSeek} />
+        <DiffChart data={chartData} dataKey="goldDiff" title={t('lanePhase.chart.gold')} unit="g"   onSeek={onSeek} />
+        <DiffChart data={chartData} dataKey="xpDiff"   title={t('lanePhase.chart.xp')} unit=" xp" onSeek={onSeek} />
+        <DiffChart data={chartData} dataKey="dmgDiff"  title={t('lanePhase.chart.dmg')} unit="" onSeek={onSeek} />
       </div>
     </div>
   )
 }
 
 function DiffChart({ data, dataKey, title, unit, onSeek }: { data: any[]; dataKey: string; title: string; unit: string; onSeek: (gameTimeSec: number) => void }) {
+  const { t } = useTranslation()
   // Recharts surfaces the hovered/clicked X value as `activeLabel` (= the
   // minute). Convert to game-time seconds and hand off to the deep-link.
   const handleChartClick = (state: any) => {
@@ -316,8 +323,8 @@ function DiffChart({ data, dataKey, title, unit, onSeek }: { data: any[]; dataKe
             <RTooltip
               contentStyle={{ background: '#0a0e13', border: '1px solid #2A1D11', borderRadius: 6, fontSize: 11 }}
               labelStyle={{ color: '#D4A24C' }}
-              formatter={(v: any) => [`${v > 0 ? '+' : ''}${v}${unit}`, 'diff']}
-              labelFormatter={(v) => `min ${v}`}
+              formatter={(v: any) => [`${v > 0 ? '+' : ''}${v}${unit}`, t('lanePhase.chart.diff')]}
+              labelFormatter={(v) => t('lanePhase.chart.minute', { m: v })}
             />
             {/* Two overlapping areas — one shows positive gradient (above 0),
                 the other negative. Both use `dataKey` but their stops are
@@ -335,6 +342,7 @@ function DiffChart({ data, dataKey, title, unit, onSeek }: { data: any[]; dataKe
 // ── Plates + Solo K/D timeline strip ───────────────────────────────────────
 
 function SoloAndPlatesStrip({ report, onSeek }: { report: LanePhaseReport; onSeek: (gameTimeSec: number) => void }) {
+  const { t } = useTranslation()
   // Combine into a single list with type info, capped at the same 0-14 window.
   type Item = { kind: 'plate-taken' | 'plate-lost' | 'solo-kill' | 'solo-death'; minute: number }
   const items: Item[] = [
@@ -345,12 +353,12 @@ function SoloAndPlatesStrip({ report, onSeek }: { report: LanePhaseReport; onSee
   return (
     <Card>
       <CardHeader className="py-3">
-        <CardTitle className="text-sm">Plates &amp; solo trades</CardTitle>
+        <CardTitle className="text-sm">{t('lanePhase.strip.title')}</CardTitle>
       </CardHeader>
       <CardContent className="pt-0 pb-4">
         {items.length === 0 ? (
           <p className="text-xs text-hextech-text-dim py-2">
-            No plates taken/lost or solo trades between you and your opponent during the laning phase.
+            {t('lanePhase.strip.empty')}
           </p>
         ) : (
           <>
@@ -375,18 +383,19 @@ function SoloAndPlatesStrip({ report, onSeek }: { report: LanePhaseReport; onSee
                     onClick={() => onSeek(it.minute * 60)}
                     className={cn('absolute top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center h-5 w-5 rounded-full border cursor-pointer hover:scale-125 transition-transform', props.cls)}
                     style={{ left }}
-                    title={`${props.title} @ ${it.minute}m — click to jump to the replay`}
+                    title={t('lanePhase.strip.markerHint', { event: t(props.title), m: it.minute })}
+                    aria-label={t('lanePhase.strip.markerHint', { event: t(props.title), m: it.minute })}
                   >
-                    <span className="text-[9px] font-bold">{props.label}</span>
+                    <span className="text-[9px] font-bold" aria-hidden>{props.label}</span>
                   </button>
                 )
               })}
             </div>
             <div className="flex items-center gap-3 flex-wrap text-[10px] text-hextech-text-dim mt-2 px-2">
-              <Legend swatch="bg-emerald-500/40 border-emerald-500" label="Solo kill" />
-              <Legend swatch="bg-[#E24C3A]/40 border-[#E24C3A]" label="Solo death" />
-              <Legend swatch="bg-hextech-teal/40 border-hextech-teal" label="Plate taken" />
-              <Legend swatch="bg-orange-500/40 border-orange-500" label="Plate lost" />
+              <Legend swatch="bg-emerald-500/40 border-emerald-500" label={t('lanePhase.event.soloKill')} />
+              <Legend swatch="bg-[#E24C3A]/40 border-[#E24C3A]" label={t('lanePhase.event.soloDeath')} />
+              <Legend swatch="bg-hextech-teal/40 border-hextech-teal" label={t('lanePhase.event.plateTaken')} />
+              <Legend swatch="bg-orange-500/40 border-orange-500" label={t('lanePhase.event.plateLost')} />
             </div>
           </>
         )}
@@ -395,11 +404,12 @@ function SoloAndPlatesStrip({ report, onSeek }: { report: LanePhaseReport; onSee
   )
 }
 
+/** `title` is an i18n key (the four lanePhase.event.* keys). */
 const MARKER_PROPS: Record<string, { cls: string; label: string; title: string }> = {
-  'solo-kill':  { cls: 'bg-emerald-500/40 border-emerald-400 text-emerald-100',  label: 'K', title: 'Solo kill' },
-  'solo-death': { cls: 'bg-[#E24C3A]/40 border-[#E24C3A] text-red-100',          label: 'D', title: 'Solo death' },
-  'plate-taken':{ cls: 'bg-hextech-teal/40 border-hextech-teal text-cyan-100',   label: 'P', title: 'Plate taken' },
-  'plate-lost': { cls: 'bg-orange-500/40 border-orange-400 text-orange-100',     label: 'P', title: 'Plate lost' },
+  'solo-kill':  { cls: 'bg-emerald-500/40 border-emerald-400 text-emerald-100',  label: 'K', title: 'lanePhase.event.soloKill' },
+  'solo-death': { cls: 'bg-[#E24C3A]/40 border-[#E24C3A] text-red-100',          label: 'D', title: 'lanePhase.event.soloDeath' },
+  'plate-taken':{ cls: 'bg-hextech-teal/40 border-hextech-teal text-cyan-100',   label: 'P', title: 'lanePhase.event.plateTaken' },
+  'plate-lost': { cls: 'bg-orange-500/40 border-orange-400 text-orange-100',     label: 'P', title: 'lanePhase.event.plateLost' },
 }
 
 function Legend({ swatch, label }: { swatch: string; label: string }) {

@@ -26,6 +26,8 @@ const config: Config = {
           panel: c('--hextech-panel'),
           border: c('--hextech-border'),
           'border-dim': c('--hextech-border-dim'),
+          // Outline of form controls (3:1, see src/index.css).
+          'border-field': c('--hextech-border-field'),
           cyan: c('--hextech-cyan'),
           teal: c('--hextech-teal'),
           gold: c('--hextech-gold'),
@@ -37,6 +39,13 @@ const config: Config = {
           'text-dim': c('--hextech-text-dim'),
           blue: c('--hextech-blue'),
           'blue-bright': c('--hextech-blue-bright'),
+        },
+        // Win-rate scale, fixed across themes (src/index.css, docs/DESIGN_STATE.md § 9).
+        wr: {
+          high: c('--wr-high'),
+          mid: c('--wr-mid'),
+          low: c('--wr-low'),
+          bad: c('--wr-bad'),
         },
         background: c('--hextech-black'),
         foreground: c('--hextech-gold-bright'),
@@ -58,7 +67,8 @@ const config: Config = {
         },
         destructive: {
           DEFAULT: c('--hextech-red'),
-          foreground: c('--hextech-gold-bright'),
+          // Ink on red: gold-bright only reached 3.1:1 (white 3.9:1).
+          foreground: c('--hextech-black'),
         },
         muted: {
           DEFAULT: c('--hextech-elevated'),

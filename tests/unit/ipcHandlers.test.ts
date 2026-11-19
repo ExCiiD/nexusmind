@@ -34,7 +34,7 @@ vi.mock('electron', () => ({
   desktopCapturer: { getSources: vi.fn() },
 }))
 
-import { initDatabase, closeDatabase, getPrisma, runMigrations, listMigrationFolders } from '../../electron/main/database'
+import { initDatabase, closeDatabase, getPrisma, runMigrations, listMigrationFolders, isAlreadyAppliedError } from '../../electron/main/database'
 import { registerSessionHandlers } from '../../electron/main/ipc/session.ipc'
 import { registerAuthHandlers } from '../../electron/main/ipc/auth.ipc'
 import { registerShareHandlers } from '../../electron/main/ipc/share.ipc'
@@ -86,6 +86,81 @@ describe('migrations', () => {
     const before = readdirSync(join(h.root, 'data', 'backups')).length
     await runMigrations(getPrisma(), join(h.root, 'migrations-copy'), process.env.NEXUSMIND_DB_PATH)
     expect(readdirSync(join(h.root, 'data', 'backups')).length).toBe(before)
+  })
+
+  // DA-2 / E30: "no such column" is no longer swallowed for every statement.
+  it('fails on a column typo, and leaves the migration pending', async () => {
+    const dir = join(h.root, 'migrations-typo')
+    cpSync(join(h.root, 'migrations-copy'), dir, { recursive: true })
+    mkdirSync(join(dir, '29990102000000_test_typo'))
+    writeFileSync(join(dir, '29990102000000_test_typo', 'migration.sql'),
+      'ALTER TABLE "TestExtra" ADD COLUMN "label" TEXT;\nUPDATE "TestExtra" SET "lable" = \'x\';\n')
+    await expect(runMigrations(getPrisma(), dir, process.env.NEXUSMIND_DB_PATH)).rejects.toThrow(/no such column/)
+    const rows = await getPrisma().$queryRawUnsafe<{ n: bigint }[]>(
+      `SELECT COUNT(*) AS n FROM "_prisma_migrations" WHERE migration_name = '29990102000000_test_typo'`,
+    )
+    expect(Number(rows[0].n)).toBe(0)
+  })
+
+  it('still replays a DROP COLUMN already applied by an interrupted run', async () => {
+    const dir = join(h.root, 'migrations-drop')
+    cpSync(join(h.root, 'migrations-copy'), dir, { recursive: true })
+    mkdirSync(join(dir, '29990103000000_test_drop'))
+    writeFileSync(join(dir, '29990103000000_test_drop', 'migration.sql'),
+      'CREATE TABLE "TestDrop" ("id" TEXT PRIMARY KEY, "old" TEXT);\nALTER TABLE "TestDrop" DROP COLUMN "old";\n')
+    // The interrupted run: the table exists and the column is already gone, nothing recorded.
+    await getPrisma().$executeRawUnsafe('CREATE TABLE "TestDrop" ("id" TEXT PRIMARY KEY)')
+    await runMigrations(getPrisma(), dir, process.env.NEXUSMIND_DB_PATH)
+    const rows = await getPrisma().$queryRawUnsafe<{ n: bigint }[]>(
+      `SELECT COUNT(*) AS n FROM "_prisma_migrations" WHERE migration_name = '29990103000000_test_drop' AND finished_at IS NOT NULL`,
+    )
+    expect(Number(rows[0].n)).toBe(1)
+  })
+
+  it('isAlreadyAppliedError tolerates "no such column" only on a DROP', () => {
+    const missing = 'no such column: "lable"'
+    expect(isAlreadyAppliedError('ALTER TABLE "T" DROP COLUMN "c"', missing)).toBe(true)
+    expect(isAlreadyAppliedError('  alter table T drop c', missing)).toBe(true)
+    expect(isAlreadyAppliedError('DROP INDEX "T_c_idx"', 'no such index: T_c_idx')).toBe(true)
+    expect(isAlreadyAppliedError('UPDATE "T" SET "lable" = 1', missing)).toBe(false)
+    expect(isAlreadyAppliedError('CREATE INDEX "i" ON "T"("lable")', missing)).toBe(false)
+    expect(isAlreadyAppliedError('INSERT INTO "new_T" SELECT "lable" FROM "T"', missing)).toBe(false)
+    expect(isAlreadyAppliedError('ALTER TABLE "T" ADD COLUMN "c" TEXT', 'duplicate column name: c')).toBe(true)
+    expect(isAlreadyAppliedError('UPDATE "T" SET "c" = 1', 'syntax error')).toBe(false)
+    expect(isAlreadyAppliedError('INSERT INTO "new_T" SELECT * FROM "T"', 'UNIQUE constraint failed: new_T.k')).toBe(false)
+    expect(isAlreadyAppliedError('CREATE UNIQUE INDEX "i" ON "T"("k")', 'UNIQUE constraint failed: T.k')).toBe(false)
+  })
+
+  // Audit P1: a rebuild whose copy hits a UNIQUE constraint must stop before it drops the old table.
+  it('a table rebuild whose INSERT … SELECT fails on UNIQUE stops, keeps the old table, stays pending', async () => {
+    const prisma = getPrisma()
+    await prisma.$executeRawUnsafe('CREATE TABLE "TestDup" ("id" TEXT PRIMARY KEY, "k" TEXT)')
+    await prisma.$executeRawUnsafe(`INSERT INTO "TestDup" VALUES ('a', 'same'), ('b', 'same')`)
+    const dir = join(h.root, 'migrations-unique')
+    cpSync(join(h.root, 'migrations-copy'), dir, { recursive: true })
+    mkdirSync(join(dir, '29990104000000_test_unique'))
+    writeFileSync(join(dir, '29990104000000_test_unique', 'migration.sql'), [
+      'CREATE TABLE "new_TestDup" ("id" TEXT PRIMARY KEY, "k" TEXT UNIQUE);',
+      'INSERT OR IGNORE INTO "new_TestDup" ("id", "k") SELECT "id", "k" FROM "TestDup" WHERE 0;',
+      'INSERT INTO "new_TestDup" ("id", "k") SELECT "id", "k" FROM "TestDup";',
+      'DROP TABLE "TestDup";',
+      'ALTER TABLE "new_TestDup" RENAME TO "TestDup";',
+    ].join('\n'))
+    await expect(runMigrations(prisma, dir, process.env.NEXUSMIND_DB_PATH)).rejects.toThrow(/UNIQUE constraint failed/)
+    const rows = await prisma.$queryRawUnsafe<{ n: bigint }[]>('SELECT COUNT(*) AS n FROM "TestDup"')
+    expect(Number(rows[0].n)).toBe(2)
+    const recorded = await prisma.$queryRawUnsafe<{ n: bigint }[]>(
+      `SELECT COUNT(*) AS n FROM "_prisma_migrations" WHERE migration_name = '29990104000000_test_unique'`,
+    )
+    expect(Number(recorded[0].n)).toBe(0)
+  })
+
+  it('a CREATE UNIQUE INDEX over duplicates fails instead of being marked applied', async () => {
+    const dir = join(h.root, 'migrations-uindex')
+    cpSync(join(h.root, 'migrations-copy'), dir, { recursive: true })
+    mkdirSync(join(dir, '29990105000000_test_uindex'))
+    writeFileSync(join(dir, '29990105000000_test_uindex', 'migration.sql'), 'CREATE UNIQUE INDEX "TestDup_k_key" ON "TestDup"("k");\n')
+    await expect(runMigrations(getPrisma(), dir, process.env.NEXUSMIND_DB_PATH)).rejects.toThrow(/UNIQUE constraint failed/)
   })
 })
 

@@ -86,6 +86,22 @@ laner 1:40 contre 2:11, niveau 2 du support 1:44 contre 2:16, niveau 3 du jungle
 jungler 3:45 contre 4:18, première ward du support 1:10 contre 1:47, premier back d'un laner 3:25 contre 4:00.
 `ANALYSIS_VERSION` passe à 8 : chaque analyse en cache est recalculée une fois.
 
+**Plaques en 2026 (19/11, `ANALYSIS_VERSION` 9).** Les plaques ne tombent plus à 14:00 : sur les parties en cache, aucune
+plaque n'est prise après 13:59 en 15.x (794 plaques, 79 parties), alors qu'en 16.x elles le sont jusqu'à 47:47 (7 098
+plaques, 128 parties, dont 5 336 après 14:00). Les T1 tombent aux mêmes heures dans les deux saisons (médianes top 16:58
+contre 17:15, mid 17:52 contre 17:52, bot 16:50 contre 16:50). Les trois règles liées aux plaques suivent donc la T1 debout
+en 2026, avec une limite à 20:00 (apparition du Baron, la carte se regroupe) : dive 1 pour 1 et roam mid payé en plaques
+jusqu'à 20:00 ; tour de side lane dès que la première tour est tombée, sans heure de début (le dernier coup prend aussi les
+plaques restantes). La note de phase de lane garde sa fenêtre de 14 minutes. M12 (« mort avant 4:00 ») passe à 3:25 sur
+les parties 16.x, comme les autres repères du début de partie : 28,9 % des laners 16.x meurent avant 3:25, 28,5 % des
+laners 15.x avant 4:00. Les parties 15.x gardent 14:00 et 4:00 (`CLOCK_2025`).
+
+| Schéma (pour 100 parties-joueur) | 16.x avant | 16.x après | 15.x (inchangé) |
+|---|---|---|---|
+| Dive 1 pour 1 | 1,33 | 1,48 (2 après 14:00) | 1,39 |
+| Roam mid payé en plaques | 0,16 | 0,31 (2 après 14:00) | 0,00 |
+| Tour de side lane du jungler | 0,39 | 0,39 | 0,00 |
+
 | Schéma (pour 100 parties-joueur, 16.x) | avant | après | 15.x (inchangé) |
 |---|---|---|---|
 | Gank sur timer | 5,43 | 5,96 | 8,63 |
@@ -123,12 +139,12 @@ fenêtre (2025 : en base sur le relevé de 3:00).
 | Pic de niveau 2 / 3 | tué par ton vis-à-vis dans les 10 s après qu'il a pris son niveau 2 ou 3, toi encore en dessous (avant 3:55 ; 4:30 en 2025) | V5 |
 | Distance contre mêlée | avant 8:00 : distance sous 60 % PV au niveau ≤ 3, ou mêlée sous 50 % au niveau ≤ 4 face à un distance au-dessus de 85 % | V5 (`championClasses.ts` : type d'attaque par champion) |
 | Cheater recall | back entre 2:00 et 2:40 (un achat ; 2025 : en base sur le relevé de 3:00, back entre 2:35 et 3:15) avec plus de 75 % PV à 2:00, sans Téléportation, 1 niveau de retard ou plus à 4:00 | V5 |
-| Dive 1 pour 1 | tu tues ton vis-à-vis à moins de 850 d'une T1 ennemie encore debout et tu meurs dans les 4 s, sans le jungler adverse, avant 14:00 | V5 |
-| Ouverture de lane | à 5:00 : mort avant 4:00, ou −8 CS, ou −400 or face au vis-à-vis | Labo, M12 |
+| Dive 1 pour 1 | tu tues ton vis-à-vis à moins de 850 d'une T1 ennemie encore debout et tu meurs dans les 4 s, sans le jungler adverse, avant 20:00 (14:00 en 2025) | V5 |
+| Ouverture de lane | à 5:00 : mort avant 3:25 (4:00 en 2025), ou −8 CS, ou −400 or face au vis-à-vis | Labo, M12 |
 | Retard à 10:00 | −15 CS (Labo M13, grave à −25) ; −15 CS ou −400 XP (micro-revue, sauf 2 kills/assists ou plus) | Labo, micro-revue |
 | Retard de niveaux | 2 niveaux de moins que le vis-à-vis à 10:00 ou 15:00 (grave à 3) | Labo, M14 |
 | Mid à 6:00 | −12 CS, aucun sort de base à 2 points au niveau 3, moins de 2 kills/assists | V7 |
-| Plaques | plaques prises et perdues sur la lane (avant 14:00) | note de lane, roam mid |
+| Plaques | plaques prises et perdues sur la lane : avant 14:00 pour la note de lane ; jusqu'à 20:00 pour le roam mid en 2026 (14:00 en 2025) | note de lane, roam mid |
 
 ### 1.5 Jungle
 
@@ -145,7 +161,7 @@ fenêtre (2025 : en base sur le relevé de 3:00).
 | Mort en invade | avant 16:00, dans la jungle adverse, seul ou avec un allié, après avoir pris un camp (4 CS), sans kill dans les 30 s avant | V7 |
 | Dragon tanké | mort entre 5:00 et 12:00 à moins de 3 000 de la fosse, le Dragon t'ayant infligé 60 % de tes PV max | V7 |
 | Mort de compensation | un allié tombe à moins de 3 000 dans les 15 s avant, tu meurs à 2 contre 1 de plus, et l'ennemi prend un monstre épique à cette fosse dans les 60 s | V7 |
-| Tour de side lane | T1 de side lane détruite par toi entre 14:00 et 20:00 alors qu'une tour était déjà tombée | V7 |
+| Tour de side lane | T1 de side lane détruite par toi avant 20:00 alors qu'une tour était déjà tombée (2025 : à partir de 14:00, plaques tombées) | V7 |
 | Smite volé | Dragon, Ancien, Héraut ou Baron pris par l'ennemi alors que tu étais vivant à moins de 900 de la fosse | V7 |
 | Recall sous Baron | jungler en avance (KDA > 3 ou 10 000 or dépensés) en base ou dans sa jungle pendant le Baron de l'équipe, alors que 3 alliés sont en avant et que 2 meurent | V6 |
 | Dive après inhibiteur | tué dans la base ennemie dans les 15 s qui suivent la chute d'un inhibiteur ennemi | V6 |
@@ -154,7 +170,7 @@ fenêtre (2025 : en base sur le relevé de 3:00).
 
 | Situation reconnue | Règle |
 |---|---|
-| Roam payé en plaques | roam avant 14:00 (à plus de 2 600 de la diagonale), aucun kill/assist, au moins 1 plaque mid et 10 CS perdus |
+| Roam payé en plaques | roam avant 20:00 (14:00 en 2025 ; à plus de 2 600 de la diagonale), aucun kill/assist, au moins 1 plaque mid et 10 CS perdus |
 | Devant sa vague | mort en mid avant 12:00, au plus 45 s après être sorti de base |
 | Piège du reset | l'adversaire rentre en premier ; toi, sous 30 % PV ou de mana (réserve de plus de 200, donc pas d'énergie ni de rage), tu restes et tu meurs dans les 90 s |
 | Lane donnée à 6:00 | voir 1.4 ; remplace le retard de 10:00 pour la même lane |
@@ -393,15 +409,15 @@ dégâts, synchronisation de vague, objectif sans vision, runes) ne viennent que
 | M9 | Pris seul | après 14:00, aucun objectif à ±30 s, 2 ennemis ou plus sur le kill, aucun allié à moins de 2 500 | 2 | tué par 3 ennemis en side lane à 21:05 |
 | M10 | Mauvais trade | avant 14:00, tué seul par ton vis-à-vis direct | 2 | solo-kill de ton adversaire de lane à 6:12 |
 | M11 | Mauvais placement | premier mort d'un fight (aucun kill dans les 15 s avant ta mort, au moins 3 kills dans les 15 s après) | 2 pour mid et ADC ; 1 sinon | ADC qui meurt en premier dans un fight à 5 kills |
-| M12 | Mauvaise ouverture de lane | laner, à 5:00 : mort avant 4:00, ou −8 CS, ou −400 or face au vis-à-vis | 2 ; 3 si deux raisons | −9 CS et −450 or à 5:00 → gravité 3 |
+| M12 | Mauvaise ouverture de lane | laner, à 5:00 : mort avant 3:25 (4:00 sur une partie 15.x), ou −8 CS, ou −400 or face au vis-à-vis | 2 ; 3 si deux raisons | −9 CS et −450 or à 5:00 → gravité 3 |
 | M13 | Retard de CS à 10 min | laner : −15 CS ou plus à 10:00 face au vis-à-vis (sbires et jungle) | 2 ; 3 à −25 | 62 CS contre 80 → −18, gravité 2 |
 | M14 | Retard d'XP | laner : 2 niveaux de moins que le vis-à-vis à 10:00 ou 15:00, une fois par partie | 2 ; 3 à 3 niveaux | niveau 9 contre 11 à 15:00 |
 | M15 | Mort quand l'objectif est tombé | l'ennemi prend Dragon, Baron, Héraut, Larves ou Atakhan plus de 60 s après ta mort (M5 couvre la minute d'avant) et au moins 2 s avant ta réapparition (niveau lu sur les LEVEL_UP, formule du wiki) ; rien si tu poses une ward ou fais un kill entre les deux (résurrection) | 2 ; 3 pour Baron et Ancien | niveau 18 mort à 50:00 (71,5 s de réapparition), Baron adverse à 51:05 → gravité 3 |
 | M19 | Mort en retard de niveaux | laner ou jungler, mort entre 0:55 et 3:55 (1:30 et 4:30 sur une partie 15.x) contre un adversaire d'au moins 1 niveau de plus | 2 ; 3 à 2 niveaux | tué niveau 2 par un niveau 3 à 3:40 |
 
 Une même mort peut produire plusieurs erreurs **de tags différents** quand elle prouve plusieurs choses. Exemple : un
-mid laner tué seul par son adversaire de lane, niveau 2 contre 3, à 3:40, reçoit « mauvais trade » (M10), « mort en
-retard de niveaux » (M19), puis à 5:00 « mauvaise ouverture de lane » (M12, raison : mort avant 4:00).
+mid laner tué seul par son adversaire de lane, niveau 2 contre 3, à 3:15 (partie 16.x), reçoit « mauvais trade » (M10), « mort
+en retard de niveaux » (M19), puis à 5:00 « mauvaise ouverture de lane » (M12, raison : mort avant 3:25).
 
 ### 3.3 Ce que la micro-revue ajoute
 

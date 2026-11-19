@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 import { useCollab } from '@/hooks/useCollab'
 import { undismissedFor } from '@/lib/announcementsCore'
 import type { Announcement, AnnouncementDismissal } from '@/lib/announcements'
+import { useVisiblePolling } from '@/hooks/useVisiblePolling'
 
-const POLL_MS = 30_000
+/** Task I: every 10 min while visible, plus on focus; paused when hidden (useVisiblePolling). */
+const POLL_MS = 600_000
 const MAX_VISIBLE = 5
 
 async function fetchGroupAnnouncements(groupId: string): Promise<[string, Announcement[]]> {
@@ -45,15 +47,10 @@ export function AnnouncementBubbleStack() {
       window.api.announcementsListMyDismissals().catch(() => []),
     ])
     setByGroup(new Map(lists))
-    setDismissals(myDismissals)
+    setDismissals(myDismissals ?? [])
   }, [available, groups])
 
-  useEffect(() => { load() }, [load])
-  useEffect(() => {
-    if (!available) return
-    const id = setInterval(load, POLL_MS)
-    return () => clearInterval(id)
-  }, [available, load])
+  useVisiblePolling(load, POLL_MS, available && groups.length > 0)
 
   if (!available || !myUserId) return null
 

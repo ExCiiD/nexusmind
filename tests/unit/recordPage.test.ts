@@ -6,23 +6,9 @@
  * - filter logic
  */
 import { describe, it, expect, beforeEach } from 'vitest'
+import { buildPageNumbers, getDateKey, matchesRecordFilters, parseStoredFolders } from '../../src/lib/recordPageCore'
 
-// ── Inline copies of the pure helpers (avoids importing the React component) ──
-
-function getDateKey(dateStr: string): string {
-  return new Date(dateStr).toISOString().slice(0, 10)
-}
-
-function buildPageNumbers(current: number, total: number): Array<number | '…'> {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
-  const pages: Array<number | '…'> = [1]
-  if (current > 3) pages.push('…')
-  for (let p = Math.max(2, current - 1); p <= Math.min(total - 1, current + 1); p++) pages.push(p)
-  if (current < total - 2) pages.push('…')
-  pages.push(total)
-  return pages
-}
-
+// Q (TE-4 / T1): the page's own helpers (src/lib/recordPageCore.ts), no more inline copies.
 const FOLDERS_KEY = 'nexusmind:record-folders-v2'
 
 interface Folder {
@@ -32,7 +18,7 @@ interface Folder {
 }
 
 function loadFolders(storage: Record<string, string>): Folder[] {
-  try { const r = storage[FOLDERS_KEY]; return r ? JSON.parse(r) : [] } catch { return [] }
+  return parseStoredFolders<Folder>(storage[FOLDERS_KEY] ?? null)
 }
 function saveFolders(storage: Record<string, string>, f: Folder[]) {
   storage[FOLDERS_KEY] = JSON.stringify(f)
@@ -41,32 +27,26 @@ function saveFolders(storage: Record<string, string>, f: Folder[]) {
 // ── getDateKey ────────────────────────────────────────────────────────────────
 
 describe('getDateKey', () => {
+  /** An ISO string for a local wall-clock time (works in any timezone the tests run in). */
+  const local = (y: number, mo: number, d: number, h: number, mi = 0) => new Date(y, mo - 1, d, h, mi).toISOString()
+
   it('should return YYYY-MM-DD format', () => {
     expect(getDateKey('2026-04-10T21:35:00.000Z')).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 
-  it('should group same-day records under the same key', () => {
-    const a = getDateKey('2026-04-10T08:00:00.000Z')
-    const b = getDateKey('2026-04-10T23:59:59.000Z')
-    expect(a).toBe(b)
+  it('groups by the local calendar day, not UTC (a game at 00:30 is that night’s day)', () => {
+    expect(getDateKey(local(2026, 4, 10, 0, 30))).toBe('2026-04-10')
+    expect(getDateKey(local(2026, 4, 10, 23, 59))).toBe('2026-04-10')
+    expect(getDateKey(local(2026, 4, 11, 0, 5))).toBe('2026-04-11')
   })
 
   it('should give different keys for different days', () => {
-    const a = getDateKey('2026-04-10T12:00:00.000Z')
-    const b = getDateKey('2026-04-11T12:00:00.000Z')
-    expect(a).not.toBe(b)
+    expect(getDateKey(local(2026, 4, 10, 12))).not.toBe(getDateKey(local(2026, 4, 11, 12)))
   })
 
   it('date keys should sort correctly in descending order', () => {
-    const dates = [
-      '2026-04-10T12:00:00.000Z',
-      '2026-04-12T12:00:00.000Z',
-      '2026-04-05T12:00:00.000Z',
-    ]
-    const keys = dates.map(getDateKey).sort((a, b) => b.localeCompare(a))
-    expect(keys[0]).toBe('2026-04-12')
-    expect(keys[1]).toBe('2026-04-10')
-    expect(keys[2]).toBe('2026-04-05')
+    const keys = [local(2026, 4, 10, 12), local(2026, 4, 12, 12), local(2026, 4, 5, 12)].map(getDateKey).sort((a, b) => b.localeCompare(a))
+    expect(keys).toEqual(['2026-04-12', '2026-04-10', '2026-04-05'])
   })
 })
 
@@ -145,6 +125,8 @@ describe('Folder storage helpers', () => {
   it('loadFolders should return empty array for corrupted JSON', () => {
     storage[FOLDERS_KEY] = 'NOT_JSON{{{'
     expect(loadFolders(storage)).toEqual([])
+    storage[FOLDERS_KEY] = '{"not":"an array"}'
+    expect(loadFolders(storage)).toEqual([])
   })
 
   it('saveFolders should overwrite previous state', () => {
@@ -188,15 +170,7 @@ describe('RecordPage filter logic', () => {
     { recordingId: 'r-4', filePath: '/d.mp4', clipCount: 0, queueType: 'flex', hasReview: true, source: 'obs' },
   ]
 
-  function applyFilter(r: RecordStub, f: { content: string; mode: string; review: string; source: string }): boolean {
-    if (f.content === 'clips' && r.clipCount === 0) return false
-    if (f.content === 'records' && !r.filePath) return false
-    if (f.mode !== 'all' && r.queueType !== f.mode) return false
-    if (f.review === 'reviewed' && !r.hasReview) return false
-    if (f.review === 'unreviewed' && r.hasReview) return false
-    if (f.source !== 'all' && r.source !== f.source) return false
-    return true
-  }
+  const applyFilter = matchesRecordFilters
 
   it('no filters: returns all records', () => {
     const filtered = records.filter(r => applyFilter(r, { content: 'all', mode: 'all', review: 'all', source: 'all' }))

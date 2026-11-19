@@ -1,4 +1,4 @@
-import { getSupabase } from './supabase'
+import { getSupabase, requireSessionUserId } from './supabase'
 import { getMatch } from '../riotClient'
 import * as core from '../../../src/lib/teamSessionsCore'
 import type { NewGroupFundamentalInput, SessionQueueFilter } from '../../../src/lib/teamSessions'
@@ -20,7 +20,7 @@ export const teamSessionStart = (id: string, responsibleUserIds: string[], queue
 export const teamSessionEnd = (id: string) => core.endSession(getSupabase(), id)
 export const teamSessionGetObjectives = (sessionId: string) => core.getObjectives(getSupabase(), sessionId)
 export const teamSessionSetObjectives = (sessionId: string, objectiveIds: string[], kpiIds: string[]) =>
-  core.setObjectives(getSupabase(), sessionId, objectiveIds, kpiIds)
+  requireSessionUserId().then((uid) => core.setObjectives(getSupabase(), uid, sessionId, objectiveIds, kpiIds))
 export const teamSessionGetAttendance = (sessionId: string) => core.getAttendance(getSupabase(), sessionId)
 export const teamSessionSetAttendance = (sessionId: string, userId: string, present: boolean | null) =>
   core.setAttendance(getSupabase(), sessionId, userId, present)

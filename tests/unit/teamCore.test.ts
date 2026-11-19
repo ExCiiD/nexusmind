@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { getSharedTeam, publishTeam, listGroupTeams, addRosterMember, upsertPoolEntry } from '../../src/lib/teamCore'
+import { getSharedTeam, getGroupRosterUserIds, publishTeam, listGroupTeams, addRosterMember, upsertPoolEntry } from '../../src/lib/teamCore'
 import type { PublishTeamInput } from '../../src/lib/team'
 
 function chain(result: unknown) {
@@ -26,11 +26,33 @@ describe('getSharedTeam', () => {
     const out = await getSharedTeam(sb, 'g1')
     expect(out.roster).toHaveLength(1)
     expect(out.roster[0].pool.map((p) => p.championKey)).toEqual(['Renekton'])
+    // WSC-06: the pool table is read for this group's roster rows only.
+    expect(pool.in).toHaveBeenCalledWith('roster_id', ['r1'])
+  })
+
+  it('does not read the pool table at all for an empty roster', async () => {
+    const pool = chain({ data: [], error: null })
+    const empty = () => chain({ data: [], error: null })
+    const tables: Record<string, unknown> = { team_rosters: empty(), team_pool_entries: pool, team_drafts: empty(), team_scouting: empty() }
+    const from = vi.fn((table: string) => tables[table])
+    await getSharedTeam({ from } as never, 'g1')
+    expect(from).not.toHaveBeenCalledWith('team_pool_entries')
   })
 
   it('throws on a read error', async () => {
     const sb = { from: vi.fn(() => chain({ data: null, error: { message: 'boom' } })) } as never
     await expect(getSharedTeam(sb, 'g1')).rejects.toThrow('boom')
+  })
+})
+
+describe('getGroupRosterUserIds', () => {
+  it('returns the linked accounts of the group\'s own roster, scouted rows excluded', async () => {
+    const roster = chain({ data: [{ user_id: 'u1' }, { user_id: null }, { user_id: 'u2' }], error: null })
+    const from = vi.fn(() => roster)
+    await expect(getGroupRosterUserIds({ from } as never, 'g1')).resolves.toEqual(['u1', 'u2'])
+    expect(roster.eq).toHaveBeenCalledWith('group_id', 'g1')
+    expect(roster.is).toHaveBeenCalledWith('scouting_id', null)
+    expect(from).toHaveBeenCalledTimes(1)
   })
 })
 

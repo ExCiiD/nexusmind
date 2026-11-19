@@ -1,4 +1,5 @@
 import { sb } from './supabase'
+import * as teamCore from '@/lib/teamCore'
 
 export type ScrimStatus = 'planned' | 'done' | 'cancelled'
 export type Availability = 'yes' | 'maybe' | 'no'
@@ -17,7 +18,8 @@ export interface Scrim {
   checklist: ChecklistItem[]
   draftIds: string[]
   reviewNotes: string | null
-  createdBy: string
+  /** NULL once the author left (account deleted, #33). */
+  createdBy: string | null
   /** 'bo1' | 'bo3' | 'bo5', or null. Shown by the Discord bot (E11). */
   boFormat: string | null
   /** Links to the scouted opponent (team_scouting.id) so the Discord bot
@@ -116,16 +118,24 @@ const arr = (v: unknown): string[] => {
   try { const p = JSON.parse(String(v ?? '[]')); return Array.isArray(p) ? p : [] } catch { return [] }
 }
 
-/** Drafts prepared by members of the group who share team data (RLS-filtered). */
-export async function listTeamDrafts(memberIds: string[]): Promise<TeamDraft[]> {
-  if (memberIds.length === 0) return []
-  const { data, error } = await sb.from('sync_records')
-    .select('user_id, record_id, data')
-    .eq('table_name', 'DraftPrep').eq('deleted', false).in('user_id', memberIds).limit(200)
-  check(error)
-  return (data ?? []).map((r: any) => ({
-    id: r.record_id, ownerId: r.user_id, name: r.data?.name ?? '—', myTeamSide: r.data?.myTeamSide ?? 'blue',
-    bluePicks: arr(r.data?.bluePicks), redPicks: arr(r.data?.redPicks), blueBans: arr(r.data?.blueBans), redBans: arr(r.data?.redBans),
-    notes: r.data?.notes ?? null,
+/**
+ * The group's drafts (team_drafts: the Draft Sim on the web, the team published from the desktop), which a scrim
+ * links (WSC-19). Every member reads them; the staff writes them (RLS by group).
+ *
+ * Before 19/11/2026 this read the members' personal DraftPrep rows from sync_records: that path is now staff only
+ * and explicit (#43 / S19-17), and personal drafts are not the group's. Called with member ids (the old form), it
+ * returns nothing: pass the group id.
+ */
+export async function listTeamDrafts(groupId: string | string[]): Promise<TeamDraft[]> {
+  if (typeof groupId !== 'string' || !groupId) return []
+  const drafts = await teamCore.listGroupDrafts(sb, groupId)
+  // A slot may hold several candidate champions (Draft Sim): the scrim shows the first of each.
+  const names = (v: string): string[] => (arr(v) as unknown[])
+    .map((s) => (Array.isArray(s) ? s.find((x) => typeof x === 'string' && x) : s))
+    .filter((s): s is string => typeof s === 'string' && s.length > 0)
+  return drafts.map((d) => ({
+    id: d.id, ownerId: d.userId, name: d.name || '—', myTeamSide: d.myTeamSide ?? 'blue',
+    bluePicks: names(d.bluePicks), redPicks: names(d.redPicks), blueBans: names(d.blueBans), redBans: names(d.redBans),
+    notes: d.notes ?? null,
   }))
 }

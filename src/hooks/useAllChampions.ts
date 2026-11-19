@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { DDRAGON_BASE, getDdragonVersion } from '@/lib/ddragon'
 
 export interface ChampionMeta {
   key: string       // Data Dragon key (e.g. "Renekton")
@@ -7,31 +8,16 @@ export interface ChampionMeta {
   tags: string[]    // ["Fighter", "Tank"]
 }
 
-const FALLBACK_VERSION = '15.7.1'
-let cachedVersion: string | null = null
 let cachedChampions: ChampionMeta[] | null = null
 let inflight: Promise<ChampionMeta[]> | null = null
-
-async function fetchVersion(): Promise<string> {
-  if (cachedVersion) return cachedVersion
-  try {
-    const r = await fetch('https://ddragon.leagueoflegends.com/api/versions.json')
-    const versions: string[] = await r.json()
-    if (versions[0]) {
-      cachedVersion = versions[0]
-      return versions[0]
-    }
-  } catch { /* offline → fallback */ }
-  return FALLBACK_VERSION
-}
 
 async function fetchChampions(): Promise<ChampionMeta[]> {
   if (cachedChampions) return cachedChampions
   if (inflight) return inflight
   inflight = (async () => {
-    const version = await fetchVersion()
+    const version = await getDdragonVersion() // T (L07): the shared version request
     try {
-      const r = await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`)
+      const r = await fetch(`${DDRAGON_BASE}/cdn/${version}/data/en_US/champion.json`)
       const data = await r.json()
       const champions: ChampionMeta[] = Object.values(data.data ?? {}).map((c: any) => ({
         key: c.id,

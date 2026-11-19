@@ -11,6 +11,7 @@ import { collabErrorKey, type Group } from '@/lib/collab'
 import { isLegacyStaff } from '@/lib/permissions'
 import type { NewVodAssignmentInput, TeamMistakeTag, VodReviewSession } from '@/lib/vodReview'
 import type { ScrimSummary } from '@/lib/scrims'
+import type { NameOf } from '@/hooks/useCollab'
 
 const TEAM_TAGS: TeamMistakeTag[] = ['rotation', 'objective_setup', 'communication', 'other']
 
@@ -20,7 +21,7 @@ const fmtTime = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).pad
 const extractYouTubeId = (url: string): string | null =>
   url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^&?/\s]+)/)?.[1] ?? null
 
-interface Props { groups: Group[]; myUserId: string; nameOf: (userId: string) => string }
+interface Props { groups: Group[]; myUserId: string; nameOf: NameOf }
 
 /** E5 (docs/PLAN_GESTION_EQUIPE.md): a scrim VOD review session — timestamped comments, team-mistake tags, action items, per-player watch assignments. */
 export function VodReviewSection({ groups, myUserId, nameOf }: Props) {
@@ -134,7 +135,7 @@ function NewSessionForm({ groupId, scrims, onCreated }: { groupId: string; scrim
 }
 
 function SessionDetail({ session, group, isStaff, myUserId, nameOf, scrims, onChanged }: {
-  session: VodReviewSession; group: Group; isStaff: boolean; myUserId: string; nameOf: (id: string) => string; scrims: ScrimSummary[]; onChanged: () => void
+  session: VodReviewSession; group: Group; isStaff: boolean; myUserId: string; nameOf: NameOf; scrims: ScrimSummary[]; onChanged: () => void
 }) {
   const { t } = useTranslation()
   const { toast } = useToast()
@@ -224,6 +225,7 @@ function SessionDetail({ session, group, isStaff, myUserId, nameOf, scrims, onCh
         {youtubeId && (
           <div className="mt-2 aspect-video overflow-hidden rounded-lg bg-black">
             <iframe
+              title={t('a11y.youtubePlayer')}
               ref={playerRef}
               src={`https://www.youtube.com/embed/${youtubeId}?enablejsapi=1`}
               className="h-full w-full"

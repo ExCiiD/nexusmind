@@ -9,7 +9,7 @@ export interface TrialEvaluation {
   criterion: string
   score: number
   note: string | null
-  createdBy: string
+  createdBy: string | null // null once the author deleted their account (S19-16 / #33)
   createdAt: string
 }
 
@@ -24,7 +24,7 @@ export interface TrialCandidate {
   periodEnd: string | null
   notes: string | null
   evaluations: TrialEvaluation[]
-  createdBy: string
+  createdBy: string | null // null once the author deleted their account (S19-16 / #33)
   createdAt: string
   updatedAt: string
 }

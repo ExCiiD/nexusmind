@@ -16,6 +16,7 @@ import { ClipSharePanel } from '@/components/Share/ClipSharePanel'
 import i18n from '@/i18n/config'
 import { useToast } from '@/hooks/useToast'
 import { formatFileSize, formatMs, toNxmUrl } from '@/lib/mediaCore'
+import { useYoutubeUploadAvailable } from '@/hooks/useYoutubeUploadAvailable'
 
 type YoutubeUploadState = 'idle' | 'uploading' | 'done' | 'error'
 type BottomTab = 'clips' | 'share'
@@ -51,8 +52,6 @@ interface ClipEntry {
   title: string | null
   startMs: number
   endMs: number
-  youtubeUrl: string | null
-  tempShareUrl: string | null
   createdAt: string
   fileSize: number
 }
@@ -162,12 +161,14 @@ export function RecordPlayerPage() {
   const [ytError, setYtError] = useState<string | null>(null)
   const [ytConnected, setYtConnected] = useState(false)
 
+  const youtubeUpload = useYoutubeUploadAvailable()
   useEffect(() => {
-    ;(window.api as any).youtubeGetStatus().then((s: any) => setYtConnected(s.connected)).catch(() => {})
-  }, [])
+    if (!youtubeUpload) { setYtConnected(false); return }
+    window.api.youtubeGetStatus().then((s: any) => setYtConnected(s.connected)).catch(() => {})
+  }, [youtubeUpload])
 
   useEffect(() => {
-    const unsub = (window.api as any).onYoutubeUploadProgress?.((d: { percent: number }) => setYtProgress(d.percent))
+    const unsub = window.api.onYoutubeUploadProgress?.((d: { percent: number }) => setYtProgress(d.percent))
     return () => unsub?.()
   }, [])
 
@@ -187,7 +188,7 @@ export function RecordPlayerPage() {
         gameEndAt: rec.gameEndAt, queueType: rec.queueType,
         hasReview: rec.hasReview, reviewId: rec.reviewId, isOrphaned: rec.isOrphaned,
       })
-      setClips(await (window.api as any).listClips(recordingId) ?? [])
+      setClips(await window.api.listClips(recordingId) ?? [])
     } catch (err) {
       console.error('[RecordPlayerPage] Load failed:', err)
       setError(t('record.player.loadFailed'))
@@ -429,7 +430,7 @@ export function RecordPlayerPage() {
     if (!recordingId) return
     setSavingClip(true)
     try {
-      await (window.api as any).createClip({ recordingId, startMs: clipRange.startMs, endMs: clipRange.endMs, title: clipTitle || undefined })
+      await window.api.createClip({ recordingId, startMs: clipRange.startMs, endMs: clipRange.endMs, title: clipTitle || undefined })
       setCreatingClip(false)
       await loadData()
     } catch (err) { console.error('[RecordPlayerPage] Clip save failed:', err) }
@@ -468,7 +469,7 @@ export function RecordPlayerPage() {
   }
 
   const handleDeleteClip = async (id: string) => {
-    await (window.api as any).deleteClip(id)
+    await window.api.deleteClip(id)
     await loadData()
   }
 
@@ -476,7 +477,7 @@ export function RecordPlayerPage() {
     if (!recording?.filePath) return
     setYtState('uploading'); setYtProgress(0); setYtError(null)
     try {
-      const r = await (window.api as any).youtubeUpload({
+      const r = await window.api.youtubeUpload({
         filePath: recording.filePath,
         title: `${recording.champion} — ${recording.win ? t('record.victory') : t('record.defeat')} | Ascend`,
         description: t('record.youtube.description'), visibility: 'unlisted',
@@ -631,7 +632,7 @@ export function RecordPlayerPage() {
         />
       ) : recording.youtubeUrl ? (
         <div className="rounded-xl overflow-hidden bg-[#050A10] border border-white/10 aspect-video">
-          <iframe src={`https://www.youtube.com/embed/${extractYtId(recording.youtubeUrl)}`} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen />
+          <iframe title={t('a11y.youtubePlayer')} src={`https://www.youtube.com/embed/${extractYtId(recording.youtubeUrl)}`} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen />
         </div>
       ) : (
         <div className="rounded-xl bg-[#050A10] border border-white/10 aspect-video flex items-center justify-center">
@@ -1033,9 +1034,8 @@ function ClipRow({ clip, onDelete, onPlay, isActive }: {
           <span>{formatFileSize(clip.fileSize)}</span>
         </div>
       </button>
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- event barrier only: stops the click from reaching the clickable row; the buttons inside handle the keyboard. */}
       <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-        {clip.tempShareUrl && <a href={clip.tempShareUrl} target="_blank" rel="noopener noreferrer" className="text-hextech-teal hover:text-hextech-teal/80 transition-colors"><ExternalLink className="h-3 w-3" /></a>}
-        {clip.youtubeUrl && <a href={clip.youtubeUrl} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:text-red-300 transition-colors"><Youtube className="h-3 w-3" /></a>}
         {confirmDelete
           ? <><button onClick={onDelete} className="text-[10px] text-[#E24C3A] font-medium">✓</button><button onClick={() => setConfirmDelete(false)} className="text-[10px] text-hextech-text-dim">✕</button></>
           : <button onClick={() => setConfirmDelete(true)} className="text-hextech-text-dim/40 hover:text-[#E24C3A] transition-colors"><Trash2 className="h-3 w-3" /></button>

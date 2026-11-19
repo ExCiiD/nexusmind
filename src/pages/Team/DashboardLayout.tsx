@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import type { SynergyPlayerStats } from '@/lib/ipc'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import { wrText } from '@/lib/winrate'
 
 const PLAYER_COLORS = ['#fbbf24', '#60a5fa', '#34d399', '#f472b6', '#a78bfa', '#fb923c', '#f87171', '#22d3ee']
 
@@ -43,22 +44,25 @@ export function DashboardLayout({ players, matchCount, basedOnLabel }: Props) {
   )
 }
 
-// Column groups (E17: readability pass). Same 24 columns, same order as
+// Column groups (E17: readability pass). Short column labels are LoL stat
+// abbreviations, kept as they are in every language; each column's tooltip
+// is the i18n key team.statsTable.hint.<key>. Same 24 columns, same order as
 // before — this only adds a labeled group header row above them (so
 // "which cluster of stats am I looking at" doesn't require memorizing
 // abbreviations) and a legend of what each abbreviation means. `span`
 // must add up to the exact column count in each group below.
+// `label` is an i18n key (team.statsTable.group.*), '' = no label.
 const COLUMN_GROUPS: Array<{ label: string; span: number; cls?: string }> = [
   { label: '', span: 1 }, // player (sticky, no group label needed)
-  { label: 'Record', span: 2 },
-  { label: 'Combat', span: 4 },
-  { label: 'Economy', span: 4 },
-  { label: 'Impact', span: 9, cls: 'text-hextech-gold-bright/80' },
-  { label: 'Vision', span: 4 },
+  { label: 'team.statsTable.group.record', span: 2 },
+  { label: 'team.statsTable.group.combat', span: 4 },
+  { label: 'team.statsTable.group.economy', span: 4 },
+  { label: 'team.statsTable.group.impact', span: 9, cls: 'text-hextech-gold-bright/80' },
+  { label: 'team.statsTable.group.vision', span: 4 },
 ]
 
 const COLUMNS = [
-  ['player', 'Joueur', 'text-left pl-3', undefined],
+  ['player', '', 'text-left pl-3', undefined],
   ['games', 'Games', 'text-right', 'Games played'],
   ['wr', 'WR%', 'text-right', 'Win rate'],
   ['k', 'K', 'text-right', 'Kills per game'],
@@ -119,15 +123,15 @@ export function StatsTable({ players, matchCount, basedOnLabel }: { players: Syn
                     g.cls,
                   )}
                 >
-                  {g.label}
+                  {g.label ? t(g.label) : ''}
                 </th>
               ))}
             </tr>
             <tr>
-              {COLUMNS.map(([k, label, cls, title], i) => (
+              {COLUMNS.map(([k, label, cls], i) => (
                 <th
                   key={k}
-                  title={title}
+                  title={k === 'player' ? undefined : t(`team.statsTable.hint.${k}`)}
                   className={cn(
                     'px-1.5 py-1.5 font-semibold uppercase text-[9px] tracking-wider whitespace-nowrap',
                     cls,
@@ -138,7 +142,7 @@ export function StatsTable({ players, matchCount, basedOnLabel }: { players: Syn
                     isGroupStart(i) && i > 0 && 'border-l border-hextech-border-dim/40',
                   )}
                 >
-                  {label}
+                  {k === 'player' ? t('team.statsTable.player') : label}
                 </th>
               ))}
             </tr>
@@ -155,7 +159,7 @@ export function StatsTable({ players, matchCount, basedOnLabel }: { players: Syn
                     <span className="ml-1.5 text-[9px] text-hextech-text-dim">· {p.role}</span>
                   </td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums border-l border-hextech-border-dim/30">{p.gamesPlayed}</td>
-                  <td className={cn('px-1.5 py-1.5 text-right tabular-nums font-semibold', wrColor(p.winRate))}>{p.winRate}%</td>
+                  <td className={cn('px-1.5 py-1.5 text-right tabular-nums font-semibold', wrText(p.winRate, p.gamesPlayed))}>{p.winRate}%</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums border-l border-hextech-border-dim/30">{a.kills.toFixed(1)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{a.deaths.toFixed(1)}</td>
                   <td className="px-1.5 py-1.5 text-right tabular-nums">{a.assists.toFixed(1)}</td>
@@ -219,13 +223,14 @@ function ShareDonut({ titleKey, defaultTitle, players, valueFn }: {
     <Card className="p-4">
       <h3 className="text-sm font-bold text-hextech-text-bright mb-2">{t(titleKey, { defaultValue: defaultTitle })}</h3>
       {total === 0 ? (
-        <p className="text-xs text-hextech-text-dim italic text-center py-8">No data</p>
+        <p className="text-xs text-hextech-text-dim italic text-center py-8">{t('team.statsTable.noData')}</p>
       ) : (
         <div className="flex items-center gap-4">
           <div className="h-56 flex-1 min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
+                  rootTabIndex={-1}
                   data={data}
                   dataKey="value"
                   nameKey="name"
@@ -283,9 +288,3 @@ function formatK(n: number): string {
   return Math.round(n).toString()
 }
 
-function wrColor(wr: number): string {
-  if (wr >= 60) return 'text-emerald-300'
-  if (wr >= 50) return 'text-yellow-200'
-  if (wr >= 40) return 'text-orange-300'
-  return 'text-red-300'
-}

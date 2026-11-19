@@ -55,22 +55,38 @@ function probeFfmpegVersion(binPath: string): string | null {
   }
 }
 
-const resolved = resolveFfmpegBinary()
-const ffmpegBin: string | null = resolved?.path ?? null
+/**
+ * Audit E03 (19/11/2026): the binary used to be resolved, and its version probed with a blocking spawnSync
+ * (up to 5 s while an antivirus scans it), when this module was imported, i.e. before the window opened.
+ * It is now resolved on first use, once.
+ */
+let resolution: { path: string | null } | null = null
 
-if (resolved) {
-  console.log(`[recorder] ffmpeg resolved → ${resolved.source} (v${resolved.version}) @ ${resolved.path}`)
-} else {
-  console.warn('[recorder] No ffmpeg binary available — auto-record disabled')
+function ffmpegBinPath(): string | null {
+  if (!resolution) {
+    const resolved = resolveFfmpegBinary()
+    resolution = { path: resolved?.path ?? null }
+    if (resolved) {
+      console.log(`[recorder] ffmpeg resolved → ${resolved.source} (v${resolved.version}) @ ${resolved.path}`)
+    } else {
+      console.warn('[recorder] No ffmpeg binary available — auto-record disabled')
+    }
+  }
+  return resolution.path
+}
+
+function ffmpegExists(): boolean {
+  const bin = ffmpegBinPath()
+  return bin !== null && existsSync(bin)
 }
 
 export function isFfmpegAvailable(): boolean {
-  return ffmpegBin !== null && existsSync(ffmpegBin)
+  return ffmpegExists()
 }
 
 /** Path to the resolved ffmpeg binary (bundled 8.1 preferred, ffmpeg-static fallback). */
 export function getFfmpegBinaryPath(): string | null {
-  return ffmpegBin
+  return ffmpegBinPath()
 }
 
 export interface RecordingSettings {
@@ -140,7 +156,7 @@ export class RecordingManager {
    */
   async startRecording(settings: RecordingSettings = {}): Promise<string | null> {
     if (this.isRecording) return this.currentFilePath
-    if (!ffmpegBin || !existsSync(ffmpegBin)) {
+    if (!ffmpegExists()) {
       console.warn('[recorder] ffmpeg binary not found, skipping auto-record')
       return null
     }
@@ -236,7 +252,7 @@ export class RecordingManager {
 
     this.donePromise = new Promise<void>((resolve) => { this.doneResolve = resolve })
 
-    this.process = spawn(ffmpegBin!, args, { stdio: ['pipe', 'pipe', 'pipe'], detached: false, windowsHide: true })
+    this.process = spawn(ffmpegBinPath()!, args, { stdio: ['pipe', 'pipe', 'pipe'], detached: false, windowsHide: true })
 
     if (this.process.pid) {
       try { os.setPriority(this.process.pid, os.constants.priority.PRIORITY_BELOW_NORMAL) } catch { /* ignore */ }
@@ -364,7 +380,7 @@ export interface PcmAudioFormat {
  * Video stream is copied (no re-encode), audio is transcoded to AAC.
  */
 export function mergeAudioIntoVideo(videoPath: string, audioBuffer: Buffer, format?: PcmAudioFormat): Promise<string> {
-  if (!ffmpegBin || !existsSync(ffmpegBin)) return Promise.reject(new Error('ffmpeg not available'))
+  if (!ffmpegExists()) return Promise.reject(new Error('ffmpeg not available'))
 
   const rawEnc = format?.encoding ?? 'pcm_f32le'
   const ffFmt = rawEnc.replace(/^pcm_/, '')
@@ -397,7 +413,7 @@ export function mergeAudioIntoVideo(videoPath: string, audioBuffer: Buffer, form
       '-y', mergedPath,
     ]
 
-    const proc = spawn(ffmpegBin!, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
+    const proc = spawn(ffmpegBinPath()!, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
     proc.stderr?.on('data', (d: Buffer) => {
       if (!app.isPackaged) process.stdout.write('[merge] ' + d.toString())
     })
@@ -440,7 +456,7 @@ export async function generateThumbnail(
   outputPath: string,
   offsetSecs: number,
 ): Promise<string | null> {
-  if (!ffmpegBin || !existsSync(ffmpegBin)) return null
+  if (!ffmpegExists()) return null
   if (!existsSync(filePath)) return null
 
   return new Promise((resolve) => {
@@ -452,7 +468,7 @@ export async function generateThumbnail(
       '-y',
       outputPath,
     ]
-    const proc = spawn(ffmpegBin!, args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    const proc = spawn(ffmpegBinPath()!, args, { stdio: ['ignore', 'ignore', 'pipe'] })
     proc.stderr?.resume()
     proc.on('exit', (code) => resolve(code === 0 && existsSync(outputPath) ? outputPath : null))
     proc.on('error', () => resolve(null))
@@ -461,12 +477,12 @@ export async function generateThumbnail(
 }
 
 export function probeDuration(filePath: string): Promise<number> {
-  if (!ffmpegBin || !existsSync(filePath)) return Promise.resolve(0)
+  if (!ffmpegBinPath() || !existsSync(filePath)) return Promise.resolve(0)
   return new Promise((resolve) => {
     let resolved = false
     const done = (val: number) => { if (!resolved) { resolved = true; clearTimeout(timer); resolve(val) } }
     const args = ['-i', filePath, '-hide_banner']
-    const proc = spawn(ffmpegBin!, args, { stdio: ['ignore', 'pipe', 'pipe'] })
+    const proc = spawn(ffmpegBinPath()!, args, { stdio: ['ignore', 'pipe', 'pipe'] })
     let output = ''
     proc.stderr?.on('data', (d: Buffer) => { output += d.toString() })
     proc.stdout?.on('data', (d: Buffer) => { output += d.toString() })
@@ -588,8 +604,8 @@ export interface ClipOptions {
  */
 function runFfmpeg(args: string[], timeoutMs = 120_000): Promise<{ code: number | null; stderrTail: string }> {
   return new Promise((resolve) => {
-    if (!ffmpegBin) { resolve({ code: null, stderrTail: 'ffmpeg binary not found' }); return }
-    const proc = spawn(ffmpegBin, args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    if (!ffmpegBinPath()) { resolve({ code: null, stderrTail: 'ffmpeg binary not found' }); return }
+    const proc = spawn(ffmpegBinPath()!, args, { stdio: ['ignore', 'ignore', 'pipe'] })
     let stderrTail = ''
     proc.stderr?.on('data', (chunk: Buffer) => {
       stderrTail = (stderrTail + chunk.toString('utf8')).slice(-4096)
@@ -604,7 +620,7 @@ function runFfmpeg(args: string[], timeoutMs = 120_000): Promise<{ code: number 
 }
 
 export async function createClip(options: ClipOptions): Promise<string | null> {
-  if (!ffmpegBin || !existsSync(ffmpegBin)) return null
+  if (!ffmpegExists()) return null
   if (!existsSync(options.filePath)) return null
   if (
     !Number.isFinite(options.startMs) || !Number.isFinite(options.endMs) ||

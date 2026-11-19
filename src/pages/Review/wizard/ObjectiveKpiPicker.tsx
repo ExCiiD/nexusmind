@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { Check } from 'lucide-react'
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function ObjectiveKpiPicker({ objectiveIds, selectedKpiIds, onToggleObjective, onToggleKpi }: Props) {
+  const { t } = useTranslation()
   const categories = useLocalizedFundamentals()
   const allFundamentals = categories.flatMap((c) => c.fundamentals)
 
@@ -61,7 +63,7 @@ export function ObjectiveKpiPicker({ objectiveIds, selectedKpiIds, onToggleObjec
       {/* KPI selection for each picked objective */}
       {kpisForObjective.length > 0 && (
         <div className="space-y-3">
-          <p className="text-[10px] font-semibold text-hextech-text-dim uppercase tracking-widest">KPIs to track</p>
+          <p className="text-[10px] font-semibold text-hextech-text-dim uppercase tracking-widest">{t('externalReview.kpisToTrack')}</p>
           {kpisForObjective.map(({ objectiveId, label, kpis }) => (
             <div key={objectiveId} className="space-y-1">
               <p className="text-[10px] font-medium text-hextech-gold uppercase tracking-wide">{label}</p>

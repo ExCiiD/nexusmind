@@ -11,8 +11,8 @@ import {
 /**
  * `.nexusmind` file export / import. The format and the merge logic live in
  * backup/backupCore.ts and are shared with the cloud backup.
- * File exports keep the Riot MatchCache (offline re-analysis on the other PC);
- * video files are never included.
+ * Neither exports the Riot MatchCache any more (re-downloaded on demand, decision M
+ * of 19/11/2026); video files are never included.
  */
 export function registerBackupHandlers() {
   ipcMain.handle('backup:export', async () => {

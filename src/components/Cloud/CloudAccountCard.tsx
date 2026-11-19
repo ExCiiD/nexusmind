@@ -9,6 +9,8 @@ import { useToast } from '@/hooks/useToast'
 import type { CloudBackup, CloudStatus } from '@/lib/ipc'
 import { LegalDialog } from './LegalDialog'
 import { PasswordSettings } from './PasswordSettings'
+import { SignOutEverywhereButton } from './SignOutEverywhereButton'
+import { OwnerHandoverNotice } from './OwnerHandoverNotice'
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -106,8 +108,9 @@ export function CloudAccountCard() {
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={signOut} disabled={busy !== null} className="gap-2">
-              <LogOut className="h-4 w-4" />{t('cloud.account.signOut')}
+              <LogOut className="h-4 w-4" aria-hidden />{t('cloud.account.signOut')}
             </Button>
+            <SignOutEverywhereButton />
           </div>
         </div>
 
@@ -185,7 +188,8 @@ export function CloudAccountCard() {
             <DialogTitle className="text-[#E24C3A]">{t('cloud.account.deleteTitle')}</DialogTitle>
             <DialogDescription>{t('cloud.account.deleteDesc')}</DialogDescription>
           </DialogHeader>
-          <Input value={deleteText} onChange={(e) => setDeleteText(e.target.value)} placeholder="DELETE" />
+          <OwnerHandoverNotice />
+          <Input value={deleteText} onChange={(e) => setDeleteText(e.target.value)} placeholder="DELETE" aria-label={t('cloud.account.deleteTypeLabel')} />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setDeleteOpen(false)}>{t('common.cancel')}</Button>
             <Button

@@ -4,20 +4,41 @@
 // can then receive an e-mail sign-in code. Public sign-ups are disabled.
 //
 // Responses never reveal whether an e-mail already has an account.
-// Brute force: 10 failed attempts per IP per hour, then 429.
+// Brute force (CyberSecurity review, 19/11/2026):
+//   - 10 failed attempts per IP per hour, then 429. The IP is cf-connecting-ip only (set by the platform's edge);
+//     x-forwarded-for is never trusted (a client can write it). Without cf-connecting-ip, every such request shares
+//     one bucket, and a warning is logged: check on deploy that Supabase provides it.
+//   - a global cap of failed attempts per hour, whatever the IP, against a brute force spread over many browsers;
+//   - CORS limited to the showcase site and the web app (INVITE_ALLOWED_ORIGINS), so other sites cannot make their
+//     visitors' browsers try codes; requests without an Origin (the desktop's main process) are unaffected;
+//   - a JSON body is required.
 import { createClient } from 'npm:@supabase/supabase-js@2.49.4'
 
-const CORS = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info',
-  'access-control-allow-methods': 'POST, OPTIONS',
+const ALLOWED_ORIGINS = (Deno.env.get('INVITE_ALLOWED_ORIGINS')
+  ?? 'https://nexusmind-web.nexusmind-riot-proxy.workers.dev,https://ascend-site.nexusmind-riot-proxy.workers.dev')
+  .split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean)
+
+/** CORS headers for this request: {} without an Origin, null for a site that is not allowed. */
+function corsFor(req: Request): Record<string, string> | null {
+  const origin = req.headers.get('origin')
+  if (!origin) return {}
+  if (!ALLOWED_ORIGINS.includes(origin)) return null
+  return {
+    'access-control-allow-origin': origin,
+    'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info',
+    'access-control-allow-methods': 'POST, OPTIONS',
+    vary: 'Origin',
+  }
 }
-const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...CORS } })
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-const CODE = /^[A-Z0-9]{6,16}$/
+// Real codes are 10 (group) or 12 (access) characters: anything shorter is
+// rejected before it counts as a failure.
+const CODE = /^[A-Z0-9]{10,16}$/
 const MAX_FAILS_PER_HOUR = 10
+// Attack detector, not a brute-force guard (codes have >= 8e14 combinations):
+// a low cap would let a few IPs block every invite sign-up for an hour.
+const MAX_GLOBAL_FAILS_PER_HOUR = Number(Deno.env.get('INVITE_MAX_GLOBAL_FAILS_PER_HOUR') ?? 5000)
 
 async function sha256(s: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
@@ -25,8 +46,15 @@ async function sha256(s: string): Promise<string> {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: CORS })
+  const cors = corsFor(req)
+  if (cors === null) return new Response(JSON.stringify({ error: 'origin_not_allowed' }), { status: 403 })
+  const json = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...cors } })
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' })
+  if (!(req.headers.get('content-type') ?? '').toLowerCase().startsWith('application/json')) {
+    return json(415, { error: 'json_required' })
+  }
 
   let body: { email?: unknown; code?: unknown }
   try { body = await req.json() } catch { return json(400, { error: 'invalid_request' }) }
@@ -38,12 +66,22 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 
-  const ip = req.headers.get('cf-connecting-ip') ?? req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-  const ipHash = await sha256(`nexusmind-invite:${ip}`)
+  // Never x-forwarded-for: a client can set it to anything and get a fresh bucket on every request.
+  const ip = req.headers.get('cf-connecting-ip')?.trim()
+  if (!ip) console.warn('[redeem-invite] no cf-connecting-ip header: falling back to one shared bucket')
+  const ipHash = await sha256(`nexusmind-invite:${ip || 'unknown'}`)
   const since = new Date(Date.now() - 3600_000).toISOString()
-  const { count } = await admin.from('access_invite_attempts')
-    .select('id', { count: 'exact', head: true }).eq('ip_hash', ipHash).eq('ok', false).gte('created_at', since)
-  if ((count ?? 0) >= MAX_FAILS_PER_HOUR) return json(429, { error: 'too_many_attempts' })
+  const [perIp, global] = await Promise.all([
+    admin.from('access_invite_attempts')
+      .select('id', { count: 'exact', head: true }).eq('ip_hash', ipHash).eq('ok', false).gte('created_at', since),
+    admin.from('access_invite_attempts')
+      .select('id', { count: 'exact', head: true }).eq('ok', false).gte('created_at', since),
+  ])
+  if ((perIp.count ?? 0) >= MAX_FAILS_PER_HOUR) return json(429, { error: 'too_many_attempts' })
+  if ((global.count ?? 0) >= MAX_GLOBAL_FAILS_PER_HOUR) {
+    console.warn('[redeem-invite] global failure cap reached: refusing every attempt for now')
+    return json(429, { error: 'too_many_attempts' })
+  }
 
   const fail = async () => {
     await admin.from('access_invite_attempts').insert({ ip_hash: ipHash, ok: false })

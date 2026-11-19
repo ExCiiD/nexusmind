@@ -69,17 +69,19 @@ describe('createSession / addComment / addActionItem', () => {
 })
 
 describe('setActionItemDone / setAssignment / setAssignmentStatus', () => {
-  it('setActionItemDone(true) stamps done_by/done_at from the current user', async () => {
+  it('setActionItemDone(true) stamps done_by/done_at with the given user, without an auth round trip (item I)', async () => {
     const update = vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) }))
-    const sb = { from: vi.fn(() => ({ update })), auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }) } } as never
-    await setActionItemDone(sb, 'a1', true)
+    const getUser = vi.fn()
+    const sb = { from: vi.fn(() => ({ update })), auth: { getUser } } as never
+    await setActionItemDone(sb, 'u1', 'a1', true)
     expect(update).toHaveBeenCalledWith(expect.objectContaining({ done: true, done_by: 'u1' }))
+    expect(getUser).not.toHaveBeenCalled()
   })
 
   it('setActionItemDone(false) clears done_by/done_at', async () => {
     const update = vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) }))
-    const sb = { from: vi.fn(() => ({ update })), auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }) } } as never
-    await setActionItemDone(sb, 'a1', false)
+    const sb = { from: vi.fn(() => ({ update })) } as never
+    await setActionItemDone(sb, 'u1', 'a1', false)
     expect(update).toHaveBeenCalledWith({ done: false, done_by: null, done_at: null })
   })
 

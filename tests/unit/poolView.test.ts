@@ -8,7 +8,6 @@ import {
   ruleTierIfHandPicked,
   summarizePool,
   tierCounts,
-  wrTone,
 } from '../../src/lib/poolView'
 
 const DAY = 86_400_000
@@ -92,10 +91,5 @@ describe('tile facts', () => {
 
   it('never offers "new" as a hand-picked tier', () => {
     expect(MANUAL_TIERS).not.toContain('new')
-  })
-
-  it('colours win rates like the team stats', () => {
-    expect(wrTone(62)).not.toBe(wrTone(52))
-    expect(wrTone(39)).toBe('#E2685A')
   })
 })

@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Trash2, CalendarClock, X, SlidersHorizontal } from 'lucide-react'
+import { Trash2, CalendarClock, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { cn } from '@/lib/utils'
 import { collabErrorKey, type GroupMember } from '@/lib/collab'
 import { resolveAttendeeScope } from '@/lib/calendarCore'
-import { KIND_STYLE, completeTitle, suggestTitle } from '@/lib/planningView'
-import type { AttendeeScope, CalendarEvent, CalendarEventKind } from '@/lib/calendar'
+import { KIND_STYLE, completeTitle, localDateKey, suggestTitle } from '@/lib/planningView'
+import type { AttendeeScope, CalendarEvent, CalendarEventKind, CommonFreeWindow } from '@/lib/calendar'
 import type { ScrimSummary } from '@/lib/scrims'
 import type { HourRange } from './WeekGrid'
+import { TimeSelect, hmToMin, minToHm } from './TimeSelect'
 
 /** The four big tiles (most frequent team activities), then the rest as chips. */
 const MAIN_KINDS: CalendarEventKind[] = ['scrim', 'team_review', 'tournament', 'warmup_draft']
@@ -25,10 +25,12 @@ const SCRIM_KINDS: CalendarEventKind[] = ['scrim', 'flex']
 export const SESSION_KINDS: CalendarEventKind[] = ['scrim', 'flex', 'tournament', 'meeting']
 const DURATIONS = [1, 2, 3]
 
-function toLocalInput(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+/** Date for a "YYYY-MM-DD" key + minutes since midnight (1440 = next day 00:00). */
+function atMinutes(dayKey: string, minutes: number): Date {
+  const [y, m, d] = dayKey.split('-').map(Number)
+  return new Date(y, m - 1, d, 0, minutes, 0, 0)
 }
+const minutesOf = (d: Date) => d.getHours() * 60 + d.getMinutes()
 const hh = (d: Date) => `${String(d.getHours()).padStart(2, '0')}h${d.getMinutes() ? String(d.getMinutes()).padStart(2, '0') : ''}`
 
 interface Props {
@@ -40,6 +42,13 @@ interface Props {
   recentTitles?: string[]
   /** Set when creating from a grid drag selection. */
   initialRange: HourRange | null
+  /** Set when creating from the "+ New event" button (#36): focus goes to Start. */
+  newSlot?: { day: Date; startMin: number; endMin: number } | null
+  /** The 7 days of the shown week (Day select). */
+  weekDays: Date[]
+  /** Common free windows of the followed players, for the green hint. */
+  commonFree?: CommonFreeWindow[]
+  starterCount?: number
   /** Set when opening an existing event (view/edit/delete). */
   editingEvent: CalendarEvent | null
   canDelete: boolean
@@ -53,51 +62,57 @@ interface Props {
  * team → team meeting, players + coach → VOD review…) until the user types;
  * typing shows an inline completion accepted with Tab or Enter.
  */
-export function EventPopup({ groupId, members, myUserId, scrims, recentTitles = [], initialRange, editingEvent, canDelete, onClose, onSaved }: Props) {
+export function EventPopup({ groupId, members, myUserId, scrims, recentTitles = [], initialRange, newSlot = null, weekDays, commonFree = [], starterCount = 0, editingEvent, canDelete, onClose, onSaved }: Props) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const navigate = useNavigate()
-  const open = !!initialRange || !!editingEvent
+  const open = !!initialRange || !!editingEvent || !!newSlot
 
   const [kind, setKind] = useState<CalendarEventKind>('scrim')
   const [title, setTitle] = useState('')
   const [titleTouched, setTitleTouched] = useState(false)
-  const [startsAt, setStartsAt] = useState('')
-  const [endsAt, setEndsAt] = useState('')
-  const [customTimes, setCustomTimes] = useState(false)
+  // Day / Start / End (#36): explicit, keyboard-operable; a grid drag pre-fills them.
+  const [dayKey, setDayKey] = useState('')
+  const [startMin, setStartMin] = useState(20 * 60)
+  const [endMin, setEndMin] = useState(21 * 60)
   const [notes, setNotes] = useState('')
   const [linkedScrimId, setLinkedScrimId] = useState('')
   const [attendeeScope, setAttendeeScope] = useState<AttendeeScope>('all_players')
   const [customIds, setCustomIds] = useState<Set<string>>(new Set([myUserId]))
   const [saving, setSaving] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
+  const startRef = useRef<HTMLButtonElement>(null)
+  const typeRef = useRef<HTMLDivElement>(null)
+  // No DialogTrigger: remember the element focused when the popup opened and give focus back on close.
+  const returnTo = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     if (editingEvent) {
       setKind(editingEvent.kind)
       setTitle(editingEvent.title)
       setTitleTouched(true)
-      setStartsAt(toLocalInput(new Date(editingEvent.startsAt)))
-      setEndsAt(toLocalInput(new Date(editingEvent.endsAt)))
+      const s = new Date(editingEvent.startsAt), e = new Date(editingEvent.endsAt)
+      setDayKey(localDateKey(s))
+      setStartMin(minutesOf(s))
+      setEndMin(localDateKey(e) === localDateKey(s) ? minutesOf(e) : 1440)
       setNotes(editingEvent.notes ?? '')
       setLinkedScrimId(editingEvent.linkedScrimId ?? '')
       setAttendeeScope(editingEvent.attendeeScope)
       setCustomIds(new Set(editingEvent.attendeeUserIds))
-    } else if (initialRange) {
-      const start = new Date(initialRange.day); start.setHours(initialRange.startHour, 0, 0, 0)
-      const end = new Date(initialRange.day); end.setHours(initialRange.endHour, 0, 0, 0)
+    } else if (initialRange || newSlot) {
+      const day = initialRange ? initialRange.day : newSlot!.day
       setKind('scrim')
       setTitle(t('planning.smartTitle.kind.scrim'))
       setTitleTouched(false)
-      setStartsAt(toLocalInput(start))
-      setEndsAt(toLocalInput(end))
+      setDayKey(localDateKey(day))
+      setStartMin(initialRange ? Math.round(initialRange.startHour * 60) : newSlot!.startMin)
+      setEndMin(initialRange ? Math.round(initialRange.endHour * 60) : newSlot!.endMin)
       setNotes('')
       setLinkedScrimId('')
       setAttendeeScope('all_players')
       setCustomIds(new Set([myUserId]))
     }
-    setCustomTimes(false)
-  }, [editingEvent, initialRange, myUserId, t])
+  }, [editingEvent, initialRange, newSlot, myUserId, t])
 
   const attendeeIds = useMemo(
     () => (attendeeScope === 'custom' ? [...customIds] : resolveAttendeeScope(attendeeScope, members)),
@@ -139,12 +154,22 @@ export function EventPopup({ groupId, members, myUserId, scrims, recentTitles = 
     return true
   }
 
-  const start = startsAt ? new Date(startsAt) : null
-  const end = endsAt ? new Date(endsAt) : null
-  const durationH = start && end ? (end.getTime() - start.getTime()) / 3_600_000 : 0
-  const setDuration = (hours: number) => {
-    if (!start) return
-    setEndsAt(toLocalInput(new Date(start.getTime() + hours * 3_600_000)))
+  const start = dayKey ? atMinutes(dayKey, startMin) : null
+  const end = dayKey ? atMinutes(dayKey, endMin) : null
+  const durationH = (endMin - startMin) / 60
+  const setDuration = (hours: number) => setEndMin(Math.min(startMin + hours * 60, 1440))
+  const endInvalid = endMin <= startMin
+  // Green hint when the slot fits a common free window of the followed players.
+  const freeWindow = commonFree.find((w) => w.date === dayKey && hmToMin(w.startTime) <= startMin && endMin <= (hmToMin(w.endTime) || 1440))
+  const fmtDuration = (min: number) => (min % 60 ? t('planning.popup.durationHm', { h: Math.floor(min / 60), m: String(min % 60).padStart(2, '0') }) : t('planning.popup.durationH', { h: min / 60 }))
+  const dayOptions = useMemo(() => {
+    const keys = weekDays.map((d) => localDateKey(d))
+    if (dayKey && !keys.includes(dayKey)) keys.push(dayKey)
+    return keys.sort()
+  }, [weekDays, dayKey])
+  const dayLabel = (key: string) => {
+    const s = atMinutes(key, 12 * 60).toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'short' })
+    return s.charAt(0).toUpperCase() + s.slice(1)
   }
 
   const pickScrim = (id: string) => {
@@ -161,7 +186,7 @@ export function EventPopup({ groupId, members, myUserId, scrims, recentTitles = 
     })
   }
 
-  const canSave = title.trim().length > 0 && !!start && !!end && end > start
+  const canSave = title.trim().length > 0 && !!start && !!end && !endInvalid
 
   const save = async () => {
     if (!canSave) return
@@ -201,7 +226,22 @@ export function EventPopup({ groupId, members, myUserId, scrims, recentTitles = 
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border-hextech-gold/30 bg-hextech-dark p-0 [&>button.absolute]:hidden">
+      <DialogContent
+        className="max-h-[90vh] max-w-lg overflow-y-auto border-hextech-gold/30 bg-hextech-dark p-0 [&>button.absolute]:hidden"
+        onOpenAutoFocus={(e) => {
+          returnTo.current = document.activeElement as HTMLElement | null
+          // #36: from the "+ New event" button, start on Start; from a grid drag, on Type.
+          if (editingEvent) return
+          e.preventDefault()
+          if (newSlot) startRef.current?.focus()
+          else typeRef.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"], button')?.focus()
+        }}
+        onCloseAutoFocus={(e) => {
+          const el = returnTo.current
+          returnTo.current = null
+          if (el && el !== document.body && el.isConnected) { e.preventDefault(); el.focus() }
+        }}
+      >
         <div className="space-y-5 p-6">
           {/* Header */}
           <div className="flex items-start justify-between gap-3 border-b border-hextech-border-dim pb-4">
@@ -216,10 +256,41 @@ export function EventPopup({ groupId, members, myUserId, scrims, recentTitles = 
             <button onClick={onClose} aria-label={t('common.close')} className="rounded p-1 text-hextech-text hover:bg-hextech-elevated hover:text-hextech-text-bright"><X className="h-4 w-4" /></button>
           </div>
 
+          {/* Day / Start / End (#36) */}
+          <section>
+            <div className="flex flex-wrap items-end gap-2">
+              <div>
+                <label className={label} htmlFor="slot-day">{t('planning.popup.day')}</label>
+                <Select value={dayKey} onValueChange={setDayKey}>
+                  <SelectTrigger id="slot-day" className="w-[200px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {dayOptions.map((k) => <SelectItem key={k} value={k}>{dayLabel(k)}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className={label} htmlFor="slot-start">{t('planning.popup.start')}</label>
+                <TimeSelect ref={startRef} id="slot-start" value={startMin} to={1425} onChange={setStartMin} />
+              </div>
+              <div>
+                <label className={label} htmlFor="slot-end">{t('planning.popup.end')}</label>
+                <TimeSelect id="slot-end" value={endMin} from={15} to={1440} onChange={setEndMin}
+                  invalid={endInvalid} describedBy={endInvalid ? 'slot-end-error' : freeWindow ? 'slot-free' : undefined} />
+              </div>
+            </div>
+            {endInvalid ? (
+              <p id="slot-end-error" role="alert" className="mt-1.5 text-xs text-hextech-red">{t('planning.popup.endBeforeStart', { time: minToHm(startMin) })}</p>
+            ) : freeWindow && starterCount > 0 ? (
+              <p id="slot-free" className="mt-1.5 text-xs text-hextech-green">
+                {t('planning.popup.freeHint', { count: starterCount, from: freeWindow.startTime, to: freeWindow.endTime, duration: fmtDuration(endMin - startMin) })}
+              </p>
+            ) : null}
+          </section>
+
           {/* Type */}
           <section>
             <span className={label}>{t('planning.popup.type')}</span>
-            <div className="grid grid-cols-2 gap-2">
+            <div ref={typeRef} className="grid grid-cols-2 gap-2">
               {MAIN_KINDS.map((k) => (
                 <KindTile key={k} kind={k} active={kind === k} onClick={() => setKind(k)} big />
               ))}
@@ -287,14 +358,9 @@ export function EventPopup({ groupId, members, myUserId, scrims, recentTitles = 
             </p>
           </section>
 
-          {/* Duration */}
+          {/* Duration shortcuts (they set End) */}
           <section>
-            <div className="flex items-center justify-between">
-              <span className={label}>{t('planning.popup.duration')}</span>
-              <button type="button" onClick={() => setCustomTimes((v) => !v)} className="mb-1.5 flex items-center gap-1 text-[11px] text-hextech-text hover:text-hextech-text-bright">
-                <SlidersHorizontal className="h-3 w-3" />{t('planning.popup.customTimes')}
-              </button>
-            </div>
+            <span className={label}>{t('planning.popup.duration')}</span>
             <div className="grid grid-cols-3 gap-2">
               {DURATIONS.map((h) => {
                 const active = Math.abs(durationH - h) < 0.01
@@ -307,12 +373,6 @@ export function EventPopup({ groupId, members, myUserId, scrims, recentTitles = 
                 )
               })}
             </div>
-            {customTimes && (
-              <div className="mt-2 flex gap-2">
-                <Input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className="flex-1" aria-label={t('planning.starts', { defaultValue: 'Starts' })} />
-                <Input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} className="flex-1" aria-label={t('planning.ends', { defaultValue: 'Ends' })} />
-              </div>
-            )}
           </section>
 
           {SCRIM_KINDS.includes(kind) && scrims.length > 0 && (

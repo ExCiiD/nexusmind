@@ -206,6 +206,23 @@ describe('mistake rules M5–M13', () => {
     }
     expect([at(89.999, '15.24.1'), at(90, '15.24.1'), at(270, '15.24.1'), at(270.001, '15.24.1')]).toEqual([false, true, true, false])
   })
+
+  it('M12: "died before 4:00" is 3:25 on 16.x games (35 s earlier), 4:00 on 15.x', () => {
+    // CS and gold level at 5:00: only the early death can make the lane opening rough.
+    const opening = (sec: number, version?: string) => {
+      const death = { type: 'CHAMPION_KILL', timestamp: sec * 1000, victimId: 1, killerId: 6 }
+      const tl = timeline([{ minute: Math.floor(sec / 60), events: [death, ...steadyWards()] }, { minute: 5, cs: { 1: 30, 6: 30 }, gold: { 1: 1800, 6: 1800 } }])
+      const m = { info: { ...match().info, ...(version ? { gameVersion: version } : {}) } }
+      return detectAdvancedMistakes(tl, m, PLAYER).find((o) => o.tagSlug === 'bad-lane-opening')?.note ?? null
+    }
+    for (const v of [undefined, '16.1.732.4020']) {
+      expect(opening(204.999, v), v).toMatch(/died at 3:24/)
+      expect(opening(205, v), v).toBeNull()
+    }
+    expect(opening(205, '15.24.1')).toMatch(/died at 3:25/)
+    expect(opening(239.999, '15.24.1')).toMatch(/died at 3:59/)
+    expect(opening(240, '15.24.1')).toBeNull()
+  })
 })
 
 describe('mistake rule M15 — still dead when the enemy takes an objective', () => {

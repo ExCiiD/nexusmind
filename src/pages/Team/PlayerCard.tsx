@@ -19,10 +19,11 @@ import { useTranslation } from 'react-i18next'
 import { Download, Edit2, Info, Loader2, RotateCcw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import type { Role } from '@/components/team/RoleIconPicker'
+import type { Role } from '@/lib/championRoles'
 import { RoleGlyph } from '@/components/team/RoleGlyph'
 import { CardGlare, TiltCard, parallax } from '@/components/team/TiltCard'
 import { AwardFrame } from '@/components/team/AwardFrame'
+import { RenamedNote } from '@/components/team/RenamedNote'
 import { CardChampionArt } from './CardChampionArt'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
 import { bannerUrl, iconUrl } from '@/lib/profile'
@@ -34,14 +35,7 @@ import type { AwardHolder, TeamMember } from '@/lib/ipc'
 import { cn } from '@/lib/utils'
 import { CARD_PATTERN_URLS, scratchesUrl, useCardLook } from '@/components/team/cardBackgrounds'
 import { CARD_PATTERN_OPACITY, cardLookStyle } from '@/lib/cardLookCore'
-
-/** Same scale as the team stats (SynergyPlayerCard, DashboardLayout). */
-function wrTone(winRate: number): string {
-  if (winRate >= 60) return 'text-emerald-300'
-  if (winRate >= 50) return 'text-yellow-200'
-  if (winRate >= 40) return 'text-orange-300'
-  return 'text-red-300'
-}
+import { wrText } from '@/lib/winrate'
 
 /** Gold capitals outlined in the card's darkest violet (stroke under the fill). */
 const OUTLINED = '[paint-order:stroke_fill] [-webkit-text-stroke:var(--stroke)_#14091d]'
@@ -152,6 +146,16 @@ function CardFront({ member, role, team, artChampion, holders, totals, onFlip }:
         <RoleGlyph role={role} tone="gradient" className="mt-[2.5cqw] h-[11cqw] w-[11cqw] drop-shadow-[0_2px_3px_rgba(0,0,0,0.7)]" />
       </div>
 
+      {/* #38: renamed by the Riot ID refresh; the back shows the old name and OK. */}
+      {member.previousRiotId && (
+        <span
+          title={t('team.renamed.formerly', { name: member.previousRiotId })}
+          className="absolute left-[8cqw] top-[8cqw] rounded-[3px] border border-amber-300/60 bg-black/70 px-[2cqw] py-[0.6cqw] font-mono text-[3.8cqw] font-bold uppercase leading-none tracking-wider text-amber-200"
+        >
+          {t('team.renamed.badge')}
+        </span>
+      )}
+
       {/* The name, reading downward along the right edge. */}
       <div className="absolute bottom-[8cqw] right-[6.5cqw] top-[55cqw] flex flex-col justify-end" style={{ transform: parallax(-11) }}>
         <span
@@ -217,6 +221,7 @@ function CardAvatar({ look, name }: { look: Look | null; name: string }) {
     <Tooltip>
       <TooltipTrigger asChild>
         <div
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable so keyboard users can open the player tooltip.
           tabIndex={0}
           className="flex h-[25cqw] w-[25cqw] shrink-0 cursor-help items-center justify-center rounded-full border-2 border-hextech-black bg-hextech-elevated font-display text-[9cqw] text-hextech-text ring-1 ring-hextech-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold"
         >
@@ -238,6 +243,7 @@ function ChampionTile({ champion, name }: { champion: CardChampion; name: string
     <li className="min-w-0">
       <Tooltip>
         <TooltipTrigger asChild>
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable so keyboard users can open the champion tooltip. */}
           <div tabIndex={0} className="flex cursor-default flex-col items-center gap-[1cqw] rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold">
             <div className="relative w-full">
               {icon ? (
@@ -249,7 +255,7 @@ function ChampionTile({ champion, name }: { champion: CardChampion; name: string
                 {champion.games}
               </span>
             </div>
-            <span className={cn('font-mono text-[4.6cqw] font-semibold tabular-nums', champion.lowSample ? 'text-hextech-text-dim' : wrTone(champion.winRate))}>
+            <span className={cn('font-mono text-[4.6cqw] font-semibold tabular-nums', wrText(champion.winRate, champion.games, champion.lowSample))}>
               {champion.winRate}%
             </span>
           </div>
@@ -380,10 +386,12 @@ interface PlayerCardProps {
   onRemove?: () => void
   /** The edit form, shown on the back instead of the champions. */
   editForm?: ReactNode
+  /** #38: the « anciennement X » note was acknowledged (previousRiotId cleared). */
+  onRenameSeen?: () => void
 }
 
 export function PlayerCard({
-  member, role, look, champions, nameOf, team, artChampion, holders = [], totals, fetching, onFetch, onEdit, onRemove, editForm,
+  member, role, look, champions, nameOf, team, artChampion, holders = [], totals, fetching, onFetch, onEdit, onRemove, editForm, onRenameSeen,
 }: PlayerCardProps) {
   const { t } = useTranslation()
   const [turned, setTurned] = useState(false)
@@ -446,6 +454,7 @@ export function PlayerCard({
                   {[riotId, member.region].filter(Boolean).join(' · ')}
                 </p>
               )}
+              <RenamedNote member={member} onCleared={onRenameSeen} className="mt-[1.5cqw]" />
             </div>
 
             {editForm ? (

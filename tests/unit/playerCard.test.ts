@@ -25,6 +25,7 @@ const entry = (championKey: string, games: number | null, winRate: number | null
   tier: 'comfort',
   playRate: games,
   winRate,
+  updatedAt: '2026-11-19T00:00:00.000Z',
 })
 
 const keys = (r: ReturnType<typeof bestChampions>) => r.champions.map((c) => c.championKey)

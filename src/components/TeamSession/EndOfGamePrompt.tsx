@@ -11,8 +11,6 @@ import { gamesAwaitingDecision, planEndOfGame } from '@/lib/teamSessionReviewsCo
 import { cn } from '@/lib/utils'
 import type { TeamSession, TeamSessionGame } from '@/lib/teamSessions'
 
-const FAST_POLL_MS = 15_000 // was 7.5 s: four such loops overloaded the Supabase disk I/O budget (18/11/2026)
-const SLOW_POLL_MS = 30_000
 
 interface Pending { session: TeamSession; game: TeamSessionGame; index: number; title: string }
 
@@ -42,13 +40,14 @@ export function EndOfGamePrompt() {
   const [busy, setBusy] = useState(false)
   const dismissed = useRef(new Set<string>())
   const titles = useRef(new Map<string, string>())
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingRef = useRef<Pending | null>(null)
   pendingRef.current = pending
 
-  const check = useCallback(async (): Promise<boolean> => {
+  /** Looks for a game of a live session (where I am responsible) that still awaits a decision. */
+  const check = useCallback(async (sessions?: TeamSession[]): Promise<boolean> => {
     if (!myUserId) return false
-    const live = (await window.api.teamSessionListMyLive()).filter((s) => s.responsibleUserIds.includes(myUserId))
+    const all = sessions ?? await window.api.teamSessionLiveCached()
+    const live = (all ?? []).filter((s) => s.responsibleUserIds.includes(myUserId))
     if (live.length === 0) return false
     if (pendingRef.current) return true
     for (const s of live) {
@@ -66,16 +65,29 @@ export function EndOfGamePrompt() {
     return true
   }, [myUserId])
 
+  // Task I: no timer any more. Checked at mount, on each 'team-session:live' push,
+  // after a game ends (desktop: the main process records it first, hence the
+  // delay) and on focus / back to visible. While no session is live, check()
+  // stops at the cached list: no request.
   useEffect(() => {
     if (!available || !myUserId) return
-    let stopped = false
-    const loop = async () => {
-      let hasLive = false
-      try { hasLive = await check() } catch { /* offline: retry on the slow cadence */ }
-      if (!stopped) timer.current = setTimeout(loop, hasLive ? FAST_POLL_MS : SLOW_POLL_MS)
+    let alive = true
+    const run = (sessions?: TeamSession[]) => { if (alive) check(sessions).catch(() => { /* offline: next trigger */ }) }
+    run()
+    const offLive = window.api.onTeamSessionLive((s) => run(s))
+    const timers: Array<ReturnType<typeof setTimeout>> = []
+    const offGame = window.api.onGameEnd?.(() => { timers.push(setTimeout(() => run(), 4_000), setTimeout(() => run(), 20_000)) })
+    const onFocus = () => { if (document.visibilityState !== 'hidden') run() }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      alive = false
+      offLive()
+      offGame?.()
+      timers.forEach(clearTimeout)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
     }
-    loop()
-    return () => { stopped = true; if (timer.current) clearTimeout(timer.current) }
   }, [available, myUserId, check])
 
   if (!pending) return null

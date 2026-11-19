@@ -24,11 +24,15 @@ import {
   Trash2,
   Video,
   X,
+  CalendarClock,
+  Plus,
 } from 'lucide-react'
 import { AccountBadge } from '@/components/ui/AccountBadge'
 import { ShareSessionButton } from '@/components/Share/ShareSessionButton'
 import { useUserStore } from '@/store/useUserStore'
 import { cn } from '@/lib/utils'
+import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/data-state'
+import { wrText } from '@/lib/winrate'
 
 const GAMES_PAGE_SIZE = 20
 
@@ -206,14 +210,16 @@ function GamesTab() {
     } catch { /* ignore */ }
   }, [mainRoleOnly, selectedRoles, selectedAccounts])
 
+  const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     setLoading(true)
     setError(null)
     window.api.getMatchHistoryWithStatus(100)
       .then((data: any[]) => setGames(data))
-      .catch((err: any) => setError(err.message ?? 'Failed to fetch'))
+      .catch((err: any) => setError(err?.message || t('history.state.unknownCause')))
       .finally(() => setLoading(false))
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- reload on retry only
+  }, [attempt])
 
   const toggleRole = (role: string) => {
     setSelectedRoles((prev) =>
@@ -265,30 +271,26 @@ function GamesTab() {
   const handlePrev = () => setPage((p) => Math.max(0, p - 1))
   const handleNext = () => setPage((p) => Math.min(totalPages - 1, p + 1))
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 gap-2 text-hextech-text-dim">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        {t('history.loading')}
-      </div>
-    )
-  }
+  if (loading) return <SkeletonRows rows={6} />
 
   if (error) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center text-[#E24C3A]">{error}</CardContent>
-      </Card>
+      <ErrorState
+        title={t('history.state.gamesErrorTitle')}
+        cause={error}
+        hint={t('history.state.gamesErrorHint')}
+        onRetry={() => setAttempt((n) => n + 1)}
+      />
     )
   }
 
   if (games.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-16 text-center text-hextech-text-dim">
-          {t('history.gamesTab.empty')}
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={Swords}
+        title={t('history.state.gamesEmptyTitle')}
+        description={t('history.state.gamesEmptyDesc')}
+      />
     )
   }
 
@@ -545,9 +547,13 @@ function buildSessionPageNumbers(current: number, total: number): Array<number |
   return pages
 }
 
-function SessionCheckbox({ checked, indeterminate, onChange, className }: { checked: boolean; indeterminate?: boolean; onChange: () => void; className?: string }) {
+function SessionCheckbox({ checked, indeterminate, onChange, className, label }: { checked: boolean; indeterminate?: boolean; onChange: () => void; className?: string; label: string }) {
   return (
-    <div
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={indeterminate && !checked ? 'mixed' : checked}
+      aria-label={label}
       onClick={(e) => { e.stopPropagation(); onChange() }}
       className={cn(
         'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer shrink-0',
@@ -557,14 +563,15 @@ function SessionCheckbox({ checked, indeterminate, onChange, className }: { chec
         className,
       )}
     >
-      {indeterminate && !checked && <div className="w-2.5 h-0.5 bg-black rounded" />}
-      {checked && <Check className="h-3 w-3 text-black" />}
-    </div>
+      {indeterminate && !checked && <span aria-hidden className="w-2.5 h-0.5 bg-black rounded" />}
+      {checked && <Check className="h-3 w-3 text-black" aria-hidden />}
+    </button>
   )
 }
 
 function SessionsTab() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -601,6 +608,22 @@ function SessionsTab() {
     }
     return Array.from(map.entries()).sort(([a], [b]) => b.localeCompare(a))
   }, [pageSessions])
+
+  // T (UI-13): which games of this page have a recording, in ONE grouped call (was one getRecording per game row).
+  // Optional IPC (absent on the web): no call, no recording badge.
+  const [recordedIds, setRecordedIds] = useState<Set<string>>(new Set())
+  const pageGameIds = useMemo(() => pageSessions.flatMap((s) => s.games.map((g) => g.id)).slice(0, 1000), [pageSessions])
+  const pageGameKey = pageGameIds.join(',')
+  useEffect(() => {
+    if (pageGameIds.length === 0 || !window.api.recordingGameIdsWithRecording) { setRecordedIds(new Set()); return }
+    let alive = true
+    window.api.recordingGameIdsWithRecording(pageGameIds)
+      .then((ids) => { if (alive) setRecordedIds(new Set(ids)) })
+      .catch(() => { /* no badge on failure */ })
+    return () => { alive = false }
+    // pageGameKey stands for pageGameIds (same ids → no new call).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageGameKey])
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -667,22 +690,16 @@ function SessionsTab() {
     )
   }, [])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 gap-2 text-hextech-text-dim">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        {t('history.loading')}
-      </div>
-    )
-  }
+  if (loading) return <SkeletonRows rows={4} />
 
   if (sessions.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-16 text-center text-hextech-text-dim">
-          {t('history.empty')}
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={CalendarClock}
+        title={t('history.state.sessionsEmptyTitle')}
+        description={t('history.state.sessionsEmptyDesc')}
+        action={{ label: t('history.state.createSession'), onClick: () => navigate('/session'), icon: Plus }}
+      />
     )
   }
 
@@ -755,6 +772,7 @@ function SessionsTab() {
                 checked={allMonthSelected}
                 indeterminate={someMonthSelected && !allMonthSelected}
                 onChange={() => toggleSelectMonth(monthIds)}
+                label={t('history.select.month')}
               />
               <button
                 onClick={() => toggleMonthCollapse(monthKey)}
@@ -783,6 +801,7 @@ function SessionsTab() {
                     onToggle={() => setExpandedId(expandedId === session.id ? null : session.id)}
                     onDelete={handleDelete}
                     onGameDelete={(gameId) => handleGameDelete(session.id, gameId)}
+                    recordedIds={recordedIds}
                   />
                 ))}
               </div>
@@ -872,7 +891,7 @@ function SessionsTab() {
   )
 }
 
-function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, onDelete, onGameDelete }: { session: SessionSummary; isSelected: boolean; onToggleSelect: () => void; expanded: boolean; onToggle: () => void; onDelete: (id: string) => void; onGameDelete: (gameId: string) => void }) {
+function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, onDelete, onGameDelete, recordedIds }: { session: SessionSummary; isSelected: boolean; onToggleSelect: () => void; expanded: boolean; onToggle: () => void; onDelete: (id: string) => void; onGameDelete: (gameId: string) => void; recordedIds: Set<string> }) {
   const { t } = useTranslation()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const fundamental = useLocalizedFundamental(session.objectiveId)
@@ -888,7 +907,7 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
       <CardHeader className="cursor-pointer select-none" onClick={onToggle}>
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
-            <SessionCheckbox checked={isSelected} onChange={onToggleSelect} className="mt-1" />
+            <SessionCheckbox checked={isSelected} onChange={onToggleSelect} className="mt-1" label={t('history.select.session')} />
             <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-hextech-text-bright truncate">
@@ -912,12 +931,13 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
 
           <div className="flex items-center gap-6 shrink-0">
             <Stat label={t('history.stats.games')} value={session.gamesPlayed.toString()} />
-            <Stat label={t('history.stats.winRate')} value={`${winRate}%`} highlight={winRate >= 50} />
+            <Stat label={t('history.stats.winRate')} value={`${winRate}%`} toneClass={wrText(winRate, session.gamesPlayed)} />
             {session.objectiveSuccessRate !== null && (
               <Stat label={t('history.stats.objPct')} value={`${session.objectiveSuccessRate}%`} highlight={session.objectiveSuccessRate >= 50} />
             )}
             <Stat label={t('history.stats.kda')} value={session.avgKDA.toFixed(2)} />
             <Stat label={t('history.stats.csMin')} value={session.avgCSPerMin.toFixed(1)} />
+            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- event barrier only: stops the click from reaching the clickable row; the buttons inside handle the keyboard. */}
             <div onClick={(e) => e.stopPropagation()}>
               <ShareSessionButton
                 data={{
@@ -952,6 +972,7 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
               />
             </div>
             {confirmDelete ? (
+              // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- event barrier only: stops the click from reaching the clickable row; the buttons inside handle the keyboard.
               <div className="flex items-center gap-1 ml-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                 <Button
                   size="sm"
@@ -1007,6 +1028,7 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
                 key={game.id}
                 game={game}
                 index={idx + 1}
+                hasRecording={recordedIds.has(game.id)}
                 onDelete={(id) => onGameDelete(id)}
               />
             ))}
@@ -1021,7 +1043,7 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
   )
 }
 
-function GameRow({ game, index, onDelete }: { game: GameEntry; index: number; onDelete?: (id: string) => void }) {
+function GameRow({ game, index, hasRecording, onDelete }: { game: GameEntry; index: number; hasRecording: boolean; onDelete?: (id: string) => void }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const kpiCategories = useLocalizedFundamentals()
@@ -1029,12 +1051,7 @@ function GameRow({ game, index, onDelete }: { game: GameEntry; index: number; on
   const [reviewExpanded, setReviewExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [hasRecording, setHasRecording] = useState(false)
   const csPerMin = game.duration > 0 ? (game.cs / (game.duration / 60)).toFixed(1) : '0'
-
-  useEffect(() => {
-    window.api.getRecording(game.id).then((r) => setHasRecording(!!r)).catch(() => {})
-  }, [game.id])
 
   const handleDelete = async () => {
     setDeleting(true)
@@ -1149,6 +1166,7 @@ function GameRow({ game, index, onDelete }: { game: GameEntry; index: number; on
 
           {onDelete && (
             confirmDelete ? (
+              // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- event barrier only: stops the click from reaching the clickable row; the buttons inside handle the keyboard.
               <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                 <Button
                   size="sm"
@@ -1245,10 +1263,10 @@ function GameRow({ game, index, onDelete }: { game: GameEntry; index: number; on
   )
 }
 
-function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function Stat({ label, value, highlight, toneClass }: { label: string; value: string; highlight?: boolean; toneClass?: string }) {
   return (
     <div className="text-center">
-      <div className={cn('text-sm font-bold', highlight ? 'text-hextech-green' : 'text-hextech-text-bright')}>
+      <div className={cn('text-sm font-bold', toneClass ?? (highlight ? 'text-hextech-green' : 'text-hextech-text-bright'))}>
         {value}
       </div>
       <div className="text-xs text-hextech-text-dim">{label}</div>

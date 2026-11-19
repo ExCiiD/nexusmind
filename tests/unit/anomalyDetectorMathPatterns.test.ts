@@ -693,7 +693,9 @@ describe('precedence and limits', () => {
     expect(m.territory).toBe('enemy')
     expect(m.key).toBe('critical-death@1200')
   })
-  it('analyses a 40-minute game with every detector armed in under 5 ms', () => {
+  // TE-8: 5 ms failed under load (10.4 ms with the whole suite running) and
+  // blocked releases at random. 50 ms still catches an accidental O(n²).
+  it('analyses a 40-minute game with every detector armed in under 50 ms', () => {
     const events: any[] = []
     for (let s = 30; s < 40 * 60; s += 7) events.push(ward(s * 1000, (s % 10) + 1))
     for (let k = 0; k < 40; k++) events.push(kill(at(2 + k) - 500, (k % 10) + 1, ((k + 5) % 10) + 1, [((k + 6) % 10) + 1], { x: 5000 + 100 * k, y: 9000 }))
@@ -704,7 +706,7 @@ describe('precedence and limits', () => {
       run(g) // warm-up
       const t0 = performance.now()
       for (let i = 0; i < 20; i++) run(g)
-      expect((performance.now() - t0) / 20).toBeLessThan(5)
+      expect((performance.now() - t0) / 20).toBeLessThan(50)
     }
   })
 })

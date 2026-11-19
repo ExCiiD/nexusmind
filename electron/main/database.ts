@@ -54,6 +54,29 @@ export function splitSqlStatements(sql: string): string[] {
     .filter((s) => s.length > 0)
 }
 
+/**
+ * Whether a failed statement only failed because a previous, interrupted run already applied it, so the
+ * runner can go on. Audit DA-2 / E30 (19/11/2026): "no such column" used to be swallowed for every statement,
+ * so a typo in a column name (an UPDATE, a CREATE INDEX, a table rebuild's SELECT) skipped that statement
+ * silently and the migration was still marked applied. It is now tolerated only where it means "already
+ * done": a DROP COLUMN or a DROP INDEX replayed.
+ *
+ * "UNIQUE constraint failed" is never tolerated (Audit P1, option a, 19/11/2026): swallowed, it let a table
+ * rebuild skip its whole INSERT … SELECT copy and then drop the old table, and marked a CREATE UNIQUE INDEX
+ * over duplicates as applied without the index. The rebuild copies use INSERT OR IGNORE instead, so a replay
+ * after an interrupted run only skips the rows it already copied.
+ */
+export function isAlreadyAppliedError(stmt: string, message: string): boolean {
+  if (
+    message.includes('duplicate column name') ||
+    message.includes('already exists')
+  ) return true
+  if (message.includes('no such column') || message.includes('no such index')) {
+    return /^\s*(ALTER\s+TABLE\s+\S+\s+DROP\s+(COLUMN\s+)?|DROP\s+INDEX\s)/i.test(stmt)
+  }
+  return false
+}
+
 async function ensureMigrationsTable(client: PrismaClient): Promise<void> {
   await client.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
@@ -136,17 +159,8 @@ export async function runMigrations(client: PrismaClient, migrationsDir: string,
         await client.$executeRawUnsafe(stmt)
         appliedCount++
       } catch (err: any) {
-        const msg: string = err?.message ?? ''
-        if (
-          msg.includes('duplicate column name') ||
-          msg.includes('already exists') ||
-          msg.includes('no such column') ||
-          msg.includes('UNIQUE constraint failed')
-        ) {
-          // Idempotent — statement was already applied in a previous run
-        } else {
-          throw err
-        }
+        if (!isAlreadyAppliedError(stmt, err?.message ?? '')) throw err
+        // Idempotent: the statement was already applied in a previous run.
       }
     }
 

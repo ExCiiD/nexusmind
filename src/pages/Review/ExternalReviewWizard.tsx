@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/useToast'
 import { ExternalReviewModeStep } from './wizard/ExternalReviewModeStep'
@@ -30,6 +31,7 @@ interface Props {
 
 export function ExternalReviewWizard({ open, onClose }: Props) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { toast } = useToast()
 
   const [mode, setMode] = useState<WizardMode>('select')
@@ -99,7 +101,7 @@ export function ExternalReviewWizard({ open, onClose }: Props) {
       : merged.title.trim()
 
     if (!title) {
-      toast({ title: 'Please enter a title', variant: 'destructive' })
+      toast({ title: t('externalReview.wizard.needTitle'), variant: 'destructive' })
       return
     }
 
@@ -118,7 +120,7 @@ export function ExternalReviewWizard({ open, onClose }: Props) {
       handleClose()
       navigate(`/external-review/${review.id}`)
     } catch (err: any) {
-      toast({ title: 'Failed to create review', description: err.message, variant: 'destructive' })
+      toast({ title: t('externalReview.wizard.createFailed'), description: err.message, variant: 'destructive' })
     } finally {
       setCreating(false)
     }
@@ -138,11 +140,11 @@ export function ExternalReviewWizard({ open, onClose }: Props) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {canGoBack && (
-              <button onClick={handleBack} className="text-hextech-text-dim hover:text-hextech-text mr-1 transition-colors">
-                <ArrowLeft className="h-4 w-4" />
+              <button type="button" onClick={handleBack} aria-label={t('externalReview.wizard.back')} className="text-hextech-text-dim hover:text-hextech-text mr-1 transition-colors">
+                <ArrowLeft className="h-4 w-4" aria-hidden />
               </button>
             )}
-            External Review
+            {t('externalReview.wizard.title')}
           </DialogTitle>
         </DialogHeader>
 

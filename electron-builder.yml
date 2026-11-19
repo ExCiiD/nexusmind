@@ -37,6 +37,10 @@ asarUnpack:
 
 publish:
   provider: github
+  # Explicit, so a release built from a git worktree (where .git is a file) still
+  # finds the repository ("Cannot detect repository" otherwise, beta.8).
+  owner: ExCiiD
+  repo: nexusmind
   # `prerelease` while in beta — flips the GitHub release flag automatically
   # so auto-updater clients on the stable channel don't pull it. Switch
   # back to `release` for the first 1.0 GA build.

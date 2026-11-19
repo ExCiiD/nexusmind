@@ -4,6 +4,8 @@ import type { DevPlanApi } from './devPlan'
 
 export type GroupRole = 'owner' | 'coach' | 'manager' | 'analyst' | 'player'
 export type GroupKind = 'team' | 'coaching'
+/** #38: the server's check of a member's declared Riot ID (verify-member-puuid). */
+export type PuuidStatus = 'verified' | 'not_found' | 'conflict'
 
 export interface GroupMember {
   userId: string
@@ -14,6 +16,16 @@ export interface GroupMember {
   isCaptain: boolean
   displayName: string | null
   riotId: string | null
+  /**
+   * #38: the member's Riot puuid, the stable key (a Riot ID changes on a rename). null when the member never
+   * published it; absent before the member_puuid migration.
+   */
+  puuid?: string | null
+  /**
+   * #38: where the server's check of the member's Riot ID stands. 'conflict' = another member of the group already
+   * holds that puuid (two members claim the same player): show it to the staff. null = not verified yet.
+   */
+  puuidStatus?: PuuidStatus | null
   joinedAt: string
 }
 
@@ -58,7 +70,7 @@ export interface ReviewComment {
   playerId: string
   reviewId: string
   gameId: string | null
-  authorId: string
+  authorId: string | null // null once the author deleted their account (S19-16 / #33)
   parentId: string | null
   videoTimeSec: number | null
   body: string
@@ -70,7 +82,7 @@ export interface AssignedObjective {
   id: string
   groupId: string
   playerId: string
-  assignedBy: string
+  assignedBy: string | null // null once the author deleted their account (S19-16 / #33)
   objectiveIds: string[]
   kpiIds: string[]
   note: string | null
@@ -132,6 +144,8 @@ export interface CollabApi extends DevPlanApi {
   /** Management only (owner, coach, manager, captain). Null clears the logo;
    *  returns the new logo's URL. */
   collabSetGroupLogo: (groupId: string, image: GroupLogoImage | null) => Promise<string | null>
+  /** #34: unlinks the group's Discord server. Owner, coach or manager of the group only (rejects with FORBIDDEN otherwise). */
+  discordUnlinkGuild: (groupId: string) => Promise<{ unlinked: boolean }>
   collabListComments: (reviewId: string, playerId?: string) => Promise<ReviewComment[]>
   collabMyOpenComments: () => Promise<ReviewComment[]>
   collabAddComment: (c: {

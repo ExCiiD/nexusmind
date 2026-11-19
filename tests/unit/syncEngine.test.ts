@@ -175,8 +175,26 @@ describe('sync engine', () => {
     expect((await outbox()).filter((k) => k.startsWith('Badge:'))).toHaveLength(1)
   })
 
+  // Item I (19/11/2026): with the run-wide cache, the owner check costs one request per run, not one per cycle.
+  it('checks the owner once per run when given the verified set', async () => {
+    const verified = new Set<string>()
+    const cached = new SyncEngine(getPrisma() as any, remote, 'cloud-user-1', verified)
+    const getRecord = vi.spyOn(remote, 'getRecord')
+    await cached.syncOnce()
+    await cached.syncOnce()
+    await new SyncEngine(getPrisma() as any, remote, 'cloud-user-1', verified).syncOnce()
+    expect(getRecord.mock.calls.filter(([t]) => t === '_profile')).toHaveLength(1)
+    expect(verified.has('cloud-user-1:puuid-1')).toBe(true)
+    getRecord.mockRestore()
+  })
+
   it("refuses to sync when the cloud account belongs to another player", async () => {
     await remote.push([{ t: '_profile', id: 'owner', data: { puuid: 'someone-else' }, at: new Date(Date.now() + 100_000).toISOString(), dev: 'other-pc' }])
     await expect(engine.syncOnce()).rejects.toBeInstanceOf(SyncError)
+  })
+
+  it('another cloud account is checked again (the cache is per account and player)', async () => {
+    const verified = new Set<string>(['cloud-user-1:puuid-1'])
+    await expect(new SyncEngine(getPrisma() as any, remote, 'cloud-user-2', verified).syncOnce()).rejects.toBeInstanceOf(SyncError)
   })
 })

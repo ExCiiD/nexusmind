@@ -375,6 +375,9 @@ model TeamMember {
   role        String
   // Riot puuid if known — used for scouting auto-fetch (optional, manual entry OK)
   puuid       String?
+  /// #38: the Riot ID ("Name#TAG") the player had before a rename was applied (Riot by puuid, or the group). The
+  /// screens show it instead of switching the name silently, then clear it (updateTeamMember, previousRiotId: null).
+  previousRiotId String?
   champPool   ChampionPoolEntry[]
   // E15 incremental scout/auto-fill: the season match-id list as of the
   // last scout, so a repeat scout only has to ask Riot for games played

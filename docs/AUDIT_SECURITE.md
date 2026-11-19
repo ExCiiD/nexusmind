@@ -44,3 +44,428 @@ En corrigeant les dépendances, `electron` a été réinstallé : npm a bloqué 
 ## 4. Points déjà couverts ailleurs
 
 Auth, invitations, RLS des tables applicatives, durcissement Electron (sandbox, CSP, `nxm://`) : voir la checklist complète S1–S8 dans `ROADMAP.md`. Ce document ne couvre que ce qui a été vérifié dans cette passe (S2 partiel, S4 lu pour `react-router`) ; S4 (en-têtes), S5 (XSS), S7 (Electron) et le test d'intrusion manuel restent à faire avant publication.
+
+---
+
+## 19/11/2026 — Mise à jour (session CyberSecurity)
+
+Passe en **lecture seule** : rien n'a été modifié (ni code, ni base de production, ni secret). Sources : advisors Supabase, requêtes `SELECT` sur le catalogue Postgres, lecture du code (`main` local, 2 commits d'avance sur `origin/main`), `npm audit` dans chaque paquet, en-têtes HTTP des sites en ligne (`curl -I`), réglages Auth publics (`/auth/v1/settings`). Les valeurs des secrets n'ont été ni affichées ni copiées : seuls leurs noms et leurs longueurs ont été lus.
+
+**Bilan :** aucune faille critique exploitable à distance n'a été trouvée. La RLS couvre toutes les tables, les CSP sont en place et en ligne, et la configuration Electron est solide. Les risques principaux viennent de la **chaîne de livraison** : Electron en fin de vie, installeurs non signés mis à jour automatiquement, ffmpeg non vérifié, dépendances qui ont régressé. Il faut aussi corriger **une faille d'autorisation dans le bot Discord**.
+
+### Constats, par sévérité
+
+| ID | Sévérité | Constat | Session |
+|---|---|---|---|
+| S19-01 | **Haute** | Electron 33 en fin de vie | Back-end |
+| S19-02 | **Haute** | Installeurs non signés et mise à jour automatique sans vérification de signature | Chief + utilisateur, puis Back-end |
+| S19-16 | **Haute** | Suppression de compte en échec (9 clés étrangères `NO ACTION`) ; le créateur d'un groupe qui supprime son compte efface tout le groupe | Back-end (prod : accord) + Front-end |
+| S19-03 | **Moyenne-haute** | Bot Discord : `/availability` sans contrôle d'appartenance au groupe | Back-end |
+| S19-17 | Moyenne | Données d'équipe d'un membre (rosters, scouting, drafts, scrims) lisibles par tout membre de **n'importe lequel** de ses groupes, partage actif par défaut | Back-end (prod : accord) |
+| S19-04 | Moyenne | ffmpeg téléchargé et embarqué sans empreinte (S3, toujours ouvert) | Back-end |
+| S19-05 | Moyenne | `npm audit` : régression à 45 vulnérabilités, dont des paquets d'exécution | Back-end |
+| S19-06 | Moyenne | Clé OpenAI toujours dans `.env` (non révoquée) | Utilisateur |
+| S19-07 | Moyenne | Fonctions `SECURITY DEFINER` de cron appelables par `anon`/`authenticated` | Back-end (prod : accord) |
+| S19-08 | Moyenne | Données de bien-être (santé, art. 9 RGPD) et textes légaux de l'app (v0.1) en retard sur le site (v0.2) | Front-end (textes) + utilisateur (décision) |
+| S19-09 | Basse-moyenne | Protection « mot de passe compromis » toujours désactivée | Utilisateur (tableau de bord) |
+| S19-10 | Basse-moyenne | Proxy Riot : 300 req/min par compte, une seule personne peut épuiser le quota Riot de l'app | Back-end |
+| S19-11 | Basse | ~130 handlers IPC sans validation zod | Back-end |
+| S19-12 | Basse | `sync_push` : ni liste de tables autorisées, ni taille maximale, dates futures acceptées | Back-end (prod : accord) |
+| S19-13 | Basse | `team_session_games` modifiable et supprimable par n'importe quel membre | Back-end (après décision produit) |
+| S19-14 | Basse | Droits par défaut d'`anon` sur toutes les tables (la RLS est la seule barrière) | Back-end (prod : accord) |
+| S19-15 | Info | Secret YouTube (§ 3bis) : plus embarqué dans le build actuel, mais le lien YouTube ne marche probablement plus dans l'app installée | Back-end |
+
+#### S19-01 — Electron 33 en fin de vie (Haute)
+- **Impact :** Electron 33 (installé : 33.4.11) n'est plus maintenu. Les failles Chromium/V8 corrigées depuis ne le sont pas dans Ascend. Or le rendu charge du contenu distant : iframes YouTube, images DDragon/CommunityDragon, logos Supabase, et du texte écrit par d'autres membres du groupe (commentaires, notes, drafts). Une faille de moteur exploitée par ce biais tournerait dans un rendu doté de `window.api`, même s'il reste sandboxé. `npm audit` signale aussi un contournement de l'intégrité ASAR (corrigé en 45.4.1).
+- **Preuve :** `package.json` → `"electron": "^33.2.0"` ; `node_modules/electron/package.json` → 33.4.11 ; `npm audit` → `electron (direct) fix: electron@45.4.1 MAJOR`.
+- **Correctif :** monter vers une version d'Electron maintenue (≥ 45.4.1), dans une branche à part, avec `electron-builder` ≥ 26.18 (S19-05). Vérifier ensuite la capture WGC/ddagrab, le `nxm:` (Range/206), `safeStorage`, la mise à jour automatique et le démarrage avec Windows. Activer dans la foulée les *fuses* Electron (`RunAsNode` off, `EnableNodeCliInspectArguments` off, `EnableEmbeddedAsarIntegrityValidation` on, `OnlyLoadAppFromAsar` on).
+- **Session :** Back-end, puis revue Audit + CyberSecurity avant la release.
+
+#### S19-02 — Installeurs non signés et mise à jour automatique (Haute)
+- **Impact :** `electron-builder.yml` contient `sign: false`. Sans signature ni `publisherName`, `electron-updater` installe tout binaire publié dans la release GitHub, sur la seule foi du HTTPS. Quiconque obtient l'accès au compte ou à un jeton GitHub de publication exécute donc son code chez **tous** les utilisateurs, à la prochaine mise à jour. S'y ajoutent l'avertissement SmartScreen et l'impossibilité, pour un joueur, de vérifier l'éditeur.
+- **Preuve :** `electron-builder.yml` lignes 51-52 (`sign: false`, `signingHashAlgorithms: []`).
+- **Correctif :** 1) tout de suite, sans coût : 2FA matérielle sur le compte GitHub, jeton de publication à portée minimale (un seul dépôt, `contents:write`) et à durée limitée ; `GH_TOKEN` est vide dans `.env`, donc à garder hors du fichier. 2) Ensuite, signature de code (Azure Trusted Signing ou certificat OV/EV) et `publisherName` dans `win`, pour que `electron-updater` vérifie la signature avant d'installer. Le coût est une décision de l'utilisateur.
+- **Session :** Chief (décision de l'utilisateur), puis Back-end.
+
+#### S19-03 — Bot Discord : écriture dans un groupe sans en être membre (Moyenne-haute)
+- **Impact :** `/availability away|back` résout l'utilisateur Ascend lié au compte Discord (`discord_user_links`) et le groupe lié au serveur (`discord_guild_links`). Il écrit ensuite dans `availability_exceptions` avec la **clé service_role** (donc sans RLS) **sans vérifier que l'utilisateur est membre du groupe**. Tout membre du serveur Discord ayant un compte Ascend lié (un serveur communautaire, un adversaire de scrim invité, un ancien joueur) peut donc créer ou effacer des absences dans le planning d'une équipe dont il ne fait pas partie, et lancer la recherche de remplaçant des scrims. Par ailleurs, `/set-channel` peut être lancé par n'importe quel membre du serveur et redirige les rappels vers un autre salon. Enfin, `/calendar`, `/scrims` et `/common-availability` montrent le planning à tout membre du serveur. C'est voulu, mais à documenter.
+- **Preuve :** `cloudflare/discord-bot/src/handlers.ts:128-160` (aucun contrôle de `group_members`) ; `src/lib/discordBotCore.ts:136` (`upsert` direct) ; `cloudflare/discord-bot/scripts/register-commands.mjs` (aucun `default_member_permissions`).
+- **Correctif :** dans `handleAvailability`, refuser si `group_members(group_id = link.groupId, user_id = userId)` n'existe pas. Dans `handleSetChannel`, exiger que l'utilisateur Discord soit lié à un membre staff du groupe, ou la permission Discord `MANAGE_GUILD` (vérifier `member.permissions` dans l'interaction, et `default_member_permissions` à l'enregistrement de `/set-channel` et `/link-team`). Ajouter des tests unitaires sur les deux refus.
+- **Session :** Back-end (redéploiement du worker : accord de l'utilisateur).
+
+#### S19-04 — ffmpeg sans vérification d'empreinte (Moyenne)
+- **Impact :** `postinstall` télécharge `ffmpeg-8.1-essentials_build.zip` depuis un dépôt GitHub tiers (`GyanD/codexffmpeg`), l'exécute (`-version`) puis l'embarque dans chaque installeur (`extraResources`). La seule vérification porte sur la chaîne de version. Un fichier de release remplacé chez ce tiers serait exécuté sur le poste de build, puis livré à tous les utilisateurs (S19-02 aggrave le risque).
+- **Preuve :** `scripts/download-ffmpeg.mjs:26` et `:116-118` ; `electron-builder.yml:25-27`. Empreinte SHA-256 du `ffmpeg.exe` présent localement (référence à confronter à celle publiée par l'éditeur) : `1a65d5b0b10d8d9a81d2824a3538046a40ed3607c906b335a166add87613f705`.
+- **Correctif :** épingler le SHA-256 du zip (publié par gyan.dev) dans le script, refuser en cas d'écart, et ne rien exécuter avant cette vérification.
+- **Session :** Back-end.
+
+#### S19-05 — Dépendances : régression (Moyenne)
+- **Impact :** on est passé de 3 vulnérabilités restantes le 13/11 à **45** (3 critiques, 24 hautes, 15 modérées, 3 basses). La plupart touchent les outils de développement ou de build (vitest UI, tinypool, tar et la chaîne electron-builder, vite, postcss). Côté exécution, chez l'utilisateur : `electron` (S19-01), `zod` 3 (épuisement mémoire, déjà connu) et `builder-util-runtime`. La faille de fuite de jeton sur redirection de ce dernier, corrigée le 13/11, réapparaît via electron-builder 25 ; à vérifier sur la copie utilisée par `electron-updater`. `cloudflare/riot-proxy` et `cloudflare/discord-bot` : 0 vulnérabilité. `web/` n'a pas de `package-lock.json` propre (dépendances de la racine).
+- **Preuve :** `npm audit --json` à la racine (19/11).
+- **Correctif :** `npm audit fix` pour les correctifs non cassants (vitest, vite, postcss, tmp, form-data…). Montée majeure `electron-builder` 26.18 à faire avec S19-01. Migration `zod` v4 et `react-router` v7 dans leur propre branche (déjà prévue au § 1). Lancer `npm audit` à chaque revue avant release.
+- **Session :** Back-end.
+
+#### S19-06 — Clé OpenAI dans `.env` (Moyenne)
+- **Impact :** `MAIN_VITE_OPENAI_API_KEY` (164 caractères) est toujours présente dans `.env`. **Bonne nouvelle :** plus aucun code ne la lit, et elle n'apparaît ni dans `out/` ni dans `app.asar`, donc elle n'est pas livrée. Mais c'est une clé valide en clair sur le disque : sauvegardes, outils, sessions. Le préfixe `MAIN_VITE_` l'embarquerait de nouveau dès qu'un code la lirait.
+- **Preuve :** nom et longueur lus dans `.env` ; recherche par motif dans `out/` et `release/win-unpacked` : aucune occurrence.
+- **Correctif :** l'utilisateur révoque la clé dans la console OpenAI, puis on retire la ligne de `.env`. Même vérification à faire pour `RIOT_DEV_API_KEY` (clé de dev, lue à l'exécution en dev seulement, jamais embarquée).
+- **Session :** Utilisateur (révocation), puis n'importe quelle session pour retirer la ligne.
+
+#### S19-07 — Fonctions `SECURITY DEFINER` appelables via l'API (Moyenne)
+- **Impact :** les fonctions de cron `run_weekly_load_check`, `run_review_pending_check`, `run_dev_plan_period_check` et `run_scrim_availability_check` sont exécutables par `anon` et `authenticated` via `/rest/v1/rpc/...`. La clé `anon` est publique, puisqu'elle est dans l'app. N'importe qui peut donc lancer, aussi souvent qu'il le veut, des parcours complets de `sync_records`, `wellbeing_checkins` et `scrims` avec les droits du propriétaire (charge et déni de service léger), et déclencher les notifications avant l'heure. Les doublons sont évités (drapeaux `*_notified` et contrôle sur 3 jours), donc pas de spam illimité. Les quatre autres `run_*` ont déjà le droit retiré : c'est incohérent. `set_captain` et `set_weekly_load_threshold` sont aussi ouvertes à `anon` (inoffensif, car `auth.uid()` vaut NULL et la fonction refuse, mais inutile). Les fonctions de trigger (`auto_create_team_session`, `notify_calendar_event_request`) sont listées, mais PostgreSQL refuse de les appeler hors trigger.
+- **Preuve :** advisors `anon_security_definer_function_executable` (8) et `authenticated_security_definer_function_executable` (15) ; `has_function_privilege('anon', …)` = true pour ces 4 `run_*`, false pour `run_scrim_reminders`, `run_inactive_player_check`, `run_objective_overdue_check` et `run_wellbeing_alert_check`.
+- **Correctif :** une migration `revoke execute on function public.run_…() from public, anon, authenticated` pour les 4 `run_*` et les 2 fonctions de trigger, et `revoke … from anon` sur `set_captain` et `set_weekly_load_threshold`. `pg_cron` tourne en `postgres` et n'en dépend pas. Penser aux `alter default privileges` pour les fonctions futures.
+- **Session :** Back-end (base de production : accord de l'utilisateur).
+
+#### S19-08 — Données de santé et textes légaux (Moyenne)
+- **Impact :** les check-ins de bien-être (humeur, énergie, sommeil) sont des données de santé au sens de l'art. 9 du RGPD. Ils sont stockés dans le cloud (`wellbeing_checkins`) dès qu'ils sont saisis avec un compte. Or le site (v0.2) ne fonde le consentement explicite que sur le **partage** avec le staff, pas sur le stockage dans le cloud lui-même. Les textes de l'app (`src/legal/*.md`, v0.1, « brouillon ») ne décrivent que les sauvegardes et le relais Riot. Il y manque la synchronisation, les groupes, le bien-être, le bot Discord, YouTube, les signalements, les notifications et la mention des mineurs. Absents des deux versions : la présence aux réunions (`team_session_attendance`, nouvelle du 19/11), les récompenses MVP / Grinder, les liens publics de rapport d'équipe (`team-report/<token>`, sans connexion, avec les noms des joueurs), le flux calendrier `.ics` à jeton et les logos d'équipe publics (bucket `group-logos` public).
+- **Preuve :** `src/legal/privacy.fr.md` (en-tête « Version 0.1 ») contre `site/src/legal/confidentialite.html` (« Version 0.2 · mise à jour le 18 nov ») ; tables `wellbeing_checkins`, `team_session_attendance`, `report_shares`, `calendar_subscriptions` ; bucket `group-logos` (`public = true`).
+- **Correctif :** aligner l'app sur la v0.2 (L06 de l'audit app), puis compléter la v0.3 avec les points manquants. Ajouter une case de consentement explicite au **premier** check-in de bien-être (stockage et synchronisation), retirable, avec suppression des check-ins. Faire relire par l'utilisateur ; la qualification juridique est sa décision.
+- **Session :** Front-end (textes et case), Back-end (suppression des check-ins si besoin), utilisateur (validation).
+
+#### S19-09 — Mots de passe compromis (Basse-moyenne)
+- Toujours désactivée (advisor `auth_leaked_password_protection`), voir § 2. **Correctif :** dans le tableau de bord, Authentication → Policies → Password → « Leaked password protection ». **Session :** Utilisateur. Vérifié au passage : l'inscription libre est **fermée** côté serveur (`disable_signup: true`) et la connexion anonyme est **désactivée**, donc le mode sur invitation ne dépend pas du seul `shouldCreateUser: false` côté client.
+
+#### S19-10 — Quota Riot partagé (Basse-moyenne)
+- **Impact :** `USER_LIMITER` autorise 300 requêtes par minute et par compte, alors que la clé Riot de l'app (une clé personnelle ou de production) a un quota global plus bas. Un seul compte, légitime ou malveillant (le scouting automatique, par exemple), peut épuiser le quota pour tous : les 429 de Riot sont alors renvoyés à tout le monde. `url.search` est relayé sans filtre (sans danger sur les chemins autorisés, mais inutile).
+- **Preuve :** `cloudflare/riot-proxy/wrangler.toml` (`limit = 300, period = 60`) ; `cloudflare/riot-proxy/src/routing.ts:54`.
+- **Correctif :** caler la limite par compte sur une fraction du quota de la clé (par exemple 30/min), et ne relayer que les paramètres de requête attendus (`start`, `count`, `queue`, `type`, `startTime`, `endTime`).
+- **Session :** Back-end (redéploiement du worker : accord).
+
+#### S19-11 — IPC sans validation (Basse)
+- **Impact :** sur environ 320 handlers, 188 passent par `validatedHandle` (zod) et ~130 restent en `ipcMain.handle` brut. Ces derniers reçoivent surtout des identifiants (`team.ipc.ts` 23, `session.ipc.ts` 10, `recording.ipc.ts` 10, `stats.ipc.ts` 9, `mistakes.ipc.ts` 8). Aucun ne reçoit de chemin de fichier ni de commande shell : les suppressions passent par un id en base, ffmpeg est lancé avec un tableau d'arguments, et le SQL brut est paramétré ou limité à des noms de table connus. L'exploitation suppose un rendu déjà compromis, ce que la CSP (`script-src 'self'`) rend difficile.
+- **Correctif :** migrer progressivement vers `validatedHandle`, en commençant par `team.ipc.ts` et `recording.ipc.ts` (`clip:*`), et faire refuser par le lint tout nouveau `ipcMain.handle` brut.
+- **Session :** Back-end.
+
+#### S19-12 — `sync_push` (Basse)
+- **Bon point :** `SECURITY INVOKER`, `auth.uid()` imposé, 500 lignes au plus par appel, `search_path` vide. Le correctif du 19/11 (pas de réécriture d'une ligne identique) est correct.
+- **Faiblesses :** pas de liste blanche de `table_name`, pas de taille maximale pour `data`, et `updated_at` peut être dans le futur. Un compte peut gonfler le stockage, ou fausser ses propres durées de parties lues par `run_weekly_load_check` (impact limité à ses propres données et alertes).
+- **Correctif :** `check` sur `table_name` (tables synchronisées connues), sur `pg_column_size(data) < 256 kB` et sur `updated_at <= now() + interval '5 minutes'`.
+- **Session :** Back-end (base de production : accord).
+
+#### S19-13 — `team_session_games` (Basse)
+- La politique `team_session_games_write` (ALL) n'exige que d'être membre du groupe, alors que les objectifs, reviews et présences d'une session exigent `can_manage_session`. N'importe quel joueur peut donc retirer ou ajouter les parties d'une session d'équipe. **Correctif :** si ce n'est pas voulu, limiter la suppression au staff ou au capitaine. **Session :** Back-end, après décision du Chief.
+
+#### S19-14 — Droits d'`anon` sur les tables (Basse)
+- Les 61 tables de `public` ont la RLS **activée** : c'est vérifié, y compris `team_session_attendance` (lecture par les membres, écriture par `can_manage_session`, rôle `authenticated`). Mais `anon` garde les droits SELECT, INSERT, UPDATE et DELETE par défaut de Supabase sur toutes. Les politiques en `{public}` dépendent de `auth.uid()` (NULL pour `anon`), donc rien n'est exposé aujourd'hui. Mais une future politique écrite par erreur en `using (true)` serait ouverte à tout Internet. **Correctif :** `revoke all on all tables in schema public from anon` plus `alter default privileges … revoke … from anon`, l'app n'ayant aucun usage non connecté de PostgREST. À tester avant (pages publiques, edge functions en service_role non concernées). **Session :** Back-end (base de production : accord).
+
+#### S19-15 — Secret YouTube (Info, met à jour le § 3bis)
+- `youtube.ipc.ts` lit `process.env.MAIN_VITE_GOOGLE_CLIENT_SECRET` (et non `import.meta.env`). electron-vite ne l'inline donc pas : le secret est absent de `out/main/index.js` et de `app.asar` (recherche de la valeur exacte : 0 occurrence). Le risque d'extraction du § 3bis n'existe plus dans le build actuel. **Conséquence :** dans l'app installée, sans `.env`, le client OAuth n'a ni ID ni secret, et le lien YouTube doit échouer (« Google OAuth credentials not configured »). Le plan du § 3bis (PKCE + edge function) reste la bonne solution le jour où la fonction doit marcher. Autre point : les jetons YouTube retombent dans un fichier `.plain` quand `safeStorage` n'est pas disponible. **Session :** Back-end (si la fonction YouTube est gardée).
+
+### Vérifié et conforme
+- **Supabase :** RLS active sur les 61 tables ; les 4 tables sans politique (`access_invite_attempts`, `discord_dm_sent`, `discord_notifications_sent`, `scrim_availability_reminders`) ne sont lues que par le service_role, ce qui est voulu. Stockage : `backups` privé, limité au dossier `auth.uid()`, 50 Mo, gzip seulement ; `group-logos` public en lecture par URL, écriture via `can_edit_group_logo`, 512 ko, images seulement ; `set_group_logo` valide l'URL par regex. Les 5 edge functions (`verify_jwt = false`) vérifient elles-mêmes : `getUser(token)` pour `delete-account` et `web-handoff`, un jeton aléatoire pour `team-report` et `team-calendar-ics`, et `redeem-invite` est limitée à 10 échecs par IP et par heure. `team-report` échappe tout le HTML (`esc`).
+- **Desktop :** `contextIsolation: true`, `nodeIntegration: false` et `sandbox: true` sur les trois fenêtres ; `setWindowOpenHandler` refuse et `will-navigate` bloque, seul le `http(s)` part vers le navigateur. CSP du rendu : `script-src 'self'`, `object-src 'none'`. Le `nxm:` exige une extension média, refuse `..` et n'ouvre que les dossiers d'enregistrement configurés, avec `realpath` (`mediaAccess.ts`).
+- **Web et site (en ligne, `curl -I` le 19/11) :** CSP stricte, HSTS, `nosniff`, `X-Frame-Options: DENY` et `frame-ancestors 'none'` sur la web app comme sur le site ; site en `noindex`. La règle CSP des logos (`img-src … supabase.co`) est déjà servie en ligne.
+- **Workers :** proxy Riot avec JWT Supabase vérifié (JWKS, `iss` et `aud`), comptes anonymes refusés, liste blanche hôte + chemin, GET seulement, 401/403 de Riot masqués. Bot Discord : signature Ed25519 vérifiée avant tout traitement.
+- **Secrets :** `.env` ignoré par git ; aucun fichier de secret suivi ; aucun secret dans `out/` ni dans `app.asar`.
+
+#### S19-16 — La suppression de compte échoue ou efface le groupe des autres (Haute — droit à l'effacement)
+*Trouvé le 19/11 pendant la rédaction de la v0.3 (`docs/LEGAL_V0.3_DRAFT.md`).*
+- **Impact :**
+  1. `delete-account` appelle `auth.admin.deleteUser(uid)`. Or neuf tables pointent vers `auth.users` avec `ON DELETE NO ACTION` : `team_discussion_comments.author_id`, `team_session_feedback.user_id`, `team_session_games.reported_by`, `team_session_reviews.recorded_by`, `team_session_objectives.set_by`, `calendar_event_requests.requested_by`, `group_fundamentals.created_by`, `report_shares.created_by` et `calendar_subscriptions.created_by`. Pour tout utilisateur qui a écrit au moins une de ces lignes, la suppression échoue en 500 (`delete_user_failed`). Le bouton « Supprimer mon compte » promis par la politique de confidentialité ne marche donc pas pour les membres actifs d'une équipe.
+  2. À l'inverse, `groups.created_by` est en `ON DELETE CASCADE` : quand le **créateur** d'un groupe supprime son compte, tout le groupe disparaît pour tous ses membres (planning, scrims, sessions, rosters…), sans avertissement.
+  3. Les logos du bucket `group-logos` ne sont pas supprimés (seul `backups` est vidé).
+- **Preuve :** `pg_constraint` (`confdeltype = 'a'` pour les 9 colonnes, `'c'` pour `groups.created_by`) ; `supabase/functions/delete-account/index.ts:26-39`.
+- **Correctif :**
+  1. Migration : passer les 9 colonnes en `ON DELETE SET NULL` (colonne rendue nullable, l'interface affiche « ancien membre ») ou `CASCADE`. L'éditeur choisit entre anonymiser et supprimer ; voir le § 7 du brouillon v0.3.
+  2. Ne plus faire dépendre la vie du groupe de son créateur. Soit `groups.created_by` passe en `SET NULL` ; soit `delete-account` transmet d'abord le rôle `owner` à un autre membre du staff, et ne supprime le groupe que s'il n'y en a pas, après confirmation dans l'interface.
+  3. Test de bout en bout sur un compte de test qui a écrit dans chaque table.
+- **Session :** Back-end (migration de prod et redéploiement de la fonction : accord de l'utilisateur), Front-end (avertissement avant la suppression du compte du créateur).
+
+#### S19-17 — Les données d'équipe d'un membre sont lisibles depuis **tous** ses groupes (Moyenne, confidentialité)
+*Trouvé le 19/11 pendant la tâche #41 (Stats collectives).*
+- **Impact :** `private.can_read_player_table` (politique `sync_records_read_shared`) autorise **tout membre** d'un groupe commun, joueurs compris, à lire les lignes `Team`, `TeamMember`, `ChampionPoolEntry`, `DraftPrep` et `CustomGame` d'un autre membre, dès que `share_team` vaut vrai **ou n'est pas défini** (`coalesce(s.share_team, true)`). Le contrôle ne porte que sur « avons-nous un groupe en commun », **pas sur le groupe auquel la donnée appartient**. Un coach qui travaille avec deux équipes A et B expose donc aux joueurs de A ses rosters, son scouting d'adversaires, ses drafts et les résultats de scrims importés pour B. Une équipe rivale qui partage un coach ou un analyste peut lire la préparation de l'autre. Le partage est en plus actif par défaut, sans choix explicite.
+- **Preuve :** le corps de `private.can_read_player_table` en production, avec la branche `p_table in ('Team','TeamMember','ChampionPoolEntry','DraftPrep','CustomGame') and coalesce(s.share_team, true)`, sans condition de rôle ni de groupe sur la donnée.
+- **Correctif :**
+  1. **Court terme (migration de production, sur accord) :** passer `coalesce(s.share_team, true)` à `false`, pour un partage explicite, et réserver cette branche au staff (`viewer.role in ('owner','coach','analyst','manager')`), comme les deux autres branches.
+  2. **Fond :** les données d'équipe d'un groupe ne devraient pas transiter par les `sync_records` personnels d'un membre. Elles relèvent de tables **rattachées au groupe** (comme `team_rosters` et `team_drafts`, déjà RLS par `group_id`). Voir le plan #41.
+- **Vérifier d'abord :** si une fonction de l'app lit aujourd'hui ces lignes chez un coéquipier, la restreindre la casserait. Recherche à faire par le Back-end : lectures de `sync_records` hors `user_id = auth.uid()`.
+- **Session :** Back-end (migration de production : accord de l'utilisateur).
+
+### Verdict sécurité beta.8 (`origin/main..main`, 19/11) : **OK**
+- **Périmètre :** `4ffef1d` et la fusion `41f457c`, 14 fichiers, uniquement de l'interface (`src/pages/Management`, `src/pages/TeamSpace`, `src/components/team/TeamSection.tsx`, `NotificationBell.tsx`, routes desktop et web, i18n). Aucun changement dans `supabase/`, `prisma/`, `electron/` ou `cloudflare/` : ni nouvelle table, ni nouvelle requête Supabase, ni nouvel IPC (seul `linkTeamToGroup`, déjà existant, est réutilisé).
+- **`?tab=` dans l'URL :** la valeur est comparée à la liste des onglets visibles, et la page retombe sur l'onglet par défaut sinon. Masquer un onglet n'est qu'un confort d'interface : les données restent protégées par la RLS. `trial_candidates` et l'écriture de `tasks` sont réservés au staff, `wellbeing_checkins` n'est lisible que par son auteur ou via `can_read_wellbeing`, ce qui exige le partage. L'onglet bien-être est visible par un joueur, mais il ne peut y lire que ses propres données.
+- **Liens des notifications :** `linkOf()` ne réécrit que `'/coaching'` vers des routes internes figées. Le champ `link` vient des triggers serveur. Les utilisateurs ne peuvent pas créer de notification : pas de politique INSERT, et l'UPDATE est limité à leurs propres lignes, ce qui ne touche qu'eux. Pas d'ouverture de redirection.
+- **Pas de nouveau puits HTML :** ni `dangerouslySetInnerHTML`, ni `innerHTML`, ni `openExternal` dans ce diff.
+- **Réserves, hors beta.8 et non bloquantes pour elle :** S19-01, S19-02 et S19-03 restent ouverts.
+
+### Plan de correction #13 (priorisé, 19/11)
+
+| Ordre | Point | Qui corrige | Fichiers | Fin |
+|---|---|---|---|---|
+| 1 | **Clé OpenAI dans `.env`** (S19-06) | **Utilisateur** (révocation), puis Back-end (ménage) | `.env` (local, non suivi par git) | Clé révoquée chez OpenAI, ligne retirée, recherche à vide dans `out/` |
+| 2 | **ffmpeg sans empreinte** (S3 / SEC-4 / S19-04) | Back-end | `scripts/download-ffmpeg.mjs` | Le script refuse un zip dont le SHA-256 diffère, avant toute exécution |
+| 3 | **Textes légaux v0.1 → v0.2, puis v0.3** (L06 / S19-08) | Front-end (app), Graphic Design (site), utilisateur (validation) | `src/legal/privacy.{fr,en}.md`, `src/legal/terms.{fr,en}.md`, `site/src/legal/{confidentialite,privacy,conditions,terms}.html`, et le composant qui affiche les textes dans l'app | App et site à la même version ; points manquants ajoutés ; consentement au bien-être |
+| 4 | **Secret OAuth YouTube** (SEC-2 / § 3bis / S19-15) | Chief + utilisateur (décision), puis Back-end | `electron/main/ipc/youtube.ipc.ts`, `electron/env.d.ts`, `.env`, nouvelle `supabase/functions/youtube-oauth-exchange/index.ts` | Aucun secret côté client, lien YouTube testé avec un vrai compte |
+
+Pourquoi cet ordre : la clé OpenAI est un secret **valide** qui ne demande qu'une action de deux minutes. ffmpeg est un binaire livré à tous les utilisateurs, avec un correctif d'une dizaine de lignes. Les textes légaux sont une obligation de conformité avant toute ouverture publique. Le secret YouTube n'est **plus embarqué** dans le build actuel (S19-15) : le risque immédiat est tombé, il reste une fonction cassée à décider.
+
+**1. Clé OpenAI — étapes pour l'utilisateur**
+1. Ouvrir platform.openai.com → *API keys* (ou *Projects → API keys* si la clé est une clé de projet `sk-proj-…`).
+2. Repérer la clé à ses derniers caractères : ouvrir `.env` localement et comparer avec la fin affichée par la console, sans la coller nulle part.
+3. *Revoke* la clé. Si aucune fonction d'Ascend ne s'en sert (c'est le cas : aucun code ne lit `MAIN_VITE_OPENAI_API_KEY`), ne pas en recréer.
+4. Dans *Usage*, vérifier qu'aucune consommation inattendue n'a eu lieu, et sinon prévenir CyberSecurity.
+5. Supprimer la ligne `MAIN_VITE_OPENAI_API_KEY=` de `D:\DEV\NexusMind\NexusMind\.env` (n'importe quelle session peut le faire sur demande).
+6. Vérifier aussi les copies de `.env` éventuelles (sauvegardes, autre PC, `backups/`) et les y retirer.
+- **Règle pour la suite :** un secret ne porte jamais le préfixe `MAIN_VITE_` (déjà écrit dans `electron/env.d.ts`). CyberSecurity cherche les motifs `sk-`, `GOCSPX-`, `RGAPI-`, `ghp_` et `github_pat_` dans `out/` et `app.asar` à chaque revue avant release.
+
+**2. ffmpeg — Back-end, `scripts/download-ffmpeg.mjs`**
+1. Récupérer le SHA-256 officiel de `ffmpeg-8.1-essentials_build.zip` publié par gyan.dev (fichier `.sha256` à côté de l'archive), le confronter à celui du zip téléchargé et l'écrire en constante (`EXPECTED_ZIP_SHA256`).
+2. Après le téléchargement, calculer le SHA-256 du zip (`crypto.createHash('sha256')` en flux) et, en cas d'écart, supprimer le fichier et quitter avec une erreur. Tout cela **avant** l'extraction et avant le `spawnSync(DEST_BIN, ['-version'])` de la ligne 116.
+3. Optionnel : épingler aussi le SHA-256 de `ffmpeg.exe` extrait (référence locale du 19/11 : `1a65d5b0…13f705`, à confirmer avec l'archive officielle).
+4. Mettre à jour la constante à chaque changement de `TARGET_VERSION`, avec un commentaire qui indique où l'empreinte a été lue.
+5. Test : un zip altéré (un octet modifié) doit faire échouer `npm install`.
+
+**3. Textes légaux — Front-end (app), Graphic Design (site)**
+1. **Front-end :** remplacer `src/legal/privacy.{fr,en}.md` et `terms.{fr,en}.md` (v0.1) par le contenu de la v0.2 du site, en gardant le jargon LoL en anglais, et retirer la mention « brouillon ».
+2. **Contenu v0.3, rédigé par CyberSecurity, à valider par l'utilisateur, puis reporté par le Front-end dans l'app et par Graphic Design dans `site/src/legal/*.html`.** Ajouter :
+   - la présence aux réunions (`team_session_attendance`) ;
+   - les récompenses MVP / Grinder ;
+   - les liens publics de rapport d'équipe (`team-report/<token>` : accessibles sans connexion, avec les noms des joueurs) ;
+   - le flux calendrier `.ics` à jeton ;
+   - les logos d'équipe publics ;
+   - les micro-reviews (réponses et verdicts partagés avec le coach) ;
+   - la conservation des données de groupe après le départ d'un membre.
+3. **Bien-être (art. 9) :** le Front-end ajoute au premier check-in une case de consentement explicite au stockage et à la synchronisation, retirable dans les réglages, et le texte le mentionne. Le Back-end vérifie que retirer le consentement supprime bien les check-ins (`wellbeing_checkins`, données de prod : accord de l'utilisateur).
+4. Une seule version affichée partout (« Version 0.3 · date ») ; l'Audit vérifie la cohérence app et site avant release.
+
+**4. Secret OAuth YouTube — décision d'abord**
+- **Constat du 19/11 :** le secret n'est pas inliné (`process.env`, non remplacé par electron-vite) et il est absent de `out/` et de `app.asar`. Dans l'app installée, le lien YouTube échoue faute d'ID et de secret.
+- **Option A (rapide, recommandée si YouTube n'est pas prioritaire) :** masquer le bouton YouTube dans l'app installée tant que le flux serveur n'existe pas (Front-end, selon que `youtube:*` répond « non configuré »), et retirer `MAIN_VITE_GOOGLE_CLIENT_SECRET` de `.env`.
+- **Option B (fonction réelle) :** le plan du § 3bis, avec les étapes suivantes.
+  1. PKCE S256 dans `youtube.ipc.ts`.
+  2. Edge function `youtube-oauth-exchange` (JWT Ascend vérifié par `getUser`, secret en secret Supabase, échange et rafraîchissement).
+  3. Client Google en type « Application de bureau ».
+  4. Renommer la variable en `GOOGLE_CLIENT_SECRET`, côté serveur seulement.
+  5. Supprimer le repli `.plain` des jetons, ou au minimum avertir l'utilisateur.
+  6. Tester avec un vrai compte Google.
+  Le déploiement de la fonction et le secret Supabase relèvent de la production, donc de l'accord de l'utilisateur.
+- **Qui :** le Chief fait trancher A ou B par l'utilisateur ; le Back-end réalise (et le Front-end pour A).
+
+### Revues de livraisons
+
+#### #2 — Déconnexion et reconnexion (19/11, modifs non commitées) : **OK avec réserves non bloquantes**
+**Périmètre :** `src/lib/accessCore.ts` (`authTimeoutFetch`, `signOutThisDevice`, `authStorageKey`), `electron/main/cloud/supabase.ts` (`keychainStorage`, `forgetLocalSession`), `electron/main/ipc/cloud.ipc.ts`, `web/src/api.ts`, `web/src/supabase.ts`. Comportement d'auth-js 2.100.1 vérifié dans `GoTrueClient._signOut`.
+
+**Ce qui va :**
+- Avant le correctif, un logout serveur en échec (réseau coupé, 5xx, 429) laissait la session intacte, sur le disque comme dans l'interface. Maintenant elle est oubliée localement : c'est **mieux** pour la sécurité, notamment sur un PC partagé.
+- La clé effacée est la bonne : celle d'auth-js, plus le `-code-verifier`. Côté web, c'est `nexusmind-web-auth` dans le `localStorage`.
+- Le délai de 10 s ne s'applique qu'à `/auth/v1/`. Un refresh coupé est une erreur réessayable pour auth-js, donc pas de déconnexion intempestive.
+- Le `cloud:sign-out` reste validé par zod, sans argument.
+- Après `delete-account`, le serveur répond 401 ou 404, et auth-js efface donc lui-même.
+
+**Réserves, à corriger dans une prochaine passe et sans bloquer la release :**
+- **R1 — La déconnexion n'est pas durable si le fichier est verrouillé (desktop, basse-moyenne).** Si `deleteSecret` échoue (fichier verrouillé par un antivirus, droits), la suppression n'est retenue qu'en mémoire (`memory.set(key, null)`). Le fichier chiffré garde la session, refresh token compris. **Au prochain lancement, l'utilisateur est reconnecté.** **Correctif :** persister la déconnexion ailleurs (petit fichier marqueur, non secret, dans `userData`) et, au démarrage, si le marqueur existe, ignorer la session stockée, retenter `deleteSecret` puis effacer le marqueur ; retenter aussi au `before-quit`.
+- **R2 — La session peut réapparaître pendant un refresh (basse).** `forgetLocally` s'exécute **après** que `signOut` a relâché le verrou d'auth-js. Si le logout a échoué alors que le serveur répond aux refresh (un 5xx ou 429 ponctuel), un refresh automatique lancé entre les deux peut réécrire une session neuve juste après l'effacement. **Correctif :** `sb.auth.stopAutoRefresh()` avant `signOut`, et `startAutoRefresh()` à la prochaine connexion (dans le processus principal, qui n'a pas d'événement de visibilité) ; puis vérifier après `forgetLocally` que `getSession()` renvoie bien `null`.
+- **R3 — Un jeton reste valide côté serveur (basse, à documenter).** Le commentaire de `signOutThisDevice` dit que le jeton « expire de lui-même dans l'heure ». C'est vrai de l'**access token** (JWT, 1 h), pas du **refresh token** : la session côté serveur reste révocable et utilisable sans limite de durée, sauf réglage de durée de session (fonction Pro de Supabase). Le risque est faible tant que la seule copie est effacée, mais réel si elle avait fuité. **Correctif :**
+  1. Corriger le commentaire.
+  2. Garder l'access token en mémoire et retenter `POST /auth/v1/logout` (scope `local`) quand le réseau revient, tant que ce jeton n'a pas expiré.
+  3. Proposer dans le compte un bouton « Se déconnecter de tous les appareils » (`scope: 'global'`), le recours en cas de PC perdu.
+- **Session :** Back-end (R1, R2, R3 points 1 et 2), Front-end (R3 point 3).
+
+#### S19-16 (#29) — Migration `20261119200000_account_deletion_keeps_groups.sql` (19/11, rien en production) : **OK sur le principe, sous condition**
+**Ce qui va :**
+- Les 9 colonnes `NO ACTION` sont bien toutes couvertes (`drop not null` + `set null`). `team_session_feedback.user_id` passe en `CASCADE`, puisqu'il fait partie de la clé. `groups.created_by` passe en `SET NULL`.
+- Les contraintes sont retrouvées dans `pg_constraint`, et l'exécution s'arrête si ce n'est pas exactement une. Le bloc est idempotent dans l'esprit et sans risque si le schéma de production diffère.
+- `private.hand_over_groups_of` et le trigger sont en `SECURITY DEFINER`, avec `search_path = ''` et `EXECUTE` retiré à `public`, `anon` et `authenticated` : ils ne sont pas appelables par l'API (le schéma `private` n'est pas exposé).
+- Le trigger `BEFORE DELETE` sur `auth.users` couvre toutes les manières de supprimer un compte : la fonction, le tableau de bord, l'API admin. Il s'exécute avant la cascade de `group_members`.
+- Vérifié en production en lecture seule : **aucun trigger utilisateur** sur `group_members`, `groups` ou `auth.users`, donc rien ne bloquera la mise à jour de `role` faite sans `auth.uid()`. Les politiques qui lisent `created_by` (`scrims` insert, `vod_review_*`) ne servent qu'à l'écriture par l'auteur et tolèrent NULL.
+
+**Conditions avant la production :**
+1. **Le test n'a pas tourné** : `scripts/test-account-deletion.mjs` attend que l'utilisateur accepte le téléchargement de PGlite. Il faut un résultat vert **avant** de l'appliquer. Mieux encore, en plus : appliquer la migration sur une branche Supabase de test (payante, à la décision de l'utilisateur), puis y supprimer un compte de test qui a écrit dans chacune des 9 tables et qui est owner d'un groupe.
+2. **Successeur, à corriger (mineur) :** si le groupe a **déjà un autre owner**, la fonction promeut quand même un coach ou un joueur. Ajouter une condition : ne rien faire s'il existe un autre membre avec `role = 'owner'`. Et classer le **capitaine** (`is_captain`) avant les autres joueurs dans l'ordre de succession.
+3. **Interface :** avant la suppression de son compte, prévenir l'owner que la propriété de ses groupes sera transmise (à qui), ou que le groupe sera supprimé s'il en est le seul membre. Session : Front-end.
+
+**Avis demandé : les `created_by … ON DELETE CASCADE` sur les contenus de groupe.** Oui, c'est le même défaut que `groups.created_by` à plus petite échelle : quand un coach supprime son compte, **ses scrims, événements, rosters, drafts, annonces, tâches et reviews disparaissent pour toute l'équipe**. La règle que je recommande pour la migration suivante :
+- **Ce qui concerne la personne supprimée → `CASCADE` (effacement, art. 17).** À garder tel quel : `group_members.user_id`, `group_sharing`, `scrim_availability`, `availability_rules` et `availability_exceptions`, `wellbeing_checkins`, `notifications`, `notification_prefs`, `dev_plans.player_id`, `assigned_objectives.player_id`, `vod_review_assignments.player_id`, `staff_notes.player_id`, `review_comments.player_id`, `micro_review_answers.player_id`, `calendar_event_attendees` et `calendar_event_responses`, `team_session_attendance.user_id`, `discord_user_links`, `discord_user_link_codes`, `announcement_dismissals`, `cloud_backups`, `sync_records`, `feedback_reports`, `app_admins`.
+- **Ce que la personne a créé pour le groupe → `SET NULL` (+ `drop not null`), affiché « ancien membre ».** À passer : `scrims.created_by`, `calendar_events.created_by`, `team_rosters.created_by`, `team_scouting.created_by`, `team_drafts.created_by`, `announcements.created_by`, `tasks.created_by`, `team_codex_rules.created_by`, `vod_review_sessions.created_by`, `vod_review_comments.author_id`, `vod_review_action_items.created_by`, `review_comments.author_id`, `assigned_objectives.assigned_by`, `dev_plans.created_by`, `dev_plan_checkins.created_by`, `micro_review_verdicts.coach_id`, `trial_candidates.created_by`, `trial_evaluations.created_by`, `staff_notes.created_by`. Et surtout **`discord_guild_links.linked_by`** : en cascade, le serveur Discord de l'équipe est délié quand celui qui l'a lié s'en va.
+- **Éphémère → `CASCADE` acceptable :** `group_invites.created_by`, `access_invites.created_by`, `discord_guild_link_codes.created_by`.
+- **Réserve RGPD :** `SET NULL` anonymise l'**auteur**, pas le **texte**. Un commentaire peut nommer la personne. C'est acceptable si la politique le dit (§ 7 du brouillon v0.3 : « supprimées ou rendues anonymes », sur demande à exciid501@gmail.com). Le choix final entre anonymiser et supprimer revient à l'utilisateur.
+- Même méthode que #29 : contraintes lues dans `pg_constraint`, et un test PGlite étendu à ces tables.
+
+#### #38 — `group_members.puuid` (`20261119240000_member_puuid.sql`, non appliquée) : **OK pour l'écriture, réserve sur l'usurpation**
+- **Écrire le puuid d'un autre : impossible.** Vérifié en production : `authenticated` n'a l'UPDATE que sur des **colonnes** (`display_name`, `profile_banner`, `profile_icon`, `riot_id`, plus `puuid` avec la migration). Il n'y a pas d'UPDATE au niveau de la table. Et la politique `members_update_self_profile` impose `user_id = auth.uid()` en `using` comme en `with check`, plus `role = private.group_role(group_id)`. Un membre ne modifie donc que **sa** ligne, sans pouvoir toucher à son rôle ni au capitanat. La regex du `check` borne la valeur.
+- **Usurper un puuid : possible, comme déjà avec `riot_id`.** La valeur est déclarée par le client, et Ascend n'a aucun moyen de prouver qu'un membre possède le compte Riot (pas de RSO). Un membre peut donc publier le puuid d'un coéquipier ou d'un joueur connu. Le puuid aggrave même le cas : l'app du coach **remplace le nom affiché par le vrai Riot ID** venu de Riot (`by-puuid`), donc l'usurpateur apparaît sous le nom exact de sa victime. Il peut aussi récupérer la place, les champions et les stats d'un joueur dans l'équipe construite à partir du puuid.
+- **Correctifs proposés (Back-end, dans la même migration) :**
+  1. `create unique index … on group_members (group_id, puuid) where puuid is not null` : un puuid ne peut être porté que par un seul membre d'un groupe. Le premier arrivé le garde, et un conflit renvoie une erreur claire.
+  2. Ne pas faire confiance au puuid fourni par le client. Le **dériver côté serveur** du `riot_id` déclaré (account-v1 `by-riot-id` via le proxy, ou une RPC ou une edge function qui l'écrit). Le puuid est alors au moins cohérent avec le Riot ID que le membre affiche, au lieu d'être une valeur libre.
+  3. Côté interface : si le Riot ID renvoyé par Riot pour ce puuid diffère du `riot_id` déclaré, l'afficher avec une mention (« Riot ID mis à jour depuis Riot ») plutôt que de le remplacer en silence.
+- Vrai remède, plus tard : la connexion Riot (RSO), qui prouve que le joueur possède son compte. Elle dépend de la clé de production Riot.
+
+#### #38 (suite) — Protections contre l'usurpation (19/11, non commité, rien en production) : **OK**
+**Edge Function `verify-member-puuid` :**
+- **Un appelant ne peut vérifier que ses propres adhésions.** La fonction ne lit **aucun paramètre** : pas de corps, pas d'identifiant de groupe ni d'utilisateur. L'identité vient de `admin.auth.getUser(token)`. La lecture se fait sur `user_id = uid`, et l'écriture sur `group_id`, `user_id = uid` **et** `riot_id` tel qu'il a été lu. Si le Riot ID change entre-temps, l'écriture ne s'applique pas. `verify_jwt = false` est compensé par cette vérification, comme pour `delete-account`.
+- La résolution passe par le proxy avec le jeton de l'appelant. La fonction ne détient aucune clé Riot, et la limite de débit par compte du proxy s'applique. Le puuid renvoyé est validé par regex avant écriture. Un 404 efface le puuid. Un conflit avec l'index unique est signalé (`conflicts`) sans être écrit. Les erreurs ne renvoient pas de détail interne.
+- **Migration :** l'index unique `(group_id, puuid)` est créé, et `revoke update (puuid)` retire aux clients toute écriture de cette colonne. Le trigger `before update of riot_id` efface le puuid quand le Riot ID déclaré change, ce qui évite qu'un ancien puuid vérifié reste attaché à un nouveau nom. La mise à jour faite par la fonction, qui ne touche que `puuid`, ne déclenche pas ce trigger. `team:update-member` est maintenant validé par zod.
+
+**Risque résiduel, accepté jusqu'à la connexion Riot (RSO) :** le puuid est désormais **cohérent** avec le Riot ID déclaré, sans valeur libre et sans faux nom affiché. Mais la **déclaration** du Riot ID reste libre : un membre peut toujours déclarer le Riot ID de quelqu'un d'autre. Avec l'index unique, il peut même **occuper la place en premier**, et le vrai joueur se retrouve alors en conflit. **Atténuation à prévoir dans l'interface (Front-end) :** montrer les conflits au staff, avec les deux membres concernés, pour que l'owner retire l'imposteur. Ce n'est pas bloquant.
+
+**Fonctionnel (non sécurité) :** `collabCore` appelle la fonction avec `sb.functions.invoke`, et ce code est partagé avec le web. Dans un navigateur, l'appel envoie d'abord une requête OPTIONS de préflight, à laquelle la fonction répond 405, sans en-têtes CORS. Sur le web, la vérification échouera donc en silence (elle est « best effort »). Si elle doit marcher sur le web, ajouter la réponse OPTIONS et des en-têtes CORS limités à l'origine de la web app (Back-end).
+
+#### #38 (suite 2) — CORS de `verify-member-puuid` et `puuid_status` (19/11, non commité) : **OK**
+- **CORS :**
+  - Origines autorisées : `WEB_APP_ORIGINS` est découpé en **tableau**, et la comparaison se fait à l'égalité exacte (pas une sous-chaîne). Une autre origine reçoit 403. Sans en-tête `Origin` (le desktop, appelé depuis le processus principal), pas de CORS, ce qui est normal.
+  - Préflight : OPTIONS répond 204, avec `Vary: Origin`.
+  - La sécurité ne repose pas sur le CORS : l'authentification reste le jeton vérifié par `getUser`.
+- **Détail (basse) :** `let cors` est une variable **de module**, réécrite à chaque requête. Deux requêtes simultanées depuis deux origines autorisées différentes pourraient recevoir l'en-tête de l'autre. L'effet est seulement fonctionnel (le navigateur refuse la réponse), mais le calculer dans le handler et le passer à `json()` est plus propre.
+- **`puuid_status` :** valeurs bornées par un `check` (`verified`, `not_found`, `conflict`), `revoke update` sur `puuid` et `puuid_status`, écrit uniquement par la fonction en service role, et remis à NULL avec le puuid par le trigger quand le Riot ID change. Le conflit est maintenant **visible** dans la ligne, ce qui permet à l'interface de l'afficher au staff, comme demandé dans la suite 1.
+
+**Avis sur le CORS des autres fonctions :**
+- **`redeem-invite` (`*`) : oui, à corriger, en basse priorité.** C'est la seule fonction **non authentifiée** qui crée un compte. Avec `*`, n'importe quel site peut faire envoyer des essais de codes par les navigateurs de ses visiteurs, chacun avec **son** IP. La limite de 10 échecs par IP et par heure ne freine alors plus un brute force réparti.
+  - **Correctif (Back-end) :**
+    1. Limiter l'origine au site vitrine et à la web app.
+    2. Exiger `content-type: application/json`. Sinon, une requête « simple » en `text/plain` part sans préflight, et `req.json()` la lit quand même, donc le CORS seul ne suffit pas.
+    3. Ajouter un **plafond global** d'échecs par heure, toutes IP confondues, comme garde-fou.
+    4. Vérifier que `cf-connecting-ip` est bien fourni par l'infrastructure Supabase. Si l'en-tête manque, l'IP est lue dans `x-forwarded-for`, que le client contrôle, et la limite par IP se contourne en changeant cet en-tête.
+- **`delete-account`, `web-handoff` :** pas de CORS, donc **plus** restrictif, et ces fonctions exigent un jeton. Il n'y a rien à corriger côté sécurité. Si la web app doit appeler `delete-account`, il faudra la même liste d'origines que `verify-member-puuid` (fonctionnel).
+- **`team-report`, `team-calendar-ics` :** pages ouvertes en GET par lien ou par un client calendrier, pas appelées par `fetch` depuis un autre site. Le CORS est sans objet. Durcissement suggéré pour `team-report`, qui sert du HTML : ajouter `content-security-policy: default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'`, `x-content-type-options: nosniff` et `referrer-policy: no-referrer`, pour que le jeton ne parte pas dans le Referer.
+
+#### #44 — Durcissement des Edge Functions (19/11, non commité, rien de déployé, relu sans runtime Deno) : **OK, avec un réglage à revoir**
+- **`verify-member-puuid` :** `cors` et `json` sont maintenant calculés **pour chaque requête**. Le partage entre requêtes simultanées a disparu.
+- **`redeem-invite` :**
+  - Origines limitées à la web app et au site, comparées en égalité exacte sur un tableau, avec un 403 sinon. Pas de CORS sans `Origin`, comme pour le desktop.
+  - 415 sans `application/json`, ce qui ferme la requête « simple » en `text/plain` sans préflight.
+  - L'IP vient **seulement** de `cf-connecting-ip` : `x-forwarded-for` n'est plus utilisé. Si l'en-tête manque, un compteur commun est utilisé et un avertissement est journalisé.
+  - Le plafond global est compté sur `ok = false` de la dernière heure. Le reste est inchangé : réponses indistinctes, et code limité à un e-mail le cas échéant.
+- **`team-report` :** CSP `default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'`, plus `nosniff` et `no-referrer`, sur la page **et** sur les réponses texte (404). Le HTML reste échappé. OK.
+
+**À revoir, le plafond global de 200 échecs par heure : il protège peu et ouvre un déni de service.**
+- Les codes générés font **12** caractères (`create_access_invite`) et **10** (`create_group_invite`), sur un alphabet de 31, soit au moins 31¹⁰ ≈ 8·10¹⁴ combinaisons. Même réparti sur des milliers d'IP, le brute force reste irréaliste. La limite par IP suffit.
+- À l'inverse, **200 requêtes fausses, envoyées depuis une vingtaine d'IP** (ou sans navigateur, puisque le CORS ne gêne que les navigateurs), **bloquent toutes les inscriptions par invitation pendant une heure**.
+- **Correctif proposé (Back-end) :**
+  1. Monter le plafond (par exemple `INVITE_MAX_GLOBAL_FAILS_PER_HOUR = 5000`) pour qu'il ne serve qu'à détecter une attaque, et le surveiller dans les journaux.
+  2. Resserrer la regex `CODE` à `{10,16}`, la longueur réelle des codes, pour rejeter sans rien compter les essais trop courts.
+- **Au déploiement (Back-end) :** vérifier dans les journaux de la fonction que `cf-connecting-ip` est **bien présent**. Sinon, tous les appelants partagent le même compteur de 10 échecs par heure, ce qui crée là aussi un déni de service facile.
+- **Point bas (prochaine migration) :** les codes d'invitation sont tirés avec `random()`, qui n'est pas cryptographique. Leur longueur rend toute prédiction peu réaliste, mais `gen_random_bytes` (pgcrypto) ou `gen_random_uuid()` serait préférable.
+
+#### #39 — `docs/PROPOSITION_MULTI_ROLES.md` : avis CyberSecurity
+**Modèle : B, recommandé.** Il garde un seul point de contrôle (`has_group_role`), ne réécrit que les corps des fonctions `private.*` (les politiques restent identiques, ce qui réduit le risque d'oubli), et reste compatible avec les anciennes versions. C'est un bon choix de sécurité. Conditions :
+1. `staff_roles` ne doit **jamais** entrer dans un `grant update` à `authenticated`. Ajouter un test PGlite qui vérifie qu'un membre ne peut pas modifier sa propre colonne `staff_roles`.
+2. `set_member_staff_roles` : vérifier que `p_user` est membre de `p_group`, que l'appelant en est l'owner, avec un `check` sur les valeurs (sous-ensemble de {coach, manager, analyst}, sans doublon), et un refus sur l'owner lui-même. `SECURITY DEFINER`, `search_path` vide, exécution retirée à `anon`.
+3. **Transparence :** attribuer un rôle staff à un joueur lui ouvre des données de ses coéquipiers. Chaque changement doit envoyer une **notification au membre concerné et à l'équipe** (« X est maintenant coach du groupe »), et l'écran de partage doit **lister nommément** qui peut voir quoi.
+4. Corriger S19-17 dans la même vague : la branche « équipe » de `can_read_player_table`, sans restriction de rôle ni de groupe, deviendrait encore plus large avec des rôles multiples.
+5. Passation d'owner : d'accord avec « staff qui ne joue pas avant joueur-staff ».
+
+**Question vie privée : un joueur-coach doit-il lire le bien-être partagé de ses coéquipiers ? Avis : non, pas par défaut.**
+- Ce sont des données de **santé** (art. 9). Le consentement d'un joueur a été donné pour « le staff du groupe », c'est-à-dire, dans la compréhension de tous, un encadrement qui ne joue pas. L'étendre en silence à un **coéquipier**, qui est parfois en concurrence pour la même place, dépasse ce consentement.
+- La relation n'est pas neutre : un joueur-coach influence la composition de l'équipe. Une baisse d'humeur ou de sommeil vue par un concurrent direct peut nuire au joueur qui l'a partagée. Le principe de **minimisation** va dans le même sens.
+- **Proposition :** `can_read_wellbeing` exige un rôle staff **et** `role <> 'player'`, c'est-à-dire un staff qui ne joue pas. Si l'utilisateur veut quand même ouvrir ce cas, il faut un **second accord explicite, distinct** : une case « partager aussi avec les joueurs qui ont un rôle staff », décochée par défaut, avec les noms affichés. Le texte légal v0.3 (§ 3 bis, § 5) doit alors être mis à jour.
+- **Reviews et stats partagées** (`share_reviews`, `share_stats`) : un joueur-coach peut y accéder, puisque c'est le but du coaching. Mais deux conditions : la notification du point 3, et l'idée de remplacer le partage par défaut (`coalesce(…, true)`) par un partage explicite, plus prudent maintenant que le « staff » peut être un pair.
+
+#### #34 et E15-B (19/11, non commité, rien en production) : **OK**
+**#34, `unlink_discord_guild(p_group)` (`20261119230000_discord_unlink_guild.sql`) :**
+- `SECURITY DEFINER`, `search_path` vide ; `LOGIN_REQUIRED` sans `auth.uid()` ; `FORBIDDEN` si `private.is_group_staff(p_group)` est faux (vérifié en production : owner, coach, analyst de **ce** groupe, pour l'appelant).
+- Le DELETE ne vise que `group_id = p_group` : impossible de délier le serveur d'un autre groupe. Exécution retirée à `public` et `anon`.
+- L'IPC `discord:unlink-guild` est validé par zod (uuid) ; le preload expose seulement `discordUnlinkGuild(groupId)`.
+- **Remarque (basse) : les rôles ne sont pas les mêmes des deux côtés.** Délier depuis l'app passe par `is_group_staff` (owner, coach, **analyst**), alors que `/set-channel` dans le bot accepte owner, coach, **manager** (`CHANNEL_STAFF_ROLES`). Un manager peut donc choisir le salon mais pas délier, et un analyste l'inverse. **Suggestion :** une seule liste pour les droits Discord, de préférence `can_manage_session` ou owner, coach, manager, à appliquer aux deux côtés.
+
+**E15-B, canaux `clip:set-youtube` et `clip:set-temp-share` retirés :** aucun handler ni exposition dans le preload ne subsiste (recherche dans `electron/`, `src/` et `web/src/`). `recording:set-youtube` reste en place, il est utilisé et validé par zod (`youtubeUrlSchema`). Moins de surface IPC : c'est OK.
+
+#### Compléments ffmpeg (19/11, non commité) : **OK**
+- `EXE_SHA256` est épinglé et `.verified.json` est supprimé : la confiance ne repose plus sur un fichier local réécrivable. Le téléchargement compare le zip **puis** le binaire extrait aux deux constantes, et refuse en cas d'écart.
+- Hors ligne : avertissement et sortie 0, sans rien installer. C'est acceptable, puisque la release vérifie de son côté.
+- `psQuote` double les apostrophes : OK.
+- `release.ps1` lit `EXE_SHA256` dans le script (source unique, regex stricte sur 64 caractères hexadécimaux), calcule l'empreinte de `resources/ffmpeg-bin/win-x64/ffmpeg.exe` et **refuse de builder** en cas d'écart. Seul `-PublishOnly` saute ce contrôle, et il ne build pas.
+- `owner` et `repo` sont ajoutés dans `electron-builder.yml` : c'est neutre pour la sécurité. Bon point : la mise à jour automatique vise explicitement le bon dépôt.
+- **Empreinte du binaire épinglée sur la copie locale, pas encore confirmée :** c'est acceptable **en attendant**. Le zip d'origine n'a pas changé depuis le 17/03 (GitHub, `updated_at`), et la copie locale en vient très probablement. Le premier vrai téléchargement fera office de contrôle automatique : il refusera si le binaire extrait diffère de la constante. **Condition :** faire ce téléchargement de contrôle **avant la prochaine release publique**. S'il échoue sur l'empreinte du binaire, ne pas publier et me prévenir.
+- **Reste (basse) :** `npm run dist` et `dist:dir` appellent `electron-builder` sans passer par `release.ps1`, donc sans le contrôle de ffmpeg. Ils ne publient rien (`--publish never`), mais un installeur fait ainsi pourrait être partagé à la main. Suggestion : un `predist` qui lance la même vérification (Back-end).
+
+#### Consentement au bien-être — `20261119220000_wellbeing_consent.sql` (19/11, rien en production) : **OK, 3 remarques non bloquantes**
+**Ce qui va :**
+- `wellbeing_consent_events` est en ajout seul. Seule la lecture de ses propres lignes est permise, sans politique d'écriture, et INSERT, UPDATE et DELETE sont retirés à `anon` et `authenticated`. La seule écriture passe par `set_wellbeing_consent`.
+- L'horodatage est fait par le serveur, la version est contrôlée par regex, et l'historique est supprimé avec le compte (`cascade`). La preuve du consentement est donc solide.
+- `set_wellbeing_consent` : `SECURITY DEFINER` et `search_path` vide, refus sans `auth.uid()`, n'agit que sur l'appelant. Le retrait supprime **dans la même transaction** les check-ins et coupe `share_wellbeing` partout. Exécution retirée à `anon`.
+- Un INSERT de check-in exige le consentement en cours. La lecture, la modification et la suppression de ses propres check-ins restent ouvertes (supprimer doit marcher sans consentement).
+- IPC : `wellbeing:consent-get` et `consent-set` sont validés par zod (`z.boolean()` et `z.literal('v0.3')`). Aucune copie locale des check-ins (rien dans Prisma ni `sync_records`) : la suppression côté serveur est complète.
+
+**Remarques :**
+1. **`private.has_wellbeing_consent(p_user)` accepte un utilisateur quelconque** et elle est accordée à `authenticated`. Elle n'est pas appelable par l'API (le schéma `private` n'est pas exposé), mais elle répondrait pour n'importe qui. **Suggestion :** retirer le paramètre et utiliser `auth.uid()` dans le corps, puisque la politique ne l'appelle qu'avec `auth.uid()`.
+2. **`share_wellbeing` peut être activé sans consentement** (politique de `group_sharing`). C'est sans effet aujourd'hui, puisqu'il n'y a aucun check-in, mais c'est incohérent avec le § 3 bis (le partage est un **second** accord). **Suggestion :** l'interface refuse d'activer le partage tant que le consentement manque, et éventuellement un `check` côté serveur.
+3. **La check-in déjà en production (1 ligne) n'a pas de consentement.** La migration ne la touche pas. Il faut appliquer la règle C.5 du brouillon v0.3 : demander l'accord à la prochaine ouverture, et supprimer la check-in en cas de refus. Ou, plus simple, la supprimer au moment de la mise en production, avec l'accord de l'utilisateur.
+
+#### #13 point 2 — Empreinte de ffmpeg (S3 / SEC-4 / S19-04) (19/11, non commité) : **OK, avec 2 compléments avant la release**
+**Périmètre :** `scripts/download-ffmpeg.mjs`, `tests/unit/downloadFfmpeg.test.ts` (relancé par CyberSecurity : 4/4 OK).
+
+**La source du digest est fiable.** Vérifiée par CyberSecurity avec `gh api repos/GyanD/codexffmpeg/releases/tags/8.1` (lecture publique) :
+- l'asset fait 108 771 139 octets, et son digest `sha256:8748283d…63c6` est identique à la constante ;
+- il a été envoyé par `GyanD` le 2026-03-17 entre 05:26:56 et 05:28:06 (`created_at` et `updated_at`), avec une release publiée à 05:37:37 ;
+- **il n'a pas été modifié depuis.** Le digest est calculé par GitHub à l'envoi, pas déclaré par l'éditeur. Il ne protège pas contre un fichier piégé **dès l'origine** (aucune autre source pour la 8.1, puisque gyan.dev ne liste que la version en cours), mais il bloque tout remplacement ultérieur, ce qui était le risque visé.
+
+**Ce qui va :**
+- Le zip est vérifié **avant** l'extraction et avant toute exécution. En cas d'écart : arrêt avec code 1 et nettoyage.
+- Un `ffmpeg.exe` déjà présent n'est jamais lancé avant d'être comparé à son empreinte.
+- Une redirection vers `http:` est refusée par `https.get`.
+- Les tests couvrent le refus, l'absence d'enregistrement, l'écart d'empreinte et le binaire conservé.
+
+**Compléments demandés :**
+1. **Épingler aussi l'empreinte de `ffmpeg.exe` dans le script** (moyenne-basse). `ffmpeg.exe.verified.json` est rangé à côté du binaire, avec le même niveau de confiance : quiconque peut remplacer le binaire peut réécrire l'enregistrement (il suffit d'y recopier la constante du zip et le hash de son propre binaire). L'enregistrement détecte donc un accident, pas une falsification locale. **Correctif :** après le re-téléchargement de contrôle, ajouter une constante `EXE_SHA256` et faire comparer le binaire à **cette constante**. L'enregistrement devient inutile, ou sert seulement à éviter de recalculer. **Recoupement utile :** le binaire actuel, installé avant le 19/11, a l'empreinte `1a65d5b0…13f705`. Si le contrôle redonne la même, deux téléchargements faits à des dates différentes concordent.
+2. **Machines hors ligne et build :** aujourd'hui, le `ffmpeg.exe` local n'a **pas** d'enregistrement. Le prochain `npm install` voudra donc tout re-télécharger, et **échouera hors ligne** (postinstall en code 1, donc `npm install` en échec). Pour la sécurité, ce refus est le bon comportement. Pour éviter de bloquer le travail sans affaiblir le build, il faut séparer deux choses :
+   - **postinstall hors ligne :** se contenter d'un avertissement (« ffmpeg non vérifié, lancez `node scripts/download-ffmpeg.mjs` ou fournissez `NXM_FFMPEG_ZIP` ») au lieu d'un échec ;
+   - **`scripts/release.ps1` :** **refuser de builder** si `resources/ffmpeg-bin/win-x64/ffmpeg.exe` n'a pas l'empreinte épinglée (point 1). C'est **cette** vérification qui protège les utilisateurs, puisqu'`electron-builder` embarque le fichier sans contrôle. Aujourd'hui, `release.ps1` ne vérifie rien sur ffmpeg.
+3. **Détail (basse) :** `Expand-Archive -LiteralPath '${zipPath}'` est construit dans une commande PowerShell entre apostrophes. Un chemin `%TEMP%` qui contient une apostrophe (nom d'utilisateur comme « O'Brien ») ferait échouer l'extraction. Il n'y a pas de risque d'injection venant d'un tiers, mais il vaut mieux doubler les apostrophes (`replace(/'/g, "''")`).
+- **Sessions :** Back-end (1, 2 et 3). Le re-téléchargement de contrôle (108 Mo) attend l'accord de l'utilisateur.
+
+#### #32 — Bouton « Se déconnecter de tous les appareils » (19/11, non commité) : **OK**
+**Périmètre :** `src/components/Cloud/SignOutEverywhereButton.tsx`, `CloudAccountCard.tsx` (desktop), `web/src/pages/AccountPage.tsx`, `electron/preload/index.ts:265`, `src/lib/ipc.ts:482`, i18n FR et EN.
+
+**Ce qui va :**
+- La chaîne est complète : preload, `cloud:sign-out-everywhere` (zod, `scope: 'global'`), et `webApi.cloudSignOutEverywhere` côté web (`window.api = webApi`). Le point 3 de R3 est fait.
+- Le bouton passe par une confirmation. En cas d'erreur, il affiche honnêtement « aucun appareil n'a été déconnecté » au lieu de faire croire que l'opération a réussi. Il est masqué si l'API manque.
+- En cas de succès, auth-js efface la session locale et l'écran de connexion prend le relais, sur le desktop par l'événement `SIGNED_OUT` (le marqueur R1 est aussi géré par `removeItem`).
+
+**Note, basse :** `scope: 'global'` révoque les **refresh tokens** de toutes les sessions. Mais un **access token** déjà émis sur un autre appareil reste accepté par PostgREST jusqu'à son expiration, une heure au plus, car les JWT ne sont pas revérifiés à chaque requête. Le texte « devront se reconnecter » est donc juste, mais pas forcément immédiat. Suggestion pour le Front-end : ajouter « (au plus tard dans l'heure) » à la description. Je ne demande pas d'autre changement.
+
+**Non vérifié :** le web n'a pas été essayé dans un navigateur. Le code est le même composant, mais à tester avant la release avec un compte de test.
+
+#### #29 (suite) et #33 — Transfert de propriété et contenus de groupe (19/11, rien en production) : **OK, test PGlite toujours requis**
+**#29, `hand_over_groups_of` : OK.**
+- S'il existe déjà un autre owner, personne n'est promu et `groups.created_by` passe au plus ancien des owners restants.
+- Sinon, l'ordre de succession est coach, manager, analyste, puis capitaine (`is_captain desc` parmi les autres), puis le joueur le plus ancien.
+- Le groupe n'est supprimé que si personne d'autre n'y est membre. Mes conditions 2 et 3 (cette dernière côté interface) sont prises en compte.
+
+**#33, `20261119210000_account_deletion_keeps_group_content.sql` : OK, avec un ajout demandé.**
+- **Vérifié en production, en lecture seule :** chacune des 20 colonnes a exactement **une** FK vers `auth.users`, donc la migration ne s'arrêtera pas. Aucune ne fait partie d'une clé primaire, et aucune contrainte `CHECK` ne porte sur elles. Une seule est dans une contrainte unique : `micro_review_verdicts (answer_id, coach_id)`, ce qui ne pose pas de problème, puisque PostgreSQL considère les NULL comme distincts.
+- **Restent en `CASCADE`, comme prévu :** les données personnelles, les invitations et les codes.
+- **Ajout demandé, les lignes orphelines :** une fois l'auteur à NULL, certaines lignes ne peuvent plus être modifiées ni supprimées par personne.
+  - `micro_review_verdicts` : le DELETE et l'UPDATE ne sont permis qu'à `coach_id = auth.uid()`. Le verdict d'un coach parti resterait **figé pour toujours**, et le joueur ne pourrait pas faire retirer un verdict faux.
+  - **Correctif :** dans la même migration, une politique DELETE `coach_id is null and private.is_group_staff(group_id)`.
+  - `review_comments` : seul l'owner du groupe peut supprimer un commentaire orphelin (le joueur peut encore le modifier). C'est acceptable.
+  - `vod_review_comments` et `vod_review_action_items` : le staff peut les supprimer. C'est OK.
+- **Interface :** les types côté client déclarent `createdBy`, `authorId` et `coachId` en `string` (`announcementsCore`, `calendarCore`, `teamOpsCore`, `trialsCore`, `devPlanCore`, `microReviewCloudCore`…). Il faut les passer en `string | null` et afficher « ancien membre », sinon un écran peut planter ou afficher « undefined ». Sessions : Back-end (types), Front-end (affichage).
+- **Avant la production (inchangé) :** `scripts/test-account-deletion.mjs` doit tourner et passer. Il couvre les deux migrations, mais attend que l'utilisateur accepte le téléchargement de PGlite.
+
+#### #2 (suite) — Réserves R1 à R3 et déconnexion de tous les appareils (19/11, non commité) : **OK, à un point près**
+**Périmètre :** `electron/main/cloud/supabase.ts`, `electron/main/index.ts` (`before-quit`), `electron/main/ipc/cloud.ipc.ts`, `src/lib/accessCore.ts` (`signOutThisDevice`, `retryRevoke`, `scheduleRevokeRetry`), `web/src/api.ts`. Tests relancés par CyberSecurity : `accessCore`, `authSignOutFlow` et `desktopAuthStorage`, 36/36 OK.
+
+- **R1, levée.** `signout-pending.json` ne contient que les **noms** des clés de stockage, aucun secret, et le JSON est lu de façon défensive. Il est relu dans `getSupabase()` **avant** que le client ne lise la session. Un effacement qui échoue encore garde la session ignorée (`memory = null`). Nouvel essai au `before-quit`. Le marqueur est retiré quand une nouvelle session est écrite avec succès : c'est juste, puisque l'écriture a écrasé l'ancien fichier.
+- **R2, levée.** `stopAutoRefresh()` avant `signOut`, puis une relecture de `getSession()` qui efface à nouveau s'il reste une session. `startAutoRefresh()` est différé sur `SIGNED_IN`, hors du callback d'auth-js. Côté web, l'auto-refresh se relance aussi quand l'onglet redevient visible : c'est sans conséquence, puisque le stockage est déjà vide.
+- **R3, levée, avec une limite.** L'access token à révoquer reste **en mémoire uniquement**, sans écriture sur le disque. `POST /auth/v1/logout?scope=local` est retenté toutes les 60 s tant que le jeton n'a pas expiré, et à l'événement `online` sur le web. Les réponses 401, 403 et 404 sont traitées comme terminées. Le délai de 10 s s'applique, et deux essais ne peuvent pas se chevaucher. **Limite acceptée :** si l'app se ferme ou si l'onglet web est fermé avant que le serveur ait été joint, la session reste ouverte côté serveur. Seule la copie locale a disparu, donc le risque est faible, et le recours est le bouton ci-dessous.
+- **Déconnexion de tous les appareils : incomplète.** `cloud:sign-out-everywhere` est enregistré (validé par zod, `scope: 'global'`, erreur si le serveur n'est pas joint, ce qui est bien). Mais il **n'est pas exposé dans `electron/preload/index.ts`** ni dans `src/lib/ipc.ts`, et aucun écran n'appelle `cloudSignOutEverywhere`, ni sur le desktop ni sur le web. Le recours en cas de PC perdu n'est donc pas encore utilisable. **À faire :** le Back-end expose l'IPC dans le preload, puis le Front-end ajoute le bouton dans Compte (desktop et web), avec une confirmation et un message d'erreur clair hors ligne.
+
+#### WSC-06 — Le bot ne lit plus toute la table `team_pool_entries` (19/11, modifs non commitées) : **OK**
+**Périmètre :** `src/lib/teamCore.ts` (`getSharedTeam`, `fetchPoolRows`, `getGroupRosterUserIds`, `fetchPoolsByRosterIds`) et `cloudflare/discord-bot/src/index.ts`.
+
+**Ce qui va :**
+- `getSharedTeam` ne lit plus la table entière : seulement les lignes de pool des `roster_id` du groupe, avec `.in()` par lots de 100, sur l'index `team_pool_entries_roster_idx`. Le filtre `rosterIds.has()` reste en défense en profondeur.
+- Le cron du bot ne lit plus que les `user_id` du roster du groupe (`scouting_id is null`, index `team_rosters_group_idx`) : ni pools, ni drafts, ni scouting. Avec le rôle service, le volume lu à chaque passage n'est plus proportionnel à toutes les équipes.
+- Le comportement n'est pas réduit : les remplaçants y sont, les adversaires scoutés en sont exclus, ce qui est plus juste qu'avant.
+- J'ai aussi relu les autres lectures du bot en service_role : toutes sont filtrées par `group_id`, `guild_id`, `event_id` ou `user_id`. Seule `listPendingDirectNotifications` lit les notifications de tous les utilisateurs, mais elle est limitée aux types envoyés en message privé et aux dernières 24 h, et chacun ne reçoit que les siennes. C'est voulu.
+
+**Suggestion (minime, non bloquante) :** `handleCommonAvailability` et `handleScrims` appellent encore `getSharedTeam`, qui charge aussi pools et drafts alors qu'ils n'en ont pas besoin. Utiliser `getGroupRosterUserIds` pour le premier, et une lecture roster + scouting pour le second, réduirait encore ce que la clé service lit, par minimisation. À regrouper avec S19-03, qui touche le même fichier.
+
+#### S19-03 — Autorisations du bot Discord (19/11, modifs non commitées, rien de déployé) : **OK**
+**Périmètre :** `cloudflare/discord-bot/src/handlers.ts`, `cloudflare/discord-bot/scripts/register-commands.mjs`, `src/lib/discordBotCore.ts` (`getGroupMemberRole`, `canManageDiscordServer`, `isChannelStaffRole`), `src/lib/teamCore.ts` (options de `getSharedTeam`), `tests/unit/discordBotHandlers.test.ts` (8 cas, couvrant `away` et `back` refusés à un non-membre, et le masque de permissions).
+
+**Ce qui va :**
+- `/availability` : le contrôle d'appartenance au groupe (`group_members`) passe **avant** toute lecture d'option ou toute écriture, pour `away` comme pour `back`. La faille S19-03 est fermée.
+- `/set-channel` : accepté avec Gérer le serveur ou Administrateur, lus dans `member.permissions`. Ce champ est fiable : il fait partie du corps signé Ed25519 et c'est Discord qui le calcule. Sinon, il faut être owner, coach ou manager du groupe, via le compte Discord lié. Le masque de bits est lu en `BigInt` avec une regex numérique, et toute valeur absente ou invalide est refusée.
+- `default_member_permissions = Manage Server` sur `/link-team` et `/set-channel` : la commande est cachée par défaut, et le handler revérifie pour `/set-channel`.
+- Minimisation : `/common-availability` passe par `getGroupRosterUserIds`, `/scrims` par `getSharedTeam` sans pools ni drafts.
+- Codes de liaison : 6 caractères sur un alphabet de 31 (environ 8,9·10⁸ combinaisons), tirés par `crypto.getRandomValues` sans biais, valables 15 min (serveur) ou 10 min (utilisateur), à usage unique. Le brute force n'est pas réaliste vu les limites de débit de Discord.
+
+**Réserve (basse, non bloquante) :** `handleLinkTeam` ne revérifie pas les permissions : il ne compte que sur `default_member_permissions`, que les admins d'un serveur peuvent élargir. Et `redeemGuildLinkCode` fait un `upsert` sur `guild_id` : quelqu'un qui détient un code valide **pour son propre groupe** et peut lancer la commande peut **re-lier un serveur déjà lié** à un autre groupe. Les rappels de l'équipe d'origine s'arrêtent alors, et `/availability` vise l'autre groupe. Avec les permissions par défaut, seuls les admins du serveur le peuvent, donc le risque est faible. **Correctif :** dans `handleLinkTeam`, exiger `canManageDiscordServer`, et refuser de remplacer un lien existant vers un **autre** groupe sans cette permission (ou demander de délier d'abord).
+
+**Au déploiement :** relancer `scripts/register-commands.mjs`, sinon les `default_member_permissions` ne s'appliquent pas aux commandes déjà enregistrées. Puis redéployer le worker, avec l'accord de l'utilisateur.
+
+### Revue avant release (règle permanente)
+À chaque livraison, CyberSecurity vérifie : advisors Supabase (sécurité), RLS des nouvelles tables et fonctions, `npm audit` (aucune nouvelle haute en exécution), présence de secrets dans `out/` et `app.asar`, CSP inchangée ou justifiée, nouveaux IPC validés par zod, et rend son verdict au Chief.

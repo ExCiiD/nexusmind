@@ -55,7 +55,10 @@ async function doSync(group: Group): Promise<Team> {
   const plan = planGroupTeamSync(group.members, current, (k) => lanes.get(k))
   for (const id of plan.remove) await window.api.removeTeamMember(id)
   for (const m of plan.add) await window.api.addTeamMember(team.id, { ...m, region })
-  if ((plan.add.length || plan.remove.length) && isLegacyStaff(group.myRole)) {
+  // #38: a player who renamed their Riot account (same puuid) keeps their team
+  // member (history, pool, stats) — updated in place, not removed and re-added.
+  for (const { id, ...change } of plan.update) await window.api.updateTeamMember(id, change)
+  if ((plan.add.length || plan.remove.length || plan.update.length) && isLegacyStaff(group.myRole)) {
     window.api.teamPublishToGroup?.(group.id, team.id).catch(() => { /* retried on the next change */ })
   }
   return team

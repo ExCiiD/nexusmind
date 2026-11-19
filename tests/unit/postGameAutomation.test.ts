@@ -140,6 +140,44 @@ describe('MX2 + MX5 — prefetchGameAnalysis', () => {
     await prefetchGameAnalysis(badOffset.id)
     expect(await prisma.bookmark.count()).toBe(1)
   })
+
+  it('parses the cached timeline once for the events and the mistakes together (E09)', async () => {
+    const prisma = getPrisma()
+    const game = await prisma.game.create({
+      data: { sessionId, matchId: 'EUW1_POSTGAME_PARSE', champion: 'Renekton', role: 'TOP', kills: 1, deaths: 3, assists: 2, cs: 150, visionScore: 10, duration: 1800, win: false, gameEndAt: new Date() },
+    })
+    const timelineJson = JSON.stringify(severeDeathTimeline())
+    await prisma.matchCache.create({ data: { matchId: 'EUW1_POSTGAME_PARSE', matchJson: JSON.stringify(baseMatch), timelineJson } })
+    const original = JSON.parse
+    let timelineParses = 0
+    JSON.parse = ((text: string, reviver?: any) => {
+      if (text === timelineJson) timelineParses++
+      return original(text, reviver)
+    }) as typeof JSON.parse
+    try {
+      await prefetchGameAnalysis(game.id)
+    } finally {
+      JSON.parse = original
+    }
+    expect(timelineParses).toBe(1) // 3 before E09: the diagnostics, the event extractor, the mistake detector
+    expect(await prisma.mistake.count({ where: { gameId: game.id, autoDetected: true } })).toBeGreaterThan(0)
+  })
+
+  it('the Auto-detect button (mistake:auto-detect) bookmarks severity-3 mistakes too (E11)', async () => {
+    const prisma = getPrisma()
+    const game = await prisma.game.create({
+      data: { sessionId, matchId: 'EUW1_POSTGAME_BTN', champion: 'Renekton', role: 'TOP', kills: 1, deaths: 3, assists: 2, cs: 150, visionScore: 10, duration: 1800, win: false, gameEndAt: new Date() },
+    })
+    await prisma.matchCache.create({ data: { matchId: 'EUW1_POSTGAME_BTN', matchJson: JSON.stringify(baseMatch), timelineJson: JSON.stringify(severeDeathTimeline()) } })
+    const recording = await prisma.recording.create({ data: { gameId: game.id, filePath: 'C:/fake/rec-btn.mp4', startOffsetSec: 5 } })
+    const res = await invoke('mistake:auto-detect', game.id)
+    expect(res).toMatchObject({ reason: 'ok' })
+    expect(res.created).toBeGreaterThan(0)
+    expect(await prisma.bookmark.count({ where: { recordingId: recording.id } })).toBe(1)
+    // A second click repeats nothing.
+    expect(await invoke('mistake:auto-detect', game.id)).toMatchObject({ created: 0, reason: 'ok' })
+    expect(await prisma.bookmark.count({ where: { recordingId: recording.id } })).toBe(1)
+  })
 })
 
 describe('R1 — review:prefilled-notes', () => {
@@ -249,6 +287,17 @@ describe('MX3 — learned severity threshold', () => {
 
     const { mistake: learned } = await newSevereGoldGame('EUW1_MX3_learned')
     expect(learned.severity).toBe(2) // 3 (base) - 1 (learned)
+  })
+
+  it('the Auto-detect button keeps the learned severity (E11)', async () => {
+    const prisma = getPrisma()
+    const game = await prisma.game.create({
+      data: { sessionId, matchId: 'EUW1_MX3_click', champion: 'Renekton', role: 'TOP', kills: 1, deaths: 3, assists: 2, cs: 150, visionScore: 10, duration: 1800, win: false, gameEndAt: new Date() },
+    })
+    await prisma.matchCache.create({ data: { matchId: 'EUW1_MX3_click', matchJson: JSON.stringify(baseMatch), timelineJson: JSON.stringify(severeDeathTimeline()) } })
+    expect(await invoke('mistake:auto-detect', game.id)).toMatchObject({ reason: 'ok' })
+    const mistake = await prisma.mistake.findFirstOrThrow({ where: { gameId: game.id, tag: { slug: 'unused-gold' } } })
+    expect(mistake.severity).toBe(2) // was 3 before E11: the button ignored the learned delta
   })
 
   it('never lowers severity for a manually-created mistake, and leaves other tags untouched', async () => {

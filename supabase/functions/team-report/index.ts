@@ -88,20 +88,29 @@ function renderPage(groupName: string, generatedAt: string, report: TeamWeeklyRe
 </html>`
 }
 
+// The page is static HTML with inline styles only (no script, image or link). Strict headers: nothing can run or
+// load, it cannot be framed, and the share token in the URL never leaves in a Referer (CyberSecurity, 19/11/2026).
+const SECURITY_HEADERS = {
+  'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'no-referrer',
+}
+const text = (body: string, status: number) => new Response(body, { status, headers: { 'content-type': 'text/plain; charset=utf-8', ...SECURITY_HEADERS } })
+
 Deno.serve(async (req) => {
-  if (req.method !== 'GET') return new Response('method not allowed', { status: 405 })
+  if (req.method !== 'GET') return text('method not allowed', 405)
 
   const url = new URL(req.url)
   const token = url.pathname.split('/').filter(Boolean).pop() ?? ''
-  if (!TOKEN.test(token)) return new Response('not found', { status: 404 })
+  if (!TOKEN.test(token)) return text('not found', 404)
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 
   const { data: share } = await admin.from('report_shares').select('group_name, report, created_at').eq('token', token).maybeSingle()
-  if (!share) return new Response('not found', { status: 404 })
+  if (!share) return text('not found', 404)
 
   const html = renderPage(share.group_name, share.created_at, share.report as TeamWeeklyReport)
-  return new Response(html, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache, max-age=0' } })
+  return new Response(html, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache, max-age=0', ...SECURITY_HEADERS } })
 })

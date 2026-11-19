@@ -2,8 +2,8 @@
  * MX5 — auto-bookmark severity-3 mistakes with a linked recording, at
  * `t − 15s` so the clip includes the lead-up, not just the moment itself.
  *
- * Pure planning logic only (no IO): `autoDetectMistakesSilently` in
- * stats.ipc.ts calls `planAutoBookmarks` with the newly-created mistakes and
+ * Pure planning logic only (no IO): `autoDetectMistakes` in
+ * mistakeAutoDetect.ts calls `planAutoBookmarks` with the newly-created mistakes and
  * turns the plan into `Bookmark` rows.
  *
  * Trust gate: we only know a mistake's position in the VIDEO when

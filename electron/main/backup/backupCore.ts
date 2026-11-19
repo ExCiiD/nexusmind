@@ -12,8 +12,10 @@ import { getPrisma, getPrismaNamespace } from '../database'
  * only columns that exist in the current schema are written, so a backup
  * made by a newer or older version still imports.
  *
- * Never included: video files, Riot MatchCache in cloud backups
- * (re-downloadable, ~100 KB per match), Discord webhook URLs (secrets).
+ * Never included: video files, the Riot MatchCache (re-downloadable, ~100 KB
+ * to 2 MB per match: it made exports huge and could exceed the largest string
+ * V8 can build, audit E06 / decision M of 19/11/2026), Discord webhook URLs
+ * (secrets). Older files that contain a MatchCache still import it.
  */
 
 export const BACKUP_VERSION = 2
@@ -60,8 +62,10 @@ interface TableSpec {
   nullify?: string[]
   /** Runs after a successful create. */
   after?: (row: any, ctx: ImportContext) => Promise<void>
-  /** Included in cloud backups? (file exports always include everything listed). */
+  /** Included in cloud backups? */
   cloud?: boolean
+  /** false: never exported (file or cloud), still imported from older files. */
+  exported?: boolean
 }
 
 interface ImportContext {
@@ -78,7 +82,7 @@ const TABLES: TableSpec[] = [
   { model: 'Account', userField: 'userId', existing: (r) => ({ puuid: r.puuid }) },
   { model: 'Session', userField: 'userId' },
   { model: 'Game', parents: { sessionId: 'Session' }, existing: (r) => ({ matchId: r.matchId }) },
-  { model: 'MatchCache', existing: (r) => ({ matchId: r.matchId }), cloud: false },
+  { model: 'MatchCache', existing: (r) => ({ matchId: r.matchId }), cloud: false, exported: false },
   { model: 'GameDetailedStats', parents: { gameId: 'Game' }, existing: (r, c) => ({ gameId: mapId(c, 'Game', r.gameId) }) },
   {
     model: 'Review',
@@ -162,6 +166,7 @@ export async function buildBackupPayload(opts: { forCloud: boolean }): Promise<B
 
   const tables: Record<string, any[]> = { User: [user] }
   for (const spec of TABLES) {
+    if (spec.exported === false) continue
     if (opts.forCloud && spec.cloud === false) continue
     tables[spec.model] = await delegateFor(spec.model).findMany()
   }

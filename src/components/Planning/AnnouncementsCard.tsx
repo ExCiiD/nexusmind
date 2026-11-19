@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/useToast'
 import { collabErrorKey } from '@/lib/collab'
 import { cn } from '@/lib/utils'
 import type { Announcement } from '@/lib/announcements'
+import type { NameOf } from '@/hooks/useCollab'
 
 /** Phase 2 (Planning rework §9): announcements, now part of Planning and
  *  gated by canEditCalendar instead of the old is_group_staff — see
@@ -15,7 +16,7 @@ import type { Announcement } from '@/lib/announcements'
  *  notification everywhere else in the app.
  *  Redesign 17/11/2026: a compact strip showing the pinned (or latest)
  *  announcement; the composer and the full list open on demand. */
-export function AnnouncementsCard({ groupId, canEdit, nameOf }: { groupId: string; canEdit: boolean; nameOf: (id: string) => string }) {
+export function AnnouncementsCard({ groupId, canEdit, nameOf }: { groupId: string; canEdit: boolean; nameOf: NameOf }) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const [items, setItems] = useState<Announcement[] | null>(null)

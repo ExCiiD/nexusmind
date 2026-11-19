@@ -63,6 +63,10 @@ const NOT_APPLYING = `(SELECT applying FROM "_sync_control" WHERE id = 1) = 0`
  * Creates the local bookkeeping tables and change-tracking triggers.
  * Idempotent; runs at every start. Triggers catch every write, including
  * raw SQL, so no IPC handler needs to know about sync.
+ *
+ * Audit E04 (19/11/2026): it used to send ~130 DROP / CREATE TRIGGER IF (NOT) EXISTS statements on every
+ * launch, before the window. sqlite_master is now read once, and only a missing trigger is created, or an
+ * old one dropped: none on a normal launch.
  */
 export async function ensureLocalSyncTables(prisma: PrismaClient): Promise<void> {
   const exec = (sql: string) => prisma.$executeRawUnsafe(sql)
@@ -75,9 +79,11 @@ export async function ensureLocalSyncTables(prisma: PrismaClient): Promise<void>
   await exec(`CREATE TABLE IF NOT EXISTS "_sync_idmap" ("table_name" TEXT NOT NULL, "remote_id" TEXT NOT NULL, "local_id" TEXT NOT NULL, PRIMARY KEY ("table_name", "remote_id"))`)
   await exec(`CREATE TABLE IF NOT EXISTS "_sync_inbox" ("table_name" TEXT NOT NULL, "record_id" TEXT NOT NULL, "payload" TEXT NOT NULL, PRIMARY KEY ("table_name", "record_id"))`)
 
-  const existing = new Set(
-    (await prisma.$queryRawUnsafe<{ name: string }[]>(`SELECT name FROM sqlite_master WHERE type = 'table'`)).map((r) => r.name),
+  const schema = await prisma.$queryRawUnsafe<{ type: string; name: string }[]>(
+    `SELECT type, name FROM sqlite_master WHERE type IN ('table', 'trigger')`,
   )
+  const existing = new Set(schema.filter((r) => r.type === 'table').map((r) => r.name))
+  const triggers = new Set(schema.filter((r) => r.type === 'trigger').map((r) => r.name))
   for (const { table } of SYNC_TABLES) {
     if (!existing.has(table)) continue
     // v1 triggers used INSERT OR REPLACE, but SQLite lets the OUTER
@@ -85,12 +91,18 @@ export async function ensureLocalSyncTables(prisma: PrismaClient): Promise<void>
     // upsert (INSERT … ON CONFLICT DO UPDATE) the REPLACE became ABORT and the
     // user's write failed when the row was already queued. DELETE + INSERT
     // never conflicts.
-    for (const op of ['ins', 'upd', 'del']) await exec(`DROP TRIGGER IF EXISTS "_sync_${table}_${op}"`)
+    for (const op of ['ins', 'upd', 'del']) {
+      if (triggers.has(`_sync_${table}_${op}`)) await exec(`DROP TRIGGER IF EXISTS "_sync_${table}_${op}"`)
+    }
     const track = (row: 'NEW' | 'OLD') =>
       `DELETE FROM "_sync_outbox" WHERE "table_name" = '${table}' AND "record_id" = ${row}."id";` +
       ` INSERT INTO "_sync_outbox" ("table_name", "record_id", "changed_at") VALUES ('${table}', ${row}."id", ${NOW_ISO});`
-    await exec(`CREATE TRIGGER IF NOT EXISTS "_sync_${table}_ins_v2" AFTER INSERT ON "${table}" WHEN ${NOT_APPLYING} BEGIN ${track('NEW')} END`)
-    await exec(`CREATE TRIGGER IF NOT EXISTS "_sync_${table}_upd_v2" AFTER UPDATE ON "${table}" WHEN ${NOT_APPLYING} BEGIN ${track('NEW')} END`)
-    await exec(`CREATE TRIGGER IF NOT EXISTS "_sync_${table}_del_v2" AFTER DELETE ON "${table}" WHEN ${NOT_APPLYING} BEGIN ${track('OLD')} END`)
+    const create = async (op: 'ins' | 'upd' | 'del', when: string, row: 'NEW' | 'OLD') => {
+      const name = `_sync_${table}_${op}_v2`
+      if (!triggers.has(name)) await exec(`CREATE TRIGGER IF NOT EXISTS "${name}" AFTER ${when} ON "${table}" WHEN ${NOT_APPLYING} BEGIN ${track(row)} END`)
+    }
+    await create('ins', 'INSERT', 'NEW')
+    await create('upd', 'UPDATE', 'NEW')
+    await create('del', 'DELETE', 'OLD')
   }
 }

@@ -15,6 +15,7 @@ import { PlayerMicroReviewsCard } from '@/components/MicroReview/CoachMicroRevie
 import { collabErrorKey, type AssignedObjective, type Group, type PlayerSessionView } from '@/lib/collab'
 import type { DevPlan } from '@/lib/devPlan'
 import type { StaffNote } from '@/lib/teamOps'
+import type { NameOf } from '@/hooks/useCollab'
 import {
   NOTE_TAGS, composeNote, groupByDay, mainRole, parseNote, playerStatus, reviewStats, topChampions,
   type NoteTag, type SessionDay,
@@ -23,7 +24,7 @@ import {
 interface Props {
   staffGroups: Group[]
   myUserId: string
-  nameOf: (userId: string) => string
+  nameOf: NameOf
 }
 
 interface PlayerRef { userId: string; groupId: string; name: string; group: string }
@@ -73,7 +74,7 @@ export function PlayersSection({ staffGroups, myUserId, nameOf }: Props) {
   return player ? <PlayerView key={player.userId} player={player} picker={picker} myUserId={myUserId} nameOf={nameOf} /> : null
 }
 
-function PlayerView({ player, picker, myUserId, nameOf }: { player: PlayerRef; picker: React.ReactNode; myUserId: string; nameOf: (id: string) => string }) {
+function PlayerView({ player, picker, myUserId, nameOf }: { player: PlayerRef; picker: React.ReactNode; myUserId: string; nameOf: NameOf }) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const fundamentals = useLocalizedFundamentals()
@@ -211,7 +212,7 @@ function SessionJournal({ days, label, player, myUserId, nameOf }: {
   label: (id: string) => string
   player: PlayerRef
   myUserId: string
-  nameOf: (id: string) => string
+  nameOf: NameOf
 }) {
   const { t, i18n } = useTranslation()
   const [filter, setFilter] = useState<DayFilter>('all')
@@ -428,7 +429,7 @@ function AssignCard({ player, assignments, objectives, label, onChanged }: {
 /* ─── Private staff notes ─── */
 
 /** Staff-private notes (RLS-enforced: the player this is about can never read these). */
-function StaffNotesCard({ groupId, playerId, playerName, nameOf }: { groupId: string; playerId: string; playerName: string; nameOf: (id: string) => string }) {
+function StaffNotesCard({ groupId, playerId, playerName, nameOf }: { groupId: string; playerId: string; playerName: string; nameOf: NameOf }) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const [notes, setNotes] = useState<StaffNote[] | null>(null)

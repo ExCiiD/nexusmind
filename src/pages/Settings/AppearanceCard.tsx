@@ -245,7 +245,7 @@ export function AppearanceCard() {
                     <span className="font-mono text-[11px] text-hextech-text-dim">{prefs.tintStrength}%</span>
                   </div>
                   <ColorRow value={prefs.tintColor} onChange={(tintColor) => update({ tintColor, tintStrength: prefs.tintStrength || 50 })} />
-                  <Slider value={[prefs.tintStrength]} min={0} max={100} step={1} onValueChange={([v]) => update({ tintStrength: v })} />
+                  <Slider value={[prefs.tintStrength]} min={0} max={100} step={1} onValueChange={([v]) => update({ tintStrength: v })} aria-label={t('appearance.filter')} />
                 </div>
 
                 <LabeledSlider label={t('appearance.dim')} value={prefs.dim} max={95} suffix="%" onChange={(dim) => update({ dim })} />
@@ -271,7 +271,7 @@ export function AppearanceCard() {
                   ))}
                 </div>
               </div>
-              <Slider value={[prefs.panelOpacity]} min={40} max={100} step={1} onValueChange={([v]) => update({ panelOpacity: v })} />
+              <Slider value={[prefs.panelOpacity]} min={40} max={100} step={1} onValueChange={([v]) => update({ panelOpacity: v })} aria-label={t('appearance.panels')} />
               <p className="text-[11px] text-hextech-text-dim">{t('appearance.panelsHint', { value: prefs.panelOpacity })}</p>
             </div>
 
@@ -315,7 +315,7 @@ function LabeledSlider({ label, value, max, suffix, onChange }: { label: string;
         <span className="text-xs font-medium text-hextech-text-bright">{label}</span>
         <span className="font-mono text-[11px] text-hextech-text-dim">{value}{suffix}</span>
       </div>
-      <Slider value={[value]} min={0} max={max} step={1} onValueChange={([v]) => onChange(v)} />
+      <Slider value={[value]} min={0} max={max} step={1} onValueChange={([v]) => onChange(v)} aria-label={label} />
     </div>
   )
 }

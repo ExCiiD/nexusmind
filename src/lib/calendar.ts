@@ -28,7 +28,7 @@ export interface CalendarEvent {
   attendeeUserIds: string[]
   /** Who said they'll be there or can't come (calendar_event_responses). */
   responses?: EventResponse[]
-  createdBy: string
+  createdBy: string | null // null once the author deleted their account (S19-16 / #33)
   createdAt: string
   updatedAt: string
 }
@@ -111,7 +111,7 @@ export type EventRequestStatus = 'pending' | 'accepted' | 'declined'
 export interface CalendarEventRequest {
   id: string
   groupId: string
-  requestedBy: string
+  requestedBy: string | null // null once the author deleted their account (S19-16 / #33)
   eventName: string
   /** Free-text names/labels the requester typed — not resolved user ids,
    *  since this is informational only. */
@@ -168,7 +168,8 @@ export interface CalendarSubscription {
   id: string
   groupId: string
   token: string
-  createdBy: string
+  /** null once the author deleted their account (S19-16): show "former member". */
+  createdBy: string | null
   createdAt: string
   /** Full URL to paste into Google/Apple/Outlook "subscribe by URL". */
   icsUrl: string

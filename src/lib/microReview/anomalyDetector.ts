@@ -148,10 +148,19 @@ export const DETECTOR_SPEC = {
   carry: { bounty: 450, kda: 4, goldShare: 0.25, enemies: 3, fightRadius: 2500, lostWithinSec: 60, firstDeathSec: 10 },
   rotation: { untilSec: 840, awaySec: 30, cs: 8, xp: 350, deathGuardSec: 45 },
   pit: { fromSec: 840, fightRadius: PIT_FIGHT_RADIUS, insideRadius: PIT_INSIDE_RADIUS, beforeSec: 15, fightGapSec: 20 },
-  midRoam: { untilSec: 840, plates: 1, cs: 10, minOffAxis: 2600 },
+  /**
+   * Mid roam paid in plates. Plates no longer fall at 14:00 in 2026 (on cached 16.x games they are taken up to 47:47,
+   * three quarters of them after 14:00): a roam can cost plates for as long as the mid T1 stands, so the window runs to
+   * 20:00, when Baron spawns and the map regroups (T1s fall at the same times in both seasons: mid p75 20:30).
+   * 2025 games keep 14:00 (CLOCK_2025).
+   */
+  midRoam: { untilSec: 1200, plates: 1, cs: 10, minOffAxis: 2600 },
   // V5 — laning phase.
-  /** Kills the lane opponent within 850 units of a standing enemy T1, dies within 4 s, enemy jungler not involved. */
-  dive: { untilSec: 840, turretRadius: 850, afterKillSec: 4 },
+  /**
+   * Kills the lane opponent within 850 units of a standing enemy T1, dies within 4 s, enemy jungler not involved. The
+   * T1 keeps its plating until it falls in 2026, so the dive stays a T1 dive to 20:00 (2025: 14:00, plates gone).
+   */
+  dive: { untilSec: 1200, turretRadius: 850, afterKillSec: 4 },
   /** Killed by the lane opponent within 10 s of their level 2 or 3, while still below that level. */
   levelSpike: { untilSec: 235, windowSec: 10, levels: [2, 3] },
   /** Under 35 % HP with 800+ gold in lane, then dead in the river / jungle within 40 s, before 10:00. */
@@ -217,8 +226,12 @@ export const DETECTOR_SPEC = {
   compensation: { windowSec: 15, allyRadius: 3000, outnumberedBy: 2, objectiveWithinSec: 60 },
   /** Boots (item 1001) bought by the jungler before 8:00 without a kill. */
   earlyBoots: { untilSec: 480, itemId: 1001 },
-  /** The jungler last-hits an enemy side-lane T1 between 14:00 (plates gone) and 20:00 while a tower had already fallen. */
-  sideTower: { fromSec: 840, untilSec: 1200 },
+  /**
+   * The jungler last-hits an enemy side-lane T1 before 20:00 while a tower had already fallen (leave it at 1 HP for the
+   * laner). 2025 started at 14:00, once the plates were gone. In 2026 the plates stay on until the tower falls, so the
+   * last hit also takes the plates left: no start time, the first fallen tower is the anchor.
+   */
+  sideTower: { fromSec: 0, untilSec: 1200 },
   /**
    * Jungler dead in a fight 14:00–19:30 while holding the Eye of the Herald (item 3513). Riot logs no pick-up, but the eye
    * leaving an inventory (used, or expired about 300 s after the kill) is an ITEM_DESTROYED naming its holder: the jungler
@@ -270,6 +283,10 @@ export const CLOCK_2025 = {
   supportEarly: { wardBySec: 105, deathFromSec: 125, deathToSec: 160 },
   jungleFirstBack: { ...DETECTOR_SPEC.jungleFirstBack, bySec: 245 },
   supportScuttle: { ...DETECTOR_SPEC.supportScuttle, fromSec: 205, untilSec: 230 },
+  // Plates fell at 14:00 in 2025: the plate-bound rules stop (or start) there.
+  midRoam: { ...DETECTOR_SPEC.midRoam, untilSec: 840 },
+  dive: { ...DETECTOR_SPEC.dive, untilSec: 840 },
+  sideTower: { fromSec: 840, untilSec: 1200 },
 } satisfies Partial<DetectorSpec>
 
 /** The rules of a game on `clock`. */
@@ -1463,7 +1480,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       }
     }
 
-    // V8.2 — an enemy side-lane T1 last-hit between 14:00 and 20:00 although a tower had already fallen (leave it at 1 HP).
+    // V8.2 — an enemy side-lane T1 last-hit before 20:00 (2025: from 14:00) although a tower had already fallen (leave it at 1 HP).
     const ST = S.sideTower
     const firstTower = events.find((e) => e.type === 'BUILDING_KILL' && e.buildingType === 'TOWER_BUILDING')
     const t1 = firstTower && events.find((e) => e.type === 'BUILDING_KILL' && e.towerType === 'OUTER_TURRET' && e.teamId !== team && e.killerId === pid &&
@@ -1541,7 +1558,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     }
   }
 
-  // ── 6. Roams (< 14 min): a mid roam that costs plates, then any lane rotation that costs waves ──
+  // ── 6. Roams (a mid roam that costs plates: < 20 min on 16.x, < 14 min on 15.x; then any lane rotation that costs waves, < 14 min) ──
   if (laneOpponent) {
     const opp: number = laneOpponent.participantId
     const csGap = (i: number) => csOf(i, pid) - csOf(i, opp)

@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { CalendarClock, ClipboardCheck } from 'lucide-react'
 import { useCollab } from '@/hooks/useCollab'
 import type { TeamSession } from '@/lib/teamSessions'
 import type { PendingFinalReview } from '@/lib/teamSessionReviewsCore'
+import { useVisiblePolling } from '@/hooks/useVisiblePolling'
 
-const SLOW_POLL_MS = 30_000
-/** Mirrors electron/main/sync/syncService.ts's fast-poll cadence — cheap to
- *  duplicate here since both desktop and web call the same RLS-scoped
- *  Supabase query (desktop has no equivalent cross-platform broadcast
- *  event for web to listen to). */
-const FAST_POLL_MS = 15_000 // was 7.5 s: four such loops overloaded the Supabase disk I/O budget (18/11/2026)
+/** Task I: live sessions come from the app's single poller (teamSessionLiveCached
+ *  + the 'team-session:live' push, desktop sync / web adapter). Only the
+ *  postponed final reviews are fetched here: on mount, on each push, on a
+ *  route change, and on focus / back to visible — with a 10 min safety net. */
+const REVIEWS_SAFETY_MS = 600_000
 
 /** Mounted once at app-shell level (desktop App.tsx, web WebLayout.tsx).
  *  Two kinds of persistent bottom-right cards:
@@ -29,26 +29,24 @@ export function TeamSessionBanner() {
   const { available } = useCollab()
   const [liveSessions, setLiveSessions] = useState<TeamSession[]>([])
   const [finalReviews, setFinalReviews] = useState<PendingFinalReview[]>([])
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const refreshReviews = useCallback(async () => {
+    if (!available || !window.api.teamSessionPendingFinalReviews) return
+    try { setFinalReviews((await window.api.teamSessionPendingFinalReviews()) ?? []) } catch { /* offline: keep the last list */ }
+  }, [available])
+
+  // Live sessions: cached list at mount, then the push.
   useEffect(() => {
     if (!available) { setLiveSessions([]); setFinalReviews([]); return }
-    let stopped = false
-    const poll = async () => {
-      try {
-        const [sessions, pending] = await Promise.all([
-          window.api.teamSessionListMyLive(),
-          window.api.teamSessionPendingFinalReviews ? window.api.teamSessionPendingFinalReviews().catch(() => []) : Promise.resolve([]),
-        ])
-        if (!stopped) { setLiveSessions(sessions); setFinalReviews(pending) }
-        if (!stopped) timerRef.current = setTimeout(poll, sessions.length > 0 ? FAST_POLL_MS : SLOW_POLL_MS)
-      } catch {
-        if (!stopped) timerRef.current = setTimeout(poll, SLOW_POLL_MS)
-      }
-    }
-    poll()
-    return () => { stopped = true; if (timerRef.current) clearTimeout(timerRef.current) }
-  }, [available, location.pathname])
+    let alive = true
+    window.api.teamSessionLiveCached().then((s) => { if (alive) setLiveSessions(s ?? []) }).catch(() => {})
+    const off = window.api.onTeamSessionLive((s) => { setLiveSessions(s ?? []); void refreshReviews() })
+    return () => { alive = false; off() }
+  }, [available, refreshReviews])
+
+  // Postponed final reviews: mount + route change, then focus / visible (useVisiblePolling).
+  useEffect(() => { void refreshReviews() }, [refreshReviews, location.pathname])
+  useVisiblePolling(refreshReviews, REVIEWS_SAFETY_MS, available)
 
   // Already on that session's page: the card would only point at itself.
   const here = (calendarEventId: string) => location.pathname === `/team-session/${calendarEventId}`

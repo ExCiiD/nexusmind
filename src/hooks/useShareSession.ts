@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { formatGameTime, formatKDA } from '@/lib/utils'
+import { WR_THRESHOLDS } from '@/lib/winrate'
 
 export interface ShareSessionGame {
   champion: string
@@ -113,9 +114,10 @@ export function useShareSession() {
   const buildEmbeds = useCallback(
     (data: ShareSessionData): object[] => {
       const winRate = data.gamesPlayed > 0 ? Math.round((data.wins / data.gamesPlayed) * 100) : 0
+      // K: the app's win-rate thresholds (Discord keeps its own palette): green ≥ 60, red < 40, neutral between.
       const overviewColor =
-        winRate >= 60 ? EMBED_WIN :
-        winRate <= 40 ? EMBED_LOSS :
+        winRate >= WR_THRESHOLDS[0] ? EMBED_WIN :
+        winRate < WR_THRESHOLDS[2] ? EMBED_LOSS :
         EMBED_NEUTRAL
 
       const objectiveIds = data.objectiveIds?.length ? data.objectiveIds : [data.objectiveId]

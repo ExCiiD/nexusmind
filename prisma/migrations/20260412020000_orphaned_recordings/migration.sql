@@ -12,7 +12,7 @@ CREATE TABLE "Recording_v2" (
   "createdAt"     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO "Recording_v2" ("id","gameId","filePath","youtubeUrl","source","duration","thumbnailPath","createdAt")
+INSERT OR IGNORE INTO "Recording_v2" ("id","gameId","filePath","youtubeUrl","source","duration","thumbnailPath","createdAt")
 SELECT "id","gameId","filePath","youtubeUrl","source","duration","thumbnailPath","createdAt" FROM "Recording";
 
 DROP TABLE "Recording";

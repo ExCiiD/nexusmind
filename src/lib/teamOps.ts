@@ -11,7 +11,7 @@ export interface Task {
   assigneeId: string | null
   dueDate: string | null
   status: TaskStatus
-  createdBy: string
+  createdBy: string | null // null once the author deleted their account (S19-16 / #33)
   createdAt: string
   updatedAt: string
 }
@@ -27,7 +27,7 @@ export interface StaffNote {
   groupId: string
   playerId: string
   body: string
-  createdBy: string
+  createdBy: string | null // null once the author deleted their account (S19-16 / #33)
   createdAt: string
   updatedAt: string
 }

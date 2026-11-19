@@ -10,10 +10,13 @@ import { collabErrorKey, type Group } from '@/lib/collab'
 import { isLegacyStaff } from '@/lib/permissions'
 import { computeEnergyWinrateCorrelation, computeMoodDeclineAlert } from '@/lib/wellbeingCore'
 import type { WellbeingCheckin } from '@/lib/wellbeing'
+import type { NameOf } from '@/hooks/useCollab'
+import { useWellbeingConsent } from '@/hooks/useWellbeingConsent'
+import { WellbeingConsentDialog } from '@/components/Wellbeing/WellbeingConsentDialog'
 
 const SCALE = [1, 2, 3, 4, 5]
 
-interface Props { groups: Group[]; myUserId: string; nameOf: (userId: string) => string }
+interface Props { groups: Group[]; myUserId: string; nameOf: NameOf }
 
 /** E6 (docs/PLAN_GESTION_EQUIPE.md): optional energy/mood/sleep check-in, private unless the player opts in per group. */
 export function WellbeingSection({ groups, myUserId, nameOf }: Props) {
@@ -45,6 +48,10 @@ function MyCheckin({ myUserId }: { myUserId: string }) {
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [checkins, setCheckins] = useState<WellbeingCheckin[] | null>(null)
+  // Consent to storing check-ins (privacy policy v0.3 § 3 bis): asked before
+  // the first one is saved, and from users who already have some without it.
+  const { granted, loading: consentLoading, available: consentApi, set: setConsent } = useWellbeingConsent()
+  const [consentAsk, setConsentAsk] = useState<'first' | 'existing' | null>(null)
   const [games, setGames] = useState<Array<{ win: boolean; gameEndAt: number | string | null }>>([])
 
   const load = useCallback(async () => {
@@ -63,7 +70,17 @@ function MyCheckin({ myUserId }: { myUserId: string }) {
 
   useEffect(() => { load() }, [load])
 
+  // Check-ins stored before consent existed: ask once on opening the tab.
+  useEffect(() => {
+    if (consentApi && !consentLoading && !granted && checkins && checkins.length > 0) setConsentAsk('existing')
+  }, [consentApi, consentLoading, granted, checkins])
+
   const save = async () => {
+    if (consentApi && !granted) { setConsentAsk('first'); return }
+    await saveCheckin()
+  }
+
+  const saveCheckin = async () => {
     setSaving(true)
     try {
       await window.api.wellbeingAddCheckin({ energy: Number(energy), mood: Number(mood), sleep: Number(sleep), note: note.trim() || null })
@@ -100,7 +117,7 @@ function MyCheckin({ myUserId }: { myUserId: string }) {
         ))}
       </div>
       <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={1} maxLength={500} placeholder={t('wellbeing.notePlaceholder', { defaultValue: 'Anything to add? (optional)' })} />
-      <Button size="sm" onClick={save} disabled={saving}>
+      <Button size="sm" onClick={save} disabled={saving || (consentApi && consentLoading)}>
         {saving && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}{t('wellbeing.save', { defaultValue: 'Log check-in' })}
       </Button>
 
@@ -113,6 +130,32 @@ function MyCheckin({ myUserId }: { myUserId: string }) {
             t('wellbeing.correlationOther', { defaultValue: 'Other days: {{rate}}% winrate ({{count}} games)', rate: correlation.otherWinrate, count: correlation.otherGames })}
         </p>
       )}
+
+      <WellbeingConsentDialog
+        open={consentAsk !== null}
+        mode={consentAsk ?? 'first'}
+        existingCount={checkins?.length ?? 0}
+        onOpenChange={(o) => { if (!o) setConsentAsk(null) }}
+        onDecide={async (yes) => {
+          const mode = consentAsk
+          try {
+            if (yes) {
+              await setConsent(true)
+              setConsentAsk(null)
+              if (mode === 'first') await saveCheckin()
+            } else if (mode === 'existing') {
+              // Declining with check-ins already stored deletes them (part C, rule 5).
+              await setConsent(false)
+              setConsentAsk(null)
+              await load()
+            } else {
+              setConsentAsk(null) // "Not now": nothing is saved, the form stays as it was.
+            }
+          } catch (err) {
+            toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
+          }
+        }}
+      />
 
       {checkins === null ? (
         <Loader2 className="h-4 w-4 animate-spin text-hextech-text-dim" />
@@ -129,7 +172,7 @@ function MyCheckin({ myUserId }: { myUserId: string }) {
   )
 }
 
-function TeamWellbeing({ staffGroups, nameOf }: { staffGroups: Group[]; nameOf: (id: string) => string }) {
+function TeamWellbeing({ staffGroups, nameOf }: { staffGroups: Group[]; nameOf: NameOf }) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const groupId = staffGroups[0]?.id ?? null

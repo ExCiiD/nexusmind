@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShareReview, type ShareReviewData } from '@/hooks/useShareReview'
 import { useDiscordWebhooks, type DiscordWebhook } from '@/hooks/useDiscordWebhooks'
 import { useToast } from '@/hooks/useToast'
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function ShareButton({ data, className }: Props) {
+  const { t } = useTranslation()
   const { toast } = useToast()
   const { buildEmbed, buildText } = useShareReview()
   const { webhooks } = useDiscordWebhooks()
@@ -37,10 +39,10 @@ export function ShareButton({ data, className }: Props) {
     try {
       const embed = buildEmbed(data)
       await window.api.sendToDiscord([embed], wh.url)
-      toast({ title: `📨 Sent to "${wh.name}"`, variant: 'gold' })
+      toast({ title: t('share.button.sentTo', { name: wh.name }), variant: 'gold' })
     } catch (err: any) {
       toast({
-        title: 'Webhook failed — copied to clipboard instead',
+        title: t('share.button.webhookFailed'),
         description: err.message,
         variant: 'destructive',
       })
@@ -55,9 +57,9 @@ export function ShareButton({ data, className }: Props) {
     setCopying(true)
     try {
       await window.api.copyReviewText(buildText(data))
-      toast({ title: '📋 Copied to clipboard', description: 'Paste it anywhere — Discord, Notion, messages…', variant: 'gold' })
+      toast({ title: t('share.button.copied'), description: t('share.button.pasteAnywhere'), variant: 'gold' })
     } catch {
-      toast({ title: 'Copy failed', variant: 'destructive' })
+      toast({ title: t('share.button.copyFailed'), variant: 'destructive' })
     } finally {
       setCopying(false)
     }
@@ -72,34 +74,38 @@ export function ShareButton({ data, className }: Props) {
   }
 
   const mainLabel = () => {
-    if (sendingId) return 'Sending…'
-    if (copying) return 'Copying…'
-    if (!hasWebhooks) return 'Copy'
-    if (webhooks.length === 1) return 'Share'
-    return 'Share'
+    if (sendingId) return t('share.button.sending')
+    if (copying) return t('share.button.copying')
+    if (!hasWebhooks) return t('share.button.copy')
+    return t('share.button.share')
   }
 
   return (
     <div ref={ref} className={cn('relative inline-flex', className)}>
       {/* Main action button */}
       <button
+        type="button"
         onClick={handleMainClick}
         disabled={isBusy}
         className="flex items-center gap-1.5 rounded-l-md border border-hextech-border-dim bg-hextech-elevated px-3 py-1.5 text-xs font-medium text-hextech-text hover:text-hextech-gold hover:border-hextech-gold/40 transition-colors disabled:opacity-50"
       >
         {isBusy
-          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          : <Share2 className="h-3.5 w-3.5" />}
+          ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          : <Share2 className="h-3.5 w-3.5" aria-hidden />}
         {mainLabel()}
       </button>
 
       {/* Dropdown toggle */}
       <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={isBusy}
+        aria-label={t('share.button.moreOptions')}
+        aria-haspopup="menu"
+        aria-expanded={open}
         className="flex items-center rounded-r-md border border-l-0 border-hextech-border-dim bg-hextech-elevated px-1.5 py-1.5 text-hextech-text-dim hover:text-hextech-text hover:border-hextech-gold/40 transition-colors disabled:opacity-50"
       >
-        <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
 
       {/* Dropdown menu */}
@@ -111,11 +117,12 @@ export function ShareButton({ data, className }: Props) {
             <>
               <div className="px-3 pt-2.5 pb-1">
                 <p className="text-[9px] font-semibold uppercase tracking-wider text-hextech-text-dim/70">
-                  Send to Discord
+                  {t('share.button.sendToDiscord')}
                 </p>
               </div>
               {webhooks.map((wh) => (
                 <button
+                  type="button"
                   key={wh.id}
                   onClick={() => sendToWebhook(wh)}
                   disabled={sendingId === wh.id}
@@ -132,21 +139,22 @@ export function ShareButton({ data, className }: Props) {
           ) : (
             <div className="px-3 py-2.5">
               <p className="text-[10px] text-hextech-text-dim/70">
-                No Discord webhook configured.{' '}
-                <span className="text-hextech-gold/70">Add one in Settings.</span>
+                {t('share.button.noWebhook')}{' '}
+                <span className="text-hextech-gold/70">{t('share.button.addInSettings')}</span>
               </p>
             </div>
           )}
 
           {/* Copy as text */}
           <button
+            type="button"
             onClick={handleCopy}
             className="w-full flex items-center gap-2.5 px-3 py-2 pb-2.5 text-sm text-left transition-colors hover:bg-white/5"
           >
-            <Copy className="h-3.5 w-3.5 text-hextech-text-dim shrink-0" />
+            <Copy className="h-3.5 w-3.5 text-hextech-text-dim shrink-0" aria-hidden />
             <div>
-              <p className="font-medium text-hextech-text-bright text-xs">Copy as text</p>
-              <p className="text-[10px] text-hextech-text-dim">Markdown — paste anywhere</p>
+              <p className="font-medium text-hextech-text-bright text-xs">{t('share.button.copyAsText')}</p>
+              <p className="text-[10px] text-hextech-text-dim">{t('share.button.copyAsTextHint')}</p>
             </div>
           </button>
         </div>

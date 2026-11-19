@@ -19,12 +19,43 @@ describe('redeemGuildLinkCode', () => {
         delete: vi.fn(() => { calls.push('delete-code'); return { eq: vi.fn().mockResolvedValue({ error: null }) } }),
       },
       discord_guild_links: {
+        select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
+        maybeSingle: () => Promise.resolve({ data: null, error: null }),
         upsert: vi.fn((row: unknown, opts: unknown) => { calls.push('upsert-link'); expect(opts).toEqual({ onConflict: 'guild_id' }); return Promise.resolve({ error: null }) }),
       },
     }
     const sb = { from: vi.fn((t: string) => tables[t]) } as never
     const groupId = await redeemGuildLinkCode(sb, 'ABC123', 'guild-1')
     expect(groupId).toBe('g1')
+    expect(calls).toEqual(['delete-code', 'upsert-link'])
+  })
+
+  // S19-03 review: a code from another group must not take over a linked server.
+  function linkedTo(groupId: string) {
+    const future = new Date(Date.now() + 60_000).toISOString()
+    const calls: string[] = []
+    const tables: Record<string, any> = {
+      discord_guild_link_codes: {
+        select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
+        maybeSingle: () => Promise.resolve({ data: { group_id: 'g1', expires_at: future, created_by: 'u1' }, error: null }),
+        delete: vi.fn(() => { calls.push('delete-code'); return { eq: vi.fn().mockResolvedValue({ error: null }) } }),
+      },
+      discord_guild_links: {
+        select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
+        maybeSingle: () => Promise.resolve({ data: { group_id: groupId, notify_channel_id: 'c1' }, error: null }),
+        upsert: vi.fn(() => { calls.push('upsert-link'); return Promise.resolve({ error: null }) }),
+      },
+    }
+    return { sb: { from: vi.fn((t: string) => tables[t]) } as never, calls }
+  }
+  it('refuses to move a server already linked to another group, and keeps the code', async () => {
+    const { sb, calls } = linkedTo('g-other')
+    await expect(redeemGuildLinkCode(sb, 'ABC123', 'guild-1')).rejects.toThrow('GUILD_LINKED_ELSEWHERE')
+    expect(calls).toEqual([])
+  })
+  it('re-linking the same group is allowed', async () => {
+    const { sb, calls } = linkedTo('g1')
+    await expect(redeemGuildLinkCode(sb, 'ABC123', 'guild-1')).resolves.toBe('g1')
     expect(calls).toEqual(['delete-code', 'upsert-link'])
   })
 

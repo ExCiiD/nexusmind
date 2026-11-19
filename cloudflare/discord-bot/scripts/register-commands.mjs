@@ -13,19 +13,25 @@
  */
 const STRING = 3
 const SUB_COMMAND = 1
+/** Discord "Manage Server" bit (1 << 5), as the decimal string the API expects. */
+const MANAGE_GUILD = String(1 << 5)
 
 const COMMANDS = [
   {
     name: 'link-team',
     description: 'Link this Discord server to an Ascend team (run the code generated in the app)',
     options: [{ type: STRING, name: 'code', description: 'Code from Ascend (Account page)', required: true }],
+    // S19-03: hidden from regular members by default (server admins can change it).
+    default_member_permissions: MANAGE_GUILD,
   },
   {
     name: 'link-me',
     description: 'Link your Discord account to your Ascend account (run the code generated in the app)',
     options: [{ type: STRING, name: 'code', description: 'Code from Ascend (Account page)', required: true }],
   },
-  { name: 'set-channel', description: 'Make THIS channel where the bot posts reminders and availability alerts' },
+  // S19-03: hidden from regular members by default. The handler checks
+  // again (Manage Server, or the group's staff), since admins can widen this.
+  { name: 'set-channel', description: 'Make THIS channel where the bot posts reminders and availability alerts', default_member_permissions: MANAGE_GUILD },
   { name: 'calendar', description: "Show the team's upcoming events and scrims (next 14 days)" },
   { name: 'scrims', description: 'Show upcoming scrims — date, Bo format, opponent OP.GG links, your roster roles' },
   { name: 'common-availability', description: 'Show windows this week where several linked teammates are all free' },

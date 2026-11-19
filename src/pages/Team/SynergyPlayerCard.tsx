@@ -13,6 +13,7 @@ import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
 import { Sword, Shield, Eye, Coins, Zap, Activity } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SynergyPlayerStats } from '@/lib/ipc'
+import { wrPill } from '@/lib/winrate'
 
 export function SynergyPlayerCard({ player, matchCount }: { player: SynergyPlayerStats; matchCount: number }) {
   const { t } = useTranslation()
@@ -101,7 +102,7 @@ export function SynergyPlayerCard({ player, matchCount }: { player: SynergyPlaye
 
       <Section title={t('team.stats.byChampion', { defaultValue: 'By champion' })} divider>
         {player.byChampion.length === 0 ? (
-          <p className="text-[10px] text-hextech-text-dim italic">No champion data.</p>
+          <p className="text-[10px] text-hextech-text-dim italic">{t('team.stats.noChampionData')}</p>
         ) : (
           // Column-first flow keeps top-played champions stacked together
           // (1→5 on the left, 6→10 on the right) rather than interleaved
@@ -169,12 +170,8 @@ function ChampRow({ championKey, games, wins, winRate }: {
   winRate: number
 }) {
   const iconUrl = useChampionIconUrl(championKey)
-  // Color the WR pill from red (<40) → amber → green (>60) for quick scanning
-  const wrColor =
-    winRate >= 60 ? 'text-emerald-300 bg-emerald-500/15' :
-    winRate >= 50 ? 'text-yellow-200 bg-yellow-500/15' :
-    winRate >= 40 ? 'text-orange-300 bg-orange-500/15' :
-    'text-red-300 bg-red-500/15'
+  // K: the shared win-rate scale (pill), dim under MIN_GAMES games.
+  const wrColor = wrPill(winRate, games)
   return (
     <div className="flex items-center gap-1.5 px-1.5 py-1 bg-hextech-dark/40 rounded">
       {iconUrl && <img src={iconUrl} alt={championKey} className="h-5 w-5 rounded" />}

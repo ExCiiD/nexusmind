@@ -27,9 +27,11 @@ const toastVariants = cva(
     variants: {
       variant: {
         default: 'border-hextech-border-dim bg-hextech-dark text-hextech-text-bright',
-        success: 'border-hextech-green/30 bg-hextech-green/10 text-hextech-green',
-        destructive: 'border-destructive/30 bg-destructive/10 text-destructive',
-        gold: 'border-hextech-border bg-hextech-gold/10 text-hextech-gold',
+        // Opaque `dark` base under a 10 % tint (Graphic Design, 19/11/2026):
+        // text contrast 5.6 (green), 4.9 (red), 6.7 (gold) on any background.
+        success: 'border-hextech-green/30 bg-[color-mix(in_srgb,var(--hextech-green)_10%,var(--hextech-dark))] text-hextech-green',
+        destructive: 'border-destructive/30 bg-[color-mix(in_srgb,var(--hextech-red)_10%,var(--hextech-dark))] text-destructive',
+        gold: 'border-hextech-border bg-[color-mix(in_srgb,var(--hextech-gold)_10%,var(--hextech-dark))] text-hextech-gold',
       },
     },
     defaultVariants: {
@@ -53,7 +55,7 @@ const ToastAction = React.forwardRef<
   <ToastPrimitive.Action
     ref={ref}
     className={cn(
-      'inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-hextech-border-dim bg-transparent px-3 text-sm font-medium transition-colors hover:bg-hextech-elevated focus:outline-none focus:ring-1 focus:ring-ring disabled:pointer-events-none disabled:opacity-50',
+      'inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-hextech-border-dim bg-transparent px-3 text-sm font-medium transition-colors hover:bg-hextech-elevated focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50',
       className,
     )}
     {...props}

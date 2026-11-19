@@ -42,7 +42,7 @@ describe('planGroupTeamSync', () => {
       { id: 'x', ign: 'A', tagLine: 'EUW', role: 'TOP' },
       { id: 'y', ign: 'A', tagLine: 'EUW', role: 'MID' },
     ])
-    expect(plan).toEqual({ add: [], remove: ['y'] })
+    expect(plan).toEqual({ add: [], remove: ['y'], update: [] })
   })
 })
 
@@ -56,5 +56,41 @@ describe('Riot ID helpers', () => {
     expect(parseRiotIdInput('ExCiiD')).toBeNull()
     expect(parseRiotIdInput('#EUW')).toBeNull()
     expect(parseRiotIdInput('Ab#E')).toBeNull()
+  })
+})
+
+// #38 (19/11/2026): "ore wa ayura" renamed; the group lost his lane, champions and rank (matched on the Riot ID).
+describe('planGroupTeamSync: renamed players (#38)', () => {
+  const withPuuid = (riotId: string, puuid: string, displayName: string | null = null) => ({ role: 'player', riotId, displayName, puuid })
+  const member = (id: string, ign: string, tagLine: string, role: string, puuid?: string, displayName?: string) =>
+    ({ id, ign, tagLine, role, puuid: puuid ?? null, displayName: displayName ?? ign })
+
+  it('a puuid match under a new Riot ID updates the same member (lane kept), nothing added or removed', () => {
+    const plan = planGroupTeamSync([withPuuid('Ayura#EUW', 'P1')], [member('m1', 'ore wa ayura', 'EUW', 'ADC', 'P1')])
+    expect(plan.remove).toEqual([])
+    expect(plan.add).toEqual([])
+    expect(plan.update).toEqual([{ id: 'm1', ign: 'Ayura', tagLine: 'EUW', displayName: 'Ayura', previousRiotId: 'ore wa ayura#EUW' }])
+  })
+  it('a name the staff typed is kept on a rename', () => {
+    const plan = planGroupTeamSync([withPuuid('Ayura#EUW', 'P1')], [member('m1', 'ore wa ayura', 'EUW', 'ADC', 'P1', 'Our ADC')])
+    expect(plan.update).toEqual([{ id: 'm1', ign: 'Ayura', tagLine: 'EUW', previousRiotId: 'ore wa ayura#EUW' }])
+  })
+  it('a Riot ID match fills a missing puuid, so the next rename is caught', () => {
+    const plan = planGroupTeamSync([withPuuid('Ayura#EUW', 'P1')], [member('m1', 'Ayura', 'EUW', 'ADC')])
+    expect(plan.update).toEqual([{ id: 'm1', puuid: 'P1' }])
+    expect(plan.remove).toEqual([])
+  })
+  it('a new player is added with their puuid', () => {
+    const plan = planGroupTeamSync([withPuuid('Ayura#EUW', 'P1')], [])
+    expect(plan.add).toEqual([{ displayName: 'Ayura', ign: 'Ayura', tagLine: 'EUW', role: 'TOP', puuid: 'P1' }])
+  })
+  it('the same name with another puuid is another account: replaced, not merged', () => {
+    const plan = planGroupTeamSync([withPuuid('Ayura#EUW', 'P2')], [member('m1', 'Ayura', 'EUW', 'ADC', 'P1')])
+    expect(plan.remove).toEqual(['m1'])
+    expect(plan.add.map((a) => a.puuid)).toEqual(['P2'])
+  })
+  it('members without a puuid on either side still match on the Riot ID (before the migration)', () => {
+    const plan = planGroupTeamSync([player('Ayura#EUW')], [member('m1', 'Ayura', 'EUW', 'ADC')])
+    expect(plan).toEqual({ add: [], remove: [], update: [] })
   })
 })

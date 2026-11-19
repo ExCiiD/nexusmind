@@ -8,7 +8,7 @@ import { fail } from './supabaseErrors'
  */
 
 interface TaskRow { id: string; group_id: string; title: string; assignee_id: string | null; due_date: string | null; status: TaskStatus; created_by: string; created_at: string; updated_at: string }
-interface StaffNoteRow { id: string; group_id: string; player_id: string; body: string; created_by: string; created_at: string; updated_at: string }
+interface StaffNoteRow { id: string; group_id: string; player_id: string; body: string; created_by: string | null; created_at: string; updated_at: string }
 
 const toTask = (r: TaskRow): Task => ({
   id: r.id, groupId: r.group_id, title: r.title, assigneeId: r.assignee_id, dueDate: r.due_date, status: r.status,

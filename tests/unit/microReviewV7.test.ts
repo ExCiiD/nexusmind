@@ -112,7 +112,8 @@ describe('AscendCodex — V7–V10 fiches', () => {
       [CODEX_JGL_MINUS, [/3e Dragon dès T-20 s/, /1000 g de camps/, /1800 g sans recall/, /3 camps ennemis adjacents/]],
       // 26.1: camps 35 s earlier, Smite 600 / 1000 (15 treats) / 1400 (35 treats), tankier Dragons.
       [CODEX_JGL_ECONOMY, [/Pioche \(875 g\)/, /vers 2:45/, /Dragon de 5:00/, /15 friandises, 1400 à 35/, /sous 1000 PV/]],
-      [CODEX_JGL_T1_HERALD, [/APRÈS 14 MIN/, /100 PV/, /1v3/, /1 pink/]],
+      // 2026: anchored on the first fallen tower, not 14:00 (plates no longer fall then).
+      [CODEX_JGL_T1_HERALD, [/UNE FOIS LA 1RE TOUR TOMBÉE/, /ne tombent plus à 14:00/, /100 PV/, /1v3/, /1 pink/]],
       [CODEX_JGL_NEVER_FLEE, [/5:30/, /Smite amélioré \(1000\)/, /3 s/, /300 g/, /Raptors → Red → Krugs → recall → camps bot/]],
       [CODEX_JGL_INVADE_STOP, [/4 s/, /5 s/, /E-Q de Jarvan IV/]],
       [CODEX_JGL_VISION, [/8-10 min/, /\(5:00\)/, /Shyvana, Vi, Udyr/, /1 ou 2 ennemis/]],
@@ -268,7 +269,9 @@ describe('detector — the V7–V10 numbers and places', () => {
     expect(DETECTOR_SPEC.dragonTank).toEqual({ fromSec: 300, untilSec: 720, damageShare: 0.6 })
     expect(DETECTOR_SPEC.compensation).toMatchObject({ windowSec: 15 })
     expect(DETECTOR_SPEC.earlyBoots).toEqual({ untilSec: 480, itemId: 1001 })
-    expect(DETECTOR_SPEC.sideTower).toEqual({ fromSec: 840, untilSec: 1200 })
+    // 2026: plates stay on until the tower falls, so there is no start time (2025: from 14:00, plates gone).
+    expect(DETECTOR_SPEC.sideTower).toEqual({ fromSec: 0, untilSec: 1200 })
+    expect(CLOCK_2025.sideTower).toEqual({ fromSec: 840, untilSec: 1200 })
     expect(DETECTOR_SPEC.heraldEye).toEqual({ fromSec: 840, untilSec: 1170, itemId: 3513, pickupSec: 20 })
     expect(DETECTOR_SPEC.fledInvade).toMatchObject({ untilSec: 900, hpPct: 15, enemyHpPct: 70, radius: 2000 })
     expect(DETECTOR_SPEC.outsmite).toEqual({ pitRadius: 900 })
@@ -507,8 +510,9 @@ describe('pattern — jungle: boots before 8:00 without a kill', () => {
   })
 })
 
-describe('pattern — jungle: a side-lane T1 destroyed between 14:00 and 20:00', () => {
-  const S = DETECTOR_SPEC.sideTower
+describe('pattern — jungle: a side-lane T1 destroyed between 14:00 and 20:00 (2025 clock)', () => {
+  // Fixtures are 15.x games: the 2025 clock (microReviewSeason2026.test.ts covers 16.x).
+  const S = CLOCK_2025.sideTower
   const tower = (ts: number, o: { lane?: string; owner?: number; killer?: number; first?: boolean } = {}) => ({ type: 'BUILDING_KILL', timestamp: ts, buildingType: 'TOWER_BUILDING',
     towerType: 'OUTER_TURRET', laneType: o.lane ?? 'TOP_LANE', teamId: o.owner ?? 200, killerId: o.killer ?? 2, position: { x: 4318, y: 13875 } })
   const game = (ts: number, o: Parameters<typeof tower>[1] = {}, first = true) => buildGame({ minutes: 25, me: 2,

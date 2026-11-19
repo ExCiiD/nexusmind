@@ -6,8 +6,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { AppNotification } from '@/lib/notifications'
+import { useVisiblePolling } from '@/hooks/useVisiblePolling'
 
-const POLL_MS = 30_000
+/** Task I: every 2 min while visible, plus on focus; paused when hidden (useVisiblePolling). */
+const POLL_MS = 120_000
 
 /** Routes that exist on the desktop app; anything else (e.g. `/scrims`, web-only) opens the web app instead. */
 const DESKTOP_ROUTES = ['/review', '/session', '/coaching', '/management']
@@ -80,14 +82,7 @@ export function NotificationBell() {
     return () => { alive = false; off() }
   }, [])
 
-  useEffect(() => {
-    if (!signedIn) return
-    refreshCount()
-    const poll = setInterval(refreshCount, POLL_MS)
-    const onFocus = () => refreshCount()
-    window.addEventListener('focus', onFocus)
-    return () => { clearInterval(poll); window.removeEventListener('focus', onFocus) }
-  }, [signedIn, refreshCount])
+  useVisiblePolling(refreshCount, POLL_MS, signedIn)
 
   const openPanel = async () => {
     setOpen(true)
@@ -131,11 +126,12 @@ export function NotificationBell() {
         type="button"
         onClick={openPanel}
         title={t('notifications.title')}
+        aria-label={unread > 0 ? t('notifications.bellLabel', { count: unread }) : t('notifications.title')}
         className="app-no-drag relative rounded-md p-1.5 text-hextech-text-dim transition-colors hover:bg-hextech-elevated hover:text-hextech-gold"
       >
-        <Bell className="h-3.5 w-3.5" />
+        <Bell className="h-3.5 w-3.5" aria-hidden />
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[#E24C3A] px-0.5 text-[9px] font-bold leading-none text-white">
+          <span aria-hidden className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[#E24C3A] px-0.5 text-[9px] font-bold leading-none text-white">
             {unread > 9 ? '9+' : unread}
           </span>
         )}

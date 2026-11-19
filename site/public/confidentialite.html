@@ -35,7 +35,7 @@
 <main id="main" tabindex="-1">
 <article class="legal wrap">
 <h1>Politique de confidentialité</h1>
-<p class="meta">Version 0.2 · mise à jour le 18 novembre 2026 · s'applique à l'application de bureau, à l'app web et à ce site</p>
+<p class="meta">Version 0.3 · mise à jour le 19 novembre 2026 · s'applique à l'application de bureau, à l'app web et à ce site</p>
 
 <h2>1. Qui est responsable de vos données</h2>
 <p>Ascend est édité par ExCiiD, La Réunion, France. Contact pour toute question sur vos données : <a href="mailto:exciid501@gmail.com">exciid501@gmail.com</a>.</p>
@@ -50,41 +50,55 @@
     <tr><td>Adresse e-mail</td><td>À la création du compte</td><td>Connexion par code envoyé par e-mail, messages liés au service.</td></tr>
     <tr><td>Riot ID et identifiant de compte Riot (PUUID) de vos comptes liés</td><td>Quand vous liez un compte Riot</td><td>Retrouver vos parties via l'API Riot Games.</td></tr>
     <tr><td>Données de coaching : sessions, parties suivies, reviews, notes, erreurs taguées, objectifs, évaluations</td><td>Si vous avez un compte (synchronisation)</td><td>Sauvegarde, synchronisation entre vos appareils, accès depuis l'app web.</td></tr>
+    <tr><td>Micro-reviews : moment de la partie, champion, rôle, votre réponse et votre note, et la correction éventuelle du coach</td><td>Quand vous répondez à une micro-review avec un compte</td><td>Votre progression ; visibles par le staff d'un groupe seulement si vous partagez vos reviews avec ce groupe.</td></tr>
     <tr><td>Groupes, rôles, invitations, réglages de partage</td><td>Si vous rejoignez une équipe ou un groupe de coaching</td><td>Faire fonctionner le travail à plusieurs, dans les limites que vous fixez.</td></tr>
     <tr><td>Commentaires, objectifs assignés, scrims, disponibilités, planning, annonces, tâches, drafts</td><td>Si vous utilisez les fonctions d'équipe ou de coaching</td><td>Les partager avec les membres concernés du groupe.</td></tr>
-    <tr><td>Check-ins de bien-être (énergie, humeur, sommeil, note facultative)</td><td>Uniquement si vous en remplissez</td><td>Votre suivi personnel ; partagés avec le staff d'un groupe <strong>seulement</strong> si vous l'activez pour ce groupe.</td></tr>
+    <tr><td>Sessions d'équipe : présence ou absence aux réunions (et qui l'a notée), parties jouées, retours et reviews de session</td><td>Quand le staff ou le capitaine organise une session d'équipe</td><td>Suivre l'assiduité et le travail collectif ; visibles par les membres du groupe.</td></tr>
+    <tr><td>Récompenses hebdomadaires (MVP, Grinder)</td><td>Si vous êtes dans le roster d'une équipe</td><td>Calculées sur l'ordinateur des membres à partir de vos parties classées (données publiques de l'API Riot), et affichées sur les cartes joueurs du groupe.</td></tr>
+    <tr><td>Logo de l'équipe</td><td>Si le staff en envoie un</td><td>Afficher l'équipe. L'image est publique : quiconque a son adresse peut la voir.</td></tr>
+    <tr><td>Rapports d'équipe partagés par lien</td><td>Si le staff crée un lien de rapport</td><td>Une copie figée du rapport de la semaine (nom de l'équipe, noms des joueurs, statistiques), lisible <strong>sans connexion</strong> par toute personne qui a le lien, jusqu'à ce que le staff le révoque.</td></tr>
+    <tr><td>Abonnement au calendrier (<code>.ics</code>)</td><td>Si le staff crée une adresse d'abonnement</td><td>Le planning de l'équipe, lisible <strong>sans connexion</strong> par toute personne qui a l'adresse, jusqu'à ce qu'elle soit révoquée.</td></tr>
+    <tr><td>Check-ins de bien-être (énergie, humeur, sommeil, note facultative)</td><td>Uniquement si vous en remplissez <strong>et</strong> que vous avez accepté leur enregistrement (voir § 3 bis)</td><td>Votre suivi personnel ; partagés avec le staff d'un groupe <strong>seulement</strong> si vous l'activez pour ce groupe. Le staff peut recevoir une alerte si votre charge de jeu est élevée et que votre humeur baisse plusieurs jours de suite, uniquement si vous partagez vos statistiques <strong>et</strong> votre bien-être avec ce groupe.</td></tr>
     <tr><td>Notifications</td><td>Selon votre activité de groupe</td><td>Vous prévenir (commentaire reçu, objectif assigné, rappel de scrim).</td></tr>
     <tr><td>Signalements de bug et suggestions</td><td>Quand vous en envoyez un</td><td>Corriger et améliorer l'app. Le diagnostic technique n'est joint que si vous cochez la case ; il est expurgé des données personnelles.</td></tr>
-    <tr><td>Identifiant Discord et salon lié</td><td>Si votre équipe utilise le bot Discord et que vous liez votre compte</td><td>Répondre aux commandes du bot (planning, disponibilités, scrims).</td></tr>
+    <tr><td>Identifiant Discord et salon lié</td><td>Si votre équipe utilise le bot Discord et que vous liez votre compte</td><td>Répondre aux commandes du bot (planning, disponibilités, scrims). Si vous êtes membre du staff et avez lié votre compte, le bot peut aussi vous envoyer en message privé les absences et retours des joueurs. Les commandes de planning du bot sont visibles par les membres du serveur Discord lié à l'équipe.</td></tr>
     <tr><td>Requêtes vers l'API Riot (Riot ID, identifiants de match)</td><td>À chaque récupération de données de jeu</td><td>Transmises par notre relais, qui ajoute la clé d'API et limite le volume par compte.</td></tr>
   </tbody>
 </table>
-<p>Base légale : l'exécution du service que vous demandez (article 6.1.b du RGPD). Pour les check-ins de bien-être, le partage avec un groupe repose sur votre consentement explicite (article 9.2.a), retirable à tout moment.</p>
+<p>Base légale : l'exécution du service que vous demandez (article 6.1.b du RGPD). Pour les check-ins de bien-être, qui sont des données de santé, leur <strong>enregistrement</strong> comme leur <strong>partage</strong> avec un groupe reposent sur votre consentement explicite (article 9.2.a), retirable à tout moment.</p>
+
+<h2>3 bis. Check-ins de bien-être : votre consentement</h2>
+<ul>
+  <li>La première fois que vous remplissez un check-in, Ascend vous demande si vous acceptez qu'il soit enregistré et synchronisé avec votre compte. Sans cet accord, aucun check-in n'est enregistré.</li>
+  <li>Le partage avec le staff d'un groupe est un <strong>second</strong> accord, distinct, à donner groupe par groupe (<em>Réglages de partage</em>).</li>
+  <li>Vous pouvez retirer votre accord à tout moment dans <em>Réglages → Confidentialité</em> : vos check-ins sont alors <strong>supprimés</strong> de votre compte et cessent immédiatement d'être visibles par les groupes.</li>
+  <li>Ascend n'utilise jamais ces données pour autre chose que votre suivi et celui de votre staff, quand vous l'avez choisi.</li>
+</ul>
 
 <h2>4. Ce qui ne quitte jamais votre ordinateur</h2>
 <ul>
   <li><strong>Les vidéos</strong> de vos parties, clips et miniatures.</li>
   <li><strong>Le cache des matchs Riot</strong> et les statistiques détaillées calculées à partir de celui-ci.</li>
   <li><strong>L'audio des débriefs</strong> : la transcription est faite par un modèle qui tourne sur votre PC.</li>
-  <li><strong>Vos accès YouTube</strong> : si vous publiez une vidéo sur votre chaîne, l'autorisation est chiffrée par le trousseau de Windows et l'envoi se fait directement de votre PC vers YouTube.</li>
   <li>Les webhooks Discord personnels et les réglages propres à chaque PC (dossier d'enregistrement, qualité, apparence).</li>
 </ul>
 
 <h2>5. Qui voit quoi</h2>
 <ul>
   <li><strong>Vous seul</strong>, par défaut.</li>
-  <li><strong>Le staff d'un groupe</strong> (coach, analyste, manager) voit vos reviews et statistiques seulement si vous partagez ces catégories avec ce groupe.</li>
-  <li><strong>Vos coéquipiers</strong> voient les données d'équipe (planning, scrims, drafts, pools de champions publiés), jamais vos reviews personnelles.</li>
+  <li><strong>Le staff d'un groupe</strong> (coach, analyste, manager) voit vos reviews, micro-reviews et statistiques seulement si vous partagez ces catégories avec ce groupe.</li>
+  <li><strong>Vos coéquipiers</strong> voient les données d'équipe (planning, scrims, drafts, pools de champions publiés, présence aux réunions, retours de session, récompenses de la semaine), jamais vos reviews personnelles.</li>
+  <li><strong>Sans connexion</strong> : toute personne qui a le lien d'un rapport partagé, l'adresse d'abonnement au calendrier ou l'adresse du logo de l'équipe. Le staff peut révoquer les deux premiers à tout moment.</li>
   <li>Vous pouvez quitter un groupe ou retirer un partage à tout moment ; l'accès cesse immédiatement.</li>
 </ul>
 
 <h2>6. Hébergeurs et destinataires</h2>
 <ul>
-  <li><strong>Supabase</strong> — comptes, synchronisation, sauvegardes, fonctions de groupe. Hébergement Union européenne / Suisse (région Zurich).</li>
-  <li><strong>Cloudflare</strong> — relais vers l'API Riot Games, app web, bot Discord et ce site (réseau mondial).</li>
-  <li><strong>Riot Games</strong> — reçoit les requêtes d'API nécessaires, selon sa propre politique de confidentialité.</li>
-  <li><strong>Discord</strong> et <strong>YouTube (Google)</strong> — uniquement si vous utilisez ces intégrations.</li>
-  <li><strong>GitHub</strong> — héberge les fichiers d'installation ; ce site interroge l'API publique de GitHub pour afficher la dernière version.</li>
+  <li><strong>Supabase</strong> : comptes, synchronisation, sauvegardes, fonctions de groupe, logos d'équipe, rapports partagés et calendriers. Hébergement Union européenne / Suisse (région Zurich).</li>
+  <li><strong>Cloudflare</strong> : relais vers l'API Riot Games, app web, bot Discord et ce site (réseau mondial).</li>
+  <li><strong>Riot Games</strong> : reçoit les requêtes d'API nécessaires, selon sa propre politique de confidentialité.</li>
+  <li><strong>Discord</strong> : uniquement si vous utilisez cette intégration.</li>
+  <li><strong>GitHub</strong> : héberge les fichiers d'installation et les mises à jour de l'application ; ce site interroge l'API publique de GitHub pour afficher la dernière version.</li>
 </ul>
 <p>Aucune donnée n'est vendue ni utilisée à des fins publicitaires. Ce site n'utilise ni cookie, ni outil de mesure d'audience, ni police ou script hébergé par un tiers.</p>
 
@@ -92,26 +106,31 @@
 <ul>
   <li>Sauvegardes cloud : les 10 plus récentes par compte ; les plus anciennes sont supprimées automatiquement.</li>
   <li>Compte, données synchronisées et données de groupe : jusqu'à la suppression de votre compte.</li>
+  <li>Check-ins de bien-être : jusqu'au retrait de votre consentement ou à la suppression de votre compte.</li>
+  <li>Rapports partagés et adresses de calendrier : jusqu'à leur révocation par le staff, ou la suppression du groupe.</li>
   <li>Journaux techniques du relais Riot : durée de rétention standard de l'hébergeur, sans conservation des requêtes par Ascend.</li>
   <li>Signalements de bug : jusqu'à leur traitement, puis supprimés sur simple demande.</li>
 </ul>
+<p><strong>Quand vous quittez un groupe</strong> : votre accès cesse immédiatement et le groupe ne voit plus vos données partagées (reviews, statistiques, bien-être). Ce que vous avez écrit <strong>pour le groupe</strong> (commentaires, retours de session, demandes au planning) et ce que le staff a noté vous concernant (présence, objectifs assignés) restent dans le groupe, car ils font partie de son historique. Vous pouvez demander leur suppression à <a href="mailto:exciid501@gmail.com">exciid501@gmail.com</a>.</p>
+<p><strong>Quand vous supprimez votre compte</strong> : vos données personnelles sont supprimées : votre compte, vos données synchronisées, vos sauvegardes, vos check-ins de bien-être, vos retours de session, vos partages et vos liens Discord. Vos autres contributions aux groupes (commentaires, présences notées, éléments du planning) restent dans leur historique, mais rendues anonymes : votre nom n'y apparaît plus. Si vous êtes le propriétaire d'un groupe, ce rôle est transmis à un autre membre, dans cet ordre : un coach, sinon un manager, un analyste, le capitaine, puis le joueur le plus ancien du groupe. Le groupe n'est supprimé que s'il ne reste aucun autre membre.</p>
 
 <h2>8. Vos droits</h2>
 <ul>
   <li><strong>Accès et portabilité</strong> : <em>Réglages → Sauvegarde</em> exporte toutes vos données dans un fichier <code>.nexusmind</code>.</li>
-  <li><strong>Effacement</strong> : <em>Réglages → Compte Ascend → Supprimer mon compte</em> supprime immédiatement votre compte, vos données synchronisées et vos sauvegardes cloud. Les données présentes sur votre PC ne sont pas touchées : pour les effacer, désinstallez l'application puis supprimez son dossier de données (dans <code>%APPDATA%</code>) et votre dossier d'enregistrements.</li>
+  <li><strong>Effacement</strong> : <em>Réglages → Compte Ascend → Supprimer mon compte</em> supprime immédiatement votre compte, vos données synchronisées et vos sauvegardes cloud (voir § 7 pour les données de groupe). Les données présentes sur votre PC ne sont pas touchées : pour les effacer, désinstallez l'application puis supprimez son dossier de données (dans <code>%APPDATA%</code>) et votre dossier d'enregistrements.</li>
+  <li><strong>Retrait du consentement au bien-être</strong> : <em>Réglages → Confidentialité</em>, effet immédiat (§ 3 bis).</li>
   <li><strong>Rectification, opposition, limitation, retrait du consentement</strong> : écrivez à <a href="mailto:exciid501@gmail.com">exciid501@gmail.com</a>. Réponse sous un mois.</li>
   <li><strong>Réclamation</strong> : vous pouvez saisir l'autorité de protection des données de votre pays (en France, la CNIL).</li>
 </ul>
 
 <h2>9. Mineurs</h2>
-<p>Ascend s'adresse aux personnes de 15 ans et plus. En dessous de cet âge, l'utilisation d'un compte suppose l'accord d'un titulaire de l'autorité parentale.</p>
+<p>Ascend s'adresse aux personnes de 15 ans et plus. En dessous de cet âge, l'utilisation d'un compte suppose l'accord d'un titulaire de l'autorité parentale. Pour les check-ins de bien-être, le consentement d'un utilisateur de moins de 15 ans doit être donné ou autorisé par ce titulaire.</p>
 
 <h2>10. Sécurité</h2>
-<p>Connexions chiffrées (HTTPS), session de l'application de bureau protégée par le trousseau de Windows, accès aux données contrôlé ligne par ligne côté serveur (chacun ne lit que ce qui lui est destiné ou partagé), clé d'API Riot jamais présente dans l'application.</p>
+<p>Connexions chiffrées (HTTPS), session de l'application de bureau protégée par le trousseau de Windows, accès aux données contrôlé ligne par ligne côté serveur (chacun ne lit que ce qui lui est destiné ou partagé), clé d'API Riot jamais présente dans l'application. Les liens publics (rapports, calendrier) reposent sur des jetons longs et aléatoires : ne les partagez qu'avec les personnes concernées.</p>
 
 <h2>11. Modifications</h2>
-<p>Cette politique peut évoluer avec l'application. Les changements importants seront signalés dans l'app avant de s'appliquer.</p>
+<p>Cette politique peut évoluer avec l'application. Les changements importants seront signalés dans l'app avant de s'appliquer. La version 0.3 en est un : elle sera annoncée dans l'app à la première ouverture qui suit sa publication.</p>
 
 <h2>Mentions Riot Games</h2>
 <p lang="en">Ascend isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.</p>

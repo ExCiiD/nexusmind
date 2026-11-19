@@ -213,6 +213,8 @@ export interface TeamMember {
   region?: string | null
   role: string
   puuid?: string | null
+  /** #38: "Name#TAG" before a rename was applied; show it, then clear it (updateTeamMember, previousRiotId: null). */
+  previousRiotId?: string | null
   champPool?: ChampionPoolEntry[]
 }
 
@@ -478,6 +480,8 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   /** Sets / changes the password of the signed-in user. */
   cloudSetPassword: (password: string) => Promise<CloudUser | null>
   cloudSignOut: () => Promise<{ signedOut: boolean }>
+  /** Every device and the web (scope global). Rejects when the server could not be reached: nothing was revoked. */
+  cloudSignOutEverywhere?: () => Promise<{ signedOut: boolean }>
   cloudBackupNow: () => Promise<CloudBackup>
   cloudListBackups: () => Promise<CloudBackup[]>
   cloudRestoreBackup: (id: string) => Promise<{ sessionsAdded: number; gamesAdded: number; reviewsAdded: number; assessmentsAdded: number; snapshotsAdded: number; recordingsAdded: number; externalReviewsAdded: number; conflicts: number; skipped: number }>
@@ -498,6 +502,8 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   // Recording — library
   scanRecordings: () => Promise<{ scanned: number; matched: number; orphaned: number; dismissed: number; backfillLinked?: number; backfillNotFound?: number; paths: Array<{ source: string; dir: string; exists: boolean }> }>
   getRecording: (gameId: string) => Promise<{ id: string; gameId: string; filePath: string | null; youtubeUrl: string | null; source: string; createdAt?: string; startOffsetSec?: number | null } | null>
+  /** The ids, among `gameIds`, of the games that have a recording (one query). Desktop only: absent on the web. */
+  recordingGameIdsWithRecording?: (gameIds: string[]) => Promise<string[]>
   linkRecordingFile: (gameId: string) => Promise<any>
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => Promise<any>
   deleteReview: (gameId: string) => Promise<{ success: boolean }>
@@ -597,13 +603,13 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
    *  and desktop has nothing equivalent to call this with. No-op on
    *  desktop — never called there. */
   teamSetActiveGroup?: (groupId: string | null) => void
-  listTeams: (opts?: { isOpponent?: boolean }) => Promise<Team[]>
-  createTeam: (data: { name: string; tag?: string; logo?: string; notes?: string; isOpponent?: boolean }) => Promise<Team>
+  listTeams: (opts?: { isOpponent?: boolean; groupId?: string; includeUnassigned?: boolean }) => Promise<Team[]>
+  createTeam: (data: { name: string; tag?: string; logo?: string; notes?: string; isOpponent?: boolean; groupId?: string }) => Promise<Team>
   /** Makes the team the roster of a cloud group (null unlinks); the group's previous team is released. */
   linkTeamToGroup: (teamId: string, groupId: string | null) => Promise<Team>
   deleteTeam: (id: string) => Promise<{ ok: true }>
   addTeamMember: (teamId: string, data: { displayName: string; ign?: string; tagLine?: string; region?: string; role: string; puuid?: string }) => Promise<TeamMember>
-  updateTeamMember: (memberId: string, data: Partial<{ displayName: string; ign: string | null; tagLine: string | null; region: string | null; role: string; puuid: string | null }>) => Promise<TeamMember>
+  updateTeamMember: (memberId: string, data: Partial<{ displayName: string; ign: string | null; tagLine: string | null; region: string | null; role: string; puuid: string | null; previousRiotId: string | null }>) => Promise<TeamMember>
   removeTeamMember: (memberId: string) => Promise<{ ok: true }>
   dedupeTeamMembers: (teamId: string) => Promise<{ removed: number }>
   computeTeamSynergyStats: (
@@ -675,11 +681,14 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   createClip: (opts: { recordingId: string; startMs: number; endMs: number; title?: string; linkedNoteText?: string }) => Promise<{ id: string }>
   exportClip: (opts: { recordingId: string; startMs: number; endMs: number; title?: string; linkedNoteText?: string }) =>
     Promise<{ id: string; filePath: string; thumbnailPath: string | null; title: string | null; startMs: number; endMs: number; fileSize: number; revealedInFolder: boolean }>
-  listClips: (recordingId: string) => Promise<Array<{ id: string; title: string | null; startMs: number; endMs: number; filePath: string | null; youtubeUrl: string | null; tempShareUrl: string | null; createdAt: string }>>
+  /** J (FE-3): the Clip fields the screens read, plus the file size in bytes. A clip's youtubeUrl / tempShareUrl
+   *  are not part of it (removed with E15-B, no screen shows them). */
+  listClips: (recordingId: string) => Promise<Array<{
+    id: string; recordingId: string; filePath: string; thumbnailPath: string | null; title: string | null
+    startMs: number; endMs: number; linkedNoteText: string | null; createdAt: string; fileSize: number
+  }>>
   listAllClips: () => Promise<Array<{ clipId: string; recordingId: string; filePath: string | null; thumbnailPath: string | null; title: string | null; startMs: number; endMs: number; createdAt: string; fileSize: number; champion: string | null; opponentChampion: string | null; win: boolean; duration: number }>>
   deleteClip: (clipId: string) => Promise<{ success: boolean }>
-  setClipYoutubeUrl: (clipId: string, url: string) => Promise<{ success: boolean }>
-  setClipTempShare: (clipId: string, url: string, expiryHours: number) => Promise<{ success: boolean }>
 
   // Sharing (files + temp upload)
   sendToDiscord: (embeds: object[], webhookUrl: string) => Promise<{ success: boolean }>
@@ -692,10 +701,13 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   deleteWebhook: (id: string) => Promise<{ success: boolean }>
 
   // YouTube OAuth + upload
-  youtubeAuthStart: () => Promise<{ url: string }>
-  youtubeGetStatus: () => Promise<{ connected: boolean; channelName?: string; email?: string }>
+  /** Resolves once the browser consent is done (J, FE-3: the main process returns the connection, not a URL). */
+  youtubeAuthStart: () => Promise<{ connected: boolean; channelName: string }>
+  /** `available`: false in the installed app or without OAuth credentials (option A, 19/11/2026): hide upload. */
+  youtubeGetStatus: () => Promise<{ connected: boolean; channelName: string | null; available?: boolean }>
   youtubeDisconnect: () => Promise<{ success: boolean }>
-  youtubeUpload: (opts: { filePath: string; title: string; description?: string; visibility?: string }) => Promise<{ jobId: string }>
+  /** Resolves when the upload is done (progress comes through onYoutubeUploadProgress). */
+  youtubeUpload: (opts: { filePath: string; title: string; description?: string; visibility?: string }) => Promise<{ videoId: string; url: string }>
   onYoutubeUploadProgress: (cb: (data: { jobId: string; percent: number }) => void) => () => void
 
   /** Local Whisper transcription (Phase 5, Planning rework). Desktop-only —

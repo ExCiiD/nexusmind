@@ -16,7 +16,7 @@ interface SessionRow {
   started_at: string | null; ended_at: string | null; created_at: string
 }
 interface ObjectivesRow { session_id: string; objective_ids: string[]; kpi_ids: string[]; set_by: string | null; set_at: string }
-interface FundamentalRow { id: string; group_id: string; label: string; description: string | null; created_by: string; created_at: string }
+interface FundamentalRow { id: string; group_id: string; label: string; description: string | null; created_by: string | null; created_at: string }
 interface GameRow {
   id: string; session_id: string; match_id: string; reported_by: string | null; status: TeamSessionGame['status']; created_at: string
   match_json: unknown | null; our_team_id: 100 | 200 | null; enemy_team_name: string | null
@@ -79,11 +79,11 @@ export async function getObjectives(sb: SupabaseClient, sessionId: string): Prom
 /** Up to 3 objectives, same cap as the solo session flow — enforced here
  *  (Core), not a DB constraint, matching how objective ids are free-form
  *  strings everywhere else in the app. */
-export async function setObjectives(sb: SupabaseClient, sessionId: string, objectiveIds: string[], kpiIds: string[]): Promise<void> {
+export async function setObjectives(sb: SupabaseClient, uid: string, sessionId: string, objectiveIds: string[], kpiIds: string[]): Promise<void> {
   if (objectiveIds.length === 0 || objectiveIds.length > 3) throw new Error('INVALID_OBJECTIVE_COUNT')
-  const { data: userData } = await sb.auth.getUser()
+  // `uid`: the signed-in user, from the local session (no auth.getUser round trip, item I).
   const { error } = await sb.from('team_session_objectives').upsert({
-    session_id: sessionId, objective_ids: objectiveIds, kpi_ids: kpiIds, set_by: userData.user?.id ?? null, set_at: new Date().toISOString(),
+    session_id: sessionId, objective_ids: objectiveIds, kpi_ids: kpiIds, set_by: uid, set_at: new Date().toISOString(),
   })
   if (error) fail(error, 'set session objectives')
 }
@@ -107,13 +107,23 @@ export async function setAttendance(sb: SupabaseClient, sessionId: string, userI
   if (error) fail(error, 'set attendance')
 }
 
-/** RLS already scopes this to the caller's own groups — a cheap existence
- *  check, used by the fast-poll switch (electron/main/sync/syncService.ts)
- *  and any "you have a live session" banner. */
-export async function hasLiveSessionForUser(sb: SupabaseClient): Promise<boolean> {
-  const { count, error } = await sb.from('team_sessions').select('id', { count: 'exact', head: true }).eq('status', 'live')
-  if (error) fail(error, 'check live session')
-  return (count ?? 0) > 0
+// ── One live-session poller per app (item I, 19/11/2026) ─────────────────────
+// Desktop: electron/main/sync/syncService.ts (its sync cycle). Web: web/src/api.ts (a shared store). Both push the
+// list to the screens instead of each screen polling, with the same cadence.
+
+/** What makes two lists of live sessions different for the screens. */
+export function liveSessionsKey(list: TeamSession[]): string {
+  return list.map((s) => `${s.id}:${s.status}:${s.responsibleUserIds.join('+')}:${s.queueFilter ?? ''}`).sort().join(',')
+}
+
+/**
+ * The wait before the next check (ms): 60 s at rest, 15 s while a session is live; app hidden: 5 min, or 60 s while
+ * a session is live (the end-of-game flow still needs to hear about it). Budget: ≤ 3 Supabase requests a minute at
+ * rest across the whole app.
+ */
+export function livePollDelay(visible: boolean, anyLive: boolean): number {
+  if (visible) return anyLive ? 15_000 : 60_000
+  return anyLive ? 60_000 : 5 * 60_000
 }
 
 export async function listMyLiveSessions(sb: SupabaseClient): Promise<TeamSession[]> {

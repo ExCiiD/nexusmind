@@ -10,13 +10,14 @@ import { buildSessionPerformance } from '@/lib/teamSessionStatsCore'
 import { ReviewRecorder } from './ReviewRecorder'
 import type { TeamSessionGame } from '@/lib/teamSessions'
 import type { ReviewStatus, TeamSessionFeedback, TeamSessionReview, TeamSessionReviewPatch } from '@/lib/teamSessionReviews'
+import type { NameOf } from '@/hooks/useCollab'
 
 interface Props {
   sessionId: string
   games: TeamSessionGame[]
   canManage: boolean
   myUserId: string
-  nameOf: (userId: string) => string
+  nameOf: NameOf
   /** Start the final-review recording on mount (coach confirmed it in the
    *  end-of-game dialog or from the postponed-review reminder). */
   autoStart?: boolean

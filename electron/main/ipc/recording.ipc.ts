@@ -1,7 +1,7 @@
 import { ipcMain, dialog, app, BrowserWindow, shell } from 'electron'
 import { getPrisma } from '../database'
 import { z } from 'zod'
-import { validatedHandle, id, httpsUrl, youtubeUrl as youtubeUrlSchema } from './validate'
+import { validatedHandle, id, youtubeUrl as youtubeUrlSchema } from './validate'
 import { getActiveRecorder } from '../recorderBackend'
 import { enterRecordingBackground, leaveRecordingBackground } from '../windowFocus'
 import {
@@ -744,6 +744,16 @@ export function registerRecordingHandlers() {
     return prisma.recording.findUnique({ where: { gameId } })
   })
 
+  // T (History page): which of these games have a recording, in one query instead of one recording:get each.
+  validatedHandle('recording:game-ids-with-recording', z.tuple([z.array(id).max(1000)]), async (_event, gameIds) => {
+    if (gameIds.length === 0) return []
+    const rows = await getPrisma().recording.findMany({
+      where: { gameId: { in: [...new Set(gameIds)] } },
+      select: { gameId: true },
+    })
+    return rows.map((r) => r.gameId).filter((g): g is string => g !== null)
+  })
+
 
   ipcMain.handle('recording:link-file', async (_event, gameId: string) => {
     const prisma = getPrisma()
@@ -1346,23 +1356,7 @@ export function registerRecordingHandlers() {
     return true
   })
 
-  validatedHandle('clip:set-youtube', z.tuple([id, youtubeUrlSchema]), async (_e, clipId, youtubeUrl) => {
-    await getPrisma().$executeRawUnsafe(
-      `UPDATE "Clip" SET "youtubeUrl" = ? WHERE "id" = ?`,
-      youtubeUrl,
-      clipId,
-    )
-    return true
-  })
-
-  validatedHandle('clip:set-temp-share', z.tuple([id, httpsUrl, z.number().int().min(1).max(72)]), async (_e, clipId, url, expiryHours) => {
-    const expiry = new Date(Date.now() + expiryHours * 3600 * 1000).toISOString()
-    await getPrisma().$executeRawUnsafe(
-      `UPDATE "Clip" SET "tempShareUrl" = ?, "tempShareExpiry" = ? WHERE "id" = ?`,
-      url,
-      expiry,
-      clipId,
-    )
-    return true
-  })
+  // E15-B (19/11/2026): clip:set-youtube and clip:set-temp-share were removed. Nothing ever called them, so a clip
+  // never had a share link to show. The Clip.youtubeUrl / tempShareUrl / tempShareExpiry columns stay in SQLite
+  // (dropping them would copy the whole database at the next launch for nothing).
 }

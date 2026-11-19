@@ -5,11 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { LegalDialog } from '@/components/Cloud/LegalDialog'
 import { PasswordSettings } from '@/components/Cloud/PasswordSettings'
+import { SignOutEverywhereButton } from '@/components/Cloud/SignOutEverywhereButton'
+import { OwnerHandoverNotice } from '@/components/Cloud/OwnerHandoverNotice'
 import { FeedbackDialog } from '@/components/Feedback/FeedbackDialog'
 import type { FeedbackKind } from '@/lib/feedback'
 import { AccessInvitesCard } from '@/components/Cloud/AccessInvitesCard'
 import { DiscordLinkCard } from '../components/DiscordLinkCard'
 import { DownloadButton } from '../DownloadButton'
+import { WellbeingPrivacyCard } from '@/components/Wellbeing/WellbeingPrivacyCard'
 
 export function AccountPage() {
   const { t, i18n } = useTranslation()
@@ -28,16 +31,19 @@ export function AccountPage() {
           <p>{t('cloud.account.signedInAs')} <strong className="text-hextech-text-bright">{email}</strong></p>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" className="gap-2" onClick={() => window.api.cloudSignOut()}>
-              <LogOut className="h-4 w-4" />{t('cloud.account.signOut')}
+              <LogOut className="h-4 w-4" aria-hidden />{t('cloud.account.signOut')}
             </Button>
+            <SignOutEverywhereButton size="default" />
             <Button variant="outline" className="gap-2" onClick={() => i18n.changeLanguage(i18n.language.startsWith('fr') ? 'en' : 'fr')}>
               {i18n.language.startsWith('fr') ? 'English' : 'Français'}
             </Button>
           </div>
           <PasswordSettings />
           <p className="text-xs text-hextech-text-dim">{t('web.account.deleteHint')}</p>
+          <OwnerHandoverNotice />
         </CardContent>
       </Card>
+      <WellbeingPrivacyCard />
       <AccessInvitesCard webUrl={window.location.origin} />
       <DiscordLinkCard />
       <Card>

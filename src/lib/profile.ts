@@ -93,10 +93,16 @@ export const isTierReached = (current: TierId, required: TierId) => tierRank(cur
 export interface ProfileIcon { id: string; url: string; unlockTier: TierId }
 
 /** The first five are free; the rest unlock as the Ascend tier rises. */
+// Grouped by tier (the Profile picker shows them in this order). #37 (19/11/2026): 14 new icons.
 const ICON_UNLOCKS: Array<[string, TierId]> = [
-  ['tempete', 'recrue'], ['survivant', 'recrue'], ['souffle', 'recrue'], ['jade', 'recrue'], ['elevation', 'recrue'],
-  ['brasier', 'initie'], ['halo', 'adepte'], ['ascension', 'stratege'], ['arcane', 'virtuose'],
-  ['cercle', 'sage'], ['invocatrice', 'sage'], ['chevalier', 'oracle'], ['heaume', 'legende'],
+  ['tempete', 'recrue'], ['survivant', 'recrue'], ['souffle', 'recrue'], ['jade', 'recrue'], ['elevation', 'recrue'], ['sourire', 'recrue'],
+  ['brasier', 'initie'], ['neon', 'initie'], ['rebelle', 'initie'],
+  ['halo', 'adepte'], ['venin', 'adepte'], ['eclipse', 'adepte'],
+  ['ascension', 'stratege'], ['parrain', 'stratege'], ['sereine', 'stratege'],
+  ['arcane', 'virtuose'], ['maree', 'virtuose'], ['stoique', 'virtuose'],
+  ['cercle', 'sage'], ['invocatrice', 'sage'], ['moine', 'sage'],
+  ['chevalier', 'oracle'], ['conquerant', 'oracle'], ['rage', 'oracle'],
+  ['heaume', 'legende'], ['carmin', 'legende'], ['furie', 'legende'],
 ]
 export const PROFILE_ICONS: ProfileIcon[] = ICON_UNLOCKS
   .filter(([id]) => ICON_URLS[id])

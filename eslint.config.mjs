@@ -8,6 +8,7 @@
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import reactHooks from 'eslint-plugin-react-hooks'
+import jsxA11y from 'eslint-plugin-jsx-a11y'
 import globals from 'globals'
 
 export default tseslint.config(
@@ -37,6 +38,25 @@ export default tseslint.config(
     rules: {
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
+    },
+  },
+  // Accessibility (A11Y-1, task O): jsx-a11y "recommended" as errors (19/11/2026,
+  // once the existing code was clean; exceptions are annotated in place).
+  {
+    files: ['src/**/*.tsx', 'web/src/**/*.tsx'],
+    plugins: { 'jsx-a11y': jsxA11y },
+    rules: Object.fromEntries(
+      Object.entries(jsxA11y.flatConfigs.recommended.rules)
+        .filter(([, v]) => (Array.isArray(v) ? v[0] : v) !== 'off')
+        .map(([r, v]) => [r, Array.isArray(v) ? ['error', ...v.slice(1)] : 'error']),
+    ),
+  },
+  {
+    files: ['src/**/*.tsx', 'web/src/**/*.tsx'],
+    rules: {
+      // Every autoFocus in the app moves focus into a field the user just
+      // opened (inline edit, dialog, sign-in form): the accepted use of it.
+      'jsx-a11y/no-autofocus': 'off',
     },
   },
   {

@@ -90,3 +90,20 @@ export function groupDuplicates<T extends { puuid?: string | null; ign?: string 
   }
   return Array.from(groups.values()).filter((g) => g.length >= 2)
 }
+
+/**
+ * #38: what to store when Riot reports a puuid's current Riot ID. null when nothing changed. The display name
+ * follows the Riot name only when it was the Riot name (or empty): a name the staff typed is kept.
+ */
+export function riotIdRename(
+  stored: { ign?: string | null; tagLine?: string | null; displayName?: string | null },
+  fresh: { gameName?: string | null; tagLine?: string | null },
+): { ign: string; tagLine: string; displayName?: string } | null {
+  const ign = fresh.gameName?.trim()
+  const tagLine = fresh.tagLine?.trim()
+  if (!ign || !tagLine) return null
+  if (ign === (stored.ign ?? '').trim() && tagLine === (stored.tagLine ?? '').trim()) return null
+  const shown = (stored.displayName ?? '').trim()
+  const followsRiot = !shown || shown === (stored.ign ?? '').trim()
+  return { ign, tagLine, ...(followsRiot ? { displayName: ign } : {}) }
+}

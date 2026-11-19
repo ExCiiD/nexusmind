@@ -8,6 +8,9 @@
  *  4. Add client_id / client_secret to .env as:
  *     MAIN_VITE_GOOGLE_CLIENT_ID=...
  *     MAIN_VITE_GOOGLE_CLIENT_SECRET=...
+ *
+ * Development only (option A, 19/11/2026): see youtubeUploadAvailable(). The secret is read from
+ * process.env at run time, never inlined by the build; do not move it to import.meta.env.
  */
 import { ipcMain, shell, app, safeStorage } from 'electron'
 import { createServer } from 'http'
@@ -75,6 +78,15 @@ function getClientSecret(): string {
   return process.env.MAIN_VITE_GOOGLE_CLIENT_SECRET ?? ''
 }
 
+/**
+ * YouTube upload, user decision "option A" of 19/11/2026 (docs/AUDIT_SECURITE.md § 3bis): the OAuth client secret
+ * must never ship in a build, so upload is development-only until a server-side flow (PKCE + Edge Function) exists.
+ * Off in the installed app, and wherever the credentials are missing. Links pasted by hand keep working.
+ */
+export function youtubeUploadAvailable(): boolean {
+  return !app.isPackaged && !!getClientId() && !!getClientSecret()
+}
+
 async function refreshAccessToken(tokens: YoutubeTokens): Promise<YoutubeTokens> {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -132,6 +144,7 @@ export function registerYoutubeHandlers(): void {
    *  4. Exchanges the code for tokens and persists them
    */
   ipcMain.handle('youtube:auth-start', async () => {
+    if (!youtubeUploadAvailable()) throw new Error('YOUTUBE_UNAVAILABLE')
     const clientId = getClientId()
     const clientSecret = getClientSecret()
     if (!clientId || !clientSecret) {
@@ -237,6 +250,8 @@ export function registerYoutubeHandlers(): void {
     return {
       connected: tokens !== null,
       channelName: tokens?.channelName ?? null,
+      /** False in the installed app, or without OAuth credentials: hide the upload controls. */
+      available: youtubeUploadAvailable(),
     }
   })
 
@@ -257,6 +272,7 @@ export function registerYoutubeHandlers(): void {
     description: z.string().max(100_000).transform((s) => s.slice(0, 5000)).optional(),
     visibility: z.enum(['public', 'unlisted', 'private']).optional(),
   })]), async (event, opts) => {
+    if (!youtubeUploadAvailable()) throw new Error('YOUTUBE_UNAVAILABLE')
     if (!existsSync(opts.filePath)) throw new Error('FILE_NOT_FOUND')
     // Only recordings/clips known to the app may leave the machine.
     if (!(await isMediaPathAllowed(opts.filePath))) throw new Error('FILE_NOT_ALLOWED')

@@ -65,9 +65,10 @@ describe('spec constants', () => {
       carry: { bounty: 450, kda: 4, goldShare: 0.25, enemies: 3, fightRadius: 2500, lostWithinSec: 60, firstDeathSec: 10 },
       rotation: { untilSec: 840, awaySec: 30, cs: 8, xp: 350, deathGuardSec: 45 },
       pit: { fromSec: 840, fightRadius: 3000, insideRadius: 900, beforeSec: 15, fightGapSec: 20 },
-      midRoam: { untilSec: 840, plates: 1, cs: 10, minOffAxis: 2600 },
+      // 2026: plates stay up after 14:00, so the plate-bound rules run to 20:00 (2025 values in CLOCK_2025).
+      midRoam: { untilSec: 1200, plates: 1, cs: 10, minOffAxis: 2600 },
       // V5 (laning phase) — boundaries tested in microReviewV5.test.ts.
-      dive: { untilSec: 840, turretRadius: 850, afterKillSec: 4 },
+      dive: { untilSec: 1200, turretRadius: 850, afterKillSec: 4 },
       levelSpike: { untilSec: 235, windowSec: 10, levels: [2, 3] },
       backTimer: { untilSec: 600, hpPct: 35, gold: 800, withinSec: 40 },
       rangeMelee: { untilSec: 480, rangedHp: 60, rangedMaxLevel: 3, meleeHp: 50, meleeMaxLevel: 4, opponentHp: 85 },
@@ -88,7 +89,7 @@ describe('spec constants', () => {
       dragonTank: { fromSec: 300, untilSec: 720, damageShare: 0.6 },
       compensation: { windowSec: 15, allyRadius: 3000, outnumberedBy: 2, objectiveWithinSec: 60 },
       earlyBoots: { untilSec: 480, itemId: 1001 },
-      sideTower: { fromSec: 840, untilSec: 1200 },
+      sideTower: { fromSec: 0, untilSec: 1200 },
       heraldEye: { fromSec: 840, untilSec: 1170, itemId: 3513, pickupSec: 20 },
       fledInvade: { untilSec: 900, hpPct: 15, enemyHpPct: 70, radius: 2000, aliveSec: 15, campCs: 4 },
       outsmite: { pitRadius: 900 },
@@ -101,7 +102,7 @@ describe('spec constants', () => {
     expect(MAX_MOMENTS).toBe(3)
     expect([GARBAGE_LOW, GARBAGE_HIGH]).toEqual([0.18, 0.85])
   })
-  it('15.x games keep the 2025 clock: every early timing 35 s later, nothing else moves', () => {
+  it('15.x games keep the 2025 clock: every early timing 35 s later, plates gone at 14:00, nothing else moves', () => {
     expect(CLOCK_2025).toEqual({
       jungle: {
         ...DETECTOR_SPEC.jungle, fromSec: 150, riverPlaySec: [195, 255], backAtSec: 300,
@@ -114,6 +115,10 @@ describe('spec constants', () => {
       supportEarly: { wardBySec: 105, deathFromSec: 125, deathToSec: 160 },
       jungleFirstBack: { bySec: 245, startSec: 60 },
       supportScuttle: { fromSec: 205, untilSec: 230, radius: 2000 },
+      // Plates fell at 14:00 in 2025.
+      midRoam: { untilSec: 840, plates: 1, cs: 10, minOffAxis: 2600 },
+      dive: { untilSec: 840, turretRadius: 850, afterKillSec: 4 },
+      sideTower: { fromSec: 840, untilSec: 1200 },
     })
     const old = detectorSpecFor(2025)
     for (const k of Object.keys(DETECTOR_SPEC) as Array<keyof typeof DETECTOR_SPEC>) {

@@ -20,6 +20,9 @@ import { EventPopup, SESSION_KINDS } from '@/components/Planning/EventPopup'
 import { RequestEventDialog } from '@/components/Planning/RequestEventDialog'
 import { EventRequestsQueue } from '@/components/Planning/EventRequestsQueue'
 import { AnnouncementsCard } from '@/components/Planning/AnnouncementsCard'
+import { MyAvailabilityDialog } from '@/components/Planning/MyAvailabilityDialog'
+import { hmToMin } from '@/components/Planning/TimeSelect'
+import type { NameOf } from '@/hooks/useCollab'
 
 function startOfWeek(d: Date): Date {
   const out = new Date(d)
@@ -42,7 +45,7 @@ function isoWeek(d: Date): number {
 const MODE_KEY = 'ascend_planning_mode'
 const toTimeKey = (h: number) => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`
 
-interface Props { groups: Group[]; myUserId: string; nameOf: (userId: string) => string }
+interface Props { groups: Group[]; myUserId: string; nameOf: NameOf }
 
 /** E4/Phase 1 (docs/PLAN_GESTION_EQUIPE.md §9): Google-Calendar-style week
  *  grid — click/drag to create events, a per-day rail to click/drag your own
@@ -63,6 +66,9 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([])
   const [rosterStarterIds, setRosterStarterIds] = useState<string[]>([])
   const [creatingRange, setCreatingRange] = useState<HourRange | null>(null)
+  // #36 keyboard paths: "+ New event" and "My availability".
+  const [newSlot, setNewSlot] = useState<{ day: Date; startMin: number; endMin: number } | null>(null)
+  const [myAvailOpen, setMyAvailOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [roster, setRoster] = useState<Array<{ userId: string; displayName: string; role: string }>>([])
@@ -152,6 +158,23 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
     }
   }
 
+  /** "+ New event": the next common free slot of the shown week (≤ 1 h), else today 20:00–21:00. */
+  const openNewEvent = () => {
+    const todayKey = toDateKey(new Date())
+    const next = windows.find((w) => !w.busy && w.date >= todayKey)
+    setEditingEvent(null)
+    setCreatingRange(null)
+    if (next) {
+      const [y, m, d] = next.date.split('-').map(Number)
+      const s = hmToMin(next.startTime)
+      const e = hmToMin(next.endTime) || 1440
+      setNewSlot({ day: new Date(y, m - 1, d), startMin: s, endMin: Math.min(e, s + 60) })
+    } else {
+      const inWeek = days.some((d) => toDateKey(d) === todayKey)
+      setNewSlot({ day: inWeek ? new Date() : days[0], startMin: 20 * 60, endMin: 21 * 60 })
+    }
+  }
+
   const removeAvailabilityException = async (id: string) => {
     try { await window.api.availabilityDeleteException(id); load() }
     catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
@@ -208,9 +231,19 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!canEdit && groupId && <RequestEventDialog groupId={groupId} onSent={load} />}
+          {groupId && (
+            <Button size="sm" variant="outline" onClick={() => setMyAvailOpen(true)}>
+              <CalendarCheck className="mr-1 h-3.5 w-3.5" aria-hidden />{t('planning.myAvailability.button')}
+            </Button>
+          )}
           <Button size="sm" variant="outline" onClick={downloadICS}>
-            <Download className="mr-1 h-3.5 w-3.5" />{t('planning.exportIcs', { defaultValue: 'Export .ics' })}
+            <Download className="mr-1 h-3.5 w-3.5" aria-hidden />{t('planning.exportIcs', { defaultValue: 'Export .ics' })}
           </Button>
+          {canEdit && groupId && (
+            <Button size="sm" onClick={openNewEvent}>
+              <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />{t('planning.newEvent')}
+            </Button>
+          )}
           {canEdit && groupId && <LiveSyncButton groupId={groupId} />}
         </div>
       </div>
@@ -347,9 +380,24 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
           scrims={scrims}
           recentTitles={[...new Set((events ?? []).map((e) => e.title))]}
           initialRange={creatingRange}
+          newSlot={newSlot}
+          weekDays={days}
+          commonFree={commonFree}
+          starterCount={starterIds.length}
           editingEvent={editingEvent}
           canDelete={canEdit}
-          onClose={() => { setCreatingRange(null); setEditingEvent(null) }}
+          onClose={() => { setCreatingRange(null); setEditingEvent(null); setNewSlot(null) }}
+          onSaved={load}
+        />
+      )}
+      {groupId && (
+        <MyAvailabilityDialog
+          open={myAvailOpen}
+          onOpenChange={setMyAvailOpen}
+          groupId={groupId}
+          days={days}
+          myRules={rules.filter((r) => r.userId === myUserId)}
+          myExceptions={myExceptions}
           onSaved={load}
         />
       )}
@@ -374,7 +422,7 @@ function EventInspector({ event, roster, members, rules, exceptions, canEdit, my
   exceptions: AvailabilityException[]
   canEdit: boolean
   myUserId: string
-  nameOf: (id: string) => string
+  nameOf: NameOf
   onRespond: (status: EventResponseStatus, note?: string | null) => Promise<void>
   onClose: () => void
   onEdit: () => void
@@ -490,7 +538,7 @@ function PlayersAvailability({ ids, fromRoster, days, rules, exceptions, nameOf 
   days: Date[]
   rules: AvailabilityRule[]
   exceptions: AvailabilityException[]
-  nameOf: (id: string) => string
+  nameOf: NameOf
 }) {
   const { t, i18n } = useTranslation()
   const dayName = (d: Date) => d.toLocaleDateString(i18n.language, { weekday: 'short' }).replace('.', '')

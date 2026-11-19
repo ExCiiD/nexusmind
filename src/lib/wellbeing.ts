@@ -40,4 +40,23 @@ export interface WellbeingApi {
   /** The per-group threshold (hours/week) for the combined load+mood alert (E6 v2). */
   wellbeingGetLoadThreshold: (groupId: string) => Promise<number>
   wellbeingSetLoadThreshold: (groupId: string, hours: number) => Promise<void>
+  /** The user's current consent to wellbeing check-ins (legal texts v0.3). */
+  wellbeingConsentGet: () => Promise<WellbeingConsent>
+  /**
+   * Grants or withdraws that consent (server-timestamped, kept as proof). Withdrawing deletes all the user's
+   * check-ins and turns `share_wellbeing` off in every group, in one transaction.
+   */
+  wellbeingConsentSet: (granted: boolean, version: WellbeingConsentVersion) => Promise<WellbeingConsent>
+}
+
+/** Text version a consent refers to (the legal texts' version). */
+export type WellbeingConsentVersion = 'v0.3'
+
+export interface WellbeingConsent {
+  status: 'granted' | 'withdrawn' | 'none'
+  version: string | null
+  /** Last grant, if any (kept after a withdrawal). */
+  grantedAt: string | null
+  /** Set when the latest event is a withdrawal. */
+  withdrawnAt: string | null
 }

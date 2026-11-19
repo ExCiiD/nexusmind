@@ -15,6 +15,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useToast } from '@/hooks/useToast'
 import { Loader2, Upload, Trash2, RefreshCw, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -25,9 +26,11 @@ import { SynergyPlayerCard } from './SynergyPlayerCard'
 interface Props {
   team: Team
   gameType: 'scrim' | 'tournament'
+  /** Web (#41b): the group's games, no import or delete (the CSV import runs on the desktop). */
+  readOnly?: boolean
 }
 
-export function CustomGamesStatsTab({ team, gameType }: Props) {
+export function CustomGamesStatsTab({ team, gameType, readOnly = false }: Props) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const [games, setGames] = useState<CustomGame[]>([])
@@ -43,6 +46,7 @@ export function CustomGamesStatsTab({ team, gameType }: Props) {
   // stats grid (the main signal) below the fold. User can toggle by
   // clicking the section header.
   const [showImportedList, setShowImportedList] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   // Hidden <input type="file" multiple> — renderer-side picking lets us
   // read each file as text and ship it to the backend handler one IPC
   // round-trip per file, with batch summarization in the renderer.
@@ -225,17 +229,22 @@ export function CustomGamesStatsTab({ team, gameType }: Props) {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t('team.custom.confirmDelete', { defaultValue: 'Delete this imported game?' }))) return
     try {
       await window.api.deleteCustomGame(id)
       await reload(team.id)
     } catch (err) {
-      toast({ title: 'Delete failed', description: (err as Error).message, variant: 'destructive' })
+      toast({ title: t('team.custom.deleteFailed'), description: (err as Error).message, variant: 'destructive' })
     }
   }
 
   return (
     <div className="space-y-4">
+      <ConfirmDialog
+        open={pendingDeleteId != null}
+        onOpenChange={(open) => { if (!open) setPendingDeleteId(null) }}
+        title={t('team.custom.confirmDelete', { defaultValue: 'Delete this imported game?' })}
+        onConfirm={() => { if (pendingDeleteId) void handleDelete(pendingDeleteId) }}
+      />
       <Card className="p-4">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex flex-col">
@@ -257,6 +266,7 @@ export function CustomGamesStatsTab({ team, gameType }: Props) {
                 {t('team.stats.refresh', { defaultValue: 'Refresh' })}
               </Button>
             )}
+            {!readOnly && <>
             <Button
               size="sm"
               onClick={handlePickFile}
@@ -278,10 +288,11 @@ export function CustomGamesStatsTab({ team, gameType }: Props) {
                 if (files.length > 0) void handleFilesChosen(files)
               }}
             />
+            </>}
           </div>
         </div>
         <p className="mt-2 text-[10px] text-hextech-text-dim italic">
-          {labels.filenameHint}
+          {readOnly ? t('team.custom.readOnlyHint') : labels.filenameHint}
         </p>
       </Card>
 
@@ -377,13 +388,15 @@ export function CustomGamesStatsTab({ team, gameType }: Props) {
                   <span className="text-hextech-text-bright truncate flex-1">{g.sourceFile ?? g.id}</span>
                   <span className="text-hextech-text-dim shrink-0 tabular-nums">{Math.round(g.durationSec / 60)}m</span>
                   <span className="text-hextech-text-dim shrink-0">{new Date(g.importedAt).toLocaleDateString()}</span>
-                  <button
-                    onClick={() => handleDelete(g.id)}
-                    className="text-hextech-text-dim hover:text-red-400 transition-colors"
-                    title={t('common.delete', { defaultValue: 'Delete' })}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+                  {!readOnly && (
+                    <button
+                      onClick={() => setPendingDeleteId(g.id)}
+                      className="text-hextech-text-dim hover:text-red-400 transition-colors"
+                      title={t('common.delete', { defaultValue: 'Delete' })}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

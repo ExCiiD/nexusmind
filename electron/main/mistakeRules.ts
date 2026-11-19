@@ -269,7 +269,9 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
   if (opponent) {
     const f5 = frameAtMinute(5)
     const reasons: string[] = []
-    const earlyDeath = myDeaths.find((d) => d.timestamp < 4 * MIN)
+    // "Died before 4:00" on the 2025 clock, 3:25 on 16.x games (35 s earlier): 28.9 % of 2026 laners die
+    // before 3:25 on cached games, 28.5 % of 2025 laners before 4:00, so the rule keeps its meaning.
+    const earlyDeath = myDeaths.find((d) => d.timestamp < 4 * MIN - early)
     if (earlyDeath) reasons.push(`died at ${mmss(earlyDeath.timestamp)}`)
     const cs5 = [csOf(f5, pid), csOf(f5, opponent.participantId)]
     if (cs5[0] != null && cs5[1] != null && cs5[0] - cs5[1] <= -8) reasons.push(`${cs5[0] - cs5[1]} CS at 5:00`)

@@ -28,7 +28,7 @@ interface AnswerRow {
   tag_slug: string | null; reason: string | null; note: string | null; summary: any; created_at: string
 }
 interface VerdictRow {
-  id: string; answer_id: string; group_id: string; coach_id: string; status: MicroVerdict['status']
+  id: string; answer_id: string; group_id: string; coach_id: string | null; status: MicroVerdict['status']
   corrected_outcome: MicroVerdict['correctedOutcome']; corrected_tag: string | null; note: string | null; created_at: string
 }
 interface CodexRow {

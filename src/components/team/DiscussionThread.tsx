@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey } from '@/lib/collab'
 import type { DiscussionComment, DiscussionSubjectType } from '@/lib/discussion'
+import type { NameOf } from '@/hooks/useCollab'
 
 /**
  * Discussion thread on a scrim or a draft (E7 v2) — a plain, non-timestamped
@@ -19,7 +20,7 @@ interface Props {
   subjectType: DiscussionSubjectType
   subjectId: string
   myUserId: string
-  nameOf: (userId: string) => string
+  nameOf: NameOf
   /** Only staff may delete someone else's comment; the author always can. */
   isStaff: boolean
 }

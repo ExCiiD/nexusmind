@@ -10,7 +10,7 @@ import { fail } from './supabaseErrors'
 interface CandidateRow {
   id: string; group_id: string; display_name: string; role: TrialCandidate['role']; user_id: string | null
   status: TrialStatus; period_start: string | null; period_end: string | null; notes: string | null
-  created_by: string; created_at: string; updated_at: string
+  created_by: string | null; created_at: string; updated_at: string
 }
 interface EvaluationRow { id: string; candidate_id: string; criterion: string; score: number; note: string | null; created_by: string; created_at: string }
 

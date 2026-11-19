@@ -109,7 +109,7 @@ const api = {
   // Collaboration (groups, coach comments, assigned objectives)
   collabListGroups: () => ipcRenderer.invoke('collab:list-groups'),
   collabCreateGroup: (name: string, kind: 'team' | 'coaching') => ipcRenderer.invoke('collab:create-group', name, kind),
-  collabCreateInvite: (groupId: string, role: 'coach' | 'analyst' | 'player', days: number) =>
+  collabCreateInvite: (groupId: string, role: 'coach' | 'manager' | 'analyst' | 'player', days: number) =>
     ipcRenderer.invoke('collab:create-invite', groupId, role, days),
   collabJoin: (code: string, riotId?: string | null) => ipcRenderer.invoke('collab:join', code, riotId ?? null),
   collabLeave: (groupId: string) => ipcRenderer.invoke('collab:leave', groupId),
@@ -125,6 +125,12 @@ const api = {
   teamSessionGetAttendance: (sessionId: string) => ipcRenderer.invoke('team-session:get-attendance', sessionId),
   teamSessionSetAttendance: (sessionId: string, userId: string, present: boolean | null) => ipcRenderer.invoke('team-session:set-attendance', sessionId, userId, present),
   teamSessionListMyLive: () => ipcRenderer.invoke('team-session:list-my-live'),
+  teamSessionLiveCached: () => ipcRenderer.invoke('team-session:live-cached'),
+  onTeamSessionLive: (cb: (sessions: any) => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, sessions: unknown) => cb(sessions)
+    ipcRenderer.on('team-session:live', handler)
+    return () => { ipcRenderer.removeListener('team-session:live', handler) }
+  },
   teamSessionListGames: (sessionId: string) => ipcRenderer.invoke('team-session:list-games', sessionId),
   teamSessionFetchMatch: (gameId: string) => ipcRenderer.invoke('team-session:fetch-match', gameId),
   teamSessionSetOurTeamId: (gameId: string, ourTeamId: 100 | 200) => ipcRenderer.invoke('team-session:set-our-team-id', gameId, ourTeamId),
@@ -138,6 +144,7 @@ const api = {
   collabListMemberLooks: () => ipcRenderer.invoke('collab:list-member-looks'),
   collabSetGroupLogo: (groupId: string, image: { bytes: Uint8Array; contentType: 'image/webp' | 'image/png' | 'image/jpeg' } | null) =>
     ipcRenderer.invoke('collab:set-group-logo', groupId, image),
+  discordUnlinkGuild: (groupId: string) => ipcRenderer.invoke('discord:unlink-guild', groupId),
   collabListComments: (reviewId: string, playerId?: string) => ipcRenderer.invoke('collab:list-comments', reviewId, playerId),
   collabMyOpenComments: () => ipcRenderer.invoke('collab:my-open-comments'),
   collabAddComment: (c: unknown) => ipcRenderer.invoke('collab:add-comment', c),
@@ -217,6 +224,8 @@ const api = {
   wellbeingListForGroup: (playerIds: string[]) => ipcRenderer.invoke('wellbeing:list-for-group', playerIds),
   wellbeingGetLoadThreshold: (groupId: string) => ipcRenderer.invoke('wellbeing:get-load-threshold', groupId),
   wellbeingSetLoadThreshold: (groupId: string, hours: number) => ipcRenderer.invoke('wellbeing:set-load-threshold', groupId, hours),
+  wellbeingConsentGet: () => ipcRenderer.invoke('wellbeing:consent-get'),
+  wellbeingConsentSet: (granted: boolean, version: 'v0.3') => ipcRenderer.invoke('wellbeing:consent-set', granted, version),
 
   // E7: communication & tasks
   announcementsList: (groupId: string) => ipcRenderer.invoke('announcements:list', groupId),
@@ -262,6 +271,7 @@ const api = {
   accessRevokeInvite: (code: string) => ipcRenderer.invoke('access:revoke-invite', code),
   cloudVerifyCode: (email: string, code: string) => ipcRenderer.invoke('cloud:verify-code', email, code),
   cloudSignOut: () => ipcRenderer.invoke('cloud:sign-out'),
+  cloudSignOutEverywhere: () => ipcRenderer.invoke('cloud:sign-out-everywhere'),
   cloudBackupNow: () => ipcRenderer.invoke('cloud:backup-now'),
   cloudListBackups: () => ipcRenderer.invoke('cloud:list-backups'),
   cloudRestoreBackup: (id: string) => ipcRenderer.invoke('cloud:restore-backup', id),
@@ -271,7 +281,8 @@ const api = {
   syncNow: () => ipcRenderer.invoke('sync:now'),
   syncAuditForeignRows: () => ipcRenderer.invoke('sync:audit-foreign-rows'),
   syncDeleteForeignRows: () => ipcRenderer.invoke('sync:delete-foreign-rows'),
-  onSyncStatus: (cb: (status: unknown) => void) => {
+  // `any`: the payload is a SyncStatus (src/lib/ipc.ts), a type this Node project cannot import.
+  onSyncStatus: (cb: (status: any) => void) => {
     const handler = (_: Electron.IpcRendererEvent, s: unknown) => cb(s)
     ipcRenderer.on('sync:status', handler)
     return () => { ipcRenderer.removeListener('sync:status', handler) }
@@ -307,7 +318,13 @@ const api = {
     return () => { ipcRenderer.removeListener('updater:error', handler) }
   },
   installUpdate: () => ipcRenderer.invoke('updater:install-now'),
-  checkForUpdates: () => ipcRenderer.invoke('updater:check') as Promise<{ updateAvailable: boolean }>,
+  checkForUpdates: () => ipcRenderer.invoke('updater:check') as Promise<{
+    status: 'available' | 'up-to-date' | 'unknown' | 'error' | 'dev-mode'
+    updateAvailable: boolean
+    currentVersion?: string
+    latestVersion?: string
+    error?: string
+  }>,
 
   exportBackup: () => ipcRenderer.invoke('backup:export') as Promise<
     | { canceled: true }
@@ -321,6 +338,7 @@ const api = {
   // Recording — library (scan external folders)
   scanRecordings: () => ipcRenderer.invoke('recording:scan'),
   getRecording: (gameId: string) => ipcRenderer.invoke('recording:get', gameId),
+  recordingGameIdsWithRecording: (gameIds: string[]): Promise<string[]> => ipcRenderer.invoke('recording:game-ids-with-recording', gameIds),
   linkRecordingFile: (gameId: string) => ipcRenderer.invoke('recording:link-file', gameId),
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => ipcRenderer.invoke('recording:set-youtube', gameId, youtubeUrl),
   deleteReview: (gameId: string) => ipcRenderer.invoke('review:delete', gameId),
@@ -420,8 +438,8 @@ const api = {
   deleteBookmark: (id: string) => ipcRenderer.invoke('bookmark:delete', id),
 
   // ── Team management ────────────────────────────────────────────────────────
-  listTeams: (opts?: { isOpponent?: boolean }) => ipcRenderer.invoke('team:list', opts),
-  createTeam: (data: { name: string; tag?: string; logo?: string; notes?: string; isOpponent?: boolean }) =>
+  listTeams: (opts?: { isOpponent?: boolean; groupId?: string; includeUnassigned?: boolean }) => ipcRenderer.invoke('team:list', opts),
+  createTeam: (data: { name: string; tag?: string; logo?: string; notes?: string; isOpponent?: boolean; groupId?: string }) =>
     ipcRenderer.invoke('team:create', data),
   linkTeamToGroup: (teamId: string, groupId: string | null) => ipcRenderer.invoke('team:link-group', teamId, groupId),
   deleteTeam: (id: string) => ipcRenderer.invoke('team:delete', id),
@@ -461,7 +479,7 @@ const api = {
   championCutout: (championKey: string, skin?: number) => ipcRenderer.invoke('champion-cutout:get', championKey, skin),
 
   listDrafts: () => ipcRenderer.invoke('draft:list'),
-  createDraft: (data: { name: string; vsTeamId?: string | null; bluePicks?: string[]; blueBans?: string[]; redPicks?: string[]; redBans?: string[]; myTeamSide?: 'blue' | 'red'; notes?: string }) =>
+  createDraft: (data: { name: string; vsTeamId?: string | null; bluePicks?: string[][] | string[]; blueBans?: string[][] | string[]; redPicks?: string[][] | string[]; redBans?: string[][] | string[]; myTeamSide?: 'blue' | 'red'; notes?: string }) =>
     ipcRenderer.invoke('draft:create', data),
   updateDraft: (id: string, data: Record<string, unknown>) => ipcRenderer.invoke('draft:update', id, data),
   deleteDraft: (id: string) => ipcRenderer.invoke('draft:delete', id),
@@ -524,9 +542,6 @@ const api = {
   listClips: (recordingId: string) => ipcRenderer.invoke('clip:list', recordingId),
   listAllClips: () => ipcRenderer.invoke('clip:list-all'),
   deleteClip: (clipId: string) => ipcRenderer.invoke('clip:delete', clipId),
-  setClipYoutubeUrl: (clipId: string, url: string) => ipcRenderer.invoke('clip:set-youtube', clipId, url),
-  setClipTempShare: (clipId: string, url: string, expiryHours: number) =>
-    ipcRenderer.invoke('clip:set-temp-share', clipId, url, expiryHours),
 
   // Sharing (files + temp upload)
   sendFileToDiscord: (filePath: string, webhookUrl: string, caption?: string) =>
@@ -559,6 +574,9 @@ const api = {
 }
 
 contextBridge.exposeInMainWorld('api', api)
+
+/** #18: checked against `AscendAPI` in web/src/apiContract.ts (a project that can see both sides). */
+export type PreloadApi = typeof api
 
 // Dedicated API for the hidden WGC capture renderer. Exposed to all renderers
 // but only consumed by `src/wgc-capture.ts` in the capture window.

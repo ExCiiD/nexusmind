@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Briefcase, CalendarDays, FileSearch, GraduationCap, Home, Swords, UserCircle } from 'lucide-react'
+import { BarChart3, Briefcase, CalendarDays, FileSearch, GraduationCap, Home, Swords, UserCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FeedbackButton } from '@/components/Feedback/FeedbackDialog'
 import { NotificationBell } from '@/components/Notifications/NotificationBell'
@@ -8,6 +8,7 @@ import { AnnouncementBubbleStack } from '@/components/Announcements/Announcement
 import { TeamSessionBanner } from '@/components/TeamSession/TeamSessionBanner'
 import { DownloadButton } from './DownloadButton'
 import { AscendMark } from '@/components/Brand/AscendMark'
+import { SkipLink } from '@/components/Layout/SkipLink'
 
 const NAV = [
   { to: '/', icon: Home, key: 'web.nav.home', end: true },
@@ -16,6 +17,7 @@ const NAV = [
   { to: '/management', icon: Briefcase, key: 'web.nav.management' },
   { to: '/coaching', icon: GraduationCap, key: 'web.nav.coaching' },
   { to: '/team', icon: Swords, key: 'web.nav.team' },
+  { to: '/team-stats', icon: BarChart3, key: 'web.nav.teamStats' },
   { to: '/account', icon: UserCircle, key: 'web.nav.account' },
 ]
 
@@ -24,6 +26,7 @@ export function WebLayout() {
   const { t } = useTranslation()
   return (
     <div className="ascend-texture-bg min-h-screen text-hextech-text">
+      <SkipLink />
       <aside className="fixed inset-y-0 left-0 hidden w-56 flex-col border-r border-hextech-border-dim bg-hextech-dark p-4 md:flex">
         <div className="mb-6 flex items-center gap-2">
           <AscendMark size={32} className="shrink-0" />
@@ -55,7 +58,7 @@ export function WebLayout() {
         <NotificationBell />
       </div>
 
-      <main className="px-[4vw] pb-24 pt-4 md:ml-56 md:px-[3vw] md:pb-8 md:pt-8">
+      <main id="main" tabIndex={-1} className="px-[4vw] pb-24 pt-4 focus:outline-none md:ml-56 md:px-[3vw] md:pb-8 md:pt-8">
         <div className="w-full">
           <Outlet />
         </div>

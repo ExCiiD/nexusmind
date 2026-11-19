@@ -60,12 +60,12 @@ export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipShar
     try {
       if (strategy === 'discord_direct') {
         if (!selectedWebhook) throw new Error('No webhook selected')
-        await (window.api as any).sendFileToDiscord(filePath, selectedWebhook, caption || undefined)
+        await window.api.sendFileToDiscord(filePath, selectedWebhook, caption || undefined)
         setUploadState('done')
         onShared?.()
       } else {
         // Upload to temp host first, then optionally send link to Discord
-        const result = await (window.api as any).uploadToTemp(filePath, expiryHours)
+        const result = await window.api.uploadToTemp(filePath, expiryHours)
         setTempUrl(result.url)
         setUploadState('done')
 

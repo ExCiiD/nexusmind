@@ -10,13 +10,15 @@ import {
   generateGuildLinkCode, generateUserLinkCode, getGroupDiscordLink, getMyDiscordLink, unlinkMyDiscord,
 } from '@/lib/discordBotCore'
 import type { DiscordGuildLink, DiscordUserLink } from '@/lib/discord'
+import { DiscordUnlinkButton } from '@/components/team/DiscordUnlinkButton'
 
 /**
  * Discord bot linking (E11) — web-only by design: the bot is the staff's
  * tool for coordinating on Discord, where they already are, and this page
  * is "the staff control tower". Calls discordBotCore.ts directly against
  * the signed-in Supabase client rather than through window.api, since
- * desktop has no reason to implement these methods.
+ * desktop has no reason to implement these methods — except unlinking a
+ * team's server (#34), which both apps do through window.api.discordUnlinkGuild.
  */
 export function DiscordLinkCard() {
   const { t } = useTranslation()
@@ -110,9 +112,12 @@ function GuildLinkRow({ groupId, groupName }: { groupId: string; groupName: stri
       <div className="flex items-center justify-between gap-2">
         <span className="text-hextech-text-bright">{groupName}</span>
         {link === undefined ? null : link ? (
-          <span className="text-xs text-hextech-green">
-            {t('web.discord.serverLinked', { defaultValue: 'Server linked' })}
-            {!link.notifyChannelId && ` · ${t('web.discord.noChannel', { defaultValue: 'run /set-channel there' })}`}
+          <span className="flex flex-wrap items-center justify-end gap-2">
+            <span className="text-xs text-hextech-green">
+              {t('web.discord.serverLinked', { defaultValue: 'Server linked' })}
+              {!link.notifyChannelId && ` · ${t('web.discord.noChannel', { defaultValue: 'run /set-channel there' })}`}
+            </span>
+            <DiscordUnlinkButton groupId={groupId} groupName={groupName} onUnlinked={() => setLink(null)} />
           </span>
         ) : (
           <Button size="sm" variant="outline" onClick={handleGenerate}>{t('web.discord.generateCode', { defaultValue: 'Generate code' })}</Button>

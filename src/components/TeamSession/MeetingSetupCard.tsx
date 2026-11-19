@@ -42,8 +42,8 @@ export function MeetingSetupCard({ event, session, group, canManage, myUserId, o
   const [marking, setMarking] = useState<string | null>(null)
   const nameOf = useMemo(() => {
     const by = new Map(group.members.map((m) => [m.userId, m.displayName || m.riotId || '—']))
-    return (id: string) => by.get(id) ?? '—'
-  }, [group.members])
+    return (id: string | null | undefined) => (id && by.get(id)) || t('common.formerMember')
+  }, [group.members, t])
 
   const scheduled = session.status === 'scheduled'
   useEffect(() => {

@@ -61,14 +61,13 @@ describe('listMyDismissals / dismissAnnouncement', () => {
     expect(out).toEqual([{ announcementId: 'a1', userId: 'u1', dismissedAt: 't' }])
   })
 
-  it('dismissAnnouncement upserts the current user id, resolved from auth', async () => {
+  it('dismissAnnouncement upserts the given user id, without an auth round trip (item I)', async () => {
     const upsert = vi.fn().mockResolvedValue({ error: null })
-    const sb = {
-      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } }, error: null }) },
-      from: vi.fn(() => ({ upsert })),
-    } as never
-    await dismissAnnouncement(sb, 'a1')
+    const getUser = vi.fn()
+    const sb = { auth: { getUser }, from: vi.fn(() => ({ upsert })) } as never
+    await dismissAnnouncement(sb, 'u1', 'a1')
     expect(upsert).toHaveBeenCalledWith({ announcement_id: 'a1', user_id: 'u1' })
+    expect(getUser).not.toHaveBeenCalled()
   })
 })
 

@@ -1,5 +1,7 @@
 import { getSupabase, getAccessToken, getSupabaseUrl, requireSessionUserId } from './supabase'
 import { getPrisma } from '../database'
+import { getAccountByPuuid } from '../riotClient'
+import { riotIdRename } from '../../../src/lib/teamIdentity'
 import * as core from '../../../src/lib/collabCore'
 import * as dashboard from '../../../src/lib/staffDashboardCore'
 import * as devPlan from '../../../src/lib/devPlanCore'
@@ -39,7 +41,51 @@ async function me(): Promise<string> {
 async function localIdentity(): Promise<core.MemberIdentity> {
   const u = await getPrisma().user.findFirst({ where: { isActive: true } })
   if (!u) return { displayName: null, riotId: null }
-  return { displayName: u.displayName || u.summonerName, riotId: u.tagLine ? `${u.summonerName}#${u.tagLine}` : u.summonerName }
+  return {
+    displayName: u.displayName || u.summonerName,
+    riotId: u.tagLine ? `${u.summonerName}#${u.tagLine}` : u.summonerName,
+    puuid: u.puuid || null,
+  }
+}
+
+// ── My Riot ID on my memberships (#38) ─────────────────────────────────────
+// A renamed player kept their old Riot ID locally and in their groups: their teammates' apps then looked the old
+// name up (404) and lost their role, champions and rank. Once per run, this device reads its own current Riot ID
+// from Riot by puuid, stores it, and publishes it (with the puuid) on the memberships that differ.
+let identityPublishedFor: string | null = null
+
+/** Refreshes the active local profile's Riot ID from Riot (by puuid). Best effort: offline keeps the stored one. */
+export async function refreshOwnRiotId(): Promise<void> {
+  const prisma = getPrisma()
+  const u = await prisma.user.findFirst({ where: { isActive: true } })
+  if (!u?.puuid || !u.region) return
+  try {
+    const acct = await getAccountByPuuid(u.puuid, u.region)
+    const change = riotIdRename({ ign: u.summonerName, tagLine: u.tagLine, displayName: u.displayName }, acct)
+    if (!change) return
+    await prisma.user.update({
+      where: { id: u.id },
+      data: { summonerName: change.ign, tagLine: change.tagLine, ...(change.displayName !== undefined ? { displayName: change.displayName } : {}) },
+    })
+    console.log('[collab] Riot ID refreshed from Riot (renamed account)')
+  } catch (err) {
+    console.warn('[collab] could not refresh own Riot ID:', (err as Error)?.message)
+  }
+}
+
+async function publishMyIdentityOnce(uid: string, groups: Awaited<ReturnType<typeof core.listMyGroups>>): Promise<void> {
+  if (identityPublishedFor === uid) return
+  identityPublishedFor = uid
+  await refreshOwnRiotId()
+  const id = await localIdentity()
+  const stale = core.membershipsToRefresh(groups, uid, id)
+  const verify = stale.length > 0 || core.needsPuuidVerification(groups, uid, id)
+  if (!verify) return
+  const sb = getSupabase()
+  for (const groupId of stale) await core.updateMyMemberProfile(sb, uid, groupId, id).catch(() => {})
+  // The server derives the puuid from the Riot ID just declared (never sent by this app, #38).
+  await core.verifyMyMemberPuuid(sb).catch(() => null)
+  invalidateGroupsCache()
 }
 
 // ── Profile look (Team → Roster player cards) ──────────────────────────────
@@ -75,11 +121,14 @@ export async function setMyLook(look: Look): Promise<boolean> {
   return uid ? shareLook(uid) : false
 }
 
+/** #34: the group's owner, coach or manager unlink its Discord server (checked server side). */
+export const discordUnlinkGuild = (groupId: string) => core.unlinkGroupDiscord(getSupabase(), groupId)
+
 /** New team logo (or none) for a group; the previous file goes. */
 export async function setGroupLogo(groupId: string, image: GroupLogoImage | null): Promise<string | null> {
   const sb = getSupabase()
   const prev = await sb.from('groups').select('logo_url').eq('id', groupId).maybeSingle()
-  return core.setGroupLogo(sb, groupId, image, (prev.data as { logo_url?: string | null } | null)?.logo_url ?? null)
+  return changesGroups(core.setGroupLogo(sb, groupId, image, (prev.data as { logo_url?: string | null } | null)?.logo_url ?? null))
 }
 
 export async function listMemberLooks() {
@@ -87,18 +136,42 @@ export async function listMemberLooks() {
   return uid ? core.listMemberLooks(getSupabase(), uid) : []
 }
 
+// ── Group list cache (item I, 19/11/2026) ─────────────────────────────────────
+// Nine screens load the group list as they mount (12 requests at launch, L02). One list per user for 60 s, the
+// in-flight request shared, cleared by every mutation below. Changes made by others show within the 60 s.
+const GROUPS_TTL_MS = 60_000
+let groupsCache: { uid: string; at: number; value: Promise<Awaited<ReturnType<typeof core.listMyGroups>>> } | null = null
+
+/** Clears the group list cache (any group mutation). */
+export function invalidateGroupsCache(): void {
+  groupsCache = null
+}
+/** Runs a group mutation, then clears the cache (also when it failed: the server may have changed anyway). */
+const changesGroups = <T>(p: Promise<T>): Promise<T> => p.finally(invalidateGroupsCache)
+
 export async function listMyGroups() {
   const uid = await me()
-  const groups = await core.listMyGroups(getSupabase(), uid)
-  if (groups.length > 0) void shareLook(uid)
+  const now = Date.now()
+  if (groupsCache && groupsCache.uid === uid && now - groupsCache.at < GROUPS_TTL_MS) return groupsCache.value
+  const value = core.listMyGroups(getSupabase(), uid)
+  const entry = { uid, at: now, value }
+  groupsCache = entry
+  // A failed read is not cached: the next call retries.
+  value.catch(() => { if (groupsCache === entry) groupsCache = null })
+  const groups = await value
+  if (groups.length > 0) {
+    void shareLook(uid)
+    void publishMyIdentityOnce(uid, groups).catch(() => {})
+  }
   return groups
 }
 
 export async function createGroup(name: string, kind: GroupKind): Promise<string> {
   const sb = getSupabase()
-  const id = await core.createGroup(sb, name, kind)
+  const id = await changesGroups(core.createGroup(sb, name, kind))
   const uid = await me()
   await core.updateMyMemberProfile(sb, uid, id, await localIdentity()).catch(() => {})
+  invalidateGroupsCache()
   await shareLook(uid, true)
   return id
 }
@@ -107,17 +180,17 @@ export const createInvite = (groupId: string, role: Exclude<GroupRole, 'owner'>,
   core.createInvite(getSupabase(), groupId, role, days)
 export async function joinGroup(code: string, typedRiotId: string | null = null): Promise<string> {
   const local = await localIdentity()
-  const id = await core.joinGroup(getSupabase(), code, local.riotId ? local : { ...local, riotId: typedRiotId })
+  const id = await changesGroups(core.joinGroup(getSupabase(), code, local.riotId ? local : { ...local, riotId: typedRiotId }))
   const uid = await signedInUid()
   if (uid) await shareLook(uid, true)
   return id
 }
-export const leaveGroup = async (groupId: string) => core.leaveGroup(getSupabase(), await me(), groupId)
-export const deleteGroup = (groupId: string) => core.deleteGroup(getSupabase(), groupId)
-export const removeMember = (groupId: string, userId: string) => core.removeMember(getSupabase(), groupId, userId)
-export const setCaptain = (groupId: string, userId: string, isCaptain: boolean) => core.setCaptain(getSupabase(), groupId, userId, isCaptain)
-export const setMemberRole = (groupId: string, userId: string, role: Exclude<GroupRole, 'owner'>) => core.setMemberRole(getSupabase(), groupId, userId, role)
-export const setSharing = async (groupId: string, s: GroupSharing) => core.setSharing(getSupabase(), await me(), groupId, s)
+export const leaveGroup = async (groupId: string) => changesGroups(core.leaveGroup(getSupabase(), await me(), groupId))
+export const deleteGroup = (groupId: string) => changesGroups(core.deleteGroup(getSupabase(), groupId))
+export const removeMember = (groupId: string, userId: string) => changesGroups(core.removeMember(getSupabase(), groupId, userId))
+export const setCaptain = (groupId: string, userId: string, isCaptain: boolean) => changesGroups(core.setCaptain(getSupabase(), groupId, userId, isCaptain))
+export const setMemberRole = (groupId: string, userId: string, role: Exclude<GroupRole, 'owner'>) => changesGroups(core.setMemberRole(getSupabase(), groupId, userId, role))
+export const setSharing = async (groupId: string, s: GroupSharing) => changesGroups(core.setSharing(getSupabase(), await me(), groupId, s))
 export const getPlayerSessions = (playerId: string) => core.getPlayerSessions(getSupabase(), playerId)
 export const listComments = async (reviewId: string, playerId?: string) =>
   core.listComments(getSupabase(), playerId ?? (await me()), reviewId)
@@ -176,7 +249,7 @@ export const vodReviewDeleteSession = (id: string) => vodReview.deleteSession(ge
 export const vodReviewAddComment = (sessionId: string, input: NewVodCommentInput) => vodReview.addComment(getSupabase(), sessionId, input)
 export const vodReviewDeleteComment = (id: string) => vodReview.deleteComment(getSupabase(), id)
 export const vodReviewAddActionItem = (sessionId: string, text: string) => vodReview.addActionItem(getSupabase(), sessionId, text)
-export const vodReviewSetActionItemDone = (id: string, done: boolean) => vodReview.setActionItemDone(getSupabase(), id, done)
+export const vodReviewSetActionItemDone = async (id: string, done: boolean) => vodReview.setActionItemDone(getSupabase(), await requireSessionUserId(), id, done)
 export const vodReviewDeleteActionItem = (id: string) => vodReview.deleteActionItem(getSupabase(), id)
 export const vodReviewSetAssignment = (sessionId: string, input: NewVodAssignmentInput) => vodReview.setAssignment(getSupabase(), sessionId, input)
 export const vodReviewSetAssignmentStatus = (id: string, status: AssignmentStatus) => vodReview.setAssignmentStatus(getSupabase(), id, status)
@@ -187,13 +260,15 @@ export const wellbeingListMine = async (limit?: number) => wellbeing.listMine(ge
 export const wellbeingListForGroup = (playerIds: string[]) => wellbeing.listForGroup(getSupabase(), playerIds)
 export const wellbeingGetLoadThreshold = (groupId: string) => wellbeing.getWeeklyLoadThreshold(getSupabase(), groupId)
 export const wellbeingSetLoadThreshold = (groupId: string, hours: number) => wellbeing.setWeeklyLoadThreshold(getSupabase(), groupId, hours)
+export const wellbeingConsentGet = async () => wellbeing.getConsent(getSupabase(), await me())
+export const wellbeingConsentSet = async (granted: boolean, version: 'v0.3') => wellbeing.setConsent(getSupabase(), await me(), granted, version)
 
 export const announcementsList = (groupId: string) => announcements.listAnnouncements(getSupabase(), groupId)
 export const announcementsCreate = (groupId: string, input: NewAnnouncementInput) => announcements.createAnnouncement(getSupabase(), groupId, input)
 export const announcementsSetPinned = (id: string, pinned: boolean) => announcements.setAnnouncementPinned(getSupabase(), id, pinned)
 export const announcementsDelete = (id: string) => announcements.deleteAnnouncement(getSupabase(), id)
 export const announcementsListMyDismissals = () => announcements.listMyDismissals(getSupabase())
-export const announcementsDismiss = (announcementId: string) => announcements.dismissAnnouncement(getSupabase(), announcementId)
+export const announcementsDismiss = async (announcementId: string) => announcements.dismissAnnouncement(getSupabase(), await requireSessionUserId(), announcementId)
 
 export const tasksList = (groupId: string) => teamOps.listTasks(getSupabase(), groupId)
 export const tasksCreate = (groupId: string, input: NewTaskInput) => teamOps.createTask(getSupabase(), groupId, input)

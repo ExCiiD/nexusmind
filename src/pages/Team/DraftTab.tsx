@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useToast } from '@/hooks/useToast'
 import { Save, Copy, Plus, Trash2, Search, X, Ban, Users, Target, ChevronRight, AlertTriangle, Flame, Crown, Crosshair, MessageSquare, Sparkles } from 'lucide-react'
 import { DiscussionThread } from '@/components/team/DiscussionThread'
@@ -20,6 +21,8 @@ import {
   type ChampionThreat,
   type ThreatPoolMember,
 } from '@/lib/threatCore'
+import { TIER_COLOR } from '@/lib/poolView'
+import type { NameOf } from '@/hooks/useCollab'
 
 export type { ThreatLevel, ChampionThreat }
 
@@ -173,12 +176,16 @@ interface Props {
    *  is a local-only SQLite row with no group, so these stay undefined
    *  there and the Discussion button never renders. */
   groupId?: string
+  /** #7: the group whose opponents the "vs" picker lists (plus the unassigned
+   *  ones). Desktop passes the section's group here; the web falls back to
+   *  `groupId` (its adapter is group-scoped anyway). */
+  opponentsGroupId?: string
   myUserId?: string
-  nameOf?: (userId: string) => string
+  nameOf?: NameOf
   isStaff?: boolean
 }
 
-export function DraftTab({ myTeam, groupId, myUserId, nameOf, isStaff }: Props) {
+export function DraftTab({ myTeam, groupId, opponentsGroupId, myUserId, nameOf, isStaff }: Props) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const { champions } = useAllChampions()
@@ -236,10 +243,13 @@ export function DraftTab({ myTeam, groupId, myUserId, nameOf, isStaff }: Props) 
     catch (err) { console.error('[DraftTab] Failed to load drafts:', err) }
   }
   const loadOpponents = async () => {
-    try { setOpponentTeams(await window.api.listTeams({ isOpponent: true })) }
+    const scope = opponentsGroupId ?? groupId
+    try { setOpponentTeams(await window.api.listTeams(scope ? { isOpponent: true, groupId: scope, includeUnassigned: true } : { isOpponent: true })) }
     catch (err) { console.error('[DraftTab] Failed to load opponent teams:', err) }
   }
 
+  // Mount only: the parent remounts this tab when the group changes (key per group).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadDrafts(); loadOpponents() }, [])
 
   const loadDraft = (d: DraftPrep) => {
@@ -280,7 +290,7 @@ export function DraftTab({ myTeam, groupId, myUserId, nameOf, isStaff }: Props) 
       await loadDrafts()
       toast({ title: t('team.draft.saved', { defaultValue: 'Draft saved' }) })
     } catch (err) {
-      toast({ title: 'Failed to save', description: (err as Error).message, variant: 'destructive' })
+      toast({ title: t('team.draft.saveFailed'), description: (err as Error).message, variant: 'destructive' })
     }
   }
 
@@ -292,19 +302,19 @@ export function DraftTab({ myTeam, groupId, myUserId, nameOf, isStaff }: Props) 
       loadDraft(d)
       toast({ title: t('team.draft.duplicated', { defaultValue: 'Draft duplicated' }) })
     } catch (err) {
-      toast({ title: 'Failed to duplicate', description: (err as Error).message, variant: 'destructive' })
+      toast({ title: t('team.draft.duplicateFailed'), description: (err as Error).message, variant: 'destructive' })
     }
   }
 
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const deleteDraft = async () => {
     if (!activeId) return
-    if (!confirm(t('team.draft.confirmDelete', { defaultValue: 'Delete this draft?' }))) return
     try {
       await window.api.deleteDraft(activeId)
       await loadDrafts()
       newDraft()
     } catch (err) {
-      toast({ title: 'Failed to delete', description: (err as Error).message, variant: 'destructive' })
+      toast({ title: t('team.draft.deleteFailed'), description: (err as Error).message, variant: 'destructive' })
     }
   }
 
@@ -485,7 +495,7 @@ export function DraftTab({ myTeam, groupId, myUserId, nameOf, isStaff }: Props) 
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={t('team.draft.namePlaceholder', { defaultValue: 'Draft name' })}
+            placeholder={t('team.draft.namePlaceholder', { defaultValue: 'Draft name' })} aria-label={t('team.draft.namePlaceholder', { defaultValue: 'Draft name' })}
             className="bg-hextech-dark border border-hextech-border rounded px-2 py-1 text-sm font-semibold flex-1 min-w-[150px]"
           />
           <select
@@ -527,9 +537,15 @@ export function DraftTab({ myTeam, groupId, myUserId, nameOf, isStaff }: Props) 
           <Button size="sm" variant="outline" onClick={duplicateDraft} disabled={!activeId}>
             <Copy className="h-3 w-3 mr-1" />{t('team.draft.duplicate', { defaultValue: 'Duplicate' })}
           </Button>
-          <Button size="sm" variant="outline" onClick={deleteDraft} disabled={!activeId}>
+          <Button size="sm" variant="outline" onClick={() => setConfirmDeleteOpen(true)} disabled={!activeId} aria-label={t('common.delete')}>
             <Trash2 className="h-3 w-3" />
           </Button>
+          <ConfirmDialog
+            open={confirmDeleteOpen}
+            onOpenChange={setConfirmDeleteOpen}
+            title={t('team.draft.confirmDelete', { defaultValue: 'Delete this draft?' })}
+            onConfirm={() => { void deleteDraft() }}
+          />
           {/* Web-only (E7 v2) — see the Props comment for why desktop never
               gets groupId/myUserId/nameOf and this stays hidden there. */}
           {groupId && myUserId && nameOf && (
@@ -569,7 +585,7 @@ export function DraftTab({ myTeam, groupId, myUserId, nameOf, isStaff }: Props) 
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder={t('team.draft.searchPlaceholder', { defaultValue: 'Search…' })}
+                    placeholder={t('team.draft.searchPlaceholder', { defaultValue: 'Search…' })} aria-label={t('team.draft.searchPlaceholder', { defaultValue: 'Search…' })}
                     className="w-full bg-hextech-dark border border-hextech-border rounded pl-7 pr-2 py-1 text-sm"
                   />
                 </div>
@@ -796,6 +812,7 @@ function SideColumn({
               />
             ))}
             {roles.unknown > 0 && (
+              // eslint-disable-next-line jsx-a11y/aria-role -- false positive: `role` is a RoleBadge prop (lane), not an ARIA role.
               <RoleBadge role="?" champions={roles.unknownChamps} />
             )}
           </div>
@@ -863,6 +880,7 @@ function MultiOptionSlot({
   onPromote: (championKey: string) => void
   isBan?: boolean
 }) {
+  const { t } = useTranslation()
   // Distinct backgrounds make pick vs ban obvious at a glance without needing
   // to read the section header. Active slot always wins (gold ring).
   const baseBg = isBan
@@ -876,14 +894,22 @@ function MultiOptionSlot({
     // needed (otherwise long alt-option lists would push it taller than
     // its allocation).
     <div
+      role="button"
+      tabIndex={0}
+      aria-pressed={isActive}
+      aria-label={t('team.draft.slotLabel', { slot: isBan ? `B${slot.index + 1}` : `P${slot.index + 1}`, champions: options.join(', ') || (isBan ? t('team.draft.noBan') : t('team.draft.noPick')) })}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect() }
+      }}
       className={cn(
-        'flex items-center gap-2 px-2 py-1 rounded border transition-all cursor-pointer flex-1 min-h-0',
+        'flex items-center gap-2 px-2 py-1 rounded border transition-all cursor-pointer flex-1 min-h-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isActive
           ? 'border-hextech-gold bg-hextech-gold/10 ring-1 ring-hextech-gold/30'
           : baseBg,
       )}
-      title={`Slot #${slot.order}${isBan ? ' (ban)' : ' (pick)'}`}
+      title={t(isBan ? 'team.draft.slotTitleBan' : 'team.draft.slotTitlePick', { n: slot.order })}
     >
       <span className={cn(
         'text-[10px] font-bold w-6 text-center shrink-0 leading-tight',
@@ -894,7 +920,7 @@ function MultiOptionSlot({
 
       {options.length === 0 ? (
         <span className={cn('text-[11px] italic flex-1', isActive ? 'text-hextech-gold' : 'text-hextech-text-dim')}>
-          {isActive ? 'Click champion →' : isBan ? 'no ban' : 'no pick'}
+          {isActive ? t('team.draft.clickChampion') : isBan ? t('team.draft.noBan') : t('team.draft.noPick')}
         </span>
       ) : (
         <div className="flex items-center gap-1 flex-wrap flex-1 min-w-0">
@@ -947,7 +973,7 @@ function SlotOption({ championKey, isLeading, isBan, onPromote, onRemove }: {
           isLeading ? 'border-hextech-gold' : 'border-hextech-border-dim opacity-70 hover:opacity-100 hover:border-hextech-border',
         )}
       >
-        {iconUrl && <img src={iconUrl} alt={championKey} className="w-full h-full object-cover" />}
+        {iconUrl && <img src={iconUrl} alt={championKey} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
         {isBan && (
           <div className="absolute inset-0 bg-red-500/40 flex items-center justify-center pointer-events-none">
             <Ban className="h-4 w-4 text-white/80" />
@@ -1000,7 +1026,7 @@ function ChampionPickButton({ champion, used, disabled, threat, onClick }: {
         threat && THREAT_RING[threat.level],
       )}
     >
-      {iconUrl && <img src={iconUrl} alt={champion.name} className="w-full h-full object-cover" />}
+      {iconUrl && <img src={iconUrl} alt={champion.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
       {threat && threat.level !== 'played' && (
         // Tiny corner badge — purely redundant with the ring, but useful
         // for colorblind users who'd otherwise miss the orange vs red
@@ -1136,19 +1162,12 @@ function roleOrder(r: string): number {
   return i === -1 ? 99 : i
 }
 
-const TIER_BG: Record<string, string> = {
-  main: 'border-emerald-500/70',
-  new: 'border-teal-300/80',
-  comfort: 'border-blue-500/70',
-  flex: 'border-yellow-500/70',
-  learning: 'border-zinc-500/70',
-}
-
 function MemberPoolBlock({ member, usedChampions }: {
   member: TeamMember
   /** Champions already in the draft — greyed out in the displayed pool. */
   usedChampions: Set<string>
 }) {
+  const { t } = useTranslation()
   const [pool, setPool] = useState<ChampionPoolEntry[]>([])
   const [expanded, setExpanded] = useState(true)
 
@@ -1188,7 +1207,7 @@ function MemberPoolBlock({ member, usedChampions }: {
         <div className="p-1.5 space-y-1">
           {pool.length === 0 ? (
             <p className="text-[9px] text-hextech-text-dim italic text-center py-1">
-              No pool yet
+              {t('team.draft.poolEmpty')}
             </p>
           ) : (
             // "learning" stays hidden here: champions touched a few times only.
@@ -1197,7 +1216,8 @@ function MemberPoolBlock({ member, usedChampions }: {
               if (items.length === 0) return null
               return (
                 <div key={tier}>
-                  <p className="text-[8px] uppercase tracking-wider text-hextech-text-dim font-semibold mb-0.5">
+                  <p className="flex items-center gap-1 text-[8px] uppercase tracking-wider text-hextech-text-dim font-semibold mb-0.5">
+                    <span aria-hidden className="h-1.5 w-1.5 rounded-sm" style={{ backgroundColor: TIER_COLOR[tier] }} />
                     {tier} ({items.length})
                   </p>
                   <div className="flex flex-wrap gap-1">
@@ -1236,6 +1256,7 @@ function PoolMiniIcon({ championKey, tier, winRate, playRate, masteryPoints, kda
    *  scan a player's pool for what's still pickable. */
   used?: boolean
 }) {
+  const { t } = useTranslation()
   const iconUrl = useChampionIconUrl(championKey)
   // Tooltip aggregates everything we know — game count, win rate, mastery,
   // KDA. No threat info here on purpose: threat highlighting only belongs
@@ -1244,11 +1265,11 @@ function PoolMiniIcon({ championKey, tier, winRate, playRate, masteryPoints, kda
   // the sidebar noisy without adding information.
   const lines = [
     championKey,
-    playRate ? `${playRate}g` : null,
+    playRate ? t('team.pool.board.gamesShort', { count: playRate }) : null,
     winRate !== undefined ? `${winRate}% WR` : null,
     kda !== undefined ? `${kda.toFixed(1)} KDA` : null,
-    masteryPoints ? `${Math.round(masteryPoints / 1000)}k mastery` : null,
-    used ? 'Already in current draft' : null,
+    masteryPoints ? t('team.pool.board.masteryLine', { k: Math.round(masteryPoints / 1000) }) : null,
+    used ? t('team.draft.alreadyInDraft') : null,
   ].filter(Boolean) as string[]
   return (
     <div
@@ -1258,14 +1279,15 @@ function PoolMiniIcon({ championKey, tier, winRate, playRate, masteryPoints, kda
         // Tier color is on a thicker border to keep main/comfort/flex obvious
         // even at this size.
         'relative h-10 w-10 rounded overflow-hidden border-2 bg-black/30 group/icon transition-all',
-        TIER_BG[tier] ?? 'border-hextech-border-dim',
+        !isTier(tier) && 'border-hextech-border-dim',
         // Greyed-out treatment for champions already in the draft. We
         // grayscale + dim instead of hiding so the user can still see
         // they're there (and use the WR/mastery info to compare).
         used && 'grayscale opacity-40',
       )}
+      style={isTier(tier) ? { borderColor: TIER_COLOR[tier] } : undefined}
     >
-      {iconUrl && <img src={iconUrl} alt={championKey} className="w-full h-full object-cover" />}
+      {iconUrl && <img src={iconUrl} alt={championKey} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
       {/* Win rate badge on the bottom — only shown for entries with data
           (auto-filled / scouted). Manual entries stay clean. */}
       {winRate !== undefined && playRate !== undefined && (

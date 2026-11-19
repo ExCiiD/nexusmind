@@ -8,7 +8,7 @@ export interface DiscussionComment {
   groupId: string
   subjectType: DiscussionSubjectType
   subjectId: string
-  authorId: string
+  authorId: string | null // null once the author deleted their account (S19-16 / #33)
   body: string
   createdAt: string
 }

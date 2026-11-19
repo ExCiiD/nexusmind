@@ -121,24 +121,30 @@ const toDraft = (r: DraftRow): SharedDraft => ({
 
 // ── E1: read-only web view + desktop's one-shot publish ────────────────────
 
-export async function getSharedTeam(sb: SupabaseClient, groupId: string): Promise<{
+export async function getSharedTeam(sb: SupabaseClient, groupId: string, opts: { pools?: boolean; drafts?: boolean } = {}): Promise<{
   roster: SharedRosterMember[]; drafts: SharedDraft[]; scouting: SharedScoutingEntry[]
 }> {
-  const [rosterRes, poolRes, draftsRes, scoutingRes] = await Promise.all([
+  // `pools: false` / `drafts: false` skip those reads (the bot's /scrims needs neither).
+  const withPools = opts.pools !== false
+  const withDrafts = opts.drafts !== false
+  const noDrafts = Promise.resolve({ data: [] as DraftRow[], error: null })
+  const [rosterRes, draftsRes, scoutingRes] = await Promise.all([
     sb.from('team_rosters').select(ROSTER_SELECT).eq('group_id', groupId).order('display_name'),
-    sb.from('team_pool_entries').select(POOL_SELECT),
-    sb.from('team_drafts').select(DRAFT_SELECT).eq('group_id', groupId).order('created_at', { ascending: false }),
+    withDrafts ? sb.from('team_drafts').select(DRAFT_SELECT).eq('group_id', groupId).order('created_at', { ascending: false }) : noDrafts,
     sb.from('team_scouting').select(SCOUTING_SELECT).eq('group_id', groupId).order('name'),
   ])
   if (rosterRes.error) fail(rosterRes.error, 'roster')
-  if (poolRes.error) fail(poolRes.error, 'pool')
   if (draftsRes.error) fail(draftsRes.error, 'drafts')
   if (scoutingRes.error) fail(scoutingRes.error, 'scouting')
 
   const rosterRows = rosterRes.data as RosterRow[]
   const rosterIds = new Set(rosterRows.map((r) => r.id))
+  // WSC-06: only this group's pool rows. The table used to be read whole,
+  // filtered here: with the bot's service role (no RLS) that was every
+  // group's pools, every 15 minutes per Discord server.
+  const poolRows = withPools ? await fetchPoolRows(sb, [...rosterIds]) : []
   const poolByRoster = new Map<string, SharedPoolEntry[]>()
-  for (const row of poolRes.data as PoolRow[]) {
+  for (const row of poolRows) {
     if (!rosterIds.has(row.roster_id)) continue // belongs to a different group's roster
     const arr = poolByRoster.get(row.roster_id) ?? []
     arr.push(toPool(row))
@@ -267,12 +273,35 @@ const toDraftPrep = (r: DraftRow): CoreDraftPrep => ({
   myTeamSide: r.my_team_side, notes: r.notes, createdAt: r.created_at, updatedAt: r.updated_at,
 })
 
+/** Ids per `.in()` request: keeps the query string well under URL limits. */
+const IN_CHUNK = 100
+
+/** The pool rows of these roster rows only (indexed on roster_id). */
+async function fetchPoolRows(sb: SupabaseClient, rosterIds: string[]): Promise<PoolRow[]> {
+  const rows: PoolRow[] = []
+  for (let i = 0; i < rosterIds.length; i += IN_CHUNK) {
+    const { data, error } = await sb.from('team_pool_entries').select(POOL_SELECT).in('roster_id', rosterIds.slice(i, i + IN_CHUNK))
+    if (error) fail(error, 'pool')
+    rows.push(...(data as PoolRow[]))
+  }
+  return rows
+}
+
+/**
+ * The linked accounts of a group's own roster (starters and subs, not
+ * scouted opponents). For the bot's cron, which only needs who to check
+ * availability for: no pools, drafts or scouting read.
+ */
+export async function getGroupRosterUserIds(sb: SupabaseClient, groupId: string): Promise<string[]> {
+  const { data, error } = await sb.from('team_rosters').select('user_id').eq('group_id', groupId).is('scouting_id', null)
+  if (error) fail(error, 'roster')
+  return (data as { user_id: string | null }[]).map((r) => r.user_id).filter((id): id is string => !!id)
+}
+
 async function fetchPoolsByRosterIds(sb: SupabaseClient, rosterIds: string[]): Promise<Map<string, CoreChampionPoolEntry[]>> {
   const map = new Map<string, CoreChampionPoolEntry[]>()
   if (rosterIds.length === 0) return map
-  const { data, error } = await sb.from('team_pool_entries').select(POOL_SELECT).in('roster_id', rosterIds)
-  if (error) fail(error, 'list pool entries')
-  for (const row of data as PoolRow[]) {
+  for (const row of await fetchPoolRows(sb, rosterIds)) {
     const arr = map.get(row.roster_id) ?? []
     arr.push(toChampionPoolEntry(row))
     map.set(row.roster_id, arr)

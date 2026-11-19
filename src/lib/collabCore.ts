@@ -8,6 +8,7 @@ import type {
   GroupSharing,
   MemberLook,
   PlayerSessionView,
+  PuuidStatus,
   ReviewComment,
 } from './collab'
 
@@ -20,6 +21,8 @@ import type {
 export interface MemberIdentity {
   displayName: string | null
   riotId: string | null
+  /** #38: the Riot account's puuid, the stable key (published once the member_puuid migration is in). */
+  puuid?: string | null
 }
 
 function fail(error: { message: string; code?: string } | null, fallback: string): never {
@@ -45,7 +48,7 @@ export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Gro
 
   const [groups, members, sharing] = await Promise.all([
     selectGroups(sb, ids),
-    sb.from('group_members').select('group_id, user_id, role, is_captain, display_name, riot_id, joined_at').in('group_id', ids),
+    selectMembers(sb, ids),
     sb.from('group_sharing').select('group_id, share_reviews, share_stats, share_team, share_wellbeing').eq('user_id', uid).in('group_id', ids),
   ])
   if (groups.error) fail(groups.error, 'list groups failed')
@@ -61,7 +64,7 @@ export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Gro
       myRole: memberships!.find((m) => m.group_id === g.id)!.role as GroupRole,
       members: (members.data ?? [])
         .filter((m) => m.group_id === g.id)
-        .map((m) => ({ userId: m.user_id, role: m.role as GroupRole, isCaptain: !!m.is_captain, displayName: m.display_name, riotId: m.riot_id, joinedAt: m.joined_at })),
+        .map((m) => ({ userId: m.user_id, role: m.role as GroupRole, isCaptain: !!m.is_captain, displayName: m.display_name, riotId: m.riot_id, ...(m.puuid !== undefined ? { puuid: m.puuid, puuidStatus: m.puuid_status ?? null } : {}), joinedAt: m.joined_at })),
       sharing: {
         shareReviews: share?.share_reviews ?? true,
         shareStats: share?.share_stats ?? true,
@@ -70,6 +73,17 @@ export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Gro
       },
     }
   })
+}
+
+type MemberRow = { group_id: string; user_id: string; role: string; is_captain: boolean; display_name: string | null; riot_id: string | null; puuid?: string | null; puuid_status?: PuuidStatus | null; joined_at: string }
+const MEMBER_SELECT = 'group_id, user_id, role, is_captain, display_name, riot_id, joined_at'
+
+/** The groups' members, with their puuid once the member_puuid migration is in (#38: before it the column is
+ *  missing, list them without). The puuid is the stable key: a Riot ID changes when the player renames. */
+async function selectMembers(sb: SupabaseClient, ids: string[]): Promise<{ data: MemberRow[] | null; error: { message: string; code?: string } | null }> {
+  const withPuuid = await sb.from('group_members').select(`${MEMBER_SELECT}, puuid, puuid_status`).in('group_id', ids)
+  if (withPuuid.error?.code === '42703') return sb.from('group_members').select(MEMBER_SELECT).in('group_id', ids)
+  return withPuuid
 }
 
 type GroupRow = { id: string; name: string; kind: string; logo_url?: string | null }
@@ -105,6 +119,17 @@ export function logoPathOf(url: string | null | undefined, groupId: string): str
  * Uploads a new logo (or none) and points the group at it; the previous file
  * is then removed, best effort. Returns the new logo's URL.
  */
+/**
+ * #34: unlinks the Discord server of `groupId` (the bot stops posting, the server can be linked again, to any
+ * group). Its owner, coach or manager only (DISCORD_MANAGER_ROLES), checked server side by the unlink_discord_guild RPC.
+ * `unlinked: false` when no server was linked.
+ */
+export async function unlinkGroupDiscord(sb: SupabaseClient, groupId: string): Promise<{ unlinked: boolean }> {
+  const { data, error } = await sb.rpc('unlink_discord_guild', { p_group: groupId })
+  if (error) fail(error, 'unlink server')
+  return { unlinked: data === true }
+}
+
 export async function setGroupLogo(sb: SupabaseClient, groupId: string, image: GroupLogoImage | null, previousUrl?: string | null): Promise<string | null> {
   let url: string | null = null
   if (image) {
@@ -122,9 +147,47 @@ export async function setGroupLogo(sb: SupabaseClient, groupId: string, image: G
 }
 
 export async function updateMyMemberProfile(sb: SupabaseClient, uid: string, groupId: string, id: MemberIdentity): Promise<void> {
-  // Never clears a Riot ID: the web has no account of its own to send.
+  // Never clears a Riot ID: the web has no account of its own to send. Never the puuid either: only the server
+  // writes it, from the Riot ID declared here (verify-member-puuid, #38 CyberSecurity review).
   const patch = id.riotId ? { display_name: id.displayName, riot_id: id.riotId } : { display_name: id.displayName }
   await sb.from('group_members').update(patch).eq('group_id', groupId).eq('user_id', uid)
+}
+
+/**
+ * #38: the memberships whose published Riot ID differs from this device's current one (they get
+ * updateMyMemberProfile). Pure, tested.
+ */
+export function membershipsToRefresh(groups: Group[], uid: string, id: MemberIdentity): string[] {
+  if (!id.riotId) return []
+  return groups
+    .filter((g) => {
+      const me = g.members.find((m) => m.userId === uid)
+      return !!me && me.riotId !== id.riotId
+    })
+    .map((g) => g.id)
+}
+
+/**
+ * #38: true when some membership's server-side puuid does not match this device's account (never verified, or
+ * cleared by a Riot ID change). puuid undefined = the column is not there yet (pre-migration): nothing to verify.
+ * Pure, tested.
+ */
+export function needsPuuidVerification(groups: Group[], uid: string, id: MemberIdentity): boolean {
+  if (!id.riotId || !id.puuid) return false
+  return groups.some((g) => {
+    const me = g.members.find((m) => m.userId === uid)
+    return !!me && me.puuid !== undefined && me.puuid !== id.puuid
+  })
+}
+
+/**
+ * #38: asks the server to derive this user's puuid on each membership from the Riot ID they declared (the
+ * verify-member-puuid Edge Function). Best effort: before the function is deployed it simply does nothing.
+ */
+export async function verifyMyMemberPuuid(sb: SupabaseClient): Promise<{ verified: number; conflicts: string[] } | null> {
+  const { data, error } = await sb.functions.invoke('verify-member-puuid', { method: 'POST' })
+  if (error) return null
+  return (data as { verified: number; conflicts: string[] }) ?? null
 }
 
 // ── Profile looks (Team → Roster player cards) ──────────────────────────────

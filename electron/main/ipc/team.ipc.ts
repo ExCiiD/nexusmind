@@ -15,8 +15,46 @@ import { getChampionIdToKey } from '../dataDragon'
 import { championPlaysRole, type Role } from '../../../src/lib/championRoles'
 import { tierPool, NEW_PICK_DAYS } from '../../../src/lib/threatCore'
 import { normalizeSlots, groupDuplicates, normalizeRole } from '../../../src/lib/teamIdentity'
-import { matchStartOf, mergeMatchIdsByRecency } from '../../../src/lib/scoutingCore'
+import {
+  matchStartOf, mergeMatchIdsByRecency, teamListWhere, teamLinkReleaseWhere,
+  aggregateMatchLike, matchLikeFromRiot, matchLikeFromCustom, indexMatchIds, sharedMatchIds, matchIdsByRegion, combinedSources,
+} from '../../../src/lib/scoutingCore'
 import { RIOT_LIMITS } from '../../../src/lib/riotLimits'
+import { refreshTeamMemberRiotIds } from '../teamMemberRefresh'
+import { getSupabase, isCloudConfigured, getSessionUserId } from '../cloud/supabase'
+import * as customGamesCore from '../../../src/lib/teamCustomGamesCore'
+import { z } from 'zod'
+import { validatedHandle, id as idSchema, shortText } from './validate'
+
+/** Cloud group ids (uuid). */
+const groupIdSchema = z.string().uuid()
+
+const teamListOpts = z.object({
+  isOpponent: z.boolean().optional(),
+  groupId: groupIdSchema.optional(),
+  includeUnassigned: z.boolean().optional(),
+}).strict()
+
+const teamMemberPatch = z.object({
+  displayName: z.string().trim().min(1).max(64),
+  ign: shortText(64).nullable(),
+  tagLine: shortText(16).nullable(),
+  region: shortText(8).nullable(),
+  role: shortText(16),
+  puuid: z.string().regex(/^[A-Za-z0-9_-]{20,100}$/).nullable(),
+  // #38: set by a group-sync rename, cleared (null) once the staff saw it.
+  previousRiotId: shortText(100).nullable(),
+}).partial().strict()
+
+const teamCreateInput = z.object({
+  name: z.string().trim().min(1).max(100),
+  tag: shortText(16).optional(),
+  logo: shortText(200_000).optional(),
+  notes: shortText(10_000).optional(),
+  isOpponent: z.boolean().optional(),
+  /** #7: the group an opponent is scouted for (own teams use team:link-group). */
+  groupId: groupIdSchema.optional(),
+}).strict()
 
 async function getActiveUser() {
   const prisma = getPrisma()
@@ -340,34 +378,74 @@ export async function refreshAutoTiers(): Promise<number> {
   return changed
 }
 
+// ── Custom games shared with the group (#41a) ──────────────────────────────
+// A team linked to a group (own roster, groupId set) publishes its imported scrim / tournament games to
+// team_custom_games and reads the group's games back, so the group's players get the Scrim / Tournoi stats too.
+// Teams without a group stay local only. Every cloud step is best effort: offline, the local games still work.
+
+/** The group a team's custom games are shared with, or null (opponent, no group, signed out, no cloud). */
+async function customGamesGroupOf(team: { groupId: string | null; isOpponent: boolean }): Promise<string | null> {
+  if (!team.groupId || team.isOpponent || !isCloudConfigured()) return null
+  return (await getSessionUserId().catch(() => null)) ? team.groupId : null
+}
+
+/** Earlier imports, published once per team per run (staff only: RLS refuses a player's write, which is ignored). */
+const customGamesBackfilled = new Set<string>()
+async function backfillCustomGames(teamId: string, groupId: string, local: customGamesCore.LocalCustomGame[]): Promise<void> {
+  if (customGamesBackfilled.has(teamId) || local.length === 0) return
+  customGamesBackfilled.add(teamId)
+  try {
+    const sb = getSupabase()
+    const published = await customGamesCore.listPublishedLocalIds(sb, groupId)
+    for (const g of local) if (!published.has(g.id)) await customGamesCore.publishCustomGame(sb, groupId, g)
+  } catch (err) {
+    console.warn('[team] custom games backfill failed:', (err as Error)?.message)
+  }
+}
+
+/** The team's custom games: local ones, plus the group's (without the copies of this PC's own imports). */
+async function customGamesOf(team: { id: string; groupId: string | null; isOpponent: boolean }, gameType?: 'scrim' | 'tournament') {
+  const local = await getPrisma().customGame.findMany({
+    where: { teamId: team.id, ...(gameType ? { gameType } : {}) },
+    orderBy: { importedAt: 'desc' },
+  })
+  const groupId = await customGamesGroupOf(team)
+  if (!groupId) return local
+  void backfillCustomGames(team.id, groupId, local)
+  try {
+    const rows = await customGamesCore.listGroupCustomGames(getSupabase(), groupId, gameType)
+    return customGamesCore.mergeWithGroupGames(local, rows.map((r) => customGamesCore.fromGroupRow(r, team.id)))
+  } catch (err) {
+    console.warn('[team] could not read the group custom games:', (err as Error)?.message)
+    return local
+  }
+}
+
 export function registerTeamHandlers() {
   // ── Teams ────────────────────────────────────────────────────────────────
 
-  ipcMain.handle('team:list', async (_e, opts?: { isOpponent?: boolean }) => {
+  validatedHandle('team:list', z.tuple([teamListOpts.optional()]), async (_e, opts) => {
     const prisma = getPrisma()
     const user = await getActiveUser()
     // A "new" pick older than two weeks turns into a regular tier here.
     await refreshAutoTiers().catch((err) => console.warn('[team] tier refresh failed:', err))
-    return prisma.team.findMany({
-      where: {
-        userId: user.id,
-        ...(opts && typeof opts.isOpponent === 'boolean' ? { isOpponent: opts.isOpponent } : {}),
-      },
+    const teams = await prisma.team.findMany({
+      // #7: `groupId` scopes Scouting to the opponents of the chosen group.
+      where: teamListWhere(user.id, opts ?? {}),
       orderBy: { updatedAt: 'desc' },
       // seasonMatchIdsJson (up to ~2,500 ids per scouted member) is main-process
       // bookkeeping the renderer never reads: keep it off the IPC payload.
       include: { members: { omit: { seasonMatchIdsJson: true }, include: { champPool: true } } },
     })
+    // #38: renamed players get their current Riot ID back (by puuid, once per member per run, in the background).
+    void refreshTeamMemberRiotIds(teams.flatMap((t) => t.members)).catch(() => {})
+    return teams
   })
 
 
-  ipcMain.handle('team:create', async (_e, data: {
-    name: string
-    tag?: string
-    logo?: string
-    notes?: string
-    isOpponent?: boolean
-  }) => {
+  // Whitelisted fields only: the renderer's object used to be spread into
+  // prisma.team.create as is.
+  validatedHandle('team:create', z.tuple([teamCreateInput]), async (_e, data) => {
     const prisma = getPrisma()
     const user = await getActiveUser()
     return prisma.team.create({
@@ -378,19 +456,21 @@ export function registerTeamHandlers() {
 
   /**
    * Makes a local team the roster of a cloud group (or unlinks it with
-   * null). One team per group: whichever team held the group before is
+   * null). One team per group: whichever own team held the group before is
    * released, so the header's group picker always resolves to one team.
+   * For an opponent it means "scouted for this group" (#7): any number of
+   * opponents per group, nothing released.
    */
-  ipcMain.handle('team:link-group', async (_e, teamId: string, groupId: string | null) => {
-    if (typeof teamId !== 'string' || (groupId !== null && (typeof groupId !== 'string' || groupId.length > 64))) {
-      throw new Error('Invalid team/group')
-    }
+  validatedHandle('team:link-group', z.tuple([idSchema, groupIdSchema.nullable()]), async (_e, teamId, groupId) => {
     const prisma = getPrisma()
     const user = await getActiveUser()
-    if (groupId) {
-      await prisma.team.updateMany({ where: { userId: user.id, groupId, NOT: { id: teamId } }, data: { groupId: null } })
-    }
-    return prisma.team.update({ where: { id: teamId }, data: { groupId } })
+    return prisma.$transaction(async (tx) => {
+      const team = await tx.team.findFirst({ where: { id: teamId, userId: user.id }, select: { isOpponent: true } })
+      if (!team) throw new Error('Team not found')
+      const release = groupId ? teamLinkReleaseWhere(user.id, teamId, groupId, team.isOpponent) : null
+      if (release) await tx.team.updateMany({ where: release, data: { groupId: null } })
+      return tx.team.update({ where: { id: teamId }, data: { groupId } })
+    })
   })
 
   ipcMain.handle('team:delete', async (_e, id: string) => {
@@ -477,19 +557,13 @@ export function registerTeamHandlers() {
     return { removed }
   })
 
-  ipcMain.handle('team:update-member', async (_e, memberId: string, data: Partial<{
-    displayName: string
-    ign: string | null
-    tagLine: string | null
-    region: string | null
-    role: string
-    puuid: string | null
-  }>) => {
+  // Whitelisted fields only (the renderer's object used to reach Prisma as is).
+  validatedHandle('team:update-member', z.tuple([idSchema, teamMemberPatch]), async (_e, memberId, data) => {
     const prisma = getPrisma()
     return prisma.teamMember.update({ where: { id: memberId }, data })
   })
 
-  ipcMain.handle('team:remove-member', async (_e, memberId: string) => {
+  validatedHandle('team:remove-member', z.tuple([idSchema]), async (_e, memberId) => {
     const prisma = getPrisma()
     await prisma.teamMember.delete({ where: { id: memberId } })
     return { ok: true }
@@ -1035,16 +1109,10 @@ export function registerTeamHandlers() {
     // Parallelized for the same reason as step 1; map mutations below are
     // safe since each `await` resolves into its own synchronous callback
     // (no real concurrency in JS's single-threaded event loop).
-    const puuidToMember = new Map(resolvedMembers.map((m) => [m.puuid, m]))
     const matchToPuuids = new Map<string, Set<string>>()
     await Promise.all(resolvedMembers.map(async (m) => {
       try {
-        const ids = await getMatchIds(m.puuid, m.region, matchesPerMember, 0, 'flex')
-        for (const id of ids) {
-          const set = matchToPuuids.get(id) ?? new Set<string>()
-          set.add(m.puuid)
-          matchToPuuids.set(id, set)
-        }
+        indexMatchIds(matchToPuuids, m.puuid, await getMatchIds(m.puuid, m.region, matchesPerMember, 0, 'flex'))
       } catch (err) {
         console.warn('[synergy] match list failed for', m.displayName, err)
       }
@@ -1052,9 +1120,7 @@ export function registerTeamHandlers() {
 
     // Pre-filter on appearances. Match-list presence is cheap; we still need a
     // full fetch to confirm same-team and get stats, but this trims by ~70%.
-    const candidateMatchIds = Array.from(matchToPuuids.entries())
-      .filter(([, puuids]) => puuids.size >= minTogether)
-      .map(([id]) => id)
+    const candidateMatchIds = sharedMatchIds(matchToPuuids, minTogether)
 
     if (candidateMatchIds.length === 0) {
       return {
@@ -1076,17 +1142,8 @@ export function registerTeamHandlers() {
     // fetcher can pull each match from the right routing cluster. Different
     // regions live on different Riot endpoints, so we can't mix them in one
     // batched call.
-    const idsByRegion = new Map<string, string[]>()
-    for (const matchId of candidateMatchIds) {
-      const seederPuuid = Array.from(matchToPuuids.get(matchId)!)[0]
-      const seeder = puuidToMember.get(seederPuuid)
-      if (!seeder) continue
-      const arr = idsByRegion.get(seeder.region) ?? []
-      arr.push(matchId)
-      idsByRegion.set(seeder.region, arr)
-    }
     const allMatches = new Map<string, any>()
-    for (const [region, ids] of idsByRegion) {
+    for (const [region, ids] of matchIdsByRegion(candidateMatchIds, matchToPuuids, resolvedMembers)) {
       const fetched = await getMatchesBulkCached(ids, region)
       for (const [id, m] of fetched) allMatches.set(id, m)
     }
@@ -1096,11 +1153,7 @@ export function registerTeamHandlers() {
     // true number of candidates scanned, matching this handler's previous
     // behavior — aggregateMatchLike already skips empty/zero-duration
     // entries on its own.
-    const matchLike = candidateMatchIds.map((id) => {
-      const m = allMatches.get(id)
-      return { durationSec: m?.info?.gameDuration ?? 0, participants: m?.info?.participants ?? [] }
-    })
-    return aggregateMatchLike(team, matchLike, minTogether)
+    return aggregateMatchLike(team, candidateMatchIds.map((id) => matchLikeFromRiot(allMatches.get(id))), minTogether)
   })
 
   // ── Custom games (scrim / tournament CSV imports) ───────────────────────
@@ -1261,6 +1314,19 @@ export function registerTeamHandlers() {
       },
     })
 
+    // #41a: shared with the group's players (best effort; the backfill retries an import that failed here).
+    let published = false
+    const groupId = await customGamesGroupOf(team)
+    if (groupId) {
+      try {
+        await customGamesCore.publishCustomGame(getSupabase(), groupId, customGame)
+        published = true
+      } catch (err) {
+        console.warn('[team] could not publish the custom game to the group:', (err as Error)?.message)
+        customGamesBackfilled.delete(teamId)
+      }
+    }
+
     return {
       canceled: false as const,
       gameId: customGame.id,
@@ -1268,20 +1334,28 @@ export function registerTeamHandlers() {
       participants: participants.length,
       filename,
       win,
+      published,
     }
   })
 
   ipcMain.handle('team:list-custom-games', async (_e, teamId: string, gameType?: 'scrim' | 'tournament') => {
-    const prisma = getPrisma()
-    return prisma.customGame.findMany({
-      where: { teamId, ...(gameType ? { gameType } : {}) },
-      orderBy: { importedAt: 'desc' },
-    })
+    const team = await getPrisma().team.findUnique({ where: { id: teamId }, select: { id: true, groupId: true, isOpponent: true } })
+    if (!team) throw new Error('Team not found')
+    return customGamesOf(team, gameType)
   })
 
-  ipcMain.handle('team:delete-custom-game', async (_e, id: string) => {
+  // A local game is deleted here and from the group; a group game (`group:<id>`) from the group only (staff).
+  // A local id, or `group:<uuid>` for a game shared with the group (teamCustomGamesCore).
+  validatedHandle('team:delete-custom-game', z.tuple([z.union([idSchema, z.string().regex(/^group:[0-9a-f-]{36}$/i, 'invalid group game id')])]), async (_e, id) => {
     const prisma = getPrisma()
+    if (id.startsWith('group:')) {
+      await customGamesCore.deleteGroupCustomGame(getSupabase(), id)
+      return { ok: true as const }
+    }
+    const game = await prisma.customGame.findUnique({ where: { id }, include: { team: { select: { groupId: true, isOpponent: true } } } })
     await prisma.customGame.delete({ where: { id } })
+    const groupId = game ? await customGamesGroupOf(game.team) : null
+    if (groupId) await customGamesCore.deleteGroupCustomGame(getSupabase(), id, groupId).catch(() => {})
     return { ok: true as const }
   })
 
@@ -1298,17 +1372,10 @@ export function registerTeamHandlers() {
     const team = await prisma.team.findUnique({ where: { id: teamId }, include: { members: true } })
     if (!team) throw new Error('Team not found')
 
-    const games = await prisma.customGame.findMany({
-      where: { teamId, ...(gameType === 'all' ? {} : { gameType }) },
-    })
+    // #41a: local games plus the group's, so a player gets the games the staff imported.
+    const games = await customGamesOf(team, gameType === 'all' ? undefined : gameType)
 
-    // Build match-like objects compatible with the synergy aggregator
-    const matchLike = games.map((g) => ({
-      durationSec: g.durationSec,
-      participants: JSON.parse(g.participantsJson) as Array<Record<string, any>>,
-    }))
-
-    return aggregateMatchLike(team, matchLike)
+    return aggregateMatchLike(team, games.map(matchLikeFromCustom))
   })
 
   /**
@@ -1322,11 +1389,8 @@ export function registerTeamHandlers() {
 
     // Pull custom games — these are full-team games by definition so no
     // minTogether check is needed.
-    const customs = await prisma.customGame.findMany({ where: { teamId } })
-    const customMatchLike = customs.map((g) => ({
-      durationSec: g.durationSec,
-      participants: JSON.parse(g.participantsJson) as Array<Record<string, any>>,
-    }))
+    const customs = await customGamesOf(team)
+    const customMatchLike = customs.map(matchLikeFromCustom)
 
     // Reuse the existing synergy compute path for the flex side by invoking
     // it directly — keeps a single source of truth for the Riot-side logic.
@@ -1352,223 +1416,28 @@ export function registerTeamHandlers() {
     await Promise.all(resolvedMembers.map(async (m) => {
       if (!m.puuid || !m.region) return
       try {
-        const ids = await getMatchIds(m.puuid, m.region, RIOT_LIMITS.SYNERGY_MATCHES_PER_MEMBER, 0, 'flex')
-        for (const id of ids) {
-          const set = matchToPuuids.get(id) ?? new Set<string>()
-          set.add(m.puuid)
-          matchToPuuids.set(id, set)
-        }
+        indexMatchIds(matchToPuuids, m.puuid, await getMatchIds(m.puuid, m.region, RIOT_LIMITS.SYNERGY_MATCHES_PER_MEMBER, 0, 'flex'))
       } catch (err) {
         console.warn('[combined] match list failed for', m.displayName, err)
       }
     }))
-    const candidates = Array.from(matchToPuuids.entries())
-      .filter(([, p]) => p.size >= minTogether)
-      .map(([id]) => id)
+    const candidates = sharedMatchIds(matchToPuuids, minTogether)
 
-    const idsByRegion = new Map<string, string[]>()
-    for (const matchId of candidates) {
-      const seederPuuid = Array.from(matchToPuuids.get(matchId)!)[0]
-      const seeder = resolvedMembers.find((m) => m.puuid === seederPuuid)
-      if (!seeder?.region) continue
-      const arr = idsByRegion.get(seeder.region) ?? []
-      arr.push(matchId)
-      idsByRegion.set(seeder.region, arr)
-    }
     const allMatches = new Map<string, any>()
-    for (const [region, ids] of idsByRegion) {
+    for (const [region, ids] of matchIdsByRegion(candidates, matchToPuuids, resolvedMembers)) {
       const fetched = await getMatchesBulkCached(ids, region)
       for (const [id, m] of fetched) allMatches.set(id, m)
     }
 
-    const flexMatchLike: Array<{ durationSec: number; participants: any[] }> = []
-    for (const matchId of candidates) {
-      const matchData = allMatches.get(matchId)
-      if (!matchData) continue
-      const participants: any[] = matchData?.info?.participants ?? []
-      const durationSec: number = matchData?.info?.gameDuration ?? 0
-      if (participants.length && durationSec > 0) {
-        flexMatchLike.push({ durationSec, participants })
-      }
-    }
+    const flexMatchLike = candidates
+      .map((id) => matchLikeFromRiot(allMatches.get(id)))
+      .filter((m) => m.participants.length > 0 && m.durationSec > 0)
 
     // The dashboard says what the average is made of.
-    const sources = {
-      flex: flexMatchLike.length,
-      scrim: customs.filter((g) => g.gameType === 'scrim').length,
-      tournament: customs.filter((g) => g.gameType === 'tournament').length,
-    }
+    const sources = combinedSources(flexMatchLike.length, customs)
     return { ...aggregateMatchLike(team, [...flexMatchLike, ...customMatchLike], minTogether), sources }
   })
 
-}
-
-/**
- * Generic per-team aggregator. Consumes match-like objects (Riot match-V5
- * shape OR our custom-game participant shape) and produces the same
- * `SynergyPlayerStats[]` payload regardless of source.
- *
- * Roster members are matched by:
- *   - `puuid` for Riot matches (most reliable)
- *   - case-insensitive `ign` / `displayName` for custom games (no puuid)
- */
-function aggregateMatchLike(
-  team: { id: string; members: Array<{ id: string; displayName: string; ign: string | null; role: string; puuid: string | null }> },
-  matches: Array<{ durationSec: number; participants: any[] }>,
-  minTogether: number = 1,
-) {
-  const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase()
-  const memberByPuuid = new Map<string, typeof team.members[0]>()
-  const memberByName = new Map<string, typeof team.members[0]>()
-  for (const m of team.members) {
-    if (m.puuid) memberByPuuid.set(m.puuid, m)
-    if (m.ign) memberByName.set(norm(m.ign), m)
-    if (m.displayName) memberByName.set(norm(m.displayName), m)
-  }
-  const matchMember = (p: any) => {
-    if (p.puuid && memberByPuuid.has(p.puuid)) return memberByPuuid.get(p.puuid)
-    if (p.playerName && memberByName.has(norm(p.playerName))) return memberByName.get(norm(p.playerName))
-    return undefined
-  }
-
-  // Accumulator mirroring the synergy handler's structure
-  interface Accum {
-    memberId: string; displayName: string; role: string
-    games: number; wins: number
-    sums: { kills: number; deaths: number; assists: number; cs: number; durationMin: number; damage: number; damageTaken: number; ccTime: number; visionScore: number; wardsPlaced: number; wardsKilled: number; controlWards: number; gold: number; xp: number }
-    shareSums: { dmg: number; gold: number; vision: number; dmgTaken: number; cc: number; kp: number }
-    byChampion: Map<string, { games: number; wins: number }>
-  }
-  const accums = new Map<string, Accum>()
-  for (const m of team.members) {
-    accums.set(m.id, {
-      memberId: m.id, displayName: m.displayName, role: m.role,
-      games: 0, wins: 0,
-      sums: { kills: 0, deaths: 0, assists: 0, cs: 0, durationMin: 0, damage: 0, damageTaken: 0, ccTime: 0, visionScore: 0, wardsPlaced: 0, wardsKilled: 0, controlWards: 0, gold: 0, xp: 0 },
-      shareSums: { dmg: 0, gold: 0, vision: 0, dmgTaken: 0, cc: 0, kp: 0 },
-      byChampion: new Map(),
-    })
-  }
-
-  let matchCount = 0
-  for (const match of matches) {
-    const participants = match.participants
-    const durationSec = match.durationSec
-    if (!participants?.length || durationSec <= 0) continue
-    const durationMin = durationSec / 60
-
-    // Group by team
-    const byTeam: Record<number, any[]> = { 100: [], 200: [] }
-    for (const p of participants) {
-      if (p.teamId === 100 || p.teamId === 200) byTeam[p.teamId].push(p)
-    }
-    const ourTeamId = ([100, 200] as const).find((tid) => byTeam[tid].filter(matchMember).length >= minTogether)
-    if (!ourTeamId) continue
-    const ourSide = byTeam[ourTeamId]
-
-    const teamTotals = {
-      dmg: ourSide.reduce((s, p) => s + (p.totalDamageDealtToChampions ?? 0), 0),
-      gold: ourSide.reduce((s, p) => s + (p.goldEarned ?? 0), 0),
-      vision: ourSide.reduce((s, p) => s + (p.visionScore ?? 0), 0),
-      dmgTaken: ourSide.reduce((s, p) => s + (p.totalDamageTaken ?? 0), 0),
-      cc: ourSide.reduce((s, p) => s + (p.timeCCingOthers ?? p.totalTimeCCDealt ?? 0), 0),
-      kills: ourSide.reduce((s, p) => s + (p.kills ?? 0), 0),
-    }
-
-    matchCount++
-    for (const p of ourSide) {
-      const member = matchMember(p)
-      if (!member) continue
-      const acc = accums.get(member.id)!
-      // Per-role filter (same as synergy handler)
-      const playedRole = normalizeRole(p.teamPosition || p.individualPosition)
-      const assignedRole = (acc.role || '').toUpperCase()
-      if (assignedRole && playedRole && playedRole !== assignedRole) continue
-      acc.games++
-      if (p.win) acc.wins++
-      const cs = (p.totalMinionsKilled ?? 0) + (p.neutralMinionsKilled ?? 0)
-      acc.sums.kills += p.kills ?? 0
-      acc.sums.deaths += p.deaths ?? 0
-      acc.sums.assists += p.assists ?? 0
-      acc.sums.cs += cs
-      acc.sums.durationMin += durationMin
-      acc.sums.damage += p.totalDamageDealtToChampions ?? 0
-      acc.sums.damageTaken += p.totalDamageTaken ?? 0
-      acc.sums.ccTime += p.timeCCingOthers ?? p.totalTimeCCDealt ?? 0
-      acc.sums.visionScore += p.visionScore ?? 0
-      acc.sums.wardsPlaced += p.wardsPlaced ?? 0
-      acc.sums.wardsKilled += p.wardsKilled ?? 0
-      acc.sums.controlWards += p.detectorWardsPurchased ?? p.visionWardsBoughtInGame ?? 0
-      acc.sums.gold += p.goldEarned ?? 0
-      acc.sums.xp += p.champExperience ?? 0
-      acc.shareSums.dmg += teamTotals.dmg > 0 ? (p.totalDamageDealtToChampions ?? 0) / teamTotals.dmg : 0
-      acc.shareSums.gold += teamTotals.gold > 0 ? (p.goldEarned ?? 0) / teamTotals.gold : 0
-      acc.shareSums.vision += teamTotals.vision > 0 ? (p.visionScore ?? 0) / teamTotals.vision : 0
-      acc.shareSums.dmgTaken += teamTotals.dmgTaken > 0 ? (p.totalDamageTaken ?? 0) / teamTotals.dmgTaken : 0
-      acc.shareSums.cc += teamTotals.cc > 0 ? ((p.timeCCingOthers ?? p.totalTimeCCDealt ?? 0)) / teamTotals.cc : 0
-      acc.shareSums.kp += teamTotals.kills > 0 ? ((p.kills ?? 0) + (p.assists ?? 0)) / teamTotals.kills : 0
-      const champKey = p.championName ?? 'Unknown'
-      const champ = acc.byChampion.get(champKey) ?? { games: 0, wins: 0 }
-      champ.games++
-      if (p.win) champ.wins++
-      acc.byChampion.set(champKey, champ)
-    }
-  }
-
-  const players = Array.from(accums.values())
-    .filter((a) => a.games > 0)
-    .map((a) => {
-      const g = a.games
-      const dmin = Math.max(0.001, a.sums.durationMin)
-      return {
-        memberId: a.memberId,
-        displayName: a.displayName,
-        role: a.role,
-        gamesPlayed: a.games,
-        wins: a.wins,
-        winRate: Math.round((a.wins / g) * 100),
-        averages: {
-          kda: a.sums.deaths > 0 ? (a.sums.kills + a.sums.assists) / a.sums.deaths : a.sums.kills + a.sums.assists,
-          kills: a.sums.kills / g,
-          deaths: a.sums.deaths / g,
-          assists: a.sums.assists / g,
-          cs: a.sums.cs / g,
-          csPerMin: a.sums.cs / dmin,
-          damage: a.sums.damage / g,
-          damagePerMin: a.sums.damage / dmin,
-          damageTaken: a.sums.damageTaken / g,
-          ccTime: a.sums.ccTime / g,
-          visionScore: a.sums.visionScore / g,
-          wardsPlaced: a.sums.wardsPlaced / g,
-          wardsKilled: a.sums.wardsKilled / g,
-          controlWards: a.sums.controlWards / g,
-          gold: a.sums.gold / g,
-          goldPerMin: a.sums.gold / dmin,
-          xpPerMin: a.sums.xp / dmin,
-          damagePerGold: a.sums.gold > 0 ? a.sums.damage / a.sums.gold : 0,
-        },
-        shares: {
-          damagePct: (a.shareSums.dmg / g) * 100,
-          goldPct: (a.shareSums.gold / g) * 100,
-          visionPct: (a.shareSums.vision / g) * 100,
-          damageTakenPct: (a.shareSums.dmgTaken / g) * 100,
-          ccPct: (a.shareSums.cc / g) * 100,
-          kpPct: (a.shareSums.kp / g) * 100,
-        },
-        byChampion: Array.from(a.byChampion.entries())
-          .map(([championKey, v]) => ({ championKey, games: v.games, wins: v.wins, winRate: Math.round((v.wins / v.games) * 100) }))
-          .sort((x, y) => y.games - x.games),
-      }
-    })
-
-  return {
-    matchCount,
-    candidateCount: matches.length,
-    membersResolved: team.members.length,
-    membersWithGames: players.length,
-    players,
-    fetchedAt: Date.now(),
-  }
 }
 
 /**

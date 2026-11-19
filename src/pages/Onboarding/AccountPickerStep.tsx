@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useUserStore } from '@/store/useUserStore'
@@ -14,6 +15,7 @@ interface AccountPickerStepProps {
 
 export function AccountPickerStep({ accounts, onNewAccount }: AccountPickerStepProps) {
   const setUser = useUserStore((s) => s.setUser)
+  const { t } = useTranslation()
   const { toast } = useToast()
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
@@ -22,9 +24,9 @@ export function AccountPickerStep({ accounts, onNewAccount }: AccountPickerStepP
     try {
       const user = await window.api.reactivateAccount(account.id)
       setUser(user)
-      toast({ title: `Welcome back, ${user.displayName || user.summonerName}!`, variant: 'gold' })
+      toast({ title: t('onboarding.accountPicker.welcomeToast', { name: user.displayName || user.summonerName }), variant: 'gold' })
     } catch (err: any) {
-      toast({ title: 'Could not reconnect', description: err.message, variant: 'destructive' })
+      toast({ title: t('onboarding.accountPicker.reconnectFailed'), description: err.message, variant: 'destructive' })
     } finally {
       setLoadingId(null)
     }
@@ -33,9 +35,9 @@ export function AccountPickerStep({ accounts, onNewAccount }: AccountPickerStepP
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Welcome back</CardTitle>
+        <CardTitle>{t('onboarding.accountPicker.title')}</CardTitle>
         <CardDescription>
-          Choose a saved account to reconnect instantly, or add a new one.
+          {t('onboarding.accountPicker.desc')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -52,7 +54,7 @@ export function AccountPickerStep({ accounts, onNewAccount }: AccountPickerStepP
             >
               <img
                 src={iconUrl}
-                alt="icon"
+                alt=""
                 className="h-11 w-11 rounded-full border-2 border-hextech-border-dim object-cover shrink-0"
                 onError={(e) => { (e.target as HTMLImageElement).src = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/29.jpg` }}
               />
@@ -64,7 +66,7 @@ export function AccountPickerStep({ accounts, onNewAccount }: AccountPickerStepP
                   {account.summonerName}#{account.tagLine} · {region}
                 </div>
                 <div className="text-[10px] text-hextech-text-dim mt-0.5">
-                  {sessionCount} session{sessionCount !== 1 ? 's' : ''}
+                  {t('onboarding.accountPicker.sessions', { count: sessionCount })}
                   {account.mainRole ? ` · ${account.mainRole}` : ''}
                 </div>
               </div>
@@ -79,7 +81,7 @@ export function AccountPickerStep({ accounts, onNewAccount }: AccountPickerStepP
                 ) : (
                   <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                 )}
-                {isLoading ? 'Connecting…' : 'Reconnect'}
+                {isLoading ? t('onboarding.accountPicker.connecting') : t('onboarding.accountPicker.reconnect')}
               </Button>
             </div>
           )
@@ -87,8 +89,8 @@ export function AccountPickerStep({ accounts, onNewAccount }: AccountPickerStepP
 
         <div className="pt-2 border-t border-hextech-border-dim">
           <Button variant="outline" className="w-full gap-2" onClick={onNewAccount}>
-            <Plus className="h-4 w-4" />
-            Add a new account
+            <Plus className="h-4 w-4" aria-hidden />
+            {t('onboarding.accountPicker.addNew')}
           </Button>
         </div>
       </CardContent>

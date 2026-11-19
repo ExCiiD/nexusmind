@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/useToast'
 import { cn } from '@/lib/utils'
 import { collabErrorKey, type ReviewComment } from '@/lib/collab'
+import type { NameOf } from '@/hooks/useCollab'
 
 function formatTime(sec: number): string {
   const m = Math.floor(sec / 60)
@@ -28,7 +29,7 @@ interface CommentThreadProps {
   gameId?: string | null
   myUserId: string
   /** Resolves an author id to a display name. */
-  authorName: (userId: string) => string
+  authorName: NameOf
   /** Hide entirely when there is nothing to show (player side). */
   hideWhenEmpty?: boolean
   onLoaded?: (comments: ReviewComment[]) => void

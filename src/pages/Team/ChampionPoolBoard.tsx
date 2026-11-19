@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import type { Role } from '@/components/team/RoleIconPicker'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
 import type { MemberLook } from '@/lib/collab'
 import type { ChampionPoolEntry, TeamMember } from '@/lib/ipc'
@@ -26,14 +25,16 @@ import {
   newSinceDays,
   ruleTierIfHandPicked,
   tierOf,
-  wrTone,
   type PoolSummary,
 } from '@/lib/poolView'
 import type { Tier } from '@/lib/threatCore'
 import { cn } from '@/lib/utils'
+import { RenamedHint } from '@/components/team/RenamedNote'
+import { wrBar } from '@/lib/winrate'
+import { ROLES, type Role } from '@/lib/championRoles'
 
-export const POOL_ROLES: Role[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
-export const isPoolRole = (r: string): r is Role => (POOL_ROLES as string[]).includes(r)
+export const POOL_ROLES = ROLES
+export const isPoolRole = (r: string): r is Role => (ROLES as readonly string[]).includes(r)
 
 /** Looks the members of my cloud groups shared (empty when signed out or on
  *  a build without the call). */
@@ -120,6 +121,7 @@ export function PlayerSelector({ members, selectedId, onSelect, lookOf, countsOf
               <span className="mt-1 block truncate font-mono text-[10px] text-hextech-text-dim">
                 {counts ?? t('team.pool.board.notFetched')}
               </span>
+              <RenamedHint member={m} className="mt-0.5" />
             </span>
           </button>
         )
@@ -212,8 +214,10 @@ function TierMenu({ current, onPick, onRemove, onClose, className }: {
   return (
     <>
       <div className="fixed inset-0 z-30" onClick={onClose} aria-hidden />
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events -- event barrier only: keeps clicks inside the menu from reaching the click-away backdrop. */}
       <div
         role="menu"
+        tabIndex={-1}
         className={cn('absolute z-40 flex min-w-[150px] flex-col gap-px rounded-md border border-hextech-border bg-hextech-dark p-1 shadow-2xl', className)}
         onClick={(e) => e.stopPropagation()}
       >
@@ -328,7 +332,7 @@ function ChampionTile({ entry, name, latestPlay, onMove, onRemove, onDragStart, 
           <span className="block truncate font-mono text-[11px] text-hextech-text">{stats}</span>
           {games > 0 && entry.winRate != null && (
             <span className="block h-1 overflow-hidden rounded-full bg-hextech-border-dim">
-              <span className="block h-full rounded-full" style={{ width: `${Math.min(100, entry.winRate)}%`, backgroundColor: wrTone(entry.winRate) }} />
+              <span className={cn('block h-full rounded-full', wrBar(entry.winRate, games))} style={{ width: `${Math.min(100, entry.winRate)}%` }} />
             </span>
           )}
           {(since != null || idle != null) && (
@@ -426,6 +430,7 @@ export function TierLane(props: LaneProps) {
         <span className="block h-[3px] w-7 rounded" style={{ backgroundColor: color }} />
         <Tooltip>
           <TooltipTrigger asChild>
+            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable so keyboard users can open the tier tooltip. */}
             <h3 tabIndex={0} className="mt-2 w-fit cursor-help text-2xl leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold" style={{ color }}>
               {tier}
             </h3>
@@ -469,6 +474,7 @@ export function LearningLane(props: Omit<LaneProps, 'tier'>) {
           <span className="h-[18px] w-[3px] shrink-0 rounded" style={{ backgroundColor: color }} />
           <Tooltip>
             <TooltipTrigger asChild>
+              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable so keyboard users can open the tier tooltip. */}
               <h3 tabIndex={0} className="cursor-help text-xl leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold" style={{ color }}>
                 learning
               </h3>

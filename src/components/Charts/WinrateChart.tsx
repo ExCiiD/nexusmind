@@ -25,10 +25,11 @@ export function WinrateChart({ wins, losses }: WinrateChartProps) {
   const winrate = Math.round((wins / total) * 100)
 
   return (
-    <div className="relative">
+    <div className="relative" role="img" aria-label={t('charts.winrateSummary', { wr: winrate, wins, losses })}>
       <ResponsiveContainer width="100%" height={160}>
         <PieChart>
           <Pie
+            rootTabIndex={-1}
             data={data}
             cx="50%"
             cy="50%"
@@ -51,7 +52,7 @@ export function WinrateChart({ wins, losses }: WinrateChartProps) {
           />
         </PieChart>
       </ResponsiveContainer>
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div className="absolute inset-0 flex items-center justify-center" aria-hidden>
         <div className="text-center">
           <div className="text-2xl font-bold text-hextech-gold-bright">{winrate}%</div>
           <div className="text-xs text-hextech-text">{total} {t('charts.games')}</div>

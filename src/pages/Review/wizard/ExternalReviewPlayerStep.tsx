@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Loader2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
@@ -11,12 +12,13 @@ interface Props {
 }
 
 export function ExternalReviewPlayerStep({ state, onChange, onGames }: Props) {
+  const { t } = useTranslation()
   const [fetching, setFetching] = useState(false)
   const { toast } = useToast()
 
   const handleFetch = async () => {
     if (!state.gameName.trim() || !state.tagLine.trim()) {
-      toast({ title: 'Enter a valid Riot ID (name + tag)', variant: 'destructive' })
+      toast({ title: t('externalReview.player.invalidId'), variant: 'destructive' })
       return
     }
     setFetching(true)
@@ -27,12 +29,12 @@ export function ExternalReviewPlayerStep({ state, onChange, onGames }: Props) {
         state.region,
       )
       if (!games.length) {
-        toast({ title: 'No ranked games found for this player', variant: 'destructive' })
+        toast({ title: t('externalReview.player.noGames'), variant: 'destructive' })
         return
       }
       onGames(games, `${state.gameName.trim()}#${state.tagLine.trim()}`)
     } catch (err: any) {
-      toast({ title: 'Player not found', description: err.message, variant: 'destructive' })
+      toast({ title: t('externalReview.player.notFound'), description: err.message, variant: 'destructive' })
     } finally {
       setFetching(false)
     }
@@ -41,13 +43,14 @@ export function ExternalReviewPlayerStep({ state, onChange, onGames }: Props) {
   return (
     <div className="space-y-4 pt-1">
       <p className="text-xs text-hextech-text-dim">
-        Enter the player's Riot ID. We'll fetch their last ranked games so you can pick one to review.
+        {t('externalReview.player.intro')}
       </p>
 
       <div className="flex gap-2">
         <div className="flex-1 space-y-1">
-          <label className="text-[10px] text-hextech-text-dim uppercase tracking-wider">Game Name</label>
+          <label htmlFor="ext-game-name" className="text-[10px] text-hextech-text-dim uppercase tracking-wider">{t('externalReview.player.gameName')}</label>
           <input
+            id="ext-game-name"
             autoFocus
             type="text"
             value={state.gameName}
@@ -58,8 +61,9 @@ export function ExternalReviewPlayerStep({ state, onChange, onGames }: Props) {
           />
         </div>
         <div className="w-28 space-y-1">
-          <label className="text-[10px] text-hextech-text-dim uppercase tracking-wider">Tag</label>
+          <label htmlFor="ext-tag" className="text-[10px] text-hextech-text-dim uppercase tracking-wider">{t('externalReview.player.tag')}</label>
           <input
+            id="ext-tag"
             type="text"
             value={state.tagLine}
             onChange={(e) => onChange({ tagLine: e.target.value })}
@@ -71,8 +75,9 @@ export function ExternalReviewPlayerStep({ state, onChange, onGames }: Props) {
       </div>
 
       <div className="space-y-1">
-        <label className="text-[10px] text-hextech-text-dim uppercase tracking-wider">Region</label>
+        <label htmlFor="ext-region" className="text-[10px] text-hextech-text-dim uppercase tracking-wider">{t('externalReview.player.region')}</label>
         <select
+          id="ext-region"
           value={state.region}
           onChange={(e) => onChange({ region: e.target.value })}
           className="w-full rounded-md border border-hextech-border-dim bg-hextech-elevated px-3 py-2 text-sm text-hextech-text focus:outline-none focus:border-hextech-gold"
@@ -87,8 +92,8 @@ export function ExternalReviewPlayerStep({ state, onChange, onGames }: Props) {
         className="w-full"
         size="lg"
       >
-        {fetching ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
-        Fetch match history
+        {fetching ? <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden /> : <Search className="h-4 w-4 mr-2" aria-hidden />}
+        {t('externalReview.player.fetch')}
       </Button>
     </div>
   )

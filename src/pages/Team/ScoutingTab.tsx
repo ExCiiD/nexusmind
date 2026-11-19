@@ -2,21 +2,28 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useToast } from '@/hooks/useToast'
-import { Plus, Trash2, RefreshCw, Loader2, UserPlus, Eye, Wand2, BarChart3 } from 'lucide-react'
+import { Plus, Trash2, RefreshCw, Loader2, UserPlus, Eye, Wand2, BarChart3, Link2, Monitor } from 'lucide-react'
+import { EmptyState } from '@/components/ui/data-state'
 import { cn } from '@/lib/utils'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
-import { compareByRole } from '@/lib/championRoles'
+import { compareByRole, ROLES, type Role } from '@/lib/championRoles'
 import type { Team, TeamMember, ChampionPoolEntry, TeamSynergyStats } from '@/lib/ipc'
 import { BulkImportModal } from './BulkImportModal'
 import { DashboardLayout } from './DashboardLayout'
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
 import { ScopeDialog, type FetchScope } from '@/components/team/ScopeDialog'
 import { useBackgroundJobsStore } from '@/store/useBackgroundJobsStore'
+import { wrText } from '@/lib/winrate'
 
-const ROLES = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'] as const
 
-export function ScoutingTab() {
+/** `groupId`: the group picked in the section header — only its opponents
+ *  are listed, plus the unassigned ones (local teams created before #7,
+ *  `groupId === null`), shown apart with a button to attach them to this
+ *  group. The web adapter is group-scoped already: its teams carry no
+ *  `groupId` field and are all the group's. */
+export function ScoutingTab({ groupId }: { groupId?: string }) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const [opponents, setOpponents] = useState<Team[]>([])
@@ -24,6 +31,7 @@ export function ScoutingTab() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<Team | null>(null)
   // Scope dialog state — discriminated by `kind` so a single dialog can
   // back both single-member scouting and team-wide scout-all flows.
   // `null` = closed. The `onConfirm` callback is built when the dialog
@@ -49,9 +57,9 @@ export function ScoutingTab() {
   const load = async () => {
     setLoading(true)
     try {
-      const list = await window.api.listTeams({ isOpponent: true })
+      const list = await window.api.listTeams(groupId ? { isOpponent: true, groupId, includeUnassigned: true } : { isOpponent: true })
       setOpponents(list)
-      if (!activeId && list.length > 0) setActiveId(list[0].id)
+      if (!activeId && list.length > 0) setActiveId((list.find((o) => o.groupId !== null) ?? list[0]).id)
     } catch (err) {
       console.error('[ScoutingTab] Failed to load:', err)
     } finally {
@@ -59,35 +67,88 @@ export function ScoutingTab() {
     }
   }
 
-  // Mount only: load() picks the first opponent when none is active yet.
+  // On mount and on a group change (the parent also remounts on group change):
+  // load() picks the first opponent when none is active yet.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [groupId])
 
   const handleCreate = async () => {
     if (!newName.trim()) return
     try {
-      const team = await window.api.createTeam({ name: newName.trim(), isOpponent: true })
+      const team = await window.api.createTeam({ name: newName.trim(), isOpponent: true, groupId })
       setNewName('')
       setCreating(false)
       setActiveId(team.id)
       await load()
     } catch (err) {
-      toast({ title: 'Failed to create opponent team', description: (err as Error).message, variant: 'destructive' })
+      toast({ title: t('team.scouting.createFailed'), description: (err as Error).message, variant: 'destructive' })
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this opponent team?')) return
     try {
       await window.api.deleteTeam(id)
       if (activeId === id) setActiveId(null)
       await load()
     } catch (err) {
-      toast({ title: 'Failed to delete', description: (err as Error).message, variant: 'destructive' })
+      toast({ title: t('team.scouting.deleteFailed'), description: (err as Error).message, variant: 'destructive' })
     }
   }
 
   const activeTeam = opponents.find((o) => o.id === activeId) ?? null
+  const groupOpponents = opponents.filter((o) => o.groupId !== null)
+  const unassigned = opponents.filter((o) => o.groupId === null)
+  const canLink = !!groupId && typeof window.api.linkTeamToGroup === 'function'
+  const [linking, setLinking] = useState<string | null>(null)
+
+  const handleLink = async (team: Team) => {
+    if (!groupId) return
+    setLinking(team.id)
+    try {
+      await window.api.linkTeamToGroup(team.id, groupId)
+      await load()
+      // The chip moved from the "unassigned" block to the group's list: keep
+      // keyboard focus on it instead of losing it with the removed button.
+      setTimeout(() => {
+        document.querySelector<HTMLButtonElement>(`[data-opponent-chip="${team.id}"]`)?.focus()
+      }, 0)
+    } catch (err) {
+      toast({ title: t('team.scouting.linkFailed'), description: (err as Error).message, variant: 'destructive' })
+    } finally {
+      setLinking(null)
+    }
+  }
+
+  const teamChip = (team: Team) => (
+    <div
+      key={team.id}
+      className={cn(
+        'rounded-md text-sm font-medium transition-colors group flex items-center',
+        team.id === activeId
+          ? 'bg-hextech-red/20 text-hextech-red border border-hextech-red/40'
+          : 'bg-white/5 text-hextech-text hover:bg-white/10',
+      )}
+    >
+      <button
+        type="button"
+        data-opponent-chip={team.id}
+        onClick={() => setActiveId(team.id)}
+        aria-pressed={team.id === activeId}
+        className="flex items-center gap-1 pl-3 pr-1 py-1 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <Eye className="h-3 w-3" aria-hidden />
+        {team.name}
+      </button>
+      <button
+        type="button"
+        onClick={() => setPendingDelete(team)}
+        aria-label={t('team.scouting.deleteTeamAria', { name: team.name })}
+        className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:text-hextech-red pr-2 py-1 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <Trash2 className="h-3 w-3" aria-hidden />
+      </button>
+    </div>
+  )
 
   /** Opens the scope picker for a single member's scout. The actual API
    *  call runs in `runScoutOne` once the user picks Quick vs Complete. */
@@ -192,33 +253,13 @@ export function ScoutingTab() {
     <div className="space-y-3">
       {/* Opponent team selector + create */}
       <Card className="p-3 flex items-center gap-2 flex-wrap">
-        <span className="text-xs uppercase tracking-wider text-hextech-text-dim font-semibold">Opponents:</span>
-        {opponents.length === 0 && !loading && (
+        <span className="text-xs uppercase tracking-wider text-hextech-text-dim font-semibold">{t('team.scouting.opponentsLabel')}</span>
+        {groupOpponents.length === 0 && !loading && (
           <span className="text-sm text-hextech-text-dim italic">
             {t('team.scouting.empty', { defaultValue: 'No opponent teams scouted yet.' })}
           </span>
         )}
-        {opponents.map((team) => (
-          <button
-            key={team.id}
-            onClick={() => setActiveId(team.id)}
-            className={cn(
-              'px-3 py-1 rounded-md text-sm font-medium transition-colors group flex items-center gap-1',
-              team.id === activeId
-                ? 'bg-red-500/20 text-red-300 border border-red-500/40'
-                : 'bg-white/5 text-hextech-text hover:bg-white/10',
-            )}
-          >
-            <Eye className="h-3 w-3" />
-            {team.name}
-            <button
-              onClick={(e) => { e.stopPropagation(); handleDelete(team.id) }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400 ml-1"
-            >
-              <Trash2 className="h-3 w-3" />
-            </button>
-          </button>
-        ))}
+        {groupOpponents.map(teamChip)}
         {creating ? (
           <div className="flex items-center gap-1">
             <input
@@ -229,18 +270,57 @@ export function ScoutingTab() {
                 if (e.key === 'Enter') handleCreate()
                 else if (e.key === 'Escape') { setCreating(false); setNewName('') }
               }}
-              placeholder="Opponent team name…"
+              placeholder={t('team.scouting.newTeamPlaceholder')}
+              aria-label={t('team.scouting.newTeamPlaceholder')}
               className="bg-hextech-dark border border-hextech-border rounded px-2 py-1 text-sm"
             />
-            <Button size="sm" onClick={handleCreate}>Add</Button>
+            <Button size="sm" onClick={handleCreate}>{t('team.scouting.add')}</Button>
           </div>
         ) : (
           <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
             <Plus className="h-3 w-3 mr-1" />
-            New opponent
+            {t('team.scouting.newOpponent')}
           </Button>
         )}
       </Card>
+
+      {unassigned.length > 0 && (
+        <Card className="p-3 space-y-2 border-dashed" aria-labelledby="scouting-unassigned-title">
+          <div>
+            <h3 id="scouting-unassigned-title" className="font-mono text-xs uppercase tracking-wider text-hextech-text-dim">
+              {t('team.scouting.unassignedTitle', { count: unassigned.length })}
+            </h3>
+            <p className="text-xs text-hextech-text-dim">{t('team.scouting.unassignedHint')}</p>
+          </div>
+          <ul className="flex flex-wrap gap-2">
+            {unassigned.map((team) => (
+              <li key={team.id} className="flex items-center gap-1">
+                {teamChip(team)}
+                {canLink && <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={linking !== null}
+                  onClick={() => handleLink(team)}
+                  aria-label={t('team.scouting.linkAria', { name: team.name })}
+                >
+                  {linking === team.id
+                    ? <Loader2 className="h-3 w-3 mr-1 animate-spin" aria-hidden />
+                    : <Link2 className="h-3 w-3 mr-1" aria-hidden />}
+                  {t('team.scouting.link')}
+                </Button>}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      <ConfirmDialog
+        open={pendingDelete != null}
+        onOpenChange={(open) => { if (!open) setPendingDelete(null) }}
+        title={t('team.scouting.deleteTeamTitle', { name: pendingDelete?.name ?? '' })}
+        description={t('team.scouting.deleteTeamDesc')}
+        onConfirm={() => { if (pendingDelete) void handleDelete(pendingDelete.id) }}
+      />
 
       {activeTeam ? (
         <OpponentDetail
@@ -302,8 +382,9 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
   const [addingMember, setAddingMember] = useState(false)
   const [bulkImportOpen, setBulkImportOpen] = useState(false)
   const [autoScoutAfterImport, setAutoScoutAfterImport] = useState(true)
+  const [pendingRemove, setPendingRemove] = useState<TeamMember | null>(null)
   const [form, setForm] = useState({
-    displayName: '', ign: '', tagLine: '', region: 'EUW1', role: 'TOP' as typeof ROLES[number],
+    displayName: '', ign: '', tagLine: '', region: 'EUW1', role: 'TOP' as Role,
   })
 
   const handleAdd = async () => {
@@ -320,17 +401,16 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
       setForm({ displayName: '', ign: '', tagLine: '', region: 'EUW1', role: 'TOP' })
       onChange()
     } catch (err) {
-      toast({ title: 'Failed to add', description: (err as Error).message, variant: 'destructive' })
+      toast({ title: t('team.scouting.addMemberFailed'), description: (err as Error).message, variant: 'destructive' })
     }
   }
 
   const handleRemove = async (memberId: string) => {
-    if (!confirm('Remove this opponent member?')) return
     try {
       await window.api.removeTeamMember(memberId)
       onChange()
     } catch (err) {
-      toast({ title: 'Failed to remove', description: (err as Error).message, variant: 'destructive' })
+      toast({ title: t('team.scouting.removeMemberFailed'), description: (err as Error).message, variant: 'destructive' })
     }
   }
 
@@ -348,25 +428,29 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
           {addingMember ? (
             <div className="flex items-center gap-1 flex-wrap">
               <input
-                placeholder="Display"
+                placeholder={t('team.scouting.form.displayName')}
+                aria-label={t('team.scouting.form.displayName')}
                 value={form.displayName}
                 onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
                 className="bg-hextech-dark border border-hextech-border rounded px-2 py-1 text-xs w-24"
               />
               <input
                 placeholder="IGN"
+                aria-label="IGN"
                 value={form.ign}
                 onChange={(e) => setForm((f) => ({ ...f, ign: e.target.value }))}
                 className="bg-hextech-dark border border-hextech-border rounded px-2 py-1 text-xs w-24"
               />
               <input
-                placeholder="Tag"
+                placeholder={t('team.scouting.form.tag')}
+                aria-label={t('team.scouting.form.tag')}
                 value={form.tagLine}
                 onChange={(e) => setForm((f) => ({ ...f, tagLine: e.target.value }))}
                 className="bg-hextech-dark border border-hextech-border rounded px-2 py-1 text-xs w-16"
               />
               <select
                 value={form.region}
+                aria-label={t('team.scouting.form.region')}
                 onChange={(e) => setForm((f) => ({ ...f, region: e.target.value }))}
                 className="bg-hextech-dark border border-hextech-border rounded px-1 py-1 text-xs"
               >
@@ -384,13 +468,14 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
               </select>
               <select
                 value={form.role}
-                onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as typeof ROLES[number] }))}
+                aria-label={t('team.scouting.form.role')}
+                onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as Role }))}
                 className="bg-hextech-dark border border-hextech-border rounded px-1 py-1 text-xs"
               >
                 {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
-              <Button size="sm" onClick={handleAdd}>Save</Button>
-              <Button size="sm" variant="outline" onClick={() => setAddingMember(false)}>Cancel</Button>
+              <Button size="sm" onClick={handleAdd}>{t('team.scouting.save')}</Button>
+              <Button size="sm" variant="outline" onClick={() => setAddingMember(false)}>{t('common.cancel')}</Button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
@@ -408,7 +493,7 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
                 {t('team.roster.bulkImport', { defaultValue: 'Import from multi-link' })}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setAddingMember(true)}>
-                <UserPlus className="h-3 w-3 mr-1" />Add member
+                <UserPlus className="h-3 w-3 mr-1" aria-hidden />{t('team.scouting.addMember')}
               </Button>
               <Button
                 size="sm"
@@ -420,7 +505,7 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
                 })}
               >
                 {scoutingMemberName
-                  ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ? <Loader2 className="h-3 w-3 mr-1 animate-spin" aria-hidden />
                   : <RefreshCw className="h-3 w-3 mr-1" />}
                 {scoutingMemberName
                   ? t('team.scouting.scoutingMember', { defaultValue: 'Scouting…' })
@@ -438,18 +523,22 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
                 {member && (
                   <div className="flex gap-1">
                     <button
+                      type="button"
                       onClick={() => onScout(member.id)}
                       disabled={!!scoutingMemberName}
-                      title="Scout: fetch the player's recent games"
+                      title={t('team.scouting.scoutOneHint')}
+                      aria-label={t('team.scouting.scoutOneAria', { name: member.displayName })}
                       className="text-hextech-gold hover:text-hextech-gold-bright disabled:opacity-30"
                     >
-                      {scoutingMemberName === member.displayName ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                      {scoutingMemberName === member.displayName ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <RefreshCw className="h-3 w-3" aria-hidden />}
                     </button>
                     <button
-                      onClick={() => handleRemove(member.id)}
-                      className="text-hextech-text-dim hover:text-red-400"
+                      type="button"
+                      onClick={() => setPendingRemove(member)}
+                      aria-label={t('team.scouting.removeMemberAria', { name: member.displayName })}
+                      className="text-hextech-text-dim hover:text-hextech-red"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3 w-3" aria-hidden />
                     </button>
                   </div>
                 )}
@@ -465,16 +554,33 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
                   <MemberPoolPreview member={member} />
                 </>
               ) : (
-                <p className="text-[10px] text-hextech-text-dim italic text-center py-3">Empty</p>
+                <p className="text-[10px] text-hextech-text-dim italic text-center py-3">{t('team.scouting.emptySlot')}</p>
               )}
             </div>
           ))}
         </div>
       </Card>
 
-      <PanelErrorBoundary label="Opponent synergy">
-        <OpponentSynergyPanel team={team} />
-      </PanelErrorBoundary>
+      <ConfirmDialog
+        open={pendingRemove != null}
+        onOpenChange={(open) => { if (!open) setPendingRemove(null) }}
+        title={t('team.scouting.removeMemberTitle', { name: pendingRemove?.displayName ?? '' })}
+        confirmLabel={t('team.scouting.removeMemberConfirm')}
+        onConfirm={() => { if (pendingRemove) void handleRemove(pendingRemove.id) }}
+      />
+
+      {/* The synergy fetch runs in the desktop app (Riot match history per player); the web adapter has no such call. */}
+      {typeof window.api.computeTeamSynergyStats === 'function' ? (
+        <PanelErrorBoundary label="Opponent synergy">
+          <OpponentSynergyPanel team={team} />
+        </PanelErrorBoundary>
+      ) : (
+        <EmptyState
+          icon={Monitor}
+          title={t('team.scouting.synergy.desktopOnlyTitle')}
+          description={t('team.scouting.synergy.desktopOnlyDesc')}
+        />
+      )}
 
       <BulkImportModal
         open={bulkImportOpen}
@@ -511,6 +617,7 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
 }
 
 function MemberPoolPreview({ member }: { member: TeamMember }) {
+  const { t } = useTranslation()
   const [pool, setPool] = useState<ChampionPoolEntry[]>([])
 
   useEffect(() => {
@@ -557,12 +664,12 @@ function MemberPoolPreview({ member }: { member: TeamMember }) {
   }, [pool])
 
   if (pool.length === 0) {
-    return <p className="text-[9px] text-hextech-text-dim italic mt-1">No data — click ⟳ to scout</p>
+    return <p className="text-[9px] text-hextech-text-dim italic mt-1">{t('team.scouting.noPoolData')}</p>
   }
 
   return (
     <div className="space-y-0.5 mt-1">
-      <p className="text-[9px] uppercase tracking-wider text-hextech-text-dim">Top {aggregated.length}:</p>
+      <p className="text-[9px] uppercase tracking-wider text-hextech-text-dim">{t('team.scouting.topN', { n: aggregated.length })}</p>
       <div className="flex gap-0.5 flex-wrap">
         {aggregated.map((e) => (
           <TinyChampIcon
@@ -594,7 +701,7 @@ function MemberPoolPreview({ member }: { member: TeamMember }) {
  * doesn't re-hit Riot.
  */
 function OpponentSynergyPanel({ team }: { team: Team }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const [stats, setStats] = useState<TeamSynergyStats | null>(null)
   const [loading, setLoading] = useState(false)
@@ -696,7 +803,7 @@ function OpponentSynergyPanel({ team }: { team: Team }) {
 
           {stats && (
             <span className="text-[10px] text-hextech-text-dim italic">
-              {t('team.scouting.synergy.lastUpdate', { defaultValue: 'Updated' })}: {new Date(stats.fetchedAt).toLocaleTimeString()}
+              {t('team.scouting.synergy.lastUpdate', { defaultValue: 'Updated' })}: {new Date(stats.fetchedAt).toLocaleTimeString(i18n.language)}
             </span>
           )}
           <Button
@@ -708,7 +815,7 @@ function OpponentSynergyPanel({ team }: { team: Team }) {
               : undefined}
           >
             {loading
-              ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+              ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" aria-hidden />
               : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
             {loading
               ? t('team.scouting.synergy.computing', { defaultValue: 'Computing…' })
@@ -737,7 +844,7 @@ function OpponentSynergyPanel({ team }: { team: Team }) {
 
       {loading && !stats && (
         <Card className="p-6 text-center text-hextech-text-dim">
-          <Loader2 className="h-8 w-8 mx-auto animate-spin text-hextech-gold" />
+          <Loader2 className="h-8 w-8 mx-auto animate-spin text-hextech-gold" aria-hidden />
           <p className="mt-3 text-sm">
             {t('team.scouting.synergy.computingDesc', {
               defaultValue: 'Fetching flex games for every opponent — usually ~10s.',
@@ -778,7 +885,7 @@ function TinyChampIcon({ championKey, count, wins, role }: {
 }) {
   const iconUrl = useChampionIconUrl(championKey)
   const wr = wins != null && count > 0 ? Math.round((wins / count) * 100) : null
-  const wrColor = wr == null ? '' : wr >= 60 ? 'text-emerald-300' : wr >= 50 ? 'text-yellow-200' : 'text-red-300'
+  const wrColor = wr == null ? '' : wrText(wr, count)
   return (
     <div
       className="relative"

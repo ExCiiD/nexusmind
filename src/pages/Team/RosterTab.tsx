@@ -15,10 +15,9 @@ import { useAllChampions } from '@/hooks/useAllChampions'
 import { useProfilePrefs } from '@/components/Profile/ProfileCard'
 import { useUserStore } from '@/store/useUserStore'
 import { useBackgroundJobsStore } from '@/store/useBackgroundJobsStore'
-import type { Role } from '@/components/team/RoleIconPicker'
 import { EmptySlotCard, PlayerCard } from './PlayerCard'
+import { ROLES, type Role } from '@/lib/championRoles'
 
-const ROLES: Role[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
 
 // No width here: each field sets its own (a shared w-full would beat w-14).
 const INPUT = 'rounded border border-hextech-border bg-hextech-dark px-2 py-1 text-xs'
@@ -132,6 +131,7 @@ export function RosterTab({ team, loading, onChange, logoUrl, actions }: RosterT
         fetching={fetching}
         onFetch={canFetch ? () => fetchChampions(member) : null}
         onEdit={() => setEditingId(member.id)}
+        onRenameSeen={() => onChange()}
         editForm={editingId === member.id ? (
           <MemberEditForm
             member={member}

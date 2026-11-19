@@ -8,7 +8,7 @@ import { fail } from './supabaseErrors'
  * server-side — desktop and web call these identically.
  */
 
-interface AnnouncementRow { id: string; group_id: string; title: string; body: string; pinned: boolean; created_by: string; created_at: string; updated_at: string }
+interface AnnouncementRow { id: string; group_id: string; title: string; body: string; pinned: boolean; created_by: string | null; created_at: string; updated_at: string }
 interface DismissalRow { announcement_id: string; user_id: string; dismissed_at: string }
 
 const toAnnouncement = (r: AnnouncementRow): Announcement => ({
@@ -55,10 +55,9 @@ export async function listMyDismissals(sb: SupabaseClient): Promise<Announcement
   return (data as DismissalRow[]).map(toDismissal)
 }
 
-export async function dismissAnnouncement(sb: SupabaseClient, announcementId: string): Promise<void> {
-  const { data: userData, error: userErr } = await sb.auth.getUser()
-  if (userErr || !userData.user) fail(userErr, 'dismiss announcement')
-  const { error } = await sb.from('announcement_dismissals').upsert({ announcement_id: announcementId, user_id: userData.user.id })
+export async function dismissAnnouncement(sb: SupabaseClient, uid: string, announcementId: string): Promise<void> {
+  // `uid`: the signed-in user, from the local session (no auth.getUser round trip, item I).
+  const { error } = await sb.from('announcement_dismissals').upsert({ announcement_id: announcementId, user_id: uid })
   if (error) fail(error, 'dismiss announcement')
 }
 

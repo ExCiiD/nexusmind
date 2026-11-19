@@ -1,6 +1,7 @@
 import { sb } from './supabase'
 import { RIOT_LIMITS } from '@/lib/riotLimits'
 import { mergeMatchIdsByRecency } from '@/lib/scoutingCore'
+import { DDRAGON_BASE, getDdragonVersion } from '@/lib/ddragon'
 
 /**
  * Browser-side Riot client for the web Team page (E14: scouting/auto-fill
@@ -17,7 +18,44 @@ import { mergeMatchIdsByRecency } from '@/lib/scoutingCore'
 
 const PROXY_BASE = ((import.meta.env.WEB_RIOT_PROXY_URL as string | undefined) ?? '').trim().replace(/\/+$/, '')
 
-export class RiotWebError extends Error {}
+export class RiotWebError extends Error {
+  /** 'rate-limited': Riot (through the proxy) answered 429 and the wait or the tries ran out. */
+  constructor(message: string, readonly code?: 'rate-limited', readonly retryAfterSec?: number) {
+    super(message)
+    this.name = 'RiotWebError'
+  }
+}
+
+/** 429 handling: at most this many tries of one request (so 2 waits), then a RiotWebError. */
+export const MAX_RIOT_TRIES = 3
+/** A Retry-After longer than this is not waited for in the page: the request fails at once, saying how long to wait. */
+const MAX_WAIT_SEC = 30
+/** Every request of this tab waits until then after a 429: the shared key is never hit during Riot's cooldown. */
+let blockedUntil = 0
+
+/** Retry-After in seconds (delta-seconds or an HTTP date); 1 s when missing or unreadable. */
+export function retryAfterSeconds(header: string | null, now = Date.now()): number {
+  if (!header) return 1
+  const n = Number(header.trim())
+  if (Number.isFinite(n) && n >= 0) return Math.ceil(n)
+  const at = Date.parse(header)
+  return Number.isNaN(at) ? 1 : Math.max(0, Math.ceil((at - now) / 1000))
+}
+
+function rateLimitedError(waitSec: number): RiotWebError {
+  return new RiotWebError(`Riot is limiting requests right now. Try again in ${waitSec} s.`, 'rate-limited', waitSec)
+}
+
+/** Waits out a cooldown another request of this tab was given (or fails at once if it is too long). */
+async function waitForCooldown(): Promise<void> {
+  const left = Math.ceil((blockedUntil - Date.now()) / 1000)
+  if (left <= 0) return
+  if (left > MAX_WAIT_SEC) throw rateLimitedError(left)
+  await new Promise((r) => setTimeout(r, left * 1000))
+}
+
+/** Tests only. */
+export function resetRiotRateLimitForTests(): void { blockedUntil = 0 }
 
 const PLATFORM_HOSTS: Record<string, string> = {
   BR1: 'br1', EUN1: 'eun1', EUW1: 'euw1', JP1: 'jp1', KR: 'kr', LA1: 'la1', LA2: 'la2',
@@ -41,11 +79,17 @@ async function authHeader(): Promise<Record<string, string>> {
 async function proxyFetch(host: string, path: string, allowedFallbackStatus?: number[]): Promise<{ data: unknown; status: number }> {
   if (!PROXY_BASE) throw new RiotWebError('Riot access is not configured for the web app.')
   const headers = await authHeader()
-  const res = await fetch(`${PROXY_BASE}/${host}${path}`, { headers })
-  if (res.status === 429) {
-    const retryAfter = Math.min(parseInt(res.headers.get('retry-after') || '1', 10) || 1, 10)
-    await new Promise((r) => setTimeout(r, retryAfter * 1000))
-    return proxyFetch(host, path, allowedFallbackStatus)
+  // 429: Retry-After is honoured in full (never shortened), MAX_RIOT_TRIES tries at most, and the whole tab pauses
+  // meanwhile, so a burst never keeps hitting the shared key during Riot's cooldown.
+  let res: Response | null = null
+  for (let attempt = 1; ; attempt++) {
+    await waitForCooldown()
+    res = await fetch(`${PROXY_BASE}/${host}${path}`, { headers })
+    if (res.status !== 429) break
+    const wait = retryAfterSeconds(res.headers.get('retry-after'))
+    blockedUntil = Math.max(blockedUntil, Date.now() + wait * 1000)
+    if (attempt >= MAX_RIOT_TRIES || wait > MAX_WAIT_SEC) throw rateLimitedError(wait)
+    await new Promise((r) => setTimeout(r, wait * 1000))
   }
   if (!res.ok) {
     if (allowedFallbackStatus?.includes(res.status)) return { data: null, status: res.status }
@@ -110,6 +154,13 @@ export async function getSeasonMatchIds(puuid: string, region: string, since: Da
   return mergeMatchIdsByRecency(mergeMatchIdsByRecency(solo, flex), clash)
 }
 
+/** The latest `count` match ids of one queue (Stats collectives: Flex = 440), most recent first. One request. */
+export async function getRecentMatchIds(puuid: string, region: string, count: number, queueId: 420 | 440 | 700 = 440): Promise<string[]> {
+  const routing = REGION_TO_ROUTING[region] || 'europe'
+  const n = Math.max(1, Math.min(count, RIOT_LIMITS.MAX_IDS_PER_REQUEST))
+  const ids = await regionalFetch(routing, `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queueId}&start=0&count=${n}`)
+  return Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : []
+}
 export async function getMatch(matchId: string, region: string): Promise<any> {
   const platformFromId = matchId.split('_')[0]
   const routing = REGION_TO_ROUTING[platformFromId] || REGION_TO_ROUTING[region] || 'europe'
@@ -125,17 +176,22 @@ export async function getMatch(matchId: string, region: string): Promise<any> {
 export async function getMatchesBulk(matchIds: string[], region: string, concurrency: number = RIOT_LIMITS.MATCH_FETCH_CONCURRENCY): Promise<Map<string, any>> {
   const out = new Map<string, any>()
   let next = 0
+  // A rate limit stops every worker and reaches the screen (its toast / error state): one match missing is skipped,
+  // but continuing after a 429 would only hit the shared key again and show incomplete numbers as if complete.
+  let limited: RiotWebError | null = null
   async function worker() {
-    while (next < matchIds.length) {
+    while (next < matchIds.length && !limited) {
       const id = matchIds[next++]
       try {
         out.set(id, await getMatch(id, region))
       } catch (err) {
+        if (err instanceof RiotWebError && err.code === 'rate-limited') { limited = err; return }
         console.warn('[riotWeb] match fetch failed:', id, (err as Error)?.message)
       }
     }
   }
   await Promise.all(Array.from({ length: Math.min(concurrency, matchIds.length) }, worker))
+  if (limited) throw limited
   return out
 }
 
@@ -144,10 +200,8 @@ let idToKeyCache: Record<number, string> | null = null
 export async function getChampionIdToKey(): Promise<Record<number, string>> {
   if (idToKeyCache) return idToKeyCache
   try {
-    const versionsRes = await fetch('https://ddragon.leagueoflegends.com/api/versions.json')
-    const versions: string[] = await versionsRes.json()
-    const version = versions[0] ?? '15.7.1'
-    const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`)
+    const version = await getDdragonVersion() // T (L07): the shared version request
+    const res = await fetch(`${DDRAGON_BASE}/cdn/${version}/data/en_US/champion.json`)
     const data = (await res.json()) as { data: Record<string, { id: string; key: string }> }
     const map: Record<number, string> = {}
     for (const c of Object.values(data.data ?? {})) {

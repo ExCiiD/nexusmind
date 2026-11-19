@@ -111,7 +111,7 @@ export function WeekGrid({
               </div>
             ))}
             {showNow && (
-              <span className="absolute left-1 z-20 -translate-y-1/2 rounded bg-hextech-red px-1 font-mono text-[10px] font-bold text-white" style={{ top: top(nowMin) }}>
+              <span className="absolute left-1 z-20 -translate-y-1/2 rounded bg-hextech-red px-1 font-mono text-[10px] font-bold text-hextech-black" style={{ top: top(nowMin) }}>
                 {hhmm(nowMin)}
               </span>
             )}
@@ -146,6 +146,7 @@ export function WeekGrid({
               </div>
 
               <div className="relative flex" style={{ height: gridHeight }}>
+                {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer drag shortcut; keyboard users create events with "+ New event" (#36). */}
                 <div
                   ref={(el) => { columnRefs.current[dayIndex] = el }}
                   className={cn('relative flex-1', canEditCalendar && 'cursor-cell')}
@@ -208,6 +209,7 @@ export function WeekGrid({
                 </div>
 
                 {/* My availability rail */}
+                {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer drag shortcut; keyboard users use "My availability" (#36). */}
                 <div
                   className="relative shrink-0 cursor-pointer border-l border-hextech-border-dim/40 bg-black/20 hover:bg-hextech-green/5"
                   style={{ width: RAIL_WIDTH }}

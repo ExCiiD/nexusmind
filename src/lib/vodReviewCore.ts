@@ -86,10 +86,10 @@ export async function addActionItem(sb: SupabaseClient, sessionId: string, text:
   if (error) fail(error, 'add action item')
 }
 
-export async function setActionItemDone(sb: SupabaseClient, id: string, done: boolean): Promise<void> {
-  const { data: userData } = await sb.auth.getUser()
+export async function setActionItemDone(sb: SupabaseClient, uid: string, id: string, done: boolean): Promise<void> {
+  // `uid`: the signed-in user, from the local session (no auth.getUser round trip, item I).
   const { error } = await sb.from('vod_review_action_items').update({
-    done, done_by: done ? (userData.user?.id ?? null) : null, done_at: done ? new Date().toISOString() : null,
+    done, done_by: done ? uid : null, done_at: done ? new Date().toISOString() : null,
   }).eq('id', id)
   if (error) fail(error, 'set action item done')
 }

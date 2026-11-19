@@ -13,6 +13,7 @@ import { DiscussionThread } from '@/components/team/DiscussionThread'
 import { cn } from '@/lib/utils'
 import type { Group } from '@/lib/collab'
 import { isLegacyStaff } from '@/lib/permissions'
+import type { NameOf } from '@/hooks/useCollab'
 import {
   createScrim, deleteScrim, listAvailability, listScrims, listTeamDrafts, setAvailability, updateScrim,
   type Availability, type AvailabilityRow, type Scrim, type TeamDraft,
@@ -218,7 +219,7 @@ function useScoutedOpponents(groupId: string): Array<{ id: string; name: string 
 
 function ScrimDetail({ scrim, group, myUserId, availability, nameOf, onChanged, onDeleted, onError }: {
   scrim: Scrim; group: Group; myUserId: string; availability: AvailabilityRow[]
-  nameOf: (id: string) => string; onChanged: () => Promise<void>; onDeleted: () => Promise<void>; onError: (e: unknown) => void
+  nameOf: NameOf; onChanged: () => Promise<void>; onDeleted: () => Promise<void>; onError: (e: unknown) => void
 }) {
   const { t } = useTranslation()
   const staff = isStaff(group)
@@ -227,14 +228,27 @@ function ScrimDetail({ scrim, group, myUserId, availability, nameOf, onChanged, 
   const [newItem, setNewItem] = useState('')
   const [comment, setComment] = useState(availability.find((a) => a.userId === myUserId)?.comment ?? '')
   const [drafts, setDrafts] = useState<TeamDraft[]>([])
+  const [draftsLoaded, setDraftsLoaded] = useState(false)
   const scoutingOptions = useScoutedOpponents(group.id)
   const linkedScoutedTeam = scoutingOptions.find((o) => o.id === scrim.opponentScoutingId)
 
+  // The group's drafts (team_drafts). Scrims linked before 19/11/2026 may point at members' personal drafts, which
+  // the group can no longer read: shown as "missing" below, so the staff can link a team draft instead.
   useEffect(() => {
-    listTeamDrafts(group.members.map((m) => m.userId)).then(setDrafts).catch(() => setDrafts([]))
-  }, [group])
+    let alive = true
+    setDraftsLoaded(false)
+    listTeamDrafts(group.id)
+      .then((list) => { if (alive) setDrafts(list) })
+      .catch(() => { if (alive) setDrafts([]) })
+      .finally(() => { if (alive) setDraftsLoaded(true) })
+    return () => { alive = false }
+  }, [group.id])
 
   const linked = useMemo(() => drafts.filter((d) => scrim.draftIds.includes(d.id)), [drafts, scrim.draftIds])
+  const missing = useMemo(
+    () => (draftsLoaded ? scrim.draftIds.filter((id) => !drafts.some((d) => d.id === id)) : []),
+    [draftsLoaded, drafts, scrim.draftIds],
+  )
 
   const run = async (fn: () => Promise<void>) => {
     try { await fn(); await onChanged() } catch (e) { onError(e) }
@@ -347,7 +361,22 @@ function ScrimDetail({ scrim, group, myUserId, availability, nameOf, onChanged, 
         {/* Drafts */}
         <section className="space-y-2">
           <h3 className="font-medium text-hextech-text-bright">{t('web.scrims.drafts')}</h3>
-          {linked.length === 0 && <p className="text-xs text-hextech-text-dim">{t('web.scrims.noDraft')}</p>}
+          {linked.length === 0 && missing.length === 0 && <p className="text-xs text-hextech-text-dim">{t('web.scrims.noDraft')}</p>}
+          {missing.length > 0 && (
+            <div role="status" className="rounded-lg border border-amber-400/40 bg-amber-400/10 p-2 text-xs">
+              <p className="font-medium text-amber-200">{t('web.scrims.missingDrafts', { count: missing.length })}</p>
+              <p className="mt-0.5 text-hextech-text-dim">{staff ? t('web.scrims.missingDraftsStaff') : t('web.scrims.missingDraftsPlayer')}</p>
+              {staff && (
+                <button
+                  type="button"
+                  className="mt-1 font-semibold text-amber-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold"
+                  onClick={() => run(() => updateScrim(scrim.id, { draftIds: scrim.draftIds.filter((id) => !missing.includes(id)) }))}
+                >
+                  {t('web.scrims.clearMissing', { count: missing.length })}
+                </button>
+              )}
+            </div>
+          )}
           {linked.map((d) => (
             <div key={d.id} className="rounded-lg bg-hextech-elevated/30 p-2 text-xs">
               <div className="mb-1 font-medium text-hextech-text-bright">{d.name}</div>

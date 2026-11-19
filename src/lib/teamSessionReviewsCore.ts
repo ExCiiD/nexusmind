@@ -52,10 +52,10 @@ export async function getReviewForScope(sb: SupabaseClient, sessionId: string, s
   return data ? toReview(data as ReviewRow) : null
 }
 
-export async function createReview(sb: SupabaseClient, sessionId: string, gameId: string | null, scope: ReviewScope, status: ReviewStatus): Promise<string> {
-  const { data: userData } = await sb.auth.getUser()
+export async function createReview(sb: SupabaseClient, uid: string, sessionId: string, gameId: string | null, scope: ReviewScope, status: ReviewStatus): Promise<string> {
+  // `uid`: the signed-in user, from the local session (no auth.getUser round trip, item I).
   const { data, error } = await sb.from('team_session_reviews').insert({
-    session_id: sessionId, game_id: gameId, scope, status, recorded_by: userData.user?.id ?? null,
+    session_id: sessionId, game_id: gameId, scope, status, recorded_by: uid,
   }).select('id').single()
   if (error) fail(error, 'create review')
   return data.id
@@ -84,11 +84,10 @@ export async function listFeedbackForSession(sb: SupabaseClient, sessionId: stri
 
 /** Upsert: a player can resubmit/edit their own feedback (RLS allows
  *  updating only their own row — see the migration). */
-export async function submitFeedback(sb: SupabaseClient, sessionId: string, body: string, transcript: string | null = null): Promise<void> {
-  const { data: userData } = await sb.auth.getUser()
-  const userId = userData.user?.id
-  if (!userId) throw new Error('NOT_SIGNED_IN')
-  const { error } = await sb.from('team_session_feedback').upsert({ session_id: sessionId, user_id: userId, body, transcript })
+export async function submitFeedback(sb: SupabaseClient, uid: string, sessionId: string, body: string, transcript: string | null = null): Promise<void> {
+  // `uid`: the signed-in user, from the local session (no auth.getUser round trip, item I).
+  if (!uid) throw new Error('NOT_SIGNED_IN')
+  const { error } = await sb.from('team_session_feedback').upsert({ session_id: sessionId, user_id: uid, body, transcript })
   if (error) fail(error, 'submit feedback')
 }
 
@@ -172,9 +171,8 @@ export interface PendingFinalReview {
  *  the signed-in user is responsible for. Filtered by the user's id
  *  explicitly — RLS alone would also return sessions of their groups that
  *  someone else is responsible for. */
-export async function listPendingFinalReviews(sb: SupabaseClient): Promise<PendingFinalReview[]> {
-  const { data: userData } = await sb.auth.getUser()
-  const uid = userData.user?.id
+export async function listPendingFinalReviews(sb: SupabaseClient, uid: string | null): Promise<PendingFinalReview[]> {
+  // `uid`: the signed-in user, from the local session (no auth.getUser round trip, item I).
   if (!uid) return []
   const { data: revs, error } = await sb.from('team_session_reviews').select('id, session_id, updated_at')
     .eq('scope', 'session').eq('status', 'deferred').is('game_id', null)

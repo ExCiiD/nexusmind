@@ -6,9 +6,8 @@ import { useToast } from '@/hooks/useToast'
 import { Trash2, AlertCircle, Wand2, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { parseMultiGgUrl, type ParsedPlayer } from '@/lib/multiGgParser'
+import { ROLES, type Role } from '@/lib/championRoles'
 
-const ROLES = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'] as const
-type Role = (typeof ROLES)[number]
 
 interface DraftPlayer extends ParsedPlayer {
   role: Role

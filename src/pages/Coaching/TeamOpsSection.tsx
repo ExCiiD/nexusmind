@@ -9,8 +9,9 @@ import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
 import { isLegacyStaff } from '@/lib/permissions'
 import type { Task } from '@/lib/teamOps'
+import type { NameOf } from '@/hooks/useCollab'
 
-interface Props { groups: Group[]; myUserId: string; nameOf: (userId: string) => string }
+interface Props { groups: Group[]; myUserId: string; nameOf: NameOf }
 
 /** E7 (docs/PLAN_GESTION_EQUIPE.md): assignable to-do tasks, shared
  *  desktop/web. Announcements moved into Planning in Phase 2 of the
@@ -41,7 +42,7 @@ export function TeamOpsSection({ groups, myUserId, nameOf }: Props) {
 }
 
 function TasksPanel({ groupId, isStaff, myUserId, nameOf, members }: {
-  groupId: string; isStaff: boolean; myUserId: string; nameOf: (id: string) => string; members: Group['members']
+  groupId: string; isStaff: boolean; myUserId: string; nameOf: NameOf; members: Group['members']
 }) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()

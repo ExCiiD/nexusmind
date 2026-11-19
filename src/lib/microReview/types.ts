@@ -102,7 +102,7 @@ export interface MicroVerdict {
   id: string
   answerId: string
   groupId: string
-  coachId: string
+  coachId: string | null // null once the author deleted their account (S19-16 / #33)
   status: VerdictStatus
   correctedOutcome: 'mistake' | 'justified' | null
   correctedTag: string | null
@@ -153,7 +153,7 @@ export interface TeamCodexRuleInput {
 
 export interface TeamCodexRule extends TeamCodexRuleInput {
   id: string
-  createdBy: string
+  createdBy: string | null // null once the author deleted their account (S19-16 / #33)
   createdAt: string
 }
 

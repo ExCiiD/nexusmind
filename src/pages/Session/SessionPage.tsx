@@ -824,7 +824,7 @@ export function SessionPage() {
 
         <div className="space-y-4">
           <AssistantCard moment="session" />
-          <ObjectiveSuggestionPanel assessmentScores={assessmentScores} />
+          <ObjectiveSuggestionPanel assessmentScores={assessmentScores} onAccept={step === 'objectives' ? addObjective : undefined} />
         </div>
       </div>
 

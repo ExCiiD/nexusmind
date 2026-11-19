@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey } from '@/lib/collab'
 import type { CalendarEventRequest } from '@/lib/calendar'
+import type { NameOf } from '@/hooks/useCollab'
 
 /** Staff-visible queue of "request an event" submissions (Phase 1). */
-export function EventRequestsQueue({ groupId, nameOf }: { groupId: string; nameOf: (id: string) => string }) {
+export function EventRequestsQueue({ groupId, nameOf }: { groupId: string; nameOf: NameOf }) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const [requests, setRequests] = useState<CalendarEventRequest[] | null>(null)

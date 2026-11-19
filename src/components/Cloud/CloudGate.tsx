@@ -1,6 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { KeyRound, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react'
+import { KeyRound, Loader2, Lock, Mail, RefreshCw, ShieldCheck, WifiOff } from 'lucide-react'
 import { PASSWORD_MAX, PASSWORD_MIN, isAcceptablePassword } from '@/lib/accessCore'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,23 +17,54 @@ import heroArt from '@/assets/ascend-hero.jpg'
  */
 /** `loginFooter`: extra content under the sign-in card (the web app shows the download link there). */
 export function CloudGate({ children, loginFooter }: { children: ReactNode; loginFooter?: ReactNode }) {
+  const { t } = useTranslation()
   const [status, setStatus] = useState<CloudStatus | null>(null)
+  // The status call failed (server unreachable, auth timed out): show a
+  // retry screen instead of an endless spinner. Reset by each new attempt.
+  const [failed, setFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  const retry = useCallback(() => { setFailed(false); setAttempt((n) => n + 1) }, [])
 
   useEffect(() => {
     let alive = true
-    window.api.cloudStatus().then((s) => alive && setStatus(s)).catch(() => alive && setStatus(null))
+    window.api.cloudStatus()
+      .then((s) => { if (alive) setStatus(s) })
+      .catch((err) => {
+        console.warn('[CloudGate] cloud status failed:', err)
+        if (alive) setFailed(true)
+      })
+    return () => { alive = false }
+  }, [attempt])
+
+  useEffect(() => {
     const off = window.api.onCloudAuthChanged((user) => {
       // Sign-outs apply at once; a sign-in made on the login screen is applied by
       // CloudLogin itself once it is done (it may still offer to set a password).
       setStatus((prev) => (prev ? (user && !prev.user ? prev : { ...prev, user }) : prev))
     })
-    return () => { alive = false; off() }
+    return off
   }, [])
 
+  if (status === null && failed) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-hextech-black p-4">
+        <div role="alert" className="w-full max-w-sm space-y-4 rounded-lg border border-hextech-border-dim bg-hextech-dark p-6 text-center">
+          <WifiOff className="mx-auto h-8 w-8 text-hextech-gold" aria-hidden />
+          <h1 className="text-lg text-hextech-text-bright">{t('cloud.gate.unreachableTitle')}</h1>
+          <p className="text-sm text-hextech-text">{t('cloud.gate.unreachableDesc')}</p>
+          <Button onClick={retry} autoFocus>
+            <RefreshCw className="mr-2 h-4 w-4" aria-hidden />
+            {t('cloud.gate.retry')}
+          </Button>
+        </div>
+      </div>
+    )
+  }
   if (status === null) {
     return (
       <div className="flex h-screen items-center justify-center bg-hextech-black">
-        <Loader2 className="h-6 w-6 animate-spin text-hextech-gold" />
+        <Loader2 className="h-6 w-6 animate-spin text-hextech-gold" aria-hidden />
+        <span className="sr-only">{t('common.loading')}</span>
       </div>
     )
   }

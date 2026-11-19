@@ -1,5 +1,5 @@
 <h1>Privacy Policy</h1>
-<p class="meta">Version 0.2 · updated November 18, 2026 · applies to the desktop application, the web app and this website</p>
+<p class="meta">Version 0.3 · updated November 19, 2026 · applies to the desktop application, the web app and this website</p>
 
 <h2>1. Who is responsible for your data</h2>
 <p>Ascend is published by ExCiiD, Réunion, France. Contact for any question about your data: <a href="mailto:exciid501@gmail.com">exciid501@gmail.com</a>.</p>
@@ -14,41 +14,55 @@
     <tr><td>Email address</td><td>When you create an account</td><td>Sign-in with an emailed code, service messages.</td></tr>
     <tr><td>Riot ID and Riot account identifier (PUUID) of your linked accounts</td><td>When you link a Riot account</td><td>Retrieve your games through the Riot Games API.</td></tr>
     <tr><td>Coaching data: sessions, tracked games, reviews, notes, tagged mistakes, goals, assessments</td><td>If you have an account (sync)</td><td>Backup, syncing across your devices, access from the web app.</td></tr>
+    <tr><td>Micro-reviews: moment of the game, champion, role, your answer and your rating, and the coach's correction if any</td><td>When you answer a micro-review with an account</td><td>Your progress; visible to a group's staff only if you share your reviews with that group.</td></tr>
     <tr><td>Groups, roles, invitations, sharing settings</td><td>If you join a team or coaching group</td><td>Make collaboration work, within the limits you set.</td></tr>
     <tr><td>Comments, assigned goals, scrims, availability, schedule, announcements, tasks, drafts</td><td>If you use team or coaching features</td><td>Share them with the relevant group members.</td></tr>
-    <tr><td>Wellbeing check-ins (energy, mood, sleep, optional note)</td><td>Only if you fill them in</td><td>Your own tracking; shared with a group's staff <strong>only</strong> if you enable it for that group.</td></tr>
+    <tr><td>Team sessions: attendance at meetings (and who recorded it), games played, session feedback and reviews</td><td>When the staff or the captain runs a team session</td><td>Track attendance and team work; visible to the group's members.</td></tr>
+    <tr><td>Weekly awards (MVP, Grinder)</td><td>If you are on a team's roster</td><td>Computed on the members' computers from your ranked games (public Riot API data), and shown on the group's player cards.</td></tr>
+    <tr><td>Team logo</td><td>If the staff uploads one</td><td>Display the team. The image is public: anyone with its address can see it.</td></tr>
+    <tr><td>Team reports shared by link</td><td>If the staff creates a report link</td><td>A frozen copy of the weekly report (team name, player names, statistics), readable <strong>without signing in</strong> by anyone who has the link, until the staff revokes it.</td></tr>
+    <tr><td>Calendar subscription (<code>.ics</code>)</td><td>If the staff creates a subscription address</td><td>The team's schedule, readable <strong>without signing in</strong> by anyone who has the address, until it is revoked.</td></tr>
+    <tr><td>Wellbeing check-ins (energy, mood, sleep, optional note)</td><td>Only if you fill them in <strong>and</strong> have agreed to their storage (see § 3a)</td><td>Your own tracking; shared with a group's staff <strong>only</strong> if you enable it for that group. The staff may get an alert if your gaming load is high and your mood drops several days in a row, only if you share both your statistics <strong>and</strong> your wellbeing with that group.</td></tr>
     <tr><td>Notifications</td><td>Depending on group activity</td><td>Let you know (comment received, goal assigned, scrim reminder).</td></tr>
     <tr><td>Bug reports and suggestions</td><td>When you send one</td><td>Fix and improve the app. Technical diagnostics are attached only if you tick the box, and are scrubbed of personal data.</td></tr>
-    <tr><td>Discord user ID and linked channel</td><td>If your team uses the Discord bot and you link your account</td><td>Answer bot commands (schedule, availability, scrims).</td></tr>
+    <tr><td>Discord user ID and linked channel</td><td>If your team uses the Discord bot and you link your account</td><td>Answer bot commands (schedule, availability, scrims). If you are on the staff and have linked your account, the bot may also send you direct messages about players' absences and returns. The bot's schedule commands are visible to the members of the Discord server linked to the team.</td></tr>
     <tr><td>Riot API requests (Riot ID, match IDs)</td><td>Whenever game data is fetched</td><td>Passed through our relay, which adds the API key and rate-limits each account.</td></tr>
   </tbody>
 </table>
-<p>Legal basis: performance of the service you request (GDPR Article 6(1)(b)). For wellbeing check-ins, sharing with a group relies on your explicit consent (Article 9(2)(a)), which you can withdraw at any time.</p>
+<p>Legal basis: performance of the service you request (GDPR Article 6(1)(b)). Wellbeing check-ins are health data: both their <strong>storage</strong> and their <strong>sharing</strong> with a group rely on your explicit consent (Article 9(2)(a)), which you can withdraw at any time.</p>
+
+<h2>3a. Wellbeing check-ins: your consent</h2>
+<ul>
+  <li>The first time you fill in a check-in, Ascend asks whether you agree to it being stored and synced with your account. Without that agreement, no check-in is stored.</li>
+  <li>Sharing with a group's staff is a <strong>second</strong>, separate agreement, given group by group (<em>Sharing settings</em>).</li>
+  <li>You can withdraw your agreement at any time in <em>Settings → Privacy</em>: your check-ins are then <strong>deleted</strong> from your account and immediately stop being visible to groups.</li>
+  <li>Ascend never uses this data for anything other than your own tracking and your staff's, when you have chosen so.</li>
+</ul>
 
 <h2>4. What never leaves your computer</h2>
 <ul>
   <li><strong>Videos</strong> of your games, clips and thumbnails.</li>
   <li><strong>The Riot match cache</strong> and detailed statistics computed from it.</li>
   <li><strong>Debrief audio</strong>: transcription is done by a model running on your PC.</li>
-  <li><strong>Your YouTube access</strong>: if you publish a video to your channel, the authorization is encrypted by the Windows keychain and the upload goes directly from your PC to YouTube.</li>
   <li>Personal Discord webhooks and per-PC settings (recording folder, quality, appearance).</li>
 </ul>
 
 <h2>5. Who sees what</h2>
 <ul>
   <li><strong>Only you</strong>, by default.</li>
-  <li><strong>A group's staff</strong> (coach, analyst, manager) sees your reviews and statistics only if you share those categories with that group.</li>
-  <li><strong>Your teammates</strong> see team data (schedule, scrims, drafts, published champion pools), never your personal reviews.</li>
+  <li><strong>A group's staff</strong> (coach, analyst, manager) sees your reviews, micro-reviews and statistics only if you share those categories with that group.</li>
+  <li><strong>Your teammates</strong> see team data (schedule, scrims, drafts, published champion pools, meeting attendance, session feedback, weekly awards), never your personal reviews.</li>
+  <li><strong>Without signing in</strong>: anyone who has a shared report link, the calendar subscription address or the team logo's address. The staff can revoke the first two at any time.</li>
   <li>You can leave a group or withdraw sharing at any time; access stops immediately.</li>
 </ul>
 
 <h2>6. Hosting providers and recipients</h2>
 <ul>
-  <li><strong>Supabase</strong> — accounts, sync, backups, group features. Hosted in the European Union / Switzerland (Zurich region).</li>
-  <li><strong>Cloudflare</strong> — Riot Games API relay, web app, Discord bot and this website (global network).</li>
-  <li><strong>Riot Games</strong> — receives the necessary API requests, under its own privacy policy.</li>
-  <li><strong>Discord</strong> and <strong>YouTube (Google)</strong> — only if you use those integrations.</li>
-  <li><strong>GitHub</strong> — hosts the installer files; this website queries GitHub's public API to show the latest version.</li>
+  <li><strong>Supabase</strong>: accounts, sync, backups, group features, team logos, shared reports and calendars. Hosted in the European Union / Switzerland (Zurich region).</li>
+  <li><strong>Cloudflare</strong>: Riot Games API relay, web app, Discord bot and this website (global network).</li>
+  <li><strong>Riot Games</strong>: receives the necessary API requests, under its own privacy policy.</li>
+  <li><strong>Discord</strong>: only if you use that integration.</li>
+  <li><strong>GitHub</strong>: hosts the installer files and application updates; this website queries GitHub's public API to show the latest version.</li>
 </ul>
 <p>No data is sold or used for advertising. This website uses no cookies, no analytics and no third-party fonts or scripts.</p>
 
@@ -56,26 +70,31 @@
 <ul>
   <li>Cloud backups: the 10 most recent per account; older ones are deleted automatically.</li>
   <li>Account, synced data and group data: until you delete your account.</li>
+  <li>Wellbeing check-ins: until you withdraw your consent or delete your account.</li>
+  <li>Shared reports and calendar addresses: until the staff revokes them, or the group is deleted.</li>
   <li>Riot relay technical logs: the hosting provider's standard retention; Ascend does not store the requests.</li>
   <li>Bug reports: until handled, and deleted on request.</li>
 </ul>
+<p><strong>When you leave a group</strong>: your access stops immediately and the group no longer sees your shared data (reviews, statistics, wellbeing). What you wrote <strong>for the group</strong> (comments, session feedback, schedule requests) and what the staff recorded about you (attendance, assigned goals) stay in the group, as part of its history. You can ask for their deletion at <a href="mailto:exciid501@gmail.com">exciid501@gmail.com</a>.</p>
+<p><strong>When you delete your account</strong>: your personal data is deleted: your account, synced data, backups, wellbeing check-ins, session feedback, sharing settings and Discord links. Your other contributions to groups (comments, recorded attendance, schedule items) stay in their history, but anonymized: your name no longer appears on them. If you own a group, that role passes to another member, in this order: a coach, otherwise a manager, an analyst, the captain, then the group's longest-standing player. The group is deleted only if no other member is left.</p>
 
 <h2>8. Your rights</h2>
 <ul>
   <li><strong>Access and portability</strong>: <em>Settings → Backup</em> exports all your data to a <code>.nexusmind</code> file.</li>
-  <li><strong>Erasure</strong>: <em>Settings → Ascend account → Delete my account</em> immediately deletes your account, synced data and cloud backups. Data on your PC is not touched: to erase it, uninstall the application, then delete its data folder (under <code>%APPDATA%</code>) and your recordings folder.</li>
+  <li><strong>Erasure</strong>: <em>Settings → Ascend account → Delete my account</em> immediately deletes your account, synced data and cloud backups (see § 7 for group data). Data on your PC is not touched: to erase it, uninstall the application, then delete its data folder (under <code>%APPDATA%</code>) and your recordings folder.</li>
+  <li><strong>Withdrawing wellbeing consent</strong>: <em>Settings → Privacy</em>, effective immediately (§ 3a).</li>
   <li><strong>Rectification, objection, restriction, withdrawal of consent</strong>: write to <a href="mailto:exciid501@gmail.com">exciid501@gmail.com</a>. We answer within one month.</li>
   <li><strong>Complaint</strong>: you can contact your country's data protection authority (in France, the CNIL).</li>
 </ul>
 
 <h2>9. Minors</h2>
-<p>Ascend is intended for people aged 15 and over. Below that age, using an account requires the agreement of a parent or legal guardian.</p>
+<p>Ascend is intended for people aged 15 and over. Below that age, using an account requires the agreement of a parent or legal guardian. For wellbeing check-ins, the consent of a user under 15 must be given or authorized by that parent or guardian.</p>
 
 <h2>10. Security</h2>
-<p>Encrypted connections (HTTPS), desktop session protected by the Windows keychain, row-level access control on the server (everyone only reads what is meant for or shared with them), Riot API key never present in the application.</p>
+<p>Encrypted connections (HTTPS), desktop session protected by the Windows keychain, row-level access control on the server (everyone only reads what is meant for or shared with them), Riot API key never present in the application. Public links (reports, calendar) rely on long random tokens: only share them with the people concerned.</p>
 
 <h2>11. Changes</h2>
-<p>This policy may change with the application. Significant changes will be announced in the app before they apply.</p>
+<p>This policy may change with the application. Significant changes will be announced in the app before they apply. Version 0.3 is one: it will be announced in the app the first time you open it after its publication.</p>
 
 <h2>Riot Games notice</h2>
 <p>Ascend isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.</p>

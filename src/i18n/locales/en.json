@@ -85,6 +85,154 @@
       "importDone": "Backup imported",
       "importFailed": "Import failed",
       "importSummary": "Added {{sessions}} sessions, {{games}} games, {{reviews}} reviews, {{recordings}} recordings ({{conflicts}} conflicts)."
+    },
+    "rec": {
+      "mainRole": "Main Role",
+      "mainRoleDesc": "Stats averages and progression will only include games played on your main role. Click again to deselect.",
+      "title": "Game Recording",
+      "desc": "Automatically record your screen during every League of Legends game. Recordings are stored locally and linked to your review.",
+      "noFfmpeg": "ffmpeg was not found on this system. Auto-record requires ffmpeg to be installed.",
+      "autoRecord": "Auto-record games",
+      "autoRecordDesc": "Starts recording when LoL launches, stops and saves when the game ends. For best results, use <em>borderless</em> or <em>windowed</em> mode in League — exclusive fullscreen can produce a black capture with some setups.",
+      "inProgress": "Recording in progress",
+      "stopNow": "Stop now",
+      "startManual": "Start manual recording",
+      "quality": "Recording quality",
+      "source": "Source",
+      "qualityHint": "“Source” captures at your monitor’s native resolution. Lower settings reduce file size and CPU load.",
+      "fps": "Frame rate",
+      "encoder": "Encoder",
+      "cpuFallback": "Fallback — always works",
+      "gpuTitle": "⚡ GPU encoders are strongly recommended",
+      "gpuDesc": "GPU encoders use dedicated hardware — recording has near-zero impact on game FPS. Pick the one matching your GPU brand. If recording fails, fall back to CPU.",
+      "scope": "Record queue types",
+      "scopeRanked": "Ranked only",
+      "scopeRankedDesc": "SoloQ + Flex (default)",
+      "scopeAll": "All game modes",
+      "scopeAllDesc": "Includes ARAM, Arena, Normal…",
+      "scopeCustom": "Custom selection",
+      "scopeCustomDesc": "Choose which modes to record",
+      "modeNormal": "Normal / Quickplay",
+      "modeCustom": "Custom games",
+      "desktopFallback": "Allow desktop fallback",
+      "desktopFallbackDesc": "Falls back to full-screen capture if the LoL window isn’t detected.",
+      "folder": "Recordings folder",
+      "folderDefault": "Default (AppData)",
+      "browse": "Browse",
+      "resetFolder": "Reset to default",
+      "noDefaultOutput": "No default output detected",
+      "audio": "Audio",
+      "refreshDevices": "Refresh devices",
+      "desktopAudio": "Record desktop audio",
+      "desktopAudioDesc": "Captures everything you hear (game + system sounds).",
+      "outputDevice": "Output device",
+      "followWindowsOutput": "Follow Windows default output",
+      "followWindows": "Follow Windows default",
+      "followWindowsNamed": "Follow Windows default — {{name}}",
+      "currentDefault": "{{name}} (current default)",
+      "unavailableDevice": "{{name}} (unavailable)",
+      "noOutput": "No output device detected. Click “Refresh devices”.",
+      "currentlyCapturing": "Currently capturing: <b>{{name}}</b> <dim>(always follows the Windows default output).</dim>",
+      "mismatch": "<b>Target mismatch.</b> You picked <hl>“{{picked}}”</hl> but your Windows default is <hl>“{{current}}”</hl>. Recordings will capture the current default, not your target, until you change the Windows default.",
+      "unknown": "unknown",
+      "soundSettingsFailed": "Could not open Windows sound settings",
+      "windowsOnly": "This action is only available on Windows.",
+      "unknownError": "Unknown error",
+      "openSoundSettings": "Open Windows sound settings",
+      "outputMissing": "Selected output is not currently available. Pick another device or reconnect it.",
+      "mic": "Record microphone",
+      "micDesc": "Include your voice in the recording.",
+      "micDevice": "Microphone",
+      "systemDefaultFollows": "System default (follows Windows)",
+      "systemDefault": "System default",
+      "systemDefaultNamed": "System default — {{name}}",
+      "defaultDevice": "{{name}} (default)",
+      "noMic": "No microphone detected. Click “Refresh devices”.",
+      "micMissing": "Selected microphone is not currently available. Pick another device or reconnect it — recording will skip the mic track until resolved.",
+      "externalFolder": "External recordings folder",
+      "externalFolderDesc": "When linking a replay recorded with another app (OBS, Outplayed…), the file picker will open directly in this folder.",
+      "externalNotSet": "Not set — file picker will start at the default location",
+      "clearFolder": "Clear folder"
+    },
+    "danger": {
+      "range24h": "24h",
+      "range3d": "3 days",
+      "rangeWeek": "last week",
+      "rangeDays_one": "{{count}} day",
+      "rangeDays_other": "{{count}} days",
+      "recentCleared": "Recent data cleared",
+      "recentClearedDesc": "Deleted {{games}} game(s), {{recordings}} recording(s) ({{files}} file(s) freed) and {{mistakes}} mistake(s) from the last {{range}}.",
+      "clearFailed": "Clear failed",
+      "statsCleared": "Stats & mistakes cleared",
+      "statsClearedDesc": "Removed {{mistakes}} mistake(s), {{detailedStats}} detailed-stats cache(s), {{snapshots}} snapshot(s) and {{lanePhase}} lane reports.",
+      "checkFailed": "Check failed",
+      "cleaned": "Cleaned up",
+      "cleanedDesc_one": "Removed {{count}} row that belonged to a teammate: {{detail}}.",
+      "cleanedDesc_other": "Removed {{count}} rows that belonged to a teammate: {{detail}}.",
+      "nothingLeft": "Nothing left to remove.",
+      "cleanupFailed": "Cleanup failed",
+      "resetDone": "App reset",
+      "resetDoneDesc": "Deleted {{games}} game(s), {{recordings}} recording(s) ({{files}} file(s) freed) and all stats. Restarting view…",
+      "resetFailed": "Reset failed",
+      "title": "Danger Zone",
+      "desc": "Permanently delete data. These actions cannot be undone — export a backup first if unsure.",
+      "clearStats": "Clear stats & mistakes",
+      "clearStatsDesc": "Removes all tagged & auto-detected mistakes, progression snapshots, the detailed-stats cache and lane-phase reports. Your games, recordings, reviews and notes are kept.",
+      "confirmClear": "Confirm clear",
+      "clearRecent": "Clear recent data",
+      "clearRecentDesc": "Deletes games, stats, mistakes and recordings (files included) from the last few days only — older history is kept. Useful to drop a bad test session.",
+      "deleteLast": "Delete last {{range}}",
+      "foreignTitle": "Check for teammates’ data",
+      "foreignDesc": "A sync bug (fixed in beta.104) could let a coach/analyst’s own device absorb a shared teammate’s sessions, assessments or reviews into their own local history. This checks your database against the server and tells you if any of your data actually belongs to someone else.",
+      "foreignNone": "No contaminated data found.",
+      "foreignFound_one": "Found {{count}} row across {{tables}} that belongs to a teammate.",
+      "foreignFound_other": "Found {{count}} rows across {{tables}} that belong to a teammate.",
+      "confirmRemoval": "Confirm removal",
+      "removeIt": "Remove it",
+      "check": "Check",
+      "resetAll": "Reset everything",
+      "resetAllDesc": "Deletes <all>all</all> sessions, games, stats, mistakes, reviews and recordings (video files included) and resets your XP/streak. Your account, settings and teams are kept.",
+      "confirmReset": "Confirm full reset"
+    },
+    "discord": {
+      "added": "Webhook added",
+      "addFailed": "Couldn’t add the webhook",
+      "renameFailed": "Rename failed",
+      "removed": "Webhook removed",
+      "removeFailed": "Couldn’t remove the webhook",
+      "testEmbedTitle": "✅ Ascend webhook test",
+      "testEmbedDesc": "**{{name}}** is correctly configured. Reviews will be shared to this channel.",
+      "testSent": "Test sent to “{{name}}”",
+      "testFailed": "Webhook test failed",
+      "title": "Discord sharing",
+      "desc": "Add Discord webhook URLs to share reviews as rich embeds directly to a channel. You can configure multiple webhooks (e.g. one per team or server) and pick the destination when sharing.",
+      "howTo": "How to create a webhook ↗",
+      "empty": "No webhooks configured — reviews can still be copied as text.",
+      "nameLabel": "Name",
+      "saveName": "Save the name",
+      "test": "Send a test message",
+      "testAria": "Send a test message to {{name}}",
+      "rename": "Rename webhook",
+      "renameAria": "Rename {{name}}",
+      "removeQ": "Remove?",
+      "yes": "Yes",
+      "remove": "Remove webhook",
+      "removeAria": "Remove {{name}}",
+      "namePlaceholder": "e.g. #coaching, My Server…",
+      "urlLabel": "Webhook URL",
+      "add": "Add webhook",
+      "localOnly": "Webhook URLs are stored locally and only ever sent to Discord."
+    },
+    "youtube": {
+      "connectFailed": "Connection failed",
+      "title": "YouTube upload",
+      "desc": "Connect your YouTube account to upload recordings and clips directly from Ascend. Requires a Google Cloud project with the YouTube Data API v3 enabled.",
+      "connected": "Connected",
+      "disconnect": "Disconnect",
+      "setupTitle": "Setup required",
+      "setupDesc": "Add <code>MAIN_VITE_GOOGLE_CLIENT_ID</code> and <code>MAIN_VITE_GOOGLE_CLIENT_SECRET</code> to your <code>.env</code> file to enable YouTube uploads.",
+      "connecting": "Connecting…",
+      "connect": "Connect YouTube"
     }
   },
   "sidebar": {
@@ -101,6 +249,17 @@
       "profile": "Your profile",
       "connect": "Connect Account",
       "assessment": "Initial Assessment"
+    },
+    "accountPicker": {
+      "welcomeToast": "Welcome back, {{name}}!",
+      "reconnectFailed": "Couldn’t reconnect",
+      "title": "Welcome back",
+      "desc": "Choose a saved account to reconnect instantly, or add a new one.",
+      "sessions_one": "{{count}} session",
+      "sessions_other": "{{count}} sessions",
+      "connecting": "Connecting…",
+      "reconnect": "Reconnect",
+      "addNew": "Add a new account"
     }
   },
   "profileStep": {
@@ -353,6 +512,42 @@
       "showAll": "Show all {{count}} templates",
       "showLess": "Show less",
       "title": "Session Templates"
+    },
+    "offRole": {
+      "title": "⚠️ Off-role game detected",
+      "description": "You played {{role}}, not your main role. Remove this game from the session?",
+      "action": "Remove",
+      "actionAlt": "Remove from the session",
+      "unknownRole": "an unknown role"
+    },
+    "insight": {
+      "title": "Session so far",
+      "subtitle": "Session · {{objectives}}",
+      "record": "{{wins}}W {{losses}}L — {{wr}}% win rate this session",
+      "allReviewed": "All games reviewed ({{reviewed}}/{{total}})",
+      "pending_one": "{{count}} game waiting for review",
+      "pending_other": "{{count}} games waiting for review",
+      "kpiAverage": "Session KPI average: {{avg}}/10",
+      "objectiveRate": "Objective met in {{rate}}% of reviewed games",
+      "reviewMore": "Less than half of the games are reviewed — don’t forget to fill in your reviews"
+    },
+    "picker": {
+      "scoreOnly": "Score {{score}}/10",
+      "new": "New",
+      "add": "Add a fundamental",
+      "available_one": "{{count}} slot left",
+      "available_other": "{{count}} slots left",
+      "title": "Choose a fundamental",
+      "selected_one": "({{count}}/3 selected)",
+      "selected_other": "({{count}}/3 selected)",
+      "search": "Search by name or description…",
+      "noResult": "No result for “{{query}}”",
+      "suggested": "Suggested",
+      "suggestedHint": "· self-assessment + recent sessions",
+      "recent": "Recent",
+      "all": "All fundamentals",
+      "allCategories": "All",
+      "confirm": "Confirm"
     }
   },
   "review": {
@@ -435,7 +630,9 @@
       "keep": "Keep",
       "remove": "Remove from session"
     },
-    "draftSaved": "Draft auto-saved"
+    "draftSaved": "Draft auto-saved",
+    "gameRemoved": "Game removed from the session",
+    "gameRemoveFailed": "Couldn’t remove the game"
   },
   "analytics": {
     "title": "Analytics",
@@ -522,6 +719,10 @@
     "changes": {
       "titleBilans": "Changes since the previous assessment",
       "titleSessions": "Sessions compared with your assessment"
+    },
+    "state": {
+      "noGamesTitle": "No games recorded yet",
+      "noGamesDesc": "Start a session and play: your games and their stats will appear here."
     }
   },
   "history": {
@@ -579,7 +780,21 @@
       "errorTitle": "Could not fetch history"
     },
     "deleteSelected": "Delete",
-    "selected": "selected"
+    "selected": "selected",
+    "select": {
+      "month": "Select every session of this month",
+      "session": "Select this session"
+    },
+    "state": {
+      "unknownCause": "The server didn’t answer.",
+      "gamesErrorTitle": "Couldn’t load your games",
+      "gamesErrorHint": "Your sessions and reviews are still available.",
+      "gamesEmptyTitle": "No recent games",
+      "gamesEmptyDesc": "Play a few games: they will show up here with their review status.",
+      "sessionsEmptyTitle": "No sessions yet",
+      "sessionsEmptyDesc": "Create your first session to start tracking your objectives.",
+      "createSession": "Create a session"
+    }
   },
   "statsAvg": {
     "subtitle": "What makes you win, your averages and your progression over time",
@@ -762,7 +977,10 @@
       "timePlaceholder": "M:SS",
       "notePlaceholder": "What happened at this moment? What decision did you make?",
       "addButton": "Add Timeline Note",
-      "autoBadge": "Pre-filled"
+      "autoBadge": "Pre-filled",
+      "timeLabel": "Note {{n}} — time",
+      "noteLabel": "Note {{n}} — text",
+      "deleteNote": "Delete note {{n}}"
     }
   },
   "fundamentalsGrid": {
@@ -795,7 +1013,8 @@
     "games": "games",
     "noProgress": "Complete assessments to see your progress over time",
     "noWinrate": "No games played yet",
-    "noAssessment": "No assessment data available"
+    "noAssessment": "No assessment data available",
+    "winrateSummary": "Win rate {{wr}}% — {{wins}} wins, {{losses}} losses"
   },
   "update": {
     "availableTitle": "Update available",
@@ -913,7 +1132,24 @@
     "folderChanged": "Folder updated — recordings will be scanned",
     "finalizing": "Finalizing video — playback may be limited until it's done.",
     "finalizingDesc": "The recording is being processed. This usually takes 10-60 seconds for a full game. The player will appear automatically when it's ready.",
-    "finalizationFailed": "Recording finalization failed"
+    "finalizationFailed": "Recording finalization failed",
+    "panel": {
+      "linkFailed": "Couldn’t link the recording",
+      "unknownError": "An unknown error occurred.",
+      "unlinked": "Recording unlinked",
+      "unlinkedDesc": "The recording is still available in your library.",
+      "title": "Recording",
+      "clipIn": "In",
+      "clipOut": "Out",
+      "clipStart": "Clip start",
+      "clipEnd": "Clip end",
+      "clipTitle": "Clip title (optional)",
+      "youtubeUrl": "YouTube link",
+      "saveLink": "Save link",
+      "scan": "Scan for recording",
+      "linkFile": "Link local file",
+      "addYoutube": "Add YouTube link"
+    }
   },
   "jobs": {
     "cancel": "Cancel after current player",
@@ -1139,7 +1375,18 @@
       "threatOrange": "300k+ mastery",
       "threatYellow": "flex threat — 2+ players individually dangerous on it",
       "threatPrioPick": "priority pick/ban — a threat on both teams",
-      "threatNew": "new pick: 10+ games on a champion picked up less than 2 weeks ago"
+      "threatNew": "new pick: 10+ games on a champion picked up less than 2 weeks ago",
+      "poolEmpty": "No pool yet",
+      "alreadyInDraft": "Already in current draft",
+      "saveFailed": "Couldn’t save the draft",
+      "duplicateFailed": "Couldn’t duplicate the draft",
+      "deleteFailed": "Couldn’t delete the draft",
+      "slotLabel": "Slot {{slot}}: {{champions}}",
+      "slotTitleBan": "Slot #{{n}} (ban)",
+      "slotTitlePick": "Slot #{{n}} (pick)",
+      "clickChampion": "Click a champion →",
+      "noBan": "no ban",
+      "noPick": "no pick"
     },
     "dashboard": {
       "subtitleCombined": "Combined stats: flex (≥{{n}} together) + all imported scrim & tournament games",
@@ -1209,7 +1456,9 @@
         "import": "Import tournament CSV",
         "filenameHint": "CSV filename must contain \"tournoi\" or \"tournament\" to be auto-detected.",
         "empty": "No tournament games imported yet."
-      }
+      },
+      "deleteFailed": "Couldn’t delete the game",
+      "readOnlyHint": "The staff imports these games from the Ascend desktop app."
     },
     "stats": {
       "subtitle": "Flex queue games where ≥{{n}} of your roster played together",
@@ -1250,7 +1499,8 @@
       "goldPct": "Gold",
       "visionPct": "Vision",
       "ccPct": "CC",
-      "byChampion": "By champion"
+      "byChampion": "By champion",
+      "noChampionData": "No champion data."
     },
     "scouting": {
       "empty": "No opponent teams scouted yet.",
@@ -1291,8 +1541,43 @@
         "noGames": "No synergy games found",
         "noGamesDesc": "No recent flex games where ≥{{n}} of these opponents played together.",
         "refresh": "Refresh",
-        "title": "Opponent synergy — flex games where ≥{{n}} of them played together"
-      }
+        "title": "Opponent synergy — flex games where ≥{{n}} of them played together",
+        "desktopOnlyTitle": "Opponent synergy is on the desktop app",
+        "desktopOnlyDesc": "It analyses each opponent’s Riot match history: open this team in the Ascend desktop app to compute it."
+      },
+      "createFailed": "Couldn’t create the opponent team",
+      "deleteFailed": "Couldn’t delete the opponent team",
+      "addMemberFailed": "Couldn’t add the player",
+      "removeMemberFailed": "Couldn’t remove the player",
+      "opponentsLabel": "Opponents:",
+      "newTeamPlaceholder": "Opponent team name…",
+      "add": "Add",
+      "newOpponent": "New opponent",
+      "deleteTeamAria": "Delete {{name}}",
+      "deleteTeamTitle": "Delete “{{name}}”?",
+      "deleteTeamDesc": "Its players and their scouted champion pools are deleted too.",
+      "save": "Save",
+      "scoutOneHint": "Scout: fetch the player’s recent games",
+      "scoutOneAria": "Scout {{name}}",
+      "removeMemberAria": "Remove {{name}}",
+      "removeMemberTitle": "Remove {{name}} from this opponent team?",
+      "removeMemberConfirm": "Remove",
+      "emptySlot": "Empty",
+      "noPoolData": "No data — click ⟳ to scout",
+      "topN": "Top {{n}}:",
+      "form": {
+        "displayName": "Name",
+        "tag": "Tag",
+        "region": "Region",
+        "role": "Role"
+      },
+      "unassignedTitle_one": "{{count}} unassigned opponent",
+      "unassignedTitle_other": "{{count}} unassigned opponents",
+      "unassignedHint": "Scouted before opponents were filed by group: every group sees them until you attach them to one.",
+      "link": "Attach to this group",
+      "linkAria": "Attach {{name}} to this group",
+      "linkFailed": "Couldn’t attach the opponent team",
+      "addMember": "Add member"
     },
     "statsTitle": "Team stats",
     "statsSubtitle": "The stats of the picked group’s team: flex, scrim and tournament together, then each source.",
@@ -1488,6 +1773,48 @@
       "blur": "Blur",
       "hint": "Only the background changes: names, ranks and champions stay sharp.",
       "reset": "Reset"
+    },
+    "statsTable": {
+      "player": "Player",
+      "group": {
+        "record": "Record",
+        "combat": "Combat",
+        "economy": "Economy",
+        "impact": "Impact",
+        "vision": "Vision"
+      },
+      "hint": {
+        "games": "Games played",
+        "wr": "Win rate",
+        "k": "Kills per game",
+        "d": "Deaths per game",
+        "a": "Assists per game",
+        "kda": "(Kills + Assists) / Deaths",
+        "cs": "Creep score per game",
+        "csm": "Creep score per minute",
+        "gold": "Gold earned per game",
+        "gm": "Gold per minute",
+        "dmg": "Damage to champions per game",
+        "dmgm": "Damage to champions per minute",
+        "tank": "Damage taken per game",
+        "tankpct": "Share of the team’s total damage taken",
+        "kp": "Kill participation — share of the team’s kills you got a kill or assist on",
+        "goldpct": "Share of the team’s total gold",
+        "dmgpct": "Share of the team’s total damage to champions",
+        "eff": "Damage per gold — higher = more cost-efficient",
+        "xpm": "Experience per minute",
+        "vs": "Vision score per game",
+        "wp": "Wards placed per game",
+        "wk": "Wards killed per game",
+        "pink": "Control wards bought per game"
+      },
+      "noData": "No data"
+    },
+    "renamed": {
+      "formerly": "formerly {{name}}",
+      "badge": "Renamed",
+      "ok": "OK",
+      "okLabel": "Hide the former name {{name}}"
     }
   },
   "common": {
@@ -1497,7 +1824,9 @@
     "loading": "Loading…",
     "close": "Close",
     "yes": "yes",
-    "no": "no"
+    "no": "no",
+    "skipToContent": "Skip to content",
+    "formerMember": "Former member"
   },
   "discussion": {
     "title": "Discussion",
@@ -1574,7 +1903,8 @@
       "deleteConfirm": "Delete permanently",
       "deleted": "Your account has been deleted.",
       "openWeb": "Open web app",
-      "openWebHint": "Opens the web app in your browser, already signed in to this account."
+      "openWebHint": "Opens the web app in your browser, already signed in to this account.",
+      "deleteTypeLabel": "Type DELETE to confirm"
     },
     "backup": {
       "now": "Back up now",
@@ -1595,6 +1925,26 @@
       "change": "Change",
       "saved": "Password saved",
       "why": "Optional: with a password, signing in on a new PC or browser no longer needs an e-mail code."
+    },
+    "gate": {
+      "unreachableTitle": "Can’t reach the Ascend server",
+      "unreachableDesc": "Check your internet connection, then try again. Your local data is safe.",
+      "retry": "Try again"
+    },
+    "signOutEverywhere": {
+      "button": "Sign out of all devices",
+      "title": "Sign out of all devices?",
+      "desc": "Every PC and browser signed in to this account, this one included, will need to sign in again (within the hour at the latest). Local data stays on each PC.",
+      "confirm": "Sign out everywhere",
+      "failed": "Couldn’t reach the Ascend server: no device was signed out. Check your connection and try again."
+    },
+    "ownerHandover": {
+      "title_one": "You own a group",
+      "title_other": "You own {{count}} groups",
+      "handedOver_one": "If you delete your account, the owner role of {{groups}} passes to another member: a coach, else a manager, an analyst, the captain, then the longest-standing player.",
+      "handedOver_other": "If you delete your account, the owner role of {{groups}} passes to another member in each: a coach, else a manager, an analyst, the captain, then the longest-standing player.",
+      "deleted_one": "{{groups}} has no other member: it will be deleted with your account.",
+      "deleted_other": "{{groups}} have no other member: they will be deleted with your account."
     }
   },
   "sync": {
@@ -1689,7 +2039,21 @@
       "riotIdLabel": "Your Riot ID",
       "riotIdPlaceholder": "Name#TAG",
       "riotIdHint": "Your Riot account is required to join: it’s how your stats count towards the team’s.",
-      "riotIdInvalid": "Expected a Riot ID like Name#TAG."
+      "riotIdInvalid": "Expected a Riot ID like Name#TAG.",
+      "riotChecks": {
+        "title": "Riot ID check",
+        "conflict_one": "This member claims a Riot player another member already holds",
+        "conflict_other": "These {{count}} members claim the same Riot player",
+        "conflictOwner": "Only one of them is that player: remove the wrong one.",
+        "conflictStaff": "Only one of them is that player: the group owner removes the wrong one.",
+        "notFound_one": "This Riot ID does not exist at Riot",
+        "notFound_other": "These {{count}} Riot IDs do not exist at Riot",
+        "notFoundHint": "The Riot account linked in the player’s Ascend desktop app is wrong or no longer exists. The player clicks “Disconnect account” (bottom of the sidebar, next to their name), then signs back in with the right Riot account; it is checked again afterwards.",
+        "removeLabel": "Remove {{name}} from the group",
+        "removeConfirm": "Remove {{name}} from the group? They can be invited again later.",
+        "badgeConflict": "Riot conflict",
+        "badgeNotFound": "Riot ID not found"
+      }
     },
     "sharing": {
       "title": "What this group can see",
@@ -1776,7 +2140,8 @@
       "generic": "Something went wrong. Check your connection and try again.",
       "NOT_CONCERNED": "This event isn’t one of yours.",
       "EVENT_OVER": "This event is already over.",
-      "RIOT_ACCOUNT_REQUIRED": "Link your Riot account to join a group."
+      "RIOT_ACCOUNT_REQUIRED": "Link your Riot account to join a group.",
+      "WELLBEING_CONSENT_REQUIRED": "Sharing your wellbeing needs your agreement to store your check-ins first."
     },
     "dossier": {
       "pickPlayer": "Player",
@@ -1822,6 +2187,48 @@
     },
     "switcher": {
       "label": "Group"
+    },
+    "suggestions": {
+      "title": "Suggested objectives",
+      "subtitle": "Based on your self-assessment and your recent sessions",
+      "neverBadge": "Never worked on",
+      "choose": "Choose",
+      "reason": {
+        "highDeaths": "⚠ Avg. ≥ 5 deaths per game — death control recommended",
+        "critical": "Score {{score}}/10 — critical weakness",
+        "priority": "Score {{score}}/10 — improvement priority",
+        "room": "Score {{score}}/10 — room to improve",
+        "maintain": "Score {{score}}/10 — keep it up",
+        "lastSession": " · already worked on last session",
+        "neverWorked": " · never worked on yet"
+      }
+    },
+    "reviewInsight": {
+      "title": "Review analysis",
+      "subtitle": "Automatic summary of your data",
+      "objectiveMet": "Objective “{{objective}}” met",
+      "objectiveMissed": "Objective “{{objective}}” missed",
+      "kpiAverage_one": "KPI average: {{avg}}/10 over {{count}} rated KPI",
+      "kpiAverage_other": "KPI average: {{avg}}/10 over {{count}} rated KPIs",
+      "strength": "Strength: {{kpi}} ({{score}}/10)",
+      "toImprove": "To improve: {{kpi}} ({{score}}/10)",
+      "noKpi": "No KPI rated — fill in your scores to track your progress",
+      "manyNotes_one": "{{count}} timeline note — detailed analysis",
+      "manyNotes_other": "{{count}} timeline notes — detailed analysis",
+      "noNotes": "No timeline notes — add observations while watching the video",
+      "conclusionWritten": "Free-form conclusion written"
+    },
+    "patterns": {
+      "title": "Detected patterns",
+      "subtitle_one": "Analysis of the last {{count}} session",
+      "subtitle_other": "Analysis of the last {{count}} sessions",
+      "weakKpis": "Recurring weak KPIs",
+      "via": "via {{objective}}",
+      "kpiScore": "{{score}}/10 · {{count}} sess.",
+      "mostRepeated": "Most worked objective: <b>{{objective}}</b> <dim>({{count}} sessions)</dim>",
+      "highDeaths": "Avg. <red>{{deaths}} deaths per game</red> over your last 20 games — work on <gold>death control</gold> (Tempo objective)",
+      "reviewRateLow": "Review rate: <red>{{rate}}%</red> — review more games for accurate data",
+      "reviewRate": "Review rate: <green>{{rate}}%</green>"
     }
   },
   "assistant": {
@@ -2098,7 +2505,8 @@
       "coaching": "Coaching",
       "team": "Team",
       "account": "Account",
-      "management": "Management"
+      "management": "Management",
+      "teamStats": "Team stats"
     },
     "desktopHint": "Recording, reviews and Riot data stay in the desktop app.",
     "team": {
@@ -2187,11 +2595,21 @@
         "draft": "Review the draft plan",
         "comms": "Voice check 15 min before",
         "goals": "Set 1–2 team goals for the block"
-      }
+      },
+      "missingDrafts_one": "{{count}} linked draft can no longer be found",
+      "missingDrafts_other": "{{count}} linked drafts can no longer be found",
+      "missingDraftsStaff": "They were personal drafts, which the team can no longer read. Link a team draft below (Team → Draft to create one), then remove the old links.",
+      "missingDraftsPlayer": "They were personal drafts, which the team can no longer read. The staff can link a team draft instead.",
+      "clearMissing_one": "Remove the missing link",
+      "clearMissing_other": "Remove the {{count}} missing links"
     },
     "download": {
       "short": "Download Ascend",
       "full": "Download Ascend for Windows"
+    },
+    "teamStats": {
+      "loadFailed": "Couldn’t load the team",
+      "loadFailedCause": "The group’s roster could not be read. Check your connection, then retry."
     }
   },
   "feedback": {
@@ -2348,7 +2766,15 @@
       "duration": "Duration",
       "customTimes": "Exact times",
       "notes": "Notes",
-      "submit": "Confirm slot"
+      "submit": "Confirm slot",
+      "day": "Day",
+      "start": "Start",
+      "end": "End",
+      "endBeforeStart": "The end must be after the start ({{time}}).",
+      "freeHint_one": "Free for the {{count}} starter from {{from}} to {{to}} · duration {{duration}}",
+      "freeHint_other": "Free for the {{count}} starters from {{from}} to {{to}} · duration {{duration}}",
+      "durationH": "{{h}} h",
+      "durationHm": "{{h}} h {{m}}"
     },
     "smartTitle": {
       "oneOnOne": "1:1 with {{name}}",
@@ -2452,6 +2878,24 @@
       "legendUnknown": "Not set",
       "fromRoster": "Starters of the roster published to the group.",
       "fromGroup": "Every player of the group: no roster with linked accounts has been published."
+    },
+    "newEvent": "New event",
+    "myAvailability": {
+      "button": "My availability",
+      "title": "My availability",
+      "desc": "For each day of the shown week: your usual availability, a slot, or unavailable.",
+      "mode": {
+        "usual": "Usual",
+        "available": "Available",
+        "unavailable": "Unavailable"
+      },
+      "usualRule": "Usually {{slots}}",
+      "noUsual": "No usual availability",
+      "notePlaceholder": "Note: exam",
+      "noteLabel": "Note (optional)",
+      "keysHint": "Enter saves · Esc closes without saving",
+      "save": "Save my availability",
+      "saved": "Availability saved"
     }
   },
   "teamSession": {
@@ -2648,7 +3092,35 @@
     "noShared": "No player has shared their wellbeing check-ins in this group yet.",
     "moodDeclining": "Mood declining",
     "loadThresholdLabel": "Alert staff when a player (sharing both stats & wellbeing) plays more than",
-    "loadThresholdSuffix": "h/week with a declining mood."
+    "loadThresholdSuffix": "h/week with a declining mood.",
+    "consent": {
+      "title": "Store your wellbeing check-ins?",
+      "intro": "Your energy, mood and sleep are health data. With your agreement, Ascend stores them in your account to track how they change from one session to the next, and syncs them across your devices.",
+      "private": "Nobody else sees them, unless you later turn on sharing with a group’s staff.",
+      "withdraw": "You can withdraw your agreement at any time from the Privacy card (Settings in the app, Account on the web): your check-ins are then deleted.",
+      "existing_one": "You already have {{count}} check-in stored. If you decline, it will be deleted.",
+      "existing_other": "You already have {{count}} check-ins stored. If you decline, they will be deleted.",
+      "learnMore": "Learn more (privacy policy, § 3a)",
+      "accept": "I agree",
+      "notNow": "Not now",
+      "declineDelete": "Decline and delete them",
+      "shareBlocked": "Sharing your wellbeing needs your agreement to store your check-ins first.",
+      "giveConsent": "Give my agreement"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "desc": "Your agreement to storing your wellbeing check-ins (energy, mood, sleep).",
+      "statusGranted": "Agreement given on {{date}} (texts {{version}}).",
+      "statusWithdrawn": "Agreement withdrawn on {{date}}: no check-in is stored.",
+      "statusNone": "No agreement given: no check-in is stored.",
+      "withdraw": "Withdraw my agreement",
+      "give": "Give my agreement",
+      "withdrawTitle": "Withdraw your agreement?",
+      "withdrawDesc": "All your check-ins will be deleted from your account and stop being visible to your groups. This cannot be undone.",
+      "withdrawConfirm": "Withdraw and delete",
+      "withdrawn": "Agreement withdrawn: your check-ins were deleted.",
+      "failed": "Couldn’t update your agreement"
+    }
   },
   "teamOps": {
     "title": "Tasks",
@@ -2836,7 +3308,9 @@
         "title": "Coming after all",
         "body": "{{playerName}} will be at “{{eventTitle}}” after all ({{scheduledAt}})"
       }
-    }
+    },
+    "bellLabel_one": "Notifications, {{count}} unread",
+    "bellLabel_other": "Notifications, {{count}} unread"
   },
   "notificationPrefs": {
     "title": "Notification preferences",
@@ -2847,7 +3321,8 @@
     "from": "From",
     "to": "To",
     "save": "Save preferences",
-    "saved": "Preferences saved"
+    "saved": "Preferences saved",
+    "saveFailed": "Couldn’t save the preferences"
   },
   "weeklyReport": {
     "title": "Weekly report",
@@ -3224,7 +3699,10 @@
         "desc_one": "Reach level {{count}}",
         "desc_other": "Reach level {{count}}"
       }
-    }
+    },
+    "iconLabel": "Icon {{n}}",
+    "iconLabelLocked": "Icon {{n}}, locked, {{tier}} tier",
+    "editTabsLabel": "Profile customisation"
   },
   "mistakeLab": {
     "title": "Mistake Lab",
@@ -3564,6 +4042,11 @@
         "left": "left",
         "hidden": "hidden"
       }
+    },
+    "select": {
+      "group": "Select every recording of this group",
+      "recording": "Select {{name}}",
+      "open": "Open {{name}}"
     }
   },
   "share": {
@@ -3590,6 +4073,24 @@
       "invalidWebhook": "Invalid Discord webhook URL.",
       "noWebhook": "Please select a Discord webhook first.",
       "tempFailed": "Temp upload failed. Check your internet connection and try again."
+    },
+    "button": {
+      "sentTo": "📨 Sent to “{{name}}”",
+      "webhookFailed": "Webhook failed — copied to clipboard instead",
+      "copied": "📋 Copied to clipboard",
+      "sessionCopied": "📋 Session copied to clipboard",
+      "pasteAnywhere": "Paste it anywhere — Discord, Notion, messages…",
+      "copyFailed": "Copy failed",
+      "sending": "Sending…",
+      "copying": "Copying…",
+      "copy": "Copy",
+      "share": "Share",
+      "moreOptions": "More sharing options",
+      "sendToDiscord": "Send to Discord",
+      "noWebhook": "No Discord webhook configured.",
+      "addInSettings": "Add one in Settings.",
+      "copyAsText": "Copy as text",
+      "copyAsTextHint": "Markdown — paste anywhere"
     }
   },
   "microReview": {
@@ -3721,7 +4222,7 @@
       "dragonTank": "dead at the Dragon, which took {{pct}} % of your HP",
       "compensation": "dead {{sec}} s after an ally, before losing {{objectiveThe}}",
       "earlyBoots": "boots bought at {{clock}}, without a kill",
-      "sideT1": "{{lane}} T1 destroyed after 14:00, the first tower already down",
+      "sideT1": "{{lane}} T1 destroyed, the first tower already down",
       "heraldUnused": "dead {{sec}} s after the Herald was taken, the eye still in your pocket",
       "fledInvade": "at {{pct}} % HP in your jungle against the enemy jungler at {{theirs}} %",
       "outsmited": "the enemy takes {{objectiveThe}} while you stood in the pit",
@@ -4057,5 +4558,149 @@
   "teamSection": {
     "noGroup": "No group yet: create or join one to use this page.",
     "goToGroups": "Go to Management → Groups"
+  },
+  "lanePhase": {
+    "back": "Back",
+    "title": "Lane Phase Comparator",
+    "refresh": "Refresh",
+    "loading": "Crunching the Riot timeline…",
+    "noReport": "No lane phase report available",
+    "framesAvailable": "Timeline frames available: {{count}}",
+    "vs": "vs",
+    "opponent": "opponent",
+    "grade": "Lane Grade",
+    "score": "score {{score}}/100",
+    "kpi": {
+      "dmgHint": "Damage to champions @14 — you {{you}} vs opponent {{them}}",
+      "kpHint": "Kill participation during the laning phase (0–14 min): your kills + assists / your team’s kills, vs the opponent’s",
+      "objDmg": "Obj. dmg",
+      "objDmgHint": "Damage dealt to objectives (turrets, dragons, baron…) over the full game — you vs the lane opponent"
+    },
+    "noFrames": "No timeline frames in the laning phase window.",
+    "chartTip": "Tip: click any point on a curve to jump to that minute in the replay.",
+    "chart": {
+      "cs": "CS difference",
+      "gold": "Gold difference",
+      "xp": "XP difference",
+      "dmg": "Damage to champions",
+      "diff": "diff",
+      "minute": "min {{m}}"
+    },
+    "strip": {
+      "title": "Plates & solo trades",
+      "empty": "No plates taken/lost or solo trades between you and your opponent during the laning phase.",
+      "markerHint": "{{event}} @ {{m}}m — click to jump to the replay"
+    },
+    "event": {
+      "soloKill": "Solo kill",
+      "soloDeath": "Solo death",
+      "plateTaken": "Plate taken",
+      "plateLost": "Plate lost"
+    },
+    "diag": {
+      "unknownDetail": "unknown error",
+      "noGame": "Game record not found — this lane phase report cannot be generated.",
+      "noMatchId": "No Riot match ID linked to this game. Try linking the recording first.",
+      "noUser": "No active user.",
+      "timelineFetchFailed": "Riot timeline fetch failed: {{detail}}",
+      "matchFetchFailed": "Riot match fetch failed: {{detail}}",
+      "emptyTimeline": "Cached match data is empty.",
+      "noPlayer": "Could not find the player in the match participants — the champion stored on this game may be wrong.",
+      "noOpponent": "Could not identify a direct lane opponent (Arena / customs / role swap).",
+      "noFrames": "Timeline has no frame data — too short to analyse.",
+      "badData": "Riot data could not be parsed: {{detail}}",
+      "unknown": "Unknown error."
+    }
+  },
+  "externalReview": {
+    "objectiveOptional": "Objective (optional)",
+    "objectiveOn": "Pick up to 3 focus areas and the KPIs to track.",
+    "objectiveOff": "Skip — review freely with marks and thoughts.",
+    "kpisToTrack": "KPIs to track",
+    "win": "Win",
+    "loss": "Loss",
+    "vs": "vs {{champion}}",
+    "mode": {
+      "custom": "Custom review",
+      "customDesc": "Give it a title and optionally link a recording from any source.",
+      "player": "External player",
+      "playerDesc": "Look up any player’s history and pick a specific game to review."
+    },
+    "custom": {
+      "title": "Review title",
+      "titlePlaceholder": "e.g. Laning phase focus — Yone TOP",
+      "create": "Create review"
+    },
+    "player": {
+      "invalidId": "Enter a valid Riot ID (name + tag)",
+      "noGames": "No ranked games found for this player",
+      "notFound": "Player not found",
+      "intro": "Enter the player’s Riot ID. We’ll fetch their last ranked games so you can pick one to review.",
+      "gameName": "Game Name",
+      "tag": "Tag",
+      "region": "Region",
+      "fetch": "Fetch match history"
+    },
+    "games": {
+      "loadMore": "Load {{count}} more",
+      "start": "Start review"
+    },
+    "wizard": {
+      "title": "External Review",
+      "back": "Back",
+      "needTitle": "Please enter a title",
+      "createFailed": "Couldn’t create the review"
+    },
+    "list": {
+      "title": "External Reviews",
+      "count_one": "{{count}} review saved",
+      "count_other": "{{count}} reviews saved",
+      "new": "New review",
+      "empty": "No external reviews yet",
+      "createFirst": "Create your first one",
+      "deleted": "Review deleted",
+      "deleteFailed": "Couldn’t delete the review",
+      "deleteAria": "Delete “{{title}}”"
+    },
+    "header": {
+      "back": "Back to reviews",
+      "objective": "Objective:",
+      "victory": "Victory",
+      "defeat": "Defeat",
+      "delete": "Delete this review",
+      "vision": "Vision",
+      "duration": "Duration"
+    },
+    "page": {
+      "saved": "Review saved",
+      "saveFailed": "Save failed",
+      "saveClip": "Save",
+      "cancelClip": "Cancel the clip",
+      "unlinkFile": "Unlink the recording file",
+      "linkFile": "Link recording file",
+      "thoughts": "Thoughts & Feelings",
+      "thoughtsDesc": "Write down your analysis, impressions, or anything you noticed.",
+      "thoughtsPlaceholder": "What stood out? What would you do differently?",
+      "savedButton": "Saved ✓",
+      "save": "Save review"
+    }
+  },
+  "dataState": {
+    "retry": "Try again"
+  },
+  "a11y": {
+    "youtubePlayer": "YouTube video player"
+  },
+  "discordUnlink": {
+    "button": "Unlink the Discord server",
+    "sectionTitle": "Discord server",
+    "sectionHint": "Stops the bot from posting this group’s schedule and reminders in the linked server.",
+    "title": "Unlink {{name}}’s Discord server?",
+    "desc": "The bot stops posting the schedule and reminders there. You can link a server again later with a new code.",
+    "confirm": "Unlink",
+    "done": "Discord server unlinked from {{name}}",
+    "noneLinked": "{{name}} has no linked Discord server.",
+    "forbidden": "Only the group’s owner, coaches and managers can unlink its Discord server.",
+    "failed": "Couldn’t unlink the Discord server"
   }
 }

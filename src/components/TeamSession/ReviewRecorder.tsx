@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey } from '@/lib/collab'
 import type { ReviewStatus, TeamSessionReview, TeamSessionReviewPatch } from '@/lib/teamSessionReviews'
+import { useYoutubeUploadAvailable } from '@/hooks/useYoutubeUploadAvailable'
 
 interface Props {
   title: string
@@ -34,6 +35,7 @@ interface Props {
  *  "not a function" — recording a live screen+mic capture only makes
  *  sense from the desktop app anyway. */
 export function ReviewRecorder({ title, review, onCreate, onUpdate, onSkip, autoStart }: Props) {
+  const youtubeUpload = useYoutubeUploadAvailable()
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const [busy, setBusy] = useState(false)
@@ -233,7 +235,7 @@ export function ReviewRecorder({ title, review, onCreate, onUpdate, onSkip, auto
                 <a href={review.youtubeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-hextech-cyan hover:underline">
                   <Check className="h-3.5 w-3.5" />{t('teamSession.review.viewOnYoutube', { defaultValue: 'View on YouTube' })}
                 </a>
-              ) : youtubeConnected === false ? (
+              ) : !youtubeUpload ? null : youtubeConnected === false ? (
                 <span className="text-xs text-hextech-text-dim">{t('teamSession.review.youtubeNotConnected', { defaultValue: 'Connect a YouTube channel in Settings to publish.' })}</span>
               ) : (
                 <Button size="sm" variant="outline" onClick={uploadToYoutube} disabled={busy || youtubeConnected !== true}>

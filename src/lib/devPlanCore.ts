@@ -11,7 +11,7 @@ import { fail } from './supabaseErrors'
 interface PlanRow { id: string; group_id: string; player_id: string; title: string; period_start: string | null; period_end: string | null; created_at: string; updated_at: string }
 interface AxisRow { id: string; plan_id: string; fundamental_id: string; target_text: string; position: 1 | 2 | 3; status: AxisStatus; created_at: string; updated_at: string }
 interface ProgressRow { axis_id: string; player_marked_done: boolean; player_note: string | null; updated_at: string }
-interface CheckinRow { id: string; plan_id: string; note: string; created_by: string; created_at: string }
+interface CheckinRow { id: string; plan_id: string; note: string; created_by: string | null; created_at: string }
 
 async function hydrate(sb: SupabaseClient, plan: PlanRow): Promise<DevPlan> {
   const [axesRes, progressRes, checkinsRes] = await Promise.all([

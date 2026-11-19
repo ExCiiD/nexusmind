@@ -34,7 +34,8 @@ export interface GroupFundamental {
   groupId: string
   label: string
   description: string | null
-  createdBy: string
+  /** null once the author deleted their account (S19-16): show "former member". */
+  createdBy: string | null
   createdAt: string
 }
 
@@ -77,6 +78,13 @@ export interface TeamSessionApi {
   teamSessionGetAttendance: (sessionId: string) => Promise<Record<string, boolean>>
   teamSessionSetAttendance: (sessionId: string, userId: string, present: boolean | null) => Promise<void>
   teamSessionListMyLive: () => Promise<TeamSession[]>
+  /**
+   * Item I: the user's live sessions from the app's single poller (no request when already known). Pair it with
+   * onTeamSessionLive instead of polling teamSessionListMyLive.
+   */
+  teamSessionLiveCached: () => Promise<TeamSession[]>
+  /** Pushed whenever the live sessions change (start, end, another device). Returns the unsubscribe function. */
+  onTeamSessionLive: (cb: (sessions: TeamSession[]) => void) => () => void
   groupFundamentalsList: (groupId: string) => Promise<GroupFundamental[]>
   groupFundamentalsAdd: (groupId: string, input: NewGroupFundamentalInput) => Promise<string>
   teamSessionListGames: (sessionId: string) => Promise<TeamSessionGame[]>

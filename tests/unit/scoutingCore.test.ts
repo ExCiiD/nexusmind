@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { participantFor, aggregateChampionPlays, winRateOf, kdaOf, mergeMatchIdsByRecency } from '../../src/lib/scoutingCore'
+import {
+  participantFor, aggregateChampionPlays, winRateOf, kdaOf, mergeMatchIdsByRecency, teamListWhere, teamLinkReleaseWhere,
+  aggregateMatchLike, matchLikeFromRiot, matchLikeFromCustom, indexMatchIds, sharedMatchIds, matchIdsByRegion, combinedSources,
+} from '../../src/lib/scoutingCore'
 
 function match(puuid: string, championName: string, teamPosition: string, win: boolean, k = 0, d = 0, a = 0) {
   return { info: { participants: [{ puuid, championName, teamPosition, win, kills: k, deaths: d, assists: a }] } }
@@ -88,5 +91,76 @@ describe('winRateOf / kdaOf', () => {
   it('computes (kills+assists)/max(1,deaths), never dividing by zero deaths', () => {
     expect(kdaOf({ kills: 6, assists: 4, deaths: 0 })).toBe(10)
     expect(kdaOf({ kills: 6, assists: 4, deaths: 2 })).toBe(5)
+  })
+})
+
+// #7 (19/11/2026): Scouting listed the opponents of every team on the PC.
+describe('teamListWhere', () => {
+  it('always scopes to the local user', () => {
+    expect(teamListWhere('u1')).toEqual({ userId: 'u1' })
+    expect(teamListWhere('u1', { isOpponent: true })).toEqual({ userId: 'u1', isOpponent: true })
+  })
+  it('keeps only the opponents scouted for the chosen group', () => {
+    expect(teamListWhere('u1', { isOpponent: true, groupId: 'g1' })).toEqual({ userId: 'u1', isOpponent: true, groupId: 'g1' })
+  })
+  it('can add the opponents created before groups existed', () => {
+    expect(teamListWhere('u1', { isOpponent: true, groupId: 'g1', includeUnassigned: true }))
+      .toEqual({ userId: 'u1', isOpponent: true, OR: [{ groupId: 'g1' }, { groupId: null }] })
+  })
+  it('ignores includeUnassigned without a group', () => {
+    expect(teamListWhere('u1', { isOpponent: true, includeUnassigned: true })).toEqual({ userId: 'u1', isOpponent: true })
+  })
+})
+
+describe('teamLinkReleaseWhere', () => {
+  it('an own team takes the group from the other own team only', () => {
+    expect(teamLinkReleaseWhere('u1', 't1', 'g1', false)).toEqual({ userId: 'u1', groupId: 'g1', isOpponent: false, NOT: { id: 't1' } })
+  })
+  it('an opponent releases nothing (many opponents per group)', () => {
+    expect(teamLinkReleaseWhere('u1', 't1', 'g1', true)).toBeNull()
+  })
+})
+
+// #41b (19/11/2026): the team stats aggregation, shared by the desktop and the web adapter.
+describe('team stats (Stats collectives)', () => {
+  const team = { id: 't', members: [
+    { id: 'm1', displayName: 'Top', ign: 'TopGuy', role: 'TOP', puuid: 'p1' },
+    { id: 'm2', displayName: 'Jgl', ign: 'JglGuy', role: 'JUNGLE', puuid: 'p2' },
+  ] }
+  const riot = (win: boolean) => ({ info: { gameDuration: 1800, participants: [
+    { puuid: 'p1', teamId: 100, teamPosition: 'TOP', win, kills: 4, deaths: 2, assists: 6, totalMinionsKilled: 200, totalDamageDealtToChampions: 20000, goldEarned: 12000, championName: 'Renekton' },
+    { puuid: 'p2', teamId: 100, teamPosition: 'JUNGLE', win, kills: 2, deaths: 1, assists: 8, neutralMinionsKilled: 150, totalDamageDealtToChampions: 10000, goldEarned: 10000, championName: 'Vi' },
+    { puuid: 'x', teamId: 200, teamPosition: 'TOP', win: !win, kills: 1, deaths: 4, assists: 1 },
+  ] } })
+
+  it('aggregates averages, shares and champions per member', () => {
+    const res = aggregateMatchLike(team, [matchLikeFromRiot(riot(true)), matchLikeFromRiot(riot(false))], 2)
+    expect(res.matchCount).toBe(2)
+    const top = res.players.find((p) => p.memberId === 'm1')!
+    expect(top).toMatchObject({ gamesPlayed: 2, wins: 1, winRate: 50 })
+    expect(top.averages.kda).toBe(5)
+    expect(top.shares.damagePct).toBeCloseTo(66.67, 1)
+    expect(top.byChampion).toEqual([{ championKey: 'Renekton', games: 2, wins: 1, winRate: 50 }])
+  })
+  it('matches custom games by name (no puuid) and skips empty or unreadable ones', () => {
+    const custom = matchLikeFromCustom({ durationSec: 1500, participantsJson: JSON.stringify([
+      { playerName: 'topguy', teamId: 200, teamPosition: 'TOP', win: true, kills: 3, deaths: 0, assists: 3, championName: 'Gnar' },
+    ]) })
+    const broken = matchLikeFromCustom({ durationSec: 1500, participantsJson: 'not json' })
+    expect(broken.participants).toEqual([])
+    const res = aggregateMatchLike(team, [custom, broken, matchLikeFromRiot(undefined)])
+    expect(res.matchCount).toBe(1)
+    expect(res.players.map((p) => p.memberId)).toEqual(['m1'])
+  })
+  it('finds the matches several members played and groups them by region', () => {
+    const index = new Map<string, Set<string>>()
+    indexMatchIds(index, 'p1', ['EUW1_1', 'EUW1_2'])
+    indexMatchIds(index, 'p2', ['EUW1_2', 'EUW1_3'])
+    expect(sharedMatchIds(index, 2)).toEqual(['EUW1_2'])
+    expect([...matchIdsByRegion(['EUW1_2'], index, [{ puuid: 'p1', region: 'EUW1' }, { puuid: 'p2', region: null }])])
+      .toEqual([['EUW1', ['EUW1_2']]])
+  })
+  it('counts what the combined numbers are made of', () => {
+    expect(combinedSources(4, [{ gameType: 'scrim' }, { gameType: 'scrim' }, { gameType: 'tournament' }])).toEqual({ flex: 4, scrim: 2, tournament: 1 })
   })
 })

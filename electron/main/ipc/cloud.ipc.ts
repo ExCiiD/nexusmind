@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { validatedHandle } from './validate'
-import { getSupabase, isCloudConfigured, toCloudUser, getAccessToken, requireSessionUserId } from '../cloud/supabase'
+import { getSupabase, isCloudConfigured, toCloudUser, getAccessToken, requireSessionUserId, signOutThisDevice, signOutEverywhere } from '../cloud/supabase'
 import { riotTransportMode } from '../riotTransport'
 import {
   createCloudBackup,
@@ -36,10 +36,11 @@ async function me(): Promise<string> {
 export function registerCloudHandlers() {
   validatedHandle('cloud:status', z.tuple([]), async () => {
     if (!isCloudConfigured()) return { configured: false, user: null, riotMode: riotTransportMode(), lastBackupAt: null }
-    const { data } = await getSupabase().auth.getSession()
+    // AUTH_UNREACHABLE when the auth server could not be reached (not "signed out").
+    const session = await access.sessionForStatus(getSupabase())
     return {
       configured: true,
-      user: toCloudUser(data.session),
+      user: toCloudUser(session),
       riotMode: riotTransportMode(),
       lastBackupAt: getLastCloudBackupAt(),
     }
@@ -113,7 +114,15 @@ export function registerCloudHandlers() {
   })
 
   validatedHandle('cloud:sign-out', z.tuple([]), async () => {
-    await getSupabase().auth.signOut({ scope: 'local' }) // this device only: other PCs and the web stay signed in
+    // This device only: other PCs and the web stay signed in. Works offline too.
+    await signOutThisDevice()
+    return { signedOut: true }
+  })
+
+  // Every device and the web (R3 point 3: the recourse for a lost PC).
+  // Throws when the server could not be reached: nothing was revoked then.
+  validatedHandle('cloud:sign-out-everywhere', z.tuple([]), async () => {
+    await signOutEverywhere()
     return { signedOut: true }
   })
 
@@ -136,7 +145,7 @@ export function registerCloudHandlers() {
       headers: { Authorization: `Bearer ${token}` },
     })
     if (error) throw new Error(`Account deletion failed: ${error.message}`)
-    await getSupabase().auth.signOut({ scope: 'local' })
+    await signOutThisDevice()
     return { deleted: true }
   })
 }

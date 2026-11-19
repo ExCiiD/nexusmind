@@ -356,8 +356,8 @@ export class GameDetector {
     // provisional row stuck at the placeholder `win: false`.
     const DELAYS_MS = [10_000, 15_000, 20_000, 30_000, 45_000, 60_000, 90_000]
     let latestMatchId: string | null = null
-    let matchRegion: string = user.region
     let stats: ReturnType<typeof extractPlayerStats> = null
+    let winningMatchData: unknown = null
 
     for (let attempt = 0; attempt < DELAYS_MS.length; attempt++) {
       await new Promise((r) => setTimeout(r, DELAYS_MS[attempt]))
@@ -382,14 +382,14 @@ export class GameDetector {
           // 30 min of slack covers all of these without re-picking stale
           // history matches (which are always >>30min old).
           if (matchEndMs > 0 && matchEndMs < gameStartedAt - STALE_MATCH_WINDOW_MS) return null
-          return { matchId: ids[0], region: acc.region, stats: s }
+          return { matchId: ids[0], region: acc.region, stats: s, matchData }
         }),
       )
 
       const valid = results
         .filter((r) => r.status === 'fulfilled' && r.value !== null)
         .map((r) => (r as PromiseFulfilledResult<any>).value!)
-        .filter((v): v is { matchId: string; region: string; stats: NonNullable<ReturnType<typeof extractPlayerStats>> } =>
+        .filter((v): v is { matchId: string; region: string; stats: NonNullable<ReturnType<typeof extractPlayerStats>>; matchData: unknown } =>
           v !== null && v.stats !== null,
         )
 
@@ -406,8 +406,8 @@ export class GameDetector {
 
       const best = valid[0]
       latestMatchId = best.matchId
-      matchRegion = best.region
       stats = best.stats
+      winningMatchData = best.matchData
       console.log(`[detector] Enrich: match found on attempt ${attempt + 1}: ${latestMatchId}`)
       break
     }
@@ -419,6 +419,18 @@ export class GameDetector {
 
     const queueType = stats.queueType ?? 'unknown'
     const sessionEligible = isQueueSessionEligible(queueType)
+
+    // Audit E09: the match body just downloaded is cached here, before onGameEnriched, so the post-game
+    // analysis it starts reads it instead of asking Riot again (it used to be fetched up to 3 times).
+    try {
+      await prisma.matchCache.upsert({
+        where: { matchId: latestMatchId },
+        create: { matchId: latestMatchId, matchJson: JSON.stringify(winningMatchData) },
+        update: { matchJson: JSON.stringify(winningMatchData) },
+      })
+    } catch (err) {
+      console.warn('[detector] Enrich: could not cache the match:', (err as Error)?.message ?? err)
+    }
 
     const provisionalMatchId = `live_${gameStartedAt}`
     try {
@@ -544,17 +556,6 @@ export class GameDetector {
       console.error('[detector] Enrich: failed to update game:', err)
     }
 
-    // Cache the match data for stats pages
-    try {
-      const matchData = await getMatch(latestMatchId, matchRegion).catch(() => null)
-      if (matchData) {
-        await prisma.matchCache.upsert({
-          where: { matchId: latestMatchId },
-          create: { matchId: latestMatchId, matchJson: JSON.stringify(matchData) },
-          update: { matchJson: JSON.stringify(matchData) },
-        }).catch(() => {})
-      }
-    } catch { /* non-fatal */ }
   }
 }
 

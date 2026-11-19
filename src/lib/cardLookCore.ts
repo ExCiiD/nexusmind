@@ -11,13 +11,14 @@ export type CardBackgroundId = (typeof CARD_BACKGROUNDS)[number]
 
 /** How strongly each pattern shows: the sparse ones a little more. */
 export const CARD_PATTERN_OPACITY: Record<CardBackgroundId, number> = {
-  topo: 0.13,
+  // Tuned with Graphic Design's new backgrounds (19/11/2026).
+  topo: 0.14,
   hextech: 0.12,
-  ripples: 0.13,
-  currents: 0.12,
-  shards: 0.16,
-  constellation: 0.22,
-  circuit: 0.16,
+  ripples: 0.14,
+  currents: 0.15,
+  shards: 0.14,
+  constellation: 0.16,
+  circuit: 0.15,
 }
 
 export interface CardLook {

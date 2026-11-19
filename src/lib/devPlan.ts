@@ -24,7 +24,7 @@ export interface DevPlanCheckin {
   id: string
   planId: string
   note: string
-  createdBy: string
+  createdBy: string | null // null once the author deleted their account (S19-16 / #33)
   createdAt: string
 }
 

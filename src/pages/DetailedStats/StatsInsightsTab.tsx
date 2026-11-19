@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Loader2, Swords, Scale, Timer, Sun, Brain, Lightbulb, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
+import { wrBar, wrText } from '@/lib/winrate'
 import {
   championPool,
   winLossSplit,
@@ -83,7 +84,7 @@ export function StatsInsightsTab() {
                     </td>
                     <td className="py-2 text-right font-mono text-hextech-text">{row.games}</td>
                     <td className="py-2 pl-4">
-                      <WinrateBar winrate={row.winrate} dim={row.games < MIN_SAMPLE} />
+                      <WinrateBar winrate={row.winrate} games={row.games} dim={row.games < MIN_SAMPLE} />
                     </td>
                     <td className="py-2 text-right font-mono text-hextech-text-bright">{row.kda.toFixed(2)}</td>
                     <td className="py-2 text-right font-mono text-hextech-text">{row.csPerMin.toFixed(1)}</td>
@@ -180,13 +181,14 @@ function Header({ icon: Icon, title, desc }: { icon: any; title: string; desc: s
   )
 }
 
-function WinrateBar({ winrate, dim }: { winrate: number; dim?: boolean }) {
+/** K: the shared win-rate scale (bar + text); a small sample reads dim. */
+function WinrateBar({ winrate, games, dim }: { winrate: number; games: number; dim?: boolean }) {
   return (
     <div className={cn('flex items-center gap-2', dim && 'opacity-50')}>
-      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-hextech-red/30">
-        <div className="h-full rounded-full bg-hextech-green" style={{ width: `${winrate}%` }} />
+      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-hextech-border-dim">
+        <div className={cn('h-full rounded-full', wrBar(winrate, games, dim))} style={{ width: `${winrate}%` }} />
       </div>
-      <span className={cn('w-9 font-mono font-semibold', winrate >= 50 ? 'text-hextech-green' : 'text-hextech-red')}>{winrate}%</span>
+      <span className={cn('w-9 font-mono font-semibold', wrText(winrate, games, dim))}>{winrate}%</span>
     </div>
   )
 }
@@ -216,7 +218,7 @@ function BucketList({ buckets, labelKey }: { buckets: Bucket[]; labelKey: string
             {t(`${labelKey}.${b.key}`)}
             <span className="ml-1.5 text-[10px] text-hextech-text-dim">({t('statsInsights.gamesShort', { count: b.games })})</span>
           </span>
-          {b.games > 0 ? <WinrateBar winrate={b.winrate} /> : <span className="text-hextech-text-dim">—</span>}
+          {b.games > 0 ? <WinrateBar winrate={b.winrate} games={b.games} /> : <span className="text-hextech-text-dim">—</span>}
         </div>
       ))}
     </div>

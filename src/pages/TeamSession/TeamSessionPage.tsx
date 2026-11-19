@@ -27,8 +27,10 @@ import type { CalendarEvent } from '@/lib/calendar'
 import type { GroupFundamental, SessionQueueFilter, TeamSession, TeamSessionGame, TeamSessionObjectives } from '@/lib/teamSessions'
 import type { TeamSessionReview } from '@/lib/teamSessionReviews'
 import { cn } from '@/lib/utils'
+import type { NameOf } from '@/hooks/useCollab'
 
-const QUEUE_FILTERS: SessionQueueFilter[] = ['flex', 'scrim', 'ranked5', 'all']
+// 'ranked5' removed (L14, user decision 19/11/2026): never wired, it acted as 'flex'.
+const QUEUE_FILTERS: SessionQueueFilter[] = ['flex', 'scrim', 'all']
 /** While the session isn't ended, mirrors the fast-poll cadence used by
  *  electron/main/sync/syncService.ts so every concerned device reflects a
  *  start/end/objectives change without a manual refresh. */
@@ -548,7 +550,7 @@ function FinalReviewView({ sessionId, games, reviews, group, canManage, myUserId
   group: NonNullable<ReturnType<typeof useCollab>['groups'][number]>
   canManage: boolean
   myUserId: string
-  nameOf: (id: string) => string
+  nameOf: NameOf
   autoStart: boolean
   recordGameId: string | null
   onRecordGame: (id: string | null) => void

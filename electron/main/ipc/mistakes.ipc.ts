@@ -17,9 +17,8 @@
 
 import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
-import { detectMistakes, type MistakeCandidate } from '../mistakeDetector'
+import { autoDetectMistakes } from '../mistakeAutoDetect'
 import { nextTuning } from '../mistakeTuning'
-import { mistakeDuplicateIndex } from '../mistakeDedupe'
 import { ensureGameAnalysis } from './microReview.ipc'
 import { isGarbageTime, winProbAt } from '../../../src/lib/microReview/winProbability'
 import { mistakeSlug } from '../../../src/lib/mistakeSlug'
@@ -144,67 +143,10 @@ export function registerMistakeHandlers() {
   })
 
   /**
-   * Run the heuristic detector for a given game. Skips candidates that
-   * already have a near-duplicate (same gameId + slug ± 3s) — lets us call
-   * it multiple times without spamming the timeline.
+   * The "Auto-detect" button. Same path as the post-game analysis (E11): the learned severity (MX3)
+   * and the severity-3 bookmarks (MX5) apply here too. Never repeats a mistake the game already has.
    */
-  ipcMain.handle('mistake:auto-detect', async (_e, gameId: string) => {
-    const prisma = getPrisma()
-    const game = await prisma.game.findUnique({ where: { id: gameId } })
-    if (!game?.matchId) return { created: 0, skipped: 0, reason: 'no-game' }
-
-    const cache = await prisma.matchCache.findUnique({ where: { matchId: game.matchId } })
-    if (!cache?.matchJson || !cache.timelineJson) return { created: 0, skipped: 0, reason: 'no-cache' }
-
-    const user = await prisma.user.findFirst({ where: { isActive: true } })
-    const accounts = user ? await prisma.account.findMany({ where: { userId: user.id } }) : []
-    const userPuuids = user ? [user.puuid, ...accounts.map((a) => a.puuid)].filter((p) => !!p) : []
-
-    let candidates: MistakeCandidate[] = []
-    try {
-      candidates = detectMistakes(cache.timelineJson, cache.matchJson, {
-        puuids: userPuuids,
-        championName: game.champion,
-        win: game.win,
-      })
-    } catch (err) {
-      console.warn('[mistake] auto-detect failed:', (err as Error)?.message ?? err)
-      return { created: 0, skipped: 0, reason: 'detector-error' }
-    }
-
-    // Map slug → tagId for the candidates we know about. Skip silently if
-    // a tag was archived or the slug doesn't exist (custom-only deploy).
-    const slugs = [...new Set(candidates.map((c) => c.tagSlug))]
-    const tags = await prisma.mistakeTag.findMany({ where: { slug: { in: slugs }, archivedAt: null } })
-    const slugToTagId = new Map(tags.map((t) => [t.slug, t.id]))
-
-    // Every mistake the game already has — auto-detected, confirmed by a
-    // micro-review answer or tagged by hand — so a refresh never repeats one.
-    const known = await mistakeDuplicateIndex(gameId)
-
-    let created = 0
-    let skipped = 0
-    for (const c of candidates) {
-      const tagId = slugToTagId.get(c.tagSlug)
-      if (!tagId) { skipped++; continue }
-      if (known.has(tagId, c.gameTimeSec)) { skipped++; continue }
-      await prisma.mistake.create({
-        data: {
-          gameId,
-          tagId,
-          gameTimeSec: Math.max(0, Math.floor(c.gameTimeSec)),
-          note: c.note ?? null,
-          severity: Math.min(3, Math.max(1, c.severity ?? 2)),
-          autoDetected: true,
-        },
-      })
-      created++
-      known.add(tagId, c.gameTimeSec)
-    }
-
-    console.log(`[mistake] auto-detect game=${gameId}: created=${created}, skipped=${skipped}`)
-    return { created, skipped, reason: 'ok' }
-  })
+  ipcMain.handle('mistake:auto-detect', (_e, gameId: string) => autoDetectMistakes(gameId))
 
   // ── Stats handlers (consumed by MistakeStatsPage + Dashboard widget) ──
 

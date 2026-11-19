@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 const Slider = React.forwardRef<
   React.ElementRef<typeof SliderPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
->(({ className, ...props }, ref) => (
+>(({ className, 'aria-label': ariaLabel, 'aria-labelledby': ariaLabelledBy, ...props }, ref) => (
   <SliderPrimitive.Root
     ref={ref}
     className={cn('relative flex w-full touch-none select-none items-center', className)}
@@ -14,7 +14,12 @@ const Slider = React.forwardRef<
     <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-hextech-elevated">
       <SliderPrimitive.Range className="absolute h-full bg-hextech-gold" />
     </SliderPrimitive.Track>
-    <SliderPrimitive.Thumb className="block h-4 w-4 rounded-full border border-hextech-border bg-hextech-gold shadow transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-hextech-gold disabled:pointer-events-none disabled:opacity-50" />
+    {/* The accessible name goes on the Thumb (role="slider"), not the Root. */}
+    <SliderPrimitive.Thumb
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
+      className="block h-4 w-4 rounded-full border border-hextech-border bg-hextech-gold shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold disabled:pointer-events-none disabled:opacity-50"
+    />
   </SliderPrimitive.Root>
 ))
 Slider.displayName = SliderPrimitive.Root.displayName

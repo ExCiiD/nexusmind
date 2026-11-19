@@ -14,6 +14,7 @@ import { HomePage } from './pages/HomePage'
 import { MyReviewsPage } from './pages/MyReviewsPage'
 import { ScrimsPage } from './pages/ScrimsPage'
 import { TeamPage } from './pages/TeamPage'
+import { TeamStatsPage } from './pages/TeamStatsPage'
 import { AccountPage } from './pages/AccountPage'
 import { DownloadButton } from './DownloadButton'
 import { installDiagnostics } from '@/lib/diagnostics'
@@ -49,6 +50,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/coaching" element={<CoachingPage />} />
             <Route path="/team-session/:calendarEventId" element={<TeamSessionPage />} />
             <Route path="/team" element={<TeamPage />} />
+            <Route path="/team-stats" element={<TeamStatsPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

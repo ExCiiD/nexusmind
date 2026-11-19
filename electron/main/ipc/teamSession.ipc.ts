@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { validatedHandle } from './validate'
 import * as teamSessions from '../cloud/teamSessions'
+import { getLiveSessionsCached, refreshLiveSessions } from '../sync/syncService'
 
 const uuid = z.string().uuid()
 const objectiveId = z.string().min(1).max(64)
@@ -13,9 +14,20 @@ const queueFilter = z.enum(['flex', 'scrim', 'ranked5', 'all']).nullable()
  *  index.ts), not through IPC. */
 export function registerTeamSessionHandlers() {
   validatedHandle('team-session:get-by-event', z.tuple([uuid]), (_e, calendarEventId) => teamSessions.teamSessionGetByEvent(calendarEventId))
+  // Starting or ending a session refreshes the shared live list at once (pushed as 'team-session:live').
   validatedHandle('team-session:start', z.tuple([uuid, z.array(uuid).min(1).max(10), queueFilter]),
-    (_e, id, responsibleUserIds, filter) => teamSessions.teamSessionStart(id, responsibleUserIds, filter))
-  validatedHandle('team-session:end', z.tuple([uuid]), (_e, id) => teamSessions.teamSessionEnd(id))
+    async (_e, id, responsibleUserIds, filter) => {
+      const res = await teamSessions.teamSessionStart(id, responsibleUserIds, filter)
+      void refreshLiveSessions()
+      return res
+    })
+  validatedHandle('team-session:end', z.tuple([uuid]), async (_e, id) => {
+    const res = await teamSessions.teamSessionEnd(id)
+    void refreshLiveSessions()
+    return res
+  })
+  // Item I: the last known live sessions, from the sync service's single poller (no request when already known).
+  validatedHandle('team-session:live-cached', z.tuple([]), () => getLiveSessionsCached())
   validatedHandle('team-session:get-objectives', z.tuple([uuid]), (_e, sessionId) => teamSessions.teamSessionGetObjectives(sessionId))
   validatedHandle('team-session:get-attendance', z.tuple([uuid]), (_e, sessionId) => teamSessions.teamSessionGetAttendance(sessionId))
   validatedHandle('team-session:set-attendance', z.tuple([uuid, uuid, z.boolean().nullable()]),

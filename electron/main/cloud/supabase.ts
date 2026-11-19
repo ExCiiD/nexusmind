@@ -1,6 +1,10 @@
 import { createClient, type SupabaseClient, type Session } from '@supabase/supabase-js'
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, app } from 'electron'
+import { join } from 'path'
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs'
 import { getSecret, saveSecret, deleteSecret } from '../keychain'
+import * as access from '../../../src/lib/accessCore'
+import { authStorageKey, authTimeoutFetch } from '../../../src/lib/accessCore'
 
 /**
  * Supabase client living in the MAIN process only. The renderer never sees
@@ -8,7 +12,8 @@ import { getSecret, saveSecret, deleteSecret } from '../keychain'
  *
  * The session (access + refresh token) is persisted with Electron
  * safeStorage (DPAPI on Windows) through keychain.ts, so it survives restarts
- * and keeps working offline until the refresh token expires.
+ * and keeps working offline while the stored session can still be
+ * refreshed (refresh tokens do not expire on the server by themselves).
  */
 
 const SUPABASE_URL = (import.meta.env.MAIN_VITE_SUPABASE_URL as string | undefined)?.trim() ?? ''
@@ -24,30 +29,100 @@ export function getSupabaseUrl(): string {
   return SUPABASE_URL
 }
 
-/** Session storage backed by the OS-encrypted keychain, with an in-memory fallback. */
-const memory = new Map<string, string>()
+/**
+ * Session storage backed by the OS-encrypted keychain, with an in-memory
+ * fallback. A write or delete that could not reach the file (encryption
+ * unavailable, file locked by an antivirus) is kept in `memory` and wins
+ * over the file for the rest of the run: otherwise the file's older session
+ * came back after a sign-out or a token refresh. `null` = removed.
+ */
+const memory = new Map<string, string | null>()
 const keychainStorage = {
   getItem(key: string): string | null {
-    try { return getSecret(storageService(key)) } catch { return memory.get(key) ?? null }
+    if (memory.has(key)) return memory.get(key) ?? null
+    try { return getSecret(storageService(key)) } catch { return null }
   },
   setItem(key: string, value: string): void {
-    try { saveSecret(storageService(key), value) } catch { memory.set(key, value) }
+    try {
+      saveSecret(storageService(key), value)
+      memory.delete(key)
+      updatePendingDeletes((keys) => keys.delete(key)) // a new session replaced the old one
+    } catch {
+      memory.set(key, value)
+    }
   },
   removeItem(key: string): void {
-    memory.delete(key)
-    try { deleteSecret(storageService(key)) } catch { /* nothing stored */ }
+    try {
+      deleteSecret(storageService(key))
+      memory.delete(key)
+      updatePendingDeletes((keys) => keys.delete(key))
+    } catch {
+      memory.set(key, null)
+      // R1 (CyberSecurity review of #2): remembered across restarts, or
+      // the next launch would read the file and sign the user back in.
+      updatePendingDeletes((keys) => keys.add(key))
+    }
   },
 }
+
+/** @internal Unit tests only (tests/unit/desktopAuthStorage.test.ts). */
+export const keychainStorageForTests = keychainStorage
 
 function storageService(key: string): string {
   return `supabase-${key.replace(/[^a-zA-Z0-9_-]/g, '_')}`
 }
 
+// ── Sign-outs whose session file could not be deleted (R1) ─────────────────
+// A small, non-secret marker in userData lists the storage keys still to
+// delete. At startup (before the client reads anything) and at quit, the
+// deletion is retried; until it succeeds the stored session is ignored.
+
+function pendingDeletesPath(): string {
+  return join(app.getPath('userData'), 'signout-pending.json')
+}
+
+function readPendingDeletes(): Set<string> {
+  try {
+    const raw = JSON.parse(readFileSync(pendingDeletesPath(), 'utf-8'))
+    return new Set(Array.isArray(raw) ? raw.filter((k): k is string => typeof k === 'string') : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function updatePendingDeletes(change: (keys: Set<string>) => void): void {
+  const keys = readPendingDeletes()
+  const before = keys.size
+  change(keys)
+  if (keys.size === before && before === 0) return
+  try {
+    if (keys.size === 0) { if (existsSync(pendingDeletesPath())) unlinkSync(pendingDeletesPath()) }
+    else writeFileSync(pendingDeletesPath(), JSON.stringify([...keys]))
+  } catch { /* best effort: the in-memory tombstone still covers this run */ }
+}
+
+/** Retries the deletions a failed sign-out left; what still fails stays ignored. */
+export function retryPendingSecretDeletes(): void {
+  const keys = readPendingDeletes()
+  if (keys.size === 0) return
+  for (const key of keys) {
+    try {
+      deleteSecret(storageService(key))
+      keys.delete(key)
+    } catch {
+      memory.set(key, null)
+    }
+  }
+  updatePendingDeletes((current) => { for (const k of [...current]) if (!keys.has(k)) current.delete(k) })
+}
+
 let client: SupabaseClient | null = null
+let revokeRetry: { stop: () => void } | null = null
 
 export function getSupabase(): SupabaseClient {
   if (!isCloudConfigured()) throw new Error('CLOUD_NOT_CONFIGURED')
   if (client) return client
+  retryPendingSecretDeletes()
   client = createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
       storage: keychainStorage,
@@ -55,9 +130,52 @@ export function getSupabase(): SupabaseClient {
       autoRefreshToken: true,
       detectSessionInUrl: false,
     },
+    // A silent auth server must not leave the app on its spinner (accessCore.ts).
+    global: { fetch: authTimeoutFetch() },
   })
-  client.auth.onAuthStateChange((_event, session) => broadcastAuth(session))
+  client.auth.onAuthStateChange((event, session) => {
+    broadcastAuth(session)
+    // R2: signOutThisDevice stops auto-refresh; a new sign-in restarts it.
+    // Deferred: auth-js methods must not run inside its own callback.
+    if (event === 'SIGNED_IN') setTimeout(() => { client?.auth.startAutoRefresh().catch(() => {}) }, 0)
+  })
   return client
+}
+
+/**
+ * Forgets this device's session without the server (the logout request
+ * failed) and tells every window, as a SIGNED_OUT event would have.
+ */
+export function forgetLocalSession(): void {
+  const key = authStorageKey(getSupabase(), SUPABASE_URL)
+  keychainStorage.removeItem(key)
+  keychainStorage.removeItem(`${key}-code-verifier`)
+  broadcastAuth(null)
+}
+
+/**
+ * Signs this device out, even when the server cannot be reached. Then the
+ * logout is sent again every minute while the old access token is valid
+ * (R3), so the server-side session does not stay open.
+ */
+export async function signOutThisDevice() {
+  const res = await access.signOutThisDevice(getSupabase(), forgetLocalSession)
+  if (res.pendingRevoke) {
+    const pending = res.pendingRevoke
+    revokeRetry?.stop()
+    revokeRetry = access.scheduleRevokeRetry(() => access.retryRevoke(SUPABASE_URL, SUPABASE_KEY, pending))
+  }
+  return res
+}
+
+/**
+ * Signs out every device and the web (scope global): the recourse for a
+ * lost PC. Unlike signOutThisDevice this fails loudly: the user must know
+ * the other sessions are still open.
+ */
+export async function signOutEverywhere(): Promise<void> {
+  const { error } = await getSupabase().auth.signOut({ scope: 'global' })
+  if (error) throw new Error(access.authErrorCode(error.message))
 }
 
 export interface CloudUser {

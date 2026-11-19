@@ -7,6 +7,7 @@
  * Ranks come from src/lib/rankCore.ts.
  */
 import { normalizeRole } from './teamIdentity'
+import { ROLES, type Role } from './championRoles'
 
 /** The fields of a champion-pool entry (ChampionPoolEntry in ipc.ts) read
  *  here; kept apart so the main process can import this module. */
@@ -19,9 +20,9 @@ export interface LftPoolEntry {
   masteryPoints?: number | null
 }
 
-/** Lobby seat order, as in the client. */
-export const LFT_ROLES = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'] as const
-export type LftRole = (typeof LFT_ROLES)[number]
+/** Lobby seat order, as in the client: the app's role list (championRoles.ts), same values, same order. */
+export const LFT_ROLES: readonly Role[] = ROLES
+export type LftRole = Role
 
 /** A roster or Riot role name as an LFT role; null when it isn't one. */
 export function asLftRole(role: string | null | undefined): LftRole | null {

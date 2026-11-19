@@ -7,6 +7,7 @@ import {
   Loader2, Check, Copy,
 } from 'lucide-react'
 import { formatFileSize, formatMs } from '@/lib/mediaCore'
+import { useYoutubeUploadAvailable } from '@/hooks/useYoutubeUploadAvailable'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -16,8 +17,6 @@ interface ClipEntry {
   title: string | null
   startMs: number
   endMs: number
-  youtubeUrl: string | null
-  tempShareUrl: string | null
   fileSize: number
 }
 
@@ -63,7 +62,7 @@ export function RecordingMediaPanel({
     if (!recordingId) return
     setLoadingClips(true)
     try {
-      const data = await (window.api as any).listClips(recordingId)
+      const data = await window.api.listClips(recordingId)
       setClips(data ?? [])
     } catch { /* non-critical */ }
     finally { setLoadingClips(false) }
@@ -72,28 +71,30 @@ export function RecordingMediaPanel({
   // Reload clips when recording changes or after a new clip is saved
   useEffect(() => { loadClips() }, [loadClips, clipSaveKey])
 
-  // YouTube status
+  // YouTube status (upload hidden in the packaged app, see useYoutubeUploadAvailable)
+  const youtubeUpload = useYoutubeUploadAvailable()
   useEffect(() => {
-    ;(window.api as any).youtubeGetStatus?.()
+    if (!youtubeUpload) { setYtConnected(false); return }
+    window.api.youtubeGetStatus?.()
       .then((s: any) => setYtConnected(s?.connected ?? false))
       .catch(() => {})
-  }, [])
+  }, [youtubeUpload])
 
   // YouTube upload progress listener
   useEffect(() => {
-    const unsub = (window.api as any).onYoutubeUploadProgress?.((d: { percent: number }) => setYtProgress(d.percent))
+    const unsub = window.api.onYoutubeUploadProgress?.((d: { percent: number }) => setYtProgress(d.percent))
     return () => unsub?.()
   }, [])
 
   const handleDeleteClip = async (id: string) => {
-    await (window.api as any).deleteClip(id)
+    await window.api.deleteClip(id)
     await loadClips()
   }
 
   const handleYtUpload = async () => {
     setYtState('uploading'); setYtProgress(0); setYtError(null)
     try {
-      const r = await (window.api as any).youtubeUpload({
+      const r = await window.api.youtubeUpload({
         filePath,
         title,
         description: t('record.youtube.reviewedDescription'),
@@ -226,16 +227,6 @@ function ClipRow({ clip, onDelete }: { clip: ClipEntry; onDelete: () => void }) 
         </div>
       </div>
       <div className="flex items-center gap-0.5 shrink-0">
-        {clip.tempShareUrl && (
-          <a href={clip.tempShareUrl} target="_blank" rel="noopener noreferrer" className="text-hextech-teal hover:text-hextech-teal/80 transition-colors">
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        )}
-        {clip.youtubeUrl && (
-          <a href={clip.youtubeUrl} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:text-red-300 transition-colors">
-            <Youtube className="h-3 w-3" />
-          </a>
-        )}
         {confirmDelete ? (
           <>
             <button onClick={onDelete} className="text-[10px] text-[#E24C3A] font-medium">✓</button>

@@ -1,0 +1,25 @@
+{
+  // TE-5 / T8 (19/11/2026): the unit and end-to-end tests are typechecked too (npm run typecheck).
+  // Not composite and noEmit: it only checks. The tests import from electron/, src/ and web/src/,
+  // so it carries both the DOM and Node types, and the two aliases the bundles use.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": ["node", "vite/client"],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@web/*": ["./web/src/*"]
+    }
+  },
+  "include": ["tests/**/*.ts", "src/vite-env.d.ts"]
+}

@@ -85,6 +85,12 @@ export class SyncEngine {
     private readonly prisma: PrismaClient,
     private readonly remote: SyncRemote,
     private readonly cloudUserId: string,
+    /**
+     * `${cloudUserId}:${puuid}` pairs already checked by checkOwner. The owner record can only change when the user
+     * signs in with another account or switches local profile, both of which change the key: syncService keeps one
+     * set for the whole run, so the check costs one request per run instead of one per cycle (item I, 19/11/2026).
+     */
+    private readonly verifiedOwners?: Set<string>,
   ) {}
 
   // ── small SQL helpers ────────────────────────────────────────────────────
@@ -172,14 +178,18 @@ export class SyncEngine {
 
   /** One cloud account = one Riot player: refuse to merge another player's history. */
   private async checkOwner(puuid: string): Promise<void> {
+    const key = `${this.cloudUserId}:${puuid}`
+    if (this.verifiedOwners?.has(key)) return
     const profile = await this.remote.getRecord(PROFILE_TABLE, 'owner')
     if (!profile || profile.deleted) {
       await this.remote.push([{ t: PROFILE_TABLE, id: 'owner', data: { puuid }, at: new Date().toISOString(), dev: await this.deviceId() }])
+      this.verifiedOwners?.add(key)
       return
     }
     if ((profile.data as any)?.puuid !== puuid) {
       throw new SyncError('DIFFERENT_PLAYER', 'This Ascend account already syncs another Riot player.')
     }
+    this.verifiedOwners?.add(key)
   }
 
   // ── push ─────────────────────────────────────────────────────────────────

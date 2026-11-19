@@ -21,14 +21,6 @@ export const TIER_COLOR: Record<Tier, string> = {
  *  by hand it would never expire (and the shared web tables refuse it). */
 export const MANUAL_TIERS: readonly Tier[] = ['main', 'comfort', 'flex', 'learning']
 
-/** Win-rate colour, same scale as the roster cards and team stats. */
-export function wrTone(winRate: number): string {
-  if (winRate >= 60) return '#7CC47F'
-  if (winRate >= 50) return '#E8D27A'
-  if (winRate >= 40) return '#E3A35B'
-  return '#E2685A'
-}
-
 const DAY_MS = 86_400_000
 /** A main or comfort not played for this long reads "inactive" (threatCore STALE_DAYS). */
 export const INACTIVE_DAYS = 30

@@ -11,11 +11,10 @@
     "preview": "electron-vite preview",
     "postinstall": "electron-builder install-app-deps && node scripts/download-ffmpeg.mjs",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run build && playwright test",
-    "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p web/tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p web/tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
     "web:dev": "vite --config web/vite.config.ts",
     "web:build": "vite build --config web/vite.config.ts",
     "web:preview": "vite preview --config web/vite.config.ts",
@@ -26,15 +25,13 @@
     "cutout:pack": "tsx scripts/cutout-pack.ts",
     "check:i18n": "node scripts/check-i18n.mjs",
     "check": "npm run typecheck && npm run lint && npm run check:i18n && npm test",
-    "seed": "tsx prisma/seed.ts",
+    "predist": "node scripts/check-ffmpeg.mjs",
     "dist": "npm run build && electron-builder --publish never",
+    "predist:dir": "node scripts/check-ffmpeg.mjs",
     "dist:dir": "npm run build && electron-builder --dir --publish never",
     "release": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1",
     "release:publish-only": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1 -PublishOnly",
     "release:no-publish": "powershell -ExecutionPolicy Bypass -File scripts/release.ps1 -NoPublish"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.2",
@@ -81,6 +78,7 @@
     "electron-vite": "^5.0.0",
     "esbuild": "^0.25.12",
     "eslint": "^9.39.5",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^15.15.0",
     "postcss": "^8.4.0",

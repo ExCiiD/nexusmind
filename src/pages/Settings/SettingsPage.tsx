@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { useUserStore } from '@/store/useUserStore'
 import { useToast } from '@/hooks/useToast'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { useDiscordWebhooks, type DiscordWebhook } from '@/hooks/useDiscordWebhooks'
 import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Target, Video, Circle, FolderOpen, X, Pencil, Check, FlaskConical, Youtube, Volume2, Mic, AlertTriangle, ExternalLink } from 'lucide-react'
 import { AppearanceCard } from './AppearanceCard'
@@ -18,6 +18,8 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import type { AudioDevicesSummary } from '@/lib/ipc'
 import { PLATFORM_REGIONS } from '@/lib/regions'
+import { useYoutubeUploadAvailable } from '@/hooks/useYoutubeUploadAvailable'
+import { WellbeingPrivacyCard } from '@/components/Wellbeing/WellbeingPrivacyCard'
 
 interface AccountEntry {
   id: string
@@ -28,6 +30,7 @@ interface AccountEntry {
 }
 
 export function SettingsPage() {
+  const youtubeUpload = useYoutubeUploadAvailable()
   const { t } = useTranslation()
   const user = useUserStore((s) => s.user)
   const loadUser = useUserStore((s) => s.loadUser)
@@ -212,20 +215,25 @@ export function SettingsPage() {
       {/* Launch with Windows */}
       <StartupCard />
 
+      {/* Privacy: wellbeing consent (policy v0.3 § 3 bis) */}
+      <WellbeingPrivacyCard />
+
       {/* Main role for stats */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-hextech-cyan" />
-            Main Role
+            <Target className="h-5 w-5 text-hextech-cyan" aria-hidden />
+            {t('settings.rec.mainRole')}
           </CardTitle>
-          <CardDescription>Stats averages and progression will only include games played on your main role. Click again to deselect.</CardDescription>
+          <CardDescription>{t('settings.rec.mainRoleDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2">
             {GAME_ROLES.map((r) => (
               <button
+                type="button"
                 key={r.value}
+                aria-pressed={user?.mainRole === r.value}
                 onClick={() => handleSetMainRole(r.value)}
                 className={cn(
                   'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
@@ -245,44 +253,39 @@ export function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Video className="h-5 w-5 text-hextech-teal" />
-            Game Recording
+            <Video className="h-5 w-5 text-hextech-teal" aria-hidden />
+            {t('settings.rec.title')}
           </CardTitle>
           <CardDescription>
-            Automatically record your screen during every League of Legends game. Recordings are stored locally and linked to your review.
+            {t('settings.rec.desc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {ffmpegAvailable === false && (
-            <div className="rounded-md border border-orange-500/40 bg-orange-500/5 px-4 py-3 text-sm text-orange-300">
-              ffmpeg was not found on this system. Auto-record requires ffmpeg to be installed.
+            <div role="alert" className="rounded-md border border-orange-500/40 bg-orange-500/5 px-4 py-3 text-sm text-orange-300">
+              {t('settings.rec.noFfmpeg')}
             </div>
           )}
 
           {/* Auto-record toggle */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-hextech-text-bright">Auto-record games</p>
-              <p className="text-xs text-hextech-text-dim mt-0.5">
-                Starts recording when LoL launches, stops and saves when the game ends. For best results, use{' '}
-                <span className="text-hextech-text/90">borderless</span> or <span className="text-hextech-text/90">windowed</span> mode in League — exclusive fullscreen can produce a black capture with some setups.
+              <label htmlFor="auto-record" className="text-sm font-medium text-hextech-text-bright">{t('settings.rec.autoRecord')}</label>
+              <p id="auto-record-desc" className="text-xs text-hextech-text-dim mt-0.5">
+                <Trans
+                  i18nKey="settings.rec.autoRecordDesc"
+                  components={{ em: <span className="text-hextech-text/90" /> }}
+                />
               </p>
             </div>
-            <button
-              onClick={handleToggleAutoRecord}
+            <Switch
+              id="auto-record"
+              checked={!!user?.autoRecord}
               disabled={togglingAutoRecord || ffmpegAvailable === false}
-              className={cn(
-                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50',
-                user?.autoRecord ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
-              )}
-            >
-              <span
-                className={cn(
-                  'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
-                  user?.autoRecord ? 'translate-x-6' : 'translate-x-1',
-                )}
-              />
-            </button>
+              onCheckedChange={() => handleToggleAutoRecord()}
+              aria-describedby="auto-record-desc"
+              className="mt-0.5"
+            />
           </div>
 
           {/* What Ascend's own window does around a recorded game (both auto and manual). */}
@@ -308,10 +311,10 @@ export function SettingsPage() {
           {/* Live recording indicator */}
           {isRecording && (
             <div className="flex items-center gap-2 text-sm text-[#E24C3A]">
-              <Circle className="h-2.5 w-2.5 fill-current animate-pulse" />
-              <span className="font-medium">Recording in progress</span>
+              <Circle className="h-2.5 w-2.5 fill-current animate-pulse" aria-hidden />
+              <span className="font-medium">{t('settings.rec.inProgress')}</span>
               <Button variant="outline" size="sm" onClick={handleManualRecord} className="ml-auto text-xs border-[#E24C3A]/40 text-[#E24C3A] hover:bg-[#E24C3A]/10">
-                Stop now
+                {t('settings.rec.stopNow')}
               </Button>
             </div>
           )}
@@ -319,8 +322,8 @@ export function SettingsPage() {
           {/* Manual record button (when auto-record is off) */}
           {!user?.autoRecord && !isRecording && ffmpegAvailable && (
             <Button variant="outline" size="sm" onClick={handleManualRecord} className="gap-2">
-              <Circle className="h-3 w-3 fill-[#E24C3A] text-[#E24C3A]" />
-              Start manual recording
+              <Circle className="h-3 w-3 fill-[#E24C3A] text-[#E24C3A]" aria-hidden />
+              {t('settings.rec.startManual')}
             </Button>
           )}
 
@@ -329,11 +332,13 @@ export function SettingsPage() {
 
           {/* ── Quality ──────────────────────────────────────────────── */}
           <div className="space-y-2 pt-2 border-t border-hextech-border-dim/40">
-            <p className="text-sm font-medium text-hextech-text-bright">Recording quality</p>
-            <div className="grid grid-cols-4 gap-1.5">
+            <p id="rec-quality" className="text-sm font-medium text-hextech-text-bright">{t('settings.rec.quality')}</p>
+            <div role="group" aria-labelledby="rec-quality" className="grid grid-cols-4 gap-1.5">
               {(['720p', '1080p', '1440p', 'source'] as const).map((q) => (
                 <button
+                  type="button"
                   key={q}
+                  aria-pressed={user?.recordQuality === q}
                   disabled={!ffmpegAvailable}
                   onClick={async () => { await window.api.updateUser({ recordQuality: q }); await loadUser() }}
                   className={cn(
@@ -343,22 +348,24 @@ export function SettingsPage() {
                       : 'border-hextech-border-dim text-hextech-text hover:border-hextech-gold/40',
                   )}
                 >
-                  {q === 'source' ? 'Source' : q}
+                  {q === 'source' ? t('settings.rec.source') : q}
                 </button>
               ))}
             </div>
             <p className="text-[11px] text-hextech-text-dim">
-              "Source" captures at your monitor's native resolution. Lower settings reduce file size and CPU load.
+              {t('settings.rec.qualityHint')}
             </p>
           </div>
 
           {/* ── FPS ──────────────────────────────────────────────────── */}
           <div className="space-y-2">
-            <p className="text-sm font-medium text-hextech-text-bright">Frame rate</p>
-            <div className="flex gap-2">
+            <p id="rec-fps" className="text-sm font-medium text-hextech-text-bright">{t('settings.rec.fps')}</p>
+            <div role="group" aria-labelledby="rec-fps" className="flex gap-2">
               {([30, 60] as const).map((fps) => (
                 <button
+                  type="button"
                   key={fps}
+                  aria-pressed={user?.recordFps === fps}
                   disabled={!ffmpegAvailable}
                   onClick={async () => { await window.api.updateUser({ recordFps: fps }); await loadUser() }}
                   className={cn(
@@ -376,16 +383,18 @@ export function SettingsPage() {
 
           {/* ── Encoder ──────────────────────────────────────────────── */}
           <div className="space-y-2">
-            <p className="text-sm font-medium text-hextech-text-bright">Encoder</p>
-            <div className="grid grid-cols-2 gap-1.5">
+            <p id="rec-encoder" className="text-sm font-medium text-hextech-text-bright">{t('settings.rec.encoder')}</p>
+            <div role="group" aria-labelledby="rec-encoder" className="grid grid-cols-2 gap-1.5">
               {([
                 { value: 'nvenc', label: 'NVIDIA GPU', sub: 'NVENC',  desc: 'GTX 950+', recommended: true },
                 { value: 'amf',   label: 'AMD GPU',    sub: 'AMF',    desc: 'RX 400+',  recommended: true },
                 { value: 'qsv',   label: 'Intel GPU',  sub: 'QSV',    desc: 'HD 4000+', recommended: true },
-                { value: 'cpu',   label: 'CPU',         sub: 'x264',   desc: 'Fallback — always works', recommended: false },
+                { value: 'cpu',   label: 'CPU',         sub: 'x264',   desc: t('settings.rec.cpuFallback'), recommended: false },
               ]).map(({ value, label, sub, desc, recommended }) => (
                 <button
+                  type="button"
                   key={value}
+                  aria-pressed={user?.recordEncoder === value}
                   disabled={!ffmpegAvailable}
                   onClick={async () => { await window.api.updateUser({ recordEncoder: value }); await loadUser() }}
                   className={cn(
@@ -409,19 +418,19 @@ export function SettingsPage() {
               ))}
             </div>
             <div className="rounded-md bg-hextech-teal/5 border border-hextech-teal/20 px-3 py-2 text-[11px] text-hextech-text-dim space-y-0.5">
-              <p className="font-medium text-hextech-teal text-xs">⚡ GPU encoders are strongly recommended</p>
-              <p>GPU encoders use dedicated hardware — recording has near-zero impact on game FPS. Pick the one matching your GPU brand. If recording fails, fall back to CPU.</p>
+              <p className="font-medium text-hextech-teal text-xs">{t('settings.rec.gpuTitle')}</p>
+              <p>{t('settings.rec.gpuDesc')}</p>
             </div>
           </div>
 
           {/* ── Record scope ─────────────────────────────────────────── */}
           <div className="space-y-2 pt-2 border-t border-hextech-border-dim/40">
-            <p className="text-sm font-medium text-hextech-text-bright">Record queue types</p>
-            <div className="space-y-1.5">
+            <p id="rec-scope" className="text-sm font-medium text-hextech-text-bright">{t('settings.rec.scope')}</p>
+            <div role="radiogroup" aria-labelledby="rec-scope" className="space-y-1.5">
               {([
-                { value: 'ranked_only', label: 'Ranked only', desc: 'SoloQ + Flex (default)' },
-                { value: 'all', label: 'All game modes', desc: 'Includes ARAM, Arena, Normal…' },
-                { value: 'custom', label: 'Custom selection', desc: 'Choose which modes to record' },
+                { value: 'ranked_only', label: t('settings.rec.scopeRanked'), desc: t('settings.rec.scopeRankedDesc') },
+                { value: 'all', label: t('settings.rec.scopeAll'), desc: t('settings.rec.scopeAllDesc') },
+                { value: 'custom', label: t('settings.rec.scopeCustom'), desc: t('settings.rec.scopeCustomDesc') },
               ] as const).map(({ value, label, desc }) => (
                 <label key={value} className="flex items-center gap-3 cursor-pointer">
                   <input
@@ -447,8 +456,8 @@ export function SettingsPage() {
                 {([
                   { key: 'recordModeAram', label: 'ARAM' },
                   { key: 'recordModeArena', label: 'Arena' },
-                  { key: 'recordModeNormal', label: 'Normal / Quickplay' },
-                  { key: 'recordAllowCustom', label: 'Custom games' },
+                  { key: 'recordModeNormal', label: t('settings.rec.modeNormal') },
+                  { key: 'recordAllowCustom', label: t('settings.rec.modeCustom') },
                 ] as const).map(({ key, label }) => (
                   <label key={key} className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -469,39 +478,26 @@ export function SettingsPage() {
             )}
 
             {/* Desktop fallback toggle */}
-            <div className="flex items-center justify-between pt-1">
-              <div>
-                <p className="text-sm text-hextech-text-bright">Allow desktop fallback</p>
-                <p className="text-xs text-hextech-text-dim mt-0.5">
-                  Falls back to full-screen capture if the LoL window isn't detected.
-                </p>
-              </div>
-              <button
-                onClick={async () => {
-                  await window.api.updateUser({ allowDesktopFallback: !(user?.allowDesktopFallback ?? true) })
+            <div className="pt-1">
+              <WindowSettingRow
+                id="desktop-fallback"
+                title={t('settings.rec.desktopFallback')}
+                desc={t('settings.rec.desktopFallbackDesc')}
+                checked={user?.allowDesktopFallback ?? true}
+                onChange={async (v) => {
+                  await window.api.updateUser({ allowDesktopFallback: v })
                   await loadUser()
                 }}
-                className={cn(
-                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                  (user?.allowDesktopFallback ?? true) ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
-                )}
-              >
-                <span
-                  className={cn(
-                    'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
-                    (user?.allowDesktopFallback ?? true) ? 'translate-x-6' : 'translate-x-1',
-                  )}
-                />
-              </button>
+              />
             </div>
           </div>
 
           {/* ── Recordings folder ─────────────────────────────────────── */}
           <div className="space-y-2 pt-2 border-t border-hextech-border-dim/40">
-            <p className="text-sm font-medium text-hextech-text-bright">Recordings folder</p>
+            <p className="text-sm font-medium text-hextech-text-bright">{t('settings.rec.folder')}</p>
             <div className="flex items-center gap-2">
               <div className="flex-1 rounded-md border border-hextech-border-dim bg-hextech-elevated px-3 py-2 text-xs text-hextech-text truncate min-w-0">
-                {user?.recordingPath || recordingsDir || 'Default (AppData)'}
+                {user?.recordingPath || recordingsDir || t('settings.rec.folderDefault')}
               </div>
               <Button
                 variant="outline"
@@ -516,15 +512,16 @@ export function SettingsPage() {
                   }
                 }}
               >
-                <FolderOpen className="h-3.5 w-3.5" />
-                Browse
+                <FolderOpen className="h-3.5 w-3.5" aria-hidden />
+                {t('settings.rec.browse')}
               </Button>
               {user?.recordingPath && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="shrink-0 text-hextech-text-dim hover:text-[#E24C3A]"
-                  title="Reset to default"
+                  title={t('settings.rec.resetFolder')}
+                  aria-label={t('settings.rec.resetFolder')}
                   onClick={async () => {
                     await window.api.updateUser({ recordingPath: null })
                     await loadUser()
@@ -578,12 +575,12 @@ export function SettingsPage() {
               selectedDesktopDevice.id !== defaultOutputId
             // What will *actually* be captured right now (always follows the
             // Windows default, regardless of the user's stored target).
-            const actualCapturedName = defaultOutputName ?? 'No default output detected'
+            const actualCapturedName = defaultOutputName ?? t('settings.rec.noDefaultOutput')
 
             return (
               <div className="space-y-3 pt-2 border-t border-hextech-border-dim/40">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-hextech-text-bright">Audio</p>
+                  <p className="text-sm font-medium text-hextech-text-bright">{t('settings.rec.audio')}</p>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -591,35 +588,22 @@ export function SettingsPage() {
                     onClick={refreshAudioDevices}
                     className="text-xs text-hextech-text-dim hover:text-hextech-text"
                   >
-                    {loadingAudioDevices ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Refresh devices'}
+                    {loadingAudioDevices ? <Loader2 className="h-3 w-3 animate-spin" aria-label={t('common.loading')} /> : t('settings.rec.refreshDevices')}
                   </Button>
                 </div>
 
                 {/* Desktop audio — follows Windows default output (WASAPI loopback) */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-hextech-text-bright">Record desktop audio</p>
-                      <p className="text-xs text-hextech-text-dim mt-0.5">
-                        Captures everything you hear (game + system sounds).
-                      </p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        await window.api.updateUser({ recordAudioDesktop: !(user?.recordAudioDesktop ?? true) })
-                        await loadUser()
-                      }}
-                      className={cn(
-                        'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                        (user?.recordAudioDesktop ?? true) ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
-                      )}
-                    >
-                      <span className={cn(
-                        'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
-                        (user?.recordAudioDesktop ?? true) ? 'translate-x-6' : 'translate-x-1',
-                      )} />
-                    </button>
-                  </div>
+                  <WindowSettingRow
+                    id="record-desktop-audio"
+                    title={t('settings.rec.desktopAudio')}
+                    desc={t('settings.rec.desktopAudioDesc')}
+                    checked={user?.recordAudioDesktop ?? true}
+                    onChange={async (v) => {
+                      await window.api.updateUser({ recordAudioDesktop: v })
+                      await loadUser()
+                    }}
+                  />
 
                   {(user?.recordAudioDesktop ?? true) && (
                     <div className="ml-1 space-y-1.5">
@@ -633,33 +617,33 @@ export function SettingsPage() {
                             await loadUser()
                           }}
                         >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="Follow Windows default output" />
+                          <SelectTrigger className="h-8 text-xs" aria-label={t('settings.rec.outputDevice')}>
+                            <SelectValue placeholder={t('settings.rec.followWindowsOutput')} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="__default__" className="text-xs">
                               <span className="flex items-center gap-1.5">
-                                <Volume2 className="h-3 w-3 text-hextech-teal" />
-                                Follow Windows default{defaultOutputName ? ` — ${defaultOutputName}` : ''}
+                                <Volume2 className="h-3 w-3 text-hextech-teal" aria-hidden />
+                                {defaultOutputName ? t('settings.rec.followWindowsNamed', { name: defaultOutputName }) : t('settings.rec.followWindows')}
                               </span>
                             </SelectItem>
                             {outputs.map((d) => (
                               <SelectItem key={d.id} value={d.id} className="text-xs">
-                                {d.name}{d.isDefault ? ' (current default)' : ''}
+                                {d.isDefault ? t('settings.rec.currentDefault', { name: d.name }) : d.name}
                               </SelectItem>
                             ))}
                             {desktopSelectionMissing && (
                               // Stale stored value — keep it visible so the
                               // user understands what they had picked before.
                               <SelectItem value={storedDesktopValue!} className="text-xs text-hextech-text-dim italic">
-                                {storedDesktopValue} (unavailable)
+                                {t('settings.rec.unavailableDevice', { name: storedDesktopValue })}
                               </SelectItem>
                             )}
                           </SelectContent>
                         </Select>
                       ) : (
                         <p className="text-xs text-hextech-text-dim italic">
-                          No output device detected. Click &quot;Refresh devices&quot;.
+                          {t('settings.rec.noOutput')}
                         </p>
                       )}
 
@@ -668,10 +652,13 @@ export function SettingsPage() {
                           default — since the native lib only does loopback on
                           the default endpoint. */}
                       <div className="flex items-start gap-1.5 text-[11px] text-hextech-text-dim leading-snug">
-                        <Volume2 className="h-3 w-3 mt-0.5 shrink-0 text-hextech-teal/80" />
+                        <Volume2 className="h-3 w-3 mt-0.5 shrink-0 text-hextech-teal/80" aria-hidden />
                         <span>
-                          Currently capturing: <span className="text-hextech-text-bright">{actualCapturedName}</span>
-                          {' '}<span className="text-hextech-text-dim/70">(always follows the Windows default output).</span>
+                          <Trans
+                            i18nKey="settings.rec.currentlyCapturing"
+                            values={{ name: actualCapturedName }}
+                            components={{ b: <span className="text-hextech-text-bright" />, dim: <span className="text-hextech-text-dim/70" /> }}
+                          />
                         </span>
                       </div>
 
@@ -679,13 +666,13 @@ export function SettingsPage() {
                       {desktopTargetMismatch && (
                         <div className="rounded-md border border-amber-400/40 bg-amber-400/10 px-2.5 py-2 space-y-1.5">
                           <div className="flex items-start gap-1.5 text-[11px] text-amber-300 leading-snug">
-                            <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                            <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" aria-hidden />
                             <span>
-                              <span className="font-medium">Target mismatch.</span> You picked{' '}
-                              <span className="text-amber-200">&quot;{selectedDesktopDevice!.name}&quot;</span>
-                              {' '}but your Windows default is{' '}
-                              <span className="text-amber-200">&quot;{defaultOutputName ?? 'unknown'}&quot;</span>.
-                              Recordings will capture the current default, not your target, until you change the Windows default.
+                              <Trans
+                                i18nKey="settings.rec.mismatch"
+                                values={{ picked: selectedDesktopDevice!.name, current: defaultOutputName ?? t('settings.rec.unknown') }}
+                                components={{ b: <span className="font-medium" />, hl: <span className="text-amber-200" /> }}
+                              />
                             </span>
                           </div>
                           <Button
@@ -697,25 +684,25 @@ export function SettingsPage() {
                               if (!res.opened) {
                                 toast({
                                   variant: 'destructive',
-                                  title: 'Could not open Windows sound settings',
+                                  title: t('settings.rec.soundSettingsFailed'),
                                   description: res.reason === 'unsupported-platform'
-                                    ? 'This action is only available on Windows.'
-                                    : (res.error ?? 'Unknown error'),
+                                    ? t('settings.rec.windowsOnly')
+                                    : (res.error ?? t('settings.rec.unknownError')),
                                 })
                               }
                             }}
                           >
-                            <ExternalLink className="h-3 w-3" />
-                            Open Windows sound settings
+                            <ExternalLink className="h-3 w-3" aria-hidden />
+                            {t('settings.rec.openSoundSettings')}
                           </Button>
                         </div>
                       )}
 
                       {desktopSelectionMissing && (
                         <div className="flex items-start gap-1.5 text-[11px] text-amber-400/90">
-                          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" aria-hidden />
                           <span>
-                            Selected output is not currently available. Pick another device or reconnect it.
+                            {t('settings.rec.outputMissing')}
                           </span>
                         </div>
                       )}
@@ -725,29 +712,16 @@ export function SettingsPage() {
 
                 {/* Microphone */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-hextech-text-bright">Record microphone</p>
-                      <p className="text-xs text-hextech-text-dim mt-0.5">
-                        Include your voice in the recording.
-                      </p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        await window.api.updateUser({ recordAudioMic: !(user?.recordAudioMic ?? true) })
-                        await loadUser()
-                      }}
-                      className={cn(
-                        'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                        (user?.recordAudioMic ?? true) ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
-                      )}
-                    >
-                      <span className={cn(
-                        'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
-                        (user?.recordAudioMic ?? true) ? 'translate-x-6' : 'translate-x-1',
-                      )} />
-                    </button>
-                  </div>
+                  <WindowSettingRow
+                    id="record-mic"
+                    title={t('settings.rec.mic')}
+                    desc={t('settings.rec.micDesc')}
+                    checked={user?.recordAudioMic ?? true}
+                    onChange={async (v) => {
+                      await window.api.updateUser({ recordAudioMic: v })
+                      await loadUser()
+                    }}
+                  />
 
                   {(user?.recordAudioMic ?? true) && (
                     <div className="ml-1 space-y-1.5">
@@ -759,41 +733,41 @@ export function SettingsPage() {
                             await loadUser()
                           }}
                         >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="System default (follows Windows)" />
+                          <SelectTrigger className="h-8 text-xs" aria-label={t('settings.rec.micDevice')}>
+                            <SelectValue placeholder={t('settings.rec.systemDefaultFollows')} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="__default__" className="text-xs">
                               <span className="flex items-center gap-1.5">
-                                <Mic className="h-3 w-3 text-hextech-teal" />
-                                System default{defaultInputName ? ` — ${defaultInputName}` : ''}
+                                <Mic className="h-3 w-3 text-hextech-teal" aria-hidden />
+                                {defaultInputName ? t('settings.rec.systemDefaultNamed', { name: defaultInputName }) : t('settings.rec.systemDefault')}
                               </span>
                             </SelectItem>
                             {micInputs.map((d) => (
                               <SelectItem key={d.id} value={d.id} className="text-xs">
-                                {d.name}{d.isDefault ? ' (default)' : ''}
+                                {d.isDefault ? t('settings.rec.defaultDevice', { name: d.name }) : d.name}
                               </SelectItem>
                             ))}
                             {micSelectionMissing && (
                               // Render the stale stored value so Radix keeps the
                               // selection visible until user picks a new device.
                               <SelectItem value={storedMicValue!} className="text-xs text-hextech-text-dim italic">
-                                {storedMicValue} (unavailable)
+                                {t('settings.rec.unavailableDevice', { name: storedMicValue })}
                               </SelectItem>
                             )}
                           </SelectContent>
                         </Select>
                       ) : (
                         <p className="text-xs text-hextech-text-dim italic">
-                          No microphone detected. Click &quot;Refresh devices&quot;.
+                          {t('settings.rec.noMic')}
                         </p>
                       )}
 
                       {micSelectionMissing && (
                         <div className="flex items-start gap-1.5 text-[11px] text-amber-400/90">
-                          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" aria-hidden />
                           <span>
-                            Selected microphone is not currently available. Pick another device or reconnect it — recording will skip the mic track until resolved.
+                            {t('settings.rec.micMissing')}
                           </span>
                         </div>
                       )}
@@ -812,17 +786,17 @@ export function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FolderOpen className="h-5 w-5 text-hextech-gold" />
-            External recordings folder
+            <FolderOpen className="h-5 w-5 text-hextech-gold" aria-hidden />
+            {t('settings.rec.externalFolder')}
           </CardTitle>
           <CardDescription>
-            When linking a replay recorded with another app (OBS, Outplayed…), the file picker will open directly in this folder.
+            {t('settings.rec.externalFolderDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2">
             <div className="flex-1 rounded-md border border-hextech-border-dim bg-hextech-elevated px-3 py-2 text-xs text-hextech-text truncate min-w-0">
-              {user?.externalRecordingPath || <span className="text-hextech-text-dim/60">Not set — file picker will start at the default location</span>}
+              {user?.externalRecordingPath || <span className="text-hextech-text-dim/60">{t('settings.rec.externalNotSet')}</span>}
             </div>
             <Button
               variant="outline"
@@ -838,15 +812,16 @@ export function SettingsPage() {
                 }
               }}
             >
-              <FolderOpen className="h-3.5 w-3.5" />
-              Browse
+              <FolderOpen className="h-3.5 w-3.5" aria-hidden />
+              {t('settings.rec.browse')}
             </Button>
             {user?.externalRecordingPath && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="shrink-0 text-hextech-text-dim hover:text-[#E24C3A]"
-                title="Clear folder"
+                title={t('settings.rec.clearFolder')}
+                aria-label={t('settings.rec.clearFolder')}
                 onClick={async () => {
                   await window.api.updateUser({ externalRecordingPath: null })
                   await loadUser()
@@ -871,7 +846,7 @@ export function SettingsPage() {
       </Card>
 
       {/* ── YouTube upload ──────────────────────────────────────────────────── */}
-      <YouTubeCard />
+      {youtubeUpload && <YouTubeCard />}
 
       {/* ── Discord sharing ──────────────────────────────────────────────────── */}
       <DiscordWebhookCard />
@@ -1066,6 +1041,7 @@ function WindowSettingRow({ id, title, desc, checked, disabled, onChange }: {
 // ── Danger Zone sub-component ────────────────────────────────────────────────
 
 function DangerZoneCard() {
+  const { t } = useTranslation()
   const { toast } = useToast()
   const [confirmClear, setConfirmClear] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
@@ -1081,24 +1057,26 @@ function DangerZoneCard() {
   const [removingForeign, setRemovingForeign] = useState(false)
 
   const RECENT_OPTIONS = [
-    { days: 1, label: '24h' },
-    { days: 3, label: '3 days' },
-    { days: 7, label: 'last week' },
+    { days: 1, label: t('settings.danger.range24h') },
+    { days: 3, label: t('settings.danger.range3d') },
+    { days: 7, label: t('settings.danger.rangeWeek') },
   ]
+  const rangeLabel = (days: number) => (days === 1 ? t('settings.danger.range24h') : t('settings.danger.rangeDays', { count: days }))
+  const unknown = t('settings.rec.unknownError')
 
   const handleClearRecent = async (days: number) => {
     setClearingRecent(true)
     try {
       const r = await window.api.clearRecentData(days)
       toast({
-        title: 'Recent data cleared',
-        description: `Deleted ${r.games} game(s), ${r.recordings} recording(s) (${r.files} file(s) freed) and ${r.mistakes} mistake(s) from the last ${days === 1 ? '24h' : `${days} days`}.`,
+        title: t('settings.danger.recentCleared'),
+        description: t('settings.danger.recentClearedDesc', { games: r.games, recordings: r.recordings, files: r.files, mistakes: r.mistakes, range: rangeLabel(days) }),
         variant: 'success',
       })
       setPendingDays(null)
       setTimeout(() => window.location.reload(), 800)
     } catch (err: any) {
-      toast({ title: 'Clear failed', description: err?.message ?? 'Unknown error', variant: 'destructive' })
+      toast({ title: t('settings.danger.clearFailed'), description: err?.message ?? unknown, variant: 'destructive' })
     } finally {
       setClearingRecent(false)
     }
@@ -1109,15 +1087,15 @@ function DangerZoneCard() {
     try {
       const r = await window.api.clearStatsMistakes()
       toast({
-        title: 'Stats & mistakes cleared',
-        description: `Removed ${r.mistakes} mistake(s), ${r.detailedStats} detailed-stats cache(s), ${r.snapshots} snapshot(s) and ${r.lanePhase} lane reports.`,
+        title: t('settings.danger.statsCleared'),
+        description: t('settings.danger.statsClearedDesc', { mistakes: r.mistakes, detailedStats: r.detailedStats, snapshots: r.snapshots, lanePhase: r.lanePhase }),
         variant: 'success',
       })
       setConfirmClear(false)
       // Reload so every cached stats/mistakes view reflects the wipe.
       setTimeout(() => window.location.reload(), 700)
     } catch (err: any) {
-      toast({ title: 'Clear failed', description: err?.message ?? 'Unknown error', variant: 'destructive' })
+      toast({ title: t('settings.danger.clearFailed'), description: err?.message ?? unknown, variant: 'destructive' })
     } finally {
       setClearing(false)
     }
@@ -1129,7 +1107,7 @@ function DangerZoneCard() {
     try {
       setForeignAudit(await window.api.syncAuditForeignRows())
     } catch (err: any) {
-      toast({ title: 'Check failed', description: err?.message ?? 'Unknown error', variant: 'destructive' })
+      toast({ title: t('settings.danger.checkFailed'), description: err?.message ?? unknown, variant: 'destructive' })
     } finally {
       setAuditingForeign(false)
     }
@@ -1141,16 +1119,16 @@ function DangerZoneCard() {
       const deleted = await window.api.syncDeleteForeignRows()
       const total = Object.values(deleted).reduce((a, b) => a + b, 0)
       toast({
-        title: 'Cleaned up',
+        title: t('settings.danger.cleaned'),
         description: total > 0
-          ? `Removed ${total} row(s) that belonged to a teammate: ${Object.entries(deleted).map(([t, n]) => `${n} ${t}`).join(', ')}.`
-          : 'Nothing left to remove.',
+          ? t('settings.danger.cleanedDesc', { count: total, detail: Object.entries(deleted).map(([table, n]) => `${n} ${table}`).join(', ') })
+          : t('settings.danger.nothingLeft'),
         variant: 'success',
       })
       setForeignAudit(null)
       setConfirmRemoveForeign(false)
     } catch (err: any) {
-      toast({ title: 'Cleanup failed', description: err?.message ?? 'Unknown error', variant: 'destructive' })
+      toast({ title: t('settings.danger.cleanupFailed'), description: err?.message ?? unknown, variant: 'destructive' })
     } finally {
       setRemovingForeign(false)
     }
@@ -1161,14 +1139,14 @@ function DangerZoneCard() {
     try {
       const r = await window.api.resetAllData()
       toast({
-        title: 'App reset',
-        description: `Deleted ${r.games} game(s), ${r.recordings} recording(s) (${r.files} file(s) freed) and all stats. Restarting view…`,
+        title: t('settings.danger.resetDone'),
+        description: t('settings.danger.resetDoneDesc', { games: r.games, recordings: r.recordings, files: r.files }),
         variant: 'success',
       })
       setConfirmReset(false)
       setTimeout(() => window.location.reload(), 900)
     } catch (err: any) {
-      toast({ title: 'Reset failed', description: err?.message ?? 'Unknown error', variant: 'destructive' })
+      toast({ title: t('settings.danger.resetFailed'), description: err?.message ?? unknown, variant: 'destructive' })
     } finally {
       setResetting(false)
     }
@@ -1178,30 +1156,29 @@ function DangerZoneCard() {
     <Card className="border-[#E24C3A]/40">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-[#E24C3A]">
-          <AlertTriangle className="h-5 w-5" />
-          Danger Zone
+          <AlertTriangle className="h-5 w-5" aria-hidden />
+          {t('settings.danger.title')}
         </CardTitle>
         <CardDescription>
-          Permanently delete data. These actions cannot be undone — export a backup first if unsure.
+          {t('settings.danger.desc')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Clear stats & mistakes */}
         <div className="flex items-start justify-between gap-3 flex-wrap rounded-lg border border-hextech-border-dim bg-hextech-elevated px-3 py-2.5">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-hextech-text-bright">Clear stats &amp; mistakes</p>
+            <p className="text-sm font-medium text-hextech-text-bright">{t('settings.danger.clearStats')}</p>
             <p className="text-xs text-hextech-text-dim mt-0.5">
-              Removes all tagged &amp; auto-detected mistakes, progression snapshots, the detailed-stats cache and lane-phase reports.
-              Your games, recordings, reviews and notes are kept.
+              {t('settings.danger.clearStatsDesc')}
             </p>
           </div>
           {confirmClear ? (
             <div className="flex items-center gap-2 shrink-0">
               <Button variant="destructive" size="sm" disabled={clearing} onClick={handleClear} className="gap-1.5">
-                {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                Confirm clear
+                {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Trash2 className="h-3.5 w-3.5" aria-hidden />}
+                {t('settings.danger.confirmClear')}
               </Button>
-              <Button variant="ghost" size="sm" disabled={clearing} onClick={() => setConfirmClear(false)}>Cancel</Button>
+              <Button variant="ghost" size="sm" disabled={clearing} onClick={() => setConfirmClear(false)}>{t('common.cancel')}</Button>
             </div>
           ) : (
             <Button
@@ -1209,8 +1186,8 @@ function DangerZoneCard() {
               onClick={() => setConfirmClear(true)}
               className="shrink-0 gap-1.5 border-[#E24C3A]/40 text-[#E24C3A] hover:bg-[#E24C3A]/10"
             >
-              <Trash2 className="h-3.5 w-3.5" />
-              Clear stats &amp; mistakes
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              {t('settings.danger.clearStats')}
             </Button>
           )}
         </div>
@@ -1218,22 +1195,21 @@ function DangerZoneCard() {
         {/* Clear recent data (time-scoped) */}
         <div className="flex items-start justify-between gap-3 flex-wrap rounded-lg border border-hextech-border-dim bg-hextech-elevated px-3 py-2.5">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-hextech-text-bright">Clear recent data</p>
+            <p id="danger-recent" className="text-sm font-medium text-hextech-text-bright">{t('settings.danger.clearRecent')}</p>
             <p className="text-xs text-hextech-text-dim mt-0.5">
-              Deletes games, stats, mistakes and recordings (files included) from the last few days only — older history is kept.
-              Useful to drop a bad test session.
+              {t('settings.danger.clearRecentDesc')}
             </p>
           </div>
           {pendingDays !== null ? (
             <div className="flex items-center gap-2 shrink-0">
               <Button variant="destructive" size="sm" disabled={clearingRecent} onClick={() => handleClearRecent(pendingDays)} className="gap-1.5">
-                {clearingRecent ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                Delete last {pendingDays === 1 ? '24h' : `${pendingDays} days`}
+                {clearingRecent ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Trash2 className="h-3.5 w-3.5" aria-hidden />}
+                {t('settings.danger.deleteLast', { range: rangeLabel(pendingDays) })}
               </Button>
-              <Button variant="ghost" size="sm" disabled={clearingRecent} onClick={() => setPendingDays(null)}>Cancel</Button>
+              <Button variant="ghost" size="sm" disabled={clearingRecent} onClick={() => setPendingDays(null)}>{t('common.cancel')}</Button>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div role="group" aria-labelledby="danger-recent" className="flex items-center gap-1.5 shrink-0">
               {RECENT_OPTIONS.map((o) => (
                 <Button
                   key={o.days}
@@ -1251,19 +1227,19 @@ function DangerZoneCard() {
         {/* Sync-leak cleanup (beta.104) */}
         <div className="flex items-start justify-between gap-3 flex-wrap rounded-lg border border-hextech-border-dim bg-hextech-elevated px-3 py-2.5">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-hextech-text-bright">Check for teammates&apos; data</p>
+            <p className="text-sm font-medium text-hextech-text-bright">{t('settings.danger.foreignTitle')}</p>
             <p className="text-xs text-hextech-text-dim mt-0.5">
-              A sync bug (fixed in beta.104) could let a coach/analyst&apos;s own device absorb a shared teammate&apos;s sessions,
-              assessments or reviews into their own local history. This checks your database against the server and tells you
-              if any of your data actually belongs to someone else.
+              {t('settings.danger.foreignDesc')}
             </p>
             {foreignAudit && (
               Object.keys(foreignAudit).length === 0 ? (
-                <p className="text-xs text-hextech-green mt-1.5">No contaminated data found.</p>
+                <p role="status" className="text-xs text-hextech-green mt-1.5">{t('settings.danger.foreignNone')}</p>
               ) : (
-                <p className="text-xs text-orange-300 mt-1.5">
-                  Found {Object.values(foreignAudit).reduce((a, b) => a + b, 0)} row(s) across{' '}
-                  {Object.entries(foreignAudit).map(([t, n]) => `${t} (${n})`).join(', ')} that belong to a teammate.
+                <p role="status" className="text-xs text-orange-300 mt-1.5">
+                  {t('settings.danger.foreignFound', {
+                    count: Object.values(foreignAudit).reduce((a, b) => a + b, 0),
+                    tables: Object.entries(foreignAudit).map(([table, n]) => `${table} (${n})`).join(', '),
+                  })}
                 </p>
               )
             )}
@@ -1271,20 +1247,20 @@ function DangerZoneCard() {
           {confirmRemoveForeign ? (
             <div className="flex items-center gap-2 shrink-0">
               <Button variant="destructive" size="sm" disabled={removingForeign} onClick={handleRemoveForeign} className="gap-1.5">
-                {removingForeign ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                Confirm removal
+                {removingForeign ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Trash2 className="h-3.5 w-3.5" aria-hidden />}
+                {t('settings.danger.confirmRemoval')}
               </Button>
-              <Button variant="ghost" size="sm" disabled={removingForeign} onClick={() => setConfirmRemoveForeign(false)}>Cancel</Button>
+              <Button variant="ghost" size="sm" disabled={removingForeign} onClick={() => setConfirmRemoveForeign(false)}>{t('common.cancel')}</Button>
             </div>
           ) : foreignAudit && Object.keys(foreignAudit).length > 0 ? (
             <Button variant="destructive" size="sm" onClick={() => setConfirmRemoveForeign(true)} className="shrink-0 gap-1.5">
-              <Trash2 className="h-3.5 w-3.5" />
-              Remove it
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              {t('settings.danger.removeIt')}
             </Button>
           ) : (
             <Button variant="outline" size="sm" disabled={auditingForeign} onClick={handleAuditForeign} className="shrink-0 gap-1.5">
-              {auditingForeign ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-              Check
+              {auditingForeign ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
+              {t('settings.danger.check')}
             </Button>
           )}
         </div>
@@ -1292,24 +1268,23 @@ function DangerZoneCard() {
         {/* Full reset */}
         <div className="flex items-start justify-between gap-3 flex-wrap rounded-lg border border-[#E24C3A]/30 bg-[#E24C3A]/5 px-3 py-2.5">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-hextech-text-bright">Reset everything</p>
+            <p className="text-sm font-medium text-hextech-text-bright">{t('settings.danger.resetAll')}</p>
             <p className="text-xs text-hextech-text-dim mt-0.5">
-              Deletes <span className="text-[#FF8694] font-medium">all</span> sessions, games, stats, mistakes, reviews and recordings
-              (video files included) and resets your XP/streak. Your account, settings and teams are kept.
+              <Trans i18nKey="settings.danger.resetAllDesc" components={{ all: <span className="text-[#FF8694] font-medium" /> }} />
             </p>
           </div>
           {confirmReset ? (
             <div className="flex items-center gap-2 shrink-0">
               <Button variant="destructive" size="sm" disabled={resetting} onClick={handleReset} className="gap-1.5">
-                {resetting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-                Confirm full reset
+                {resetting ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <AlertTriangle className="h-3.5 w-3.5" aria-hidden />}
+                {t('settings.danger.confirmReset')}
               </Button>
-              <Button variant="ghost" size="sm" disabled={resetting} onClick={() => setConfirmReset(false)}>Cancel</Button>
+              <Button variant="ghost" size="sm" disabled={resetting} onClick={() => setConfirmReset(false)}>{t('common.cancel')}</Button>
             </div>
           ) : (
             <Button variant="destructive" size="sm" onClick={() => setConfirmReset(true)} className="shrink-0 gap-1.5">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              Reset everything
+              <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+              {t('settings.danger.resetAll')}
             </Button>
           )}
         </div>
@@ -1429,6 +1404,7 @@ function BackupCard() {
 // ── Discord webhook sub-component ────────────────────────────────────────────
 
 function DiscordWebhookCard() {
+  const { t } = useTranslation()
   const { toast } = useToast()
   const { webhooks, loading, reload } = useDiscordWebhooks()
 
@@ -1454,9 +1430,9 @@ function DiscordWebhookCard() {
       setAddName('')
       setAddUrl('')
       setShowAddForm(false)
-      toast({ title: 'Webhook added', variant: 'gold' })
+      toast({ title: t('settings.discord.added'), variant: 'gold' })
     } catch (err: any) {
-      toast({ title: err.message ?? 'Failed to add webhook', variant: 'destructive' })
+      toast({ title: t('settings.discord.addFailed'), description: err?.message, variant: 'destructive' })
     } finally {
       setAdding(false)
     }
@@ -1475,7 +1451,7 @@ function DiscordWebhookCard() {
       await reload()
       setRenamingId(null)
     } catch (err: any) {
-      toast({ title: err.message ?? 'Rename failed', variant: 'destructive' })
+      toast({ title: t('settings.discord.renameFailed'), description: err?.message, variant: 'destructive' })
     } finally {
       setRenamingSaving(false)
     }
@@ -1487,9 +1463,9 @@ function DiscordWebhookCard() {
       await window.api.deleteWebhook(id)
       await reload()
       setConfirmDeleteId(null)
-      toast({ title: 'Webhook removed', variant: 'gold' })
+      toast({ title: t('settings.discord.removed'), variant: 'gold' })
     } catch (err: any) {
-      toast({ title: err.message ?? 'Delete failed', variant: 'destructive' })
+      toast({ title: t('settings.discord.removeFailed'), description: err?.message, variant: 'destructive' })
     } finally {
       setDeletingId(null)
     }
@@ -1499,15 +1475,15 @@ function DiscordWebhookCard() {
     setTestingId(wh.id)
     try {
       await window.api.sendToDiscord([{
-        title: '✅ Ascend webhook test',
-        description: `**${wh.name}** is correctly configured. Reviews will be shared to this channel.`,
+        title: t('settings.discord.testEmbedTitle'),
+        description: t('settings.discord.testEmbedDesc', { name: wh.name }),
         color: 0xc89b3c,
         footer: { text: 'Ascend' },
         timestamp: new Date().toISOString(),
       }], wh.url)
-      toast({ title: `Test sent to "${wh.name}"`, variant: 'gold' })
+      toast({ title: t('settings.discord.testSent', { name: wh.name }), variant: 'gold' })
     } catch (err: any) {
-      toast({ title: 'Webhook test failed', description: err.message, variant: 'destructive' })
+      toast({ title: t('settings.discord.testFailed'), description: err.message, variant: 'destructive' })
     } finally {
       setTestingId(null)
     }
@@ -1517,25 +1493,24 @@ function DiscordWebhookCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <span className="text-[#5865F2] text-lg font-bold leading-none">ᴅ</span>
-          Discord sharing
+          <span className="text-[#5865F2] text-lg font-bold leading-none" aria-hidden>ᴅ</span>
+          {t('settings.discord.title')}
         </CardTitle>
         <CardDescription>
-          Add Discord webhook URLs to share reviews as rich embeds directly to a channel.
-          You can configure multiple webhooks (e.g. one per team or server) and pick the destination when sharing.
-          {' '}<a href="https://support.discord.com/hc/en-us/articles/228383668" target="_blank" rel="noreferrer" className="underline hover:text-hextech-text transition-colors">How to create a webhook ↗</a>
+          {t('settings.discord.desc')}
+          {' '}<a href="https://support.discord.com/hc/en-us/articles/228383668" target="_blank" rel="noreferrer" className="underline hover:text-hextech-text transition-colors">{t('settings.discord.howTo')}</a>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Webhook list */}
         {loading ? (
           <div className="flex items-center gap-2 text-xs text-hextech-text-dim py-1">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Loading…
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            {t('common.loading')}
           </div>
         ) : webhooks.length === 0 ? (
           <p className="text-xs text-hextech-text-dim/70 py-1">
-            No webhooks configured — reviews can still be copied as text.
+            {t('settings.discord.empty')}
           </p>
         ) : (
           <div className="space-y-2">
@@ -1544,13 +1519,14 @@ function DiscordWebhookCard() {
                 key={wh.id}
                 className="flex items-center gap-2 rounded-lg border border-hextech-border-dim bg-hextech-elevated px-3 py-2.5"
               >
-                <span className="text-[#5865F2] text-sm font-bold leading-none shrink-0">ᴅ</span>
+                <span className="text-[#5865F2] text-sm font-bold leading-none shrink-0" aria-hidden>ᴅ</span>
 
                 <div className="flex-1 min-w-0">
                   {renamingId === wh.id ? (
                     <div className="flex items-center gap-1.5">
                       <input
                         autoFocus
+                        aria-label={t('settings.discord.nameLabel')}
                         value={renameValue}
                         onChange={(e) => setRenameValue(e.target.value)}
                         onKeyDown={(e) => {
@@ -1560,19 +1536,23 @@ function DiscordWebhookCard() {
                         className="flex-1 min-w-0 rounded border border-[#5865F2]/60 bg-hextech-dark px-2 py-0.5 text-xs text-hextech-text focus:outline-none"
                       />
                       <button
+                        type="button"
                         onClick={() => handleRenameSave(wh.id)}
                         disabled={renamingSaving}
+                        aria-label={t('settings.discord.saveName')}
                         className="text-hextech-teal hover:text-hextech-teal/80 disabled:opacity-50"
                       >
                         {renamingSaving
-                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          : <Check className="h-3.5 w-3.5" />}
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                          : <Check className="h-3.5 w-3.5" aria-hidden />}
                       </button>
                       <button
+                        type="button"
                         onClick={() => setRenamingId(null)}
+                        aria-label={t('common.cancel')}
                         className="text-hextech-text-dim hover:text-hextech-text"
                       >
-                        <X className="h-3.5 w-3.5" />
+                        <X className="h-3.5 w-3.5" aria-hidden />
                       </button>
                     </div>
                   ) : (
@@ -1589,48 +1569,56 @@ function DiscordWebhookCard() {
                   <div className="flex items-center gap-1 shrink-0">
                     {/* Test */}
                     <button
+                      type="button"
                       onClick={() => handleTest(wh)}
                       disabled={testingId === wh.id}
-                      title="Send a test message"
+                      title={t('settings.discord.test')}
+                      aria-label={t('settings.discord.testAria', { name: wh.name })}
                       className="rounded p-1.5 text-hextech-text-dim hover:text-hextech-gold hover:bg-hextech-gold/10 transition-colors disabled:opacity-50"
                     >
                       {testingId === wh.id
-                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        : <FlaskConical className="h-3.5 w-3.5" />}
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                        : <FlaskConical className="h-3.5 w-3.5" aria-hidden />}
                     </button>
                     {/* Rename */}
                     <button
+                      type="button"
                       onClick={() => handleRenameStart(wh)}
-                      title="Rename webhook"
+                      title={t('settings.discord.rename')}
+                      aria-label={t('settings.discord.renameAria', { name: wh.name })}
                       className="rounded p-1.5 text-hextech-text-dim hover:text-hextech-text hover:bg-white/5 transition-colors"
                     >
-                      <Pencil className="h-3.5 w-3.5" />
+                      <Pencil className="h-3.5 w-3.5" aria-hidden />
                     </button>
                     {/* Delete */}
                     {confirmDeleteId === wh.id ? (
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-hextech-text-dim">Remove?</span>
+                        <span className="text-[10px] text-hextech-text-dim">{t('settings.discord.removeQ')}</span>
                         <button
+                          type="button"
                           onClick={() => handleDelete(wh.id)}
                           disabled={deletingId === wh.id}
                           className="rounded px-2 py-0.5 text-[10px] font-medium text-white bg-[#E24C3A] hover:bg-[#E24C3A]/80 disabled:opacity-50 transition-colors"
                         >
-                          {deletingId === wh.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Yes'}
+                          {deletingId === wh.id ? <Loader2 className="h-3 w-3 animate-spin" aria-label={t('common.loading')} /> : t('settings.discord.yes')}
                         </button>
                         <button
+                          type="button"
                           onClick={() => setConfirmDeleteId(null)}
                           className="text-hextech-text-dim hover:text-hextech-text text-[10px]"
                         >
-                          Cancel
+                          {t('common.cancel')}
                         </button>
                       </div>
                     ) : (
                       <button
+                        type="button"
                         onClick={() => setConfirmDeleteId(wh.id)}
-                        title="Remove webhook"
+                        title={t('settings.discord.remove')}
+                        aria-label={t('settings.discord.removeAria', { name: wh.name })}
                         className="rounded p-1.5 text-hextech-text-dim hover:text-[#E24C3A] hover:bg-[#E24C3A]/10 transition-colors"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
                       </button>
                     )}
                   </div>
@@ -1645,19 +1633,21 @@ function DiscordWebhookCard() {
           <div className="space-y-2 rounded-lg border border-[#5865F2]/20 bg-[#5865F2]/5 p-3">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <label className="text-[10px] font-medium text-hextech-text-dim uppercase tracking-wide">Name</label>
+                <label htmlFor="webhook-name" className="text-[10px] font-medium text-hextech-text-dim uppercase tracking-wide">{t('settings.discord.nameLabel')}</label>
                 <input
+                  id="webhook-name"
                   autoFocus
                   type="text"
                   value={addName}
                   onChange={(e) => setAddName(e.target.value)}
-                  placeholder="e.g. #coaching, My Server…"
+                  placeholder={t('settings.discord.namePlaceholder')}
                   className="w-full rounded-md border border-hextech-border-dim bg-hextech-elevated px-2.5 py-1.5 text-xs text-hextech-text placeholder:text-hextech-text-dim/40 focus:outline-none focus:border-[#5865F2]"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-medium text-hextech-text-dim uppercase tracking-wide">Webhook URL</label>
+                <label htmlFor="webhook-url" className="text-[10px] font-medium text-hextech-text-dim uppercase tracking-wide">{t('settings.discord.urlLabel')}</label>
                 <input
+                  id="webhook-url"
                   type="url"
                   value={addUrl}
                   onChange={(e) => setAddUrl(e.target.value)}
@@ -1674,8 +1664,8 @@ function DiscordWebhookCard() {
                 disabled={adding || !addName.trim() || !addUrl.trim()}
                 className="gap-1.5 text-xs h-7"
               >
-                {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                Add webhook
+                {adding ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <Plus className="h-3 w-3" aria-hidden />}
+                {t('settings.discord.add')}
               </Button>
               <Button
                 variant="ghost"
@@ -1683,7 +1673,7 @@ function DiscordWebhookCard() {
                 className="text-xs h-7"
                 onClick={() => { setShowAddForm(false); setAddName(''); setAddUrl('') }}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
             </div>
           </div>
@@ -1694,13 +1684,13 @@ function DiscordWebhookCard() {
             className="gap-2 text-xs"
             onClick={() => setShowAddForm(true)}
           >
-            <Plus className="h-3.5 w-3.5" />
-            Add webhook
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            {t('settings.discord.add')}
           </Button>
         )}
 
         <p className="text-[11px] text-hextech-text-dim">
-          Webhook URLs are stored locally and only ever sent to Discord.
+          {t('settings.discord.localOnly')}
         </p>
       </CardContent>
     </Card>
@@ -1710,6 +1700,7 @@ function DiscordWebhookCard() {
 // ── YouTube Card ─────────────────────────────────────────────────────────────
 
 function YouTubeCard() {
+  const { t } = useTranslation()
   const [status, setStatus] = useState<{ connected: boolean; channelName: string | null }>({
     connected: false,
     channelName: null,
@@ -1718,24 +1709,24 @@ function YouTubeCard() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    ;(window.api as any).youtubeGetStatus().then(setStatus).catch(() => {})
+    window.api.youtubeGetStatus().then(setStatus).catch(() => {})
   }, [])
 
   const handleConnect = async () => {
     setConnecting(true)
     setError(null)
     try {
-      const result = await (window.api as any).youtubeAuthStart()
+      const result = await window.api.youtubeAuthStart()
       setStatus({ connected: result.connected, channelName: result.channelName })
     } catch (err: any) {
-      setError(err?.message ?? 'Connection failed')
+      setError(err?.message ?? t('settings.youtube.connectFailed'))
     } finally {
       setConnecting(false)
     }
   }
 
   const handleDisconnect = async () => {
-    await (window.api as any).youtubeDisconnect()
+    await window.api.youtubeDisconnect()
     setStatus({ connected: false, channelName: null })
   }
 
@@ -1743,12 +1734,11 @@ function YouTubeCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Youtube className="h-5 w-5 text-red-500" />
-          YouTube Upload
+          <Youtube className="h-5 w-5 text-red-500" aria-hidden />
+          {t('settings.youtube.title')}
         </CardTitle>
         <CardDescription>
-          Connect your YouTube account to upload recordings and clips directly from Ascend.
-          Requires a Google Cloud project with YouTube Data API v3 enabled.
+          {t('settings.youtube.desc')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -1757,7 +1747,7 @@ function YouTubeCard() {
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-green-400" />
               <div>
-                <p className="text-sm font-medium text-hextech-text-bright">Connected</p>
+                <p className="text-sm font-medium text-hextech-text-bright">{t('settings.youtube.connected')}</p>
                 {status.channelName && (
                   <p className="text-xs text-hextech-text-dim">{status.channelName}</p>
                 )}
@@ -1769,14 +1759,14 @@ function YouTubeCard() {
               className="text-[#E24C3A] border-[#E24C3A]/30 hover:bg-[#E24C3A]/10 text-xs"
               onClick={handleDisconnect}
             >
-              Disconnect
+              {t('settings.youtube.disconnect')}
             </Button>
           </div>
         ) : (
           <div className="space-y-3">
             <div className="rounded-md border border-orange-500/30 bg-orange-500/5 px-3 py-2 text-xs text-orange-400">
-              <p className="font-medium mb-1">Setup required</p>
-              <p>Add <code className="font-mono bg-white/5 px-1 rounded">MAIN_VITE_GOOGLE_CLIENT_ID</code> and <code className="font-mono bg-white/5 px-1 rounded">MAIN_VITE_GOOGLE_CLIENT_SECRET</code> to your <code className="font-mono bg-white/5 px-1 rounded">.env</code> file to enable YouTube uploads.</p>
+              <p className="font-medium mb-1">{t('settings.youtube.setupTitle')}</p>
+              <p><Trans i18nKey="settings.youtube.setupDesc" components={{ code: <code className="font-mono bg-white/5 px-1 rounded" /> }} /></p>
             </div>
             {error && (
               <p className="text-xs text-[#E24C3A] bg-[#E24C3A]/10 border border-[#E24C3A]/30 rounded px-3 py-2">
@@ -1790,8 +1780,8 @@ function YouTubeCard() {
               onClick={handleConnect}
               disabled={connecting}
             >
-              {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Youtube className="h-4 w-4" />}
-              {connecting ? 'Connecting…' : 'Connect YouTube'}
+              {connecting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Youtube className="h-4 w-4" aria-hidden />}
+              {connecting ? t('settings.youtube.connecting') : t('settings.youtube.connect')}
             </Button>
           </div>
         )}

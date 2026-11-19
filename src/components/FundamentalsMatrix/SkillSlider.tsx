@@ -62,7 +62,7 @@ export function SkillSlider({
           {value > 0 ? `${value}/10 — ${scoreLabel}` : t('skillSlider.notRated')}
         </span>
       </div>
-      <Slider value={[value]} onValueChange={([v]) => onChange(v)} max={10} min={1} step={1} />
+      <Slider value={[value]} onValueChange={([v]) => onChange(v)} max={10} min={1} step={1} aria-label={label} />
     </div>
   )
 }

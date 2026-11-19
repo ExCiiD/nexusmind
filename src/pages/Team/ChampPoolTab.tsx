@@ -21,10 +21,11 @@ import { useUserStore } from '@/store/useUserStore'
 import { useBackgroundJobsStore } from '@/store/useBackgroundJobsStore'
 import { ScopeDialog, type FetchScope } from '@/components/team/ScopeDialog'
 import type { Team, TeamMember, ChampionPoolEntry } from '@/lib/ipc'
-import { compareByRole } from '@/lib/championRoles'
+import { compareByRole, type Role } from '@/lib/championRoles'
 import { lookForMember, type LookSources } from '@/lib/playerCard'
 import { groupByTier, summarizePool, tierCounts } from '@/lib/poolView'
 import type { Tier } from '@/lib/threatCore'
+import { RenamedNote } from '@/components/team/RenamedNote'
 import {
   AddChampionDialog,
   LearningLane,
@@ -37,7 +38,6 @@ import {
   useMemberLooks,
 } from './ChampionPoolBoard'
 
-export type Role = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'
 
 /** Lanes shown open, in display order; "learning" is folded below them. */
 const OPEN_LANES: Tier[] = ['main', 'new', 'comfort', 'flex']
@@ -314,6 +314,7 @@ export function ChampPoolTab({ team, onChange }: Props) {
           lookOf={(m) => lookForMember(m, lookSources)}
           countsOf={countsOf}
         />
+        {selectedMember && <RenamedNote member={selectedMember} onCleared={() => onChange?.()} />}
 
         <PoolHeader
           title={t('team.pool.board.title', { role: t(`team.pool.board.role.${role}`), name: memberName })}

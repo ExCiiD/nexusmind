@@ -2,6 +2,7 @@ import * as core from '@/lib/collabCore'
 import * as notifications from '@/lib/notificationsCore'
 import * as team from '@/lib/teamCore'
 import { scoutMemberWeb, autoFillPoolWeb } from './scoutingWeb'
+import { computeCombinedStatsWeb, computeCustomStatsWeb, computeTeamSynergyStatsWeb, listCustomGamesWeb } from './teamStatsWeb'
 import * as dashboardCore from '@/lib/staffDashboardCore'
 import * as devPlanCore from '@/lib/devPlanCore'
 import * as calendarCore from '@/lib/calendarCore'
@@ -13,6 +14,7 @@ import * as wellbeingCore from '@/lib/wellbeingCore'
 import * as teamOpsCore from '@/lib/teamOpsCore'
 import * as announcementsCore from '@/lib/announcementsCore'
 import * as teamSessionsCore from '@/lib/teamSessionsCore'
+import type { TeamSession } from '@/lib/teamSessions'
 import * as teamSessionReviewsCore from '@/lib/teamSessionReviewsCore'
 import { getMatch as getMatchWeb } from './riotWeb'
 import * as reportCore from '@/lib/reportCore'
@@ -22,7 +24,56 @@ import * as discussionCore from '@/lib/discussionCore'
 import * as access from '@/lib/accessCore'
 import { sendFeedback, listMyFeedback, type FeedbackInput } from '@/lib/feedback'
 import type { CloudStatus, CloudUser } from '@/lib/ipc'
-import { sb, currentUserId, supabaseConfigured, supabaseUrl } from './supabase'
+import type { GroupLogoImage } from '@/lib/collab'
+import { sb, currentUserId, supabaseConfigured, supabaseUrl, supabaseAnonKey, WEB_AUTH_STORAGE_KEY } from './supabase'
+
+/** Screens to tell when a sign-out could only be done locally (see cloudSignOut). */
+const localSignOutListeners = new Set<(user: CloudUser | null) => void>()
+/** The pending server logout of the last offline sign-out, if any. */
+let revokeRetry: { stop: () => void } | null = null
+
+// ── The web's single live-session poller (item I, 19/11/2026) ───────────────
+// Same contract as the desktop (teamSessionLiveCached / onTeamSessionLive): one shared poll for every screen, run
+// only while someone listens, on livePollDelay's cadence (slower while the tab is hidden).
+const live: {
+  list: TeamSession[] | null
+  key: string
+  listeners: Set<(sessions: TeamSession[]) => void>
+  timer: ReturnType<typeof setTimeout> | null
+} = { list: null, key: '', listeners: new Set(), timer: null }
+
+async function refreshLiveWeb(): Promise<TeamSession[]> {
+  try {
+    const uid = await currentUserId().catch(() => null)
+    const list = uid ? await teamSessionsCore.listMyLiveSessions(sb) : []
+    live.list = list
+    const key = teamSessionsCore.liveSessionsKey(list)
+    if (key !== live.key) {
+      live.key = key
+      for (const cb of live.listeners) cb(list)
+    }
+  } catch { /* keep the previous list; the next tick retries */ }
+  return live.list ?? []
+}
+
+function scheduleLiveWeb(): void {
+  if (live.timer || live.listeners.size === 0) return
+  const visible = typeof document === 'undefined' || document.visibilityState !== 'hidden'
+  live.timer = setTimeout(async () => {
+    live.timer = null
+    await refreshLiveWeb()
+    scheduleLiveWeb()
+  }, teamSessionsCore.livePollDelay(visible, (live.list?.length ?? 0) > 0))
+}
+
+if (typeof document !== 'undefined') {
+  // Back to the tab: refresh now instead of waiting out the hidden-tab delay.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || live.listeners.size === 0) return
+    if (live.timer) { clearTimeout(live.timer); live.timer = null }
+    void refreshLiveWeb().then(scheduleLiveWeb)
+  })
+}
 
 declare const __APP_VERSION__: string
 
@@ -100,8 +151,9 @@ export const webApi = {
   async cloudStatus(): Promise<CloudStatus> {
     if (!supabaseConfigured) return { configured: false, user: null, riotMode: 'none', lastBackupAt: null }
     await pendingHandoff
-    const { data } = await sb.auth.getSession()
-    return { configured: true, user: toUser(data.session?.user), riotMode: 'none', lastBackupAt: null }
+    // AUTH_UNREACHABLE when the auth server could not be reached (not "signed out").
+    const session = await access.sessionForStatus(sb)
+    return { configured: true, user: toUser(session?.user), riotMode: 'none', lastBackupAt: null }
   },
   async cloudSendCode(email: string, inviteCode?: string) {
     const address = email.trim().toLowerCase()
@@ -129,12 +181,38 @@ export const webApi = {
     return toUser(data.user)
   },
   async cloudSignOut() {
-    await sb.auth.signOut({ scope: 'local' }) // this browser only
+    // This browser only. When the server cannot be reached, forget the
+    // session here anyway and tell the screens (no SIGNED_OUT event then).
+    const res = await access.signOutThisDevice(sb, () => {
+      try {
+        window.localStorage.removeItem(WEB_AUTH_STORAGE_KEY)
+        window.localStorage.removeItem(`${WEB_AUTH_STORAGE_KEY}-code-verifier`)
+      } catch { /* storage blocked: nothing was persisted */ }
+      for (const cb of localSignOutListeners) cb(null)
+    })
+    // R3: send the missed logout again (every minute, and as soon as the
+    // browser is back online) while the old access token is valid. Lost if
+    // the tab is closed first: the session then stays open on the server.
+    if (res.pendingRevoke) {
+      const pending = res.pendingRevoke
+      revokeRetry?.stop()
+      const retry = access.scheduleRevokeRetry(() => access.retryRevoke(supabaseUrl, supabaseAnonKey, pending))
+      const onOnline = () => retry.trigger()
+      window.addEventListener('online', onOnline)
+      revokeRetry = { stop: () => { retry.stop(); window.removeEventListener('online', onOnline) } }
+    }
+    return { signedOut: true }
+  },
+  /** Every device and the web (scope global). Throws when the server could not be reached. */
+  async cloudSignOutEverywhere() {
+    const { error } = await sb.auth.signOut({ scope: 'global' })
+    if (error) throw new Error(access.authErrorCode(error.message))
     return { signedOut: true }
   },
   onCloudAuthChanged(cb: (user: CloudUser | null) => void) {
     const { data } = sb.auth.onAuthStateChange((_e, session) => cb(toUser(session?.user)))
-    return () => data.subscription.unsubscribe()
+    localSignOutListeners.add(cb)
+    return () => { data.subscription.unsubscribe(); localSignOutListeners.delete(cb) }
   },
 
   // ── invite-only access (admins) ──
@@ -153,7 +231,7 @@ export const webApi = {
     await core.updateMyMemberProfile(sb, await currentUserId(), id, await webIdentity()).catch(() => {})
     return id
   },
-  collabCreateInvite: (groupId: string, role: 'coach' | 'analyst' | 'player', days: number) => core.createInvite(sb, groupId, role, days),
+  collabCreateInvite: (groupId: string, role: 'coach' | 'manager' | 'analyst' | 'player', days: number) => core.createInvite(sb, groupId, role, days),
   collabJoin: async (code: string, riotId?: string | null) => core.joinGroup(sb, code.trim().toUpperCase(), { ...(await webIdentity()), riotId: riotId ?? null }),
   collabLeave: async (groupId: string) => core.leaveGroup(sb, await currentUserId(), groupId),
   collabSetMemberRole: (groupId: string, userId: string, role: Parameters<typeof core.setMemberRole>[3]) => core.setMemberRole(sb, groupId, userId, role),
@@ -166,10 +244,21 @@ export const webApi = {
     teamSessionsCore.startSession(sb, id, responsibleUserIds, queueFilter),
   teamSessionEnd: (id: string) => teamSessionsCore.endSession(sb, id),
   teamSessionGetObjectives: (sessionId: string) => teamSessionsCore.getObjectives(sb, sessionId),
-  teamSessionSetObjectives: (sessionId: string, objectiveIds: string[], kpiIds: string[]) => teamSessionsCore.setObjectives(sb, sessionId, objectiveIds, kpiIds),
+  teamSessionSetObjectives: (sessionId: string, objectiveIds: string[], kpiIds: string[]) => currentUserId().then((uid) => teamSessionsCore.setObjectives(sb, uid, sessionId, objectiveIds, kpiIds)),
   teamSessionGetAttendance: (sessionId: string) => teamSessionsCore.getAttendance(sb, sessionId),
   teamSessionSetAttendance: (sessionId: string, userId: string, present: boolean | null) => teamSessionsCore.setAttendance(sb, sessionId, userId, present),
   teamSessionListMyLive: () => teamSessionsCore.listMyLiveSessions(sb),
+  teamSessionLiveCached: () => (live.list ? Promise.resolve(live.list) : refreshLiveWeb()),
+  onTeamSessionLive(cb: (sessions: TeamSession[]) => void) {
+    live.listeners.add(cb)
+    if (live.list) cb(live.list)
+    else void refreshLiveWeb()
+    scheduleLiveWeb()
+    return () => {
+      live.listeners.delete(cb)
+      if (live.listeners.size === 0 && live.timer) { clearTimeout(live.timer); live.timer = null }
+    }
+  },
   groupFundamentalsList: (groupId: string) => teamSessionsCore.listGroupFundamentals(sb, groupId),
   groupFundamentalsAdd: (groupId: string, input: Parameters<typeof teamSessionsCore.addGroupFundamental>[2]) => teamSessionsCore.addGroupFundamental(sb, groupId, input),
 
@@ -191,14 +280,22 @@ export const webApi = {
   teamSessionReviewsListForSession: (sessionId: string) => teamSessionReviewsCore.listReviewsForSession(sb, sessionId),
   teamSessionReviewGetForGame: (gameId: string) => teamSessionReviewsCore.getReviewForGame(sb, gameId),
   teamSessionReviewGetForScope: (sessionId: string, scope: 'session' | 'meeting') => teamSessionReviewsCore.getReviewForScope(sb, sessionId, scope),
-  teamSessionReviewCreate: (sessionId: string, gameId: string | null, scope: Parameters<typeof teamSessionReviewsCore.createReview>[3], status: Parameters<typeof teamSessionReviewsCore.createReview>[4]) =>
-    teamSessionReviewsCore.createReview(sb, sessionId, gameId, scope, status),
+  teamSessionReviewCreate: (sessionId: string, gameId: string | null, scope: Parameters<typeof teamSessionReviewsCore.createReview>[4], status: Parameters<typeof teamSessionReviewsCore.createReview>[5]) =>
+    currentUserId().then((uid) => teamSessionReviewsCore.createReview(sb, uid, sessionId, gameId, scope, status)),
   teamSessionReviewUpdate: (id: string, patch: Parameters<typeof teamSessionReviewsCore.updateReview>[2]) => teamSessionReviewsCore.updateReview(sb, id, patch),
-  teamSessionPendingFinalReviews: () => teamSessionReviewsCore.listPendingFinalReviews(sb),
+  teamSessionPendingFinalReviews: async () => teamSessionReviewsCore.listPendingFinalReviews(sb, await currentUserId().catch(() => null)),
   teamSessionFeedbackList: (sessionId: string) => teamSessionReviewsCore.listFeedbackForSession(sb, sessionId),
-  teamSessionFeedbackSubmit: (sessionId: string, body: string, transcript?: string | null) => teamSessionReviewsCore.submitFeedback(sb, sessionId, body, transcript ?? null),
+  teamSessionFeedbackSubmit: (sessionId: string, body: string, transcript?: string | null) => currentUserId().then((uid) => teamSessionReviewsCore.submitFeedback(sb, uid, sessionId, body, transcript ?? null)),
   collabSetSharing: async (groupId: string, s: { shareReviews: boolean; shareStats: boolean; shareTeam: boolean; shareWellbeing: boolean }) =>
     core.setSharing(sb, await currentUserId(), groupId, s),
+  /** Same as the desktop (electron/main/cloud/collab.ts): the previous file is removed after the new one is set.
+   *  Was missing on the web (#18): the logo picker failed there. */
+  async collabSetGroupLogo(groupId: string, image: GroupLogoImage | null) {
+    const prev = await sb.from('groups').select('logo_url').eq('id', groupId).maybeSingle()
+    return core.setGroupLogo(sb, groupId, image, (prev.data as { logo_url?: string | null } | null)?.logo_url ?? null)
+  },
+  /** #34: the group's owner, coach or manager unlink its Discord server (checked server side). */
+  discordUnlinkGuild: (groupId: string) => core.unlinkGroupDiscord(sb, groupId),
   collabPlayerSessions: (playerId: string) => core.getPlayerSessions(sb, playerId),
   collabListComments: async (reviewId: string, playerId?: string) => core.listComments(sb, playerId ?? (await currentUserId()), reviewId),
   collabMyOpenComments: async () => core.listMyOpenComments(sb, await currentUserId()),
@@ -271,7 +368,7 @@ export const webApi = {
   vodReviewAddComment: (sessionId: string, input: Parameters<typeof vodReviewCore.addComment>[2]) => vodReviewCore.addComment(sb, sessionId, input),
   vodReviewDeleteComment: (id: string) => vodReviewCore.deleteComment(sb, id),
   vodReviewAddActionItem: (sessionId: string, text: string) => vodReviewCore.addActionItem(sb, sessionId, text),
-  vodReviewSetActionItemDone: (id: string, done: boolean) => vodReviewCore.setActionItemDone(sb, id, done),
+  vodReviewSetActionItemDone: (id: string, done: boolean) => currentUserId().then((uid) => vodReviewCore.setActionItemDone(sb, uid, id, done)),
   vodReviewDeleteActionItem: (id: string) => vodReviewCore.deleteActionItem(sb, id),
   vodReviewSetAssignment: (sessionId: string, input: Parameters<typeof vodReviewCore.setAssignment>[2]) => vodReviewCore.setAssignment(sb, sessionId, input),
   vodReviewSetAssignmentStatus: (id: string, status: 'pending' | 'done') => vodReviewCore.setAssignmentStatus(sb, id, status),
@@ -283,6 +380,8 @@ export const webApi = {
   wellbeingListForGroup: (playerIds: string[]) => wellbeingCore.listForGroup(sb, playerIds),
   wellbeingGetLoadThreshold: (groupId: string) => wellbeingCore.getWeeklyLoadThreshold(sb, groupId),
   wellbeingSetLoadThreshold: (groupId: string, hours: number) => wellbeingCore.setWeeklyLoadThreshold(sb, groupId, hours),
+  wellbeingConsentGet: async () => wellbeingCore.getConsent(sb, await currentUserId()),
+  wellbeingConsentSet: async (granted: boolean, version: 'v0.3') => wellbeingCore.setConsent(sb, await currentUserId(), granted, version),
 
   // ── E7: communication & tasks ──
   announcementsList: (groupId: string) => announcementsCore.listAnnouncements(sb, groupId),
@@ -290,7 +389,7 @@ export const webApi = {
   announcementsSetPinned: (id: string, pinned: boolean) => announcementsCore.setAnnouncementPinned(sb, id, pinned),
   announcementsDelete: (id: string) => announcementsCore.deleteAnnouncement(sb, id),
   announcementsListMyDismissals: () => announcementsCore.listMyDismissals(sb),
-  announcementsDismiss: (announcementId: string) => announcementsCore.dismissAnnouncement(sb, announcementId),
+  announcementsDismiss: (announcementId: string) => currentUserId().then((uid) => announcementsCore.dismissAnnouncement(sb, uid, announcementId)),
   tasksList: (groupId: string) => teamOpsCore.listTasks(sb, groupId),
   tasksCreate: (groupId: string, input: Parameters<typeof teamOpsCore.createTask>[2]) => teamOpsCore.createTask(sb, groupId, input),
   tasksSetStatus: (id: string, status: 'open' | 'done') => teamOpsCore.setTaskStatus(sb, id, status),
@@ -341,15 +440,30 @@ export const webApi = {
   // DraftTab/ScoutingTab, src/pages/Team/*.tsx) via the web Team page
   // (web/src/pages/TeamPage.tsx), which calls teamSetActiveGroup first.
   teamSetActiveGroup(groupId: string | null) { activeGroupId = groupId },
-  listTeams: (opts?: { isOpponent?: boolean }) => team.listGroupTeams(sb, requireActiveGroup(), opts ?? {}),
-  async createTeam(data: { name: string; tag?: string; notes?: string; isOpponent?: boolean }) {
+  // Cloud opponents are always group-scoped (team_scouting.group_id): an
+  // explicit `groupId` (#7, same contract as the desktop) wins over the
+  // active group; `includeUnassigned` has nothing to add on the web.
+  listTeams: (opts?: { isOpponent?: boolean; groupId?: string; includeUnassigned?: boolean }) =>
+    team.listGroupTeams(sb, opts?.groupId ?? requireActiveGroup(), { isOpponent: opts?.isOpponent }),
+  // #41b Stats collectives: same Core as the desktop handlers, Riot through the proxy with caching (teamStatsWeb.ts).
+  // Custom games are read only here: importing and deleting stay on the desktop.
+  computeTeamSynergyStats: (teamId: string, opts?: { matchesPerMember?: number; minTogether?: number }) =>
+    computeTeamSynergyStatsWeb(requireActiveGroup(), teamId, opts),
+  computeCombinedStats: (teamId: string, opts?: { minTogether?: number }) =>
+    computeCombinedStatsWeb(requireActiveGroup(), teamId, opts),
+  computeCustomStats: (teamId: string, gameType: 'scrim' | 'tournament' | 'all') =>
+    computeCustomStatsWeb(requireActiveGroup(), teamId, gameType),
+  listCustomGames: (teamId: string, gameType?: 'scrim' | 'tournament') =>
+    listCustomGamesWeb(requireActiveGroup(), teamId, gameType),
+  async createTeam(data: { name: string; tag?: string; notes?: string; isOpponent?: boolean; groupId?: string }) {
+    const groupId = data.groupId ?? requireActiveGroup()
     if (!data.isOpponent) {
       // The group's own roster always exists implicitly — nothing to
       // create. Not actually reachable from the web Team page (it never
       // shows a "create team" prompt for the own roster), kept defensive.
-      return (await team.listGroupTeams(sb, requireActiveGroup(), { isOpponent: false }))[0]
+      return (await team.listGroupTeams(sb, groupId, { isOpponent: false }))[0]
     }
-    return team.createOpponentTeam(sb, requireActiveGroup(), { name: data.name, tag: data.tag ?? null, notes: data.notes ?? null })
+    return team.createOpponentTeam(sb, groupId, { name: data.name, tag: data.tag ?? null, notes: data.notes ?? null })
   },
   async deleteTeam(id: string) {
     if (id === activeGroupId) throw new Error('Cannot delete the group\'s own roster from here.')

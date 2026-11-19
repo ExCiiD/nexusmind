@@ -85,6 +85,154 @@
       "importDone": "Sauvegarde importée",
       "importFailed": "Échec de l'import",
       "importSummary": "Ajouté {{sessions}} sessions, {{games}} games, {{reviews}} reviews, {{recordings}} recordings ({{conflicts}} conflits)."
+    },
+    "rec": {
+      "mainRole": "Rôle principal",
+      "mainRoleDesc": "Les moyennes et la progression ne comptent que les parties jouées à votre rôle principal. Cliquez à nouveau pour désélectionner.",
+      "title": "Enregistrement des parties",
+      "desc": "Enregistre automatiquement votre écran pendant chaque partie de League of Legends. Les enregistrements restent sur votre PC et sont liés à votre review.",
+      "noFfmpeg": "ffmpeg est introuvable sur ce système. L’enregistrement automatique a besoin de ffmpeg.",
+      "autoRecord": "Enregistrer automatiquement les parties",
+      "autoRecordDesc": "Démarre l’enregistrement au lancement de LoL, l’arrête et le sauvegarde à la fin de la partie. Pour un meilleur résultat, jouez en mode <em>fenêtré sans bordure</em> ou <em>fenêtré</em> — le plein écran exclusif peut donner une capture noire sur certaines configurations.",
+      "inProgress": "Enregistrement en cours",
+      "stopNow": "Arrêter",
+      "startManual": "Lancer un enregistrement manuel",
+      "quality": "Qualité d’enregistrement",
+      "source": "Source",
+      "qualityHint": "« Source » capture à la résolution native de votre écran. Les réglages plus bas réduisent la taille des fichiers et la charge CPU.",
+      "fps": "Images par seconde",
+      "encoder": "Encodeur",
+      "cpuFallback": "Solution de repli — marche toujours",
+      "gpuTitle": "⚡ Les encodeurs GPU sont fortement recommandés",
+      "gpuDesc": "Les encodeurs GPU utilisent du matériel dédié : l’enregistrement n’a presque aucun impact sur les FPS en jeu. Choisissez celui de la marque de votre carte graphique. Si l’enregistrement échoue, repassez sur CPU.",
+      "scope": "Files à enregistrer",
+      "scopeRanked": "Classées uniquement",
+      "scopeRankedDesc": "SoloQ + Flex (par défaut)",
+      "scopeAll": "Tous les modes",
+      "scopeAllDesc": "ARAM, Arena, Normal… compris",
+      "scopeCustom": "Sélection personnalisée",
+      "scopeCustomDesc": "Choisissez les modes à enregistrer",
+      "modeNormal": "Normal / Quickplay",
+      "modeCustom": "Parties personnalisées",
+      "desktopFallback": "Autoriser la capture du bureau",
+      "desktopFallbackDesc": "Capture tout l’écran si la fenêtre de LoL n’est pas détectée.",
+      "folder": "Dossier des enregistrements",
+      "folderDefault": "Par défaut (AppData)",
+      "browse": "Parcourir",
+      "resetFolder": "Revenir au dossier par défaut",
+      "noDefaultOutput": "Aucune sortie par défaut détectée",
+      "audio": "Audio",
+      "refreshDevices": "Actualiser les périphériques",
+      "desktopAudio": "Enregistrer le son du PC",
+      "desktopAudioDesc": "Capture tout ce que vous entendez (jeu + sons du système).",
+      "outputDevice": "Périphérique de sortie",
+      "followWindowsOutput": "Suivre la sortie par défaut de Windows",
+      "followWindows": "Suivre le réglage par défaut de Windows",
+      "followWindowsNamed": "Suivre le réglage par défaut de Windows — {{name}}",
+      "currentDefault": "{{name}} (par défaut actuellement)",
+      "unavailableDevice": "{{name}} (indisponible)",
+      "noOutput": "Aucune sortie audio détectée. Cliquez sur « Actualiser les périphériques ».",
+      "currentlyCapturing": "Capture actuelle : <b>{{name}}</b> <dim>(suit toujours la sortie par défaut de Windows).</dim>",
+      "mismatch": "<b>Cible différente.</b> Vous avez choisi <hl>« {{picked}} »</hl> mais la sortie par défaut de Windows est <hl>« {{current}} »</hl>. Les enregistrements captureront la sortie par défaut, pas votre cible, tant que vous ne changez pas le réglage de Windows.",
+      "unknown": "inconnue",
+      "soundSettingsFailed": "Impossible d’ouvrir les paramètres de son de Windows",
+      "windowsOnly": "Cette action n’est disponible que sous Windows.",
+      "unknownError": "Erreur inconnue",
+      "openSoundSettings": "Ouvrir les paramètres de son de Windows",
+      "outputMissing": "La sortie choisie n’est pas disponible. Choisissez un autre périphérique ou rebranchez-le.",
+      "mic": "Enregistrer le micro",
+      "micDesc": "Ajoute votre voix à l’enregistrement.",
+      "micDevice": "Micro",
+      "systemDefaultFollows": "Par défaut du système (suit Windows)",
+      "systemDefault": "Par défaut du système",
+      "systemDefaultNamed": "Par défaut du système — {{name}}",
+      "defaultDevice": "{{name}} (par défaut)",
+      "noMic": "Aucun micro détecté. Cliquez sur « Actualiser les périphériques ».",
+      "micMissing": "Le micro choisi n’est pas disponible. Choisissez un autre périphérique ou rebranchez-le — l’enregistrement se fera sans piste micro d’ici là.",
+      "externalFolder": "Dossier des enregistrements externes",
+      "externalFolderDesc": "Pour lier un replay enregistré avec une autre app (OBS, Outplayed…), le sélecteur de fichier s’ouvrira directement dans ce dossier.",
+      "externalNotSet": "Non défini — le sélecteur de fichier s’ouvrira à l’emplacement par défaut",
+      "clearFolder": "Effacer le dossier"
+    },
+    "danger": {
+      "range24h": "24 h",
+      "range3d": "3 jours",
+      "rangeWeek": "la dernière semaine",
+      "rangeDays_one": "{{count}} jour",
+      "rangeDays_other": "{{count}} jours",
+      "recentCleared": "Données récentes effacées",
+      "recentClearedDesc": "{{games}} game(s), {{recordings}} enregistrement(s) ({{files}} fichier(s) libéré(s)) et {{mistakes}} erreur(s) supprimés sur {{range}}.",
+      "clearFailed": "Échec de l’effacement",
+      "statsCleared": "Stats et erreurs effacées",
+      "statsClearedDesc": "{{mistakes}} erreur(s), {{detailedStats}} cache(s) de stats détaillées, {{snapshots}} instantané(s) et {{lanePhase}} rapports de lane supprimés.",
+      "checkFailed": "Échec de la vérification",
+      "cleaned": "Nettoyage terminé",
+      "cleanedDesc_one": "{{count}} ligne appartenant à un coéquipier supprimée : {{detail}}.",
+      "cleanedDesc_other": "{{count}} lignes appartenant à un coéquipier supprimées : {{detail}}.",
+      "nothingLeft": "Plus rien à supprimer.",
+      "cleanupFailed": "Échec du nettoyage",
+      "resetDone": "App réinitialisée",
+      "resetDoneDesc": "{{games}} game(s), {{recordings}} enregistrement(s) ({{files}} fichier(s) libéré(s)) et toutes les stats supprimés. Rechargement…",
+      "resetFailed": "Échec de la réinitialisation",
+      "title": "Zone de danger",
+      "desc": "Supprime des données définitivement. Ces actions sont irréversibles : exportez une sauvegarde avant, en cas de doute.",
+      "clearStats": "Effacer stats et erreurs",
+      "clearStatsDesc": "Supprime toutes les erreurs taguées et détectées, les instantanés de progression, le cache des stats détaillées et les rapports de phase de lane. Vos games, enregistrements, reviews et notes sont conservés.",
+      "confirmClear": "Confirmer l’effacement",
+      "clearRecent": "Effacer les données récentes",
+      "clearRecentDesc": "Supprime games, stats, erreurs et enregistrements (fichiers compris) des derniers jours seulement ; l’historique plus ancien est conservé. Pratique pour retirer une mauvaise session de test.",
+      "deleteLast": "Supprimer : {{range}}",
+      "foreignTitle": "Chercher des données de coéquipiers",
+      "foreignDesc": "Un bug de synchronisation (corrigé en beta.104) pouvait faire entrer dans l’historique local d’un coach ou d’un analyste les sessions, bilans ou reviews d’un coéquipier partagé. Cette vérification compare votre base au serveur et vous dit si certaines de vos données appartiennent à quelqu’un d’autre.",
+      "foreignNone": "Aucune donnée d’un autre joueur trouvée.",
+      "foreignFound_one": "{{count}} ligne trouvée dans {{tables}} appartient à un coéquipier.",
+      "foreignFound_other": "{{count}} lignes trouvées dans {{tables}} appartiennent à un coéquipier.",
+      "confirmRemoval": "Confirmer la suppression",
+      "removeIt": "Les supprimer",
+      "check": "Vérifier",
+      "resetAll": "Tout réinitialiser",
+      "resetAllDesc": "Supprime <all>toutes</all> les sessions, games, stats, erreurs, reviews et enregistrements (fichiers vidéo compris) et remet à zéro votre XP et votre série. Votre compte, vos réglages et vos équipes sont conservés.",
+      "confirmReset": "Confirmer la réinitialisation"
+    },
+    "discord": {
+      "added": "Webhook ajouté",
+      "addFailed": "Impossible d’ajouter le webhook",
+      "renameFailed": "Échec du renommage",
+      "removed": "Webhook retiré",
+      "removeFailed": "Impossible de retirer le webhook",
+      "testEmbedTitle": "✅ Test du webhook Ascend",
+      "testEmbedDesc": "**{{name}}** est bien configuré. Les reviews seront partagées dans ce salon.",
+      "testSent": "Test envoyé à « {{name}} »",
+      "testFailed": "Échec du test du webhook",
+      "title": "Partage Discord",
+      "desc": "Ajoutez des URL de webhook Discord pour partager vos reviews en embeds directement dans un salon. Vous pouvez en configurer plusieurs (par exemple un par équipe ou serveur) et choisir la destination au moment du partage.",
+      "howTo": "Créer un webhook ↗",
+      "empty": "Aucun webhook configuré — les reviews peuvent toujours être copiées en texte.",
+      "nameLabel": "Nom",
+      "saveName": "Enregistrer le nom",
+      "test": "Envoyer un message de test",
+      "testAria": "Envoyer un message de test à {{name}}",
+      "rename": "Renommer le webhook",
+      "renameAria": "Renommer {{name}}",
+      "removeQ": "Retirer ?",
+      "yes": "Oui",
+      "remove": "Retirer le webhook",
+      "removeAria": "Retirer {{name}}",
+      "namePlaceholder": "ex. #coaching, Mon serveur…",
+      "urlLabel": "URL du webhook",
+      "add": "Ajouter un webhook",
+      "localOnly": "Les URL de webhook restent sur ce PC et ne sont envoyées qu’à Discord."
+    },
+    "youtube": {
+      "connectFailed": "Échec de la connexion",
+      "title": "Envoi sur YouTube",
+      "desc": "Connectez votre compte YouTube pour envoyer enregistrements et clips directement depuis Ascend. Nécessite un projet Google Cloud avec l’API YouTube Data v3 activée.",
+      "connected": "Connecté",
+      "disconnect": "Déconnecter",
+      "setupTitle": "Configuration requise",
+      "setupDesc": "Ajoutez <code>MAIN_VITE_GOOGLE_CLIENT_ID</code> et <code>MAIN_VITE_GOOGLE_CLIENT_SECRET</code> à votre fichier <code>.env</code> pour activer l’envoi sur YouTube.",
+      "connecting": "Connexion…",
+      "connect": "Connecter YouTube"
     }
   },
   "sidebar": {
@@ -101,6 +249,17 @@
       "profile": "Votre profil",
       "connect": "Connecter le compte",
       "assessment": "Évaluation initiale"
+    },
+    "accountPicker": {
+      "welcomeToast": "Bon retour, {{name}} !",
+      "reconnectFailed": "Impossible de se reconnecter",
+      "title": "Bon retour",
+      "desc": "Choisissez un compte enregistré pour vous reconnecter tout de suite, ou ajoutez-en un nouveau.",
+      "sessions_one": "{{count}} session",
+      "sessions_other": "{{count}} sessions",
+      "connecting": "Connexion…",
+      "reconnect": "Se reconnecter",
+      "addNew": "Ajouter un compte"
     }
   },
   "profileStep": {
@@ -353,6 +512,42 @@
       "showAll": "Afficher les {{count}} modèles",
       "showLess": "Afficher moins",
       "title": "Modèles de session"
+    },
+    "offRole": {
+      "title": "⚠️ Rôle secondaire détecté",
+      "description": "Tu as joué {{role}} — pas ton main role. Retirer cette game de la session ?",
+      "action": "Retirer",
+      "actionAlt": "Retirer de la session",
+      "unknownRole": "un rôle inconnu"
+    },
+    "insight": {
+      "title": "Bilan en cours",
+      "subtitle": "Session · {{objectives}}",
+      "record": "{{wins}}W {{losses}}L — {{wr}} % de winrate sur la session",
+      "allReviewed": "Toutes les parties ont été reviewées ({{reviewed}}/{{total}})",
+      "pending_one": "{{count}} partie en attente de review",
+      "pending_other": "{{count}} parties en attente de review",
+      "kpiAverage": "Moyenne KPI de la session : {{avg}}/10",
+      "objectiveRate": "Objectif respecté dans {{rate}} % des parties reviewées",
+      "reviewMore": "Moins de la moitié des parties sont reviewées — n’oublie pas de remplir tes reviews"
+    },
+    "picker": {
+      "scoreOnly": "Score {{score}}/10",
+      "new": "Nouveau",
+      "add": "Ajouter un fondamental",
+      "available_one": "{{count}} disponible",
+      "available_other": "{{count}} disponibles",
+      "title": "Choisir un fondamental",
+      "selected_one": "({{count}}/3 sélectionné)",
+      "selected_other": "({{count}}/3 sélectionnés)",
+      "search": "Rechercher par nom ou description…",
+      "noResult": "Aucun résultat pour « {{query}} »",
+      "suggested": "Suggérés",
+      "suggestedHint": "· évaluation + sessions récentes",
+      "recent": "Récents",
+      "all": "Tous les fondamentaux",
+      "allCategories": "Tout",
+      "confirm": "Confirmer"
     }
   },
   "review": {
@@ -435,7 +630,9 @@
       "keep": "Garder",
       "remove": "Retirer de la session"
     },
-    "draftSaved": "Brouillon enregistré automatiquement"
+    "draftSaved": "Brouillon enregistré automatiquement",
+    "gameRemoved": "Game retirée de la session",
+    "gameRemoveFailed": "Impossible de retirer la game"
   },
   "analytics": {
     "title": "Statistiques",
@@ -522,6 +719,10 @@
     "changes": {
       "titleBilans": "Évolution depuis le bilan précédent",
       "titleSessions": "Écart entre vos sessions et votre bilan"
+    },
+    "state": {
+      "noGamesTitle": "Aucune partie enregistrée",
+      "noGamesDesc": "Lancez une session et jouez : vos parties et leurs stats apparaîtront ici."
     }
   },
   "history": {
@@ -579,7 +780,21 @@
       "errorTitle": "Impossible de récupérer l'historique"
     },
     "deleteSelected": "Supprimer",
-    "selected": "sélectionné(s)"
+    "selected": "sélectionné(s)",
+    "select": {
+      "month": "Sélectionner toutes les sessions du mois",
+      "session": "Sélectionner cette session"
+    },
+    "state": {
+      "unknownCause": "Le serveur n’a pas répondu.",
+      "gamesErrorTitle": "Impossible de charger vos parties",
+      "gamesErrorHint": "Vos sessions et vos reviews restent disponibles.",
+      "gamesEmptyTitle": "Aucune partie récente",
+      "gamesEmptyDesc": "Jouez quelques parties : elles apparaîtront ici avec leur statut de review.",
+      "sessionsEmptyTitle": "Aucune session",
+      "sessionsEmptyDesc": "Créez votre première session pour commencer à suivre vos objectifs.",
+      "createSession": "Créer une session"
+    }
   },
   "statsAvg": {
     "subtitle": "Ce qui vous fait gagner, vos moyennes et votre progression dans le temps",
@@ -762,7 +977,10 @@
       "timePlaceholder": "M:SS",
       "notePlaceholder": "Que s'est-il passé à ce moment ? Quelle décision avez-vous prise ?",
       "addButton": "Ajouter une note",
-      "autoBadge": "Pré-rempli"
+      "autoBadge": "Pré-rempli",
+      "timeLabel": "Note {{n}} — moment",
+      "noteLabel": "Note {{n}} — texte",
+      "deleteNote": "Supprimer la note {{n}}"
     }
   },
   "fundamentalsGrid": {
@@ -795,7 +1013,8 @@
     "games": "parties",
     "noProgress": "Complétez des évaluations pour voir votre progression",
     "noWinrate": "Aucune partie jouée",
-    "noAssessment": "Aucune donnée d'évaluation disponible"
+    "noAssessment": "Aucune donnée d'évaluation disponible",
+    "winrateSummary": "Winrate {{wr}} % — {{wins}} victoires, {{losses}} défaites"
   },
   "update": {
     "availableTitle": "Mise à jour disponible",
@@ -913,7 +1132,24 @@
     "folderChanged": "Dossier mis à jour — les enregistrements seront scannés",
     "finalizing": "Finalisation de la vidéo — la lecture peut être limitée le temps que ça se termine.",
     "finalizingDesc": "L'enregistrement est en cours de traitement. Cela prend généralement 10-60 secondes pour une partie complète. Le lecteur apparaîtra automatiquement quand ce sera prêt.",
-    "finalizationFailed": "Échec de la finalisation de l'enregistrement"
+    "finalizationFailed": "Échec de la finalisation de l'enregistrement",
+    "panel": {
+      "linkFailed": "Impossible de lier l’enregistrement",
+      "unknownError": "Une erreur inconnue est survenue.",
+      "unlinked": "Enregistrement délié",
+      "unlinkedDesc": "L’enregistrement reste disponible dans votre bibliothèque.",
+      "title": "Enregistrement",
+      "clipIn": "Début",
+      "clipOut": "Fin",
+      "clipStart": "Début du clip",
+      "clipEnd": "Fin du clip",
+      "clipTitle": "Titre du clip (optionnel)",
+      "youtubeUrl": "Lien YouTube",
+      "saveLink": "Enregistrer le lien",
+      "scan": "Chercher l’enregistrement",
+      "linkFile": "Lier un fichier local",
+      "addYoutube": "Ajouter un lien YouTube"
+    }
   },
   "jobs": {
     "cancel": "Annuler après le joueur courant",
@@ -1139,7 +1375,18 @@
       "threatOrange": "300k+ mastery",
       "threatYellow": "menace flex — 2+ joueurs individuellement dangereux dessus",
       "threatPrioPick": "pick/ban prioritaire — menace sur les deux équipes",
-      "threatNew": "new pick : 10+ games sur un champion pris il y a moins de 2 semaines"
+      "threatNew": "new pick : 10+ games sur un champion pris il y a moins de 2 semaines",
+      "poolEmpty": "Pas encore de pool",
+      "alreadyInDraft": "Déjà dans la draft en cours",
+      "saveFailed": "Impossible d’enregistrer le draft",
+      "duplicateFailed": "Impossible de dupliquer le draft",
+      "deleteFailed": "Impossible de supprimer le draft",
+      "slotLabel": "Emplacement {{slot}} : {{champions}}",
+      "slotTitleBan": "Emplacement n° {{n}} (ban)",
+      "slotTitlePick": "Emplacement n° {{n}} (pick)",
+      "clickChampion": "Cliquez sur un champion →",
+      "noBan": "pas de ban",
+      "noPick": "pas de pick"
     },
     "dashboard": {
       "subtitleCombined": "Stats combinées : flex (≥{{n}} joueurs ensemble) + toutes les parties scrim & tournoi importées",
@@ -1209,7 +1456,9 @@
         "import": "Importer un CSV tournoi",
         "filenameHint": "Le nom du fichier CSV doit contenir « tournoi » ou « tournament » pour être détecté automatiquement.",
         "empty": "Aucune partie de tournoi importée."
-      }
+      },
+      "deleteFailed": "Impossible de supprimer la partie",
+      "readOnlyHint": "Le staff importe ces parties depuis l’app desktop Ascend."
     },
     "stats": {
       "subtitle": "Parties flex où au moins {{n}} joueurs de votre roster ont joué ensemble",
@@ -1250,7 +1499,8 @@
       "goldPct": "Or",
       "visionPct": "Vision",
       "ccPct": "CC",
-      "byChampion": "Par champion"
+      "byChampion": "Par champion",
+      "noChampionData": "Pas de données de champion."
     },
     "scouting": {
       "empty": "Aucune équipe adverse scoutée pour le moment.",
@@ -1291,8 +1541,43 @@
         "noGames": "Aucune game en synergie trouvée",
         "noGamesDesc": "Aucune game flex récente où ≥{{n}} de ces adversaires ont joué ensemble.",
         "refresh": "Actualiser",
-        "title": "Synergie adverse — games flex où ≥{{n}} d’entre eux ont joué ensemble"
-      }
+        "title": "Synergie adverse — games flex où ≥{{n}} d’entre eux ont joué ensemble",
+        "desktopOnlyTitle": "La synergie adverse est sur l’app desktop",
+        "desktopOnlyDesc": "Elle analyse l’historique Riot de chaque adversaire : ouvrez cette équipe dans l’app desktop Ascend pour la calculer."
+      },
+      "createFailed": "Impossible de créer l’équipe adverse",
+      "deleteFailed": "Impossible de supprimer l’équipe adverse",
+      "addMemberFailed": "Impossible d’ajouter le joueur",
+      "removeMemberFailed": "Impossible de retirer le joueur",
+      "opponentsLabel": "Adversaires :",
+      "newTeamPlaceholder": "Nom de l’équipe adverse…",
+      "add": "Ajouter",
+      "newOpponent": "Nouvel adversaire",
+      "deleteTeamAria": "Supprimer {{name}}",
+      "deleteTeamTitle": "Supprimer « {{name}} » ?",
+      "deleteTeamDesc": "Ses joueurs et leurs champion pools scoutés sont supprimés aussi.",
+      "save": "Enregistrer",
+      "scoutOneHint": "Scout : récupère les parties récentes du joueur",
+      "scoutOneAria": "Scouter {{name}}",
+      "removeMemberAria": "Retirer {{name}}",
+      "removeMemberTitle": "Retirer {{name}} de cette équipe adverse ?",
+      "removeMemberConfirm": "Retirer",
+      "emptySlot": "Vide",
+      "noPoolData": "Pas de données — cliquez sur ⟳ pour scouter",
+      "topN": "Top {{n}} :",
+      "form": {
+        "displayName": "Nom",
+        "tag": "Tag",
+        "region": "Région",
+        "role": "Rôle"
+      },
+      "unassignedTitle_one": "{{count}} adversaire non classé",
+      "unassignedTitle_other": "{{count}} adversaires non classés",
+      "unassignedHint": "Scoutés avant le classement des adversaires par groupe : tous les groupes les voient tant que vous ne les rattachez pas à l’un d’eux.",
+      "link": "Rattacher à ce groupe",
+      "linkAria": "Rattacher {{name}} à ce groupe",
+      "linkFailed": "Impossible de rattacher l’équipe adverse",
+      "addMember": "Ajouter un joueur"
     },
     "statsTitle": "Stats collectives",
     "statsSubtitle": "Les stats de l’équipe du groupe choisi : flex, scrim et tournoi ensemble, puis chaque source.",
@@ -1478,7 +1763,7 @@
         "hextech": "Hextech",
         "ripples": "Ondes",
         "currents": "Courants",
-        "shards": "Fêlures",
+        "shards": "Éclats",
         "constellation": "Constellation",
         "circuit": "Circuit"
       },
@@ -1488,6 +1773,48 @@
       "blur": "Flou",
       "hint": "Seul le fond change : noms, rangs et champions restent nets.",
       "reset": "Réinitialiser"
+    },
+    "statsTable": {
+      "player": "Joueur",
+      "group": {
+        "record": "Bilan",
+        "combat": "Combat",
+        "economy": "Économie",
+        "impact": "Impact",
+        "vision": "Vision"
+      },
+      "hint": {
+        "games": "Games jouées",
+        "wr": "Winrate",
+        "k": "Kills par game",
+        "d": "Morts par game",
+        "a": "Assists par game",
+        "kda": "(Kills + Assists) / Morts",
+        "cs": "CS par game",
+        "csm": "CS par minute",
+        "gold": "Gold gagné par game",
+        "gm": "Gold par minute",
+        "dmg": "Dégâts aux champions par game",
+        "dmgm": "Dégâts aux champions par minute",
+        "tank": "Dégâts subis par game",
+        "tankpct": "Part des dégâts subis par l’équipe",
+        "kp": "Kill participation — part des kills de l’équipe où vous avez un kill ou un assist",
+        "goldpct": "Part du gold total de l’équipe",
+        "dmgpct": "Part des dégâts de l’équipe aux champions",
+        "eff": "Dégâts par gold — plus haut = plus rentable",
+        "xpm": "Expérience par minute",
+        "vs": "Vision score par game",
+        "wp": "Wards posées par game",
+        "wk": "Wards détruites par game",
+        "pink": "Pinks achetées par game"
+      },
+      "noData": "Pas de données"
+    },
+    "renamed": {
+      "formerly": "anciennement {{name}}",
+      "badge": "Renommé",
+      "ok": "OK",
+      "okLabel": "Masquer l’ancien nom {{name}}"
     }
   },
   "common": {
@@ -1497,7 +1824,9 @@
     "loading": "Chargement…",
     "close": "Fermer",
     "yes": "oui",
-    "no": "non"
+    "no": "non",
+    "skipToContent": "Aller au contenu",
+    "formerMember": "Ancien membre"
   },
   "discussion": {
     "title": "Discussion",
@@ -1574,7 +1903,8 @@
       "deleteConfirm": "Supprimer définitivement",
       "deleted": "Votre compte a été supprimé.",
       "openWeb": "Ouvrir l'app web",
-      "openWebHint": "Ouvre l'app web dans votre navigateur, déjà connecté à ce compte."
+      "openWebHint": "Ouvre l'app web dans votre navigateur, déjà connecté à ce compte.",
+      "deleteTypeLabel": "Tapez DELETE pour confirmer"
     },
     "backup": {
       "now": "Sauvegarder maintenant",
@@ -1595,6 +1925,26 @@
       "change": "Changer",
       "saved": "Mot de passe enregistré",
       "why": "Optionnel : avec un mot de passe, te connecter sur un nouveau PC ou navigateur ne demande plus de code par e-mail."
+    },
+    "gate": {
+      "unreachableTitle": "Serveur Ascend injoignable",
+      "unreachableDesc": "Vérifiez votre connexion internet, puis réessayez. Vos données locales ne sont pas touchées.",
+      "retry": "Réessayer"
+    },
+    "signOutEverywhere": {
+      "button": "Se déconnecter de tous les appareils",
+      "title": "Se déconnecter de tous les appareils ?",
+      "desc": "Tous les PC et navigateurs connectés à ce compte, celui-ci compris, devront se reconnecter (au plus tard dans l’heure). Les données locales restent sur chaque PC.",
+      "confirm": "Tout déconnecter",
+      "failed": "Serveur Ascend injoignable : aucun appareil n’a été déconnecté. Vérifiez votre connexion, puis réessayez."
+    },
+    "ownerHandover": {
+      "title_one": "Vous êtes owner d’un groupe",
+      "title_other": "Vous êtes owner de {{count}} groupes",
+      "handedOver_one": "Si vous supprimez votre compte, le rôle d’owner de {{groups}} passe à un autre membre : un coach, sinon un manager, un analyste, le capitaine, puis le joueur le plus ancien.",
+      "handedOver_other": "Si vous supprimez votre compte, le rôle d’owner de {{groups}} passe à un autre membre dans chacun : un coach, sinon un manager, un analyste, le capitaine, puis le joueur le plus ancien.",
+      "deleted_one": "{{groups}} n’a pas d’autre membre : il sera supprimé avec votre compte.",
+      "deleted_other": "{{groups}} n’ont pas d’autre membre : ils seront supprimés avec votre compte."
     }
   },
   "sync": {
@@ -1689,7 +2039,21 @@
       "riotIdLabel": "Ton Riot ID",
       "riotIdPlaceholder": "Pseudo#TAG",
       "riotIdHint": "Ton compte Riot est obligatoire pour rejoindre : c’est avec lui que tes stats entrent dans celles de l’équipe.",
-      "riotIdInvalid": "Riot ID attendu sous la forme Pseudo#TAG."
+      "riotIdInvalid": "Riot ID attendu sous la forme Pseudo#TAG.",
+      "riotChecks": {
+        "title": "Vérification des Riot ID",
+        "conflict_one": "Ce membre se réclame d’un joueur Riot qu’un autre membre détient déjà",
+        "conflict_other": "Ces {{count}} membres se réclament du même joueur Riot",
+        "conflictOwner": "Un seul d’entre eux est ce joueur : retire le mauvais.",
+        "conflictStaff": "Un seul d’entre eux est ce joueur : l’owner du groupe retire le mauvais.",
+        "notFound_one": "Ce Riot ID n’existe pas chez Riot",
+        "notFound_other": "Ces {{count}} Riot ID n’existent pas chez Riot",
+        "notFoundHint": "Le compte Riot lié dans l’app desktop Ascend du joueur est faux ou n’existe plus. Le joueur clique sur « Déconnecter le compte » (en bas de la barre latérale, à côté de son nom), puis se reconnecte avec le bon compte Riot ; il est revérifié ensuite.",
+        "removeLabel": "Retirer {{name}} du groupe",
+        "removeConfirm": "Retirer {{name}} du groupe ? Ce membre pourra être réinvité plus tard.",
+        "badgeConflict": "Conflit Riot",
+        "badgeNotFound": "Riot ID introuvable"
+      }
     },
     "sharing": {
       "title": "Ce que ce groupe peut voir",
@@ -1776,7 +2140,8 @@
       "generic": "Une erreur est survenue. Vérifiez votre connexion et réessayez.",
       "NOT_CONCERNED": "Cet événement ne te concerne pas.",
       "EVENT_OVER": "Cet événement est déjà terminé.",
-      "RIOT_ACCOUNT_REQUIRED": "Associe ton compte Riot pour rejoindre un groupe."
+      "RIOT_ACCOUNT_REQUIRED": "Associe ton compte Riot pour rejoindre un groupe.",
+      "WELLBEING_CONSENT_REQUIRED": "Pour partager votre bien-être, acceptez d’abord l’enregistrement de vos check-ins."
     },
     "dossier": {
       "pickPlayer": "Joueur suivi",
@@ -1822,6 +2187,48 @@
     },
     "switcher": {
       "label": "Groupe"
+    },
+    "suggestions": {
+      "title": "Objectifs suggérés",
+      "subtitle": "Basé sur ton bilan d’évaluation et tes sessions récentes",
+      "neverBadge": "Jamais travaillé",
+      "choose": "Choisir",
+      "reason": {
+        "highDeaths": "⚠ Moy. ≥ 5 morts/partie — Régulation des morts recommandée",
+        "critical": "Score {{score}}/10 — faiblesse critique",
+        "priority": "Score {{score}}/10 — priorité d’amélioration",
+        "room": "Score {{score}}/10 — marge de progression",
+        "maintain": "Score {{score}}/10 — maintien conseillé",
+        "lastSession": " · déjà travaillé la dernière session",
+        "neverWorked": " · jamais encore travaillé"
+      }
+    },
+    "reviewInsight": {
+      "title": "Analyse de la review",
+      "subtitle": "Synthèse automatique basée sur tes données",
+      "objectiveMet": "Objectif « {{objective}} » respecté",
+      "objectiveMissed": "Objectif « {{objective}} » non respecté",
+      "kpiAverage_one": "Moyenne KPI : {{avg}}/10 sur {{count}} KPI noté",
+      "kpiAverage_other": "Moyenne KPI : {{avg}}/10 sur {{count}} KPI notés",
+      "strength": "Point fort : {{kpi}} ({{score}}/10)",
+      "toImprove": "À améliorer : {{kpi}} ({{score}}/10)",
+      "noKpi": "Aucun KPI noté — pense à remplir tes scores pour suivre ta progression",
+      "manyNotes_one": "{{count}} note de timeline — bonne granularité d’analyse",
+      "manyNotes_other": "{{count}} notes de timeline — bonne granularité d’analyse",
+      "noNotes": "Pas de notes sur la timeline — ajoute des observations pendant la vidéo",
+      "conclusionWritten": "Conclusion libre rédigée"
+    },
+    "patterns": {
+      "title": "Patterns détectés",
+      "subtitle_one": "Analyse de la dernière session",
+      "subtitle_other": "Analyse des {{count}} dernières sessions",
+      "weakKpis": "KPIs faibles récurrents",
+      "via": "via {{objective}}",
+      "kpiScore": "{{score}}/10 · {{count}} sess.",
+      "mostRepeated": "Objectif le plus travaillé : <b>{{objective}}</b> <dim>({{count}} sessions)</dim>",
+      "highDeaths": "Moy. <red>{{deaths}} morts/partie</red> sur tes 20 dernières games — travaille <gold>Régulation des morts</gold> (objectif Tempo)",
+      "reviewRateLow": "Taux de review : <red>{{rate}} %</red> — pense à reviewer plus de parties pour des données précises",
+      "reviewRate": "Taux de review : <green>{{rate}} %</green>"
     }
   },
   "assistant": {
@@ -2098,7 +2505,8 @@
       "coaching": "Coaching",
       "team": "Équipe",
       "account": "Compte",
-      "management": "Management"
+      "management": "Management",
+      "teamStats": "Stats collectives"
     },
     "desktopHint": "L'enregistrement, les reviews et les données Riot restent dans l'app desktop.",
     "team": {
@@ -2187,11 +2595,21 @@
         "draft": "Revoir le plan de draft",
         "comms": "Test vocal 15 min avant",
         "goals": "Fixer 1–2 objectifs d'équipe pour le bloc"
-      }
+      },
+      "missingDrafts_one": "{{count}} brouillon lié est introuvable",
+      "missingDrafts_other": "{{count}} brouillons liés sont introuvables",
+      "missingDraftsStaff": "C’étaient des brouillons personnels, que l’équipe ne peut plus lire. Relie un brouillon de l’équipe ci-dessous (Équipe → Draft pour en créer un), puis retire les anciens liens.",
+      "missingDraftsPlayer": "C’étaient des brouillons personnels, que l’équipe ne peut plus lire. Le staff peut relier un brouillon de l’équipe à la place.",
+      "clearMissing_one": "Retirer le lien introuvable",
+      "clearMissing_other": "Retirer les {{count}} liens introuvables"
     },
     "download": {
       "short": "Télécharger Ascend",
       "full": "Télécharger Ascend pour Windows"
+    },
+    "teamStats": {
+      "loadFailed": "Impossible de charger l’équipe",
+      "loadFailedCause": "Le roster du groupe n’a pas pu être lu. Vérifie ta connexion, puis réessaie."
     }
   },
   "feedback": {
@@ -2348,7 +2766,15 @@
       "duration": "Durée",
       "customTimes": "Horaires précis",
       "notes": "Notes",
-      "submit": "Valider le créneau"
+      "submit": "Valider le créneau",
+      "day": "Jour",
+      "start": "Début",
+      "end": "Fin",
+      "endBeforeStart": "La fin doit être après le début ({{time}}).",
+      "freeHint_one": "Libre pour le titulaire de {{from}} à {{to}} · durée {{duration}}",
+      "freeHint_other": "Libre pour les {{count}} titulaires de {{from}} à {{to}} · durée {{duration}}",
+      "durationH": "{{h}} h",
+      "durationHm": "{{h}} h {{m}}"
     },
     "smartTitle": {
       "oneOnOne": "1:1 avec {{name}}",
@@ -2452,6 +2878,24 @@
       "legendUnknown": "Non renseigné",
       "fromRoster": "Titulaires du roster publié dans le groupe.",
       "fromGroup": "Tous les joueurs du groupe : aucun roster avec comptes reliés n’a été publié."
+    },
+    "newEvent": "Nouvel événement",
+    "myAvailability": {
+      "button": "Mes dispos",
+      "title": "Mes dispos",
+      "desc": "Pour chaque jour de la semaine affichée : votre dispo habituelle, un créneau, ou indisponible.",
+      "mode": {
+        "usual": "Habituel",
+        "available": "Dispo",
+        "unavailable": "Indispo"
+      },
+      "usualRule": "Habituellement {{slots}}",
+      "noUsual": "Pas de dispo habituelle",
+      "notePlaceholder": "Note : examen",
+      "noteLabel": "Note (facultative)",
+      "keysHint": "Entrée enregistre · Échap ferme sans enregistrer",
+      "save": "Enregistrer mes dispos",
+      "saved": "Dispos enregistrées"
     }
   },
   "teamSession": {
@@ -2648,7 +3092,35 @@
     "noShared": "Aucun joueur n'a partagé son bien-être dans ce groupe pour l'instant.",
     "moodDeclining": "Humeur en baisse",
     "loadThresholdLabel": "Alerter le staff quand un joueur (partageant stats et bien-être) joue plus de",
-    "loadThresholdSuffix": "h/semaine avec une humeur en baisse."
+    "loadThresholdSuffix": "h/semaine avec une humeur en baisse.",
+    "consent": {
+      "title": "Enregistrer vos check-ins de bien-être ?",
+      "intro": "Votre énergie, votre humeur et votre sommeil sont des données de santé. Avec votre accord, Ascend les enregistre dans votre compte pour suivre leur évolution d’une session à l’autre et les synchronise entre vos appareils.",
+      "private": "Personne d’autre ne les voit, sauf si vous activez plus tard leur partage avec le staff d’un groupe.",
+      "withdraw": "Vous pouvez retirer votre accord à tout moment depuis la carte Confidentialité (Paramètres dans l’app, Compte sur le web) : vos check-ins seront alors supprimés.",
+      "existing_one": "Vous avez déjà {{count}} check-in enregistré. Si vous refusez, il sera supprimé.",
+      "existing_other": "Vous avez déjà {{count}} check-ins enregistrés. Si vous refusez, ils seront supprimés.",
+      "learnMore": "En savoir plus (politique de confidentialité, § 3 bis)",
+      "accept": "J’accepte",
+      "notNow": "Pas maintenant",
+      "declineDelete": "Refuser et les supprimer",
+      "shareBlocked": "Pour partager votre bien-être, acceptez d’abord l’enregistrement de vos check-ins.",
+      "giveConsent": "Donner mon accord"
+    },
+    "privacy": {
+      "title": "Confidentialité",
+      "desc": "Votre accord pour l’enregistrement de vos check-ins de bien-être (énergie, humeur, sommeil).",
+      "statusGranted": "Accord donné le {{date}} (textes {{version}}).",
+      "statusWithdrawn": "Accord retiré le {{date}} : aucun check-in n’est enregistré.",
+      "statusNone": "Aucun accord donné : aucun check-in n’est enregistré.",
+      "withdraw": "Retirer mon accord",
+      "give": "Donner mon accord",
+      "withdrawTitle": "Retirer votre accord ?",
+      "withdrawDesc": "Tous vos check-ins seront supprimés de votre compte et ne seront plus visibles par vos groupes. C’est définitif.",
+      "withdrawConfirm": "Retirer et supprimer",
+      "withdrawn": "Accord retiré : vos check-ins ont été supprimés.",
+      "failed": "Impossible de mettre à jour votre accord"
+    }
   },
   "teamOps": {
     "title": "Tâches",
@@ -2836,7 +3308,9 @@
         "title": "Finalement présent",
         "body": "{{playerName}} sera finalement à « {{eventTitle}} » ({{scheduledAt}})"
       }
-    }
+    },
+    "bellLabel_one": "Notifications, {{count}} non lue",
+    "bellLabel_other": "Notifications, {{count}} non lues"
   },
   "notificationPrefs": {
     "title": "Préférences de notification",
@@ -2847,7 +3321,8 @@
     "from": "De",
     "to": "À",
     "save": "Enregistrer les préférences",
-    "saved": "Préférences enregistrées"
+    "saved": "Préférences enregistrées",
+    "saveFailed": "Impossible d’enregistrer les préférences"
   },
   "weeklyReport": {
     "title": "Rapport hebdomadaire",
@@ -3224,7 +3699,10 @@
         "desc_one": "Atteindre le niveau {{count}}",
         "desc_other": "Atteindre le niveau {{count}}"
       }
-    }
+    },
+    "iconLabel": "Icône {{n}}",
+    "iconLabelLocked": "Icône {{n}}, verrouillée, palier {{tier}}",
+    "editTabsLabel": "Personnalisation du profil"
   },
   "mistakeLab": {
     "title": "Labo d’erreurs",
@@ -3564,6 +4042,11 @@
         "left": "à gauche",
         "hidden": "masqué"
       }
+    },
+    "select": {
+      "group": "Sélectionner tous les enregistrements du groupe",
+      "recording": "Sélectionner {{name}}",
+      "open": "Ouvrir {{name}}"
     }
   },
   "share": {
@@ -3590,6 +4073,24 @@
       "invalidWebhook": "URL de webhook Discord invalide.",
       "noWebhook": "Choisis d’abord un webhook Discord.",
       "tempFailed": "L’hébergement temporaire a échoué. Vérifie ta connexion et réessaie."
+    },
+    "button": {
+      "sentTo": "📨 Envoyé à « {{name}} »",
+      "webhookFailed": "Échec du webhook — copié dans le presse-papiers à la place",
+      "copied": "📋 Copié dans le presse-papiers",
+      "sessionCopied": "📋 Session copiée dans le presse-papiers",
+      "pasteAnywhere": "Colle-le où tu veux — Discord, Notion, messages…",
+      "copyFailed": "Échec de la copie",
+      "sending": "Envoi…",
+      "copying": "Copie…",
+      "copy": "Copier",
+      "share": "Partager",
+      "moreOptions": "Autres options de partage",
+      "sendToDiscord": "Envoyer sur Discord",
+      "noWebhook": "Aucun webhook Discord configuré.",
+      "addInSettings": "Ajoutes-en un dans les Paramètres.",
+      "copyAsText": "Copier en texte",
+      "copyAsTextHint": "Markdown — à coller où tu veux"
     }
   },
   "microReview": {
@@ -3721,7 +4222,7 @@
       "dragonTank": "mort au Dragon, qui t'a retiré {{pct}} % de tes PV",
       "compensation": "mort {{sec}} s après un allié, avant la perte {{objectiveOf}}",
       "earlyBoots": "bottes achetées à {{clock}}, sans kill",
-      "sideT1": "T1 {{lane}} détruite après 14:00, la 1re tour déjà tombée",
+      "sideT1": "T1 {{lane}} détruite, la 1re tour déjà tombée",
       "heraldUnused": "mort {{sec}} s après la prise du Héraut, l'œil encore en poche",
       "fledInvade": "à {{pct}} % PV dans ta jungle face au jungler adverse à {{theirs}} %",
       "outsmited": "l'ennemi prend {{objectiveThe}} alors que tu étais dans la fosse",
@@ -4057,5 +4558,149 @@
   "teamSection": {
     "noGroup": "Pas encore de groupe : crée-en un ou rejoins-en un pour utiliser cette page.",
     "goToGroups": "Aller à Management → Groupes"
+  },
+  "lanePhase": {
+    "back": "Retour",
+    "title": "Comparateur de phase de lane",
+    "refresh": "Actualiser",
+    "loading": "Analyse de la timeline Riot…",
+    "noReport": "Aucun rapport de phase de lane disponible",
+    "framesAvailable": "Frames de timeline disponibles : {{count}}",
+    "vs": "vs",
+    "opponent": "adversaire",
+    "grade": "Note de lane",
+    "score": "score {{score}}/100",
+    "kpi": {
+      "dmgHint": "Dégâts aux champions @14 — vous {{you}} contre {{them}} pour l’adversaire",
+      "kpHint": "Kill participation pendant la phase de lane (0–14 min) : vos kills + assists / les kills de votre équipe, contre ceux de l’adversaire",
+      "objDmg": "Dégâts obj.",
+      "objDmgHint": "Dégâts aux objectifs (tours, drakes, baron…) sur toute la partie — vous contre l’adversaire de lane"
+    },
+    "noFrames": "Aucune frame de timeline pendant la phase de lane.",
+    "chartTip": "Astuce : cliquez sur un point d’une courbe pour aller à cette minute dans le replay.",
+    "chart": {
+      "cs": "Écart de CS",
+      "gold": "Écart de gold",
+      "xp": "Écart d’XP",
+      "dmg": "Dégâts aux champions",
+      "diff": "écart",
+      "minute": "min {{m}}"
+    },
+    "strip": {
+      "title": "Plates et trades en solo",
+      "empty": "Aucune plate prise ou perdue, ni de trade en solo entre vous et votre adversaire pendant la phase de lane.",
+      "markerHint": "{{event}} à {{m}} min — cliquez pour aller au replay"
+    },
+    "event": {
+      "soloKill": "Solo kill",
+      "soloDeath": "Solo death",
+      "plateTaken": "Plate prise",
+      "plateLost": "Plate perdue"
+    },
+    "diag": {
+      "unknownDetail": "erreur inconnue",
+      "noGame": "Partie introuvable — impossible de générer ce rapport de phase de lane.",
+      "noMatchId": "Aucun identifiant de partie Riot lié à cette game. Essayez d’abord de lier l’enregistrement.",
+      "noUser": "Aucun utilisateur actif.",
+      "timelineFetchFailed": "Échec du chargement de la timeline Riot : {{detail}}",
+      "matchFetchFailed": "Échec du chargement de la partie Riot : {{detail}}",
+      "emptyTimeline": "Les données de partie en cache sont vides.",
+      "noPlayer": "Joueur introuvable parmi les participants — le champion enregistré sur cette game est peut-être faux.",
+      "noOpponent": "Impossible d’identifier l’adversaire direct de lane (Arena / customs / échange de rôles).",
+      "noFrames": "La timeline n’a pas de frames — partie trop courte pour l’analyse.",
+      "badData": "Impossible de lire les données Riot : {{detail}}",
+      "unknown": "Erreur inconnue."
+    }
+  },
+  "externalReview": {
+    "objectiveOptional": "Objectif (optionnel)",
+    "objectiveOn": "Choisissez jusqu’à 3 axes de travail et les KPI à suivre.",
+    "objectiveOff": "Sans objectif — review libre avec marqueurs et notes.",
+    "kpisToTrack": "KPI à suivre",
+    "win": "Victoire",
+    "loss": "Défaite",
+    "vs": "vs {{champion}}",
+    "mode": {
+      "custom": "Review libre",
+      "customDesc": "Donnez-lui un titre et liez, si vous le voulez, un enregistrement de n’importe quelle source.",
+      "player": "Joueur externe",
+      "playerDesc": "Consultez l’historique de n’importe quel joueur et choisissez une partie à reviewer."
+    },
+    "custom": {
+      "title": "Titre de la review",
+      "titlePlaceholder": "ex. Focus phase de lane — Yone TOP",
+      "create": "Créer la review"
+    },
+    "player": {
+      "invalidId": "Entrez un Riot ID valide (nom + tag)",
+      "noGames": "Aucune partie classée trouvée pour ce joueur",
+      "notFound": "Joueur introuvable",
+      "intro": "Entrez le Riot ID du joueur. Nous récupérons ses dernières parties classées pour que vous en choisissiez une à reviewer.",
+      "gameName": "Nom de jeu",
+      "tag": "Tag",
+      "region": "Région",
+      "fetch": "Récupérer l’historique"
+    },
+    "games": {
+      "loadMore": "Charger {{count}} de plus",
+      "start": "Commencer la review"
+    },
+    "wizard": {
+      "title": "Review externe",
+      "back": "Retour",
+      "needTitle": "Entrez un titre",
+      "createFailed": "Impossible de créer la review"
+    },
+    "list": {
+      "title": "Reviews externes",
+      "count_one": "{{count}} review enregistrée",
+      "count_other": "{{count}} reviews enregistrées",
+      "new": "Nouvelle review",
+      "empty": "Aucune review externe pour l’instant",
+      "createFirst": "Créer la première",
+      "deleted": "Review supprimée",
+      "deleteFailed": "Impossible de supprimer la review",
+      "deleteAria": "Supprimer « {{title}} »"
+    },
+    "header": {
+      "back": "Retour aux reviews",
+      "objective": "Objectif :",
+      "victory": "Victoire",
+      "defeat": "Défaite",
+      "delete": "Supprimer cette review",
+      "vision": "Vision",
+      "duration": "Durée"
+    },
+    "page": {
+      "saved": "Review enregistrée",
+      "saveFailed": "Échec de l’enregistrement",
+      "saveClip": "Enregistrer",
+      "cancelClip": "Annuler le clip",
+      "unlinkFile": "Délier le fichier d’enregistrement",
+      "linkFile": "Lier un fichier d’enregistrement",
+      "thoughts": "Ressenti et analyse",
+      "thoughtsDesc": "Notez votre analyse, vos impressions ou tout ce que vous avez remarqué.",
+      "thoughtsPlaceholder": "Qu’est-ce qui ressort ? Que feriez-vous autrement ?",
+      "savedButton": "Enregistrée ✓",
+      "save": "Enregistrer la review"
+    }
+  },
+  "dataState": {
+    "retry": "Réessayer"
+  },
+  "a11y": {
+    "youtubePlayer": "Lecteur vidéo YouTube"
+  },
+  "discordUnlink": {
+    "button": "Délier le serveur Discord",
+    "sectionTitle": "Serveur Discord",
+    "sectionHint": "Le bot arrête de publier le planning et les rappels de ce groupe sur le serveur lié.",
+    "title": "Délier le serveur Discord de {{name}} ?",
+    "desc": "Le bot n’y publiera plus le planning ni les rappels. Vous pourrez lier un serveur plus tard avec un nouveau code.",
+    "confirm": "Délier",
+    "done": "Serveur Discord délié de {{name}}",
+    "noneLinked": "{{name}} n’a aucun serveur Discord lié.",
+    "forbidden": "Seuls l’owner, les coachs et les managers du groupe peuvent délier son serveur Discord.",
+    "failed": "Impossible de délier le serveur Discord"
   }
 }

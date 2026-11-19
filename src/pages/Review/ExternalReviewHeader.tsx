@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ChampionMatchup } from '@/components/ChampionMatchup'
@@ -30,6 +31,7 @@ function StatPill({ icon: Icon, label, value }: { icon: any; label: string; valu
 }
 
 export function ExternalReviewHeader({ review, onDelete }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const categories = useLocalizedFundamentals()
   const allFundamentals = categories.flatMap((c) => c.fundamentals)
@@ -47,14 +49,14 @@ export function ExternalReviewHeader({ review, onDelete }: Props) {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-2 min-w-0">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/review')} className="shrink-0 -ml-2">
-            <ArrowLeft className="h-4 w-4" />
+          <Button variant="ghost" size="sm" onClick={() => navigate('/review')} className="shrink-0 -ml-2" aria-label={t('externalReview.header.back')}>
+            <ArrowLeft className="h-4 w-4" aria-hidden />
           </Button>
           <div className="min-w-0">
             <h1 className="font-display text-2xl font-bold text-hextech-gold-bright truncate">{review.title}</h1>
             {objectiveLabels.length > 0 && (
               <p className="text-sm text-hextech-text mt-0.5">
-                Objective: <span className="text-hextech-gold">{objectiveLabels.join(' · ')}</span>
+                {t('externalReview.header.objective')} <span className="text-hextech-gold">{objectiveLabels.join(' · ')}</span>
               </p>
             )}
           </div>
@@ -62,11 +64,11 @@ export function ExternalReviewHeader({ review, onDelete }: Props) {
         <div className="flex items-center gap-2 shrink-0">
           {matchData && (
             <Badge variant={matchData.win ? 'success' : 'destructive'}>
-              {matchData.win ? 'Victory' : 'Defeat'}
+              {matchData.win ? t('externalReview.header.victory') : t('externalReview.header.defeat')}
             </Badge>
           )}
-          <Button variant="ghost" size="sm" onClick={onDelete} className="text-hextech-text-dim hover:text-[#E24C3A]">
-            <Trash2 className="h-4 w-4" />
+          <Button variant="ghost" size="sm" onClick={onDelete} className="text-hextech-text-dim hover:text-[#E24C3A]" aria-label={t('externalReview.header.delete')}>
+            <Trash2 className="h-4 w-4" aria-hidden />
           </Button>
         </div>
       </div>
@@ -90,8 +92,8 @@ export function ExternalReviewHeader({ review, onDelete }: Props) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <StatPill icon={SwordsIcon} label="KDA" value={formatKDA(matchData.kills, matchData.deaths, matchData.assists)} />
             <StatPill icon={Target} label="CS" value={String(matchData.cs ?? 0)} />
-            <StatPill icon={SwordsIcon} label="Vision" value={String(matchData.visionScore ?? 0)} />
-            <StatPill icon={Clock} label="Duration" value={formatGameTime(matchData.duration)} />
+            <StatPill icon={SwordsIcon} label={t('externalReview.header.vision')} value={String(matchData.visionScore ?? 0)} />
+            <StatPill icon={Clock} label={t('externalReview.header.duration')} value={formatGameTime(matchData.duration)} />
           </div>
         </div>
       )}

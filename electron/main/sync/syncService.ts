@@ -1,8 +1,9 @@
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, app } from 'electron'
 import { getPrisma } from '../database'
 import { getSupabase, isCloudConfigured, getSessionUserId } from '../cloud/supabase'
 import { SyncEngine, SyncError, type PushRecord, type RemoteRecord, type SyncRemote, type SyncStatus } from './syncEngine'
-import { hasLiveSessionForUser } from '../../../src/lib/teamSessionsCore'
+import { listMyLiveSessions, liveSessionsKey, livePollDelay } from '../../../src/lib/teamSessionsCore'
+import type { TeamSession } from '../../../src/lib/teamSessions'
 
 /**
  * sync_records / sync_push over the signed-in Supabase session.
@@ -55,13 +56,14 @@ class SupabaseSyncRemote implements SyncRemote {
   }
 }
 
-const INTERVAL_MS = 30_000
-/** While any of the user's groups has a live team session (Phase 3,
- *  Planning rework) — fast enough to feel "live" across devices without
- *  building a Realtime/websocket transport (a deliberate decision: this
- *  app has no Realtime infra anywhere, and the confirmed design is to
- *  reuse the existing poll/push sync, just shortened while it matters). */
-const FAST_INTERVAL_MS = 15_000 // was 7.5 s, see the team-session polls (18/11/2026)
+/**
+ * Supabase budget (item I, 19/11/2026): ≤ 3 requests a minute at rest. A cycle is 2 requests (pull + live-session
+ * check; the owner check runs once per run, see verifiedOwners). Local edits still sync within DEBOUNCE_MS through
+ * the outbox watcher, so the rest interval only bounds how stale other devices' changes can be.
+ */
+// The cadence itself (60 s, 15 s while a team session is live, 5 min / 60 s hidden) is livePollDelay in
+// teamSessionsCore, shared with the web. The 15 s while live is fast enough to feel "live" across devices without
+// a Realtime/websocket transport (a deliberate decision: the app has no Realtime infrastructure).
 /** After a local change, sync soon but not on every keystroke. */
 const DEBOUNCE_MS = 5_000
 
@@ -71,6 +73,53 @@ let timer: NodeJS.Timeout | null = null
 let watcher: NodeJS.Timeout | null = null
 let lastPending = 0
 let hasLiveSession = false
+/** Owner checks done this run (SyncEngine.checkOwner): one request per run instead of one per cycle. */
+const verifiedOwners = new Set<string>()
+/** The wait of the scheduled cycle, so a window coming back can cut a hidden-mode wait short. */
+let scheduledDelay = 0
+
+/** True when some window is shown and not minimised. */
+function anyWindowVisible(): boolean {
+  return BrowserWindow.getAllWindows().some((w) => !w.isDestroyed() && w.isVisible() && !w.isMinimized())
+}
+
+// ── The one live-session poller of the app (item I, 19/11/2026) ─────────────
+// The sync cycle fetches the user's live team sessions (the same single request that used to only count them) and
+// pushes them as 'team-session:live' when they change. The banner and the end-of-game prompt listen to that instead
+// of each polling teamSessionListMyLive every 15-30 s.
+
+/** null until the first fetch. */
+let liveSessions: TeamSession[] | null = null
+let liveKey = ''
+
+function setLiveSessions(list: TeamSession[]): void {
+  liveSessions = list
+  hasLiveSession = list.length > 0
+  const key = liveSessionsKey(list)
+  if (key === liveKey) return
+  liveKey = key
+  broadcast('team-session:live', list)
+}
+
+/** Fetches the user's live sessions now (one request) and pushes them if they changed. Never throws. */
+export async function refreshLiveSessions(): Promise<TeamSession[]> {
+  try {
+    // Signed out: nothing live (and no request to send).
+    const uid = await currentUserId().catch(() => null)
+    setLiveSessions(uid ? await listMyLiveSessions(getSupabase()) : [])
+  } catch { /* keep the previous list; next cycle retries */ }
+  return liveSessions ?? []
+}
+
+/** The last known live sessions, fetched once if the sync has not run yet (team-session:live-cached). */
+export async function getLiveSessionsCached(): Promise<TeamSession[]> {
+  return liveSessions ?? refreshLiveSessions()
+}
+
+/** Pure, tested: the wait before the next cycle. */
+export function nextSyncDelay(visible: boolean, liveSession: boolean): number {
+  return livePollDelay(visible, liveSession)
+}
 
 function broadcast(channel: string, payload: unknown): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -102,7 +151,7 @@ export function syncNow(): Promise<void> {
       setStatus({ phase: 'idle', error: 'SIGNED_OUT' })
       return
     }
-    const engine = new SyncEngine(getPrisma() as any, new SupabaseSyncRemote(uid), uid)
+    const engine = new SyncEngine(getPrisma() as any, new SupabaseSyncRemote(uid), uid, verifiedOwners)
     setStatus({ phase: 'syncing', error: null })
     try {
       const res = await engine.syncOnce()
@@ -123,14 +172,11 @@ export function syncNow(): Promise<void> {
  *  `setInterval`) so the interval can shorten/lengthen between runs —
  *  shortened while any of the user's groups has a live team session. */
 function scheduleNextSync(): void {
-  const delay = hasLiveSession ? FAST_INTERVAL_MS : INTERVAL_MS
+  const delay = nextSyncDelay(anyWindowVisible(), hasLiveSession)
+  scheduledDelay = delay
   timer = setTimeout(async () => {
     await syncNow().catch(() => {})
-    try {
-      // Signed out: no live session to look for (and no request to send).
-      const uid = await currentUserId().catch(() => null)
-      hasLiveSession = uid ? await hasLiveSessionForUser(getSupabase()) : false
-    } catch { /* keep the previous value; next cycle retries */ }
+    await refreshLiveSessions()
     scheduleNextSync()
   }, delay)
 }
@@ -140,6 +186,14 @@ export function startSyncService(): void {
   if (!isCloudConfigured() || timer) return
   setTimeout(() => { syncNow().catch(() => {}) }, 3_000)
   scheduleNextSync()
+
+  // A window coming back while a hidden-mode wait (up to 5 min) is pending: back to the visible cadence now.
+  app.on('browser-window-focus', () => {
+    if (!timer || scheduledDelay <= nextSyncDelay(true, hasLiveSession)) return
+    clearTimeout(timer)
+    timer = null
+    syncNow().catch(() => {}).finally(() => { if (!timer) scheduleNextSync() })
+  })
 
   let dueAt = 0
   watcher = setInterval(async () => {

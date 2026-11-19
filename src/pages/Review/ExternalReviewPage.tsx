@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
@@ -37,6 +38,7 @@ interface ExternalReview {
 // ── Page component ────────────────────────────────────────────────────────────
 
 export function ExternalReviewPage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -119,9 +121,9 @@ export function ExternalReviewPage() {
         kpiScores: JSON.stringify(kpiScores),
       })
       setSaved(true)
-      toast({ title: 'Review saved', variant: 'gold' })
+      toast({ title: t('externalReview.page.saved'), variant: 'gold' })
     } catch (err: any) {
-      toast({ title: 'Save failed', description: err.message, variant: 'destructive' })
+      toast({ title: t('externalReview.page.saveFailed'), description: err.message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -179,7 +181,7 @@ export function ExternalReviewPage() {
     if (!matchingRecordingId) return
     setSavingClip(true)
     try {
-      await (window.api as any).createClip({
+      await window.api.createClip({
         recordingId: matchingRecordingId,
         startMs: clipRange.startMs,
         endMs: clipRange.endMs,
@@ -260,9 +262,10 @@ export function ExternalReviewPage() {
           {creatingClip && (
             <div className="flex items-center gap-2 rounded-lg bg-[#090e17] border border-hextech-gold/30 px-3 py-1.5">
               <div className="flex items-center gap-1 rounded bg-white/5 border border-white/10 px-1.5 py-1">
-                <span className="text-[9px] text-hextech-text-dim/60 uppercase">In</span>
+                <span className="text-[9px] text-hextech-text-dim/60 uppercase" aria-hidden>{t('recording.panel.clipIn')}</span>
                 <input
                   type="text"
+                  aria-label={t('recording.panel.clipStart')}
                   value={startInput}
                   onChange={(e) => setStartInput(e.target.value)}
                   onBlur={applyStart}
@@ -274,9 +277,10 @@ export function ExternalReviewPage() {
                 {formatMs(Math.max(0, clipRange.endMs - clipRange.startMs))}
               </span>
               <div className="flex items-center gap-1 rounded bg-white/5 border border-white/10 px-1.5 py-1">
-                <span className="text-[9px] text-hextech-text-dim/60 uppercase">Out</span>
+                <span className="text-[9px] text-hextech-text-dim/60 uppercase" aria-hidden>{t('recording.panel.clipOut')}</span>
                 <input
                   type="text"
+                  aria-label={t('recording.panel.clipEnd')}
                   value={endInput}
                   onChange={(e) => setEndInput(e.target.value)}
                   onBlur={applyEnd}
@@ -286,7 +290,8 @@ export function ExternalReviewPage() {
               </div>
               <input
                 type="text"
-                placeholder="Clip title (optional)"
+                placeholder={t('recording.panel.clipTitle')}
+                aria-label={t('recording.panel.clipTitle')}
                 value={clipTitle}
                 onChange={(e) => setClipTitle(e.target.value)}
                 className="flex-1 min-w-0 rounded bg-white/5 border border-white/10 px-2 py-1 text-[11px] text-hextech-text placeholder:text-hextech-text-dim/40 focus:outline-none"
@@ -298,14 +303,16 @@ export function ExternalReviewPage() {
                   onClick={handleSaveClip}
                   className="h-6 px-2.5 text-[11px] gap-1 bg-hextech-gold text-hextech-dark hover:bg-hextech-gold/90"
                 >
-                  {savingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                  Save
+                  {savingClip ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <Save className="h-3 w-3" aria-hidden />}
+                  {t('externalReview.page.saveClip')}
                 </Button>
                 <button
+                  type="button"
                   onClick={() => setCreatingClip(false)}
+                  aria-label={t('externalReview.page.cancelClip')}
                   className="h-6 px-2 rounded text-[11px] text-hextech-text-dim hover:text-hextech-text border border-transparent hover:border-hextech-border-dim transition-colors"
                 >
-                  <Square className="h-3 w-3" />
+                  <Square className="h-3 w-3" aria-hidden />
                 </button>
               </div>
             </div>
@@ -314,15 +321,15 @@ export function ExternalReviewPage() {
           {/* File path + unlink */}
           <div className="flex items-center justify-between px-1">
             <span className="text-xs text-hextech-text-dim truncate max-w-[70%]">{review.filePath}</span>
-            <Button variant="ghost" size="sm" onClick={handleUnlinkFile} className="text-hextech-text-dim hover:text-[#E24C3A] shrink-0">
-              <Trash2 className="h-3.5 w-3.5" />
+            <Button variant="ghost" size="sm" onClick={handleUnlinkFile} className="text-hextech-text-dim hover:text-[#E24C3A] shrink-0" aria-label={t('externalReview.page.unlinkFile')}>
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
             </Button>
           </div>
         </div>
       ) : (
         <Button variant="outline" onClick={handleLinkFile} disabled={linkingFile} className="gap-2">
-          {linkingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
-          Link recording file
+          {linkingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Link2 className="h-3.5 w-3.5" aria-hidden />}
+          {t('externalReview.page.linkFile')}
         </Button>
       )}
 
@@ -358,12 +365,13 @@ export function ExternalReviewPage() {
       {/* Free text */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Thoughts & Feelings</CardTitle>
-          <CardDescription>Write down your analysis, impressions, or anything you noticed.</CardDescription>
+          <CardTitle className="text-base">{t('externalReview.page.thoughts')}</CardTitle>
+          <CardDescription>{t('externalReview.page.thoughtsDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <Textarea
-            placeholder="What stood out? What would you do differently?"
+            placeholder={t('externalReview.page.thoughtsPlaceholder')}
+            aria-label={t('externalReview.page.thoughts')}
             value={freeText}
             onChange={(e) => setFreeText(e.target.value)}
             rows={4}
@@ -373,8 +381,8 @@ export function ExternalReviewPage() {
 
       {/* Save */}
       <Button onClick={handleSave} disabled={saving} size="lg" className="w-full">
-        {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
-        {saved ? 'Saved ✓' : 'Save review'}
+        {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden /> : <Check className="h-4 w-4 mr-2" aria-hidden />}
+        {saved ? t('externalReview.page.savedButton') : t('externalReview.page.save')}
       </Button>
     </div>
   )

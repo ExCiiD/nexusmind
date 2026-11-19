@@ -7,7 +7,7 @@ export interface Announcement {
   title: string
   body: string
   pinned: boolean
-  createdBy: string
+  createdBy: string | null // null once the author deleted their account (S19-16 / #33)
   createdAt: string
   updatedAt: string
 }

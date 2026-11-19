@@ -33,6 +33,7 @@ export function registerCollabHandlers() {
     contentType: z.enum(['image/webp', 'image/png', 'image/jpeg']),
   })
   validatedHandle('collab:set-group-logo', z.tuple([uuid, logoImage.nullable()]), (_e, groupId, image) => collab.setGroupLogo(groupId, image))
+  validatedHandle('discord:unlink-guild', z.tuple([uuid]), (_e, groupId) => collab.discordUnlinkGuild(groupId))
 
   validatedHandle('collab:list-comments', z.tuple([recordId, uuid.optional()]),
     (_e, reviewId, playerId) => collab.listComments(reviewId, playerId))
@@ -188,6 +189,9 @@ export function registerCollabHandlers() {
   validatedHandle('wellbeing:list-for-group', z.tuple([z.array(uuid).max(50)]), (_e, playerIds) => collab.wellbeingListForGroup(playerIds))
   validatedHandle('wellbeing:get-load-threshold', z.tuple([uuid]), (_e, groupId) => collab.wellbeingGetLoadThreshold(groupId))
   validatedHandle('wellbeing:set-load-threshold', z.tuple([uuid, z.number().int().min(1).max(100)]), (_e, groupId, hours) => collab.wellbeingSetLoadThreshold(groupId, hours))
+  // Consent to wellbeing check-ins (legal texts v0.3): withdrawing deletes them server side.
+  validatedHandle('wellbeing:consent-get', z.tuple([]), () => collab.wellbeingConsentGet())
+  validatedHandle('wellbeing:consent-set', z.tuple([z.boolean(), z.literal('v0.3')]), (_e, granted, version) => collab.wellbeingConsentSet(granted, version))
 
   const announcementInput = z.object({ title: z.string().trim().min(1).max(120), body: z.string().trim().min(1).max(4000), pinned: z.boolean().optional() })
   validatedHandle('announcements:list', z.tuple([uuid]), (_e, groupId) => collab.announcementsList(groupId))

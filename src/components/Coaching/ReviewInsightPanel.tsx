@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle2, XCircle, TrendingUp, TrendingDown, MessageSquare, AlertCircle } from 'lucide-react'
 import { useLocalizedFundamentalList } from '@/lib/constants/useFundamentals'
@@ -38,6 +40,7 @@ function buildInsights(
   objectiveLabel: string,
   selectedKpiIds: string[],
   allFundamentals: Fundamental[],
+  t: TFunction,
 ): InsightLine[] {
   const lines: InsightLine[] = []
 
@@ -45,13 +48,13 @@ function buildInsights(
   if (objectiveRespected === true) {
     lines.push({
       icon: CheckCircle2,
-      text: `Objectif "${objectiveLabel}" respecté`,
+      text: t('coaching.reviewInsight.objectiveMet', { objective: objectiveLabel }),
       variant: 'positive',
     })
   } else if (objectiveRespected === false) {
     lines.push({
       icon: XCircle,
-      text: `Objectif "${objectiveLabel}" non respecté`,
+      text: t('coaching.reviewInsight.objectiveMissed', { objective: objectiveLabel }),
       variant: 'negative',
     })
   }
@@ -70,7 +73,7 @@ function buildInsights(
 
     lines.push({
       icon: avgVariant === 'positive' ? TrendingUp : avgVariant === 'negative' ? TrendingDown : MessageSquare,
-      text: `Moyenne KPI : ${avgRounded}/10 sur ${filledKpis.length} KPI noté${filledKpis.length > 1 ? 's' : ''}`,
+      text: t('coaching.reviewInsight.kpiAverage', { avg: avgRounded, count: filledKpis.length }),
       variant: avgVariant,
     })
 
@@ -80,7 +83,7 @@ function buildInsights(
     for (const [kpiId, score] of best) {
       lines.push({
         icon: TrendingUp,
-        text: `Point fort : ${findKpiLabel(kpiId, allFundamentals)} (${score}/10)`,
+        text: t('coaching.reviewInsight.strength', { kpi: findKpiLabel(kpiId, allFundamentals), score }),
         variant: 'positive',
       })
     }
@@ -90,14 +93,14 @@ function buildInsights(
     for (const [kpiId, score] of worst) {
       lines.push({
         icon: TrendingDown,
-        text: `À améliorer : ${findKpiLabel(kpiId, allFundamentals)} (${score}/10)`,
+        text: t('coaching.reviewInsight.toImprove', { kpi: findKpiLabel(kpiId, allFundamentals), score }),
         variant: 'warning',
       })
     }
   } else if (selectedKpiIds.length > 0) {
     lines.push({
       icon: AlertCircle,
-      text: 'Aucun KPI noté — pense à remplir tes scores pour suivre ta progression',
+      text: t('coaching.reviewInsight.noKpi'),
       variant: 'warning',
     })
   }
@@ -106,13 +109,13 @@ function buildInsights(
   if (timelineNotes.length >= 3) {
     lines.push({
       icon: MessageSquare,
-      text: `${timelineNotes.length} note${timelineNotes.length > 1 ? 's' : ''} de timeline — bonne granularité d'analyse`,
+      text: t('coaching.reviewInsight.manyNotes', { count: timelineNotes.length }),
       variant: 'positive',
     })
   } else if (timelineNotes.length === 0) {
     lines.push({
       icon: AlertCircle,
-      text: 'Pas de notes sur la timeline — ajoute des observations pendant la vidéo',
+      text: t('coaching.reviewInsight.noNotes'),
       variant: 'neutral',
     })
   }
@@ -121,7 +124,7 @@ function buildInsights(
   if (freeText.trim().length > 20) {
     lines.push({
       icon: CheckCircle2,
-      text: 'Conclusion libre rédigée',
+      text: t('coaching.reviewInsight.conclusionWritten'),
       variant: 'positive',
     })
   }
@@ -131,7 +134,7 @@ function buildInsights(
 
 const variantStyles: Record<InsightLine['variant'], string> = {
   positive: 'text-hextech-green',
-  negative: 'text-[#E24C3A]',
+  negative: 'text-hextech-red',
   neutral: 'text-hextech-text-dim',
   warning: 'text-hextech-gold',
 }
@@ -144,6 +147,7 @@ export function ReviewInsightPanel({
   objectiveLabel,
   selectedKpiIds,
 }: ReviewInsightPanelProps) {
+  const { t } = useTranslation()
   const allFundamentals = useLocalizedFundamentalList()
 
   const insights = useMemo(
@@ -156,8 +160,9 @@ export function ReviewInsightPanel({
         objectiveLabel,
         selectedKpiIds,
         allFundamentals,
+        t,
       ),
-    [objectiveRespected, kpiScores, timelineNotes, freeText, objectiveLabel, selectedKpiIds, allFundamentals],
+    [objectiveRespected, kpiScores, timelineNotes, freeText, objectiveLabel, selectedKpiIds, allFundamentals, t],
   )
 
   if (insights.length === 0) return null
@@ -166,17 +171,17 @@ export function ReviewInsightPanel({
     <Card className="border-hextech-cyan/20 bg-gradient-to-b from-hextech-blue/10 to-hextech-blue/10">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-hextech-cyan" />
-          Analyse de la review
+          <TrendingUp className="h-4 w-4 text-hextech-cyan" aria-hidden />
+          {t('coaching.reviewInsight.title')}
         </CardTitle>
-        <p className="text-xs text-hextech-text-dim">Synthèse automatique basée sur tes données</p>
+        <p className="text-xs text-hextech-text-dim">{t('coaching.reviewInsight.subtitle')}</p>
       </CardHeader>
       <CardContent className="space-y-2">
         {insights.map((line, i) => {
           const Icon = line.icon
           return (
             <div key={i} className="flex items-start gap-2">
-              <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', variantStyles[line.variant])} />
+              <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', variantStyles[line.variant])} aria-hidden />
               <p className={cn('text-sm', variantStyles[line.variant])}>{line.text}</p>
             </div>
           )

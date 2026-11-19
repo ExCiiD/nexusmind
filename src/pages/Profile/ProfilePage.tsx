@@ -25,6 +25,7 @@ import {
 import { ProfileCard, TitlePill, TierAvatar } from '@/components/Profile/ProfileCard'
 
 type EditTab = 'icon' | 'banner' | 'titles' | 'bio'
+const EDIT_TABS: EditTab[] = ['icon', 'banner', 'titles', 'bio']
 const panel = 'rounded-2xl border border-hextech-border-dim/70 panel-surface p-5 shadow-lg backdrop-blur-sm'
 
 export function ProfilePage() {
@@ -109,27 +110,40 @@ export function ProfilePage() {
         <div className="space-y-6 xl:col-span-7">
           {editing ? (
             <section className={panel}>
-              <div className="mb-4 flex flex-wrap gap-1 rounded-lg border border-hextech-border-dim p-1">
-                {(['icon', 'banner', 'titles', 'bio'] as EditTab[]).map((id) => (
-                  <button key={id} onClick={() => setTab(id)}
-                    className={cn('flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors', tab === id ? 'bg-hextech-gold text-hextech-black' : 'text-hextech-text hover:text-hextech-text-bright')}>
+              <div role="tablist" aria-label={t('profile.editTabsLabel')} className="mb-4 flex flex-wrap gap-1 rounded-lg border border-hextech-border-dim p-1">
+                {EDIT_TABS.map((id, i) => (
+                  <button key={id} id={`profile-tab-${id}`} type="button" role="tab" aria-selected={tab === id} aria-controls="profile-tabpanel"
+                    tabIndex={tab === id ? 0 : -1}
+                    onClick={() => setTab(id)}
+                    onKeyDown={(e) => {
+                      const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0
+                      if (!d) return
+                      e.preventDefault()
+                      const next = EDIT_TABS[(i + d + EDIT_TABS.length) % EDIT_TABS.length]
+                      setTab(next)
+                      document.getElementById(`profile-tab-${next}`)?.focus()
+                    }}
+                    className={cn('flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', tab === id ? 'bg-hextech-gold text-hextech-black' : 'text-hextech-text hover:text-hextech-text-bright')}>
                     {t(`profile.editTabs.${id}`)}
                   </button>
                 ))}
               </div>
+              <div id="profile-tabpanel" role="tabpanel" aria-labelledby={`profile-tab-${tab}`}>
 
               {tab === 'icon' && (
                 <div className="grid grid-cols-4 gap-3 sm:grid-cols-5 lg:grid-cols-7">
-                  {PROFILE_ICONS.map((icon) => {
+                  {PROFILE_ICONS.map((icon, i) => {
                     const open = isTierReached(tp.tier.id, icon.unlockTier)
                     const active = prefs.iconId === icon.id
                     return (
-                      <button key={icon.id} disabled={!open} onClick={() => patch({ iconId: icon.id })}
+                      <button key={icon.id} type="button" aria-disabled={!open || undefined} onClick={() => { if (open) patch({ iconId: icon.id }) }}
+                        aria-pressed={active}
+                        aria-label={open ? t('profile.iconLabel', { n: i + 1 }) : t('profile.iconLabelLocked', { n: i + 1, tier: t(`profile.tiers.${icon.unlockTier}`) })}
                         title={open ? undefined : t('profile.unlockAt', { tier: t(`profile.tiers.${icon.unlockTier}`) })}
                         className={cn('group relative aspect-square overflow-hidden rounded-xl border-2 transition-all', active ? 'border-hextech-gold shadow-[0_0_16px_rgba(0,0,0,0.4)]' : 'border-transparent hover:border-hextech-border', !open && 'cursor-not-allowed')}>
                         <img src={icon.url} alt="" className={cn('h-full w-full object-cover transition-transform group-hover:scale-105', !open && 'grayscale opacity-35')} />
                         {!open && (
-                          <span className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 text-[9px] font-bold uppercase text-hextech-text-bright">
+                          <span aria-hidden className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 text-[9px] font-bold uppercase text-hextech-text-bright">
                             <Lock className="h-4 w-4" />{t(`profile.tiers.${icon.unlockTier}`)}
                           </span>
                         )}
@@ -145,7 +159,7 @@ export function ProfilePage() {
                   {PROFILE_BANNERS.map((b) => {
                     const active = prefs.bannerId === b.id
                     return (
-                      <button key={b.id} onClick={() => patch({ bannerId: b.id })}
+                      <button key={b.id} type="button" aria-pressed={active} onClick={() => patch({ bannerId: b.id })}
                         className={cn('relative h-16 overflow-hidden rounded-lg border-2 transition-all', active ? 'border-hextech-gold' : 'border-transparent hover:border-hextech-border')}>
                         {b.url ? <img src={b.url} alt="" className="h-full w-full object-cover" /> : <div className="h-full w-full bg-gradient-to-br from-hextech-gold/40 via-hextech-elevated to-hextech-cyan/30" />}
                         <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2 pb-1 pt-3 text-left text-[10px] font-medium text-white">{t(`profile.banners.${b.id}`)}</span>
@@ -167,6 +181,7 @@ export function ProfilePage() {
                   <p className="text-right font-mono text-[10px] text-hextech-text-dim">{prefs.bio.length}/{BIO_MAX}</p>
                 </div>
               )}
+              </div>
             </section>
           ) : (
             <TierPath currentTierId={tp.tier.id} level={tp.level} iconId={prefs.iconId} />

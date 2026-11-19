@@ -11,7 +11,7 @@ import {
 } from '../../../src/lib/discordBotCore'
 import { listEvents, listAvailabilityRules, listAvailabilityExceptions, findCommonAvailability } from '../../../src/lib/calendarCore'
 import { listScrimsForGroup } from '../../../src/lib/scrimsCore'
-import { getSharedTeam } from '../../../src/lib/teamCore'
+import { getGroupRosterUserIds } from '../../../src/lib/teamCore'
 
 export interface Env {
   SUPABASE_URL: string
@@ -106,8 +106,8 @@ export default {
           await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId, `📣 **${a.title}**\n${a.body}`)
         }
 
-        const shared = await getSharedTeam(sb, guild.groupId)
-        const starterUserIds = shared.roster.map((m) => m.userId).filter((id): id is string => !!id)
+        // WSC-06: only the roster's linked accounts (service role: no RLS here).
+        const starterUserIds = await getGroupRosterUserIds(sb, guild.groupId)
         if (starterUserIds.length >= 2) {
           const today = now.toISOString().slice(0, 10)
           const [rules, exceptions] = await Promise.all([

@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog'
@@ -35,6 +37,7 @@ function buildSuggestions(
   kpiHistory: KpiHistoryEntry[],
   selectedObjectives: string[],
   highDeathsWarning: boolean,
+  t: TFunction,
   max = 4,
 ): Suggestion[] {
   const recent5 = kpiHistory.slice(0, 5)
@@ -60,17 +63,17 @@ function buildSuggestions(
 
       let reason: string
       if (f.id === 'tempo' && highDeathsWarning) {
-        reason = '⚠ Moy. ≥ 5 morts/partie — Régulation des morts recommandée'
+        reason = t('coaching.suggestions.reason.highDeaths')
       } else if (score <= 3) {
-        reason = `Score ${score}/10 — faiblesse critique`
+        reason = t('coaching.suggestions.reason.critical', { score })
       } else if (score <= 5) {
-        reason = `Score ${score}/10 — priorité`
+        reason = t('coaching.suggestions.reason.priority', { score })
       } else if (score <= 7) {
-        reason = `Score ${score}/10 — marge`
+        reason = t('coaching.suggestions.reason.room', { score })
       } else {
-        reason = `Score ${score}/10`
+        reason = t('session.picker.scoreOnly', { score })
       }
-      if (neverUsed && f.id !== 'tempo') reason += ' · jamais travaillé'
+      if (neverUsed && f.id !== 'tempo') reason += t('coaching.suggestions.reason.neverWorked')
 
       return { id: f.id, label: f.label, assessmentScore: score, reason, priority, isNew: neverUsed }
     })
@@ -119,6 +122,7 @@ function FundamentalItem({
   isNew?: boolean
   onSelect: (id: string) => void
 }) {
+  const { t } = useTranslation()
   return (
     <button
       type="button"
@@ -149,7 +153,7 @@ function FundamentalItem({
           </span>
           {isNew && !isSelected && (
             <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-hextech-cyan/40 text-hextech-cyan">
-              Nouveau
+              {t('session.picker.new')}
             </Badge>
           )}
         </div>
@@ -187,6 +191,7 @@ export function FundamentalPickerDialog({
   onSelect,
   disabled = false,
 }: FundamentalPickerDialogProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [kpiHistory, setKpiHistory] = useState<KpiHistoryEntry[]>([])
@@ -210,8 +215,8 @@ export function FundamentalPickerDialog({
   }, [open])
 
   const suggestions = useMemo(
-    () => buildSuggestions(allFundamentals, assessmentScores, kpiHistory, selectedObjectives, highDeathsWarning),
-    [allFundamentals, assessmentScores, kpiHistory, selectedObjectives, highDeathsWarning],
+    () => buildSuggestions(allFundamentals, assessmentScores, kpiHistory, selectedObjectives, highDeathsWarning, t),
+    [allFundamentals, assessmentScores, kpiHistory, selectedObjectives, highDeathsWarning, t],
   )
 
   const recents = useMemo(
@@ -263,11 +268,11 @@ export function FundamentalPickerDialog({
               : 'border-hextech-border-dim text-hextech-text hover:border-hextech-gold/50 hover:text-hextech-gold-bright cursor-pointer',
           )}
         >
-          <Plus className="h-4 w-4 shrink-0" />
-          <span>Ajouter un fondamental</span>
+          <Plus className="h-4 w-4 shrink-0" aria-hidden />
+          <span>{t('session.picker.add')}</span>
           {!isFull && (
             <span className="ml-auto text-xs text-hextech-text-dim">
-              {3 - selectedObjectives.length} disponible{3 - selectedObjectives.length > 1 ? 's' : ''}
+              {t('session.picker.available', { count: 3 - selectedObjectives.length })}
             </span>
           )}
         </button>
@@ -277,18 +282,19 @@ export function FundamentalPickerDialog({
         {/* ─── Header + search ──────────────────────────────────────────────── */}
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-hextech-border-dim">
           <DialogTitle className="text-base">
-            Choisir un fondamental
+            {t('session.picker.title')}
             <span className="ml-2 text-sm font-normal text-hextech-text-dim">
-              ({selectedObjectives.length}/3 sélectionné{selectedObjectives.length > 1 ? 's' : ''})
+              {t('session.picker.selected', { count: selectedObjectives.length })}
             </span>
           </DialogTitle>
           <div className="flex items-center gap-2 mt-3 rounded-md border border-hextech-border-dim bg-hextech-elevated px-3 py-2">
-            <Search className="h-4 w-4 text-hextech-text-dim shrink-0" />
+            <Search className="h-4 w-4 text-hextech-text-dim shrink-0" aria-hidden />
             <input
               ref={searchRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher par nom ou description…"
+              placeholder={t('session.picker.search')}
+              aria-label={t('session.picker.search')}
               className="flex-1 bg-transparent text-sm text-hextech-text-bright placeholder:text-hextech-text-dim outline-none"
             />
             {query && (
@@ -305,7 +311,7 @@ export function FundamentalPickerDialog({
           {/* SEARCH RESULTS */}
           {searchResults !== null && (
             searchResults.length === 0 ? (
-              <p className="text-center text-sm text-hextech-text-dim py-8">Aucun résultat pour « {query} »</p>
+              <p className="text-center text-sm text-hextech-text-dim py-8">{t('session.picker.noResult', { query })}</p>
             ) : (
               <div className="space-y-3">
                 {searchResults.map((cat) => (
@@ -335,11 +341,11 @@ export function FundamentalPickerDialog({
               {suggestions.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-1 px-3">
-                    <Lightbulb className="h-3.5 w-3.5 text-hextech-cyan" />
+                    <Lightbulb className="h-3.5 w-3.5 text-hextech-cyan" aria-hidden />
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-hextech-cyan/80">
-                      Suggérés
+                      {t('session.picker.suggested')}
                     </span>
-                    <span className="text-[10px] text-hextech-text-dim">· évaluation + sessions récentes</span>
+                    <span className="text-[10px] text-hextech-text-dim">{t('session.picker.suggestedHint')}</span>
                   </div>
                   {suggestions.map((s) => (
                     <FundamentalItem
@@ -358,9 +364,9 @@ export function FundamentalPickerDialog({
               {recents.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-1 px-3">
-                    <History className="h-3.5 w-3.5 text-hextech-gold/70" />
+                    <History className="h-3.5 w-3.5 text-hextech-gold/70" aria-hidden />
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-hextech-gold/70">
-                      Récents
+                      {t('session.picker.recent')}
                     </span>
                   </div>
                   {recents.map((f) => (
@@ -380,7 +386,7 @@ export function FundamentalPickerDialog({
                 <div className="flex items-center gap-2 mb-2 px-3 pt-1">
                   <div className="h-px flex-1 bg-hextech-border-dim" />
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-hextech-text-dim px-2">
-                    Tous les fondamentaux
+                    {t('session.picker.all')}
                   </span>
                   <div className="h-px flex-1 bg-hextech-border-dim" />
                 </div>
@@ -397,7 +403,7 @@ export function FundamentalPickerDialog({
                         : 'border-hextech-border-dim text-hextech-text-dim hover:border-hextech-border',
                     )}
                   >
-                    Tout
+                    {t('session.picker.allCategories')}
                   </button>
                   {FUNDAMENTALS.map((cat) => (
                     <button
@@ -453,7 +459,7 @@ export function FundamentalPickerDialog({
               })}
             </div>
             <Button size="sm" onClick={() => setOpen(false)} className="shrink-0">
-              Confirmer
+              {t('session.picker.confirm')}
             </Button>
           </div>
         )}

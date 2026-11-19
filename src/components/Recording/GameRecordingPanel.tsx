@@ -205,8 +205,8 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
       if (r.error) {
         console.error('[GameRecordingPanel] Link failed:', r.message)
         toast({
-          title: 'Failed to link recording',
-          description: r.message ?? 'An unknown error occurred.',
+          title: t('recording.panel.linkFailed'),
+          description: r.message ?? t('recording.panel.unknownError'),
           variant: 'destructive',
         })
         return
@@ -217,8 +217,8 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
     } catch (err) {
       console.error('[GameRecordingPanel] linkRecordingFile error:', err)
       toast({
-        title: 'Failed to link recording',
-        description: (err as Error)?.message ?? 'An unexpected error occurred.',
+        title: t('recording.panel.linkFailed'),
+        description: (err as Error)?.message ?? t('recording.panel.unknownError'),
         variant: 'destructive',
       })
     }
@@ -254,7 +254,7 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
     await window.api.unlinkRecording(gameId)
     setRecording(null)
     setOpen(false)
-    toast({ title: 'Recording unlinked', description: 'The recording is still available in your library.' })
+    toast({ title: t('recording.panel.unlinked'), description: t('recording.panel.unlinkedDesc') })
   }
 
   // Clip editing
@@ -307,11 +307,13 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
     <div className="rounded-lg border border-hextech-border-dim bg-hextech-dark overflow-hidden">
       {/* Collapsible header */}
       <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-hextech-text hover:text-hextech-gold-bright transition-colors text-left"
       >
-        <Video className="h-4 w-4 text-hextech-gold shrink-0" />
-        <span>Recording</span>
+        <Video className="h-4 w-4 text-hextech-gold shrink-0" aria-hidden />
+        <span>{t('recording.panel.title')}</span>
         {recording && (
           <span className="ml-1 rounded px-1.5 py-0.5 text-[10px] bg-hextech-gold/20 text-hextech-gold capitalize">
             {recording.source}
@@ -382,9 +384,10 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
               {creatingClip && (
                 <div className="flex items-center gap-2 rounded-lg bg-[#090e17] border border-hextech-gold/30 px-3 py-1.5">
                   <div className="flex items-center gap-1 rounded bg-white/5 border border-white/10 px-1.5 py-1">
-                    <span className="text-[9px] text-hextech-text-dim/60 uppercase">In</span>
+                    <span className="text-[9px] text-hextech-text-dim/60 uppercase" aria-hidden>{t('recording.panel.clipIn')}</span>
                     <input
                       type="text"
+                      aria-label={t('recording.panel.clipStart')}
                       value={startInput}
                       onChange={(e) => setStartInput(e.target.value)}
                       onBlur={applyStart}
@@ -396,9 +399,10 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
                     {formatMs(Math.max(0, clipRange.endMs - clipRange.startMs))}
                   </span>
                   <div className="flex items-center gap-1 rounded bg-white/5 border border-white/10 px-1.5 py-1">
-                    <span className="text-[9px] text-hextech-text-dim/60 uppercase">Out</span>
+                    <span className="text-[9px] text-hextech-text-dim/60 uppercase" aria-hidden>{t('recording.panel.clipOut')}</span>
                     <input
                       type="text"
+                      aria-label={t('recording.panel.clipEnd')}
                       value={endInput}
                       onChange={(e) => setEndInput(e.target.value)}
                       onBlur={applyEnd}
@@ -408,7 +412,8 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
                   </div>
                   <input
                     type="text"
-                    placeholder="Clip title (optional)"
+                    placeholder={t('recording.panel.clipTitle')}
+                    aria-label={t('recording.panel.clipTitle')}
                     value={clipTitle}
                     onChange={(e) => setClipTitle(e.target.value)}
                     className="flex-1 min-w-0 rounded bg-white/5 border border-white/10 px-2 py-1 text-[11px] text-hextech-text placeholder:text-hextech-text-dim/40 focus:outline-none"
@@ -477,7 +482,7 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
                   <RecordingMediaPanel
                     recordingId={recording.id}
                     filePath={recording.filePath}
-                    title="Recording"
+                    title={t('recording.panel.title')}
                     creatingClip={creatingClip}
                     onNewClip={openClipEditor}
                     clipSaveKey={clipSaveKey}
@@ -492,6 +497,7 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
             <div className="p-4 space-y-3">
               <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
                 <iframe
+                  title={t('a11y.youtubePlayer')}
                   className="absolute inset-0 w-full h-full rounded-md"
                   src={`https://www.youtube.com/embed/${youtubeId}`}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -557,28 +563,29 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
                     value={ytUrl}
                     onChange={(e) => setYtUrl(e.target.value)}
                     placeholder="https://youtube.com/watch?v=..."
+                    aria-label={t('recording.panel.youtubeUrl')}
                     className="w-full rounded-md border border-hextech-border-dim bg-hextech-elevated px-3 py-2 text-sm text-hextech-text placeholder:text-hextech-text-dim/50 focus:outline-none focus:border-hextech-gold"
                     autoFocus
                   />
                   <div className="flex gap-2">
                     <Button size="sm" onClick={handleSaveYoutube} disabled={saving || !ytUrl.trim()} className="gap-1">
                       {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Youtube className="h-3 w-3" />}
-                      Save link
+                      {t('recording.panel.saveLink')}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => { setShowYtInput(false); setYtUrl('') }}>Cancel</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setShowYtInput(false); setYtUrl('') }}>{t('common.cancel')}</Button>
                   </div>
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={handleScan} disabled={scanning} className="gap-1.5">
                     {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                    Scan for recording
+                    {t('recording.panel.scan')}
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleLinkFile} className="gap-1.5">
-                    <Link2 className="h-3.5 w-3.5" />Link local file
+                    <Link2 className="h-3.5 w-3.5" aria-hidden />{t('recording.panel.linkFile')}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => setShowYtInput(true)} className="gap-1.5">
-                    <Youtube className="h-3.5 w-3.5" />Add YouTube link
+                    <Youtube className="h-3.5 w-3.5" aria-hidden />{t('recording.panel.addYoutube')}
                   </Button>
                 </div>
               )}

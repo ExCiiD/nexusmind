@@ -108,6 +108,7 @@ export function TimelineNoteInput({ notes, onChange, objectiveLabel }: TimelineN
               </div>
             ) : (
               <Input
+                aria-label={t('reviewForm.timeline.timeLabel', { n: idx + 1 })}
                 placeholder={t('reviewForm.timeline.timePlaceholder')}
                 value={note.time}
                 onChange={(e) => updateNote(idx, 'time', e.target.value)}
@@ -121,6 +122,7 @@ export function TimelineNoteInput({ notes, onChange, objectiveLabel }: TimelineN
                 </span>
               )}
               <Textarea
+                aria-label={t('reviewForm.timeline.noteLabel', { n: idx + 1 })}
                 placeholder={t('reviewForm.timeline.notePlaceholder')}
                 value={note.note}
                 onChange={(e) => updateNote(idx, 'note', e.target.value)}
@@ -128,8 +130,8 @@ export function TimelineNoteInput({ notes, onChange, objectiveLabel }: TimelineN
                 rows={1}
               />
             </div>
-            <Button variant="ghost" size="icon" onClick={() => removeNote(idx)} className="shrink-0 mt-0.5">
-              <Trash2 className="h-4 w-4 text-hextech-red/70" />
+            <Button variant="ghost" size="icon" onClick={() => removeNote(idx)} className="shrink-0 mt-0.5" aria-label={t('reviewForm.timeline.deleteNote', { n: idx + 1 })}>
+              <Trash2 className="h-4 w-4 text-hextech-red/70" aria-hidden />
             </Button>
           </div>
         ))}

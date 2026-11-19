@@ -334,6 +334,19 @@ export async function getAccountByRiotId(
   return riotFetchWithRoutingFallback(path, routing)
 }
 
+/**
+ * The current Riot ID of a puuid (#38). A puuid never changes; a Riot ID does when the player renames: this is how a
+ * stored player keeps their role, champions and rank under a new name. The proxy already allows this route.
+ */
+export async function getAccountByPuuid(
+  puuid: string,
+  region: string,
+): Promise<{ puuid: string; gameName: string; tagLine: string }> {
+  const routing = REGION_TO_ROUTING[region] || 'europe'
+  const path = `/riot/account/v1/accounts/by-puuid/${encodeURIComponent(puuid)}`
+  return riotFetchWithRoutingFallback(path, routing)
+}
+
 export async function getSummonerByPuuid(
   puuid: string,
   region: string,

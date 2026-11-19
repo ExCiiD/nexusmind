@@ -6,7 +6,7 @@ export type AssignmentStatus = 'pending' | 'done'
 export interface VodReviewComment {
   id: string
   sessionId: string
-  authorId: string
+  authorId: string | null // null once the author deleted their account (S19-16 / #33)
   videoTimeSec: number | null
   teamTag: TeamMistakeTag | null
   body: string
@@ -20,7 +20,7 @@ export interface VodReviewActionItem {
   done: boolean
   doneBy: string | null
   doneAt: string | null
-  createdBy: string
+  createdBy: string | null // null once the author deleted their account (S19-16 / #33)
   createdAt: string
 }
 
@@ -41,7 +41,7 @@ export interface VodReviewSession {
   scrimId: string | null
   title: string
   vodUrl: string
-  createdBy: string
+  createdBy: string | null // null once the author deleted their account (S19-16 / #33)
   createdAt: string
   updatedAt: string
   comments: VodReviewComment[]

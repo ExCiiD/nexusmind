@@ -17,6 +17,13 @@
  * keeps 4.5:1 on every surface) and gold as the one signal. The site has no
  * second accent, so the app's secondary slots stay in the same family: a pale
  * gold (`cyan`) and the site's strong rule (`teal`) instead of teal greens.
+ *
+ * Contrast (WCAG 2.2, checked on `dark`, `elevated` and `panel` of every
+ * theme, docs/DESIGN_STATE.md): every text token, `gold` and `red` keep
+ * 4.5:1, black on `gold` (primary buttons) too. `border-field` is the outline
+ * of form controls (inputs, selects, textareas, unchecked switches) and keeps
+ * 3:1 against the field and the surface around it; `border` and `border-dim`
+ * stay soft dividers for boxes, not control outlines.
  */
 :root {
   --hextech-black: #0D0A06;
@@ -25,17 +32,25 @@
   --hextech-panel: #2A1D11;
   --hextech-border: #6B5330;
   --hextech-border-dim: #3A2C18;
+  --hextech-border-field: #7E6847;
   --hextech-cyan: #E4C285;
   --hextech-teal: #6B5330;
   --hextech-gold: #D4A24C;
   --hextech-gold-bright: #F5E3BE;
-  --hextech-red: #E24C3A;
+  --hextech-red: #E66556;
   --hextech-green: #6FA84A;
   --hextech-text: #B5A68C;
   --hextech-text-bright: #F5E3BE;
   --hextech-text-dim: #978769;
   --hextech-blue: #241A10;
   --hextech-blue-bright: #E8B86B;
+  /* Win-rate scale (docs/DESIGN_STATE.md § 9): never redefined per theme,
+     like red/green. ≥ 60 high · 50-59 mid · 40-49 low · < 40 bad. Each keeps
+     4.5:1 on dark/elevated of all 8 themes and on the player cards' halo. */
+  --wr-high: #7CC47F;
+  --wr-mid: #E8D27A;
+  --wr-low: #E3A35B;
+  --wr-bad: #F08273;
 }
 
 /* Piltover Blue — cool cyan/blue accent. */
@@ -46,13 +61,14 @@
   --hextech-panel: #132233;
   --hextech-border: #3E6E8A;
   --hextech-border-dim: #223C4A;
+  --hextech-border-field: #43718D;
   --hextech-cyan: #3EC2D4;
   --hextech-teal: #2B7E8E;
   --hextech-gold: #4C9ED4;
   --hextech-gold-bright: #BEE3F5;
   --hextech-text: #8CA8B5;
   --hextech-text-bright: #BEE3F5;
-  --hextech-text-dim: #44606B;
+  --hextech-text-dim: #728E9A;
   --hextech-blue: #10202E;
   --hextech-blue-bright: #6BC2E8;
 }
@@ -65,13 +81,14 @@
   --hextech-panel: #331316;
   --hextech-border: #8A3E3E;
   --hextech-border-dim: #4A2224;
+  --hextech-border-field: #985757;
   --hextech-cyan: #D4753E;
   --hextech-teal: #8E4A2B;
-  --hextech-gold: #C23B3B;
+  --hextech-gold: #C96496;
   --hextech-gold-bright: #F5C4BE;
   --hextech-text: #B58C8C;
   --hextech-text-bright: #F5C4BE;
-  --hextech-text-dim: #6B4444;
+  --hextech-text-dim: #A57C7C;
   --hextech-blue: #241010;
   --hextech-blue-bright: #E88A6B;
 }
@@ -84,13 +101,14 @@
   --hextech-panel: #2B1620;
   --hextech-border: #8A4A66;
   --hextech-border-dim: #4A2836;
+  --hextech-border-field: #915770;
   --hextech-cyan: #5FB89A;
   --hextech-teal: #3B7E68;
   --hextech-gold: #E07AA0;
   --hextech-gold-bright: #F8D2E1;
   --hextech-text: #B596A3;
   --hextech-text-bright: #F8D2E1;
-  --hextech-text-dim: #6B4A58;
+  --hextech-text-dim: #9D7D8A;
   --hextech-blue: #22111A;
   --hextech-blue-bright: #F0A0C0;
 }
@@ -103,13 +121,14 @@
   --hextech-panel: #2D2410;
   --hextech-border: #9A7A2E;
   --hextech-border-dim: #4F4019;
+  --hextech-border-field: #9A7A2E;
   --hextech-cyan: #2FC1B8;
   --hextech-teal: #1F8580;
   --hextech-gold: #F0C24A;
   --hextech-gold-bright: #FFF0C2;
   --hextech-text: #BFAE84;
   --hextech-text-bright: #FFF0C2;
-  --hextech-text-dim: #6E6040;
+  --hextech-text-dim: #9B8C66;
   --hextech-blue: #241C0B;
   --hextech-blue-bright: #FFD66B;
 }
@@ -122,13 +141,14 @@
   --hextech-panel: #18222D;
   --hextech-border: #5E7C94;
   --hextech-border-dim: #2C3B48;
+  --hextech-border-field: #5E7C94;
   --hextech-cyan: #9AD8F0;
   --hextech-teal: #5A97AE;
   --hextech-gold: #B8DDF5;
   --hextech-gold-bright: #EEF7FD;
   --hextech-text: #9DAEBB;
   --hextech-text-bright: #EEF7FD;
-  --hextech-text-dim: #4E5E6B;
+  --hextech-text-dim: #7B8C99;
   --hextech-blue: #111A22;
   --hextech-blue-bright: #CDEBFA;
 }
@@ -141,13 +161,14 @@
   --hextech-panel: #182212;
   --hextech-border: #5A8A34;
   --hextech-border-dim: #2E4620;
+  --hextech-border-field: #5A8A34;
   --hextech-cyan: #C9772F;
   --hextech-teal: #8A5224;
   --hextech-gold: #8EE04A;
   --hextech-gold-bright: #DDF8C4;
   --hextech-text: #9FB58C;
   --hextech-text-bright: #DDF8C4;
-  --hextech-text-dim: #4F6440;
+  --hextech-text-dim: #798E68;
   --hextech-blue: #10180B;
   --hextech-blue-bright: #B4F07A;
 }
@@ -160,13 +181,14 @@
   --hextech-panel: #221333;
   --hextech-border: #6A3E8A;
   --hextech-border-dim: #3A224A;
-  --hextech-cyan: #8E6AD4;
+  --hextech-border-field: #7D5798;
+  --hextech-cyan: #9471D6;
   --hextech-teal: #58428E;
-  --hextech-gold: #A24CD4;
+  --hextech-gold: #AF63DB;
   --hextech-gold-bright: #E3BEF5;
   --hextech-text: #A68CB5;
   --hextech-text-bright: #E3BEF5;
-  --hextech-text-dim: #5C446B;
+  --hextech-text-dim: #947AA3;
   --hextech-blue: #1A1024;
   --hextech-blue-bright: #B86BE8;
 }
