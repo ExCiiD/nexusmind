@@ -627,7 +627,7 @@ export function registerStatsHandlers() {
         matchIds.map(async (id: string) => {
           let matchData: any
 
-          const cached = await prisma.matchCache.findUnique({ where: { matchId: id } })
+          const cached = await prisma.matchCache.findUnique({ where: { matchId: id }, select: { matchJson: true } })
           if (cached) {
             matchData = JSON.parse(cached.matchJson)
           } else {
@@ -692,7 +692,7 @@ export function registerStatsHandlers() {
         const parsed = JSON.parse(dbGame.detailedStats.stats)
         if (hasCurrentDetailedStatsSchema(parsed)) {
           // Try to find the account name from the match cache
-          const cached = await prisma.matchCache.findUnique({ where: { matchId } })
+          const cached = await prisma.matchCache.findUnique({ where: { matchId }, select: { matchJson: true } })
           if (cached) {
             const matchData = JSON.parse(cached.matchJson)
             resolvedPuuid = resolvePuuid(matchData, allPuuids)

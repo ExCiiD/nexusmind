@@ -127,8 +127,9 @@ function scheduleNextSync(): void {
   timer = setTimeout(async () => {
     await syncNow().catch(() => {})
     try {
-      const sb = getSupabase()
-      hasLiveSession = await hasLiveSessionForUser(sb)
+      // Signed out: no live session to look for (and no request to send).
+      const uid = await currentUserId().catch(() => null)
+      hasLiveSession = uid ? await hasLiveSessionForUser(getSupabase()) : false
     } catch { /* keep the previous value; next cycle retries */ }
     scheduleNextSync()
   }, delay)

@@ -361,7 +361,9 @@ export function registerTeamHandlers() {
         ...(opts && typeof opts.isOpponent === 'boolean' ? { isOpponent: opts.isOpponent } : {}),
       },
       orderBy: { updatedAt: 'desc' },
-      include: { members: { include: { champPool: true } } },
+      // seasonMatchIdsJson (up to ~2,500 ids per scouted member) is main-process
+      // bookkeeping the renderer never reads: keep it off the IPC payload.
+      include: { members: { omit: { seasonMatchIdsJson: true }, include: { champPool: true } } },
     })
   })
 

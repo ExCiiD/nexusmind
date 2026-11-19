@@ -276,7 +276,7 @@ async function backfillOrphanRecordings(opts: { recordingIds?: string[] } = {}):
   const matchDataCache = new Map<string, { data: any; region: string }>()
   async function loadMatch(matchId: string, region: string): Promise<any | null> {
     if (matchDataCache.has(matchId)) return matchDataCache.get(matchId)!.data
-    const cached = await prisma.matchCache.findUnique({ where: { matchId } })
+    const cached = await prisma.matchCache.findUnique({ where: { matchId }, select: { matchJson: true } })
     if (cached?.matchJson) {
       try {
         const parsed = JSON.parse(cached.matchJson)
@@ -440,8 +440,12 @@ async function backfillOrphanRecordings(opts: { recordingIds?: string[] } = {}):
     // BOTH matchJson and timelineJson — matchJson is already cached by
     // loadMatch() above, timelineJson is the missing piece.
     try {
-      const existingCache = await prisma.matchCache.findUnique({ where: { matchId: bestMatch.matchId } })
-      if (!existingCache?.timelineJson) {
+      // Presence check only: don't read the (multi-MB) timeline itself.
+      const hasTimeline = await prisma.matchCache.findFirst({
+        where: { matchId: bestMatch.matchId, timelineJson: { not: null } },
+        select: { id: true },
+      })
+      if (!hasTimeline) {
         const timelineData = await getMatchTimeline(bestMatch.matchId, bestMatch.region)
         if (timelineData) {
           await prisma.matchCache.upsert({

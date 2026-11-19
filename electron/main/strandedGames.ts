@@ -27,7 +27,7 @@ let running = false
 
 async function cachedMatch(matchId: string, region: string): Promise<any | null> {
   const prisma = getPrisma()
-  const cached = await prisma.matchCache.findUnique({ where: { matchId } }).catch(() => null)
+  const cached = await prisma.matchCache.findUnique({ where: { matchId }, select: { matchJson: true } }).catch(() => null)
   if (cached?.matchJson) {
     try { return JSON.parse(cached.matchJson) } catch { /* refetch */ }
   }
