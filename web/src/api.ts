@@ -156,6 +156,7 @@ export const webApi = {
   collabCreateInvite: (groupId: string, role: 'coach' | 'analyst' | 'player', days: number) => core.createInvite(sb, groupId, role, days),
   collabJoin: async (code: string) => core.joinGroup(sb, code.trim().toUpperCase(), await webIdentity()),
   collabLeave: async (groupId: string) => core.leaveGroup(sb, await currentUserId(), groupId),
+  collabSetMemberRole: (groupId: string, userId: string, role: Parameters<typeof core.setMemberRole>[3]) => core.setMemberRole(sb, groupId, userId, role),
   collabDeleteGroup: (groupId: string) => core.deleteGroup(sb, groupId),
   collabRemoveMember: (groupId: string, userId: string) => core.removeMember(sb, groupId, userId),
   collabSetCaptain: (groupId: string, userId: string, isCaptain: boolean) => core.setCaptain(sb, groupId, userId, isCaptain),
@@ -217,6 +218,8 @@ export const webApi = {
   devPlanAddCheckin: (planId: string, note: string) => devPlanCore.addCheckin(sb, planId, note),
   devPlanSetProgress: (axisId: string, input: { playerMarkedDone?: boolean; playerNote?: string | null }) =>
     devPlanCore.setProgress(sb, axisId, input),
+  devPlanAddAxis: (planId: string, axis: Parameters<typeof devPlanCore.addAxis>[2]) => devPlanCore.addAxis(sb, planId, axis),
+  devPlanDeleteAxis: (axisId: string) => devPlanCore.deleteAxis(sb, axisId),
 
   // ── E4: planning & presence ──
   calendarListEvents: (groupId: string, fromISO: string, toISO: string) => calendarCore.listEvents(sb, groupId, fromISO, toISO),
@@ -224,6 +227,8 @@ export const webApi = {
   calendarCreateEvent: (groupId: string, input: Parameters<typeof calendarCore.createEvent>[2]) => calendarCore.createEvent(sb, groupId, input),
   calendarUpdateEvent: (id: string, input: Parameters<typeof calendarCore.updateEvent>[2]) => calendarCore.updateEvent(sb, id, input),
   calendarDeleteEvent: (id: string) => calendarCore.deleteEvent(sb, id),
+  calendarRespond: (eventId: string, status: Parameters<typeof calendarCore.respondToEvent>[2], note?: string | null) =>
+    calendarCore.respondToEvent(sb, eventId, status, note ?? null),
   availabilityListRules: (groupId: string) => calendarCore.listAvailabilityRules(sb, groupId),
   availabilitySetRule: (groupId: string, input: Parameters<typeof calendarCore.setAvailabilityRule>[2]) => calendarCore.setAvailabilityRule(sb, groupId, input),
   availabilityDeleteRule: (id: string) => calendarCore.deleteAvailabilityRule(sb, id),
@@ -255,6 +260,10 @@ export const webApi = {
   teamCodexDelete: (id: string) => microReviewCloud.deleteTeamCodexRule(sb, id),
   // No local database on the web: the built-in catalog (the coach corrects with built-in tags).
   listMistakeTags: async () => builtInTagsAsRows(),
+  // Local session history only exists on desktop: the team-session objective
+  // picker (FundamentalPickerDialog) then simply shows no history.
+  getKpiHistory: async () => [],
+  getCoachingPatterns: async () => null,
   vodReviewCreateSession: (groupId: string, input: Parameters<typeof vodReviewCore.createSession>[2]) => vodReviewCore.createSession(sb, groupId, input),
   vodReviewDeleteSession: (id: string) => vodReviewCore.deleteSession(sb, id),
   vodReviewAddComment: (sessionId: string, input: Parameters<typeof vodReviewCore.addComment>[2]) => vodReviewCore.addComment(sb, sessionId, input),
