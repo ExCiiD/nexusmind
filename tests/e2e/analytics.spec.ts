@@ -52,7 +52,7 @@ test.describe('analytics readability', () => {
   test.afterAll(async () => { await ctx.close(); cleanup(dir) })
 
   test('progress tab starts with a plain-language summary', async () => {
-    await goto(ctx.page, '/analytics')
+    await goto(ctx.page, '/stats?tab=progress')
     await ctx.page.getByRole('tab', { name: /Progress/i }).click()
     await expect(ctx.page.getByText('Where I stand')).toBeVisible()
     await expect(ctx.page.getByText('Strengths')).toBeVisible()
@@ -65,7 +65,7 @@ test.describe('analytics readability', () => {
   })
 
   test('filters stay available and summarise the selection', async () => {
-    await goto(ctx.page, '/analytics')
+    await goto(ctx.page, '/stats?tab=progress')
     const filterButtons = ctx.page.getByRole('button', { name: /Fundamentals/ })
     await expect(filterButtons).toHaveCount(2)
     await expect(ctx.page.getByText('All fundamentals').first()).toBeVisible()
