@@ -886,7 +886,7 @@ export function registerRecordingHandlers() {
     //   - A stored device id/name maps to a current ffmpeg-compatible device name.
     //   - "Default" (null/empty) is translated to the live Windows default input,
     //     instead of silently dropping audio (which was the previous behaviour).
-    const micEnabled = user?.recordAudioMic ?? false
+    const micEnabled = user?.recordAudioMic ?? true
     const micDeviceName = micEnabled
       ? await resolveMicDeviceName(user?.recordAudioMicDevice ?? null)
       : null

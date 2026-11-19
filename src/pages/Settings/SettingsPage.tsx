@@ -730,22 +730,22 @@ export function SettingsPage() {
                     </div>
                     <button
                       onClick={async () => {
-                        await window.api.updateUser({ recordAudioMic: !(user?.recordAudioMic ?? false) })
+                        await window.api.updateUser({ recordAudioMic: !(user?.recordAudioMic ?? true) })
                         await loadUser()
                       }}
                       className={cn(
                         'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                        (user?.recordAudioMic ?? false) ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
+                        (user?.recordAudioMic ?? true) ? 'bg-hextech-teal' : 'bg-hextech-elevated border border-hextech-border-dim',
                       )}
                     >
                       <span className={cn(
                         'inline-block h-4 w-4 rounded-full bg-white shadow transition-transform',
-                        (user?.recordAudioMic ?? false) ? 'translate-x-6' : 'translate-x-1',
+                        (user?.recordAudioMic ?? true) ? 'translate-x-6' : 'translate-x-1',
                       )} />
                     </button>
                   </div>
 
-                  {(user?.recordAudioMic ?? false) && (
+                  {(user?.recordAudioMic ?? true) && (
                     <div className="ml-1 space-y-1.5">
                       {micInputs.length > 0 ? (
                         <Select

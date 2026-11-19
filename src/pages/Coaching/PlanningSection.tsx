@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, Copy, Download, Link2, Loader2, Pencil, Plus, RotateCw, Trash2, Users, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { CalendarCheck, CalendarClock, CalendarDays, Check, ChevronLeft, ChevronRight, Copy, Download, Link2, Loader2, Pencil, Plus, RotateCw, Trash2, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/useToast'
@@ -15,7 +16,7 @@ import {
 } from '@/lib/planningView'
 import type { CalendarEventKind } from '@/lib/calendar'
 import { cn } from '@/lib/utils'
-import { EventPopup } from '@/components/Planning/EventPopup'
+import { EventPopup, SESSION_KINDS } from '@/components/Planning/EventPopup'
 import { RequestEventDialog } from '@/components/Planning/RequestEventDialog'
 import { EventRequestsQueue } from '@/components/Planning/EventRequestsQueue'
 import { AnnouncementsCard } from '@/components/Planning/AnnouncementsCard'
@@ -380,6 +381,7 @@ function EventInspector({ event, roster, members, rules, exceptions, canEdit, my
   onDelete: () => void
 }) {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const [confirming, setConfirming] = useState(false)
   const [declining, setDeclining] = useState(false)
   const [note, setNote] = useState('')
@@ -413,6 +415,11 @@ function EventInspector({ event, roster, members, rules, exceptions, canEdit, my
         </p>
       </div>
       {event.notes && <p className="whitespace-pre-wrap rounded-md border border-hextech-border-dim bg-hextech-black/30 p-2 text-xs text-hextech-text">{event.notes}</p>}
+      {SESSION_KINDS.includes(event.kind) && (
+        <Button size="sm" className="w-full gap-1.5" onClick={() => navigate(`/team-session/${event.id}`)}>
+          <CalendarClock className="h-3.5 w-3.5" />{t('planning.openTeamSession')}
+        </Button>
+      )}
       {answerable && (
         <div className="space-y-2 rounded-md border border-hextech-border-dim bg-hextech-black/30 p-2.5">
           <div className="font-mono text-[10px] font-bold uppercase tracking-wider text-hextech-text">{t('planning.respond.title')}</div>

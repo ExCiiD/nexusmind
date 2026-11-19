@@ -39,6 +39,8 @@ export function registerAuthHandlers() {
           profileIconId,
           isActive: true,
           nextAssessmentAt: new Date(),
+          // Mic on by default (migration 20261119130000_mic_on_by_default).
+          recordAudioMic: true,
         },
       })
     } else {

@@ -614,7 +614,7 @@ async function bootstrap() {
         // preferences are still fresh. We capture the effective device name
         // into the closure so the delayed spawn uses the same value regardless
         // of any setting changes during the 30 s window.
-        const micEnabled = user.recordAudioMic ?? false
+        const micEnabled = user.recordAudioMic ?? true
         const micDeviceName = micEnabled
           ? await resolveMicDeviceName(user.recordAudioMicDevice ?? null)
           : null

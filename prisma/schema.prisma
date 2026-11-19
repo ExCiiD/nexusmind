@@ -36,6 +36,9 @@ model User {
   allowDesktopFallback   Boolean      @default(true)
   recordAudioDesktop     Boolean      @default(true)
   recordAudioDesktopDevice String?
+  /// On for every profile since 20261119130000_mic_on_by_default (and set on
+  /// creation in auth:login); the column default stays false to avoid a
+  /// User table rebuild.
   recordAudioMic         Boolean      @default(false)
   recordAudioMicDevice   String?
   /// Minimize Ascend and let Chromium throttle it while a game is recorded (electron/main/windowFocus.ts).

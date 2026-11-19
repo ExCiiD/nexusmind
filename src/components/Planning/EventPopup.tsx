@@ -21,7 +21,8 @@ const MAIN_KINDS: CalendarEventKind[] = ['scrim', 'team_review', 'tournament', '
 const OTHER_KINDS: CalendarEventKind[] = ['one_on_one', 'meeting', 'soloq_block', 'flex', 'rest', 'other']
 const SCRIM_KINDS: CalendarEventKind[] = ['scrim', 'flex']
 /** Kinds the `auto_create_team_session` DB trigger turns into a team session. */
-const SESSION_KINDS: CalendarEventKind[] = ['scrim', 'flex', 'tournament', 'meeting']
+/** Event kinds that open a team session (TeamSessionPage). */
+export const SESSION_KINDS: CalendarEventKind[] = ['scrim', 'flex', 'tournament', 'meeting']
 const DURATIONS = [1, 2, 3]
 
 function toLocalInput(d: Date): string {

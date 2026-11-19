@@ -1,0 +1,11 @@
+-- Microphone on by default when recording (19 November 2026): game
+-- recordings and team-session reviews (whose audio feeds the Whisper
+-- transcription) record the mic unless the player turns it off in
+-- Settings > Recording. Existing profiles are switched on once here, and
+-- new ones get it from auth:login. The column default itself stays false
+-- so prisma/schema.prisma and the migrations do not drift (SQLite cannot
+-- change a column default without rebuilding the User table). No device
+-- picked = the live Windows default input (resolveMicDeviceName).
+-- No semicolon in these comments: the runner splits on it before
+-- stripping comments (electron/main/database.ts splitSqlStatements).
+UPDATE "User" SET "recordAudioMic" = true;
