@@ -24,7 +24,7 @@ import type { Team, TeamSynergyStats } from '@/lib/ipc'
 import { SynergyPlayerCard } from './SynergyPlayerCard'
 
 interface Props {
-  team: Team | null
+  team: Team
 }
 
 /**
@@ -76,11 +76,6 @@ export function StatsTab({ team }: Props) {
   // fall back to whatever single entry exists so the user sees *something*
   // immediately (and can recompute if they want a different threshold).
   useEffect(() => {
-    if (!team) {
-      setStats(null)
-      hydratedTeamRef.current = null
-      return
-    }
     if (hydratedTeamRef.current === team.id) return
     const cache = loadCache(team.id)
     const match = cache[String(minTogether)]
@@ -105,7 +100,7 @@ export function StatsTab({ team }: Props) {
   // serve that immediately. Otherwise auto-trigger a fresh compute so the
   // displayed numbers always match the selected threshold.
   useEffect(() => {
-    if (!team || loading) return
+    if (loading) return
     if (hydratedTeamRef.current !== team.id) return // wait for hydration
     const cache = loadCache(team.id)
     const cached = cache[String(minTogether)]
@@ -129,7 +124,6 @@ export function StatsTab({ team }: Props) {
   }, [minTogether, team])
 
   const handleCompute = async () => {
-    if (!team) return
     setLoading(true)
     try {
       const res = await window.api.computeTeamSynergyStats(team.id, { minTogether })
@@ -165,14 +159,6 @@ export function StatsTab({ team }: Props) {
     }
   }
 
-  if (!team) {
-    return (
-      <Card className="p-6 text-center text-hextech-text-dim">
-        {t('team.stats.noTeam', { defaultValue: 'Select or create a team first.' })}
-      </Card>
-    )
-  }
-
   return (
     <div className="space-y-4">
       <Card className="p-4 flex items-center gap-3 flex-wrap">
@@ -205,7 +191,7 @@ export function StatsTab({ team }: Props) {
           <Button
             size="sm"
             onClick={handleCompute}
-            disabled={loading || !team || (team.members ?? []).length < minTogether}
+            disabled={loading || (team.members ?? []).length < minTogether}
             title={t('team.stats.computeHint', {
               defaultValue: 'Fetches the last 100 flex games per member and aggregates stats. ~10s on first run, cached after.',
             })}

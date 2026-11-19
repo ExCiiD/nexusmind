@@ -17,8 +17,6 @@ import { SettingsPage } from '@/pages/Settings/SettingsPage'
 import { RecordPage } from '@/pages/Record/RecordPage'
 import { RecordPlayerPage } from '@/pages/Record/RecordPlayerPage'
 import { ExternalReviewPage } from '@/pages/Review/ExternalReviewPage'
-import { ExternalReviewNewPage } from '@/pages/Review/ExternalReviewNewPage'
-import { PostGameCapturePage } from '@/pages/Review/PostGameCapturePage'
 import { HelpPage } from '@/pages/Help/HelpPage'
 import { TeamPage } from '@/pages/Team/TeamPage'
 import { CoachingPage } from '@/pages/Coaching/CoachingPage'
@@ -57,17 +55,13 @@ export function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/plan" element={<MyPlanPage />} />
             <Route path="/session" element={<SessionPage />} />
-            <Route path="/replays" element={<Navigate to="/record" replace />} />
             <Route path="/record" element={<RecordPage />} />
             <Route path="/record/:recordingId" element={<RecordPlayerPage />} />
             <Route path="/review" element={<ReviewPage />} />
-            <Route path="/post-game-capture" element={<PostGameCapturePage />} />
-            <Route path="/external-review/new" element={<ExternalReviewNewPage />} />
             <Route path="/external-review/:id" element={<ExternalReviewPage />} />
             <Route path="/analytics" element={<Navigate to="/stats?tab=progress" replace />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/stats" element={<AnalyticsPage />} />
-            <Route path="/stats/averages" element={<Navigate to="/stats" replace />} />
             <Route path="/stats/:matchId" element={<DetailedStatsPage />} />
             <Route path="/lane-phase/:gameId" element={<LanePhasePage />} />
             <Route path="/stats/mistakes" element={<MistakeStatsPage />} />
@@ -81,7 +75,8 @@ export function App() {
           </Route>
         )}
       </Routes>
-      {user && <DevToolbar />}
+      {/* Dev builds only: the `dev:*` handlers it calls exist only unpackaged. */}
+      {import.meta.env.DEV && user && <DevToolbar />}
       <UpdateBanner />
       {/* Persistent indicator for long-running team scouts / auto-fills.
           Rendered above the toaster so its pills don't get covered by

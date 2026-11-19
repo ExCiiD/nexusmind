@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ChampionMatchup } from '@/components/ChampionMatchup'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -54,7 +54,6 @@ export function ReviewPage() {
   const clearGameEndData = useUserStore((s) => s.clearGameEndData)
   const user = useUserStore((s) => s.user)
   const navigate = useNavigate()
-  const location = useLocation()
   const [searchParams] = useSearchParams()
   const requestedGameId = searchParams.get('gameId')
   const { toast } = useToast()
@@ -174,26 +173,6 @@ export function ReviewPage() {
   useEffect(() => {
     loadActiveSession()
   }, [loadActiveSession])
-
-  const postGameSetupHandledRef = useRef(false)
-
-  useEffect(() => {
-    const st = (location.state as { postGameSetup?: { title?: string } } | undefined)?.postGameSetup
-    if (!st) {
-      postGameSetupHandledRef.current = false
-      return
-    }
-    if (postGameSetupHandledRef.current) return
-    postGameSetupHandledRef.current = true
-    if (st.title) {
-      toast({
-        title: 'Après partie',
-        description: `« ${st.title} » — la VOD est liée ci-dessous.`,
-        variant: 'default',
-      })
-    }
-    navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: {} })
-  }, [location.state, location.pathname, location.search, navigate, toast])
 
   useEffect(() => {
     if (!latestGame?.id || objectiveIds.length === 0) {

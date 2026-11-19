@@ -199,7 +199,7 @@ export function AnalyticsPage() {
             <ClipboardList className="h-4 w-4" />{t('analytics.gate.cta')}
           </Button>
         </div>
-        <StatsLandingPage embedded />
+        <StatsLandingPage />
       </div>
     )
   }
@@ -272,7 +272,7 @@ export function AnalyticsPage() {
         </TabsList>
 
         <TabsContent value="detailed">
-          {activeTab === 'detailed' && <StatsLandingPage embedded />}
+          {activeTab === 'detailed' && <StatsLandingPage />}
         </TabsContent>
 
         <TabsContent value="progress" className="space-y-4">

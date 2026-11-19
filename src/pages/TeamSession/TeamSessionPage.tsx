@@ -96,10 +96,14 @@ export function TeamSessionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only restart the interval on a status change, not on every poll's new session object
   }, [session?.status, load])
 
+  // The 1 s clock only drives the countdown of a scheduled session: no need to
+  // re-render this page every second once it is live or ended.
+  const isScheduled = session?.status === 'scheduled'
   useEffect(() => {
+    if (!isScheduled) return
     const id = setInterval(() => setNow(new Date()), 1_000)
     return () => clearInterval(id)
-  }, [])
+  }, [isScheduled])
 
   const group = useMemo(() => groups.find((g) => g.id === session?.groupId), [groups, session])
   const myMember = group?.members.find((m) => m.userId === myUserId)

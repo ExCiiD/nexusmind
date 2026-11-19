@@ -143,7 +143,7 @@ export function Sidebar() {
         { to: '/plan', icon: ListTodo, label: t('nav.plan'), badge: planObjectives > 0 ? { text: t('nav.objBadge', { count: planObjectives }), tone: 'dim' } : undefined },
         { to: '/session', icon: Swords, label: t('nav.session'), dot: activeSession ? 'live' : undefined },
         { to: '/record', icon: Film, label: t('nav.record'), status: isRecording ? 'rec' : user?.autoRecord ? 'auto' : undefined },
-        { to: '/review', icon: FileSearch, label: t('nav.review'), active: path.startsWith('/review') || path.startsWith('/external-review') || path === '/post-game-capture', badge: badges.toReview > 0 ? { text: String(badges.toReview), tone: 'strong' } : undefined },
+        { to: '/review', icon: FileSearch, label: t('nav.review'), active: path.startsWith('/review') || path.startsWith('/external-review'), badge: badges.toReview > 0 ? { text: String(badges.toReview), tone: 'strong' } : undefined },
       ],
     },
     {

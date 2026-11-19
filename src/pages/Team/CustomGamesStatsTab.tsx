@@ -23,7 +23,7 @@ import type { Team, TeamSynergyStats, CustomGame } from '@/lib/ipc'
 import { SynergyPlayerCard } from './SynergyPlayerCard'
 
 interface Props {
-  team: Team | null
+  team: Team
   gameType: 'scrim' | 'tournament'
 }
 
@@ -56,14 +56,9 @@ export function CustomGamesStatsTab({ team, gameType }: Props) {
 
   // Initial load + reload when team or gameType changes
   useEffect(() => {
-    if (!team) {
-      setGames([])
-      setStats(null)
-      return
-    }
     void reload(team.id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [team?.id, gameType])
+  }, [team.id, gameType])
 
   const reload = async (teamId: string) => {
     try {
@@ -116,7 +111,7 @@ export function CustomGamesStatsTab({ team, gameType }: Props) {
     files: File[],
     forceType?: 'scrim' | 'tournament',
   ): Promise<{ imported: number; participants: number; failed: { name: string; reason: string }[] }> => {
-    if (!team || files.length === 0) return { imported: 0, participants: 0, failed: [] }
+    if (files.length === 0) return { imported: 0, participants: 0, failed: [] }
     let imported = 0
     let participants = 0
     const failed: { name: string; reason: string }[] = []
@@ -147,7 +142,7 @@ export function CustomGamesStatsTab({ team, gameType }: Props) {
   }
 
   const handleFilesChosen = async (files: File[]) => {
-    if (!team || files.length === 0) return
+    if (files.length === 0) return
     setImporting(true)
     setPendingFiles([])
     try {
@@ -200,7 +195,7 @@ export function CustomGamesStatsTab({ team, gameType }: Props) {
   }
 
   const handleConfirmPending = async (forceType: 'scrim' | 'tournament') => {
-    if (!team || pendingFiles.length === 0) return
+    if (pendingFiles.length === 0) return
     setImporting(true)
     try {
       const result = await importBatch(pendingFiles, forceType)
@@ -230,7 +225,6 @@ export function CustomGamesStatsTab({ team, gameType }: Props) {
   }
 
   const handleDelete = async (id: string) => {
-    if (!team) return
     if (!confirm(t('team.custom.confirmDelete', { defaultValue: 'Delete this imported game?' }))) return
     try {
       await window.api.deleteCustomGame(id)
@@ -238,14 +232,6 @@ export function CustomGamesStatsTab({ team, gameType }: Props) {
     } catch (err) {
       toast({ title: 'Delete failed', description: (err as Error).message, variant: 'destructive' })
     }
-  }
-
-  if (!team) {
-    return (
-      <Card className="p-6 text-center text-hextech-text-dim">
-        {t('team.dashboard.noTeam', { defaultValue: 'Select or create a team first.' })}
-      </Card>
-    )
   }
 
   return (

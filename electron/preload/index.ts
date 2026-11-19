@@ -315,7 +315,6 @@ const api = {
   // Recording — library (scan external folders)
   scanRecordings: () => ipcRenderer.invoke('recording:scan'),
   getRecording: (gameId: string) => ipcRenderer.invoke('recording:get', gameId),
-  getRecordingById: (recordingId: string) => ipcRenderer.invoke('recording:get-by-id', recordingId),
   linkRecordingFile: (gameId: string) => ipcRenderer.invoke('recording:link-file', gameId),
   setYoutubeUrl: (gameId: string, youtubeUrl: string | null) => ipcRenderer.invoke('recording:set-youtube', gameId, youtubeUrl),
   deleteReview: (gameId: string) => ipcRenderer.invoke('review:delete', gameId),

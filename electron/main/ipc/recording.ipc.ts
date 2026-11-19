@@ -752,10 +752,6 @@ export function registerRecordingHandlers() {
     return prisma.recording.findUnique({ where: { gameId } })
   })
 
-  ipcMain.handle('recording:get-by-id', async (_event, recordingId: string) => {
-    const prisma = getPrisma()
-    return prisma.recording.findUnique({ where: { id: recordingId } })
-  })
 
   ipcMain.handle('recording:link-file', async (_event, gameId: string) => {
     const prisma = getPrisma()
