@@ -289,6 +289,10 @@ export function registerSessionHandlers() {
             duration: stats.duration,
             win: stats.win,
             gameEndAt: stats.gameEndAt,
+            // Same source as the post-game detector; without it imported games
+            // stayed 'unknown'. isSessionEligible keeps its default: the player
+            // picked these games for the session themselves.
+            queueType: stats.queueType ?? 'unknown',
           },
         })
         imported.push(game)
