@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app, BrowserWindow, desktopCapturer, shell } from 'electron'
+import { ipcMain, dialog, app, BrowserWindow, shell } from 'electron'
 import { getPrisma } from '../database'
 import { z } from 'zod'
 import { validatedHandle, id, httpsUrl, youtubeUrl as youtubeUrlSchema } from './validate'
@@ -879,19 +879,6 @@ export function registerRecordingHandlers() {
     return { success: true }
   })
 
-  ipcMain.handle('recording:get-scan-paths', async () => {
-    const prisma = getPrisma()
-    const user = await prisma.user.findFirst({ where: { isActive: true } })
-    const paths = getRecordingPaths(user?.recordingPath)
-    if (user?.externalRecordingPath) {
-      paths['external'] = user.externalRecordingPath
-    }
-    return Object.entries(paths).map(([source, dir]) => ({
-      source,
-      dir,
-      exists: existsSync(dir),
-    }))
-  })
 
   // ── Capture control ──────────────────────────────────────────────────────────
 
@@ -1043,10 +1030,6 @@ export function registerRecordingHandlers() {
     return recordingManager.getRecordingsDir()
   })
 
-  ipcMain.handle('recording:get-desktop-source', async () => {
-    const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
-    return sources[0]?.id ?? null
-  })
 
   /**
    * Returns all recordings joined with their game/session data, sorted newest first.
@@ -1172,12 +1155,6 @@ export function registerRecordingHandlers() {
 
   // ── Thumbnail ────────────────────────────────────────────────────────────────
 
-  ipcMain.handle('recording:generate-thumbnail', async (_e, recordingId: string) => {
-    const prisma = getPrisma()
-    const rec = await prisma.recording.findUnique({ where: { id: recordingId } })
-    if (!rec?.filePath) return null
-    return generateThumbnailForRecording(recordingId, rec.filePath)
-  })
 
   // ── Clip handlers ────────────────────────────────────────────────────────────
 

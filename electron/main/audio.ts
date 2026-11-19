@@ -65,15 +65,6 @@ export async function getAudioDevicesSummary(): Promise<AudioDevicesSummary> {
 }
 
 /**
- * Resolves the current Windows default microphone *name* (suitable for
- * ffmpeg's dshow input). Returns null if no default input can be found.
- */
-export async function resolveDefaultMicName(): Promise<string | null> {
-  const devices = await listAudioDevicesSafe()
-  return devices.find(d => d.isInput && d.isDefault)?.name ?? null
-}
-
-/**
  * Resolves a stored mic identifier (device id OR device name — for backward
  * compatibility with label-based storage) to a concrete ffmpeg-compatible
  * device name. Returns null if the device cannot be found.

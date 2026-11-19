@@ -325,15 +325,6 @@ function createWindow() {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
-  ipcMain.handle('window:minimize', () => mainWindow?.minimize())
-  ipcMain.handle('window:maximize', () => {
-    if (mainWindow?.isMaximized()) {
-      mainWindow.unmaximize()
-    } else {
-      mainWindow?.maximize()
-    }
-  })
-  ipcMain.handle('window:close', () => mainWindow?.close())
 }
 
 async function bootstrap() {
@@ -889,9 +880,6 @@ function setupAutoUpdater() {
     mainWindow?.webContents.send('updater:update-available', info?.version)
   })
 
-  autoUpdater.on('update-not-available', () => {
-    mainWindow?.webContents.send('updater:update-not-available')
-  })
 
   autoUpdater.on('download-progress', (progress) => {
     mainWindow?.webContents.send('updater:download-progress', Math.round(progress.percent))

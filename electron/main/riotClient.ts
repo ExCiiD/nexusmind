@@ -363,23 +363,6 @@ export async function getChampionMasteries(
   return riotFetchJson(`${base}/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=${Math.min(count, RIOT_LIMITS.MAX_MASTERY_COUNT)}`)
 }
 
-export async function getRankedStats(
-  summonerId: string,
-  region: string,
-): Promise<
-  Array<{
-    queueType: string
-    tier: string
-    rank: string
-    leaguePoints: number
-    wins: number
-    losses: number
-  }>
-> {
-  const base = PLATFORM_URLS[region]
-  return riotFetchJson(`${base}/lol/league/v4/entries/by-summoner/${summonerId}`)
-}
-
 export async function getMatchIds(
   puuid: string,
   region: string,

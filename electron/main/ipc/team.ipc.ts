@@ -365,14 +365,6 @@ export function registerTeamHandlers() {
     })
   })
 
-  ipcMain.handle('team:get', async (_e, id: string) => {
-    const prisma = getPrisma()
-    await refreshAutoTiers().catch((err) => console.warn('[team] tier refresh failed:', err))
-    return prisma.team.findUnique({
-      where: { id },
-      include: { members: { include: { champPool: true } } },
-    })
-  })
 
   ipcMain.handle('team:create', async (_e, data: {
     name: string
@@ -388,17 +380,6 @@ export function registerTeamHandlers() {
     })
   })
 
-  ipcMain.handle('team:update', async (_e, id: string, data: Partial<{
-    name: string
-    tag: string | null
-    logo: string | null
-    notes: string | null
-    isOpponent: boolean
-    scoutNotes: string | null
-  }>) => {
-    const prisma = getPrisma()
-    return prisma.team.update({ where: { id }, data })
-  })
 
   /**
    * Makes a local team the roster of a cloud group (or unlinks it with
@@ -572,10 +553,6 @@ export function registerTeamHandlers() {
     })
   })
 
-  ipcMain.handle('draft:get', async (_e, id: string) => {
-    const prisma = getPrisma()
-    return prisma.draftPrep.findUnique({ where: { id }, include: { vsTeam: true } })
-  })
 
   // Each slot now supports MULTIPLE candidate champions (priority-ordered).
   // Storage shape is `string[][]` so each slot is an array. The frontend may
@@ -1429,221 +1406,6 @@ export function registerTeamHandlers() {
     return { ...aggregateMatchLike(team, [...flexMatchLike, ...customMatchLike], minTogether), sources }
   })
 
-  /**
-   * Opponent dashboard stats. Unlike `team:compute-synergy-stats` which looks
-   * for games where multiple of OUR roster played together, opponents almost
-   * never play together in our DB — so we aggregate PER-PLAYER across each
-   * member's full season match list (SoloQ + Flex + Clash), filtered to games
-   * where they played their assigned role.
-   *
-   * The output mirrors `TeamSynergyStats` so the renderer can reuse the same
-   * Dashboard layout. The "shares" donuts are approximations: each player's
-   * share = his per-game average / sum of the 5 players' averages. Real
-   * synergy shares (same-game contributions) aren't possible since opponents
-   * are scouted independently.
-   *
-   * Caps each member at 100 most recent same-role games to keep the API
-   * usage and runtime bounded.
-   */
-  ipcMain.handle('team:compute-opponent-dashboard', async (_e, teamId: string) => {
-    const prisma = getPrisma()
-    const team = await prisma.team.findUnique({
-      where: { id: teamId },
-      include: { members: true },
-    })
-    if (!team) throw new Error('Team not found')
-
-    const MAX_GAMES_PER_MEMBER = RIOT_LIMITS.OPPONENT_DASHBOARD_MAX_GAMES_PER_MEMBER
-
-    interface Accum {
-      memberId: string; displayName: string; role: string
-      games: number; wins: number
-      sums: { kills: number; deaths: number; assists: number; cs: number; durationMin: number; damage: number; damageTaken: number; ccTime: number; visionScore: number; wardsPlaced: number; wardsKilled: number; controlWards: number; gold: number; xp: number }
-      byChampion: Map<string, { games: number; wins: number }>
-    }
-    const accums: Accum[] = []
-
-    let totalCandidateMatches = 0
-    let totalMatchesUsed = 0
-    let membersResolved = 0
-
-    // E15: members processed in parallel (was a sequential for-loop — a
-    // 5-member opponent dashboard paid 5x the wall-clock latency for no
-    // reason, since each member's data is independent) and season match
-    // ids come from the incremental cache (getSeasonMatchIdsIncremental)
-    // instead of a full relist every time — shared with scout/auto-fill,
-    // so whichever action ran most recently for a member benefits here too.
-    const perMember = await Promise.all(team.members.map(async (member): Promise<Accum | null> => {
-      let puuid = member.puuid
-      const region = member.region
-      if (!puuid && member.ign && member.tagLine && region) {
-        try {
-          const acct = await getAccountByRiotId(member.ign, member.tagLine, region)
-          if (acct?.puuid) {
-            puuid = acct.puuid
-            await prisma.teamMember.update({ where: { id: member.id }, data: { puuid } })
-          }
-        } catch (err) {
-          console.warn('[opponent-dashboard] could not resolve', member.displayName, (err as Error).message)
-        }
-      }
-      if (!puuid || !region) return null
-      membersResolved++
-
-      const acc: Accum = {
-        memberId: member.id, displayName: member.displayName, role: member.role,
-        games: 0, wins: 0,
-        sums: { kills: 0, deaths: 0, assists: 0, cs: 0, durationMin: 0, damage: 0, damageTaken: 0, ccTime: 0, visionScore: 0, wardsPlaced: 0, wardsKilled: 0, controlWards: 0, gold: 0, xp: 0 },
-        byChampion: new Map(),
-      }
-
-      let matchIds: string[] = []
-      try {
-        matchIds = await getSeasonMatchIdsIncremental(member, puuid, region, false)
-      } catch (err) {
-        console.warn('[opponent-dashboard] match list failed for', member.displayName, (err as Error).message)
-      }
-      totalCandidateMatches += matchIds.length
-      if (matchIds.length === 0) return acc
-      await saveScoutCache(member.id, matchIds)
-
-      const assignedRole = (member.role || '').toUpperCase()
-      // Bound how many of the season's matches we hydrate per opponent.
-      // 3x MAX_GAMES_PER_MEMBER reflects the typical ~30% same-role hit
-      // rate; we'll usually stop early once we've collected enough.
-      const candidateIds = matchIds.slice(0, MAX_GAMES_PER_MEMBER * RIOT_LIMITS.OPPONENT_DASHBOARD_CANDIDATE_MULTIPLIER)
-      const matches = await getMatchesBulkCached(candidateIds, region)
-      let collected = 0
-      for (const id of candidateIds) {
-        if (collected >= MAX_GAMES_PER_MEMBER) break
-        const match = matches.get(id)
-        if (!match) continue
-        const p = match?.info?.participants?.find((q: any) => q.puuid === puuid)
-        if (!p) continue
-        const playedRole = normalizeRole(p.teamPosition || p.individualPosition)
-        if (!playedRole || (assignedRole && playedRole !== assignedRole)) continue
-
-        collected++
-        totalMatchesUsed++
-        const durationSec: number = match.info?.gameDuration ?? 0
-        if (durationSec <= 0) continue
-        const dmin = durationSec / 60
-        const cs = (p.totalMinionsKilled ?? 0) + (p.neutralMinionsKilled ?? 0)
-        acc.games++
-        if (p.win) acc.wins++
-        acc.sums.kills += p.kills ?? 0
-        acc.sums.deaths += p.deaths ?? 0
-        acc.sums.assists += p.assists ?? 0
-        acc.sums.cs += cs
-        acc.sums.durationMin += dmin
-        acc.sums.damage += p.totalDamageDealtToChampions ?? 0
-        acc.sums.damageTaken += p.totalDamageTaken ?? 0
-        acc.sums.ccTime += p.timeCCingOthers ?? p.totalTimeCCDealt ?? 0
-        acc.sums.visionScore += p.visionScore ?? 0
-        acc.sums.wardsPlaced += p.wardsPlaced ?? 0
-        acc.sums.wardsKilled += p.wardsKilled ?? 0
-        acc.sums.controlWards += p.detectorWardsPurchased ?? p.visionWardsBoughtInGame ?? 0
-        acc.sums.gold += p.goldEarned ?? 0
-        acc.sums.xp += p.champExperience ?? 0
-        const champKey = p.championName ?? 'Unknown'
-        const champ = acc.byChampion.get(champKey) ?? { games: 0, wins: 0 }
-        champ.games++
-        if (p.win) champ.wins++
-        acc.byChampion.set(champKey, champ)
-      }
-      return acc
-    }))
-    for (const acc of perMember) if (acc) accums.push(acc)
-
-    // First pass: compute per-player averages (the absolute values).
-    const baseStats = accums.map((a) => {
-      if (a.games === 0) {
-        return {
-          memberId: a.memberId,
-          displayName: a.displayName,
-          role: a.role,
-          gamesPlayed: 0,
-          wins: 0,
-          winRate: 0,
-          averages: {
-            kda: 0, kills: 0, deaths: 0, assists: 0, cs: 0, csPerMin: 0,
-            damage: 0, damagePerMin: 0, damageTaken: 0, ccTime: 0,
-            visionScore: 0, wardsPlaced: 0, wardsKilled: 0, controlWards: 0,
-            gold: 0, goldPerMin: 0, xpPerMin: 0, damagePerGold: 0,
-          },
-          byChampion: [] as Array<{ championKey: string; games: number; wins: number; winRate: number }>,
-        }
-      }
-      const g = a.games
-      const dmin = Math.max(0.001, a.sums.durationMin)
-      return {
-        memberId: a.memberId,
-        displayName: a.displayName,
-        role: a.role,
-        gamesPlayed: a.games,
-        wins: a.wins,
-        winRate: Math.round((a.wins / g) * 100),
-        averages: {
-          kda: a.sums.deaths > 0 ? (a.sums.kills + a.sums.assists) / a.sums.deaths : a.sums.kills + a.sums.assists,
-          kills: a.sums.kills / g,
-          deaths: a.sums.deaths / g,
-          assists: a.sums.assists / g,
-          cs: a.sums.cs / g,
-          csPerMin: a.sums.cs / dmin,
-          damage: a.sums.damage / g,
-          damagePerMin: a.sums.damage / dmin,
-          damageTaken: a.sums.damageTaken / g,
-          ccTime: a.sums.ccTime / g,
-          visionScore: a.sums.visionScore / g,
-          wardsPlaced: a.sums.wardsPlaced / g,
-          wardsKilled: a.sums.wardsKilled / g,
-          controlWards: a.sums.controlWards / g,
-          gold: a.sums.gold / g,
-          goldPerMin: a.sums.gold / dmin,
-          xpPerMin: a.sums.xp / dmin,
-          damagePerGold: a.sums.gold > 0 ? a.sums.damage / a.sums.gold : 0,
-        },
-        byChampion: Array.from(a.byChampion.entries())
-          .map(([championKey, v]) => ({ championKey, games: v.games, wins: v.wins, winRate: Math.round((v.wins / v.games) * 100) }))
-          .sort((x, y) => y.games - x.games),
-      }
-    })
-
-    // Second pass: compute approximate "team shares" by normalizing each
-    // player's averages against the sum across all 5. These aren't real
-    // synergy shares (the games are independent) but give a useful
-    // comparison of contribution profiles across the opposing roster.
-    const teamSums = baseStats.reduce((s, p) => {
-      s.dmg += p.averages.damage
-      s.dmgTaken += p.averages.damageTaken
-      s.gold += p.averages.gold
-      s.vision += p.averages.visionScore
-      s.cc += p.averages.ccTime
-      s.killsAssists += p.averages.kills + p.averages.assists
-      return s
-    }, { dmg: 0, dmgTaken: 0, gold: 0, vision: 0, cc: 0, killsAssists: 0 })
-
-    const players = baseStats.map((p) => ({
-      ...p,
-      shares: {
-        damagePct: teamSums.dmg > 0 ? (p.averages.damage / teamSums.dmg) * 100 : 0,
-        goldPct: teamSums.gold > 0 ? (p.averages.gold / teamSums.gold) * 100 : 0,
-        visionPct: teamSums.vision > 0 ? (p.averages.visionScore / teamSums.vision) * 100 : 0,
-        damageTakenPct: teamSums.dmgTaken > 0 ? (p.averages.damageTaken / teamSums.dmgTaken) * 100 : 0,
-        ccPct: teamSums.cc > 0 ? (p.averages.ccTime / teamSums.cc) * 100 : 0,
-        kpPct: teamSums.killsAssists > 0 ? ((p.averages.kills + p.averages.assists) / teamSums.killsAssists) * 100 : 0,
-      },
-    }))
-
-    return {
-      matchCount: totalMatchesUsed,
-      candidateCount: totalCandidateMatches,
-      membersResolved,
-      membersWithGames: players.filter((p) => p.gamesPlayed > 0).length,
-      players,
-      fetchedAt: Date.now(),
-    }
-  })
 }
 
 /**

@@ -68,17 +68,14 @@ export interface TeamSessionGame {
  * method the same way — same pattern as calendar.ts.
  */
 export interface TeamSessionApi {
-  teamSessionsListForGroup: (groupId: string) => Promise<TeamSession[]>
   teamSessionGetByEvent: (calendarEventId: string) => Promise<TeamSession | null>
   teamSessionStart: (id: string, responsibleUserIds: string[], queueFilter: SessionQueueFilter | null) => Promise<void>
   teamSessionEnd: (id: string) => Promise<void>
   teamSessionGetObjectives: (sessionId: string) => Promise<TeamSessionObjectives | null>
   teamSessionSetObjectives: (sessionId: string, objectiveIds: string[], kpiIds: string[]) => Promise<void>
-  teamSessionHasLive: () => Promise<boolean>
   teamSessionListMyLive: () => Promise<TeamSession[]>
   groupFundamentalsList: (groupId: string) => Promise<GroupFundamental[]>
   groupFundamentalsAdd: (groupId: string, input: NewGroupFundamentalInput) => Promise<string>
-  teamSessionReportGame: (sessionId: string, matchId: string) => Promise<void>
   teamSessionListGames: (sessionId: string) => Promise<TeamSessionGame[]>
   /** Returns the cached raw match if already fetched, otherwise fetches it
    *  from Riot (platform-specific — desktop's riotClient vs web's

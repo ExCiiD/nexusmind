@@ -37,14 +37,6 @@ export function registerBookmarkHandlers() {
     })
   })
 
-  ipcMain.handle('bookmark:update', async (_e, args: { id: string; label?: string | null; color?: string | null; videoTimeMs?: number }) => {
-    const prisma = getPrisma()
-    const data: any = {}
-    if (args.label !== undefined)       data.label = args.label?.slice(0, 200) || null
-    if (args.color !== undefined)       data.color = args.color?.slice(0, 32) || null
-    if (typeof args.videoTimeMs === 'number') data.videoTimeMs = Math.max(0, Math.floor(args.videoTimeMs))
-    return prisma.bookmark.update({ where: { id: args.id }, data })
-  })
 
   ipcMain.handle('bookmark:delete', async (_e, id: string) => {
     const prisma = getPrisma()

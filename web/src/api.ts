@@ -160,17 +160,13 @@ export const webApi = {
   collabRemoveMember: (groupId: string, userId: string) => core.removeMember(sb, groupId, userId),
   collabSetCaptain: (groupId: string, userId: string, isCaptain: boolean) => core.setCaptain(sb, groupId, userId, isCaptain),
 
-  // ── Phase 3: team sessions ──
-  teamSessionsListForGroup: (groupId: string) => teamSessionsCore.listSessionsForGroup(sb, groupId),
   teamSessionGetByEvent: (calendarEventId: string) => teamSessionsCore.getSessionByEvent(sb, calendarEventId),
   teamSessionStart: (id: string, responsibleUserIds: string[], queueFilter: Parameters<typeof teamSessionsCore.startSession>[3]) =>
     teamSessionsCore.startSession(sb, id, responsibleUserIds, queueFilter),
   teamSessionEnd: (id: string) => teamSessionsCore.endSession(sb, id),
   teamSessionGetObjectives: (sessionId: string) => teamSessionsCore.getObjectives(sb, sessionId),
   teamSessionSetObjectives: (sessionId: string, objectiveIds: string[], kpiIds: string[]) => teamSessionsCore.setObjectives(sb, sessionId, objectiveIds, kpiIds),
-  teamSessionHasLive: () => teamSessionsCore.hasLiveSessionForUser(sb),
   teamSessionListMyLive: () => teamSessionsCore.listMyLiveSessions(sb),
-  teamSessionReportGame: (sessionId: string, matchId: string) => teamSessionsCore.reportSessionGame(sb, sessionId, matchId),
   groupFundamentalsList: (groupId: string) => teamSessionsCore.listGroupFundamentals(sb, groupId),
   groupFundamentalsAdd: (groupId: string, input: Parameters<typeof teamSessionsCore.addGroupFundamental>[2]) => teamSessionsCore.addGroupFundamental(sb, groupId, input),
 
