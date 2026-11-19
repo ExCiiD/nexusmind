@@ -47,8 +47,8 @@ const moment = (facts: MomentFacts, trigger: CriticalMoment['trigger'] = 'critic
 // ── Codex: audit, mapping, content ───────────────────────────────────────
 
 describe('AscendCodex — V7–V10 audit: nothing duplicated', () => {
-  it('75 fiches (76 with V7, less the withdrawn low-energy protocol): the 15 new ids are fiches of their own, no id, alias or headline collision', () => {
-    expect(CODEX).toHaveLength(75)
+  it('109 fiches (75 after V7–V10, + 34 from the Nov. 2026 research): the 15 V7 ids are fiches of their own, no id, alias or headline collision', () => {
+    expect(CODEX).toHaveLength(109)
     for (const id of V7_IDS) {
       expect(CODEX.filter((e) => e.id === id), id).toHaveLength(1)
       expect(CODEX_ALIASES[id], id).toBeUndefined()
@@ -110,16 +110,18 @@ describe('AscendCodex — V7–V10 fiches', () => {
       [CODEX_JGL_INVADE_ORDER, [/rouge → jaune → vert/, /entre 5 et 12 min/, /5e joueur ennemi/, /à 6 min/, /3 buissons/]],
       [CODEX_JGL_GANK, [/50 PV/, /1\. couper la trajectoire.*5\. Flash/, /6e seconde/]],
       [CODEX_JGL_MINUS, [/3e Dragon dès T-20 s/, /1000 g de camps/, /1800 g sans recall/, /3 camps ennemis adjacents/]],
-      [CODEX_JGL_ECONOMY, [/Pioche \(875 g\)/, /3:12/, /5:30/, /Smite à 900/, /15 s chrono/, /1000 PV/]],
+      // 26.1: camps 35 s earlier, Smite 600 / 1000 (15 treats) / 1400 (35 treats), tankier Dragons.
+      [CODEX_JGL_ECONOMY, [/Pioche \(875 g\)/, /vers 2:45/, /Dragon de 5:00/, /15 friandises, 1400 à 35/, /sous 1000 PV/]],
       [CODEX_JGL_T1_HERALD, [/APRÈS 14 MIN/, /100 PV/, /1v3/, /1 pink/]],
-      [CODEX_JGL_NEVER_FLEE, [/5:30/, /Smite amélioré \(900\)/, /3 s/, /300 g/, /Raptors → Red → Krugs → recall → camps bot/]],
+      [CODEX_JGL_NEVER_FLEE, [/5:30/, /Smite amélioré \(1000\)/, /3 s/, /300 g/, /Raptors → Red → Krugs → recall → camps bot/]],
       [CODEX_JGL_INVADE_STOP, [/4 s/, /5 s/, /E-Q de Jarvan IV/]],
       [CODEX_JGL_VISION, [/8-10 min/, /\(5:00\)/, /Shyvana, Vi, Udyr/, /1 ou 2 ennemis/]],
-      [CODEX_JGL_SMITE, [/0,25 s/, /900\/1200/, /2200\+ PV/, /0,2 s/, /50 % de tes dégâts/, /R de Cho'Gath à 1200\+/]],
+      [CODEX_JGL_SMITE, [/0,25 s/, /1000\/1400 depuis 2026/, /2200\+ PV/, /0,2 s/, /50 % de tes dégâts/, /R de Cho'Gath à 1200\+/]],
       [CODEX_MID_MICRO, [/30 s/, /3 secondes DEVANT/, /2 autos au lieu de 3/, /niveau 3/]],
       [CODEX_MID_WAVES, [/niveau 1/, /2 points dans le Q au niveau 3/, /wave 5/, /Cristal de mana/]],
       [CODEX_SUP_ENGAGE, [/\+65 PV/, /niveau 7/, /0,5 s/, /0,3 s/, /auto → W reset → auto/, /WAVES 3 ET 6/]],
-      [CODEX_SUP_POST_CRASH, [/2:30/, /moins de 300 g/, /3:15/, /15 s avant le Carapateur de 3:30/, /4 secondes/, /T-30 S/]],
+      // 26.1: the Scuttle Crab spawns at 2:55 (was 3:30) and camps at 0:55.
+      [CODEX_SUP_POST_CRASH, [/1:55/, /moins de 300 g/, /2:40/, /15 s avant le Carapateur de 2:55/, /4 secondes/, /T-30 S/]],
       [CODEX_SUP_POST6, [/NIVEAU 6/, /2 wards défensives/, /3 casters/, /20 s/]],
     ]
     for (const [id, patterns] of keep) for (const p of patterns) expect(fr(id), `${id} ${p}`).toMatch(p)
