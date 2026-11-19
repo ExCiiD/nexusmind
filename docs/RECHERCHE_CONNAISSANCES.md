@@ -13,9 +13,11 @@ n'affiche jamais de nom de coach, de joueur pro ni de créateur (règle de `code
   jungle et objectifs 2026 ; macro et teamfights ; draft, mental et habitudes de review ; vidéos YouTube de coaching.
   Les notes complètes (environ 3 500 lignes, chaque point avec sa source, sa confiance et sa vérifiabilité) sont hors du
   dépôt, dans le dossier de notes partagé de la session (`engine-knowledge-research/01` à `08`).
-- **Vidéos** : 19 vidéos de coaching de haut niveau (2023-2026) ont été regardées et écoutées par Gemini (API Gemini, l'URL
-  YouTube passée comme entrée vidéo, `gemini-3-flash-preview`), qui en a tiré la liste des points enseignés avec leurs
-  horodatages. Les résumés de Gemini sont restés hors du dépôt ; seules nos synthèses en sont tirées.
+- **Vidéos** : 18 vidéos de coaching de haut niveau (2023-2026, dont 14 de 2025-2026) ont été regardées et écoutées par
+  Gemini (API Gemini, l'URL YouTube passée comme entrée vidéo, `gemini-3-flash-preview`), qui en a tiré la liste des points
+  enseignés avec leurs horodatages. Deux autres vidéos sont restées en file d'attente : le quota gratuit de Gemini
+  (20 requêtes par jour) était épuisé. D'autres vidéos de coachs ont été lues par leurs sous-titres. Les résumés de Gemini
+  sont restés hors du dépôt ; seules nos synthèses en sont tirées.
 - **Vérification sur nos propres données** : les faits de jeu 2026 ont été contrôlés sur le cache local de l'app (lecture
   seule) — 3 004 parties classées de 15 minutes ou plus (patchs 16.1 à 16.10) et 207 timelines (128 de 2026, 79 de 2025).
   Les seuils des nouvelles règles de l'assistant y ont été calibrés (taux de victoire par tranche et par rôle).
@@ -119,6 +121,9 @@ points gardés. Les listes complètes, avec la confiance de chaque point, sont d
 - [V10] Skill Capped, guide support (24/04/2026) ; macro saison 16 (13/02/2026) ; macro top saison 16 (22/05/2026) ; guide
   mid (13/11/2026) ; coach « Strompest » (mid, 10/07/2026) ; coach « Hector » (top, 8/05/2026) ; guide top (6/11/2026).
 - [V11] evandabank (bot lane), gestion des waves en bot (27/10/2026).
+- [V16] Coach Mysterias, teamfight en 7 minutes (26/06/2025) ; [V17] Agurin, review d'un jungler Diamant (28/04/2025) ;
+  [V18] Broken by Concept #284 — Nathan Mott et Charlie (responsable ADC de We Teach League), apprendre de ses morts
+  (19/01/2026).
 - Coach Kirei (jungler, 25/12/2025), Eagz (coach jungle, 10/09/2026), Shok (mid, « How to sidelane », 19/03/2025).
 - Inven Global : réactions des joueurs LCK à la pré-saison 2026 (7/01/2026, le TP reste indispensable au top), interview de
   Faker sur TP contre Fantôme au mid (23/01/2026). Cours de BrokenBlade (top) et Pobelter (mid), Aim Lab (2022).
@@ -204,3 +209,8 @@ respawn ». Le français reste un miroir exact de l'anglais (testé).
 - **Le gel de wave à « +3 casters »** contre « 4 à 5 sbires d'avance » : les sources divergent ; la fiche existante (et son
   test) gardent 4 à 5.
 - **Les replays qui expirent à chaque patch** : sans objet pour Ascend, qui enregistre ses propres vidéos.
+- **« Blue avant Gromp » contredit** par une seule remarque d'un jungler du haut de classement en review (les deux camps ne
+  réapparaissent plus ensemble) : une seule source, résumée par Gemini — la fiche existante n'est pas modifiée.
+- **Les idées de review des vidéos** (classer chaque mort selon son contexte, ouvrir la review au moment où le graphe d'or
+  bascule) : de bonnes fonctionnalités, mais ce sont des changements du Labo et de la review, pas des connaissances du
+  moteur. Listées pour plus tard.
