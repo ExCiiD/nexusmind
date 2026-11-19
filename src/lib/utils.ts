@@ -15,30 +15,9 @@ export function formatKDA(kills: number, deaths: number, assists: number): strin
   return `${kills}/${deaths}/${assists}`
 }
 
-export function calculateKDA(kills: number, deaths: number, assists: number): number {
-  if (deaths === 0) return kills + assists
-  return Number(((kills + assists) / deaths).toFixed(2))
-}
-
 export function formatCSPerMin(cs: number, durationSeconds: number): string {
   const cspm = cs / (durationSeconds / 60)
   return cspm.toFixed(1)
-}
-
-export function getRankColor(tier: string): string {
-  const colors: Record<string, string> = {
-    IRON: '#5e5e5e',
-    BRONZE: '#8c6239',
-    SILVER: '#8c8c8c',
-    GOLD: '#d4a24c',
-    PLATINUM: '#4e9996',
-    EMERALD: '#6fa84a',
-    DIAMOND: '#576cce',
-    MASTER: '#9d48e0',
-    GRANDMASTER: '#e04848',
-    CHALLENGER: '#f4c874',
-  }
-  return colors[tier.toUpperCase()] ?? '#b5a68c'
 }
 
 export function xpForLevel(level: number): number {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gameTimeToVideoTime, mapEventsToVideoTime } from '../../src/lib/eventSync'
+import { gameTimeToVideoTime } from '../../src/lib/eventSync'
 
 describe('gameTimeToVideoTime', () => {
   // Scenario: a 30-minute game that ended at 12:30:00. Recording started at
@@ -102,24 +102,5 @@ describe('gameTimeToVideoTime', () => {
     })
     // offset = 1800 - 2100 = -300 → videoT = 0 - (-300) = 300
     expect(t).toBeCloseTo(300, 0)
-  })
-})
-
-describe('mapEventsToVideoTime', () => {
-  it('drops events outside the video range and preserves original fields', () => {
-    const events = [
-      { gameTimeMs: 10_000, label: 'too early' },
-      { gameTimeMs: 60_000, label: 'in range' },
-      { gameTimeMs: 999_999_999, label: 'too late' },
-    ]
-    const out = mapEventsToVideoTime(events, {
-      gameEndAt: new Date('2026-01-01T12:30:00Z'),
-      gameDurationSec: 1800,
-      recordingCreatedAt: new Date('2026-01-01T12:00:30Z'),
-      videoDurationSec: 1800,
-    })
-    expect(out).toHaveLength(1)
-    expect(out[0].label).toBe('in range')
-    expect(out[0].videoTime).toBeCloseTo(30, 0)
   })
 })

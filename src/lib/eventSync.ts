@@ -79,19 +79,3 @@ export function deriveOffsetSec(opts: Omit<GameTimeToVideoOpts, 'eventGameTimeMs
   // is longer than the game, meaning it started before game start).
   return opts.gameDurationSec - opts.videoDurationSec
 }
-
-/**
- * Map a list of game events to video times, dropping ones that fall outside
- * the video's range. Caller still gets the original gameTimeMs for tooltips.
- */
-export function mapEventsToVideoTime<E extends { gameTimeMs: number }>(
-  events: E[],
-  opts: Omit<GameTimeToVideoOpts, 'eventGameTimeMs'>,
-): Array<E & { videoTime: number }> {
-  const out: Array<E & { videoTime: number }> = []
-  for (const ev of events) {
-    const t = gameTimeToVideoTime({ ...opts, eventGameTimeMs: ev.gameTimeMs })
-    if (t !== null) out.push({ ...ev, videoTime: t })
-  }
-  return out
-}

@@ -27,10 +27,6 @@ export function getAllFundamentalsForGroup(groupFundamentals: GroupFundamental[]
   return mergedFundamentalCategories(groupFundamentals).flatMap((c) => c.fundamentals)
 }
 
-export function getFundamentalByIdForGroup(id: string, groupFundamentals: GroupFundamental[]): Fundamental | undefined {
-  return getAllFundamentalsForGroup(groupFundamentals).find((f) => f.id === id)
-}
-
 /** Label of a fundamental in `list` (e.g. useLocalizedFundamentalList()), else the id itself. */
 export function findFundamentalLabel(id: string, list: Fundamental[]): string {
   return list.find((f) => f.id === id)?.label ?? id

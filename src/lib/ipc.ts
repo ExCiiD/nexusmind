@@ -173,9 +173,6 @@ export interface LanePhaseDiag {
   cached?: boolean
 }
 
-export type TeamRole = 'TOP' | 'JUNGLE' | 'MID' | 'ADC' | 'SUPPORT'
-export type PoolTier = 'main' | 'new' | 'comfort' | 'flex' | 'learning'
-
 export interface ChampionPoolEntry {
   id: string
   memberId: string

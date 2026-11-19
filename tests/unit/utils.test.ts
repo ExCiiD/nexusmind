@@ -2,9 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   formatGameTime,
   formatKDA,
-  calculateKDA,
   formatCSPerMin,
-  getRankColor,
   xpForLevel,
   getLevelFromXp,
 } from '../../src/lib/utils'
@@ -27,29 +25,10 @@ describe('Utility Functions', () => {
     })
   })
 
-  describe('calculateKDA', () => {
-    it('should calculate KDA ratio', () => {
-      expect(calculateKDA(5, 2, 5)).toBe(5.0)
-      expect(calculateKDA(10, 0, 5)).toBe(15)
-    })
-  })
-
   describe('formatCSPerMin', () => {
     it('should calculate CS per minute', () => {
       expect(formatCSPerMin(180, 1200)).toBe('9.0')
       expect(formatCSPerMin(0, 1200)).toBe('0.0')
-    })
-  })
-
-  describe('getRankColor', () => {
-    it('should return correct colors for tiers', () => {
-      expect(getRankColor('GOLD')).toBe('#d4a24c')
-      expect(getRankColor('DIAMOND')).toBe('#576cce')
-      expect(getRankColor('CHALLENGER')).toBe('#f4c874')
-    })
-
-    it('should return default for unknown tiers', () => {
-      expect(getRankColor('UNKNOWN')).toBe('#b5a68c')
     })
   })
 
