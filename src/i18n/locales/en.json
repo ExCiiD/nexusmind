@@ -4,12 +4,10 @@
     "session": "Session",
     "review": "Review",
     "history": "History",
-    "detailedStats": "Detailed Stats",
     "analytics": "Analytics",
     "team": "Team stats",
     "settings": "Settings",
     "help": "Help",
-    "mistakes": "Mistakes",
     "coaching": "Coaching",
     "plan": "My Plan",
     "profile": "Profile",
@@ -48,9 +46,7 @@
       "removeCancel": "Cancel",
       "empty": "No secondary accounts linked yet.",
       "addedToast": "Account linked successfully.",
-      "removedToast": "Account removed.",
-      "errorDuplicate": "This account is already linked.",
-      "errorMain": "This account is already your main account."
+      "removedToast": "Account removed."
     },
     "recordWindow": {
       "background": {
@@ -142,7 +138,6 @@
     "lastGame": {
       "title": "Last game",
       "vs": "vs",
-      "noOpponent": "?",
       "viewDetails": "View details",
       "justNow": "just now",
       "hoursAgo_one": "{{count}} hour ago",
@@ -156,7 +151,6 @@
     },
     "reassessmentBanner": {
       "title": "Time for your periodic assessment",
-      "desc": "Update your skill ratings to keep your coaching data accurate.",
       "statGapDesc": "Your recent stats have clearly shifted on {{n}} fundamentals compared to your last self-assessment. Worth updating it.",
       "cta": "Start Assessment"
     },
@@ -169,7 +163,6 @@
     },
     "noSession": {
       "title": "Start a Session",
-      "desc": "Set an objective and start tracking your improvement.",
       "button": "New Session"
     },
     "stats": {
@@ -185,7 +178,6 @@
     },
     "statDiffs": {
       "title": "Biggest stat changes",
-      "noData": "Need at least 2 snapshots — compute averages to track progression",
       "vsSnap": "vs previous snapshot",
       "prev": "Prev. snapshot",
       "now": "Now"
@@ -256,10 +248,6 @@
     "chooseDesc": "Choose 1 to 3 objectives to focus on. The review form will show KPIs for all selected objectives.",
     "chooseFull": "Pick 1 to 3 fundamentals to work on during this session. The post-game review will display KPIs for each selected objective.",
     "fundamental": "Fundamental",
-    "fundamentalPlaceholder": "Select a fundamental to work on",
-    "maxReached": "max 3 reached",
-    "subcategory": "Subcategory (optional)",
-    "subcategoryAll": "All subcategories",
     "note": "Personal Note (optional)",
     "notePlaceholder": "Concrete explanation of the objective;\ne.g: die less to ganks and be more aggressive in lane.",
     "sessionType": {
@@ -327,7 +315,6 @@
     },
     "gamesList": {
       "title": "Games in this session",
-      "noGames": "No games yet. Import from your match history below.",
       "delete": "Remove",
       "deleteConfirm": "Confirm",
       "deleteCancel": "Cancel"
@@ -382,8 +369,7 @@
       "kda": "KDA",
       "cs": "CS",
       "vision": "Vision",
-      "duration": "Duration",
-      "champion": "Champion"
+      "duration": "Duration"
     },
     "freeText": {
       "label": "Thoughts & Feelings",
@@ -391,14 +377,6 @@
       "hint": "Free-form notes about the game (optional)"
     },
     "objectiveQuestion": "Did you respect your session objective this game?",
-    "autoScoring": {
-      "title": "Automatic KPI scoring",
-      "desc": "Enable automatic scoring for KPIs that can be inferred reliably from match stats and timeline rules. KPIs without a measurable correlation stay manual.",
-      "toggle": "Auto",
-      "loading": "Computing automatic scores...",
-      "coverage": "{{auto}} auto-filled KPI(s), {{manual}} manual KPI(s) still to rate",
-      "error": "Auto-scoring failed — match data may not be cached yet. Scores are manual."
-    },
     "yes": "Yes",
     "no": "No",
     "reviewLater": "Review Later",
@@ -429,7 +407,6 @@
         "lowTempoEfficiency": "You rated this objective highly, but your tempo conversion looked weak (CS/min {{cs}}, objective damage {{objective}}, building damage {{building}}).",
         "highDangerZoneTime": "You rated this objective highly, but you spent {{pct}}% of your laning phase in the danger zone and died {{deaths}} time(s) before 15 minutes.",
         "deathsInDangerZone": "You rated this objective highly, but {{danger}} of your {{total}} early deaths happened in the danger zone (near enemy tower).",
-        "missedTradeWindows": "You rated this objective highly, but you only traded in {{taken}} out of {{taken}}+{{missed}} windows when your opponent was CSing near you ({{ratio}}% conversion).",
         "highDangerZoneTrading": "You rated this objective highly, but {{pct}}% of your laning damage came from the danger zone and you died {{deaths}} time(s) there — suggesting overaggressive positioning.",
         "jungleDangerQuadrantDeaths": "You rated this objective highly, but you died {{deaths}} time(s) in enemy-priority jungle quadrants before 15 minutes."
       }
@@ -453,10 +430,6 @@
   "analytics": {
     "title": "Analytics",
     "subtitle": "Track your improvement over time",
-    "objectiveFilter": {
-      "label": "Filter objectives",
-      "all": "All"
-    },
     "tabs": {
       "progress": "Progress",
       "gameHistory": "Game History",
@@ -468,7 +441,6 @@
       "skillProgress": "Skill Progress Over Time",
       "currentVsPrevious": "Assessment Comparison",
       "sessionVsBilan": "Session Objectives vs Assessment",
-      "noAssessment": "No assessment data available",
       "noGames": "No games recorded yet. Start a session and play!",
       "noStats": "No statistics available yet. Play some games and review them!",
       "modeBilan": "Assessments",
@@ -574,10 +546,8 @@
     "win": "W",
     "loss": "L",
     "reviewButton": "Review",
-    "noReview": "No review",
     "deleteSession": "Delete session",
     "deleteGame": "Remove game from session",
-    "loadMore": "Load more games",
     "page": "Page {{current}} / {{total}}",
     "prevPage": "Previous",
     "nextPage": "Next",
@@ -602,10 +572,7 @@
     "selected": "selected"
   },
   "statsAvg": {
-    "title": "Statistics",
     "subtitle": "What makes you win, your averages and your progression over time",
-    "navButton": "20-Game Averages",
-    "compute": "Compute & Save",
     "empty": "No snapshots yet. Click \"Compute & Save\" to generate your first 20-game average.",
     "progression": "Progression Over Time",
     "winRate": "Win Rate",
@@ -655,16 +622,12 @@
       "vision": "Vision",
       "objectives": "Objectives"
     },
-    "seriesReset": "Back to default curves",
-    "fundamentalsLink": "Fundamentals progression →"
+    "seriesReset": "Back to default curves"
   },
   "detailedStats": {
-    "pageTitle": "Detailed Stats",
-    "pageSubtitle": "Select a game to view in-depth performance breakdown",
     "loading": "Fetching detailed stats…",
     "back": "Back",
     "noData": "No stats available for this game.",
-    "noGames": "No recent games found. Play some games to see stats.",
     "victory": "Victory",
     "defeat": "Defeat",
     "yes": "Yes",
@@ -714,7 +677,6 @@
       "dmgEpic": "Epic Monster Damage",
       "epicDmgPercent": "Epic Monster Damage Participation %",
       "dmgBuild": "Damage to Buildings",
-      "ofTeam": "of team",
       "stolen": "Objectives Stolen",
       "firstTower": "First Tower",
       "turretPlates": "Turret Plates Destroyed (Total)",
@@ -772,39 +734,13 @@
       "label7": "One week strong!",
       "label3": "Building momentum!",
       "label1": "Keep it going!"
-    },
-    "rankMilestone": {
-      "positive": "Congratulations on ranking up! Your hard work is paying off.",
-      "negative": "Don't worry — focus on your fundamentals. The rank will follow."
-    }
-  },
-  "ai": {
-    "reviewSummary": "AI Review Summary",
-    "sessionAnalysis": "AI Session Analysis",
-    "generateSummary": "Generate Summary",
-    "generateAnalysis": "Generate Analysis",
-    "summarizing": "Summarizing your review...",
-    "analyzing": "Analyzing session patterns...",
-    "retry": "Retry",
-    "regenerate": "Regenerate",
-    "summaryError": "Failed to generate summary",
-    "suggestion": {
-      "title": "AI Coach Suggestion",
-      "hint": "Not sure what to focus on? Let the AI analyze your assessment scores.",
-      "button": "Suggest Objective",
-      "loading": "Analyzing your scores...",
-      "tryAgain": "Try Again",
-      "getAnother": "Get Another",
-      "error": "Failed to get AI suggestion. Check your OpenAI API key."
     }
   },
   "reviewForm": {
     "kpi": {
       "title": "KPI Scores",
       "subtitle": "Rate your performance on each aspect of your objective this game",
-      "noKpis": "No KPIs defined for this objective.",
-      "autoBadge": "Auto",
-      "manualBadge": "Manual"
+      "noKpis": "No KPIs defined for this objective."
     },
     "timeline": {
       "title": "Timeline Notes",
@@ -976,20 +912,13 @@
     "cancelling": "Stopping after current player…"
   },
   "team": {
-    "title": "Team Management",
-    "subtitle": "Manage your roster, prepare drafts, and scout opponents.",
     "activeTeam": "Active team",
-    "noTeams": "No team yet — create your first one to start.",
-    "newTeam": "New team",
-    "newTeamName": "Team name…",
-    "created": "Team created",
     "tabs": {
       "roster": "Roster",
       "pool": "Champion Pool",
       "draft": "Draft Sim",
       "scouting": "Scouting",
       "dashboard": "Dashboard",
-      "stats": "Stats Flex",
       "statsFlex": "Stats Flex",
       "statsScrim": "Stats Scrim",
       "statsTournament": "Stats Tournament"
@@ -1046,31 +975,21 @@
       "noTeam": "Create a team and add members first.",
       "noMembers": "Add at least one member to manage their pool.",
       "player": "Player",
-      "assignTo": "Assign to role",
-      "assignToHint": "Which role to assign when clicking a champion. Defaults to the member's primary role.",
       "searchPlaceholder": "Search champion to add manually…",
       "showPicked": "Pool only",
-      "autoFill": "Auto-fill from Riot",
-      "autoFillHint": "Pulls mastery + last 30 games from Riot to seed the pool",
-      "autoFillDone": "Pool auto-filled",
-      "autoFillSummary": "{{upserted}} champions · {{matches}} games · top {{mastery}} masteries",
-      "autoFillFailed": "Auto-fill failed",
       "autoFillMissingInfo": "IGN, tag and region required",
       "autoFillMissingInfoDesc": "Edit the member in the Roster tab to add their Riot ID first.",
       "autoFillAll": "Auto-fill all members ({{count}})",
       "autoFillAllHint": "Pulls mastery + last 30 games from Riot for EVERY member of the team, filtered to their assigned role",
       "autoFillProgress": "Filling {{name}} ({{done}}/{{total}})…",
       "autoFillAllDone": "All {{count}} pools auto-filled",
-      "autoFillAllSummary": "{{upserted}} champions total · {{matches}} games · {{mastery}} masteries scanned",
       "autoFillPartial": "{{ok}}/{{total}} pools auto-filled",
       "legend": "Tiers",
       "clickHint": "Click a champion to assign a tier · Esc to close",
       "allChampions": "All champions",
       "poolTitle": "Pool",
       "empty": "Empty",
-      "emptyHint": "No champions yet. Use Auto-fill or click any champion on the left.",
       "emptyForRole": "No {{role}} champions yet. Use Auto-fill or click any champion on the left.",
-      "roleFilter": "Role",
       "removeDuplicates": "Remove {{count}} duplicate(s)",
       "dedupeHint": "Merge members that share the same Riot ID. The oldest entry is kept and champion pools are merged.",
       "dedupeDone": "Removed {{count}} duplicate(s)",
@@ -1118,9 +1037,6 @@
       "duplicate": "Duplicate",
       "blueSide": "Blue side",
       "redSide": "Red side",
-      "bans": "Bans",
-      "picks": "Picks",
-      "comp": "Comp",
       "roles": "Roles",
       "unknownShort": "unknown",
       "mySide": "My side",
@@ -1128,7 +1044,6 @@
       "mySideRed": "I play red side",
       "myTeamTag": "MY TEAM",
       "searchPlaceholder": "Search…",
-      "allTags": "All tags",
       "allRoles": "All",
       "addingTo": "Adding to: {{side}} {{type}} #{{idx}}",
       "selectSlotFirst": "Select a slot first",
@@ -1146,13 +1061,10 @@
       "threatNew": "new pick: 10+ games on a champion picked up less than 2 weeks ago"
     },
     "dashboard": {
-      "noTeam": "Select or create a team first.",
-      "subtitle": "Aggregated stats from flex games where ≥{{n}} of your roster played together",
       "subtitleCombined": "Combined stats: flex (≥{{n}} together) + all imported scrim & tournament games",
       "emptyHint": "Click \"Compute synergy stats\" to populate the dashboard.",
       "statsTable": "Player stats",
       "basedOn": "Averages from {{n}} games",
-      "basedOnFlex": "Averages from {{n}} flex games",
       "dmgShare": "Damage share",
       "dmgTakenShare": "Damage taken share",
       "goldShare": "Gold share",
@@ -1192,17 +1104,10 @@
       "basedOnAll": "Average of {{n}} games (flex, scrim and tournament)"
     },
     "custom": {
-      "imported": "Game imported",
-      "importedDesc": "{{n}} participants from {{file}}",
-      "importFailed": "Import failed",
       "confirmDelete": "Delete this imported game?",
       "importedGames": "Imported games ({{n}})",
-      "warningTitle": "Filename doesn't indicate game type",
-      "warningDesc": "The file \"{{file}}\" doesn't contain \"scrim\" or \"tournoi\" in its name. Confirm the type or rename the file and try again.",
       "warningTitleBatch": "{{n}} file(s) need a type confirmation",
       "warningDescBatch": "These filenames don't clearly indicate \"{{type}}\". Confirm to import all as {{type}}, or cancel and rename them.",
-      "importAsScrim": "Import as scrim",
-      "importAsTournament": "Import as tournament",
       "importAllAsScrim": "Import all {{n}} as scrim",
       "importAllAsTournament": "Import all {{n}} as tournament",
       "batchImported": "{{n}} game(s) imported",
@@ -1226,7 +1131,6 @@
       }
     },
     "stats": {
-      "noTeam": "Select or create a team first.",
       "subtitle": "Flex queue games where ≥{{n}} of your roster played together",
       "minTogether": "Min players together:",
       "compute": "Compute synergy stats",
@@ -1252,7 +1156,6 @@
       "goldPerMin": "Gold/min",
       "damage": "Damage",
       "damageTaken": "Tanked",
-      "ccTime": "CC time",
       "ccScore": "CC score",
       "visionScore": "Vision",
       "visionBreakdown": "{{w}} placed · {{k}} killed · {{c}} pinks",
@@ -1272,7 +1175,6 @@
       "empty": "No opponent teams scouted yet.",
       "selectPrompt": "Select or create an opponent team to start scouting.",
       "done": "Scouting complete",
-      "failed": "Scouting failed",
       "autoScout": "Auto-scout on import",
       "importTitle": "Import opponents from multi-link",
       "importDesc": "Paste an op.gg / blitz.gg multisearch URL — each player will be added to this opponent team and (optionally) auto-scouted.",
@@ -1293,22 +1195,6 @@
       "scoutAllJobLabel": "Scout — {{team}}",
       "scoutCancelled": "Scout cancelled",
       "scoutCancelledDesc": "{{ok}} member(s) scouted before stopping · {{upserted}} entries.",
-      "dashboard": {
-        "title": "Opponent stats — per-player averages from this season (SoloQ + Flex + Clash)",
-        "compute": "Compute opponent stats",
-        "refresh": "Refresh stats",
-        "computing": "Computing…",
-        "computingDesc": "Fetching season games for every opponent — this can take up to a minute.",
-        "emptyHint": "Click \"Compute opponent stats\" to fetch the full season match history for every opponent.",
-        "slowHint": "Can take 30–60 seconds — we paginate through SoloQ + Flex + Clash for each member.",
-        "basedOn": "Per-player averages from {{n}} same-role games (this season)",
-        "approxDisclaimer": "Shares are approximations — opponents do not play together so percentages are based on per-player averages rather than real synergy games.",
-        "noGames": "No same-role games found",
-        "noGamesDesc": "None of the opponents have recent ranked games on their assigned role.",
-        "failed": "Opponent stats failed",
-        "staleHint": "Cached — refresh to update",
-        "freshHint": "Updated {{minutes}}min ago"
-      },
       "synergy": {
         "basedOn": "Real flex stats from {{n}} games where ≥{{min}} opponents played together",
         "cacheHint": "First run can be slow; results are cached locally for next time.",
@@ -1326,25 +1212,6 @@
         "refresh": "Refresh",
         "title": "Opponent synergy — flex games where ≥{{n}} of them played together"
       }
-    },
-    "confirmDelete": "Delete team \"{{name}}\"? Roster, champion pools, draft preps, and imported custom games will be lost. This cannot be undone.",
-    "deleted": "Team deleted",
-    "deleteFailed": "Failed to delete team",
-    "deleteTooltip": "Delete team",
-    "publishToGroup": "Publish to a group…",
-    "publishTitle": "Publish \"{{name}}\" to a group",
-    "publishDesc": "The staff (owner/coach/analyst) of the group you pick will see your roster, champion pools, drafts and scouting notes on the web. This replaces whatever was published there before — it does not sync live, publish again after changes.",
-    "publishNoGroups": "You are not in any group yet — create or join one from Coaching first.",
-    "publishButton": "Publish",
-    "publishDone": "Team published",
-    "publishCount": "{{count}} rows shared",
-    "workspace": {
-      "title": "Team workspace",
-      "empty": "Nothing published yet for this group — a player publishes their team from the desktop app (Team → Publish to a group…).",
-      "roster": "Roster",
-      "drafts": "Drafts",
-      "picks": "picks",
-      "scouting": "Scouting"
     },
     "statsTitle": "Team stats",
     "statsSubtitle": "The stats of the picked group’s team: flex, scrim and tournament together, then each source.",
@@ -1388,7 +1255,6 @@
     "placeholder": "Write a comment…"
   },
   "announcements": {
-    "title": "Announcements",
     "titlePlaceholder": "Title…",
     "bodyPlaceholder": "Message…",
     "post": "Post",
@@ -1567,18 +1433,15 @@
       "hint": "Videos never leave your PC. You can change this at any time."
     },
     "players": {
-      "title": "Your players",
       "desc": "Reviews your players share with you. Comment on them and assign objectives.",
       "none": "No player in your groups yet. Invite them with a code.",
       "noData": "Nothing shared yet (the player may not have synced, or disabled sharing).",
       "games": "{{count}} game(s)",
-      "reviews": "{{count}} review(s)",
       "win": "Win",
       "loss": "Loss",
       "noReview": "Not reviewed yet."
     },
     "assign": {
-      "title": "Assign an objective",
       "pick": "Choose an objective",
       "due": "Due date",
       "notePlaceholder": "What should the player focus on?",
@@ -1586,8 +1449,7 @@
       "sent": "Objective assigned",
       "status": {
         "open": "open",
-        "done": "done",
-        "dismissed": "dismissed"
+        "done": "done"
       },
       "kicker": "Goals",
       "titleFor": "Assign to {{name}}",
@@ -1964,8 +1826,7 @@
     },
     "account": {
       "deleteHint": "To delete your account and cloud data, use Settings → Ascend account in the desktop app.",
-      "desktop": "Ascend for Windows: recording, live game detection, reviews.",
-      "download": "Download"
+      "desktop": "Ascend for Windows: recording, live game detection, reviews."
     },
     "scrims": {
       "title": "Scrims",
@@ -2091,8 +1952,6 @@
     "confirmDeleteAxis": "Delete?"
   },
   "planning": {
-    "title": "Planning",
-    "desc": "Team calendar, recurring availability, and common free slots.",
     "exportIcs": "Export .ics",
     "kind": {
       "tournament": "Tournament",
@@ -2106,15 +1965,12 @@
       "meeting": "Meeting",
       "warmup_draft": "Warmup / draft"
     },
-    "commonFree": "When all starters are free",
     "noStarters": "No starters with a linked account in the published roster yet.",
     "noCommonSlot": "No common free slot this week.",
     "eventTitlePlaceholder": "Event title…",
     "starts": "Starts",
     "ends": "Ends",
     "notesPlaceholder": "Notes (optional)…",
-    "addEvent": "Add event",
-    "editEvent": "Edit event",
     "saveEvent": "Save",
     "linkScrim": "Link to an existing scrim (optional)",
     "linkScrimNone": "— No linked scrim —",

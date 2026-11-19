@@ -4,12 +4,10 @@
     "session": "Session",
     "review": "Revue",
     "history": "Historique",
-    "detailedStats": "Stats détaillées",
     "analytics": "Statistiques",
     "team": "Stats collectives",
     "settings": "Paramètres",
     "help": "Aide",
-    "mistakes": "Erreurs",
     "coaching": "Coaching",
     "plan": "Mon plan",
     "profile": "Profil",
@@ -48,9 +46,7 @@
       "removeCancel": "Annuler",
       "empty": "Aucun compte secondaire lié.",
       "addedToast": "Compte lié avec succès.",
-      "removedToast": "Compte supprimé.",
-      "errorDuplicate": "Ce compte est déjà lié.",
-      "errorMain": "Ce compte est votre compte principal."
+      "removedToast": "Compte supprimé."
     },
     "recordWindow": {
       "background": {
@@ -142,7 +138,6 @@
     "lastGame": {
       "title": "Dernière partie",
       "vs": "vs",
-      "noOpponent": "?",
       "viewDetails": "Voir les stats",
       "justNow": "à l’instant",
       "hoursAgo_one": "il y a {{count}} heure",
@@ -156,7 +151,6 @@
     },
     "reassessmentBanner": {
       "title": "C'est l'heure de votre évaluation périodique",
-      "desc": "Mettez à jour vos niveaux pour garder vos données de coaching précises.",
       "statGapDesc": "Vos stats récentes se sont nettement déplacées sur {{n}} fondamentaux par rapport à votre dernière auto-évaluation. Elle mérite une mise à jour.",
       "cta": "Commencer l'évaluation"
     },
@@ -169,7 +163,6 @@
     },
     "noSession": {
       "title": "Démarrer une session",
-      "desc": "Fixez un objectif et commencez à suivre votre progression.",
       "button": "Nouvelle session"
     },
     "stats": {
@@ -185,7 +178,6 @@
     },
     "statDiffs": {
       "title": "Plus grandes évolutions de stats",
-      "noData": "Il faut au moins 2 snapshots — calculez des moyennes pour suivre la progression",
       "vsSnap": "vs snapshot précédent",
       "prev": "Snapshot préc.",
       "now": "Actuel"
@@ -256,10 +248,6 @@
     "chooseDesc": "Choisissez de 1 à 3 objectifs. Le formulaire de revue affichera les KPI de tous les objectifs sélectionnés.",
     "chooseFull": "Sélectionnez 1 à 3 fondamentaux sur lesquels travailler. La revue post-partie affichera les KPI de chaque objectif sélectionné.",
     "fundamental": "Fondamental",
-    "fundamentalPlaceholder": "Sélectionnez un fondamental",
-    "maxReached": "max 3 atteint",
-    "subcategory": "Sous-catégorie (optionnel)",
-    "subcategoryAll": "Toutes les sous-catégories",
     "note": "Note personnelle (optionnel)",
     "notePlaceholder": "Explication concrète de l'objectif ;\nex : moins mourir de gank et être plus agressif en lane.",
     "sessionType": {
@@ -327,7 +315,6 @@
     },
     "gamesList": {
       "title": "Parties de cette session",
-      "noGames": "Aucune partie pour l'instant. Importez depuis votre historique ci-dessous.",
       "delete": "Supprimer",
       "deleteConfirm": "Confirmer",
       "deleteCancel": "Annuler"
@@ -382,8 +369,7 @@
       "kda": "KDA",
       "cs": "CS",
       "vision": "Vision",
-      "duration": "Durée",
-      "champion": "Champion"
+      "duration": "Durée"
     },
     "freeText": {
       "label": "Impressions",
@@ -391,14 +377,6 @@
       "hint": "Notes libres sur la partie (optionnel)"
     },
     "objectiveQuestion": "Avez-vous respecté votre objectif de session cette partie ?",
-    "autoScoring": {
-      "title": "Notation KPI automatique",
-      "desc": "Active la notation automatique pour les KPI qu'on peut déduire de façon fiable via les stats de partie et les règles de timeline. Les KPI sans corrélation mesurable restent manuels.",
-      "toggle": "Auto",
-      "loading": "Calcul des notes automatiques...",
-      "coverage": "{{auto}} KPI auto-rempli(s), {{manual}} KPI manuel(s) restant(s)",
-      "error": "Notation auto échouée — les données de match ne sont peut-être pas encore en cache. Notes en mode manuel."
-    },
     "yes": "Oui",
     "no": "Non",
     "reviewLater": "Revoir plus tard",
@@ -429,7 +407,6 @@
         "lowTempoEfficiency": "Vous avez bien noté cet objectif, mais votre conversion du tempo semble faible (CS/min {{cs}}, dégâts aux objectifs {{objective}}, dégâts aux structures {{building}}).",
         "highDangerZoneTime": "Vous avez bien noté cet objectif, mais vous avez passé {{pct}}% de votre phase de lane dans la zone de danger et êtes mort {{deaths}} fois avant 15 minutes.",
         "deathsInDangerZone": "Vous avez bien noté cet objectif, mais {{danger}} de vos {{total}} morts early ont eu lieu dans la zone de danger (près de la tour ennemie).",
-        "missedTradeWindows": "Vous avez bien noté cet objectif, mais vous n'avez échangé que dans {{taken}} fenêtres sur {{taken}}+{{missed}} quand votre adversaire last-hit à côté de vous ({{ratio}}% de conversion).",
         "highDangerZoneTrading": "Vous avez bien noté cet objectif, mais {{pct}}% de vos dégâts en lane venaient de la zone de danger et vous y êtes mort {{deaths}} fois — ce qui suggère un positionnement trop agressif.",
         "jungleDangerQuadrantDeaths": "Vous avez bien noté cet objectif, mais vous êtes mort {{deaths}} fois dans des quadrants jungle sans priorité de lane avant 15 minutes."
       }
@@ -453,10 +430,6 @@
   "analytics": {
     "title": "Statistiques",
     "subtitle": "Suivez votre progression au fil du temps",
-    "objectiveFilter": {
-      "label": "Filtrer les objectifs",
-      "all": "Tous"
-    },
     "tabs": {
       "progress": "Progression",
       "gameHistory": "Historique des parties",
@@ -468,7 +441,6 @@
       "skillProgress": "Progression des compétences",
       "currentVsPrevious": "Comparaison des bilans",
       "sessionVsBilan": "Objectifs de session vs Bilan",
-      "noAssessment": "Aucune donnée d'évaluation disponible",
       "noGames": "Aucune partie enregistrée. Démarrez une session et jouez !",
       "noStats": "Aucune statistique disponible. Jouez des parties et révisez-les !",
       "modeBilan": "Bilans",
@@ -574,10 +546,8 @@
     "win": "V",
     "loss": "D",
     "reviewButton": "Revue",
-    "noReview": "Sans revue",
     "deleteSession": "Supprimer la session",
     "deleteGame": "Retirer la partie de la session",
-    "loadMore": "Charger plus de parties",
     "page": "Page {{current}} / {{total}}",
     "prevPage": "Précédent",
     "nextPage": "Suivant",
@@ -602,10 +572,7 @@
     "selected": "sélectionné(s)"
   },
   "statsAvg": {
-    "title": "Statistiques",
     "subtitle": "Ce qui vous fait gagner, vos moyennes et votre progression dans le temps",
-    "navButton": "Moyennes 20 parties",
-    "compute": "Calculer & Sauvegarder",
     "empty": "Aucun snapshot. Cliquez sur « Calculer & Sauvegarder » pour générer votre première moyenne.",
     "progression": "Progression au fil du temps",
     "winRate": "Taux de victoire",
@@ -655,16 +622,12 @@
       "vision": "Vision",
       "objectives": "Objectifs"
     },
-    "seriesReset": "Revenir aux courbes par défaut",
-    "fundamentalsLink": "Progression des fondamentaux →"
+    "seriesReset": "Revenir aux courbes par défaut"
   },
   "detailedStats": {
-    "pageTitle": "Stats détaillées",
-    "pageSubtitle": "Sélectionnez une partie pour voir l'analyse de performance",
     "loading": "Récupération des stats détaillées…",
     "back": "Retour",
     "noData": "Aucune stat disponible pour cette partie.",
-    "noGames": "Aucune partie récente. Jouez quelques parties pour voir vos stats.",
     "victory": "Victoire",
     "defeat": "Défaite",
     "yes": "Oui",
@@ -714,7 +677,6 @@
       "dmgEpic": "Dégâts aux monstres épiques",
       "epicDmgPercent": "Participation dégâts monstres épiques %",
       "dmgBuild": "Dégâts aux structures",
-      "ofTeam": "de l'équipe",
       "stolen": "Objectifs volés",
       "firstTower": "Première tourelle",
       "turretPlates": "Plaques de tourelle détruites (total)",
@@ -772,39 +734,13 @@
       "label7": "Une semaine de suite !",
       "label3": "On prend de l'élan !",
       "label1": "Continuez ainsi !"
-    },
-    "rankMilestone": {
-      "positive": "Félicitations pour votre montée en rang ! Votre travail porte ses fruits.",
-      "negative": "Ne vous inquiétez pas — concentrez-vous sur vos fondamentaux. Le rang suivra."
-    }
-  },
-  "ai": {
-    "reviewSummary": "Résumé IA de la revue",
-    "sessionAnalysis": "Analyse IA de la session",
-    "generateSummary": "Générer un résumé",
-    "generateAnalysis": "Générer une analyse",
-    "summarizing": "Résumé de votre revue en cours...",
-    "analyzing": "Analyse des tendances de session...",
-    "retry": "Réessayer",
-    "regenerate": "Régénérer",
-    "summaryError": "Échec de la génération du résumé",
-    "suggestion": {
-      "title": "Suggestion de l'IA Coach",
-      "hint": "Pas sûr de ce sur quoi vous concentrer ? Laissez l'IA analyser vos scores.",
-      "button": "Suggérer un objectif",
-      "loading": "Analyse de vos scores...",
-      "tryAgain": "Réessayer",
-      "getAnother": "Autre suggestion",
-      "error": "Échec de la suggestion IA. Vérifiez votre clé OpenAI."
     }
   },
   "reviewForm": {
     "kpi": {
       "title": "Scores KPI",
       "subtitle": "Évaluez votre performance sur chaque aspect de votre objectif cette partie",
-      "noKpis": "Aucun KPI défini pour cet objectif.",
-      "autoBadge": "Auto",
-      "manualBadge": "Manuel"
+      "noKpis": "Aucun KPI défini pour cet objectif."
     },
     "timeline": {
       "title": "Notes de timeline",
@@ -976,20 +912,13 @@
     "cancelling": "Arrêt après le joueur courant…"
   },
   "team": {
-    "title": "Gestion d'équipe",
-    "subtitle": "Gérez votre roster, préparez vos drafts et scoutez vos adversaires.",
     "activeTeam": "Équipe active",
-    "noTeams": "Aucune équipe — créez-en une pour commencer.",
-    "newTeam": "Nouvelle équipe",
-    "newTeamName": "Nom de l'équipe…",
-    "created": "Équipe créée",
     "tabs": {
       "roster": "Roster",
       "pool": "Champion Pool",
       "draft": "Draft Sim",
       "scouting": "Scouting",
       "dashboard": "Dashboard",
-      "stats": "Stats Flex",
       "statsFlex": "Stats Flex",
       "statsScrim": "Stats Scrim",
       "statsTournament": "Stats Tournoi"
@@ -1046,31 +975,21 @@
       "noTeam": "Créez une équipe et ajoutez des membres d'abord.",
       "noMembers": "Ajoutez au moins un membre pour gérer son pool.",
       "player": "Joueur",
-      "assignTo": "Assigner au rôle",
-      "assignToHint": "Quel rôle assigner quand vous cliquez sur un champion. Par défaut le rôle principal du membre.",
       "searchPlaceholder": "Rechercher un champion à ajouter manuellement…",
       "showPicked": "Pool uniquement",
-      "autoFill": "Auto-remplir depuis Riot",
-      "autoFillHint": "Récupère la mastery + les 30 dernières games Riot pour pré-remplir le pool",
-      "autoFillDone": "Pool auto-rempli",
-      "autoFillSummary": "{{upserted}} champions · {{matches}} games · top {{mastery}} masteries",
-      "autoFillFailed": "Échec de l'auto-remplissage",
       "autoFillMissingInfo": "IGN, tag et région requis",
       "autoFillMissingInfoDesc": "Modifiez le membre dans l'onglet Roster pour ajouter son Riot ID d'abord.",
       "autoFillAll": "Auto-remplir toute l'équipe ({{count}})",
       "autoFillAllHint": "Récupère la mastery + les 30 dernières games Riot pour CHAQUE membre de l'équipe, filtré sur leur rôle",
       "autoFillProgress": "Remplissage {{name}} ({{done}}/{{total}})…",
       "autoFillAllDone": "Tous les pools ({{count}}) auto-remplis",
-      "autoFillAllSummary": "{{upserted}} champions au total · {{matches}} games · {{mastery}} masteries analysées",
       "autoFillPartial": "{{ok}}/{{total}} pools auto-remplis",
       "legend": "Tiers",
       "clickHint": "Cliquez sur un champion pour assigner un tier · Échap pour fermer",
       "allChampions": "Tous les champions",
       "poolTitle": "Pool",
       "empty": "Vide",
-      "emptyHint": "Aucun champion. Utilisez Auto-remplir ou cliquez sur un champion à gauche.",
       "emptyForRole": "Aucun champion {{role}} pour le moment. Utilisez Auto-remplir ou cliquez sur un champion à gauche.",
-      "roleFilter": "Rôle",
       "removeDuplicates": "Supprimer {{count}} doublon(s)",
       "dedupeHint": "Fusionne les membres qui partagent le même Riot ID. La plus ancienne entrée est conservée et les pools sont fusionnés.",
       "dedupeDone": "{{count}} doublon(s) supprimé(s)",
@@ -1118,9 +1037,6 @@
       "duplicate": "Dupliquer",
       "blueSide": "Côté bleu",
       "redSide": "Côté rouge",
-      "bans": "Bans",
-      "picks": "Picks",
-      "comp": "Comp",
       "roles": "Rôles",
       "unknownShort": "inconnu",
       "mySide": "Mon côté",
@@ -1128,7 +1044,6 @@
       "mySideRed": "Je joue côté rouge",
       "myTeamTag": "MON ÉQUIPE",
       "searchPlaceholder": "Rechercher…",
-      "allTags": "Tous les tags",
       "allRoles": "Tous",
       "addingTo": "Ajout à : {{side}} {{type}} #{{idx}}",
       "selectSlotFirst": "Sélectionnez un slot d'abord",
@@ -1146,13 +1061,10 @@
       "threatNew": "new pick : 10+ games sur un champion pris il y a moins de 2 semaines"
     },
     "dashboard": {
-      "noTeam": "Sélectionnez ou créez une équipe d'abord.",
-      "subtitle": "Stats agrégées des parties flex où au moins {{n}} membres de votre roster ont joué ensemble",
       "subtitleCombined": "Stats combinées : flex (≥{{n}} joueurs ensemble) + toutes les parties scrim & tournoi importées",
       "emptyHint": "Cliquez sur « Calculer les stats de synergie » pour remplir le dashboard.",
       "statsTable": "Stats des joueurs",
       "basedOn": "Moyennes sur {{n}} parties",
-      "basedOnFlex": "Moyennes sur {{n}} parties flex",
       "dmgShare": "Part de dégâts",
       "dmgTakenShare": "Part de dégâts encaissés",
       "goldShare": "Part d'or",
@@ -1192,17 +1104,10 @@
       "basedOnAll": "Moyenne de {{n}} parties (flex, scrim et tournoi)"
     },
     "custom": {
-      "imported": "Partie importée",
-      "importedDesc": "{{n}} participants depuis {{file}}",
-      "importFailed": "Échec de l'import",
       "confirmDelete": "Supprimer cette partie importée ?",
       "importedGames": "Parties importées ({{n}})",
-      "warningTitle": "Le nom du fichier n'indique pas le type de partie",
-      "warningDesc": "Le fichier « {{file}} » ne contient pas « scrim » ou « tournoi » dans son nom. Confirmez le type ou renommez le fichier et réessayez.",
       "warningTitleBatch": "{{n}} fichier(s) nécessitent une confirmation de type",
       "warningDescBatch": "Ces fichiers n'indiquent pas clairement « {{type}} ». Confirmez pour tout importer en tant que {{type}}, ou annulez et renommez-les.",
-      "importAsScrim": "Importer en tant que scrim",
-      "importAsTournament": "Importer en tant que tournoi",
       "importAllAsScrim": "Tout importer ({{n}}) en tant que scrim",
       "importAllAsTournament": "Tout importer ({{n}}) en tant que tournoi",
       "batchImported": "{{n}} partie(s) importée(s)",
@@ -1226,7 +1131,6 @@
       }
     },
     "stats": {
-      "noTeam": "Sélectionnez ou créez une équipe d'abord.",
       "subtitle": "Parties flex où au moins {{n}} joueurs de votre roster ont joué ensemble",
       "minTogether": "Min joueurs ensemble :",
       "compute": "Calculer les stats de synergie",
@@ -1252,7 +1156,6 @@
       "goldPerMin": "Or/min",
       "damage": "Dégâts",
       "damageTaken": "Encaissés",
-      "ccTime": "Temps CC",
       "ccScore": "Score CC",
       "visionScore": "Vision",
       "visionBreakdown": "{{w}} placés · {{k}} tués · {{c}} pinks",
@@ -1272,7 +1175,6 @@
       "empty": "Aucune équipe adverse scoutée pour le moment.",
       "selectPrompt": "Sélectionnez ou créez une équipe adverse pour commencer.",
       "done": "Scouting terminé",
-      "failed": "Échec du scouting",
       "autoScout": "Auto-scout à l'import",
       "importTitle": "Importer des adversaires depuis un multi-link",
       "importDesc": "Collez une URL op.gg / blitz.gg multisearch — chaque joueur sera ajouté à cette équipe adverse et (optionnellement) scouté automatiquement.",
@@ -1293,22 +1195,6 @@
       "scoutAllJobLabel": "Scout — {{team}}",
       "scoutCancelled": "Scout annulé",
       "scoutCancelledDesc": "{{ok}} membre(s) scouté(s) avant l'arrêt · {{upserted}} entrées.",
-      "dashboard": {
-        "title": "Stats des adversaires — moyennes par joueur sur la saison (SoloQ + Flex + Clash)",
-        "compute": "Calculer les stats adverses",
-        "refresh": "Actualiser les stats",
-        "computing": "Calcul en cours…",
-        "computingDesc": "Récupération des parties de la saison pour chaque adversaire — peut prendre jusqu'à une minute.",
-        "emptyHint": "Cliquez sur « Calculer les stats adverses » pour récupérer tout l'historique de la saison de chaque adversaire.",
-        "slowHint": "Peut prendre 30 à 60 secondes — on parcourt SoloQ + Flex + Clash pour chaque membre.",
-        "basedOn": "Moyennes par joueur sur {{n}} parties dans leur rôle (cette saison)",
-        "approxDisclaimer": "Les parts sont approximatives — les adversaires ne jouent pas ensemble, les % sont basés sur les moyennes individuelles, pas sur de vraies parties communes.",
-        "noGames": "Aucune partie trouvée dans le rôle assigné",
-        "noGamesDesc": "Aucun des adversaires n'a de partie ranked récente dans leur rôle assigné.",
-        "failed": "Échec du calcul des stats adverses",
-        "staleHint": "En cache — actualisez pour mettre à jour",
-        "freshHint": "Mis à jour il y a {{minutes}}min"
-      },
       "synergy": {
         "basedOn": "Stats flex réelles sur {{n}} games où ≥{{min}} adversaires ont joué ensemble",
         "cacheHint": "Le premier calcul peut être lent ; les résultats sont ensuite mis en cache localement.",
@@ -1326,25 +1212,6 @@
         "refresh": "Actualiser",
         "title": "Synergie adverse — games flex où ≥{{n}} d’entre eux ont joué ensemble"
       }
-    },
-    "confirmDelete": "Supprimer l'équipe « {{name}} » ? Roster, champion pools, drafts et parties personnalisées importées seront perdus. Cette action est irréversible.",
-    "deleted": "Équipe supprimée",
-    "deleteFailed": "Échec de la suppression",
-    "deleteTooltip": "Supprimer l'équipe",
-    "publishToGroup": "Publier vers un groupe…",
-    "publishTitle": "Publier « {{name}} » vers un groupe",
-    "publishDesc": "Le staff (owner/coach/analyste) du groupe choisi verra ton roster, tes pools de champions, tes drafts et tes notes de scouting sur le web. Ceci remplace ce qui était déjà publié — ça ne se synchronise pas en direct, republie après chaque changement.",
-    "publishNoGroups": "Tu n'es dans aucun groupe pour l'instant — crée ou rejoins-en un depuis Coaching d'abord.",
-    "publishButton": "Publier",
-    "publishDone": "Équipe publiée",
-    "publishCount": "{{count}} ligne(s) partagée(s)",
-    "workspace": {
-      "title": "Espace d'équipe",
-      "empty": "Rien de publié pour ce groupe pour l'instant — un joueur publie son équipe depuis l'app desktop (Équipe → Publier vers un groupe…).",
-      "roster": "Roster",
-      "drafts": "Drafts",
-      "picks": "picks",
-      "scouting": "Scouting"
     },
     "statsTitle": "Stats collectives",
     "statsSubtitle": "Les stats de l’équipe du groupe choisi : flex, scrim et tournoi ensemble, puis chaque source.",
@@ -1388,7 +1255,6 @@
     "placeholder": "Écrire un commentaire…"
   },
   "announcements": {
-    "title": "Annonces",
     "titlePlaceholder": "Titre…",
     "bodyPlaceholder": "Message…",
     "post": "Publier",
@@ -1567,18 +1433,15 @@
       "hint": "Les vidéos ne quittent jamais votre PC. Modifiable à tout moment."
     },
     "players": {
-      "title": "Vos joueurs",
       "desc": "Les reviews que vos joueurs partagent avec vous. Commentez-les et assignez des objectifs.",
       "none": "Aucun joueur dans vos groupes pour l'instant. Invitez-les avec un code.",
       "noData": "Rien de partagé pour l'instant (le joueur n'a peut-être pas synchronisé, ou a désactivé le partage).",
       "games": "{{count}} game(s)",
-      "reviews": "{{count}} review(s)",
       "win": "Victoire",
       "loss": "Défaite",
       "noReview": "Pas encore reviewée."
     },
     "assign": {
-      "title": "Assigner un objectif",
       "pick": "Choisir un objectif",
       "due": "Échéance",
       "notePlaceholder": "Sur quoi le joueur doit-il se concentrer ?",
@@ -1586,8 +1449,7 @@
       "sent": "Objectif assigné",
       "status": {
         "open": "en cours",
-        "done": "fait",
-        "dismissed": "ignoré"
+        "done": "fait"
       },
       "kicker": "Objectifs",
       "titleFor": "Assigner à {{name}}",
@@ -1964,8 +1826,7 @@
     },
     "account": {
       "deleteHint": "Pour supprimer votre compte et vos données cloud : Réglages → Compte Ascend dans l'app desktop.",
-      "desktop": "Ascend pour Windows : enregistrement, détection des parties, reviews.",
-      "download": "Télécharger"
+      "desktop": "Ascend pour Windows : enregistrement, détection des parties, reviews."
     },
     "scrims": {
       "title": "Scrims",
@@ -2091,8 +1952,6 @@
     "confirmDeleteAxis": "Supprimer ?"
   },
   "planning": {
-    "title": "Planning",
-    "desc": "Calendrier d'équipe, disponibilités récurrentes et créneaux communs.",
     "exportIcs": "Exporter en .ics",
     "kind": {
       "tournament": "Tournoi",
@@ -2106,15 +1965,12 @@
       "meeting": "Réunion",
       "warmup_draft": "Warmup / draft"
     },
-    "commonFree": "Quand tous les titulaires sont dispo",
     "noStarters": "Aucun titulaire avec un compte lié dans le roster publié pour l'instant.",
     "noCommonSlot": "Aucun créneau commun cette semaine.",
     "eventTitlePlaceholder": "Titre de l'événement…",
     "starts": "Début",
     "ends": "Fin",
     "notesPlaceholder": "Notes (optionnel)…",
-    "addEvent": "Ajouter l'événement",
-    "editEvent": "Modifier l'événement",
     "saveEvent": "Enregistrer",
     "linkScrim": "Relier à un scrim existant (optionnel)",
     "linkScrimNone": "— Aucun scrim relié —",
