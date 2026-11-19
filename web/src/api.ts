@@ -235,6 +235,9 @@ export const webApi = {
   collabJoin: async (code: string, riotId?: string | null) => core.joinGroup(sb, code.trim().toUpperCase(), { ...(await webIdentity()), riotId: riotId ?? null }),
   collabLeave: async (groupId: string) => core.leaveGroup(sb, await currentUserId(), groupId),
   collabSetMemberRole: (groupId: string, userId: string, role: Parameters<typeof core.setMemberRole>[3]) => core.setMemberRole(sb, groupId, userId, role),
+  // #39: staff roles on top of the main role (owner only, set_member_staff_roles).
+  collabSetMemberStaffRoles: (groupId: string, userId: string, roles: Parameters<typeof core.setMemberStaffRoles>[3]) =>
+    core.setMemberStaffRoles(sb, groupId, userId, roles),
   collabDeleteGroup: (groupId: string) => core.deleteGroup(sb, groupId),
   collabRemoveMember: (groupId: string, userId: string) => core.removeMember(sb, groupId, userId),
   collabSetCaptain: (groupId: string, userId: string, isCaptain: boolean) => core.setCaptain(sb, groupId, userId, isCaptain),

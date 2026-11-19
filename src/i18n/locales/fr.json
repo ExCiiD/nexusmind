@@ -1577,7 +1577,8 @@
       "link": "Rattacher à ce groupe",
       "linkAria": "Rattacher {{name}} à ce groupe",
       "linkFailed": "Impossible de rattacher l’équipe adverse",
-      "addMember": "Ajouter un joueur"
+      "addMember": "Ajouter un joueur",
+      "scoutFailed": "Le scouting a échoué"
     },
     "statsTitle": "Stats collectives",
     "statsSubtitle": "Les stats de l’équipe du groupe choisi : flex, scrim et tournoi ensemble, puis chaque source.",
@@ -1892,7 +1893,8 @@
     },
     "legal": {
       "privacy": "Politique de confidentialité",
-      "terms": "Conditions d'utilisation"
+      "terms": "Conditions d'utilisation",
+      "riotNoticeTitle": "Mention Riot Games"
     },
     "account": {
       "signedInAs": "Connecté en tant que",
@@ -2053,6 +2055,11 @@
         "removeConfirm": "Retirer {{name}} du groupe ? Ce membre pourra être réinvité plus tard.",
         "badgeConflict": "Conflit Riot",
         "badgeNotFound": "Riot ID introuvable"
+      },
+      "staffRoles": {
+        "label": "Aussi staff :",
+        "legend": "Rôles de staff de {{name}} en plus de son rôle principal",
+        "changed": "Rôles de {{name}} mis à jour"
       }
     },
     "sharing": {
@@ -2060,7 +2067,7 @@
       "reviews": "Sessions, games, reviews et erreurs (coachs/analystes)",
       "stats": "Évaluations et statistiques (coachs/analystes)",
       "team": "Données d'équipe : rosters, pools de champions, drafts (tout le groupe)",
-      "wellbeing": "Check-ins bien-être (énergie, humeur, sommeil) (coachs/analystes)",
+      "wellbeing": "Check-ins bien-être (énergie, humeur, sommeil) : seulement le staff qui ne joue pas (propriétaire, coachs, analystes dont le rôle principal n’est pas joueur). Un coéquipier qui coache aussi ne les voit jamais.",
       "hint": "Les vidéos ne quittent jamais votre PC. Modifiable à tout moment."
     },
     "players": {
@@ -2141,7 +2148,10 @@
       "NOT_CONCERNED": "Cet événement ne te concerne pas.",
       "EVENT_OVER": "Cet événement est déjà terminé.",
       "RIOT_ACCOUNT_REQUIRED": "Associe ton compte Riot pour rejoindre un groupe.",
-      "WELLBEING_CONSENT_REQUIRED": "Pour partager votre bien-être, acceptez d’abord l’enregistrement de vos check-ins."
+      "WELLBEING_CONSENT_REQUIRED": "Pour partager votre bien-être, acceptez d’abord l’enregistrement de vos check-ins.",
+      "INVALID_ROLE": "Ce rôle ne peut pas être donné ici.",
+      "OWNER_HAS_ALL_ROLES": "Le propriétaire a déjà tous les rôles.",
+      "NOT_FOUND": "Ce membre n’est plus dans le groupe."
     },
     "dossier": {
       "pickPlayer": "Joueur suivi",
@@ -3075,7 +3085,7 @@
   },
   "wellbeing": {
     "title": "Bien-être",
-    "desc": "Un check-in rapide et optionnel avant une session — privé sauf si tu choisis de le partager avec le staff d'un groupe.",
+    "desc": "Un check-in rapide et optionnel avant une session — privé sauf si tu choisis de le partager avec le staff d’un groupe qui ne joue pas (un coéquipier qui coache aussi ne le voit jamais).",
     "myCheckin": "Check-in rapide",
     "energy": "Énergie",
     "mood": "Humeur",
@@ -3096,7 +3106,7 @@
     "consent": {
       "title": "Enregistrer vos check-ins de bien-être ?",
       "intro": "Votre énergie, votre humeur et votre sommeil sont des données de santé. Avec votre accord, Ascend les enregistre dans votre compte pour suivre leur évolution d’une session à l’autre et les synchronise entre vos appareils.",
-      "private": "Personne d’autre ne les voit, sauf si vous activez plus tard leur partage avec le staff d’un groupe.",
+      "private": "Personne d’autre ne les voit, sauf si vous activez plus tard leur partage avec le staff d’un groupe qui ne joue pas. Un coéquipier qui coache aussi ne les voit jamais.",
       "withdraw": "Vous pouvez retirer votre accord à tout moment depuis la carte Confidentialité (Paramètres dans l’app, Compte sur le web) : vos check-ins seront alors supprimés.",
       "existing_one": "Vous avez déjà {{count}} check-in enregistré. Si vous refusez, il sera supprimé.",
       "existing_other": "Vous avez déjà {{count}} check-ins enregistrés. Si vous refusez, ils seront supprimés.",
@@ -3307,10 +3317,19 @@
       "event_confirmed": {
         "title": "Finalement présent",
         "body": "{{playerName}} sera finalement à « {{eventTitle}} » ({{scheduledAt}})"
+      },
+      "staff_roles_changed": {
+        "title": "Tes rôles de staff ont changé",
+        "body": "Ajoutés : {{addedText}}. Retirés : {{removedText}}. Tu as maintenant : {{rolesText}}, en plus de ton rôle principal."
+      },
+      "member_staff_roles_changed": {
+        "title": "Nouveau rôle de staff dans l’équipe",
+        "body": "{{memberName}} est maintenant aussi {{addedText}}."
       }
     },
     "bellLabel_one": "Notifications, {{count}} non lue",
-    "bellLabel_other": "Notifications, {{count}} non lues"
+    "bellLabel_other": "Notifications, {{count}} non lues",
+    "rolesNone": "aucun"
   },
   "notificationPrefs": {
     "title": "Préférences de notification",
@@ -4702,5 +4721,9 @@
     "noneLinked": "{{name}} n’a aucun serveur Discord lié.",
     "forbidden": "Seuls l’owner, les coachs et les managers du groupe peuvent délier son serveur Discord.",
     "failed": "Impossible de délier le serveur Discord"
+  },
+  "riotErrors": {
+    "rateLimited_one": "Trop de requêtes Riot en ce moment. Réessaie dans environ {{count}} seconde.",
+    "rateLimited_other": "Trop de requêtes Riot en ce moment. Réessaie dans environ {{count}} secondes."
   }
 }

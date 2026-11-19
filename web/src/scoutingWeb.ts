@@ -30,7 +30,7 @@ async function resolvePuuid(member: RosterLike): Promise<{ puuid: string; region
   if (!region) throw new Error('Region missing')
   if (member.puuid) return { puuid: member.puuid, region }
   if (!member.ign || !member.tagLine) throw new Error('Member needs IGN + tagLine + region to be scouted')
-  const acct = await riot.getAccountByRiotId(member.ign, member.tagLine, region)
+  const acct = await riot.getAccountByRiotId(member.ign, member.tagLine, region, riot.BACKGROUND)
   await updateRosterMember(sb, member.id, { puuid: acct.puuid })
   return { puuid: acct.puuid, region }
 }
@@ -44,14 +44,14 @@ export async function scoutMemberWeb(
   const { puuid, region } = await resolvePuuid(member)
 
   const noCap = !Number.isFinite(count) || count <= 0 || count > RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL
-  const allSeasonIds = await riot.getSeasonMatchIds(puuid, region)
+  const allSeasonIds = await riot.getSeasonMatchIds(puuid, region, undefined, riot.BACKGROUND)
   const matchIds = noCap ? allSeasonIds : allSeasonIds.slice(0, Math.max(1, count))
   if (matchIds.length === 0) return { upserted: 0, totalMatches: 0, sameRoleCount: 0 }
 
   const [matches, idToKey, masteries] = await Promise.all([
-    riot.getMatchesBulk(matchIds, region),
+    riot.getMatchesBulk(matchIds, region, undefined, riot.BACKGROUND),
     riot.getChampionIdToKey().catch(() => ({}) as Record<number, string>),
-    riot.getChampionMasteries(puuid, region, RIOT_LIMITS.MAX_MASTERY_COUNT).catch(() => [] as Array<{ championId: number; championPoints: number }>),
+    riot.getChampionMasteries(puuid, region, RIOT_LIMITS.MAX_MASTERY_COUNT, riot.BACKGROUND).catch(() => [] as Array<{ championId: number; championPoints: number }>),
   ])
   const masteryByKey = new Map<string, number>()
   for (const m of masteries) {
@@ -105,13 +105,13 @@ export async function autoFillPoolWeb(
   const primaryRole = (member.role || 'MID').toUpperCase() as Role
 
   const [allSeasonIds, masteries, idToKey] = await Promise.all([
-    riot.getSeasonMatchIds(puuid, region).catch(() => [] as string[]),
-    riot.getChampionMasteries(puuid, region, masteryCount).catch(() => [] as Array<{ championId: number; championPoints: number }>),
+    riot.getSeasonMatchIds(puuid, region, undefined, riot.BACKGROUND).catch(() => [] as string[]),
+    riot.getChampionMasteries(puuid, region, masteryCount, riot.BACKGROUND).catch(() => [] as Array<{ championId: number; championPoints: number }>),
     riot.getChampionIdToKey(),
   ])
   const matchIds = allSeasonIds.slice(0, matchCount)
 
-  const matches = matchIds.length > 0 ? await riot.getMatchesBulk(matchIds, region) : new Map<string, any>()
+  const matches = matchIds.length > 0 ? await riot.getMatchesBulk(matchIds, region, undefined, riot.BACKGROUND) : new Map<string, any>()
   const { agg, history } = aggregateChampionPlays(matches, matchIds, puuid, { roleOnly, memberRole: member.role })
 
   // Mastery-only champions: attach to every role already played this

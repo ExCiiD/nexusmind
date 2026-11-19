@@ -1,5 +1,6 @@
 import { getPrisma } from './database'
 import { getAccountByPuuid } from './riotClient'
+import { withRiotPriority } from './riotPriority'
 import { riotIdRename } from '../../src/lib/teamIdentity'
 
 /**
@@ -35,7 +36,7 @@ export function refreshTeamMemberRiotIds(members: RefreshableMember[]): Promise<
     let renamed = 0
     for (const m of todo) {
       try {
-        const acct = await getAccountByPuuid(m.puuid as string, m.region as string)
+        const acct = await withRiotPriority('background', () => getAccountByPuuid(m.puuid as string, m.region as string))
         const change = riotIdRename(m, acct)
         if (!change) continue
         await getPrisma().teamMember.update({

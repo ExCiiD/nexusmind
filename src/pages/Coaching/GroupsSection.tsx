@@ -9,10 +9,10 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/useToast'
 import { ToastAction } from '@/components/ui/toast'
-import { DISCORD_MANAGER_ROLES } from '@/lib/discordBotCore'
-import { collabErrorKey, type Group, type GroupKind, type GroupRole } from '@/lib/collab'
+import { isChannelStaffRole } from '@/lib/discordBotCore'
+import { collabErrorKey, type Group, type GroupKind, type GroupRole, type StaffRole } from '@/lib/collab'
 import { cn } from '@/lib/utils'
-import { ASSIGNABLE_ROLES, canChangeRoles, canEditCalendar, isLegacyStaff } from '@/lib/permissions'
+import { ASSIGNABLE_ROLES, ASSIGNABLE_STAFF_ROLES, canChangeRoles, canEditCalendar, effectiveRoles, isLegacyStaff } from '@/lib/permissions'
 import { GroupLogo, GroupLogoEditor } from '@/components/Coaching/GroupLogo'
 import { RiotIdChecks } from '@/components/Coaching/RiotIdChecks'
 import { useActiveGroupStore } from '@/store/useActiveGroupStore'
@@ -146,6 +146,8 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
   }
 
   const roleLabel = (r: GroupRole) => t(`coaching.roles.${r}`)
+  /** #39: the staff roles held on top of the main role (none before the migration). */
+  const extraRoles = (role: GroupRole, staffRoles?: StaffRole[]): StaffRole[] => (staffRoles ?? []).filter((r) => r !== role)
 
   return (
     <div className="space-y-4">
@@ -217,8 +219,8 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
       {active && [active].map((g) => {
         // Inviting (create_group_invite RPC) is still is_group_staff-gated —
         // a manager would see this UI but get a server-side 403 otherwise.
-        const staff = isLegacyStaff(g.myRole)
-        const management = canEditCalendar(g.myRole, !!g.members.find((m) => m.userId === myUserId)?.isCaptain)
+        const staff = isLegacyStaff(g.myRole, g.myStaffRoles)
+        const management = canEditCalendar(g.myRole, !!g.members.find((m) => m.userId === myUserId)?.isCaptain, g.myStaffRoles)
         return (
           <Card key={g.id}>
             <CardHeader className="pb-2">
@@ -227,12 +229,15 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
                 {g.name}
                 <span className="rounded bg-hextech-elevated px-2 py-0.5 text-xs text-hextech-text-dim">{t(`coaching.kinds.${g.kind}`)}</span>
                 <span className="rounded bg-hextech-gold/10 px-2 py-0.5 text-xs text-hextech-gold">{roleLabel(g.myRole)}</span>
+                {extraRoles(g.myRole, g.myStaffRoles).map((r) => (
+                  <span key={r} className="rounded bg-hextech-gold/10 px-2 py-0.5 text-xs text-hextech-gold">{roleLabel(r)}</span>
+                ))}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {management && <GroupLogoEditor group={g} onChanged={reload} />}
               {/* #38: Riot ID check problems (conflict, not found), for the staff. */}
-              {(staff || g.myRole === 'manager') && (
+              {(staff || effectiveRoles(g.myRole, g.myStaffRoles).includes('manager')) && (
                 <RiotIdChecks
                   group={g}
                   myUserId={myUserId}
@@ -243,11 +248,11 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
               )}
               <ul className="divide-y divide-hextech-border-dim rounded-lg border border-hextech-border-dim text-sm">
                 {g.members.map((m) => (
-                  <li key={m.userId} className="flex items-center justify-between gap-2 px-3 py-2">
+                  <li key={m.userId} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
                     <span className="truncate text-hextech-text-bright">
                       {m.displayName || m.riotId || '—'}
                       {m.userId === myUserId && <span className="ml-1 text-xs text-hextech-text-dim">({t('coaching.comments.you')})</span>}
-                      {(staff || g.myRole === 'manager') && (m.puuidStatus === 'conflict' || m.puuidStatus === 'not_found') && (
+                      {(staff || effectiveRoles(g.myRole, g.myStaffRoles).includes('manager')) && (m.puuidStatus === 'conflict' || m.puuidStatus === 'not_found') && (
                         <span className="ml-1.5 rounded bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-200">
                           {t(m.puuidStatus === 'conflict' ? 'coaching.groups.riotChecks.badgeConflict' : 'coaching.groups.riotChecks.badgeNotFound')}
                         </span>
@@ -272,6 +277,10 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
                           </SelectContent>
                         </Select>
                       ) : roleLabel(m.role)}
+                      {/* #39: staff roles held on top of the main role. */}
+                      {extraRoles(m.role, m.staffRoles).map((r) => (
+                        <span key={r} className="rounded bg-hextech-gold/10 px-1.5 py-0.5 text-[10px] text-hextech-gold">{roleLabel(r)}</span>
+                      ))}
                       {g.myRole === 'owner' ? (
                         <button
                           title={m.isCaptain ? t('coaching.groups.unsetCaptain') : t('coaching.groups.setCaptain')}
@@ -288,11 +297,42 @@ export function GroupsSection({ groups, active, myUserId, reload }: Props) {
                         </button>
                       )}
                     </span>
+                    {/* #39: the owner adds staff roles on top of a member's main role (not for the owner, who holds
+                        them all). Hidden before the migration (no staffRoles field) or without the IPC. */}
+                    {g.myRole === 'owner' && m.role !== 'owner' && m.staffRoles !== undefined && window.api.collabSetMemberStaffRoles && (
+                      <fieldset className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 text-xs text-hextech-text-dim">
+                        <legend className="sr-only">{t('coaching.groups.staffRoles.legend', { name: m.displayName || m.riotId || '—' })}</legend>
+                        <span aria-hidden>{t('coaching.groups.staffRoles.label')}</span>
+                        {ASSIGNABLE_STAFF_ROLES.filter((r) => r !== m.role).map((r) => {
+                          const held = (m.staffRoles ?? []).includes(r)
+                          return (
+                            <label key={r} className="inline-flex cursor-pointer items-center gap-1.5 hover:text-hextech-text">
+                              <input
+                                type="checkbox"
+                                className="h-3.5 w-3.5 accent-hextech-gold"
+                                checked={held}
+                                disabled={busy !== null}
+                                onChange={() => run(`staff-${m.userId}`, async () => {
+                                  const current = (m.staffRoles ?? []).filter((x) => x !== m.role)
+                                  const next: StaffRole[] = held ? current.filter((x) => x !== r) : [...current, r]
+                                  await window.api.collabSetMemberStaffRoles!(g.id, m.userId, next)
+                                  await reload()
+                                  toast({ title: t('coaching.groups.staffRoles.changed', { name: m.displayName || m.riotId || '—' }) })
+                                })}
+                              />
+                              {roleLabel(r)}
+                            </label>
+                          )
+                        })}
+                        {busy === `staff-${m.userId}` && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />}
+                      </fieldset>
+                    )}
                   </li>
                 ))}
               </ul>
 
-              {(DISCORD_MANAGER_ROLES as readonly string[]).includes(g.myRole) && (
+              {/* #39: a player who is also manager (staff role) manages the Discord link too. */}
+              {isChannelStaffRole(effectiveRoles(g.myRole, g.myStaffRoles)) && (
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-hextech-border-dim p-3">
                   <div>
                     <div className="text-sm font-medium text-hextech-text-bright">{t('discordUnlink.sectionTitle')}</div>

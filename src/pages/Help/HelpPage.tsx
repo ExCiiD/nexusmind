@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { RiotLegalNotice } from '@/components/legal/RiotLegalNotice'
 
 interface FeatureSectionProps {
   icon: LucideIcon
@@ -186,6 +187,9 @@ export function HelpPage() {
           </CardContent>
         </Card>
       </section>
+
+      {/* R7: Riot's legal notice. */}
+      <RiotLegalNotice withTitle className="rounded-lg border border-hextech-border-dim p-4" />
     </div>
   )
 }

@@ -93,7 +93,7 @@ export function useCollab() {
   // "Legacy" staff (owner/coach/analyst) — dev plans, staff dashboard, weekly
   // reports, trials, player management: none of this is calendar/session
   // scoped, so `manager` deliberately does NOT get it (see src/lib/permissions.ts).
-  const staffGroups = useMemo(() => groups.filter((g) => isLegacyStaff(g.myRole)), [groups])
+  const staffGroups = useMemo(() => groups.filter((g) => isLegacyStaff(g.myRole, g.myStaffRoles)), [groups])
 
   return { available, loading, myUserId, groups, staffGroups, nameOf, reload: reloadCollab }
 }

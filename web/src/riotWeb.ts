@@ -76,9 +76,17 @@ async function authHeader(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${token}` }
 }
 
-async function proxyFetch(host: string, path: string, allowedFallbackStatus?: number[]): Promise<{ data: unknown; status: number }> {
+/**
+ * P2 (Audit): `background` marks calls nobody is waiting on (team stats, scouting / auto-fill, synergy) with the
+ * `x-nxm-priority: background` header, so the proxy can serve a user's direct action (a player lookup, an opened
+ * page) first. Same header as the desktop client.
+ */
+export interface RiotCallOptions { background?: boolean }
+export const BACKGROUND: RiotCallOptions = { background: true }
+
+async function proxyFetch(host: string, path: string, allowedFallbackStatus?: number[], opts: RiotCallOptions = {}): Promise<{ data: unknown; status: number }> {
   if (!PROXY_BASE) throw new RiotWebError('Riot access is not configured for the web app.')
-  const headers = await authHeader()
+  const headers: Record<string, string> = { ...(await authHeader()), ...(opts.background ? { 'x-nxm-priority': 'background' } : {}) }
   // 429: Retry-After is honoured in full (never shortened), MAX_RIOT_TRIES tries at most, and the whole tab pauses
   // meanwhile, so a burst never keeps hitting the shared key during Riot's cooldown.
   let res: Response | null = null
@@ -101,11 +109,11 @@ async function proxyFetch(host: string, path: string, allowedFallbackStatus?: nu
   return { data: await res.json(), status: res.status }
 }
 
-async function regionalFetch(routing: string, path: string): Promise<unknown> {
-  const { data, status } = await proxyFetch(routing, path, [403])
+async function regionalFetch(routing: string, path: string, opts: RiotCallOptions = {}): Promise<unknown> {
+  const { data, status } = await proxyFetch(routing, path, [403], opts)
   if (status === 403) {
     for (const fb of ROUTING_FALLBACKS[routing] ?? []) {
-      const r = await proxyFetch(fb, path, [403])
+      const r = await proxyFetch(fb, path, [403], opts)
       if (r.status !== 403) return r.data
     }
     throw new RiotWebError('Riot access is temporarily unavailable for this region.')
@@ -113,15 +121,15 @@ async function regionalFetch(routing: string, path: string): Promise<unknown> {
   return data
 }
 
-export async function getAccountByRiotId(gameName: string, tagLine: string, region: string): Promise<{ puuid: string; gameName: string; tagLine: string }> {
+export async function getAccountByRiotId(gameName: string, tagLine: string, region: string, opts: RiotCallOptions = {}): Promise<{ puuid: string; gameName: string; tagLine: string }> {
   const routing = REGION_TO_ROUTING[region] || 'europe'
-  return regionalFetch(routing, `/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`) as Promise<{ puuid: string; gameName: string; tagLine: string }>
+  return regionalFetch(routing, `/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, opts) as Promise<{ puuid: string; gameName: string; tagLine: string }>
 }
 
-export async function getChampionMasteries(puuid: string, region: string, count = 20): Promise<Array<{ championId: number; championPoints: number }>> {
+export async function getChampionMasteries(puuid: string, region: string, count = 20, opts: RiotCallOptions = {}): Promise<Array<{ championId: number; championPoints: number }>> {
   const host = PLATFORM_HOSTS[region]
   if (!host) throw new RiotWebError(`Unknown region: ${region}`)
-  const { data } = await proxyFetch(host, `/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=${Math.min(count, RIOT_LIMITS.MAX_MASTERY_COUNT)}`)
+  const { data } = await proxyFetch(host, `/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=${Math.min(count, RIOT_LIMITS.MAX_MASTERY_COUNT)}`, undefined, opts)
   return (data ?? []) as Array<{ championId: number; championPoints: number }>
 }
 
@@ -130,11 +138,11 @@ function currentSeasonStart(): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), 0, 1))
 }
 
-async function getMatchIdsInRange(puuid: string, routing: string, queueId: 420 | 440 | 700, startTimestampSec: number, maxPages: number): Promise<string[]> {
+async function getMatchIdsInRange(puuid: string, routing: string, queueId: 420 | 440 | 700, startTimestampSec: number, maxPages: number, opts: RiotCallOptions): Promise<string[]> {
   const pageSize = RIOT_LIMITS.MAX_IDS_PER_REQUEST
   const out: string[] = []
   for (let page = 0; page < maxPages; page++) {
-    const ids = await regionalFetch(routing, `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queueId}&startTime=${startTimestampSec}&start=${page * pageSize}&count=${pageSize}`)
+    const ids = await regionalFetch(routing, `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queueId}&startTime=${startTimestampSec}&start=${page * pageSize}&count=${pageSize}`, opts)
     if (!Array.isArray(ids) || ids.length === 0) break
     out.push(...ids)
     if (ids.length < pageSize) break
@@ -143,28 +151,28 @@ async function getMatchIdsInRange(puuid: string, routing: string, queueId: 420 |
 }
 
 /** SoloQ + Flex + Clash match ids since the start of the current season, most-recent first. */
-export async function getSeasonMatchIds(puuid: string, region: string, since: Date = currentSeasonStart()): Promise<string[]> {
+export async function getSeasonMatchIds(puuid: string, region: string, since: Date = currentSeasonStart(), opts: RiotCallOptions = {}): Promise<string[]> {
   const routing = REGION_TO_ROUTING[region] || 'europe'
   const ts = Math.floor(since.getTime() / 1000)
   const [solo, flex, clash] = await Promise.all([
-    getMatchIdsInRange(puuid, routing, 420, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED).catch(() => [] as string[]),
-    getMatchIdsInRange(puuid, routing, 440, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED).catch(() => [] as string[]),
-    getMatchIdsInRange(puuid, routing, 700, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_CLASH).catch(() => [] as string[]),
+    getMatchIdsInRange(puuid, routing, 420, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED, opts).catch(() => [] as string[]),
+    getMatchIdsInRange(puuid, routing, 440, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED, opts).catch(() => [] as string[]),
+    getMatchIdsInRange(puuid, routing, 700, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_CLASH, opts).catch(() => [] as string[]),
   ])
   return mergeMatchIdsByRecency(mergeMatchIdsByRecency(solo, flex), clash)
 }
 
 /** The latest `count` match ids of one queue (Stats collectives: Flex = 440), most recent first. One request. */
-export async function getRecentMatchIds(puuid: string, region: string, count: number, queueId: 420 | 440 | 700 = 440): Promise<string[]> {
+export async function getRecentMatchIds(puuid: string, region: string, count: number, queueId: 420 | 440 | 700 = 440, opts: RiotCallOptions = {}): Promise<string[]> {
   const routing = REGION_TO_ROUTING[region] || 'europe'
   const n = Math.max(1, Math.min(count, RIOT_LIMITS.MAX_IDS_PER_REQUEST))
-  const ids = await regionalFetch(routing, `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queueId}&start=0&count=${n}`)
+  const ids = await regionalFetch(routing, `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queueId}&start=0&count=${n}`, opts)
   return Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : []
 }
-export async function getMatch(matchId: string, region: string): Promise<any> {
+export async function getMatch(matchId: string, region: string, opts: RiotCallOptions = {}): Promise<any> {
   const platformFromId = matchId.split('_')[0]
   const routing = REGION_TO_ROUTING[platformFromId] || REGION_TO_ROUTING[region] || 'europe'
-  return regionalFetch(routing, `/lol/match/v5/matches/${matchId}`)
+  return regionalFetch(routing, `/lol/match/v5/matches/${matchId}`, opts)
 }
 
 /**
@@ -173,7 +181,7 @@ export async function getMatch(matchId: string, region: string): Promise<any> {
  * re-fetches; capped concurrency keeps this under the proxy's per-user
  * rate limit (300/min) instead of firing hundreds of requests at once.
  */
-export async function getMatchesBulk(matchIds: string[], region: string, concurrency: number = RIOT_LIMITS.MATCH_FETCH_CONCURRENCY): Promise<Map<string, any>> {
+export async function getMatchesBulk(matchIds: string[], region: string, concurrency: number = RIOT_LIMITS.MATCH_FETCH_CONCURRENCY, opts: RiotCallOptions = {}): Promise<Map<string, any>> {
   const out = new Map<string, any>()
   let next = 0
   // A rate limit stops every worker and reaches the screen (its toast / error state): one match missing is skipped,
@@ -183,7 +191,7 @@ export async function getMatchesBulk(matchIds: string[], region: string, concurr
     while (next < matchIds.length && !limited) {
       const id = matchIds[next++]
       try {
-        out.set(id, await getMatch(id, region))
+        out.set(id, await getMatch(id, region, opts))
       } catch (err) {
         if (err instanceof RiotWebError && err.code === 'rate-limited') { limited = err; return }
         console.warn('[riotWeb] match fetch failed:', id, (err as Error)?.message)

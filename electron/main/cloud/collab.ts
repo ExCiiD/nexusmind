@@ -18,7 +18,7 @@ import * as discussion from '../../../src/lib/discussionCore'
 import * as microReview from '../../../src/lib/microReviewCloudCore'
 import type { MicroVerdictInput, TeamCodexRuleInput } from '../../../src/lib/microReview/types'
 import type { DiscussionSubjectType } from '../../../src/lib/discussion'
-import type { AssignedObjective, GroupKind, GroupLogoImage, GroupRole, GroupSharing } from '../../../src/lib/collab'
+import type { AssignedObjective, GroupKind, GroupLogoImage, GroupRole, GroupSharing, StaffRole } from '../../../src/lib/collab'
 import type { AxisStatus, NewAxisInput, NewDevPlanPeriod } from '../../../src/lib/devPlan'
 import type { NewAvailabilityExceptionInput, NewAvailabilityRuleInput, NewEventInput, NewEventRequestInput, EventRequestStatus, EventResponseStatus } from '../../../src/lib/calendar'
 import type { AssignmentStatus, NewVodAssignmentInput, NewVodCommentInput, NewVodSessionInput } from '../../../src/lib/vodReview'
@@ -190,6 +190,7 @@ export const deleteGroup = (groupId: string) => changesGroups(core.deleteGroup(g
 export const removeMember = (groupId: string, userId: string) => changesGroups(core.removeMember(getSupabase(), groupId, userId))
 export const setCaptain = (groupId: string, userId: string, isCaptain: boolean) => changesGroups(core.setCaptain(getSupabase(), groupId, userId, isCaptain))
 export const setMemberRole = (groupId: string, userId: string, role: Exclude<GroupRole, 'owner'>) => changesGroups(core.setMemberRole(getSupabase(), groupId, userId, role))
+export const setMemberStaffRoles = (groupId: string, userId: string, roles: StaffRole[]) => changesGroups(core.setMemberStaffRoles(getSupabase(), groupId, userId, roles))
 export const setSharing = async (groupId: string, s: GroupSharing) => changesGroups(core.setSharing(getSupabase(), await me(), groupId, s))
 export const getPlayerSessions = (playerId: string) => core.getPlayerSessions(getSupabase(), playerId)
 export const listComments = async (reviewId: string, playerId?: string) =>

@@ -20,7 +20,7 @@ export function TeamOpsSection({ groups, myUserId, nameOf }: Props) {
   const { t } = useTranslation()
   const groupId = groups[0]?.id ?? null
   const group = groups.find((g) => g.id === groupId)
-  const isStaff = !!group && isLegacyStaff(group.myRole)
+  const isStaff = !!group && isLegacyStaff(group.myRole, group.myStaffRoles)
 
   if (groups.length === 0) return null
 

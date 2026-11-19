@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { TeamMember } from '@/lib/ipc'
 import { scopeToMatchCount, type FetchScope } from '@/lib/riotLimits'
+import { isRiotRateLimited } from '@/lib/riotErrors'
 
 /**
  * Type of long-running work that the global background-jobs store can host.
@@ -45,7 +46,8 @@ interface BackgroundJobsState {
      *  refresh the page that originated the job. The currently-active page
      *  may be different from the originator — that's fine, the callback
      *  is fire-and-forget. */
-    onDone?: (summary: { upserted: number; matches: number; cancelled: boolean; failed: string[] }) => void
+    /** rateLimited: the Riot rate-limit error that stopped the job, if any (riotErrorText shows it). */
+    onDone?: (summary: { upserted: number; matches: number; cancelled: boolean; failed: string[]; rateLimited?: unknown }) => void
   }) => Promise<string>
 
   /** Scout-all loop (opponent team). Same structure as runAutoFill but
@@ -54,7 +56,7 @@ interface BackgroundJobsState {
     label: string
     members: TeamMember[]
     scope: FetchScope
-    onDone?: (summary: { upserted: number; ok: number; cancelled: boolean; failed: string[] }) => void
+    onDone?: (summary: { upserted: number; ok: number; cancelled: boolean; failed: string[]; rateLimited?: unknown }) => void
   }) => Promise<string>
 
   /** Single-member scout — short by design but still routed through the
@@ -63,7 +65,7 @@ interface BackgroundJobsState {
     label: string
     member: TeamMember
     scope: FetchScope
-    onDone?: (summary: { upserted: number; cancelled: boolean }) => void
+    onDone?: (summary: { upserted: number; cancelled: boolean; rateLimited?: unknown }) => void
   }) => Promise<string>
 
   cancelJob: (id: string) => void
@@ -113,6 +115,7 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>((set, get) => 
       let totalUpserted = 0
       let totalMatches = 0
       const failed: string[] = []
+      let rateLimited: unknown
 
       // Sequential — the global app-tier rate limit (100 req / 120s on a
       // Personal key) is shared across the whole process, so parallelism
@@ -135,13 +138,14 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>((set, get) => 
         } catch (err) {
           console.warn('[background:autoFill] failed for', m.displayName, err)
           failed.push(m.displayName)
+          if (isRiotRateLimited(err)) { rateLimited = err; failed.push(...eligible.slice(i + 1).map((x) => x.displayName)); break }
         }
       }
 
       const cancelled = !!get().jobs.find((j) => j.id === id)?.cancelled
       updateJob(id, { done: eligible.length })
       removeJob(id)
-      onDone?.({ upserted: totalUpserted, matches: totalMatches, cancelled, failed })
+      onDone?.({ upserted: totalUpserted, matches: totalMatches, cancelled, failed, rateLimited })
       return id
     },
 
@@ -165,6 +169,7 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>((set, get) => 
       let totalUpserted = 0
       let ok = 0
       const failed: string[] = []
+      let rateLimited: unknown
 
       for (let i = 0; i < eligible.length; i++) {
         if (get().jobs.find((j) => j.id === id)?.cancelled) break
@@ -177,13 +182,14 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>((set, get) => 
         } catch (err) {
           console.warn('[background:scoutAll] failed for', m.displayName, err)
           failed.push(m.displayName)
+          if (isRiotRateLimited(err)) { rateLimited = err; failed.push(...eligible.slice(i + 1).map((x) => x.displayName)); break }
         }
       }
 
       const cancelled = !!get().jobs.find((j) => j.id === id)?.cancelled
       updateJob(id, { done: eligible.length })
       removeJob(id)
-      onDone?.({ upserted: totalUpserted, ok, cancelled, failed })
+      onDone?.({ upserted: totalUpserted, ok, cancelled, failed, rateLimited })
       return id
     },
 
@@ -202,16 +208,18 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>((set, get) => 
         }],
       }))
       let upserted = 0
+      let rateLimited: unknown
       try {
         const res = await window.api.scoutMember(member.id, scopeToMatchCount(scope))
         upserted = res.upserted
       } catch (err) {
         console.warn('[background:scoutOne] failed for', member.displayName, err)
+        if (isRiotRateLimited(err)) rateLimited = err
       }
       const cancelled = !!get().jobs.find((j) => j.id === id)?.cancelled
       updateJob(id, { done: 1 })
       removeJob(id)
-      onDone?.({ upserted, cancelled })
+      onDone?.({ upserted, cancelled, rateLimited })
       return id
     },
 

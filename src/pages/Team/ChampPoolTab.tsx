@@ -26,6 +26,7 @@ import { lookForMember, type LookSources } from '@/lib/playerCard'
 import { groupByTier, summarizePool, tierCounts } from '@/lib/poolView'
 import type { Tier } from '@/lib/threatCore'
 import { RenamedNote } from '@/components/team/RenamedNote'
+import { riotErrorText } from '@/lib/riotErrors'
 import {
   AddChampionDialog,
   LearningLane,
@@ -250,7 +251,7 @@ export function ChampPoolTab({ team, onChange }: Props) {
       label: t('team.pool.autoFillJobLabel', { defaultValue: 'Auto-fill — {{team}}', team: team.name }),
       members: targets,
       scope,
-      onDone: ({ upserted, matches, cancelled, failed }) => {
+      onDone: ({ upserted, matches, cancelled, failed, rateLimited }) => {
         if (effectiveMemberId) void reloadPool(effectiveMemberId)
         onChange?.()
         if (cancelled) {
@@ -280,6 +281,7 @@ export function ChampPoolTab({ team, onChange }: Props) {
               total: mode === 'team' ? members.length : 1,
             }),
             description: [
+              rateLimited && riotErrorText(rateLimited, t),
               upserted > 0 && `${upserted} champions`,
               failed.length > 0 && `${failed.length} ✗ ${failed.slice(0, 2).join(', ')}${failed.length > 2 ? '…' : ''}`,
               skipped.length > 0 && t('team.pool.board.skippedNoRiotId', { count: skipped.length }),

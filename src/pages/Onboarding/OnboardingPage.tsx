@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { useTranslation } from 'react-i18next'
 import { SavedAccount } from '@/lib/ipc'
 import { AscendMark } from '@/components/Brand/AscendMark'
+import { RiotLegalNotice } from '@/components/legal/RiotLegalNotice'
 
 type Flow = 'loading' | 'picker' | 'new-account'
 
@@ -119,6 +120,8 @@ export function OnboardingPage() {
               </div>
             </>
           )}
+          {/* R7: Riot's legal notice on the Riot account connection screen. */}
+          <RiotLegalNotice className="mx-auto max-w-2xl text-center" />
         </div>
       </div>
     </div>

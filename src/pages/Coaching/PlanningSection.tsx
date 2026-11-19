@@ -57,7 +57,7 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
   const group = groups.find((g) => g.id === groupId)
   const myMember = group?.members.find((m) => m.userId === myUserId)
   // The captain has the manager's hand on the planning (permissions.ts).
-  const canEdit = !!group && canEditCalendarRole(group.myRole, myMember?.isCaptain ?? false)
+  const canEdit = !!group && canEditCalendarRole(group.myRole, myMember?.isCaptain ?? false, group.myStaffRoles)
 
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const [events, setEvents] = useState<CalendarEvent[] | null>(null)

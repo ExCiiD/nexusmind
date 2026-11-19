@@ -426,6 +426,36 @@ Correctif proposé :
 
 **Non vérifié :** l'app réelle, côté utilisateur.
 
+### #39 rôles staff cumulables, phase 1 du proxy Riot, R7 (19/11) — **OK avec une réserve P2**
+
+**Contrôles :**
+- `vitest` **1 684 / 1 684** (126 fichiers) ;
+- `typecheck` (tests compris, de nouveau vert), `lint`, `check:i18n` (3 669 clés) EXIT 0 ;
+- `tsc` de `riot-proxy` et `discord-bot` EXIT 0.
+
+| Point | Verdict | Preuve |
+|---|---|---|
+| **#39 — migration `20261119280000`** | ✅ | `group_members.staff_roles text[]`, contrôlé : sous-ensemble de coach / manager / analyst, sans doublon, sans le rôle principal, vide pour l'owner. `UPDATE (staff_roles)` est révoqué pour les clients, et seule `set_member_staff_roles` écrit (owner seulement, `INVALID_ROLE`, `OWNER_HAS_ALL_ROLES`, `for update`, notification `staff_roles_changed`). Les fonctions RLS passent par `private.has_group_role` (rôle principal **ou** staff). Déjà revue par CyberSecurity. |
+| **#39 — `permissions.ts`** | ✅ | `effectiveRoles`, et les prédicats prennent `staffRoles` en option, sans changer le comportement sans lui. **`canReadWellbeing` (client) = `private.can_read_wellbeing` (serveur)** : rôle principal autre que joueur, et owner, coach ou analyst parmi les rôles effectifs ; le serveur impose en plus `share_wellbeing`. Un joueur qui coache ne lit pas le bien-être de ses coéquipiers (décision de l'utilisateur). |
+| **#39 — front** | ✅ (code) | Cases « Aussi staff : » dans un `fieldset` avec `legend` en `sr-only` qui nomme le membre ; seulement pour l'owner ; masquées si l'API manque. **Pas vues dans le harnais** : la doublure n'a ni `staffRoles` ni `collabSetMemberStaffRoles`. |
+| **Proxy, phase 1** | ✅ | `handler.ts`, dans l'ordre : route, puis login, puis limite par utilisateur (**60/min**, au lieu de 300), puis **cache R2** des matchs et timelines (servi avant le budget, sans coût sur la clé, seulement les 200 JSON non vides de 8 Mo au plus, jamais les listes d'ids ni avec une query), puis **budget global** par hôte dans un Durable Object (`18:1,95:120`, sous les limites Riot, réserve interactive de 30 %), qui répond 429 + `Retry-After` **avant** Riot, laisse passer si le compteur est en panne, et sanctionne l'hôte après un 429 de Riot. Enfin, **métriques** Analytics Engine sans donnée personnelle. 17 tests (`riotProxyPhase1.test.ts`). |
+| **R7** | ✅ | Déjà validé (`DEMANDE_CLE_PROD.md`). |
+
+**Réserve P2 — la priorité n'est envoyée par aucun client.** Aucun appel du desktop (`riotClient.ts`, `team.ipc.ts`)
+ni du web (`riotWeb.ts`, `teamStatsWeb.ts`) ne pose `x-nxm-priority: background`. Le proxy traite donc **tout** comme
+interactif (c'est le comportement voulu pour les anciennes versions), et la réserve de 30 % ne protège pas une fin de
+partie contre un scout complet. C'est la moitié de P1-2 / P1-3. Correctif : envoyer `background` pour le scout, la
+synergie, l'auto-remplissage et les stats d'équipe web.
+
+**Réserves P3 :**
+1. ~~**Stockage R2 sans durée de vie**~~ — tranché par CyberSecurity le 19/11 : **90 jours, bucket privé**,
+   ajouté aux § 6 et § 7 de la politique v0.3 et au § 4.8 de `DEMANDE_CLE_PROD.md`. Reste à vérifier, au
+   déploiement, que la règle de cycle de vie R2 est bien posée.
+2. **Priorité `background`** (réserve P2) : confiée au Back-end (P1-3, desktop) et au Front-end (web).
+3. **Déploiement :** il faut créer le bucket R2, le Durable Object (migration `v1-riot-budget`) et le dataset
+   Analytics Engine. Accord de l'utilisateur requis.
+4. **Doublure du harnais :** ajouter `staffRoles` et `collabSetMemberStaffRoles` pour pouvoir voir les cases.
+
 ### Lot runner UNIQUE, G, H, K, codes d'invitation, zod (19/11) — **OK ; DA-2 passe**
 
 **Contrôles :**

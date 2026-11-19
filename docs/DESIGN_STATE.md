@@ -316,3 +316,216 @@ le halo violet des cartes joueurs (`#432A5E` en haut, `#1F1430`). Tout est
 - Le Front-end remplace ensuite les huit copies listées plus haut. Dans
   `DashboardPage`, `StatsInsightsTab` et `HistoryPage`, le vert / rouge à 50 %
   devient l'échelle à quatre paliers, car ce sont des winrates.
+
+## 10. Spec Front-end — Objectifs et rythme de jeu (#40 · 1/3)
+
+Maquette Penpot : page « Stats collectives — Objectifs » (à venir). Source :
+docs/PROPOSITION_ANALYSTE.md § 2. Visible par tout le groupe (staff,
+analyste, joueurs) : ce sont des stats d'équipe.
+
+**Place.** *Stats collectives* (`/team`) → nouvel onglet **« Objectifs »**,
+après « Stats Tournoi ». Même sélecteur de groupe que les autres onglets.
+
+**Barre de filtres** (une ligne, sticky sous les onglets) :
+- **Période** : segmenté « 7 jours · 30 jours · Saison · Personnalisée »
+  (Personnalisée ouvre deux dates).
+- **Source** : puces Flex / Scrim / Tournoi (cumulables, par défaut
+  Scrim + Tournoi).
+- **Côté** : segmenté « Les deux · Bleu · Rouge ».
+- À droite, en mono `text-dim` : « 18 games · patch 25.23 ».
+
+**1. Tuiles de contrôle** (rangée de 6 tuiles KPI du Design System) :
+
+| Tuile | Valeur | Pied de tuile |
+|---|---|---|
+| Drakes | % des drakes tués par nous | « 1er drake : 61 % · âme : 4 / 9 » |
+| Grubs | moyenne prise sur 6 (« 3.8 / 6 ») | « 1er camp : 72 % » |
+| Herald | % pris | timing moyen « 14:20 » |
+| Baron | % pris | « Baron → victoire : 83 % » |
+| Premier sang | % | timing moyen |
+| Première tour | % | timing moyen et voie la plus fréquente |
+
+Valeur colorée avec l'échelle de winrate (§ 9) : ce sont des taux de
+contrôle. Moins de 5 games : `text-dim` + mention « échantillon faible ».
+
+**2. Courbe d'écart d'or** (carte pleine largeur) : écart d'or moyen de
+l'équipe (nous − eux) de 0 à 30 min, une courbe `gold` (les deux côtés
+confondus) + deux courbes fines « Bleu » et « Rouge » si le filtre Côté =
+« Les deux ». Ligne 0 en `border`. Valeurs écrites à 10 / 15 / 20 min sous
+le graphique (mono, signe +/−, colorées vert / rouge). Survol : infobulle
+avec la valeur à la minute.
+
+**3. Frise des games** (carte, une ligne par game, la plus récente en haut) :
+- à gauche (220 px) : date, adversaire, côté (pastille bleu / rouge), badge
+  Victoire / Défaite, durée ;
+- à droite : une frise 0 → durée de la game, graduée toutes les 5 min, avec
+  un marqueur par événement : drake (losange), grubs (petit rond, groupés
+  par camp), Herald (triangle), Baron (carré), Atakhan, tours (barre fine),
+  premier sang (étoile). **Nous** = marqueur plein `gold`, **eux** =
+  contour `wr-bad`. Survol d'un marqueur : « Drake infernal · 08:42 · pris
+  par nous » ; clic sur la ligne : ouvre la game (stats par game / VOD).
+- 10 lignes, puis « Afficher plus ». Légende des formes au-dessus de la frise.
+
+**4. Timings moyens** (petit tableau sous la frise) : pour chaque objectif,
+timing moyen chez nous / chez eux et l'écart (« 1er drake : 07:40 vs 08:55 ·
+−1:15 »). Mono, aligné à droite.
+
+**États.**
+- *Chargement* : squelettes des 6 tuiles + bandeau « Lecture des timelines :
+  12 / 18 games » avec barre de progression (les timelines se chargent une à
+  une via le relais, puis sont mises en cache).
+- *Vide* : « Aucune game d'équipe sur la période » + phrase « Les scrims et
+  tournois enregistrés en session d'équipe apparaîtront ici. » + bouton
+  outline « Élargir à 30 jours » (ou « Ouvrir le Planning »).
+- *Partiel* : bandeau « 3 timelines indisponibles (game trop ancienne ou
+  custom sans timeline) : ces games sont exclues des moyennes. »
+- *Erreur* : gabarit d'erreur (§ 7), cause en clair (« Le relais Riot ne
+  répond pas (429) : limite de requêtes atteinte. Réessaie dans une minute. »)
+  + « Réessayer ».
+
+**Données (pour le Back-end).** Par game de l'équipe (même sélection que
+`aggregateMatchLike`) : la timeline match-v5 (déjà autorisée par le relais),
+mise en cache. L'extraction des `ELITE_MONSTER_KILL` existe déjà dans
+`electron/main/eventExtractor.ts` (drakes, Baron, Herald, grubs, Atakhan),
+mais seulement pour le joueur : il faut une variante **équipe** (killerTeamId
+comparé à notre côté), plus `BUILDING_KILL` (tours), le premier
+`CHAMPION_KILL`, et l'or total par équipe à chaque frame
+(`participantFrames[].totalGold`). Calcul pur partagé desktop / web, comme
+`teamSessionStatsCore`.
+
+**Accessibilité.** Les marqueurs ne reposent pas que sur la couleur
+(nous = plein, eux = contour, forme par objectif). La frise a une version
+texte (liste des événements) pour les lecteurs d'écran (`sr-only`).
+
+## 11. Spec Front-end — Journal des drafts (#40 · 2/3)
+
+Maquette Penpot : page « Coaching — Journal des drafts » (à venir). Source :
+docs/PROPOSITION_ANALYSTE.md § 1. Visible par le staff et l'analyste ;
+lecture seule pour les joueurs (même règle que le Draft Sim).
+
+**Place.** *Coaching & Management* → onglet *Draft Sim*, qui reçoit deux
+sous-onglets : **« Préparation »** (le Draft Sim actuel, inchangé) et
+**« Journal »** (nouveau). Le sous-onglet est mémorisé dans l'URL.
+
+**Barre de filtres** : adversaire (select, « Tous »), source (Scrim /
+Tournoi), côté (Les deux · Bleu · Rouge), patch, champion (recherche : garde
+les drafts où il est pické ou banni, chez nous ou chez eux), résultat. À
+droite, en mono : « 24 drafts · 15 V – 9 D ».
+
+**1. Synthèse** (rangée de 4 tuiles) :
+- *Côté bleu* / *Côté rouge* : winrate et nombre de games (échelle § 9) ;
+- *Notre first pick* : winrate quand nous avons le premier pick ;
+- *Bans subis* : les 3 champions les plus bannis contre nous (icônes + nombre).
+
+**2. Tableau des drafts** (une ligne par game, la plus récente en haut) :
+
+| Colonne | Contenu |
+|---|---|
+| Date | « 18 nov. », mono |
+| Adversaire | nom + tag, lien vers son dossier (§ 12) |
+| Côté | pastille Bleu / Rouge |
+| Nos bans | 5 icônes 24 px, grisées, barrées en diagonale |
+| Nos picks | 5 icônes 28 px dans l'ordre top → support, rôle en exposant |
+| Leurs picks | idem, à droite |
+| Leurs bans | 5 icônes grisées |
+| Résultat | badge Victoire / Défaite + durée |
+
+Survol : fond `elevated`. Clic : panneau de détail à droite (420 px) avec
+l'ordre de pick s'il est connu (B1 R1 R2 B2…), les notes de l'analyste
+(texte libre, éditable par le staff), les liens « Stats par game » et
+« Review VOD », et le bouton « Ouvrir dans Préparation » qui recopie la
+draft dans le Draft Sim.
+
+**3. Champions** (carte sous le tableau, deux colonnes) : *nos picks*
+(champion, games, winrate, rôle) et *ce que les adversaires nous pickent*
+(champion, nombre, winrate contre nous). Tri par nombre de games ; moins de
+3 games en `text-dim` (§ 9).
+
+**Ordre de pick.** Match-v5 ne le donne pas. Le tableau l'omet par défaut ;
+l'analyste peut le saisir dans le panneau de détail (glisser les 10 picks
+dans l'ordre, ou rien). Saisi, il débloque la stat « first pick ».
+
+**États.**
+- *Chargement* : 6 lignes squelettes (icônes rondes grises).
+- *Vide* : « Aucune draft enregistrée » + « Les drafts des scrims et
+  tournois joués en session d'équipe s'ajoutent toutes seules. » + bouton
+  outline « Ajouter une draft à la main » (formulaire : adversaire, côté,
+  picks / bans, résultat).
+- *Filtre sans résultat* : « Aucune draft ne correspond » + « Effacer les
+  filtres ».
+- *Bans manquants* (custom sans draft) : les cases de bans affichent un tiret
+  et une infobulle « Pas de bans dans cette game ».
+- *Erreur* : gabarit § 7.
+
+**Données (pour le Back-end).** Picks, côtés, résultat et `teams[].bans` :
+dans les match-v5 déjà chargés pour les stats scrim / tournoi. À stocker par
+groupe (`draft_log` : match, adversaire, côté, picks, bans, résultat, ordre
+de pick facultatif, notes) pour garder les notes et les saisies manuelles.
+À vérifier : présence des bans dans les customs sans mode draft.
+
+## 12. Spec Front-end — Dossier adverse (#40 · 3/3)
+
+Maquette Penpot : page « Coaching — Dossier adverse » (à venir). Source :
+docs/PROPOSITION_ANALYSTE.md § 3. Rédaction par le staff et l'analyste ;
+lecture par les joueurs une fois publié.
+
+**Place.** *Coaching & Management* → *Scouting* : chaque équipe adverse de
+la liste reçoit un bouton **« Dossier »**. Il ouvre une page pleine largeur
+(retour « ← Scouting »).
+
+**En-tête** : logo ou tag, nom, région, « mis à jour il y a 2 h » ;
+boutons outline « Actualiser les données », « Copier pour Discord », bouton
+principal « Publier au roster ». Statut : badge « Brouillon » (gris) ou
+« Publié le 19 nov. » (vert).
+
+**1. Résumé de l'analyste** (carte en tête) : 3 champs courts, éditables par
+le staff :
+- *Comment ils jouent* (ex. « Compo scaling, peu de pression avant 15 min ») ;
+- *Bans conseillés* (5 cases champion) ;
+- *Plan de jeu* (texte libre, 600 caractères).
+Le texte existant du scouting (`notes` de l'équipe) pré-remplit le premier
+champ.
+
+**2. Les 5 joueurs** (grille de 5 cartes, une par rôle, dans l'ordre top →
+support) :
+- en-tête : rôle, pseudo, rang actuel ;
+- top 3 champions avec tier (icônes des tiers v2 de `threatCore`), games et
+  winrate (§ 9) ;
+- badge de menace (Dominant / Menace / Confort) repris du Draft Sim ;
+- forme récente : 10 dernières ranked en barres V / D ;
+- dernier changement de pool notable (« Nouveau : Zeri, 7 games cette
+  semaine »).
+
+**3. Contre nous** (carte, n'apparaît que si on a joué cette équipe) : bilan
+(« 2 V – 1 D »), leurs drafts contre nous (lignes du Journal, § 11) et leurs
+objectifs (tuiles réduites du § 10).
+
+**4. Duos** (petite carte) : paires de joueurs qui jouent ensemble en ranked
+(ex. jungle + mid), avec nombre de games et winrate.
+
+**Publication.** « Publier au roster » envoie le dossier au groupe : les
+joueurs le lisent en lecture seule (même page sans boutons d'édition),
+une notification « Dossier publié : Aegis Gaming » part, et le bot Discord
+peut le poster (§ 9 de la proposition, plus tard). « Copier pour Discord »
+copie un résumé texte (résumé + bans conseillés + top 3 de chaque joueur).
+
+**États.**
+- *Chargement* : 5 cartes squelettes + bandeau « Analyse de 5 joueurs :
+  3 / 5 » avec progression (le scouting interroge Riot joueur par joueur).
+- *Mode réduit* (clé personnelle) : bandeau or « Analyse limitée à 20
+  games par joueur avec la clé Riot actuelle. » Le dossier reste complet
+  dans sa forme.
+- *Vide* (équipe sans joueurs) : « Ajoute les 5 joueurs de l'équipe pour
+  générer le dossier » + bouton « Ajouter des joueurs » (le formulaire du
+  scouting existant).
+- *Joueur introuvable* : sa carte affiche « Riot ID introuvable » et
+  « Corriger », les 4 autres restent.
+- *Erreur* : gabarit § 7.
+
+**Données (pour le Back-end).** Pools, tiers, menaces, rang et games par
+joueur : `scoutingCore`, `threatCore` et le scouting existant
+(`team.ipc.ts`). Manque : la table du dossier (résumé, bans conseillés,
+plan, statut, date de publication), la jonction avec le Journal (§ 11) et
+les Objectifs (§ 10) quand on a joué l'équipe, et le calcul des duos (games
+communes entre membres). Volume Riot : 5 joueurs × 20 games en clé
+personnelle, 50 avec la clé de production (#42).

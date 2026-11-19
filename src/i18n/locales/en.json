@@ -1577,7 +1577,8 @@
       "link": "Attach to this group",
       "linkAria": "Attach {{name}} to this group",
       "linkFailed": "Couldn’t attach the opponent team",
-      "addMember": "Add member"
+      "addMember": "Add member",
+      "scoutFailed": "Scouting failed"
     },
     "statsTitle": "Team stats",
     "statsSubtitle": "The stats of the picked group’s team: flex, scrim and tournament together, then each source.",
@@ -1892,7 +1893,8 @@
     },
     "legal": {
       "privacy": "Privacy policy",
-      "terms": "Terms of use"
+      "terms": "Terms of use",
+      "riotNoticeTitle": "Riot Games notice"
     },
     "account": {
       "signedInAs": "Signed in as",
@@ -2053,6 +2055,11 @@
         "removeConfirm": "Remove {{name}} from the group? They can be invited again later.",
         "badgeConflict": "Riot conflict",
         "badgeNotFound": "Riot ID not found"
+      },
+      "staffRoles": {
+        "label": "Also staff:",
+        "legend": "Staff roles of {{name}} on top of their main role",
+        "changed": "Roles of {{name}} updated"
       }
     },
     "sharing": {
@@ -2060,7 +2067,7 @@
       "reviews": "Sessions, games, reviews and mistakes (coaches/analysts)",
       "stats": "Assessments and stats (coaches/analysts)",
       "team": "Team data: rosters, champion pools, drafts (whole group)",
-      "wellbeing": "Wellbeing check-ins (energy, mood, sleep) (coaches/analysts)",
+      "wellbeing": "Wellbeing check-ins (energy, mood, sleep): only the staff who don’t play (owner, coaches, analysts whose main role isn’t player). A teammate who also coaches never sees them.",
       "hint": "Videos never leave your PC. You can change this at any time."
     },
     "players": {
@@ -2141,7 +2148,10 @@
       "NOT_CONCERNED": "This event isn’t one of yours.",
       "EVENT_OVER": "This event is already over.",
       "RIOT_ACCOUNT_REQUIRED": "Link your Riot account to join a group.",
-      "WELLBEING_CONSENT_REQUIRED": "Sharing your wellbeing needs your agreement to store your check-ins first."
+      "WELLBEING_CONSENT_REQUIRED": "Sharing your wellbeing needs your agreement to store your check-ins first.",
+      "INVALID_ROLE": "This role can’t be given here.",
+      "OWNER_HAS_ALL_ROLES": "The owner already holds every role.",
+      "NOT_FOUND": "This member is no longer in the group."
     },
     "dossier": {
       "pickPlayer": "Player",
@@ -3075,7 +3085,7 @@
   },
   "wellbeing": {
     "title": "Wellbeing",
-    "desc": "A quick, optional check-in before a session — private unless you opt in to share it with a group's staff.",
+    "desc": "A quick, optional check-in before a session — private unless you opt in to share it with a group’s staff who don’t play (a teammate who also coaches never sees it).",
     "myCheckin": "Quick check-in",
     "energy": "Energy",
     "mood": "Mood",
@@ -3096,7 +3106,7 @@
     "consent": {
       "title": "Store your wellbeing check-ins?",
       "intro": "Your energy, mood and sleep are health data. With your agreement, Ascend stores them in your account to track how they change from one session to the next, and syncs them across your devices.",
-      "private": "Nobody else sees them, unless you later turn on sharing with a group’s staff.",
+      "private": "Nobody else sees them, unless you later share them with a group’s staff who don’t play. A teammate who also coaches never sees them.",
       "withdraw": "You can withdraw your agreement at any time from the Privacy card (Settings in the app, Account on the web): your check-ins are then deleted.",
       "existing_one": "You already have {{count}} check-in stored. If you decline, it will be deleted.",
       "existing_other": "You already have {{count}} check-ins stored. If you decline, they will be deleted.",
@@ -3307,10 +3317,19 @@
       "event_confirmed": {
         "title": "Coming after all",
         "body": "{{playerName}} will be at “{{eventTitle}}” after all ({{scheduledAt}})"
+      },
+      "staff_roles_changed": {
+        "title": "Your staff roles changed",
+        "body": "Added: {{addedText}}. Removed: {{removedText}}. You now hold: {{rolesText}}, on top of your main role."
+      },
+      "member_staff_roles_changed": {
+        "title": "New staff role in the team",
+        "body": "{{memberName}} is now also {{addedText}}."
       }
     },
     "bellLabel_one": "Notifications, {{count}} unread",
-    "bellLabel_other": "Notifications, {{count}} unread"
+    "bellLabel_other": "Notifications, {{count}} unread",
+    "rolesNone": "none"
   },
   "notificationPrefs": {
     "title": "Notification preferences",
@@ -4702,5 +4721,9 @@
     "noneLinked": "{{name}} has no linked Discord server.",
     "forbidden": "Only the group’s owner, coaches and managers can unlink its Discord server.",
     "failed": "Couldn’t unlink the Discord server"
+  },
+  "riotErrors": {
+    "rateLimited_one": "Too many Riot requests right now. Try again in about {{count}} second.",
+    "rateLimited_other": "Too many Riot requests right now. Try again in about {{count}} seconds."
   }
 }

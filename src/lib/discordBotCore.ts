@@ -122,6 +122,19 @@ export async function resolveDiscordUser(sb: SupabaseClient, discordUserId: stri
  * Ascend user in the group the server is linked to?" is checked here.
  * Returns their role in the group, or null when they are not a member.
  */
+/**
+ * #39: a member's effective roles (main role plus staff_roles), null when not a member. Before the
+ * member_staff_roles migration the column is missing: the main role alone.
+ */
+export async function getGroupMemberRoles(sb: SupabaseClient, groupId: string, userId: string): Promise<string[] | null> {
+  let res = await sb.from('group_members').select('role, staff_roles').eq('group_id', groupId).eq('user_id', userId).maybeSingle()
+  if (res.error?.code === '42703') res = await sb.from('group_members').select('role').eq('group_id', groupId).eq('user_id', userId).maybeSingle()
+  if (res.error) fail(res.error, 'read group membership')
+  const row = res.data as { role?: string; staff_roles?: string[] | null } | null
+  if (!row?.role) return null
+  return [row.role, ...(row.staff_roles ?? [])]
+}
+
 export async function getGroupMemberRole(sb: SupabaseClient, groupId: string, userId: string): Promise<string | null> {
   const { data, error } = await sb.from('group_members').select('role').eq('group_id', groupId).eq('user_id', userId).maybeSingle()
   if (error) fail(error, 'read group membership')
@@ -146,8 +159,11 @@ export function canManageDiscordServer(permissions: string | undefined | null): 
  */
 export const DISCORD_MANAGER_ROLES = ['owner', 'coach', 'manager'] as const
 
-export function isChannelStaffRole(role: string | null): boolean {
-  return role !== null && (DISCORD_MANAGER_ROLES as readonly string[]).includes(role)
+/** A role, or a member's effective roles (#39): true when one of them manages the Discord server. */
+export function isChannelStaffRole(role: string | readonly string[] | null): boolean {
+  if (role === null) return false
+  const roles = typeof role === 'string' ? [role] : role
+  return roles.some((r) => (DISCORD_MANAGER_ROLES as readonly string[]).includes(r))
 }
 
 export async function setNotifyChannel(sb: SupabaseClient, guildId: string, channelId: string): Promise<void> {

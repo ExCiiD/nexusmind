@@ -3,6 +3,8 @@ import type { PlayerDashboardRow } from './staffDashboard'
 import type { DevPlanApi } from './devPlan'
 
 export type GroupRole = 'owner' | 'coach' | 'manager' | 'analyst' | 'player'
+/** #39: the staff roles a member may hold on top of their main role (group_members.staff_roles). */
+export type StaffRole = 'coach' | 'manager' | 'analyst'
 export type GroupKind = 'team' | 'coaching'
 /** #38: the server's check of a member's declared Riot ID (verify-member-puuid). */
 export type PuuidStatus = 'verified' | 'not_found' | 'conflict'
@@ -26,6 +28,12 @@ export interface GroupMember {
    * holds that puuid (two members claim the same player): show it to the staff. null = not verified yet.
    */
   puuidStatus?: PuuidStatus | null
+  /**
+   * #39: staff roles held on top of `role` (a player who also coaches: role 'player', staffRoles ['coach']).
+   * Set by the owner only. Never contains `role` itself, always empty for the owner. Absent before the
+   * member_staff_roles migration. Rights go through src/lib/permissions.ts, which reads both.
+   */
+  staffRoles?: StaffRole[]
   joinedAt: string
 }
 
@@ -41,8 +49,9 @@ export interface MemberLook {
 export interface GroupSharing {
   shareReviews: boolean
   shareStats: boolean
+  /** Defaults to false since S19-17: team data is shared with the staff only when turned on. */
   shareTeam: boolean
-  /** Unlike the other three, this defaults to false — wellbeing is opt-in. */
+  /** Like shareTeam, this defaults to false — wellbeing is opt-in. */
   shareWellbeing: boolean
 }
 
@@ -51,6 +60,8 @@ export interface Group {
   name: string
   kind: GroupKind
   myRole: GroupRole
+  /** #39: my staff roles on top of `myRole` (see GroupMember.staffRoles). Absent before the migration. */
+  myStaffRoles?: StaffRole[]
   members: GroupMember[]
   sharing: GroupSharing
   /** The team's logo (public URL in the group-logos bucket), set by the
@@ -135,6 +146,12 @@ export interface CollabApi extends DevPlanApi {
   collabSetCaptain: (groupId: string, userId: string, isCaptain: boolean) => Promise<void>
   /** Owner-only; the owner's own role never changes from here. */
   collabSetMemberRole: (groupId: string, userId: string, role: Exclude<GroupRole, 'owner'>) => Promise<void>
+  /**
+   * #39, owner only: sets a member's whole list of extra staff roles ([] clears it) and returns it as stored
+   * (sorted, without the member's main role). Notifies the member, and the group when a role is added.
+   * Errors: FORBIDDEN (not the owner), INVALID_ROLE, OWNER_HAS_ALL_ROLES, NOT_FOUND.
+   */
+  collabSetMemberStaffRoles?: (groupId: string, userId: string, roles: StaffRole[]) => Promise<StaffRole[]>
   collabSetSharing: (groupId: string, s: GroupSharing) => Promise<void>
   collabPlayerSessions: (playerId: string) => Promise<PlayerSessionView[]>
   /** Shares my profile icon and banner with my groups; false when signed out or refused. */
@@ -165,7 +182,8 @@ export interface CollabApi extends DevPlanApi {
 /** Stable error codes thrown by the main process → i18n keys. */
 export function collabErrorKey(err: unknown): string {
   const msg = (err as Error)?.message ?? ''
-  for (const code of ['INVITE_INVALID', 'NOT_CONCERNED', 'EVENT_OVER', 'FORBIDDEN', 'TOO_MANY_GROUPS', 'LOGIN_REQUIRED', 'RIOT_ACCOUNT_REQUIRED']) {
+  // #39 adds INVALID_ROLE, OWNER_HAS_ALL_ROLES, NOT_FOUND (set_member_staff_roles).
+  for (const code of ['INVITE_INVALID', 'NOT_CONCERNED', 'EVENT_OVER', 'FORBIDDEN', 'TOO_MANY_GROUPS', 'LOGIN_REQUIRED', 'RIOT_ACCOUNT_REQUIRED', 'INVALID_ROLE', 'OWNER_HAS_ALL_ROLES', 'NOT_FOUND']) {
     if (msg.includes(code)) return `coaching.errors.${code}`
   }
   if (msg.includes('invalid code')) return 'coaching.errors.INVITE_INVALID'

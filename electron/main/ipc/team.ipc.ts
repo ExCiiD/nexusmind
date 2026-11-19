@@ -7,6 +7,7 @@
  */
 
 import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { inBackground } from '../riotPriority'
 import { readFileSync, existsSync } from 'node:fs'
 import { basename } from 'node:path'
 import { getPrisma } from '../database'
@@ -421,6 +422,9 @@ async function customGamesOf(team: { id: string; groupId: string | null; isOppon
   }
 }
 
+/** P1-3: scouts and synergy read Riot in the background, behind the end of a game and the open screens. */
+const handleInBackground = (channel: string, fn: Parameters<typeof ipcMain.handle>[1]) => ipcMain.handle(channel, inBackground(fn))
+
 export function registerTeamHandlers() {
   // ── Teams ────────────────────────────────────────────────────────────────
 
@@ -711,7 +715,7 @@ export function registerTeamHandlers() {
    * Requires the member to have `ign` + `tagLine` + `region` set. Returns
    * the number of pool entries created/updated.
    */
-  ipcMain.handle('team:scout-member', async (_e, memberId: string, count = 100, opts: { roleOnly?: boolean } = {}) => {
+  handleInBackground('team:scout-member', async (_e, memberId: string, count = 100, opts: { roleOnly?: boolean } = {}) => {
     // Default to UNFILTERED so the champion counts match op.gg's view:
     // op.gg shows "Aatrox 84g" across all roles, not just TOP. A flex
     // player who plays 50 TOP + 34 JG on Aatrox should appear as 84g,
@@ -864,7 +868,7 @@ export function registerTeamHandlers() {
    * passes `overwriteTiers: true`. `overwriteTiers: false` also skips the
    * clean-up of stale auto-filled entries.
    */
-  ipcMain.handle('team:auto-fill-pool', async (_e, memberId: string, opts: {
+  handleInBackground('team:auto-fill-pool', async (_e, memberId: string, opts: {
     matchCount?: number
     masteryCount?: number
     overwriteTiers?: boolean
@@ -1065,7 +1069,7 @@ export function registerTeamHandlers() {
    * Heavy when run for the first time — typically 100–300 match fetches — but
    * MatchCache makes re-runs nearly free.
    */
-  ipcMain.handle('team:compute-synergy-stats', async (_e, teamId: string, opts: {
+  handleInBackground('team:compute-synergy-stats', async (_e, teamId: string, opts: {
     matchesPerMember?: number
     minTogether?: number
   } = {}) => {
@@ -1382,7 +1386,7 @@ export function registerTeamHandlers() {
    * Combined stats: Riot flex + custom (scrim + tournament). Same shape as
    * the other compute handlers. Caches nothing — UI re-runs on demand.
    */
-  ipcMain.handle('team:compute-combined-stats', async (_e, teamId: string, opts: { minTogether?: number } = {}) => {
+  handleInBackground('team:compute-combined-stats', async (_e, teamId: string, opts: { minTogether?: number } = {}) => {
     const prisma = getPrisma()
     const team = await prisma.team.findUnique({ where: { id: teamId }, include: { members: true } })
     if (!team) throw new Error('Team not found')

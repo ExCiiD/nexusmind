@@ -100,6 +100,7 @@
   <li><strong>Discord</strong>: only if you use that integration.</li>
   <li><strong>GitHub</strong>: hosts the installer files and application updates; this website queries GitHub's public API to show the latest version.</li>
 </ul>
+<p>To limit calls to the Riot API, our relay keeps a shared cache of public League of Legends games it has already fetched, stored with Cloudflare (R2 storage). This match data comes from Riot Games and includes the Riot ID and Riot account identifier (PUUID) of the 10 players in each game, including players who have no Ascend account. It is used only to avoid requesting the same game from Riot again, and is deleted after 90 days.</p>
 <p>No data is sold or used for advertising. This website uses no cookies, no analytics and no third-party fonts or scripts.</p>
 
 <h2>7. Retention</h2>
@@ -109,6 +110,7 @@
   <li>Wellbeing check-ins: until you withdraw your consent or delete your account.</li>
   <li>Shared reports and calendar addresses: until the staff revokes them, or the group is deleted.</li>
   <li>Riot relay technical logs: the hosting provider's standard retention; Ascend does not store the requests.</li>
+  <li>Relay cache of Riot games: 90 days.</li>
   <li>Bug reports: until handled, and deleted on request.</li>
 </ul>
 <p><strong>When you leave a group</strong>: your access stops immediately and the group no longer sees your shared data (reviews, statistics, wellbeing). What you wrote <strong>for the group</strong> (comments, session feedback, schedule requests) and what the staff recorded about you (attendance, assigned goals) stay in the group, as part of its history. You can ask for their deletion at <a href="mailto:exciid501@gmail.com">exciid501@gmail.com</a>.</p>

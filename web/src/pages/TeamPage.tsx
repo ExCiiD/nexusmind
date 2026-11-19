@@ -129,7 +129,7 @@ export function TeamPage() {
         )}
         {tab === 'draft' && (
           <PanelErrorBoundary key="draft" label="Draft sim">
-            <DraftTab myTeam={myTeam} groupId={groupId ?? undefined} myUserId={myUserId ?? undefined} nameOf={nameOf} isStaff={!!activeGroup && isLegacyStaff(activeGroup.myRole)} />
+            <DraftTab myTeam={myTeam} groupId={groupId ?? undefined} myUserId={myUserId ?? undefined} nameOf={nameOf} isStaff={!!activeGroup && isLegacyStaff(activeGroup.myRole, activeGroup.myStaffRoles)} />
           </PanelErrorBoundary>
         )}
         {tab === 'scouting' && (

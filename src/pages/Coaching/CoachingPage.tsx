@@ -32,7 +32,7 @@ export function CoachingPage() {
   const { available, loading, myUserId, group, nameOf } = section
 
   const hasGroup = !!group
-  const isStaff = !!group && isLegacyStaff(group.myRole)
+  const isStaff = !!group && isLegacyStaff(group.myRole, group.myStaffRoles)
   const canLinkTeams = typeof window.api.linkTeamToGroup === 'function'
   const groupsHere = useMemo(() => (group ? [group] : []), [group])
   const staffHere = useMemo(() => (group && isStaff ? [group] : []), [group, isStaff])

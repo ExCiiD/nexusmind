@@ -21,6 +21,7 @@ import { Loader2, RefreshCw, Users, BarChart3 } from 'lucide-react'
 import { compareByRole } from '@/lib/championRoles'
 import type { Team, TeamSynergyStats } from '@/lib/ipc'
 import { DashboardLayout } from './DashboardLayout'
+import { riotErrorText } from '@/lib/riotErrors'
 
 interface Props {
   team: Team
@@ -122,7 +123,7 @@ export function DashboardTab({ team }: Props) {
     } catch (err) {
       toast({
         title: t('team.stats.failed', { defaultValue: 'Failed to compute stats' }),
-        description: (err as Error).message,
+        description: riotErrorText(err, t),
         variant: 'destructive',
       })
     } finally {

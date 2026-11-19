@@ -11,6 +11,7 @@ const h = vi.hoisted(() => ({
 vi.mock('../../web/src/supabase', () => ({ sb: {} }))
 vi.mock('../../web/src/riotWeb', () => ({
   RiotWebError: class RiotWebError extends Error { code?: string },
+  BACKGROUND: { background: true },
   getRecentMatchIds: async (puuid: string) => { h.idCalls.push(puuid); return ['EUW1_1', 'EUW1_2', `EUW1_solo_${puuid}`] },
   getAccountByRiotId: async () => ({ puuid: 'resolved' }),
   getMatchesBulk: async (ids: string[]) => {

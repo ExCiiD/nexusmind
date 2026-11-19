@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   redeemGuildLinkCode, redeemUserLinkCode, resolveGuild, resolveDiscordUser, setNotifyChannel,
   setAvailabilityExceptionAs, clearAvailabilityExceptionAs, getMyRosterRole, findRoleReplacements,
-  getGroupMemberRole, canManageDiscordServer, isChannelStaffRole,
+  getGroupMemberRole, getGroupMemberRoles, canManageDiscordServer, isChannelStaffRole,
 } from '../../../src/lib/discordBotCore'
 import { listEvents, listAvailabilityRules, listAvailabilityExceptions, findCommonAvailability } from '../../../src/lib/calendarCore'
 import { listScrimsForGroup } from '../../../src/lib/scrimsCore'
@@ -68,8 +68,9 @@ export async function handleSetChannel(i: Interaction, sb: SupabaseClient) {
   if (!canManageDiscordServer(i.member?.permissions)) {
     const discordUserId = userIdOf(i)
     const userId = discordUserId ? await resolveDiscordUser(sb, discordUserId) : null
-    const role = userId ? await getGroupMemberRole(sb, link.groupId, userId) : null
-    if (!isChannelStaffRole(role)) {
+    // #39: a player who is also manager or coach counts.
+    const roles = userId ? await getGroupMemberRoles(sb, link.groupId, userId) : null
+    if (!isChannelStaffRole(roles)) {
       return ephemeralReply('Only server admins (Manage Server) or the team\'s staff can choose the reminder channel.')
     }
   }

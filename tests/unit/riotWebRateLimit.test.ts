@@ -73,3 +73,18 @@ describe('429 handling', () => {
     await expect(riot.getMatchesBulk(['EUW1_1', 'EUW1_2', 'EUW1_3'], 'EUW1', 2)).rejects.toMatchObject({ code: 'rate-limited' })
   })
 })
+
+describe('x-nxm-priority (P2)', () => {
+  const headersOf = (call: number) => (fetchMock.mock.calls[call][1] as { headers: Record<string, string> }).headers
+
+  it('marks background calls only', async () => {
+    fetchMock.mockResolvedValue(res(200))
+    await riot.getRecentMatchIds('p', 'EUW1', 20, 440, riot.BACKGROUND)
+    await riot.getMatchesBulk(['EUW1_9'], 'EUW1', 1, riot.BACKGROUND)
+    await riot.getAccountByRiotId('Name', 'EUW', 'EUW1') // a user's direct lookup
+    expect(headersOf(0)['x-nxm-priority']).toBe('background')
+    expect(headersOf(1)['x-nxm-priority']).toBe('background')
+    expect(headersOf(2)['x-nxm-priority']).toBeUndefined()
+    expect(headersOf(2).Authorization).toBe('Bearer tok')
+  })
+})

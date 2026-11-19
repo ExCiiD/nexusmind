@@ -21,7 +21,7 @@ import {
 
 // scrims RLS (insert/update/delete) is is_group_staff-gated — a manager
 // would see this UI but get a server-side 403 otherwise.
-const isStaff = (g?: Group) => !!g && isLegacyStaff(g.myRole)
+const isStaff = (g?: Group) => !!g && isLegacyStaff(g.myRole, g.myStaffRoles)
 const DEFAULT_CHECKLIST = ['web.scrims.defaults.draft', 'web.scrims.defaults.comms', 'web.scrims.defaults.goals']
 
 export function ScrimsPage() {

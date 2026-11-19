@@ -4,41 +4,33 @@
  * Keeps the Riot API key out of the desktop app: the app sends its Supabase
  * access token, the Worker checks it, applies a per-player rate limit and
  * forwards the (allow-listed, read-only) call to Riot with the key stored as
- * a Worker secret.
+ * a Worker secret. The request flow itself is in handler.ts.
  *
- * Secrets / vars (see wrangler.toml and README.md):
+ * Phase 1 of docs/PLAN_CLE_PROD.md (each binding optional: without it, the
+ * Worker behaves as before):
+ *   MATCH_STORE  R2 bucket   — P1-1, finished games' match and timeline shared by everyone
+ *   RIOT_BUDGET  Durable Obj — P1-2, one budget for the whole key, with a reserve for interactive calls
+ *   METRICS      Analytics   — P1-10, calls, Riot calls, cache hits and 429s per endpoint
+ *
+ * Secrets / vars (see wrangler.toml):
  *   RIOT_API_KEY         secret — the Riot API key
  *   SUPABASE_URL         var    — https://<ref>.supabase.co
  *   SUPABASE_JWT_SECRET  secret — only if the project still signs JWTs with
  *                                 the legacy shared secret (HS256)
+ *   RIOT_APP_LIMITS, INTERACTIVE_RESERVE  vars — the budget (budgetObject.ts)
  */
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
-import { routeRequest, FORWARDED_HEADERS } from './routing'
+import { handleRequest, type BudgetGate, type ResponseStore, type HandlerEnv } from './handler'
+import type { BudgetObjectEnv } from './budgetObject'
 
-export interface Env {
-  RIOT_API_KEY: string
+export { RiotBudgetObject } from './budgetObject'
+
+export interface Env extends HandlerEnv, BudgetObjectEnv {
   SUPABASE_URL: string
   SUPABASE_JWT_SECRET?: string
-  /** Workers Rate Limiting binding (optional: skipped when not configured). */
-  USER_LIMITER?: { limit: (opts: { key: string }) => Promise<{ success: boolean }> }
+  MATCH_STORE?: R2Bucket
+  RIOT_BUDGET?: DurableObjectNamespace
 }
-
-// CORS: the web app calls this proxy directly from the browser with a
-// Supabase bearer token (web/src/riotWeb.ts, E14) — the packaged desktop
-// app's main-process fetch isn't subject to CORS at all, so this only
-// matters for the browser caller. `*` is safe here because auth is a
-// bearer token, not a cookie: a third-party page reading the response
-// would still need the victim's token in hand to have sent the request in
-// the first place, which CORS alone can't give it.
-const CORS_HEADERS = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, OPTIONS',
-  'access-control-allow-headers': 'authorization',
-  'access-control-max-age': '600',
-}
-
-const json = (status: number, body: Record<string, unknown>, extra: HeadersInit = {}) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...CORS_HEADERS, ...extra } })
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null
 
@@ -63,37 +55,41 @@ async function verifyUser(req: Request, env: Env): Promise<JWTPayload | null> {
   }
 }
 
+/** P1-1: R2, global and durable. (The Cache API would do nothing on a *.workers.dev address.) */
+function r2Store(bucket: R2Bucket): ResponseStore {
+  return {
+    async get(key) {
+      const obj = await bucket.get(key)
+      return obj ? { body: await obj.arrayBuffer(), contentType: obj.httpMetadata?.contentType ?? 'application/json' } : null
+    },
+    async put(key, body, contentType) {
+      await bucket.put(key, body, { httpMetadata: { contentType } })
+    },
+  }
+}
+
+/** P1-2: one Durable Object per Riot host. */
+function budgetGate(ns: DurableObjectNamespace): BudgetGate {
+  const stub = (host: string) => ns.get(ns.idFromName(host))
+  return {
+    async acquire(host, priority, user) {
+      const res = await stub(host).fetch(`https://budget/acquire?priority=${priority}&user=${encodeURIComponent(user)}`)
+      return res.json()
+    },
+    async penalize(host, retryAfterSec) {
+      await stub(host).fetch(`https://budget/penalize?seconds=${encodeURIComponent(String(retryAfterSec))}`)
+    },
+  }
+}
+
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
-    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS })
-
-    const url = new URL(req.url)
-    if (url.pathname === '/health') return json(200, { ok: true })
-
-    const route = routeRequest(req.method, url)
-    if (!route.ok) return json(route.status, { error: route.error })
-
-    // A real (non-anonymous) Ascend account is required.
-    const user = await verifyUser(req, env)
-    if (!user?.sub || (user as any).is_anonymous) return json(401, { error: 'login_required' })
-
-    if (env.USER_LIMITER) {
-      const { success } = await env.USER_LIMITER.limit({ key: user.sub })
-      if (!success) return json(429, { error: 'user_rate_limited' }, { 'retry-after': '10', 'x-rate-limit-type': 'proxy-user' })
-    }
-
-    const upstream = await fetch(route.upstream, { headers: { 'X-Riot-Token': env.RIOT_API_KEY } })
-
-    const headers = new Headers(CORS_HEADERS)
-    for (const h of FORWARDED_HEADERS) {
-      const v = upstream.headers.get(h)
-      if (v) headers.set(h, v)
-    }
-    // Never leak an upstream auth failure as "your session is invalid".
-    if (upstream.status === 401 || upstream.status === 403) {
-      console.error(`Riot rejected the proxy key (${upstream.status}) on ${route.endpoint}`)
-      return json(502, { error: 'riot_key_rejected' })
-    }
-    return new Response(upstream.body, { status: upstream.status, headers })
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    return handleRequest(req, env, {
+      verifyUser: (r) => verifyUser(r, env) as Promise<{ sub?: string; is_anonymous?: boolean } | null>,
+      fetchRiot: (url, init) => fetch(url, init),
+      store: env.MATCH_STORE ? r2Store(env.MATCH_STORE) : undefined,
+      budget: env.RIOT_BUDGET ? budgetGate(env.RIOT_BUDGET) : undefined,
+      waitUntil: (p) => ctx.waitUntil(p),
+    })
   },
 }

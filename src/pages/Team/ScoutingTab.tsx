@@ -16,6 +16,7 @@ import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
 import { ScopeDialog, type FetchScope } from '@/components/team/ScopeDialog'
 import { useBackgroundJobsStore } from '@/store/useBackgroundJobsStore'
 import { wrText } from '@/lib/winrate'
+import { riotErrorText } from '@/lib/riotErrors'
 
 
 /** `groupId`: the group picked in the section header — only its opponents
@@ -175,8 +176,13 @@ export function ScoutingTab({ groupId }: { groupId?: string }) {
       }),
       member,
       scope,
-      onDone: ({ upserted, cancelled }) => {
+      onDone: ({ upserted, cancelled, rateLimited }) => {
         if (cancelled) return
+        if (rateLimited) {
+          toast({ title: t('team.scouting.scoutFailed', { defaultValue: 'Scouting failed' }), description: riotErrorText(rateLimited, t), variant: 'destructive' })
+          load()
+          return
+        }
         toast({
           title: t('team.scouting.done', { defaultValue: 'Scouting complete' }),
           description: `${upserted} champion entries.`,
@@ -212,7 +218,7 @@ export function ScoutingTab({ groupId }: { groupId?: string }) {
       }),
       members: eligible,
       scope,
-      onDone: ({ ok, upserted, cancelled, failed }) => {
+      onDone: ({ ok, upserted, cancelled, failed, rateLimited }) => {
         if (cancelled) {
           toast({
             title: t('team.scouting.scoutCancelled', { defaultValue: 'Scout cancelled' }),
@@ -238,7 +244,7 @@ export function ScoutingTab({ groupId }: { groupId?: string }) {
         } else {
           toast({
             title: t('team.scouting.partial', { defaultValue: '{{ok}}/{{total}} scouted', ok, total: eligible.length }),
-            description: t('team.scouting.partialDesc', {
+            description: rateLimited ? riotErrorText(rateLimited, t) : t('team.scouting.partialDesc', {
               defaultValue: 'Failed: {{names}}',
               names: failed.join(', '),
             }),
@@ -401,7 +407,7 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
       setForm({ displayName: '', ign: '', tagLine: '', region: 'EUW1', role: 'TOP' })
       onChange()
     } catch (err) {
-      toast({ title: t('team.scouting.addMemberFailed'), description: (err as Error).message, variant: 'destructive' })
+      toast({ title: t('team.scouting.addMemberFailed'), description: riotErrorText(err, t), variant: 'destructive' })
     }
   }
 
@@ -761,7 +767,7 @@ function OpponentSynergyPanel({ team }: { team: Team }) {
     } catch (err) {
       toast({
         title: t('team.scouting.synergy.failed', { defaultValue: 'Opponent synergy failed' }),
-        description: (err as Error).message,
+        description: riotErrorText(err, t),
         variant: 'destructive',
       })
     } finally {

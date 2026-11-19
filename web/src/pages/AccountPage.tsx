@@ -13,6 +13,7 @@ import { AccessInvitesCard } from '@/components/Cloud/AccessInvitesCard'
 import { DiscordLinkCard } from '../components/DiscordLinkCard'
 import { DownloadButton } from '../DownloadButton'
 import { WellbeingPrivacyCard } from '@/components/Wellbeing/WellbeingPrivacyCard'
+import { RiotLegalNotice } from '@/components/legal/RiotLegalNotice'
 
 export function AccountPage() {
   const { t, i18n } = useTranslation()
@@ -63,6 +64,8 @@ export function AccountPage() {
         <button className="flex items-center gap-1 hover:text-hextech-text" onClick={() => setLegal('privacy')}><FileText className="h-3.5 w-3.5" />{t('cloud.legal.privacy')}</button>
         <button className="flex items-center gap-1 hover:text-hextech-text" onClick={() => setLegal('terms')}><FileText className="h-3.5 w-3.5" />{t('cloud.legal.terms')}</button>
       </div>
+      {/* R7: Riot's legal notice (the web's Help / About place). */}
+      <RiotLegalNotice withTitle />
       <LegalDialog doc={legal} onClose={() => setLegal(null)} />
       <FeedbackDialog open={feedback !== null} onOpenChange={(o) => !o && setFeedback(null)} initialKind={feedback ?? 'bug'} />
     </div>

@@ -1,6 +1,7 @@
 import https from 'https'
 import { getMatch, getMatchIds, extractPlayerStats, isQueueSessionEligible } from './riotClient'
 import { getPrisma } from './database'
+import { withRiotPriority } from './riotPriority'
 
 const LIVE_CLIENT_HOST = '127.0.0.1'
 const LIVE_CLIENT_PORT = 2999
@@ -237,7 +238,8 @@ export class GameDetector {
     }
 
     // ── Phase 2: Background enrich with Riot Match API ─────────────────
-    this.enrichWithMatchApi(gameStartedAt, snapshot).catch((err) => {
+    // P1-3: the game that just ended goes before any scout or background read (riotPriority.ts).
+    withRiotPriority('gameEnd', () => this.enrichWithMatchApi(gameStartedAt, snapshot)).catch((err) => {
       console.error('[detector] Background enrich failed:', err)
     })
   }

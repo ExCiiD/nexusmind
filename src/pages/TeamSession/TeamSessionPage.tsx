@@ -111,7 +111,7 @@ export function TeamSessionPage() {
 
   const group = useMemo(() => groups.find((g) => g.id === session?.groupId), [groups, session])
   const myMember = group?.members.find((m) => m.userId === myUserId)
-  const canManage = !!group && canManageSession(group.myRole, myMember?.isCaptain ?? false)
+  const canManage = !!group && canManageSession(group.myRole, myMember?.isCaptain ?? false, group.myStaffRoles)
 
   const baseCategories = useLocalizedFundamentals()
   const categories = useMemo(() => mergedFundamentalCategories(fundamentals, baseCategories), [fundamentals, baseCategories])
@@ -143,7 +143,7 @@ export function TeamSessionPage() {
   // Eligible responsibles: coach/manager/owner or a flagged captain — same
   // rule the RLS `can_manage_session` helper enforces server-side.
   const eligibleResponsibles = useMemo(
-    () => group?.members.filter((m) => canManageSession(m.role, m.isCaptain)) ?? [],
+    () => group?.members.filter((m) => canManageSession(m.role, m.isCaptain, m.staffRoles)) ?? [],
     [group],
   )
   useEffect(() => {

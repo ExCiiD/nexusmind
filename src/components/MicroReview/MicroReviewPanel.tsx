@@ -29,6 +29,7 @@ import { usePrepareSession } from './usePrepareSession'
 import { useTeamCodex } from './useTeamCodex'
 import { toNxmUrl } from '@/lib/mediaCore'
 import { EXCERPT_SEC, PRE_ROLL_SEC } from '@/lib/microReview/vodTiming'
+import { isRiotRateLimited, riotErrorText } from '@/lib/riotErrors'
 
 const panel = 'panel-surface rounded-2xl border border-hextech-border-dim/70 shadow-lg backdrop-blur-sm'
 
@@ -47,10 +48,13 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
   const [picking, setPicking] = useState(false)
   const [xp, setXp] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  // Post-game: the analysis could not load because Riot is rate-limiting (shown with its wait instead of "unavailable").
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     let alive = true
     setData(undefined)
+    setLoadError(null)
     window.api.microReviewGet(gameId)
       .then((d) => {
         if (!alive) return
@@ -60,10 +64,14 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
         const firstOpen = (d?.analysis?.moments ?? []).findIndex((m) => !byKey[m.key])
         setIndex(firstOpen < 0 ? 0 : firstOpen)
       })
-      .catch(() => { if (alive) setData(null) })
+      .catch((err) => {
+        if (!alive) return
+        setData(null)
+        if (isRiotRateLimited(err)) setLoadError(riotErrorText(err, t))
+      })
     window.api.listMistakeTags().then((x) => { if (alive) setTags(x) }).catch(() => {})
     return () => { alive = false }
-  }, [gameId])
+  }, [gameId, t])
 
   const moments = useMemo(() => data?.analysis?.moments ?? [], [data])
   const stats = useMemo(() => (data ? choiceStats(data.pastAnswers, data.role, data.champion) : undefined), [data])
@@ -121,7 +129,7 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
     return (
       <section className={cn(panel, 'p-4')} data-testid="micro-review-unavailable">
         <Header count={0} done={0} />
-        <p className="mt-2 text-xs text-hextech-text-dim">{t(data?.reason === 'unsupported-mode' ? 'microReview.unsupported' : 'microReview.unavailable')}</p>
+        <p className="mt-2 text-xs text-hextech-text-dim">{loadError ?? t(data?.reason === 'unsupported-mode' ? 'microReview.unsupported' : 'microReview.unavailable')}</p>
       </section>
     )
   }

@@ -29,7 +29,7 @@ export function VodReviewSection({ groups, myUserId, nameOf }: Props) {
   const { toast } = useToast()
   const groupId = groups[0]?.id ?? null
   const group = groups.find((g) => g.id === groupId)
-  const isStaff = !!group && isLegacyStaff(group.myRole)
+  const isStaff = !!group && isLegacyStaff(group.myRole, group.myStaffRoles)
 
   const [sessions, setSessions] = useState<VodReviewSession[] | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)

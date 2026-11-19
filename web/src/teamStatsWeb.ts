@@ -19,7 +19,8 @@ import type { CustomGame, TeamSynergyStats } from '@/lib/ipc'
  * - match bodies never change: kept in memory for the tab's life (LRU, MATCH_CACHE_MAX), and a body already being
  *   fetched is awaited instead of fetched twice;
  * - match id lists and Riot ID → puuid are kept a few minutes, so switching tabs or minTogether costs nothing;
- * - bodies are fetched with a small concurrency cap (STATS_CONCURRENCY), below the scouting one.
+ * - bodies are fetched with a small concurrency cap (STATS_CONCURRENCY), below the scouting one;
+ * - every call is marked background (x-nxm-priority), so a user's direct action goes first at the proxy.
  */
 
 const MATCH_CACHE_MAX = 600
@@ -50,7 +51,7 @@ async function matchBodies(byRegion: Map<string, string[]>): Promise<Map<string,
       } else missing.push(id)
     }
     if (missing.length === 0) continue
-    const batch = riot.getMatchesBulk(missing, region, STATS_CONCURRENCY)
+    const batch = riot.getMatchesBulk(missing, region, STATS_CONCURRENCY, riot.BACKGROUND)
     for (const id of missing) {
       const one = batch.then((m) => m.get(id) ?? null).finally(() => inflight.delete(id))
       inflight.set(id, one)
@@ -65,7 +66,7 @@ function recentFlexIds(puuid: string, region: string, count: number): Promise<st
   const key = `${puuid}|${region}|${count}`
   const hit = idLists.get(key)
   if (hit && Date.now() - hit.at < IDS_TTL_MS) return hit.ids
-  const ids = riot.getRecentMatchIds(puuid, region, count, 440)
+  const ids = riot.getRecentMatchIds(puuid, region, count, 440, riot.BACKGROUND)
   idLists.set(key, { at: Date.now(), ids })
   ids.catch(() => idLists.delete(key))
   return ids
@@ -78,7 +79,7 @@ function puuidOf(m: { puuid?: string | null; ign?: string | null; tagLine?: stri
   const key = `${m.ign}#${m.tagLine}@${m.region}`.toLowerCase()
   let p = puuids.get(key)
   if (!p) {
-    p = riot.getAccountByRiotId(m.ign, m.tagLine, m.region).then((a) => a?.puuid ?? null, () => null)
+    p = riot.getAccountByRiotId(m.ign, m.tagLine, m.region, riot.BACKGROUND).then((a) => a?.puuid ?? null, () => null)
     puuids.set(key, p)
   }
   return p

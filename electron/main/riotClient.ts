@@ -14,6 +14,7 @@
 // (Node 23+) and crashed Electron 33 (Node 20); pinning to ^6.21 fixes
 // that, but the try/catch is the actual safety net.
 import { prepareRiotRequest, RiotAuthError } from './riotTransport'
+import { currentRiotPriority, PRIORITY_RANK, type RiotPriority } from './riotPriority'
 import { RIOT_LIMITS } from '../../src/lib/riotLimits'
 import { mergeMatchIdsByRecency } from '../../src/lib/scoutingCore'
 
@@ -93,16 +94,14 @@ class MultiWindowLimiter {
   private windows: RateWindow[]
   private label: string
   /**
-   * Serializes acquire() calls. Without this, 25 workers calling
-   * acquire() concurrently all read "99/100 tokens used" simultaneously,
-   * each decide they can proceed, each push their timestamp — bucket
-   * overshoots by 24, Riot returns 429 cascade with 19s backoffs.
-   *
-   * Chaining through a single queue promise means each acquire only
-   * starts checking limits AFTER the previous one has finished its
-   * push, so the count is always accurate.
+   * Callers waiting for a slot. One pump hands the slots out, one at a time, so 25 workers never all read
+   * "99/100 used" at once and overshoot (Riot's 429 cascade). P1-3: the pump always serves the most urgent
+   * caller first (end of game, then an open screen, then background work), in arrival order within a level,
+   * so a long scout never delays the game that just ended.
    */
-  private acquireQueue: Promise<void> = Promise.resolve()
+  private waiters: Array<{ rank: number; seq: number; resolve: () => void }> = []
+  private seq = 0
+  private pumping = false
 
   constructor(label: string, initial: Array<{ capacity: number; windowSec: number }>) {
     this.label = label
@@ -145,37 +144,48 @@ class MultiWindowLimiter {
     return worstWait
   }
   /**
-   * Serialized acquire — only one caller is inside the wait/push critical
-   * section at a time. The actual HTTP request after this returns can
-   * still happen in parallel (caller's responsibility), but the slot
-   * accounting is atomic.
+   * Resolves once a slot is taken for the caller. The HTTP request after this returns can still run in
+   * parallel (caller's responsibility), but the slot accounting is atomic.
    */
-  async acquire(): Promise<void> {
-    // Chain onto the queue. Each acquirer is awaited by the next one
-    // before they get to check limits & push.
-    const previous = this.acquireQueue
-    let releaseNext!: () => void
-    this.acquireQueue = new Promise<void>((r) => { releaseNext = r })
+  acquire(priority: RiotPriority = currentRiotPriority()): Promise<void> {
+    return new Promise<void>((resolve) => {
+      this.waiters.push({ rank: PRIORITY_RANK[priority], seq: this.seq++, resolve })
+      this.waiters.sort((a, b) => a.rank - b.rank || a.seq - b.seq)
+      void this.pump()
+    })
+  }
+
+  /** Callers waiting, per priority (P1-3: what the screens can show instead of a spinner). */
+  queued(): Record<RiotPriority, number> {
+    const out: Record<RiotPriority, number> = { gameEnd: 0, interactive: 0, background: 0 }
+    const byRank = Object.entries(PRIORITY_RANK) as Array<[RiotPriority, number]>
+    for (const w of this.waiters) out[byRank.find(([, r]) => r === w.rank)![0]]++
+    return out
+  }
+
+  private async pump(): Promise<void> {
+    if (this.pumping) return
+    this.pumping = true
     try {
-      await previous
-      while (true) {
+      while (this.waiters.length > 0) {
         const now = Date.now()
         const w = this.waitMs(now)
         if (w <= 0) {
           for (const win of this.windows) win.used.push(now)
-          return
+          // The head is read again after every wait: a more urgent caller that arrived meanwhile goes first.
+          this.waiters.shift()!.resolve()
+          continue
         }
-        // Wait the full computed duration (no 1000ms cap) so we don't
-        // wake spuriously to find the slot already taken by the next
-        // queued caller. Re-checks happen automatically via the while
-        // loop if the wait was too short.
+        // Wait the full computed duration (no 1000ms cap) so we don't wake spuriously; the loop re-checks.
         await new Promise((r) => setTimeout(r, w))
       }
     } finally {
-      releaseNext()
+      this.pumping = false
     }
   }
 }
+
+export { MultiWindowLimiter as RiotRateLimiter }
 
 // Two limiters: a global "app-tier" budget shared by every endpoint, and
 // a per-method limiter that's set lazily on first response. Both start
@@ -187,6 +197,11 @@ class MultiWindowLimiter {
 //      these limits within milliseconds.
 // Starting permissive and downgrading on 429 = thrashing. Starting
 // strict and upgrading on success = no overshoots, ever.
+/** Riot calls waiting for a slot of the app-wide budget, per priority (P1-3). */
+export function riotQueueStatus(): Record<RiotPriority, number> {
+  return appLimiter.queued()
+}
+
 const appLimiter = new MultiWindowLimiter('app', [
   { capacity: 20, windowSec: 1 },
   { capacity: 100, windowSec: 120 },
@@ -238,7 +253,19 @@ function endpointKeyFromUrl(url: string): string {
   }
 }
 
-async function riotFetch(url: string, allowedFallbackStatus?: number[]): Promise<{ data: any; status: number }> {
+/** Tries per call when Riot (or the proxy's budget) answers 429: the first one and two more, then RIOT_RATE_LIMITED. */
+export const RIOT_MAX_ATTEMPTS = 3
+
+/** Riot's limit (or the shared budget) still full after RIOT_MAX_ATTEMPTS tries. `code` for the screens to translate. */
+export class RiotRateLimitError extends Error {
+  readonly code = 'RIOT_RATE_LIMITED'
+  constructor(readonly retryAfterSec: number, readonly limitType: string) {
+    super(`RIOT_RATE_LIMITED: too many Riot requests right now. Try again in about ${Math.max(retryAfterSec, 30)} seconds.`)
+    this.name = 'RiotRateLimitError'
+  }
+}
+
+async function riotFetch(url: string, allowedFallbackStatus?: number[], attempt = 1): Promise<{ data: any; status: number }> {
   // Proxy (Supabase token) in builds, local dev key only under `npm run dev`.
   const request = await prepareRiotRequest(url)
 
@@ -262,12 +289,19 @@ async function riotFetch(url: string, allowedFallbackStatus?: number[]): Promise
   const methodSpec = parseLimitHeader(res.headers.get('X-Method-Rate-Limit'))
   if (methodSpec) methodLimiter.configure(methodSpec)
 
-  if (res.status === 429) {
-    const retryAfter = parseInt(res.headers.get('Retry-After') || '1', 10)
-    const limitType = res.headers.get('X-Rate-Limit-Type') ?? 'unknown'
-    console.warn(`[riotFetch] 429 (${limitType}) — backing off ${retryAfter}s · ${endpointKey}`)
+  // 429 from Riot or the proxy's budget, or 503 when the proxy cannot reach its budget (background calls):
+  // wait the whole Retry-After, at most RIOT_MAX_ATTEMPTS tries in all, then a clear error. It used to retry
+  // without end, which kept hammering a key already over its limit.
+  if (res.status === 429 || (res.status === 503 && res.headers.get('Retry-After'))) {
+    const retryAfter = Math.max(1, parseInt(res.headers.get('Retry-After') || '1', 10) || 1)
+    const limitType = res.headers.get('X-Rate-Limit-Type') ?? (res.status === 503 ? 'proxy-budget-unavailable' : 'unknown')
+    if (attempt >= RIOT_MAX_ATTEMPTS) {
+      console.warn(`[riotFetch] ${res.status} (${limitType}) — giving up after ${attempt} tries · ${endpointKey}`)
+      throw new RiotRateLimitError(retryAfter, limitType)
+    }
+    console.warn(`[riotFetch] ${res.status} (${limitType}) — backing off ${retryAfter}s (try ${attempt}/${RIOT_MAX_ATTEMPTS}) · ${endpointKey}`)
     await new Promise((r) => setTimeout(r, retryAfter * 1000))
-    return riotFetch(url, allowedFallbackStatus)
+    return riotFetch(url, allowedFallbackStatus, attempt + 1)
   }
 
   if (!res.ok) {

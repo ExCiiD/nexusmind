@@ -31,7 +31,7 @@ export function ManagementPage() {
   const { available, loading, myUserId, groups, group, nameOf, reload } = section
 
   const hasGroup = !!group
-  const isStaff = !!group && isLegacyStaff(group.myRole)
+  const isStaff = !!group && isLegacyStaff(group.myRole, group.myStaffRoles)
   // The sections take a list of groups (a leftover of their own pickers):
   // they get the active group alone, and the `key` remounts them per group.
   const groupsHere = useMemo(() => (group ? [group] : []), [group])

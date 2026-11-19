@@ -96,7 +96,8 @@ describe('before the member_puuid migration (column missing, 42703)', () => {
     })
     const groups = await listMyGroups({ from } as never, 'u1')
     expect(groups[0].members[0]).not.toHaveProperty('puuid')
-    expect(memberSelects).toHaveLength(2)
+    // With puuid and staff_roles (#39), with puuid alone, then without either.
+    expect(memberSelects).toHaveLength(3)
   })
 })
 

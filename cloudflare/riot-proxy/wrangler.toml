@@ -5,13 +5,48 @@ compatibility_date = "2025-09-01"
 # Public, non-secret settings.
 [vars]
 SUPABASE_URL = "https://zwubyzrfpelhxjjezvrh.supabase.co"
+# P1-2: Riot's application limits for the key, "calls:seconds" (development key: 20/1 s and 100/2 min,
+# kept a little under). Change it with the production key.
+RIOT_APP_LIMITS = "18:1,95:120"
+# P1-2: share of each window kept for interactive calls (end of game, open screen). Background calls
+# (scout, synergy, sent with x-nxm-priority: background) use the rest.
+INTERACTIVE_RESERVE = "0.3"
+# CyberSecurity: most of each window one account may use, so a single user (or a stolen token) cannot empty
+# the key for everyone. 0.25 of 95 calls / 2 min = 23 calls per user.
+USER_WINDOW_SHARE = "0.25"
 
-# Per-player limit (Workers Rate Limiting binding). 300 calls/min ≈ 5 req/s,
-# well above normal use; long team scouts are paced by Riot's own key limits.
+# Per-player limit (Workers Rate Limiting binding). 20 calls/min with the development key (was 300, then 60:
+# CyberSecurity, one account must not be able to drain the shared budget). Raise it with the production key.
 [[ratelimits]]
 name = "USER_LIMITER"
 namespace_id = "1001"
-simple = { limit = 300, period = 60 }
+simple = { limit = 20, period = 60 }
+
+# P1-2: the global budget, one Durable Object per Riot host (src/budgetObject.ts).
+[[durable_objects.bindings]]
+name = "RIOT_BUDGET"
+class_name = "RiotBudgetObject"
+
+[[migrations]]
+tag = "v1-riot-budget"
+new_sqlite_classes = ["RiotBudgetObject"]
+
+# P1-1: finished games' match and timeline, shared by every user (src/cachePolicy.ts).
+# On deployment, before the first deploy with this binding (CyberSecurity rules):
+#   npx wrangler r2 bucket create nexusmind-riot-matches
+#   npx wrangler r2 bucket lifecycle add nexusmind-riot-matches expire-90-days --expire-days 90
+# The bucket stays PRIVATE: never turn on its r2.dev address nor attach a custom domain. Only this Worker
+# reads it, through the binding. Check with: npx wrangler r2 bucket dev-url get nexusmind-riot-matches
+[[r2_buckets]]
+binding = "MATCH_STORE"
+bucket_name = "nexusmind-riot-matches"
+
+# P1-10: one data point per request (src/metrics.ts). Created on first write. Read with the SQL API, e.g.
+#   SELECT blob1 AS endpoint, blob3 AS outcome, SUM(_sample_interval * double3) AS calls
+#   FROM riot_proxy WHERE timestamp > NOW() - INTERVAL '1' DAY GROUP BY endpoint, outcome
+[[analytics_engine_datasets]]
+binding = "METRICS"
+dataset = "riot_proxy"
 
 # Secrets — set once with:
 #   npx wrangler secret put RIOT_API_KEY

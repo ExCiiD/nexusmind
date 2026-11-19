@@ -58,7 +58,7 @@ async function doSync(group: Group): Promise<Team> {
   // #38: a player who renamed their Riot account (same puuid) keeps their team
   // member (history, pool, stats) — updated in place, not removed and re-added.
   for (const { id, ...change } of plan.update) await window.api.updateTeamMember(id, change)
-  if ((plan.add.length || plan.remove.length || plan.update.length) && isLegacyStaff(group.myRole)) {
+  if ((plan.add.length || plan.remove.length || plan.update.length) && isLegacyStaff(group.myRole, group.myStaffRoles)) {
     window.api.teamPublishToGroup?.(group.id, team.id).catch(() => { /* retried on the next change */ })
   }
   return team

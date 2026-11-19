@@ -1,4 +1,4 @@
-import type { GroupRole } from './collab'
+import type { GroupRole, StaffRole } from './collab'
 
 /**
  * Permission predicates for the Planning rework + team sessions. Pure, no
@@ -18,18 +18,41 @@ import type { GroupRole } from './collab'
  * since 18 November 2026.
  */
 
-export function isLegacyStaff(role: GroupRole): boolean {
-  return role === 'owner' || role === 'coach' || role === 'analyst'
+/**
+ * #39: a member's effective roles, their main role plus the staff roles held on top of it
+ * (member_staff_roles, `private.has_group_role`). Every predicate below takes `staffRoles` as an optional
+ * last argument: without it, they answer as before.
+ */
+export function effectiveRoles(role: GroupRole, staffRoles: readonly StaffRole[] = []): GroupRole[] {
+  return [role, ...staffRoles.filter((r) => r !== role)]
+}
+
+const holdsAny = (role: GroupRole, staffRoles: readonly StaffRole[], wanted: readonly GroupRole[]) =>
+  effectiveRoles(role, staffRoles).some((r) => wanted.includes(r))
+
+export function isLegacyStaff(role: GroupRole, staffRoles: readonly StaffRole[] = []): boolean {
+  return holdsAny(role, staffRoles, ['owner', 'coach', 'analyst'])
 }
 
 /** Management: owner, coach, manager — and the captain, whatever their role. */
-export function canEditCalendar(role: GroupRole, isCaptain = false): boolean {
-  return role === 'owner' || role === 'coach' || role === 'manager' || isCaptain
+export function canEditCalendar(role: GroupRole, isCaptain = false, staffRoles: readonly StaffRole[] = []): boolean {
+  return holdsAny(role, staffRoles, ['owner', 'coach', 'manager']) || isCaptain
 }
 
-export function canManageSession(role: GroupRole, isCaptain: boolean): boolean {
-  return canEditCalendar(role, isCaptain)
+export function canManageSession(role: GroupRole, isCaptain: boolean, staffRoles: readonly StaffRole[] = []): boolean {
+  return canEditCalendar(role, isCaptain, staffRoles)
 }
+
+/**
+ * Shared wellbeing (`private.can_read_wellbeing`): a staff role AND a main role other than player. A player who
+ * also coaches does not read teammates' wellbeing (user decision, 19/11/2026).
+ */
+export function canReadWellbeing(role: GroupRole, staffRoles: readonly StaffRole[] = []): boolean {
+  return role !== 'player' && isLegacyStaff(role, staffRoles)
+}
+
+/** #39: the staff roles the owner can add on top of a member's main role. */
+export const ASSIGNABLE_STAFF_ROLES: StaffRole[] = ['coach', 'manager', 'analyst']
 
 /** Only the owner changes roles (set_member_role), never their own. */
 export function canChangeRoles(role: GroupRole): boolean {

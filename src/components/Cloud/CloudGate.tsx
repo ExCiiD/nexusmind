@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import type { CloudStatus } from '@/lib/ipc'
 import { LegalDialog } from './LegalDialog'
 import heroArt from '@/assets/ascend-hero.jpg'
+import { RiotLegalNotice } from '@/components/legal/RiotLegalNotice'
 
 /**
  * An Ascend account is required: it authenticates Riot calls (the Riot API
@@ -174,7 +175,7 @@ export function CloudLogin({ onSignedIn, footer }: { onSignedIn: (user: CloudSta
 
   return (
     <div
-      className="relative flex h-screen items-center justify-center bg-hextech-black bg-cover bg-center p-4"
+      className="relative flex min-h-screen flex-col items-center justify-center gap-4 bg-hextech-black bg-cover bg-center p-4"
       style={{ backgroundImage: `linear-gradient(rgba(13,10,6,0.82), rgba(13,10,6,0.92)), url(${heroArt})` }}
     >
       <Card className="w-full max-w-md border-hextech-border bg-hextech-dark">
@@ -361,6 +362,8 @@ export function CloudLogin({ onSignedIn, footer }: { onSignedIn: (user: CloudSta
           {footer && <div className="mt-4 border-t border-hextech-border-dim pt-4">{footer}</div>}
         </CardContent>
       </Card>
+      {/* R7: Riot's legal notice, readily visible on the sign-in screen. */}
+      <RiotLegalNotice className="max-w-2xl text-center" />
       <LegalDialog doc={legal} onClose={() => setLegal(null)} />
     </div>
   )

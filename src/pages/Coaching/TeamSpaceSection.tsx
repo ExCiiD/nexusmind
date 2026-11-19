@@ -22,7 +22,7 @@ export function TeamSpaceSection({ group }: { group: Group }) {
   useEffect(() => () => clearTimeout(publishTimer.current), [])
 
   const publishSoon = (teamId: string) => {
-    if (!isLegacyStaff(group.myRole) || !window.api.teamPublishToGroup) return
+    if (!isLegacyStaff(group.myRole, group.myStaffRoles) || !window.api.teamPublishToGroup) return
     clearTimeout(publishTimer.current)
     publishTimer.current = setTimeout(() => {
       window.api.teamPublishToGroup?.(group.id, teamId).catch((err: Error) => {

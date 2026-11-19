@@ -2,6 +2,7 @@ import { app } from 'electron'
 import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { getAccessToken } from './cloud/supabase'
+import { currentRiotPriority } from './riotPriority'
 
 /**
  * Decides how a Riot API call leaves the app.
@@ -59,7 +60,10 @@ export async function prepareRiotRequest(riotUrl: string): Promise<{ url: string
   if (mode === 'proxy') {
     const token = await getAccessToken()
     if (!token) throw new RiotAuthError('LOGIN_REQUIRED', 'Sign in to your Ascend account to load Riot data.')
-    return { url: toProxyUrl(riotUrl, PROXY_URL), headers: { Authorization: `Bearer ${token}` } }
+    // P1-3: the proxy keeps part of the shared budget for interactive calls, background ones say so.
+    const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
+    if (currentRiotPriority() === 'background') headers['x-nxm-priority'] = 'background'
+    return { url: toProxyUrl(riotUrl, PROXY_URL), headers }
   }
   if (mode === 'direct') {
     return { url: riotUrl, headers: { 'X-Riot-Token': readDevKey()! } }

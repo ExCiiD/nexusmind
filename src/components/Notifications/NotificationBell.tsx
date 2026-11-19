@@ -38,8 +38,16 @@ function linkOf(n: AppNotification): string | null {
 }
 
 /** `data` stores raw values (ISO dates, ids); format the ones shown in text before interpolating. */
-function renderParams(data: Record<string, unknown>, locale: string): Record<string, unknown> {
+function renderParams(data: Record<string, unknown>, locale: string, roleName: (r: string) => string, none: string): Record<string, unknown> {
   const out = { ...data }
+  // #39 (staff_roles_changed, member_staff_roles_changed): role lists as words ("Coach, Analyst").
+  const list = (v: unknown): string => {
+    const names = Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').map(roleName) : []
+    return names.length === 0 ? none : names.join(', ')
+  }
+  if ('roles' in out) out.rolesText = list(out.roles)
+  if ('added' in out) out.addedText = list(out.added)
+  if ('removed' in out) out.removedText = list(out.removed)
   if (typeof out.scheduledAt === 'string') {
     const d = new Date(out.scheduledAt)
     if (!Number.isNaN(d.getTime())) out.scheduledAt = d.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
@@ -156,7 +164,7 @@ export function NotificationBell() {
             <ul className="divide-y divide-hextech-border-dim">
               {items.map((n) => {
                 const external = n.link ? !canNavigateHere(linkOf(n) ?? n.link) : false
-                const params = renderParams(n.data, i18n.language)
+                const params = renderParams(n.data, i18n.language, (r) => t(`coaching.roles.${r}`, { defaultValue: r }), t('notifications.rolesNone'))
                 return (
                   <li key={n.id}>
                     <button

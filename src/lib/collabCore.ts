@@ -10,6 +10,7 @@ import type {
   PlayerSessionView,
   PuuidStatus,
   ReviewComment,
+  StaffRole,
 } from './collab'
 
 /**
@@ -41,7 +42,7 @@ const parseJson = <T>(v: unknown, fallback: T): T => {
 // ── Groups ──────────────────────────────────────────────────────────────────
 
 export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Group[]> {
-  const { data: memberships, error } = await sb.from('group_members').select('group_id, role').eq('user_id', uid)
+  const { data: memberships, error } = await selectMemberships(sb, uid)
   if (error) fail(error, 'list groups failed')
   const ids = (memberships ?? []).map((m) => m.group_id)
   if (ids.length === 0) return []
@@ -62,28 +63,52 @@ export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Gro
       kind: g.kind as GroupKind,
       logoUrl: g.logo_url ?? null,
       myRole: memberships!.find((m) => m.group_id === g.id)!.role as GroupRole,
+      ...staffRolesField('myStaffRoles', memberships!.find((m) => m.group_id === g.id)!.staff_roles),
       members: (members.data ?? [])
         .filter((m) => m.group_id === g.id)
-        .map((m) => ({ userId: m.user_id, role: m.role as GroupRole, isCaptain: !!m.is_captain, displayName: m.display_name, riotId: m.riot_id, ...(m.puuid !== undefined ? { puuid: m.puuid, puuidStatus: m.puuid_status ?? null } : {}), joinedAt: m.joined_at })),
+        .map((m) => ({ userId: m.user_id, role: m.role as GroupRole, isCaptain: !!m.is_captain, displayName: m.display_name, riotId: m.riot_id, ...(m.puuid !== undefined ? { puuid: m.puuid, puuidStatus: m.puuid_status ?? null } : {}), ...staffRolesField('staffRoles', m.staff_roles), joinedAt: m.joined_at })),
       sharing: {
         shareReviews: share?.share_reviews ?? true,
         shareStats: share?.share_stats ?? true,
-        shareTeam: share?.share_team ?? true,
+        // S19-17 (20261119250000_team_data_staff_only): team data is shared only when explicitly turned on, so a
+        // member who never set it shows "not shared", as the server reads it.
+        shareTeam: share?.share_team ?? false,
         shareWellbeing: share?.share_wellbeing ?? false,
       },
     }
   })
 }
 
-type MemberRow = { group_id: string; user_id: string; role: string; is_captain: boolean; display_name: string | null; riot_id: string | null; puuid?: string | null; puuid_status?: PuuidStatus | null; joined_at: string }
+type MemberRow = { group_id: string; user_id: string; role: string; is_captain: boolean; display_name: string | null; riot_id: string | null; puuid?: string | null; puuid_status?: PuuidStatus | null; staff_roles?: string[] | null; joined_at: string }
 const MEMBER_SELECT = 'group_id, user_id, role, is_captain, display_name, riot_id, joined_at'
+type DbResult<T> = { data: T | null; error: { message: string; code?: string } | null }
 
-/** The groups' members, with their puuid once the member_puuid migration is in (#38: before it the column is
- *  missing, list them without). The puuid is the stable key: a Riot ID changes when the player renames. */
-async function selectMembers(sb: SupabaseClient, ids: string[]): Promise<{ data: MemberRow[] | null; error: { message: string; code?: string } | null }> {
-  const withPuuid = await sb.from('group_members').select(`${MEMBER_SELECT}, puuid, puuid_status`).in('group_id', ids)
-  if (withPuuid.error?.code === '42703') return sb.from('group_members').select(MEMBER_SELECT).in('group_id', ids)
-  return withPuuid
+const STAFF_ROLE_VALUES: readonly StaffRole[] = ['coach', 'manager', 'analyst']
+
+/** `{ [key]: roles }` when the staff_roles column was read, {} before the #39 migration (field left out). */
+function staffRolesField<K extends string>(key: K, raw: string[] | null | undefined): { [P in K]?: StaffRole[] } {
+  if (raw === undefined) return {}
+  const roles = (raw ?? []).filter((r): r is StaffRole => (STAFF_ROLE_VALUES as readonly string[]).includes(r))
+  return { [key]: roles } as { [P in K]?: StaffRole[] }
+}
+
+/** My memberships, with my staff roles once the #39 migration is in (before it the column is missing). */
+async function selectMemberships(sb: SupabaseClient, uid: string): Promise<DbResult<Array<{ group_id: string; role: string; staff_roles?: string[] | null }>>> {
+  const withStaff = await sb.from('group_members').select('group_id, role, staff_roles').eq('user_id', uid)
+  if (withStaff.error?.code === '42703') return sb.from('group_members').select('group_id, role').eq('user_id', uid)
+  return withStaff
+}
+
+/** The groups' members, with the newest columns the database has: puuid (#38, member_puuid) and staff_roles
+ *  (#39, member_staff_roles). A column missing gives 42703: the list is read again without it. The puuid is the
+ *  stable key: a Riot ID changes when the player renames. */
+async function selectMembers(sb: SupabaseClient, ids: string[]): Promise<DbResult<MemberRow[]>> {
+  for (const extra of [', puuid, puuid_status, staff_roles', ', puuid, puuid_status', '']) {
+    // The select is built at run time, so the typed client cannot read its columns: the row type is MemberRow.
+    const res = (await sb.from('group_members').select(`${MEMBER_SELECT}${extra}`).in('group_id', ids)) as unknown as DbResult<MemberRow[]>
+    if (res.error?.code !== '42703' || extra === '') return res
+  }
+  throw new Error('unreachable')
 }
 
 type GroupRow = { id: string; name: string; kind: string; logo_url?: string | null }
@@ -259,6 +284,16 @@ export async function setCaptain(sb: SupabaseClient, groupId: string, userId: st
 export async function setMemberRole(sb: SupabaseClient, groupId: string, userId: string, role: Exclude<GroupRole, 'owner'>): Promise<void> {
   const { error } = await sb.rpc('set_member_role', { p_group: groupId, p_user: userId, p_role: role })
   if (error) fail(error, 'set member role failed')
+}
+
+/** #39, owner only (enforced by the `set_member_staff_roles` RPC): a member's whole list of extra staff roles. */
+export async function setMemberStaffRoles(sb: SupabaseClient, groupId: string, userId: string, roles: StaffRole[]): Promise<StaffRole[]> {
+  const { data, error } = await sb.rpc('set_member_staff_roles', { p_group: groupId, p_user: userId, p_roles: roles })
+  if (error) {
+    for (const code of ['INVALID_ROLE', 'OWNER_HAS_ALL_ROLES', 'NOT_FOUND']) if (error.message?.includes(code)) throw new Error(code)
+    fail(error, 'set member staff roles failed')
+  }
+  return ((data as string[] | null) ?? []).filter((r): r is StaffRole => (STAFF_ROLE_VALUES as readonly string[]).includes(r))
 }
 
 export async function leaveGroup(sb: SupabaseClient, uid: string, groupId: string): Promise<void> {

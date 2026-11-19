@@ -61,6 +61,8 @@ Base légale : l'exécution du service que vous demandez (article 6.1.b du RGPD)
 - **Discord** : uniquement si vous utilisez cette intégration.
 - **GitHub** : héberge les fichiers d'installation et les mises à jour de l'application ; ce site interroge l'API publique de GitHub pour afficher la dernière version.
 
+Pour limiter les appels à l'API Riot, notre relais garde chez Cloudflare (stockage R2) un cache partagé des parties publiques de League of Legends qu'il a déjà récupérées. Ces données de match proviennent de Riot Games et contiennent notamment le Riot ID et l'identifiant de compte Riot (PUUID) des 10 joueurs de chaque partie, y compris de joueurs qui n'ont pas de compte Ascend. Elles servent uniquement à ne pas redemander la même partie à Riot et sont supprimées après 90 jours.
+
 Aucune donnée n'est vendue ni utilisée à des fins publicitaires. Ce site n'utilise ni cookie, ni outil de mesure d'audience, ni police ou script hébergé par un tiers.
 
 ## 7. Durées de conservation
@@ -70,6 +72,7 @@ Aucune donnée n'est vendue ni utilisée à des fins publicitaires. Ce site n'ut
 - Check-ins de bien-être : jusqu'au retrait de votre consentement ou à la suppression de votre compte.
 - Rapports partagés et adresses de calendrier : jusqu'à leur révocation par le staff, ou la suppression du groupe.
 - Journaux techniques du relais Riot : durée de rétention standard de l'hébergeur, sans conservation des requêtes par Ascend.
+- Cache des parties Riot du relais : 90 jours.
 - Signalements de bug : jusqu'à leur traitement, puis supprimés sur simple demande.
 
 **Quand vous quittez un groupe** : votre accès cesse immédiatement et le groupe ne voit plus vos données partagées (reviews, statistiques, bien-être). Ce que vous avez écrit **pour le groupe** (commentaires, retours de session, demandes au planning) et ce que le staff a noté vous concernant (présence, objectifs assignés) restent dans le groupe, car ils font partie de son historique. Vous pouvez demander leur suppression à exciid501@gmail.com.

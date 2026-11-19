@@ -21,6 +21,10 @@ export function registerCollabHandlers() {
   validatedHandle('collab:remove-member', z.tuple([uuid, uuid]), (_e, groupId, userId) => collab.removeMember(groupId, userId))
   validatedHandle('collab:set-captain', z.tuple([uuid, uuid, z.boolean()]), (_e, groupId, userId, isCaptain) => collab.setCaptain(groupId, userId, isCaptain))
   validatedHandle('collab:set-member-role', z.tuple([uuid, uuid, role]), (_e, groupId, userId, r) => collab.setMemberRole(groupId, userId, r))
+  // #39: the whole list of extra staff roles, at most the three of them, each once.
+  validatedHandle('collab:set-member-staff-roles',
+    z.tuple([uuid, uuid, z.array(z.enum(['coach', 'manager', 'analyst'])).max(3).refine((a) => new Set(a).size === a.length, 'duplicate role')]),
+    (_e, groupId, userId, roles) => collab.setMemberStaffRoles(groupId, userId, roles))
   validatedHandle('collab:set-sharing', z.tuple([uuid, z.object({ shareReviews: z.boolean(), shareStats: z.boolean(), shareTeam: z.boolean(), shareWellbeing: z.boolean() })]),
     (_e, groupId, s) => collab.setSharing(groupId, s))
 

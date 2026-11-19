@@ -23,6 +23,7 @@
 import { getPrisma } from './database'
 import { getAccountByRiotId, getLeagueEntriesByPuuid, getMatch, getMatchIdsInRange } from './riotClient'
 import { RiotAuthError } from './riotTransport'
+import { withRiotPriority } from './riotPriority'
 import { ladderScore, parseLeagueEntries, type PlayerRanks, type RankedQueue } from '../../src/lib/rankCore'
 import {
   AWARD_KINDS,
@@ -305,7 +306,8 @@ export function syncTeam(teamId: string): Promise<void> {
   const running = syncing.get(teamId)
   if (running) return running
   lastAttempt.set(teamId, Date.now())
-  const job = runSync(teamId)
+  // P1-3: the weekly awards are background work.
+  const job = withRiotPriority('background', () => runSync(teamId))
     .catch((err) => console.warn('[awards] read failed for team', teamId, errorText(err)))
     .finally(() => syncing.delete(teamId))
   syncing.set(teamId, job)
