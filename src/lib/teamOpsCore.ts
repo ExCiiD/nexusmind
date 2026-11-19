@@ -1,16 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { NewTaskInput, StaffNote, Task, TaskStatus } from './teamOps'
+import { fail } from './supabaseErrors'
 
 /**
  * Communication & tasks (E7), same pattern as devPlanCore.ts. Purely
  * server-side — desktop and web call these identically.
  */
-
-function fail(error: { message: string; code?: string } | null, fallback: string): never {
-  const msg = error?.message ?? fallback
-  if (/permission|forbidden/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
-  throw new Error(msg)
-}
 
 interface TaskRow { id: string; group_id: string; title: string; assignee_id: string | null; due_date: string | null; status: TaskStatus; created_by: string; created_at: string; updated_at: string }
 interface StaffNoteRow { id: string; group_id: string; player_id: string; body: string; created_by: string; created_at: string; updated_at: string }

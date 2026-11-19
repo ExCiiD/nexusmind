@@ -1,11 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ScrimSummary } from './scrims'
-
-function fail(error: { message: string; code?: string } | null, fallback: string): never {
-  const msg = error?.message ?? fallback
-  if (/permission|forbidden/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
-  throw new Error(msg)
-}
+import { fail } from './supabaseErrors'
 
 /** Read-only: any group member can see scheduled scrims (RLS already allows this — see W4's migration). */
 export async function listScrimsForGroup(sb: SupabaseClient, groupId: string): Promise<ScrimSummary[]> {

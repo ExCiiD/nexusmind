@@ -1,16 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { NewTrialCandidateInput, NewTrialEvaluationInput, TrialCandidate, TrialEvaluation, TrialStatus } from './trials'
+import { fail } from './supabaseErrors'
 
 /**
  * Recruitment trials (E10), same pattern as devPlanCore.ts. Purely
  * server-side, staff-only — desktop and web call these identically.
  */
-
-function fail(error: { message: string; code?: string } | null, fallback: string): never {
-  const msg = error?.message ?? fallback
-  if (/permission|forbidden/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
-  throw new Error(msg)
-}
 
 interface CandidateRow {
   id: string; group_id: string; display_name: string; role: TrialCandidate['role']; user_id: string | null

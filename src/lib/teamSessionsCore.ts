@@ -2,18 +2,13 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   GroupFundamental, NewGroupFundamentalInput, SessionQueueFilter, TeamSession, TeamSessionGame, TeamSessionObjectives,
 } from './teamSessions'
+import { fail } from './supabaseErrors'
 
 /**
  * Team sessions (Phase 3, Planning rework — docs/PLAN_GESTION_EQUIPE.md
  * §9), same pattern as calendarCore.ts. Purely server-side — desktop and
  * web call these identically.
  */
-
-function fail(error: { message: string; code?: string } | null, fallback: string): never {
-  const msg = error?.message ?? fallback
-  if (/permission|forbidden/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
-  throw new Error(msg)
-}
 
 interface SessionRow {
   id: string; group_id: string; calendar_event_id: string; status: TeamSession['status']

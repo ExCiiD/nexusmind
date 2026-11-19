@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PublishTeamInput, SharedDraft, SharedPoolEntry, SharedRosterMember, SharedScoutingEntry } from './team'
 import { normalizeSlots, groupDuplicates } from './teamIdentity'
+import { fail } from './supabaseErrors'
 
 /**
  * Local mirrors of the desktop-facing Team/TeamMember/ChampionPoolEntry/
@@ -77,12 +78,6 @@ export interface CoreDraftPrep {
  *     RosterTab/ChampPoolTab/DraftTab/ScoutingTab components
  *     (src/pages/Team/*.tsx) run unchanged on the web — see web/src/api.ts.
  */
-
-function fail(error: { message: string; code?: string } | null, fallback: string): never {
-  const msg = error?.message ?? fallback
-  if (/forbidden|permission/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
-  throw new Error(msg)
-}
 
 interface RosterRow {
   id: string; group_id: string; user_id: string | null; display_name: string

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { DiscussionComment, DiscussionSubjectType } from './discussion'
+import { fail } from './supabaseErrors'
 
 /**
  * Discussion threads on a scrim or a draft (E7 v2) — same pattern as
@@ -7,12 +8,6 @@ import type { DiscussionComment, DiscussionSubjectType } from './discussion'
  * through the group members list they already have, via a `nameOf`
  * helper, same as VodReviewSection/ScrimsPage already do).
  */
-
-function fail(error: { message: string; code?: string } | null, fallback: string): never {
-  const msg = error?.message ?? fallback
-  if (/permission|forbidden/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
-  throw new Error(msg)
-}
 
 interface CommentRow { id: string; group_id: string; subject_type: DiscussionSubjectType; subject_id: string; author_id: string; body: string; created_at: string }
 const toComment = (r: CommentRow): DiscussionComment => ({

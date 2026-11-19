@@ -6,17 +6,12 @@ import type {
 } from './calendar'
 import { generateCalendarSubscriptionToken } from './calendar'
 import type { GroupMember } from './collab'
+import { fail } from './supabaseErrors'
 
 /**
  * Planning & presence (E4), same pattern as teamCore.ts/devPlanCore.ts.
  * Purely server-side — desktop and web call these identically.
  */
-
-function fail(error: { message: string; code?: string } | null, fallback: string): never {
-  const msg = error?.message ?? fallback
-  if (/permission|forbidden/i.test(msg) || error?.code === '42501') throw new Error('FORBIDDEN')
-  throw new Error(msg)
-}
 
 interface EventRow {
   id: string; group_id: string; kind: CalendarEvent['kind']; title: string; starts_at: string; ends_at: string
