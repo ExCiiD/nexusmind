@@ -40,7 +40,8 @@ async function doSync(group: Group): Promise<Team> {
   let team = teams.find((x) => x.groupId === group.id) ?? null
   if (!team) {
     const created = await window.api.createTeam({ name: group.name, isOpponent: false })
-    team = await window.api.linkTeamToGroup(created.id, group.id)
+    const linked = await window.api.linkTeamToGroup(created.id, group.id)
+    team = linked ?? { ...created, groupId: group.id }
   }
   // The lanes the staff set on the roster the group published, if any.
   const shared = await window.api.teamGetShared?.(group.id).catch(() => null)

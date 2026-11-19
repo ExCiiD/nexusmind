@@ -250,7 +250,7 @@ export function TeamSessionPage() {
         <p className="text-sm text-hextech-text-dim">
           {t('teamSession.notFound', { defaultValue: 'No team session found for this event — open it from Planning.' })}
         </p>
-        <Button variant="outline" onClick={() => navigate('/coaching')}>
+        <Button variant="outline" onClick={() => navigate('/management?tab=planning')}>
           <ArrowLeft className="mr-2 h-4 w-4" />{t('teamSession.backToPlanning', { defaultValue: 'Back to Planning' })}
         </Button>
       </div>

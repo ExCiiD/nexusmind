@@ -10,7 +10,30 @@ import type { AppNotification } from '@/lib/notifications'
 const POLL_MS = 30_000
 
 /** Routes that exist on the desktop app; anything else (e.g. `/scrims`, web-only) opens the web app instead. */
-const DESKTOP_ROUTES = ['/review', '/session', '/coaching']
+const DESKTOP_ROUTES = ['/review', '/session', '/coaching', '/management']
+
+/**
+ * Server notifications still link to '/coaching' (set by the database
+ * triggers). Since the section was split, part of them belong to Management:
+ * open the page and tab that holds what they talk about.
+ */
+const COACHING_LINK_BY_TYPE: Partial<Record<AppNotification['type'], string>> = {
+  calendar_event_request: '/management?tab=planning',
+  event_declined: '/management?tab=planning',
+  event_confirmed: '/management?tab=planning',
+  task_assigned: '/management?tab=teamOps',
+  wellbeing_alert: '/management?tab=wellbeing',
+  weekly_load_alert: '/management?tab=wellbeing',
+  objective_assigned: '/management?tab=overview',
+  objective_overdue: '/management?tab=overview',
+  player_inactive: '/coaching?tab=players',
+  dev_plan_period_ending: '/coaching?tab=players',
+}
+
+function linkOf(n: AppNotification): string | null {
+  if (n.link === '/coaching') return COACHING_LINK_BY_TYPE[n.type] ?? n.link
+  return n.link
+}
 
 /** `data` stores raw values (ISO dates, ids); format the ones shown in text before interpolating. */
 function renderParams(data: Record<string, unknown>, locale: string): Record<string, unknown> {
@@ -94,8 +117,9 @@ export function NotificationBell() {
       setUnread((u) => Math.max(0, u - 1))
     }
     setOpen(false)
-    if (!n.link) return
-    if (canNavigateHere(n.link)) navigate(n.link)
+    const link = linkOf(n)
+    if (!link) return
+    if (canNavigateHere(link)) navigate(link)
     else await window.api.cloudOpenWeb?.()
   }
 
@@ -135,7 +159,7 @@ export function NotificationBell() {
           ) : (
             <ul className="divide-y divide-hextech-border-dim">
               {items.map((n) => {
-                const external = n.link ? !canNavigateHere(n.link) : false
+                const external = n.link ? !canNavigateHere(linkOf(n) ?? n.link) : false
                 const params = renderParams(n.data, i18n.language)
                 return (
                   <li key={n.id}>

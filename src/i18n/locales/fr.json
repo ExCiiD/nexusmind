@@ -24,7 +24,9 @@
     "objBadge_one": "{{count}} obj.",
     "objBadge_other": "{{count}} obj.",
     "sessionLive": "Session en cours",
-    "autoRecordTitle": "Enregistrement automatique activé"
+    "autoRecordTitle": "Enregistrement automatique activé",
+    "management": "Management",
+    "teamSpace": "Espace d'équipe"
   },
   "settings": {
     "title": "Paramètres",
@@ -1459,7 +1461,7 @@
     "space": {
       "publishFailed": "Le roster n’a pas pu être publié dans le groupe"
     },
-    "noGroup": "Les stats collectives sont celles d’un groupe. Crée ton groupe ou rejoins-en un dans Coaching & Management → Groupes : l’équipe se forme avec les joueurs qui le rejoignent.",
+    "noGroup": "Les stats collectives sont celles d’un groupe. Crée ton groupe ou rejoins-en un dans Management → Groupes : l’équipe se forme avec les joueurs qui le rejoignent.",
     "signedOut": "Connecte-toi pour voir les stats collectives de ton groupe.",
     "sync": {
       "failed": "Impossible de préparer l’équipe du groupe",
@@ -1617,8 +1619,8 @@
     }
   },
   "coaching": {
-    "title": "Coaching & Management",
-    "subtitle": "Partagez vos reviews avec un coach ou votre équipe, recevez des retours et des objectifs.",
+    "title": "Coaching",
+    "subtitle": "Préparer et revoir le jeu : Champion Pool, Draft Sim, Scouting, joueurs, reviews VOD et rapport hebdo.",
     "unavailable": "Connectez-vous à votre compte Ascend pour utiliser les équipes et le coaching.",
     "tabs": {
       "overview": "Vue d'ensemble",
@@ -2095,7 +2097,8 @@
       "scrims": "Scrims",
       "coaching": "Coaching",
       "team": "Équipe",
-      "account": "Compte"
+      "account": "Compte",
+      "management": "Management"
     },
     "desktopHint": "L'enregistrement, les reviews et les données Riot restent dans l'app desktop.",
     "team": {
@@ -4042,5 +4045,17 @@
         "late": "Fin"
       }
     }
+  },
+  "management": {
+    "title": "Management",
+    "subtitle": "Faire tourner le groupe : vue d'ensemble, planning, bien-être, tâches, essais et groupes."
+  },
+  "teamSpace": {
+    "title": "Espace d'équipe",
+    "subtitle": "Le roster du groupe choisi : ses joueurs et leurs cartes."
+  },
+  "teamSection": {
+    "noGroup": "Pas encore de groupe : crée-en un ou rejoins-en un pour utiliser cette page.",
+    "goToGroups": "Aller à Management → Groupes"
   }
 }
