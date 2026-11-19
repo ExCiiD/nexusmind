@@ -17,8 +17,6 @@ export function GameEndNav() {
   useEffect(() => {
     if (!user) return
     const off = window.api.onGameEnd((data) => {
-      useUserStore.getState().setGameEndData(data)
-
       if (data?.game?.id && data.isSessionEligible !== false) {
         navigate(`/review?gameId=${encodeURIComponent(data.game.id)}`, { replace: true })
       }
@@ -36,7 +34,6 @@ export function GameEndNav() {
               altText="Retirer de la session"
               onClick={async () => {
                 await window.api.deleteGame(gameId)
-                useUserStore.getState().setGameEndData(null)
                 navigate('/session', { replace: true })
               }}
             >

@@ -51,7 +51,6 @@ export function ReviewPage() {
   const activeSession = useSessionStore((s) => s.activeSession)
   const refreshSession = useSessionStore((s) => s.refreshSession)
   const loadActiveSession = useSessionStore((s) => s.loadActiveSession)
-  const clearGameEndData = useUserStore((s) => s.clearGameEndData)
   const user = useUserStore((s) => s.user)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -545,7 +544,6 @@ export function ReviewPage() {
       setSavedGameId(latestGame.id)
       setSaved(true)
       clearDraft()
-      clearGameEndData()
       // Refresh active session if it exists; otherwise reload the historic context
       if (activeSession) {
         await refreshSession()
@@ -588,7 +586,6 @@ export function ReviewPage() {
     setRemovingGame(true)
     try {
       await window.api.deleteGame(latestGame.id)
-      clearGameEndData()
       await refreshSession()
       toast({ title: 'Game removed from session', variant: 'gold' })
       navigate('/session')

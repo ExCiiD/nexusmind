@@ -34,6 +34,7 @@ import { useEffect } from 'react'
 
 export function App() {
   const user = useUserStore((s) => s.user)
+  const userLoading = useUserStore((s) => s.loading)
   const loadUser = useUserStore((s) => s.loadUser)
 
   useEffect(() => {
@@ -43,6 +44,9 @@ export function App() {
   return (
     <>
       <GameEndNav />
+      {/* Route only once the stored user is known: routing on the initial
+          `null` sent every launch through /onboarding for a moment. */}
+      {!userLoading && (
       <Routes>
         {!user ? (
           <>
@@ -75,6 +79,7 @@ export function App() {
           </Route>
         )}
       </Routes>
+      )}
       {/* Dev builds only: the `dev:*` handlers it calls exist only unpackaged. */}
       {import.meta.env.DEV && user && <DevToolbar />}
       <UpdateBanner />

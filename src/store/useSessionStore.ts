@@ -47,7 +47,6 @@ interface Review {
 
 interface SessionStore {
   activeSession: Session | null
-  loading: boolean
 
   loadActiveSession: () => Promise<void>
   createSession: (data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) => Promise<void>
@@ -59,15 +58,13 @@ interface SessionStore {
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
   activeSession: null,
-  loading: false,
 
   loadActiveSession: async () => {
-    set({ loading: true })
     try {
       const session = await window.api.getActiveSession()
-      set({ activeSession: session, loading: false })
+      set({ activeSession: session })
     } catch {
-      set({ activeSession: null, loading: false })
+      set({ activeSession: null })
     }
   },
 
