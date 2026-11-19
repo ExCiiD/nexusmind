@@ -51,6 +51,11 @@ import { registerBackupHandlers } from './ipc/backup.ipc'
 import { registerTeamHandlers, refreshAutoTiers } from './ipc/team.ipc'
 import { registerWeeklyAwardsHandlers } from './ipc/weeklyAwards.ipc'
 import { startWeeklyAwards } from './weeklyAwards'
+import { attachWindow, claimSingleInstance, registerLaunchAtLoginHandlers, startedHidden } from './launchAtLogin'
+
+// One Ascend at a time: a second launch shows the running one (launchAtLogin.ts).
+const isPrimaryInstance = claimSingleInstance()
+if (!isPrimaryInstance) app.quit()
 import { registerMistakeHandlers } from './ipc/mistakes.ipc'
 import { registerMicroReviewHandlers } from './ipc/microReview.ipc'
 import { registerBookmarkHandlers } from './ipc/bookmarks.ipc'
@@ -320,8 +325,10 @@ function createWindow() {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow?.show()
+    // Started with Windows: stays in the notification area until opened.
+    if (!startedHidden()) mainWindow?.show()
   })
+  attachWindow(mainWindow, () => mainWindow)
 
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
@@ -332,6 +339,7 @@ function createWindow() {
 }
 
 async function bootstrap() {
+  if (!isPrimaryInstance) return
   // Serve local video files via nxm:// with proper Range/206 support for seeking.
   // net.fetch('file://') does NOT honour Range headers, so we read the file ourselves.
   protocol.handle('nxm', async (request) => {
@@ -441,6 +449,7 @@ async function bootstrap() {
   registerBackupHandlers()
   registerTeamHandlers()
   registerWeeklyAwardsHandlers()
+  registerLaunchAtLoginHandlers()
   registerMistakeHandlers()
   registerMicroReviewHandlers()
   registerBookmarkHandlers()

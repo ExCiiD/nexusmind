@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next'
 import type { LftFormat, LftMode, LftRole } from '@/lib/lftCore'
 import type { QueueRank } from '@/lib/rankCore'
 import type { LftAccent } from './theme'
+import type { CardLook } from '@/lib/cardLookCore'
 
 export interface LftChampionView {
   key: string
@@ -55,6 +56,23 @@ export interface LftPosterProps {
   accent: LftAccent
   /** Data Dragon version, for the champion icons. */
   version: string
+  design: LftDesign
   /** Translations in the announcement's language. */
   t: TFunction
+}
+
+/** How the announcement is drawn, beyond its colour. */
+export interface LftDesign {
+  /** Behind everything: the main champion's splash art, or a card pattern
+   *  (`look.background`) over the colour's glow. */
+  art: 'splash' | 'pattern'
+  /** Pattern, colour filter, blur and light of the background. */
+  look: CardLook
+  show: { rankDetails: boolean; mains: boolean; champStats: boolean; frame: boolean; region: boolean }
+  /** Replaces the small line above the region / lobby title when set. */
+  kicker: string
+  /** Multi search: replaces "On cherche N joueurs" when set. */
+  title: string
+  /** Champions listed per player (the lobby seats show 3 at most). */
+  championCount: number
 }

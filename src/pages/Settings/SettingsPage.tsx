@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { useDiscordWebhooks, type DiscordWebhook } from '@/hooks/useDiscordWebhooks'
 import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Target, Video, Circle, FolderOpen, X, Pencil, Check, FlaskConical, Youtube, Volume2, Mic, AlertTriangle, ExternalLink } from 'lucide-react'
 import { AppearanceCard } from './AppearanceCard'
+import { StartupCard } from './StartupCard'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import type { AudioDevicesSummary } from '@/lib/ipc'
@@ -207,6 +208,9 @@ export function SettingsPage() {
 
       {/* Appearance */}
       <AppearanceCard />
+
+      {/* Launch with Windows */}
+      <StartupCard />
 
       {/* Main role for stats */}
       <Card>

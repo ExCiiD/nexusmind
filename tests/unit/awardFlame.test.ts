@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FLAME_PALETTES, flameIntensity, flameTier } from '../../src/lib/awardFlame'
+import { FLAME_PALETTES, flameIntensity, flameTier, hexToRgb01 } from '../../src/lib/awardFlame'
 
 describe('flameTier', () => {
   it('follows the MVP streak thresholds', () => {
@@ -27,5 +27,22 @@ describe('flameTier', () => {
     const scales = (['grey', 'white', 'blue', 'red', 'purple'] as const).map((t) => flameIntensity(t).scale)
     expect(scales).toEqual([0.78, 0.89, 1, 1.11, 1.22])
     expect(flameIntensity('purple').speed).toBeLessThan(flameIntensity('grey').speed)
+  })
+})
+
+describe('hexToRgb01', () => {
+  it('turns a hex colour into shader floats', () => {
+    expect(hexToRgb01('#ff0000')).toEqual([1, 0, 0])
+    expect(hexToRgb01('336699')).toEqual([0.2, 0.4, 0.6])
+  })
+
+  it('falls back to white on anything else', () => {
+    expect(hexToRgb01('rgba(1,2,3,1)')).toEqual([1, 1, 1])
+  })
+
+  it('parses every palette colour the shader reads', () => {
+    for (const p of Object.values(FLAME_PALETTES)) {
+      for (const c of [p.deep, p.mid, p.light, p.core]) expect(/^#[0-9a-f]{6}$/i.test(c)).toBe(true)
+    }
   })
 })

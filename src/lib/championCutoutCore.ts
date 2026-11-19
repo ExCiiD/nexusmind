@@ -13,21 +13,56 @@
  * the usable/unusable decision and a small PNG encoder.
  */
 
-/** The ONNX model, downloaded once to userData and checked by hash. */
-export const CUTOUT_MODEL = {
-  id: 'birefnet-lite-general-232',
-  url: 'https://github.com/ZhengPeng7/BiRefNet/releases/download/v1/BiRefNet-general-bb_swin_v1_tiny-epoch_232.onnx',
-  sha256: '5600024376f572a557870a5eb0afb1e5961636bef4e1e22132025467d0f03333',
-  bytes: 224_005_088,
-  /** The export has a fixed 1×3×1024×1024 input. */
-  inputSize: 1024,
-  mean: [0.485, 0.456, 0.406] as const,
-  std: [0.229, 0.224, 0.225] as const,
+export interface CutoutModel {
+  id: string
+  /** File name in the author's GitHub release (and in the harness). */
+  file: string
+  url: string
+  sha256: string
+  bytes: number
+  /** The export has a fixed 1×3×size×size input. */
+  inputSize: number
+  mean: readonly number[]
+  std: readonly number[]
 }
+
+const RELEASE = 'https://github.com/ZhengPeng7/BiRefNet/releases/download/v1/'
+const IMAGENET = { mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225] }
+
+/**
+ * The two BiRefNet models (MIT), downloaded once to userData and checked by
+ * hash. Neither is right on every splash, so both run and their masks are
+ * fused: "lite" (Swin-T, 1024 px) keeps fine, long parts such as Nami's
+ * tail or Kai'Sa's claws; "512" (Swin-L, 512 px) understands the champion
+ * better and keeps what a dark scene swallows, such as Jinx's weapons.
+ */
+export const CUTOUT_MODELS: readonly CutoutModel[] = [
+  {
+    id: 'birefnet-lite-general-232',
+    file: 'BiRefNet-general-bb_swin_v1_tiny-epoch_232.onnx',
+    url: `${RELEASE}BiRefNet-general-bb_swin_v1_tiny-epoch_232.onnx`,
+    sha256: '5600024376f572a557870a5eb0afb1e5961636bef4e1e22132025467d0f03333',
+    bytes: 224_005_088,
+    inputSize: 1024,
+    ...IMAGENET,
+  },
+  {
+    id: 'birefnet-general-512-216',
+    file: 'BiRefNet-general-resolution_512x512-fp16-epoch_216.onnx',
+    url: `${RELEASE}BiRefNet-general-resolution_512x512-fp16-epoch_216.onnx`,
+    sha256: '18b64a270d3abe7d36e665500c3f24136bcaf7616771b4cb21c6e8c57fec7237',
+    bytes: 940_526_436,
+    inputSize: 512,
+    ...IMAGENET,
+  },
+]
+
+/** The first model, kept as the default of the tensor helpers. */
+export const CUTOUT_MODEL = CUTOUT_MODELS[0]
 
 /** Bump when the model or the post-processing changes: the cache folder is
  *  named after it, so older cut-outs are simply not read again. */
-export const CUTOUT_VERSION = 1
+export const CUTOUT_VERSION = 3
 
 /**
  * The cache file name of a champion's cut-out (without extension), or null
@@ -40,30 +75,17 @@ export function cutoutCacheKey(championKey: string, skin = 0): string | null {
   return `${championKey}_${skin}`
 }
 
-/** The art that is cut out: Data Dragon's loading-screen portrait, the same
- *  image as `loadingArtUrl` in playerCard.ts (kept here so the main process
- *  does not import renderer modules). */
+/**
+ * The art that is cut out: Data Dragon's full splash (1215×717), not the
+ * loading portrait. The portrait is a tight crop that slices the champion
+ * at its edges (straight cuts, lost braids and weapons); on the splash the
+ * whole silhouette is there, and `frameSubject` frames it for the card.
+ */
 export function cutoutArtUrl(championKey: string, skin = 0): string {
-  return `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${championKey}_${skin}.jpg`
+  return `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${championKey}_${skin}.jpg`
 }
 
 export interface Rect { x: number; y: number; w: number; h: number }
-
-/**
- * The part of the loading art that is kept: Data Dragon darkens a ~13 px
- * border (~20 px at the bottom) of its 308×560 portraits, which would show
- * as a dark line wherever the champion touches the edge. Scaled for other
- * sizes.
- */
-export function artCrop(width: number, height: number): Rect {
-  const sx = width / 308
-  const sy = height / 560
-  const left = Math.round(14 * sx)
-  const right = Math.round(14 * sx)
-  const top = Math.round(14 * sy)
-  const bottom = Math.round(22 * sy)
-  return { x: left, y: top, w: Math.max(1, width - left - right), h: Math.max(1, height - top - bottom) }
-}
 
 /** Bilinear sample of one channel of an interleaved image at (fx, fy). */
 function sample(px: ArrayLike<number>, w: number, h: number, stride: number, ch: number, fx: number, fy: number): number {
@@ -140,12 +162,13 @@ export interface RefineOptions {
 }
 
 export const REFINE_DEFAULTS: RefineOptions = {
-  low: 28,
+  low: 20,
   high: 225,
-  minSpeck: 0.004,
+  minSpeck: 0.002,
   feather: 1,
-  fadeTop: 0.07,
-  fadeRight: 0.08,
+  // The splash keeps the silhouette whole: frameSubject fades the edges where its window cuts.
+  fadeTop: 0,
+  fadeRight: 0,
 }
 
 /** Linear levels: [low, high] stretched to [0, 255]. */
@@ -255,14 +278,312 @@ export function maskCoverage(mask: Uint8Array): number {
   return sum / (255 * mask.length)
 }
 
+// ── Fusing two models, image-guided edges ───────────────────────────────
+
+/** Pixel-wise maximum: whatever either model sees as the champion is kept
+ *  (one keeps Jinx's weapons, the other Nami's tail). */
+export function fuseMasks(masks: readonly Uint8Array[]): Uint8Array {
+  const out = Uint8Array.from(masks[0] ?? [])
+  for (let k = 1; k < masks.length; k++) {
+    const m = masks[k]
+    for (let i = 0; i < out.length; i++) if (m[i] > out[i]) out[i] = m[i]
+  }
+  return out
+}
+
+/** Pixel-wise minimum: only what every model sees as the champion, its body
+ *  rather than a weapon, a pet or an effect one model added. */
+export function consensusMask(masks: readonly Uint8Array[]): Uint8Array {
+  const out = Uint8Array.from(masks[0] ?? [])
+  for (let k = 1; k < masks.length; k++) {
+    const m = masks[k]
+    for (let i = 0; i < out.length; i++) if (m[i] < out[i]) out[i] = m[i]
+  }
+  return out
+}
+
+export interface CutoutConfidence {
+  /** Share of the splash's outer border the mask covers. A champion cut out
+   *  cleanly touches it in a few places (a close-up's shoulder, the
+   *  ground); a mask that runs along most of it kept the scene. */
+  border: number
+  /** Pixels the models are unsure about (alpha 10–90 %), per solid pixel. */
+  unsure: number
+  ok: boolean
+}
+
 /**
- * Whether the cut-out is worth showing. Under 12 % the model found little
- * more than effects (Thresh's lantern, scattered sparks): the card keeps
- * the full art. Over 94 % it kept the scene: nothing gained either.
+ * Whether a fused mask can be trusted, so a bad cut-out never reaches a
+ * card: the card keeps its art instead. Measured on 15 splashes: clean
+ * cut-outs touch at most 28 % of the border and have at most 21 % unsure
+ * pixels; Aatrox (a dark giant fused with the scene) covers 53 % of it.
  */
-export function isUsableMask(mask: Uint8Array): boolean {
-  const c = maskCoverage(mask)
-  return c >= 0.12 && c <= 0.94
+export function cutoutConfidence(mask: Uint8Array, w: number, h: number, maxBorder = 0.4, maxUnsure = 0.3): CutoutConfidence {
+  let edge = 0
+  let edgeAll = 0
+  const hit = (i: number): void => {
+    edgeAll++
+    if (mask[i] >= 128) edge++
+  }
+  for (let x = 0; x < w; x++) {
+    hit(x)
+    hit((h - 1) * w + x)
+  }
+  for (let y = 1; y < h - 1; y++) {
+    hit(y * w)
+    hit(y * w + w - 1)
+  }
+  let unsure = 0
+  let solid = 0
+  for (let i = 0; i < mask.length; i++) {
+    if (mask[i] >= 128) solid++
+    if (mask[i] > 25 && mask[i] < 230) unsure++
+  }
+  const border = edgeAll ? edge / edgeAll : 0
+  const ratio = solid ? unsure / solid : 1
+  return { border, unsure: ratio, ok: solid > 0 && border <= maxBorder && ratio <= maxUnsure }
+}
+
+/** Luminance (0–1) of a BGRA bitmap. */
+export function luminance(bgra: Uint8Array, w: number, h: number): Float32Array {
+  const out = new Float32Array(w * h)
+  for (let i = 0; i < out.length; i++) out[i] = (0.0722 * bgra[i * 4] + 0.7152 * bgra[i * 4 + 1] + 0.2126 * bgra[i * 4 + 2]) / 255
+  return out
+}
+
+/** Mean over a (2r+1)² box, edges clamped, through a summed-area table. */
+export function boxMean(src: Float32Array, w: number, h: number, r: number): Float32Array {
+  const sat = new Float64Array((w + 1) * (h + 1))
+  for (let y = 0; y < h; y++) {
+    let row = 0
+    for (let x = 0; x < w; x++) {
+      row += src[y * w + x]
+      sat[(y + 1) * (w + 1) + x + 1] = sat[y * (w + 1) + x + 1] + row
+    }
+  }
+  const out = new Float32Array(w * h)
+  for (let y = 0; y < h; y++) {
+    const y0 = Math.max(0, y - r)
+    const y1 = Math.min(h, y + r + 1)
+    for (let x = 0; x < w; x++) {
+      const x0 = Math.max(0, x - r)
+      const x1 = Math.min(w, x + r + 1)
+      const sum = sat[y1 * (w + 1) + x1] - sat[y0 * (w + 1) + x1] - sat[y1 * (w + 1) + x0] + sat[y0 * (w + 1) + x0]
+      out[y * w + x] = sum / ((x1 - x0) * (y1 - y0))
+    }
+  }
+  return out
+}
+
+/**
+ * Guided filter (He, Sun & Tang): reshapes the mask's edges to follow the
+ * edges of the painting itself. Both models see the splash at 1024 or 512
+ * px; their masks, stretched back to 1215 px, are soft and slightly off.
+ * The filter makes the mask a local linear function of the image's
+ * luminance, so the cut snaps to where the colour actually changes (hair,
+ * a blade, armour against the sky) while flat areas stay as they were.
+ */
+export function guidedFilter(guide: Float32Array, mask: Uint8Array, w: number, h: number, r = 4, eps = 1e-3): Uint8Array {
+  const n = w * h
+  const p = new Float32Array(n)
+  const ip = new Float32Array(n)
+  const ii = new Float32Array(n)
+  for (let i = 0; i < n; i++) {
+    p[i] = mask[i] / 255
+    ip[i] = guide[i] * p[i]
+    ii[i] = guide[i] * guide[i]
+  }
+  const mI = boxMean(guide, w, h, r)
+  const mP = boxMean(p, w, h, r)
+  const mIP = boxMean(ip, w, h, r)
+  const mII = boxMean(ii, w, h, r)
+  const a = new Float32Array(n)
+  const b = new Float32Array(n)
+  for (let i = 0; i < n; i++) {
+    const varI = mII[i] - mI[i] * mI[i]
+    a[i] = (mIP[i] - mI[i] * mP[i]) / (varI + eps)
+    b[i] = mP[i] - a[i] * mI[i]
+  }
+  const mA = boxMean(a, w, h, r)
+  const mB = boxMean(b, w, h, r)
+  const out = new Uint8Array(n)
+  for (let i = 0; i < n; i++) out[i] = Math.round(255 * Math.min(1, Math.max(0, mA[i] * guide[i] + mB[i])))
+  return out
+}
+
+// ── Framing the champion for the card ───────────────────────────────────
+
+/** Bounding box of the alpha at or over `threshold`; null when empty. */
+export function subjectBox(alpha: Uint8Array, w: number, h: number, threshold = 96): Rect | null {
+  let x0 = w
+  let y0 = h
+  let x1 = -1
+  let y1 = -1
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (alpha[y * w + x] < threshold) continue
+      if (x < x0) x0 = x
+      if (x > x1) x1 = x
+      if (y < y0) y0 = y
+      if (y > y1) y1 = y
+    }
+  }
+  return x1 < 0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 }
+}
+
+/**
+ * How much each column of the box holds, the upper body counting most: a
+ * row's weight falls from 1 at the top of the silhouette (head, shoulders)
+ * to 0.25 at its bottom (legs, tails, a weapon's tip).
+ */
+export function columnWeights(alpha: Uint8Array, w: number, box: Rect): Float64Array {
+  const cols = new Float64Array(box.w)
+  for (let y = box.y; y < box.y + box.h; y++) {
+    const rw = 1 - 0.75 * ((y - box.y) / Math.max(1, box.h - 1))
+    const row = y * w
+    for (let x = 0; x < box.w; x++) cols[x] += alpha[row + box.x + x] * rw
+  }
+  return cols
+}
+
+/**
+ * How much a column at `t` (0–1 across the window) is worth on the card.
+ * The card shows the window from 5 % to 95 % of its width; the vertical
+ * name covers the right of that, so the body is wanted in the open area.
+ */
+export function placementWeight(t: number): number {
+  if (t < 0.05 || t > 0.95) return 0.15 // behind the frame
+  if (t > 0.74) return 0.45 // under the name
+  return 1
+}
+
+export interface FrameOptions {
+  /** Width / height of the framed cut-out. The card shows it 84 % of its
+   *  height tall, so 0.75 spans the card's width plus a little either side:
+   *  the window's cut edges fall behind the frame. */
+  aspect: number
+  /** Room kept above the champion, as a share of its height. */
+  headroom: number
+  /** Soft fade on the window's left and right edges, as a share of its width. */
+  sideFade: number
+}
+
+export const FRAME_DEFAULTS: FrameOptions = { aspect: 0.75, headroom: 0.04, sideFade: 0.04 }
+
+/**
+ * The champion's window in the splash: the silhouette's full height, and
+ * across, the position that shows the most of the upper body in the card's
+ * open area (columnWeights × placementWeight). Wide poses (a kick, long
+ * tails, braids) are cut by the window's sides, behind the frame.
+ */
+export function portraitWindow(
+  alpha: Uint8Array, box: Rect, w: number, h: number,
+  aspect = FRAME_DEFAULTS.aspect, headroom = FRAME_DEFAULTS.headroom,
+): Rect {
+  const top = Math.max(0, box.y - Math.round(box.h * headroom))
+  const bottom = Math.min(h, box.y + box.h)
+  const height = Math.max(1, bottom - top)
+  const width = Math.max(1, Math.min(w, Math.round(height * aspect)))
+  let x: number
+  if (box.w <= width) {
+    x = Math.round(box.x + box.w / 2 - width / 2)
+  } else {
+    const cols = columnWeights(alpha, w, box)
+    const place = Array.from({ length: width }, (_, i) => placementWeight((i + 0.5) / width))
+    // The window may reach past the silhouette into the empty splash, so a
+    // body standing at one end of a wide pose can still sit in the open area.
+    const from = Math.max(0, box.x - Math.floor(width / 2))
+    const to = Math.min(w - width, box.x + box.w - Math.ceil(width / 2))
+    let best = -1
+    x = box.x
+    for (let start = from; start <= to; start++) {
+      let score = 0
+      for (let i = 0; i < width; i++) {
+        const c = start + i - box.x
+        if (c >= 0 && c < box.w) score += cols[c] * place[i]
+      }
+      if (score > best) {
+        best = score
+        x = start
+      }
+    }
+  }
+  x = Math.min(Math.max(x, 0), w - width)
+  return { x, y: top, w: width, h: height }
+}
+
+/** The alpha inside `rect`. */
+export function cropMask(alpha: Uint8Array, w: number, rect: Rect): Uint8Array {
+  const out = new Uint8Array(rect.w * rect.h)
+  for (let y = 0; y < rect.h; y++) {
+    const s = (rect.y + y) * w + rect.x
+    out.set(alpha.subarray(s, s + rect.w), y * rect.w)
+  }
+  return out
+}
+
+/** Fades the alpha to 0 toward the left and right edges (smoothstep). */
+export function fadeSides(mask: Uint8Array, w: number, h: number, share: number): Uint8Array {
+  const out = Uint8Array.from(mask)
+  const band = share * w
+  if (band <= 0) return out
+  const ease = (t: number): number => (t >= 1 ? 1 : t <= 0 ? 0 : t * t * (3 - 2 * t))
+  for (let x = 0; x < w; x++) {
+    const f = ease(Math.min(x, w - 1 - x) / band)
+    if (f >= 1) continue
+    for (let y = 0; y < h; y++) out[y * w + x] = Math.round(out[y * w + x] * f)
+  }
+  return out
+}
+
+/**
+ * From the refined alpha of the whole splash to the card's cut-out: the
+ * window around the champion and its alpha, or null when no champion worth
+ * showing was found. Rejected: almost nothing kept (under 3 % of the
+ * splash: only a weapon or an effect), a silhouette under 40 % of the
+ * splash's height (a weapon or a pet, not the champion), or a window still
+ * over 94 % full (the scene was kept).
+ */
+export function frameSubject(
+  alpha: Uint8Array, w: number, h: number, opts: Partial<FrameOptions> = {}, focus: Uint8Array = alpha,
+): { rect: Rect; alpha: Uint8Array } | null {
+  const o = { ...FRAME_DEFAULTS, ...opts }
+  if (maskCoverage(alpha) < 0.03) return null
+  const box = subjectBox(alpha, w, h)
+  if (!box || box.h < h * 0.4) return null
+  // `focus` says where the body is (the models' consensus); `alpha` is what is cut out.
+  const rect = portraitWindow(focus, box, w, h, o.aspect, o.headroom)
+  const cropped = fadeSides(cropMask(alpha, w, rect), rect.w, rect.h, o.sideFade)
+  if (maskCoverage(cropped) > 0.94) return null
+  return { rect, alpha: cropped }
+}
+
+/**
+ * The whole algorithm, from the models' masks of a splash to the card's
+ * cut-out, the same for every champion (nothing tuned per champion):
+ *   1. fuse the models' masks (whatever either sees as the champion stays);
+ *   2. confidence check: a mask that kept the scene is refused, and the
+ *      card keeps its art rather than show a bad cut-out;
+ *   3. guided filter: the edges snap to the painting's own edges;
+ *   4. clean-up: haze cleared, stray specks dropped, edge softened;
+ *   5. framing: a portrait window on the upper body, clear of the name.
+ */
+export function buildCutout(
+  bgra: Uint8Array, w: number, h: number, masks: readonly Uint8Array[],
+): { rect: Rect; alpha: Uint8Array; confidence: CutoutConfidence } | null {
+  const fused = fuseMasks(masks)
+  const confidence = cutoutConfidence(fused, w, h)
+  if (!confidence.ok) return null
+  const alpha = refineMask(guidedFilter(luminance(bgra, w, h), fused, w, h), w, h)
+  // Framed on what every model agrees is the champion (Nami's body, not the
+  // water whip only one model kept); everything any model kept is cut out.
+  // When the consensus is a small part of the silhouette (one model saw
+  // only Thresh's scythe), it says little about the body: the whole
+  // silhouette is used instead.
+  const consensus = consensusMask(masks)
+  const focus = maskCoverage(consensus) >= 0.4 * maskCoverage(fused) ? consensus : alpha
+  const framed = frameSubject(alpha, w, h, {}, focus)
+  return framed && { ...framed, confidence }
 }
 
 /** The cropped region of a BGRA bitmap as straight RGBA with the given alpha. */

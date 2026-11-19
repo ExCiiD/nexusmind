@@ -26,7 +26,10 @@ import { LftPoster } from './LftPoster'
 import { accentOf, LFT_ACCENTS, type LftAccentId } from './theme'
 import { exportPoster } from './exportPoster'
 import { playerView, useChampionNames, useChampionSkins, useLookSources, useMemberRanks, type SkinChoice } from './useLftData'
-import type { LftContent, LftPlayerView } from './types'
+import type { LftContent, LftDesign, LftPlayerView } from './types'
+import { Slider } from '@/components/ui/slider'
+import { CardPatternThumb } from '@/components/team/CardLookButton'
+import { CARD_BACKGROUNDS, CARD_LOOK_LIMITS, DEFAULT_CARD_LOOK, sanitizeCardLook, type CardLook } from '@/lib/cardLookCore'
 import { fundamentalCatalog, fundamentalLabel, isFundamentalId } from './fundamentals'
 
 type PosterLang = 'fr' | 'en'
@@ -47,6 +50,7 @@ interface Draft {
   traits: Record<string, TraitPicks>
   /** Multi search: strengths wanted and minimum required (fundamental ids). */
   profile: { strengths: string[]; required: string[] }
+  design: LftDesign
   lookingFor: string
   languages: string
   discord: string
@@ -80,6 +84,7 @@ function loadDraft(teamId: string, fallback: Draft): Draft {
       soloId: str(raw.soloId, 64) ?? fallback.soloId,
       seats,
       skins: readSkins(raw.skins),
+      design: readDesign(raw.design),
       traits: readTraits(raw.traits),
       profile: {
         strengths: cleanTraits((raw.profile as { strengths?: unknown } | undefined)?.strengths, isFundamentalId, LFT_TRAITS.wanted),
@@ -105,6 +110,30 @@ function readSkins(v: unknown): Record<string, SkinChoice> {
     if (typeof key === 'string' && /^[A-Za-z0-9]{1,40}$/.test(key) && typeof num === 'number' && Number.isInteger(num) && num >= 0) out[id] = { key, num }
   }
   return out
+}
+
+const DEFAULT_DESIGN: LftDesign = {
+  art: 'splash',
+  look: DEFAULT_CARD_LOOK,
+  show: { rankDetails: true, mains: true, champStats: true, frame: true, region: true },
+  kicker: '',
+  title: '',
+  championCount: 5,
+}
+const SHOW_KEYS = Object.keys(DEFAULT_DESIGN.show) as Array<keyof LftDesign['show']>
+
+function readDesign(v: unknown): LftDesign {
+  const r = (v && typeof v === 'object' ? v : {}) as Partial<Record<keyof LftDesign, unknown>>
+  const show = (r.show && typeof r.show === 'object' ? r.show : {}) as Record<string, unknown>
+  const count = typeof r.championCount === 'number' ? Math.round(r.championCount) : 5
+  return {
+    art: r.art === 'pattern' ? 'pattern' : 'splash',
+    look: sanitizeCardLook(r.look),
+    show: Object.fromEntries(SHOW_KEYS.map((k) => [k, typeof show[k] === 'boolean' ? show[k] : true])) as LftDesign['show'],
+    kicker: cleanLine(typeof r.kicker === 'string' ? r.kicker : '', LFT_LIMITS.lookingFor),
+    title: cleanLine(typeof r.title === 'string' ? r.title : '', LFT_LIMITS.lookingFor),
+    championCount: Math.min(5, Math.max(3, count)),
+  }
 }
 
 function readTraits(v: unknown): Record<string, TraitPicks> {
@@ -153,7 +182,7 @@ export function LftDialog({ team, open, onOpenChange }: LftDialogProps) {
   const [draft, setDraft] = useState<Draft>(() => {
     const lang: PosterLang = i18n.language?.startsWith('fr') ? 'fr' : 'en'
     const fallback: Draft = {
-      mode: 'solo', format: 'banner', accent: 'gold', lang, soloId: members[0]?.id ?? null, seats: {}, unwanted: [], skins: {}, traits: {}, profile: { strengths: [], required: [] },
+      mode: 'solo', format: 'banner', accent: 'gold', lang, soloId: members[0]?.id ?? null, seats: {}, unwanted: [], skins: {}, traits: {}, profile: { strengths: [], required: [] }, design: DEFAULT_DESIGN,
       lookingFor: '', languages: lang === 'fr' ? 'Français' : 'English', discord: '', tags: [], message: '',
     }
     const d = loadDraft(team.id, fallback)
@@ -404,6 +433,12 @@ export function LftDialog({ team, open, onOpenChange }: LftDialogProps) {
                 />
               </div>
 
+              <DesignSection
+                design={draft.design}
+                multi={draft.mode === 'multi'}
+                onChange={(patch) => setDraft((d) => ({ ...d, design: { ...d.design, ...patch } }))}
+              />
+
               <Section title={t('team.lft.content')}>
                 <div className="space-y-2.5">
                   <Field label={t('team.lft.fields.lookingFor')}>
@@ -456,6 +491,7 @@ export function LftDialog({ team, open, onOpenChange }: LftDialogProps) {
                   players={players}
                   wanted={wanted}
                   profile={profile}
+                  design={{ ...draft.design, kicker: cleanLine(draft.design.kicker, LFT_LIMITS.lookingFor), title: cleanLine(draft.design.title, LFT_LIMITS.lookingFor) }}
                   region={region}
                   content={content}
                   accent={accent}
@@ -871,5 +907,104 @@ function TraitPicker({ label, value, max, lang, onToggle, weak }: {
         )}
       </div>
     </div>
+  )
+}
+
+/** Background, filters, what to show, custom texts. */
+function DesignSection({ design, multi, onChange }: { design: LftDesign; multi: boolean; onChange: (patch: Partial<LftDesign>) => void }) {
+  const { t } = useTranslation()
+  const setLook = (patch: Partial<CardLook>) => onChange({ look: sanitizeCardLook({ ...design.look, ...patch }) })
+  const slider = (label: string, value: number, min: number, max: number, suffix: string, on: (v: number) => void) => (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-[11px]">
+        <span className="text-hextech-text">{label}</span>
+        <span className="font-mono text-hextech-text-dim">{value > 0 && min < 0 ? '+' : ''}{value}{suffix}</span>
+      </div>
+      <Slider value={[value]} min={min} max={max} step={1} onValueChange={([v]) => on(v)} aria-label={label} />
+    </div>
+  )
+  return (
+    <Section title={t('team.lft.design.title')}>
+      <div className="space-y-3">
+        <Segmented
+          label={t('team.lft.design.art')}
+          value={design.art}
+          onChange={(art) => onChange({ art })}
+          options={[{ value: 'splash', label: t('team.lft.design.splash') }, { value: 'pattern', label: t('team.lft.design.pattern') }]}
+        />
+        {design.art === 'pattern' && (
+          <div role="radiogroup" aria-label={t('team.lft.design.pattern')} className="grid grid-cols-7 gap-1">
+            {CARD_BACKGROUNDS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={design.look.background === id}
+                title={t(`team.cardLook.patterns.${id}`)}
+                onClick={() => setLook({ background: id })}
+                className={cn('rounded-md border-2 p-px focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-hextech-gold', design.look.background === id ? 'border-hextech-gold' : 'border-transparent hover:border-hextech-border')}
+              >
+                <CardPatternThumb id={id} look={{ ...design.look, blur: 0 }} className="aspect-[4/7] w-full" />
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[11px] text-hextech-text">
+            {t('team.lft.design.filter')}
+            <label className="relative ml-auto flex h-5 cursor-pointer items-center gap-1 rounded border border-hextech-border-dim px-1.5 font-mono text-[10px]">
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ background: design.look.tintColor }} />
+              {design.look.tintColor}
+              <input
+                type="color"
+                value={design.look.tintColor.toLowerCase()}
+                onChange={(e) => setLook({ tintColor: e.target.value, tintStrength: design.look.tintStrength || 40 })}
+                className="absolute inset-0 cursor-pointer opacity-0"
+                aria-label={t('team.cardLook.filterColor')}
+              />
+            </label>
+          </div>
+          <Slider value={[design.look.tintStrength]} min={0} max={100} step={1} onValueChange={([v]) => setLook({ tintStrength: v })} aria-label={t('team.lft.design.filter')} />
+        </div>
+        {slider(t('team.cardLook.light'), design.look.light, -CARD_LOOK_LIMITS.light, CARD_LOOK_LIMITS.light, '', (light) => setLook({ light }))}
+        {slider(t('team.cardLook.blur'), design.look.blur, 0, CARD_LOOK_LIMITS.blur, 'px', (blur) => setLook({ blur }))}
+
+        <div>
+          <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-hextech-text-dim">{t('team.lft.design.show')}</div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+            {SHOW_KEYS.map((k) => (
+              <label key={k} className="flex cursor-pointer items-center gap-1.5 text-[11px] text-hextech-text">
+                <input
+                  type="checkbox"
+                  checked={design.show[k]}
+                  onChange={(e) => onChange({ show: { ...design.show, [k]: e.target.checked } })}
+                  className="h-3.5 w-3.5 accent-[#D4A24C]"
+                />
+                {t(`team.lft.design.shows.${k}`)}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <Segmented
+          label={t('team.lft.design.championCount')}
+          value={String(design.championCount) as '3' | '4' | '5'}
+          onChange={(v) => onChange({ championCount: Number(v) })}
+          options={[{ value: '3', label: '3' }, { value: '4', label: '4' }, { value: '5', label: '5' }]}
+        />
+
+        <Field label={t('team.lft.design.kicker')}>
+          <Input value={design.kicker} maxLength={LFT_LIMITS.lookingFor} placeholder={t('team.lft.design.kickerPlaceholder')} onChange={(e) => onChange({ kicker: e.target.value })} />
+        </Field>
+        {multi && (
+          <Field label={t('team.lft.design.lobbyTitle')}>
+            <Input value={design.title} maxLength={LFT_LIMITS.lookingFor} placeholder={t('team.lft.design.lobbyTitlePlaceholder')} onChange={(e) => onChange({ title: e.target.value })} />
+          </Field>
+        )}
+        <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs text-hextech-text-dim" onClick={() => onChange(DEFAULT_DESIGN)}>
+          {t('team.lft.design.reset')}
+        </Button>
+      </div>
+    </Section>
   )
 }

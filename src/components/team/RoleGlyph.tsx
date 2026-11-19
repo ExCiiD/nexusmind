@@ -43,6 +43,8 @@ export function RoleGlyph({ role, tone = 'current', className, title }: RoleGlyp
         <path
           key={i}
           d={p.d}
+          transform={p.transform}
+          fillRule={p.evenOdd ? 'evenodd' : undefined}
           fill={p.dim && tone !== 'current' ? '#FFFFFF' : fill}
           fillOpacity={p.dim ? DIM_OPACITY : undefined}
         />

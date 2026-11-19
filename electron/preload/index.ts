@@ -97,6 +97,8 @@ const api = {
   isDev: () => ipcRenderer.invoke('dev:is-dev'),
 
   getAppVersion: () => ipcRenderer.invoke('app:get-version') as Promise<string>,
+  getLaunchAtLogin: () => ipcRenderer.invoke('app:get-launch-at-login'),
+  setLaunchAtLogin: (enabled: boolean) => ipcRenderer.invoke('app:set-launch-at-login', enabled),
   getUser: () => ipcRenderer.invoke('user:get'),
   updateUser: (data: any) => ipcRenderer.invoke('user:update', data),
 
@@ -120,6 +122,8 @@ const api = {
   teamSessionEnd: (id: string) => ipcRenderer.invoke('team-session:end', id),
   teamSessionGetObjectives: (sessionId: string) => ipcRenderer.invoke('team-session:get-objectives', sessionId),
   teamSessionSetObjectives: (sessionId: string, objectiveIds: string[], kpiIds: string[]) => ipcRenderer.invoke('team-session:set-objectives', sessionId, objectiveIds, kpiIds),
+  teamSessionGetAttendance: (sessionId: string) => ipcRenderer.invoke('team-session:get-attendance', sessionId),
+  teamSessionSetAttendance: (sessionId: string, userId: string, present: boolean | null) => ipcRenderer.invoke('team-session:set-attendance', sessionId, userId, present),
   teamSessionListMyLive: () => ipcRenderer.invoke('team-session:list-my-live'),
   teamSessionListGames: (sessionId: string) => ipcRenderer.invoke('team-session:list-games', sessionId),
   teamSessionFetchMatch: (gameId: string) => ipcRenderer.invoke('team-session:fetch-match', gameId),

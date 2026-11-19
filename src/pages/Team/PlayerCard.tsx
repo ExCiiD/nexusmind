@@ -32,8 +32,8 @@ import {
 } from '@/lib/playerCard'
 import type { AwardHolder, TeamMember } from '@/lib/ipc'
 import { cn } from '@/lib/utils'
-import topoUrl from '@/assets/cards/topo.svg'
-import scratchesUrl from '@/assets/cards/scratches.svg'
+import { CARD_PATTERN_URLS, scratchesUrl, useCardLook } from '@/components/team/cardBackgrounds'
+import { CARD_PATTERN_OPACITY, cardLookStyle } from '@/lib/cardLookCore'
 
 /** Same scale as the team stats (SynergyPlayerCard, DashboardLayout). */
 function wrTone(winRate: number): string {
@@ -92,6 +92,8 @@ function CardFront({ member, role, team, artChampion, holders, totals, onFlip }:
 }) {
   const { t } = useTranslation()
   const [artBroken, setArtBroken] = useState(false)
+  const [look] = useCardLook()
+  const lookStyle = cardLookStyle(look)
   const [sx, sy] = cardSeed(member.id)
   const name = member.displayName.trim() || member.ign || '?'
   const roleLabel = t(`team.roster.roles.${role}`, { defaultValue: role })
@@ -108,18 +110,24 @@ function CardFront({ member, role, team, artChampion, holders, totals, onFlip }:
       className="group/front absolute inset-0 overflow-hidden rounded-lg bg-[#120b19] text-left shadow-[0_10px_30px_rgba(0,0,0,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold"
       style={{ ['--stroke' as string]: '0.55cqw' }}
     >
-      {/* Background: violet glow, topographic lines, scratches. */}
+      {/* Background: violet glow, the chosen line pattern, scratches; the
+          card look (Espace d'équipe → Apparence des cartes) filters them. */}
+      <div aria-hidden className="absolute inset-0" style={{ filter: lookStyle.filter }}>
       <div aria-hidden className="absolute inset-0 bg-[radial-gradient(130%_80%_at_50%_0%,#432a5e_0%,#1f1430_48%,#0c0812_100%)]" />
       <div
         aria-hidden
-        className="absolute inset-[-6%] opacity-[0.13]"
-        style={{ backgroundImage: `url(${topoUrl})`, backgroundSize: '135% auto', backgroundPosition: `${(sx * 100).toFixed(0)}% ${(sy * 100).toFixed(0)}%`, transform: parallax(-5) }}
+        className="absolute inset-[-6%]"
+        style={{ opacity: CARD_PATTERN_OPACITY[look.background], backgroundImage: `url(${CARD_PATTERN_URLS[look.background]})`, backgroundSize: '135% auto', backgroundPosition: `${(sx * 100).toFixed(0)}% ${(sy * 100).toFixed(0)}%`, transform: parallax(-5) }}
       />
       <div
         aria-hidden
         className="absolute inset-[-6%] opacity-50"
         style={{ backgroundImage: `url(${scratchesUrl})`, backgroundSize: '120% auto', backgroundPosition: `${(sy * 100).toFixed(0)}% ${(sx * 100).toFixed(0)}%`, transform: parallax(-3) }}
       />
+      </div>
+      {lookStyle.tint && (
+        <div aria-hidden className="absolute inset-0" style={{ background: lookStyle.tint.color, opacity: lookStyle.tint.opacity, mixBlendMode: 'color' }} />
+      )}
 
       {/* The main champion: the faded art, then cut out of its scene. */}
       {artChampion && !artBroken ? (

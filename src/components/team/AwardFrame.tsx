@@ -7,12 +7,13 @@
  * `AwardFlame` is the animated flame on top of the MVP frame, coloured by
  * the player's MVP streak.
  */
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import mvpFrame from '@/assets/frames/mvp.webp'
 import grinderFrame from '@/assets/frames/grinder.webp'
 import flameGlow from '@/assets/frames/flame-glow.webp'
 import flameCore from '@/assets/frames/flame-core.webp'
-import { FLAME_PALETTES, flameIntensity, flameTier } from '@/lib/awardFlame'
+import { FLAME_PALETTES, flameIntensity, flameTier, type FlamePalette } from '@/lib/awardFlame'
+import { FlameShader } from './FlameShader'
 import type { AwardKind } from '@/lib/ipc'
 
 const FRAME_URL: Record<AwardKind, string> = { mvp: mvpFrame, grinder: grinderFrame }
@@ -57,16 +58,16 @@ function masked(url: string, background: string): CSSProperties {
  * The flame sitting on the gem at the top middle of the MVP frame, wings
  * along the top border. Its colour follows the MVP streak (1 week grey,
  * 2 white, 3 blue, 5 red, 8 purple: src/lib/awardFlame.ts). The art is a
- * colourless mask (flame-glow / flame-core, made from the supplied flame),
- * filled with the tier's colours, so every tier gets clean colours.
+ * WebGL shader (FlameShader: real fire motion on the flame's silhouette),
+ * with the CSS-masked flame as the fallback without WebGL.
  * Drawn inside the frame layer, so it tilts with the card.
  */
 export function AwardFlame({ streak }: { streak: number }) {
+  const [shaderFailed, setShaderFailed] = useState(false)
   const tier = flameTier(streak)
   if (!tier) return null
   const p = FLAME_PALETTES[tier]
   const { scale, speed } = flameIntensity(tier)
-  const body = `linear-gradient(to top, ${p.deep} 8%, ${p.mid} 45%, ${p.light} 85%)`
   return (
     <div
       aria-hidden
@@ -80,6 +81,20 @@ export function AwardFlame({ streak }: { streak: number }) {
         className="card-motion absolute inset-[-8%] animate-[flame-breathe_2.4s_ease-in-out_infinite] blur-[6px]"
         style={{ ...masked(flameGlow, p.glow), animationDuration: `${2.4 * speed}s` }}
       />
+      {shaderFailed ? (
+        <CssFlame palette={p} speed={speed} />
+      ) : (
+        <FlameShader palette={p} speed={speed} onFail={() => setShaderFailed(true)} />
+      )}
+    </div>
+  )
+}
+
+/** The flame without WebGL: the masks filled with the tier colours, flickering, with sparks. */
+function CssFlame({ palette: p, speed }: { palette: FlamePalette; speed: number }) {
+  const body = `linear-gradient(to top, ${p.deep} 8%, ${p.mid} 45%, ${p.light} 85%)`
+  return (
+    <>
       <div className="card-motion absolute inset-0 origin-[50%_80%] animate-[flame-flicker_1.6s_ease-in-out_infinite]" style={{ animationDuration: `${1.6 * speed}s`, filter: `drop-shadow(0 0 4px ${p.glow})` }}>
         {/* Body, then a copy licking upward, then the hot core. */}
         <div className="absolute inset-0" style={masked(flameGlow, body)} />
@@ -107,6 +122,6 @@ export function AwardFlame({ streak }: { streak: number }) {
           }}
         />
       ))}
-    </div>
+    </>
   )
 }

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useToast } from '@/hooks/useToast'
 import { GroupTeamGate } from '@/components/team/GroupTeamGate'
 import { LftExportButton } from '@/components/lft/LftExportButton'
+import { CardLookButton } from '@/components/team/CardLookButton'
 import { RosterTab } from '@/pages/Team/RosterTab'
 import { isLegacyStaff } from '@/lib/permissions'
 import type { Group } from '@/lib/collab'
@@ -39,7 +40,7 @@ export function TeamSpaceSection({ group }: { group: Group }) {
           groupManaged
           onChange={() => { void reload(); publishSoon(team.id) }}
           logoUrl={group.logoUrl}
-          actions={<LftExportButton team={team} />}
+          actions={<><CardLookButton /><LftExportButton team={team} /></>}
         />
       )}
     </GroupTeamGate>

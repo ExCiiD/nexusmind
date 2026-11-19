@@ -13,6 +13,9 @@ export interface GlyphPart {
   d: string
   /** Drawn at DIM_OPACITY: the shaded half of the lane icons. */
   dim?: boolean
+  /** For a drawing made on another grid (the client's 34×34 icons). */
+  transform?: string
+  evenOdd?: boolean
 }
 
 export const GLYPH_VIEWBOX = '0 0 48 48'
@@ -26,11 +29,14 @@ export const ROLE_GLYPHS: Record<GlyphRole, GlyphPart[]> = {
     { d: 'M44 8V44H8L16 36H36V16Z', dim: true },
     CENTRE,
   ],
+  // The League client's own jungle icon (34×34, Community Dragon
+  // rcp-fe-lol-static-assets/svg/position-jungle.svg), scaled to the grid.
   JUNGLE: [
-    { d: 'M22 46Q7 27 11 2Q21 21 28 40Z' },
-    { d: 'M19 45Q4 33 3 15Q11 25 18 35Z' },
-    { d: 'M25 36Q25 14 38 2Q34 20 31 34Z' },
-    { d: 'M27 45Q35 22 46 14Q40 33 32 46Z' },
+    {
+      d: 'M25,3c-2.128,3.3-5.147,6.851-6.966,11.469A42.373,42.373,0,0,1,20,20a27.7,27.7,0,0,1,1-3C21,12.023,22.856,8.277,25,3ZM13,20c-1.488-4.487-4.76-6.966-9-9,3.868,3.136,4.422,7.52,5,12l3.743,3.312C14.215,27.917,16.527,30.451,17,31c4.555-9.445-3.366-20.8-8-28C11.67,9.573,13.717,13.342,13,20Zm8,5a15.271,15.271,0,0,1,0,2l4-4c0.578-4.48,1.132-8.864,5-12C24.712,13.537,22.134,18.854,21,25Z',
+      transform: 'scale(1.41176)',
+      evenOdd: true,
+    },
   ],
   MID: [
     { d: 'M4 38L38 4H44V10L10 44H4Z' },
@@ -61,6 +67,8 @@ export const GOLD_GRADIENT: ReadonlyArray<readonly [offset: number, color: strin
   [1, '#785A28'],
 ]
 
+const extra = (p: GlyphPart) => `${p.transform ? ` transform="${p.transform}"` : ''}${p.evenOdd ? ' fill-rule="evenodd"' : ''}`
+
 /** A role's icon as a standalone SVG document (the asset files). */
 export function roleGlyphSvg(role: GlyphRole, tone: 'white' | 'gold' | 'gold-gradient'): string {
   const fill = tone === 'white' ? '#FFFFFF' : tone === 'gold' ? GOLD : 'url(#g)'
@@ -69,8 +77,8 @@ export function roleGlyphSvg(role: GlyphRole, tone: 'white' | 'gold' | 'gold-gra
     : ''
   const paths = ROLE_GLYPHS[role]
     .map((p) => p.dim
-      ? `<path d="${p.d}" fill="#FFFFFF" fill-opacity="${DIM_OPACITY}"/>`
-      : `<path d="${p.d}" fill="${fill}"/>`)
+      ? `<path d="${p.d}"${extra(p)} fill="#FFFFFF" fill-opacity="${DIM_OPACITY}"/>`
+      : `<path d="${p.d}"${extra(p)} fill="${fill}"/>`)
     .join('')
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${GLYPH_VIEWBOX}">${defs}${paths}</svg>\n`
 }

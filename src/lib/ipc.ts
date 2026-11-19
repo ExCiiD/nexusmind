@@ -430,6 +430,10 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
 
 
   getAppVersion: () => Promise<string>
+  /** "Launch Ascend when Windows starts" (installed app on Windows only: `supported` false elsewhere).
+   *  While on, Ascend starts in the notification area and closing the window hides it there. Desktop only. */
+  getLaunchAtLogin?: () => Promise<{ supported: boolean; enabled: boolean }>
+  setLaunchAtLogin?: (enabled: boolean) => Promise<{ supported: boolean; enabled: boolean }>
   getUser: () => Promise<any>
   updateUser: (data: any) => Promise<any>
 

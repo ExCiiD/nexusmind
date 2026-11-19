@@ -29,6 +29,14 @@
   "settings": {
     "title": "Settings",
     "subtitle": "Manage your accounts and preferences",
+    "startup": {
+      "title": "Startup",
+      "desc": "Ascend can start with Windows so no game is missed: detection and recording are ready before you launch League of Legends.",
+      "label": "Launch Ascend when Windows starts",
+      "labelDesc": "Ascend starts in the notification area, without a window. While this is on, closing the window keeps Ascend in the notification area: right-click its icon → Quit to close it.",
+      "unsupported": "Only available in the installed app on Windows.",
+      "error": "Could not change the startup setting."
+    },
     "accounts": {
       "title": "Linked accounts",
       "desc": "Add multiple League of Legends accounts to track games across all of them.",
@@ -1316,6 +1324,27 @@
         "required": "Minimum required: knows (max {{max}})",
         "add": "+ Fundamental…"
       },
+      "design": {
+        "title": "Style",
+        "art": "Background",
+        "splash": "Champion art",
+        "pattern": "Pattern",
+        "filter": "Colour filter",
+        "show": "Show",
+        "shows": {
+          "rankDetails": "Rank details",
+          "mains": "Main champions",
+          "champStats": "Champion stats",
+          "frame": "Frame",
+          "region": "Region"
+        },
+        "championCount": "Champions per player",
+        "kicker": "Small title",
+        "kickerPlaceholder": "Looking for team",
+        "lobbyTitle": "Lobby title",
+        "lobbyTitlePlaceholder": "Looking for 2 players",
+        "reset": "Reset the style"
+      },
       "noRiotId": "No Riot ID",
       "wanted": "Roles wanted",
       "wantedHint": "Free seats show a “+”. Turn off the ones you already have.",
@@ -1436,6 +1465,27 @@
       "failed": "Couldn’t set up the group’s team",
       "emptyTitle": "No players in “{{name}}” yet",
       "emptyDesc": "The team builds itself from the group members with the player role. Invite your players from Coaching & Management → Groups: each one joins with their Riot account."
+    },
+    "cardLook": {
+      "button": "Card look",
+      "title": "Player card look",
+      "desc": "The pattern behind the cards and the same filters as Settings → Appearance. Saved on this device.",
+      "pattern": "Pattern",
+      "patterns": {
+        "topo": "Topographic",
+        "hextech": "Hextech",
+        "ripples": "Ripples",
+        "currents": "Currents",
+        "shards": "Shards",
+        "constellation": "Constellation",
+        "circuit": "Circuit"
+      },
+      "filter": "Colour filter",
+      "filterColor": "Filter colour",
+      "light": "Light (dark ↔ light)",
+      "blur": "Blur",
+      "hint": "Only the background changes: names, ranks and champions stay sharp.",
+      "reset": "Reset"
     }
   },
   "common": {
@@ -2487,7 +2537,9 @@
       "feedback": "Player feedback",
       "feedbackPlaceholder": "Optional — how did this session go for you?",
       "feedbackSend": "Send feedback",
-      "feedbackSent": "Feedback sent"
+      "feedbackSent": "Feedback sent",
+      "transcribing": "Transcribing… The first time, the app downloads the transcription model (about 145 MB, a few minutes).",
+      "retryTranscribe": "Retry transcription"
     },
     "endOfGame": {
       "title": "Game {{n}} finished",
@@ -2526,6 +2578,19 @@
         "inProgress": "Review in progress",
         "none": "No review"
       }
+    },
+    "meeting": {
+      "prepare": "Prepare the meeting",
+      "reason": "Reason for the meeting",
+      "reasonPlaceholder": "E.g. weekly debrief, tournament prep…",
+      "people": "People concerned",
+      "start": "Start the meeting",
+      "started": "Meeting started",
+      "presence": "Attendance",
+      "present": "Present",
+      "absent": "Absent",
+      "unmarked": "Not marked",
+      "noPeople": "Nobody is concerned by this meeting."
     }
   },
   "vodReview": {

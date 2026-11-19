@@ -21,6 +21,9 @@ export const teamSessionEnd = (id: string) => core.endSession(getSupabase(), id)
 export const teamSessionGetObjectives = (sessionId: string) => core.getObjectives(getSupabase(), sessionId)
 export const teamSessionSetObjectives = (sessionId: string, objectiveIds: string[], kpiIds: string[]) =>
   core.setObjectives(getSupabase(), sessionId, objectiveIds, kpiIds)
+export const teamSessionGetAttendance = (sessionId: string) => core.getAttendance(getSupabase(), sessionId)
+export const teamSessionSetAttendance = (sessionId: string, userId: string, present: boolean | null) =>
+  core.setAttendance(getSupabase(), sessionId, userId, present)
 export const teamSessionListMyLive = () => core.listMyLiveSessions(getSupabase())
 export const groupFundamentalsList = (groupId: string) => core.listGroupFundamentals(getSupabase(), groupId)
 export const groupFundamentalsAdd = (groupId: string, input: NewGroupFundamentalInput) => core.addGroupFundamental(getSupabase(), groupId, input)

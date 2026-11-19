@@ -182,8 +182,9 @@ export function ProfilePage() {
             {titles.length === 0 ? (
               <p className="py-6 text-center text-xs text-hextech-text-dim">{t('profile.loadingStats')}</p>
             ) : (
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {[...titles].sort((a, b) => Number(b.unlocked) - Number(a.unlocked) || b.progress - a.progress).map((title) => (
+              // Unlocked first, then the closest to unlocking; 12 at most, in a short scrolling box.
+              <div className="grid max-h-[17rem] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                {[...titles].sort((a, b) => Number(b.unlocked) - Number(a.unlocked) || b.progress - a.progress).slice(0, TITLES_SHOWN).map((title) => (
                   <TitleRow key={title.id} title={title} />
                 ))}
               </div>
@@ -195,11 +196,14 @@ export function ProfilePage() {
   )
 }
 
+/** Titles listed in the Profile's titles block. */
+const TITLES_SHOWN = 12
+
 function TitleRow({ title }: { title: TitleState }) {
   const { t } = useTranslation()
   const s = RARITY_STYLE[title.rarity]
   return (
-    <div className={cn('rounded-xl border p-3 transition-colors', !title.unlocked && 'opacity-60')} style={{ borderColor: title.unlocked ? s.border : undefined, backgroundColor: title.unlocked ? s.bg : undefined }}>
+    <div className={cn('rounded-xl border px-3 py-2 transition-colors', !title.unlocked && 'opacity-60')} style={{ borderColor: title.unlocked ? s.border : undefined, backgroundColor: title.unlocked ? s.bg : undefined }}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-bold" style={{ color: title.unlocked ? s.text : undefined }}>

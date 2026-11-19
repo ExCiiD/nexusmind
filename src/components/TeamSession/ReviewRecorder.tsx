@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Mic, Square, Loader2, Youtube, Check } from 'lucide-react'
+import { Mic, Square, Loader2, Youtube, Check, RotateCw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -37,6 +37,7 @@ export function ReviewRecorder({ title, review, onCreate, onUpdate, onSkip, auto
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const [busy, setBusy] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
   const [recording, setRecording] = useState(false)
   const [transcriptDraft, setTranscriptDraft] = useState(review?.transcript ?? '')
   const [summaryDraft, setSummaryDraft] = useState(review?.summary ?? '')
@@ -69,7 +70,7 @@ export function ReviewRecorder({ title, review, onCreate, onUpdate, onSkip, auto
       setRecording(true)
       checkYoutube()
     } catch (err) {
-      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
+      toast({ title: t(collabErrorKey(err)), description: errorDetail(err), variant: 'destructive' })
     } finally {
       setBusy(false)
     }
@@ -91,16 +92,34 @@ export function ReviewRecorder({ title, review, onCreate, onUpdate, onSkip, auto
       const current = review ?? await onCreate('recording')
       await onUpdate(current.id, { recordingLocalPath: res.filePath, status: 'processing' })
       setRecording(false)
-
-      const { text } = await window.api.transcriptionRun(res.filePath, i18n.language.slice(0, 2))
-      setTranscriptDraft(text)
-      await onUpdate(current.id, { transcript: text, status: 'done' })
-      toast({ title: t('teamSession.review.transcribed', { defaultValue: 'Transcribed' }), variant: 'gold' })
+      await transcribe(current.id, res.filePath)
     } catch (err) {
-      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
+      toast({ title: t(collabErrorKey(err)), description: errorDetail(err), variant: 'destructive' })
     } finally {
       setBusy(false)
     }
+  }
+
+  /** Whisper on the recording; the review stays 'processing' (with its
+   *  file) when it fails, so it can be run again from the retry button. */
+  const transcribe = async (id: string, filePath: string) => {
+    setTranscribing(true)
+    try {
+      const { text } = await window.api.transcriptionRun(filePath, i18n.language.slice(0, 2))
+      setTranscriptDraft(text)
+      await onUpdate(id, { transcript: text, status: 'done' })
+      toast({ title: t('teamSession.review.transcribed', { defaultValue: 'Transcribed' }), variant: 'gold' })
+    } finally {
+      setTranscribing(false)
+    }
+  }
+
+  const retry = async () => {
+    if (!review?.recordingLocalPath) return
+    setBusy(true)
+    try { await transcribe(review.id, review.recordingLocalPath) } catch (err) {
+      toast({ title: t(collabErrorKey(err)), description: errorDetail(err), variant: 'destructive' })
+    } finally { setBusy(false) }
   }
 
   const saveSummary = async () => {
@@ -110,7 +129,7 @@ export function ReviewRecorder({ title, review, onCreate, onUpdate, onSkip, auto
       await onUpdate(review.id, { transcript: transcriptDraft, summary: summaryDraft })
       toast({ title: t('teamSession.review.saved', { defaultValue: 'Saved' }), variant: 'gold' })
     } catch (err) {
-      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
+      toast({ title: t(collabErrorKey(err)), description: errorDetail(err), variant: 'destructive' })
     } finally {
       setBusy(false)
     }
@@ -128,7 +147,7 @@ export function ReviewRecorder({ title, review, onCreate, onUpdate, onSkip, auto
       await onUpdate(review.id, { youtubeUrl: url, youtubeVisibility: 'unlisted' })
       toast({ title: t('teamSession.review.uploaded', { defaultValue: 'Uploaded to YouTube' }), variant: 'gold' })
     } catch (err) {
-      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
+      toast({ title: t(collabErrorKey(err)), description: errorDetail(err), variant: 'destructive' })
     } finally {
       setBusy(false)
     }
@@ -158,6 +177,18 @@ export function ReviewRecorder({ title, review, onCreate, onUpdate, onSkip, auto
             </Badge>
           )}
         </div>
+
+        {transcribing && (
+          <p className="flex items-center gap-2 text-xs text-hextech-text-dim">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-hextech-gold" />{t('teamSession.review.transcribing')}
+          </p>
+        )}
+
+        {!recording && !busy && review?.status === 'processing' && review.recordingLocalPath && (
+          <Button variant="outline" onClick={retry} className="gap-1.5">
+            <RotateCw className="h-4 w-4" />{t('teamSession.review.retryTranscribe')}
+          </Button>
+        )}
 
         {!recording && !isDone && (
           <div className="flex items-center gap-2">
@@ -216,4 +247,11 @@ export function ReviewRecorder({ title, review, onCreate, onUpdate, onSkip, auto
       </CardContent>
     </Card>
   )
+}
+
+/** The raw message under the toast when it isn't one of the known codes:
+ *  "check your connection" alone hid a local transcription failure. */
+function errorDetail(err: unknown): string | undefined {
+  const msg = (err as Error)?.message ?? ''
+  return collabErrorKey(err) === 'coaching.errors.generic' && msg ? msg.replace(/^Error invoking remote method '[^']+': (Error: )?/, '').slice(0, 200) : undefined
 }

@@ -59,12 +59,20 @@ function extractAudioWav(sourcePath: string): Promise<string> {
 /** Decodes a 16kHz mono WAV into the Float32 PCM samples the Whisper
  *  pipeline expects. */
 async function readWavSamples(wavPath: string): Promise<Float32Array> {
-  const { WaveFile } = await import('wavefile')
+  // wavefile ships a bundled CommonJS build: through import() its class is
+  // only on the default export (no named export detected) — reading the
+  // named one gave "WaveFile is not a constructor" and every transcription
+  // failed (19/11/2026).
+  const mod = await import('wavefile') as unknown as { WaveFile?: WaveFileCtor; default?: { WaveFile?: WaveFileCtor } }
+  const WaveFile = mod.WaveFile ?? mod.default?.WaveFile
+  if (!WaveFile) throw new Error('wavefile not loadable')
   const wav = new WaveFile(readFileSync(wavPath))
   wav.toBitDepth('32f')
   const samples = wav.getSamples(false, Float32Array)
   return samples instanceof Float32Array ? samples : Float32Array.from(samples as unknown as number[])
 }
+
+type WaveFileCtor = typeof import('wavefile').WaveFile
 
 export interface TranscriptionResult {
   text: string
@@ -85,10 +93,27 @@ export async function transcribeFile(sourcePath: string, language: string): Prom
   try {
     const samples = await readWavSamples(wavPath)
     const transcriber = await getTranscriber()
-    const result = await transcriber(samples, { language, task: 'transcribe', chunk_length_s: 30, stride_length_s: 5 })
-    const text = Array.isArray(result) ? result.map((r: { text: string }) => r.text).join(' ') : ((result as { text?: string })?.text ?? '')
-    return { text: String(text).trim() }
+    // Whisper loops on music, silence or noise ("C'est un vrai truc." ×60
+    // on a real recording): forbidding repeated 4-grams and a light
+    // repetition penalty stop it without hurting normal speech. Timestamps
+    // make the chunking more reliable on long audio and give one line per
+    // segment.
+    const result = await transcriber(samples, {
+      language, task: 'transcribe', chunk_length_s: 30, stride_length_s: 5,
+      return_timestamps: true, no_repeat_ngram_size: 4, repetition_penalty: 1.15,
+    })
+    return { text: joinTranscript(result) }
   } finally {
     try { unlinkSync(wavPath) } catch { /* best-effort cleanup */ }
   }
+}
+
+/** One line per Whisper segment (timestamps dropped), blank ones skipped. */
+export function joinTranscript(result: unknown): string {
+  const one = (r: unknown) => {
+    const o = r as { text?: string; chunks?: Array<{ text?: string }> } | null
+    if (Array.isArray(o?.chunks) && o.chunks.length > 0) return o.chunks.map((c) => String(c.text ?? '').trim()).filter(Boolean).join('\n')
+    return String(o?.text ?? '').trim()
+  }
+  return (Array.isArray(result) ? result.map(one) : [one(result)]).filter(Boolean).join('\n').trim()
 }

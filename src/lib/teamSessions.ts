@@ -73,6 +73,9 @@ export interface TeamSessionApi {
   teamSessionEnd: (id: string) => Promise<void>
   teamSessionGetObjectives: (sessionId: string) => Promise<TeamSessionObjectives | null>
   teamSessionSetObjectives: (sessionId: string, objectiveIds: string[], kpiIds: string[]) => Promise<void>
+  /** Meeting attendance: userId → present (marked by the responsible). */
+  teamSessionGetAttendance: (sessionId: string) => Promise<Record<string, boolean>>
+  teamSessionSetAttendance: (sessionId: string, userId: string, present: boolean | null) => Promise<void>
   teamSessionListMyLive: () => Promise<TeamSession[]>
   groupFundamentalsList: (groupId: string) => Promise<GroupFundamental[]>
   groupFundamentalsAdd: (groupId: string, input: NewGroupFundamentalInput) => Promise<string>

@@ -51,8 +51,10 @@ export function TeamSessionBanner() {
   }, [available, location.pathname])
 
   // Already on that session's page: the card would only point at itself.
-  const visibleReviews = finalReviews.filter((r) => location.pathname !== `/team-session/${r.calendarEventId}`)
-  if (liveSessions.length === 0 && visibleReviews.length === 0) return null
+  const here = (calendarEventId: string) => location.pathname === `/team-session/${calendarEventId}`
+  const visibleReviews = finalReviews.filter((r) => !here(r.calendarEventId))
+  const visibleLive = liveSessions.filter((s) => !here(s.calendarEventId))
+  if (visibleLive.length === 0 && visibleReviews.length === 0) return null
 
   return (
     <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2" style={{ pointerEvents: 'none' }}>
@@ -72,7 +74,7 @@ export function TeamSessionBanner() {
           </button>
         </div>
       ))}
-      {liveSessions.map((s) => (
+      {visibleLive.map((s) => (
         <button
           key={s.id}
           onClick={() => navigate(`/team-session/${s.calendarEventId}`)}

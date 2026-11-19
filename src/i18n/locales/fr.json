@@ -29,6 +29,14 @@
   "settings": {
     "title": "Paramètres",
     "subtitle": "Gérer vos comptes et préférences",
+    "startup": {
+      "title": "Démarrage",
+      "desc": "Ascend peut se lancer avec Windows pour ne rater aucune partie : la détection et l’enregistrement sont prêts avant que tu lances League of Legends.",
+      "label": "Lancer Ascend au démarrage de Windows",
+      "labelDesc": "Ascend démarre dans la zone de notification, sans fenêtre. Tant que l’option est activée, fermer la fenêtre la range dans la zone de notification : clic droit sur l’icône → Quitter pour fermer Ascend.",
+      "unsupported": "Disponible uniquement dans l’application installée sur Windows.",
+      "error": "Impossible de modifier le lancement au démarrage."
+    },
     "accounts": {
       "title": "Comptes liés",
       "desc": "Ajoutez plusieurs comptes League of Legends pour suivre vos parties sur tous vos comptes.",
@@ -1316,6 +1324,27 @@
         "required": "Minimum requis : connaissance de (max {{max}})",
         "add": "+ Fondamental…"
       },
+      "design": {
+        "title": "Style",
+        "art": "Fond",
+        "splash": "Art du champion",
+        "pattern": "Motif",
+        "filter": "Filtre couleur",
+        "show": "Afficher",
+        "shows": {
+          "rankDetails": "Détails du rang",
+          "mains": "Mains",
+          "champStats": "Stats des champions",
+          "frame": "Cadre",
+          "region": "Région"
+        },
+        "championCount": "Champions par joueur",
+        "kicker": "Petit titre",
+        "kickerPlaceholder": "Recherche d’équipe",
+        "lobbyTitle": "Titre du lobby",
+        "lobbyTitlePlaceholder": "On cherche 2 joueurs",
+        "reset": "Réinitialiser le style"
+      },
       "noRiotId": "Pas de Riot ID",
       "wanted": "Rôles recherchés",
       "wantedHint": "Les places libres s’affichent avec un « + ». Désactive celles que vous avez déjà.",
@@ -1436,6 +1465,27 @@
       "failed": "Impossible de préparer l’équipe du groupe",
       "emptyTitle": "Aucun joueur dans « {{name}} » pour l’instant",
       "emptyDesc": "L’équipe se forme toute seule avec les membres du groupe qui ont le rôle joueur. Invite tes joueurs depuis Coaching & Management → Groupes : chacun rejoint avec son compte Riot."
+    },
+    "cardLook": {
+      "button": "Apparence des cartes",
+      "title": "Apparence des cartes joueurs",
+      "desc": "Le motif derrière les cartes et les mêmes filtres que dans Paramètres → Apparence. Gardé sur cet appareil.",
+      "pattern": "Motif",
+      "patterns": {
+        "topo": "Topographie",
+        "hextech": "Hextech",
+        "ripples": "Ondes",
+        "currents": "Courants",
+        "shards": "Fêlures",
+        "constellation": "Constellation",
+        "circuit": "Circuit"
+      },
+      "filter": "Filtre couleur",
+      "filterColor": "Couleur du filtre",
+      "light": "Lumière (sombre ↔ clair)",
+      "blur": "Flou",
+      "hint": "Seul le fond change : noms, rangs et champions restent nets.",
+      "reset": "Réinitialiser"
     }
   },
   "common": {
@@ -2487,7 +2537,9 @@
       "feedback": "Retours des joueurs",
       "feedbackPlaceholder": "Optionnel — comment s'est passée cette session pour toi ?",
       "feedbackSend": "Envoyer le retour",
-      "feedbackSent": "Retour envoyé"
+      "feedbackSent": "Retour envoyé",
+      "transcribing": "Transcription en cours… La première fois, l’app télécharge le modèle de transcription (environ 145 Mo, quelques minutes).",
+      "retryTranscribe": "Relancer la transcription"
     },
     "endOfGame": {
       "title": "Game {{n}} terminée",
@@ -2526,6 +2578,19 @@
         "inProgress": "Review en cours",
         "none": "Pas de review"
       }
+    },
+    "meeting": {
+      "prepare": "Préparer la réunion",
+      "reason": "Raison de la réunion",
+      "reasonPlaceholder": "Ex. bilan de la semaine, préparation du tournoi…",
+      "people": "Personnes concernées",
+      "start": "Démarrer la réunion",
+      "started": "Réunion démarrée",
+      "presence": "Présence",
+      "present": "Présent",
+      "absent": "Absent",
+      "unmarked": "Non noté",
+      "noPeople": "Personne n’est concerné par cette réunion."
     }
   },
   "vodReview": {

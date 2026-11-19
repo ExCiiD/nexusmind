@@ -17,6 +17,9 @@ export function registerTeamSessionHandlers() {
     (_e, id, responsibleUserIds, filter) => teamSessions.teamSessionStart(id, responsibleUserIds, filter))
   validatedHandle('team-session:end', z.tuple([uuid]), (_e, id) => teamSessions.teamSessionEnd(id))
   validatedHandle('team-session:get-objectives', z.tuple([uuid]), (_e, sessionId) => teamSessions.teamSessionGetObjectives(sessionId))
+  validatedHandle('team-session:get-attendance', z.tuple([uuid]), (_e, sessionId) => teamSessions.teamSessionGetAttendance(sessionId))
+  validatedHandle('team-session:set-attendance', z.tuple([uuid, uuid, z.boolean().nullable()]),
+    (_e, sessionId, userId, present) => teamSessions.teamSessionSetAttendance(sessionId, userId, present))
   validatedHandle('team-session:set-objectives', z.tuple([uuid, z.array(objectiveId).min(1).max(3), z.array(kpiId).max(20)]),
     (_e, sessionId, objectiveIds, kpiIds) => teamSessions.teamSessionSetObjectives(sessionId, objectiveIds, kpiIds))
   validatedHandle('team-session:list-my-live', z.tuple([]), () => teamSessions.teamSessionListMyLive())

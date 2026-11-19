@@ -6,14 +6,17 @@
  */
 import type { CSSProperties } from 'react'
 import { championArtUrl, fitFontSize, LFT_FORMATS, lobbySeats, type LftRole } from '@/lib/lftCore'
-import type { LftPlayerView, LftPosterProps } from './types'
+import type { LftDesign, LftPlayerView, LftPosterProps } from './types'
+import { CARD_PATTERN_OPACITY, cardLookStyle } from '@/lib/cardLookCore'
+import { CARD_PATTERN_URLS, scratchesUrl } from '@/components/team/cardBackgrounds'
 import { alpha, type LftAccent } from './theme'
 import {
   abs, Avatar, ChampionSquare, Cover, DiscordLine, Frame, FONT_DISPLAY, FONT_MONO, InfoPair, INK, Kicker,
   MessageBox, PosterRoot, RankEmblem, rankDetails, rankTitle, RoleIcon, RuleKicker, Shade, TagPills, TEXT_DIM, TraitLine, TraitList, Watermark,
 } from './parts'
 
-export function LftPoster(props: LftPosterProps) {
+export function LftPoster(raw: LftPosterProps) {
+  const props = raw.design.show.region ? raw : { ...raw, region: null }
   if (props.mode === 'multi') return props.format === 'banner' ? <LobbyBanner {...props} /> : <LobbyCard {...props} />
   const player = props.players[0]
   const { width, height } = LFT_FORMATS[props.format]
@@ -24,6 +27,42 @@ export function LftPoster(props: LftPosterProps) {
 type SoloProps = LftPosterProps & { player: LftPlayerView }
 
 const roleName = (t: LftPosterProps['t'], role: LftRole) => t(`team.roster.roles.${role}`)
+
+/**
+ * What sits behind the announcement: the splash art (or the portrait of a
+ * lobby seat), else a card pattern over the colour's glow; the design's
+ * filter, blur and light apply to it, never to the text.
+ */
+function ArtLayer({ design, accent, src, position, coverStyle, width }: {
+  design: LftDesign
+  accent: LftAccent
+  src: string | null
+  position?: string
+  coverStyle?: CSSProperties
+  /** Width drawn, to scale the blur from card pixels. */
+  width: number
+}) {
+  const look = cardLookStyle(design.look, width / 320)
+  const id = design.look.background
+  return (
+    <>
+      <div style={abs({ inset: design.look.blur > 0 ? '-3%' : 0, filter: look.filter })}>
+        {design.art === 'splash' && src ? (
+          <Cover src={src} position={position} style={coverStyle} />
+        ) : design.art === 'pattern' ? (
+          <>
+            <Shade style={{ background: `radial-gradient(130% 85% at 50% 0%, ${alpha(accent.main, 0.32)} 0%, ${accent.deep} 48%, ${INK} 100%)` }} />
+            <Shade style={{ opacity: Math.min(0.5, CARD_PATTERN_OPACITY[id] * 1.7), backgroundImage: `url(${CARD_PATTERN_URLS[id]})`, backgroundSize: `${Math.max(400, Math.round(width * 0.42))}px auto`, backgroundRepeat: 'repeat' }} />
+            <Shade style={{ opacity: 0.4, backgroundImage: `url(${scratchesUrl})`, backgroundSize: `${Math.max(400, Math.round(width * 0.36))}px auto`, backgroundRepeat: 'repeat' }} />
+          </>
+        ) : (
+          <Backdrop accent={accent} />
+        )}
+      </div>
+      {look.tint && <Shade style={{ background: look.tint.color, opacity: look.tint.opacity, mixBlendMode: 'color' }} />}
+    </>
+  )
+}
 
 /** Without a champion to show: the announcement's colour on dark. */
 function Backdrop({ accent }: { accent: LftAccent }) {
@@ -65,18 +104,18 @@ function NameText({ text, size, accent, maxWidth, style }: { text: string; size:
 
 // ── Solo: 16:9 poster ──────────────────────────────────────────────────────
 
-function SoloBanner({ player, region, content, accent, version, t }: SoloProps) {
+function SoloBanner({ player, region, content, accent, version, t, design }: SoloProps) {
   const { width, height } = LFT_FORMATS.banner
   const main = player.champions[0]
   const rank = player.rank
   const title = rankTitle(rank, player.rankState, t)
   return (
     <PosterRoot width={width} height={height}>
-      {main ? <Cover src={championArtUrl('splash', main.key, version, player.skin)} position="center 20%" /> : <Backdrop accent={accent} />}
+      <ArtLayer design={design} accent={accent} src={main ? championArtUrl('splash', main.key, version, player.skin) : null} position="center 20%" width={width} />
       <Shade style={{ background: 'linear-gradient(90deg, rgba(11,8,5,0.94) 0%, rgba(11,8,5,0.5) 26%, rgba(11,8,5,0.4) 50%, rgba(11,8,5,0.62) 74%, rgba(11,8,5,0.95) 100%)' }} />
       <Shade style={{ background: 'linear-gradient(180deg, rgba(11,8,5,0.85) 0%, rgba(11,8,5,0) 25%, rgba(11,8,5,0) 55%, rgba(11,8,5,0.96) 100%)' }} />
       <Shade style={{ background: `radial-gradient(ellipse 30% 42% at 50% 48%, ${alpha(accent.main, 0.16)}, transparent 72%)` }} />
-      <Frame accent={accent} inset={30} />
+      {design.show.frame && <Frame accent={accent} inset={30} />}
 
       <div style={abs({ left: 80, top: 74 })}>
         <InfoPair label={t('team.lft.poster.lookingFor')} value={content.lookingFor} accent={accent} labelSize={19} valueSize={46} maxWidth={560} />
@@ -85,7 +124,7 @@ function SoloBanner({ player, region, content, accent, version, t }: SoloProps) 
         <InfoPair label={t('team.lft.poster.languages')} value={content.languages} accent={accent} labelSize={19} valueSize={46} maxWidth={560} align="right" />
       </div>
       <div style={abs({ left: 0, right: 0, top: 58, display: 'flex', flexDirection: 'column', alignItems: 'center' })}>
-        <Kicker accent={accent} size={19}>{t('team.lft.poster.kicker')}</Kicker>
+        <Kicker accent={accent} size={19}>{design.kicker || t('team.lft.poster.kicker')}</Kicker>
         {region && (
           <div style={{ marginTop: 8, fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 100, lineHeight: 1, letterSpacing: '0.08em', color: '#F7EEDC' }}>{region}</div>
         )}
@@ -105,7 +144,7 @@ function SoloBanner({ player, region, content, accent, version, t }: SoloProps) 
               <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 64, lineHeight: 1, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#F7EEDC' }}>
                 {title}
               </div>
-              {rank && <div style={{ marginTop: 10, fontFamily: FONT_MONO, fontSize: 23, color: accent.soft, whiteSpace: 'nowrap' }}>{rankDetails(rank, t)}</div>}
+              {rank && design.show.rankDetails && <div style={{ marginTop: 10, fontFamily: FONT_MONO, fontSize: 23, color: accent.soft, whiteSpace: 'nowrap' }}>{rankDetails(rank, t)}</div>}
             </div>
           </div>
         )}
@@ -118,14 +157,14 @@ function SoloBanner({ player, region, content, accent, version, t }: SoloProps) 
         </div>
       )}
 
-      {player.champions.length > 0 && (
+      {design.show.mains && player.champions.length > 0 && (
         <div style={abs({ right: 80, top: 262, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 18 })}>
           <Kicker accent={accent} size={17} style={{ marginBottom: 4 }}>{t('team.lft.poster.mains')}</Kicker>
-          {player.champions.map((c) => (
+          {player.champions.slice(0, design.championCount).map((c) => (
             <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 30, lineHeight: 1, letterSpacing: '0.03em', textTransform: 'uppercase', color: '#F3EADA', whiteSpace: 'nowrap' }}>{c.name}</div>
-                {c.games > 0 && (
+                {design.show.champStats && c.games > 0 && (
                   <div style={{ marginTop: 5, fontFamily: FONT_MONO, fontSize: 15, color: TEXT_DIM, whiteSpace: 'nowrap' }}>
                     {t('team.lft.poster.champGames', { count: c.games, winRate: c.winRate ?? 0 })}
                   </div>
@@ -153,7 +192,7 @@ function SoloBanner({ player, region, content, accent, version, t }: SoloProps) 
 
 const ROLE_ORDER: LftRole[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
 
-function SoloCard({ player, region, content, accent, version, t }: SoloProps) {
+function SoloCard({ player, region, content, accent, version, t, design }: SoloProps) {
   const { width, height } = LFT_FORMATS.card
   const main = player.champions[0]
   const rank = player.rank
@@ -164,10 +203,10 @@ function SoloCard({ player, region, content, accent, version, t }: SoloProps) {
   ].filter(Boolean) as Array<{ label: string; value: string }>
   return (
     <PosterRoot width={width} height={height}>
-      {main ? <Cover src={championArtUrl('splash', main.key, version, player.skin)} position="center 20%" style={{ opacity: 0.4 }} /> : <Backdrop accent={accent} />}
+      <ArtLayer design={design} accent={accent} src={main ? championArtUrl('splash', main.key, version, player.skin) : null} position="center 20%" coverStyle={{ opacity: 0.4 }} width={width} />
       <Shade style={{ background: `linear-gradient(100deg, rgba(11,8,5,0.96) 0%, rgba(11,8,5,0.78) 45%, rgba(11,8,5,0.7) 70%, rgba(11,8,5,0.9) 100%)` }} />
       <Shade style={{ background: `radial-gradient(ellipse 40% 55% at 12% 15%, ${alpha(accent.main, 0.2)}, transparent 70%), radial-gradient(ellipse 30% 45% at 88% 18%, ${alpha(accent.main, 0.14)}, transparent 70%)` }} />
-      <Frame accent={accent} inset={16} gap={6} diamond={9} />
+      {design.show.frame && <Frame accent={accent} inset={16} gap={6} diamond={9} />}
 
       <div style={abs({ left: 50, top: 42, display: 'flex', gap: 26, alignItems: 'center' })}>
         <Avatar src={avatar} name={player.name} size={112} accent={accent} />
@@ -190,7 +229,7 @@ function SoloCard({ player, region, content, accent, version, t }: SoloProps) {
           <div style={{ marginTop: rank ? -6 : 0, fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 32, lineHeight: 1, textTransform: 'uppercase', color: '#F7EEDC', letterSpacing: '0.03em' }}>
             {rankTitle(rank, player.rankState, t)}
           </div>
-          {rank && (
+          {rank && design.show.rankDetails && (
             <div style={{ marginTop: 6, fontFamily: FONT_MONO, fontSize: 13, lineHeight: 1.5, color: accent.soft, whiteSpace: 'nowrap' }}>
               <div>{rankDetails(rank, t, { winRate: false })}</div>
               <div style={{ color: TEXT_DIM }}>{rankDetails(rank, t, { queue: false, lp: false })}</div>
@@ -254,10 +293,10 @@ function SoloCard({ player, region, content, accent, version, t }: SoloProps) {
         </div>
       </div>
 
-      <div style={abs({ left: 432, top: 244 })}>
+      {design.show.mains && <div style={abs({ left: 432, top: 244 })}>
         <RuleKicker accent={accent} size={13} width={718}>{t('team.lft.poster.mains')}</RuleKicker>
         <div style={{ marginTop: 18, display: 'flex', gap: 22 }}>
-          {player.champions.map((c) => (
+          {player.champions.slice(0, design.championCount).map((c) => (
             <div key={c.key} style={{ width: 118, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
               <div style={{ position: 'relative' }}>
                 <ChampionSquare src={championArtUrl('icon', c.key, version)} size={96} accent={accent} />
@@ -269,7 +308,7 @@ function SoloCard({ player, region, content, accent, version, t }: SoloProps) {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
 
       <div style={abs({ left: 50, right: 50, top: 420 })}>
         <TagPills tags={content.tags} accent={accent} size={15} />
@@ -298,12 +337,12 @@ interface SeatSizes {
   label: number
 }
 
-function SeatPlayer({ player, accent, version, t, s }: { player: LftPlayerView; accent: LftAccent; version: string; t: LftPosterProps['t']; s: SeatSizes }) {
+function SeatPlayer({ player, accent, version, t, s, design }: { player: LftPlayerView; accent: LftAccent; version: string; t: LftPosterProps['t']; s: SeatSizes; design: LftDesign }) {
   const main = player.champions[0]
   const rank = player.rank
   return (
     <div style={{ position: 'relative', width: s.w, height: s.h, borderRadius: 10, overflow: 'hidden', border: `2px solid ${alpha(accent.main, 0.75)}`, background: accent.deep, boxShadow: `0 18px 40px rgba(0,0,0,0.55), 0 0 0 1px ${INK}` }}>
-      {main && <Cover src={championArtUrl('loading', main.key, version, player.skin)} position="center 18%" />}
+      <ArtLayer design={design} accent={accent} src={main ? championArtUrl('loading', main.key, version, player.skin) : null} position="center 18%" width={s.w * 2} />
       <Shade style={{ background: 'linear-gradient(180deg, rgba(11,8,5,0.35) 0%, rgba(11,8,5,0) 22%, rgba(11,8,5,0.25) 42%, rgba(11,8,5,0.88) 62%, rgba(11,8,5,0.98) 100%)' }} />
       <div style={abs({ left: 0, right: 0, top: 0, height: Math.max(3, s.w * 0.014), background: `linear-gradient(90deg, transparent, ${accent.main}, transparent)` })} />
       <div style={abs({ left: s.w * 0.06, top: s.w * 0.06, width: s.badge, height: s.badge, borderRadius: '50%', background: 'rgba(11,8,5,0.78)', border: `1px solid ${alpha(accent.main, 0.85)}`, display: 'flex', alignItems: 'center', justifyContent: 'center' })}>
@@ -318,7 +357,7 @@ function SeatPlayer({ player, accent, version, t, s }: { player: LftPlayerView; 
             {rankTitle(rank, player.rankState, t)}
           </div>
         )}
-        {rank && <div style={{ marginTop: s.details * 0.4, fontFamily: FONT_MONO, fontSize: s.details, color: accent.soft, whiteSpace: 'nowrap' }}>{rankDetails(rank, t, { queue: false })}</div>}
+        {rank && design.show.rankDetails && <div style={{ marginTop: s.details * 0.4, fontFamily: FONT_MONO, fontSize: s.details, color: accent.soft, whiteSpace: 'nowrap' }}>{rankDetails(rank, t, { queue: false })}</div>}
         {player.strengths.length > 0 && (
           <div
             style={{
@@ -341,9 +380,9 @@ function SeatPlayer({ player, accent, version, t, s }: { player: LftPlayerView; 
             {player.strengths.join(' · ')}
           </div>
         )}
-        {player.champions.length > 0 && (
+        {design.show.mains && player.champions.length > 0 && (
           <div style={{ marginTop: s.champ * 0.32, display: 'flex', gap: s.champ * 0.16 }}>
-            {player.champions.slice(0, 3).map((c) => (
+            {player.champions.slice(0, Math.min(3, design.championCount)).map((c) => (
               <ChampionSquare key={c.key} src={championArtUrl('icon', c.key, version)} size={s.champ} accent={accent} radius={s.champ * 0.16} edge={Math.max(1, s.champ * 0.03)} />
             ))}
           </div>
@@ -420,12 +459,12 @@ function SeatOpen({ role, t, s }: { role: LftRole; t: LftPosterProps['t']; s: Se
   )
 }
 
-function Seats({ players, wanted, accent, version, t, s, gap }: LftPosterProps & { s: SeatSizes; gap: number }) {
+function Seats({ players, wanted, accent, version, t, s, gap, design }: LftPosterProps & { s: SeatSizes; gap: number }) {
   return (
     <div style={{ display: 'flex', gap }}>
       {lobbySeats(players.map((p) => ({ ...p, seat: p.role })), wanted).map((seat) =>
         seat.kind === 'player' ? (
-          <SeatPlayer key={seat.role} player={seat.player} accent={accent} version={version} t={t} s={s} />
+          <SeatPlayer key={seat.role} player={seat.player} accent={accent} version={version} t={t} s={s} design={design} />
         ) : seat.kind === 'wanted' ? (
           <SeatWanted key={seat.role} role={seat.role} accent={accent} t={t} s={s} />
         ) : (
@@ -479,11 +518,11 @@ function ProfileLine({ profile, accent, t, size }: Pick<LftPosterProps, 'profile
 
 const hasProfile = (p: LftPosterProps['profile']) => p.strengths.length > 0 || p.required.length > 0
 
-function LobbyBackground({ players, accent, version }: Pick<LftPosterProps, 'players' | 'accent' | 'version'>) {
+function LobbyBackground({ players, accent, version, design, width }: Pick<LftPosterProps, 'players' | 'accent' | 'version' | 'design'> & { width: number }) {
   const main = players[0]?.champions[0]
   return (
     <>
-      {main ? <Cover src={championArtUrl('splash', main.key, version, players[0]?.skin)} position="center 25%" style={{ filter: 'blur(10px) saturate(1.1)', transform: 'scale(1.08)', opacity: 0.55 }} /> : <Backdrop accent={accent} />}
+      <ArtLayer design={design} accent={accent} src={main ? championArtUrl('splash', main.key, version, players[0]?.skin) : null} position="center 25%" coverStyle={{ filter: 'blur(10px) saturate(1.1)', transform: 'scale(1.08)', opacity: 0.55 }} width={width} />
       <Shade style={{ background: 'linear-gradient(180deg, rgba(11,8,5,0.9) 0%, rgba(11,8,5,0.62) 30%, rgba(11,8,5,0.7) 70%, rgba(11,8,5,0.95) 100%)' }} />
       <Shade style={{ background: `radial-gradient(ellipse 55% 40% at 50% 55%, ${alpha(accent.main, 0.14)}, transparent 75%)` }} />
     </>
@@ -498,12 +537,12 @@ function LobbyBanner(props: LftPosterProps) {
   const { width, height } = LFT_FORMATS.banner
   return (
     <PosterRoot width={width} height={height}>
-      <LobbyBackground {...props} />
-      <Frame accent={accent} inset={30} />
+      <LobbyBackground {...props} width={width} />
+      {props.design.show.frame && <Frame accent={accent} inset={30} />}
       <div style={abs({ left: 0, right: 0, top: 62, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 })}>
-        <Kicker accent={accent} size={20} style={{ paddingLeft: '0.26em' }}>{t('team.lft.poster.multiKicker')}</Kicker>
+        <Kicker accent={accent} size={20} style={{ paddingLeft: '0.26em' }}>{props.design.kicker || t('team.lft.poster.multiKicker')}</Kicker>
         <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 86, lineHeight: 1, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#F7EEDC', textShadow: '0 4px 24px rgba(0,0,0,0.8)' }}>
-          {lobbyTitle(t, wanted.length)}
+          {props.design.title || lobbyTitle(t, wanted.length)}
         </div>
         <LobbySubline {...props} size={30} />
         <ProfileLine {...props} size={24} />
@@ -528,12 +567,12 @@ function LobbyCard(props: LftPosterProps) {
   const { width, height } = LFT_FORMATS.card
   return (
     <PosterRoot width={width} height={height}>
-      <LobbyBackground {...props} />
-      <Frame accent={accent} inset={16} gap={6} diamond={9} />
+      <LobbyBackground {...props} width={width} />
+      {props.design.show.frame && <Frame accent={accent} inset={16} gap={6} diamond={9} />}
       <div style={abs({ left: 0, right: 0, top: 34, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 })}>
-        <Kicker accent={accent} size={12} style={{ paddingLeft: '0.26em' }}>{t('team.lft.poster.multiKicker')}</Kicker>
+        <Kicker accent={accent} size={12} style={{ paddingLeft: '0.26em' }}>{props.design.kicker || t('team.lft.poster.multiKicker')}</Kicker>
         <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 800, fontSize: 46, lineHeight: 1, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#F7EEDC', textShadow: '0 3px 16px rgba(0,0,0,0.8)' }}>
-          {lobbyTitle(t, wanted.length)}
+          {props.design.title || lobbyTitle(t, wanted.length)}
         </div>
         <LobbySubline {...props} size={17} />
         <ProfileLine {...props} size={13} />

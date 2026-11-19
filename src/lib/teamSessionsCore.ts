@@ -88,6 +88,25 @@ export async function setObjectives(sb: SupabaseClient, sessionId: string, objec
   if (error) fail(error, 'set session objectives')
 }
 
+/** Meeting attendance (team_session_attendance): who was there, marked by
+ *  the responsible during the meeting. userId → present. */
+export async function getAttendance(sb: SupabaseClient, sessionId: string): Promise<Record<string, boolean>> {
+  const { data, error } = await sb.from('team_session_attendance').select('user_id, present').eq('session_id', sessionId)
+  if (error) fail(error, 'get attendance')
+  const out: Record<string, boolean> = {}
+  for (const r of (data ?? []) as Array<{ user_id: string; present: boolean }>) out[r.user_id] = r.present
+  return out
+}
+
+/** Marks one person present or absent (null clears the mark). */
+export async function setAttendance(sb: SupabaseClient, sessionId: string, userId: string, present: boolean | null): Promise<void> {
+  const q = sb.from('team_session_attendance')
+  const { error } = present === null
+    ? await q.delete().eq('session_id', sessionId).eq('user_id', userId)
+    : await q.upsert({ session_id: sessionId, user_id: userId, present, marked_at: new Date().toISOString() })
+  if (error) fail(error, 'set attendance')
+}
+
 /** RLS already scopes this to the caller's own groups — a cheap existence
  *  check, used by the fast-poll switch (electron/main/sync/syncService.ts)
  *  and any "you have a live session" banner. */

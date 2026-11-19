@@ -22,6 +22,7 @@ import { TeamSessionGameCard } from '@/components/TeamSession/TeamSessionGameCar
 import { PostGameReviewPrompt } from '@/components/TeamSession/PostGameReviewPrompt'
 import { SessionReviewPanel } from '@/components/TeamSession/SessionReviewPanel'
 import { MeetingReviewPanel } from '@/components/TeamSession/MeetingReviewPanel'
+import { MeetingSetupCard } from '@/components/TeamSession/MeetingSetupCard'
 import type { CalendarEvent } from '@/lib/calendar'
 import type { GroupFundamental, SessionQueueFilter, TeamSession, TeamSessionGame, TeamSessionObjectives } from '@/lib/teamSessions'
 import type { TeamSessionReview } from '@/lib/teamSessionReviews'
@@ -258,6 +259,9 @@ export function TeamSessionPage() {
 
   const countdown = session.status === 'scheduled' ? countdownState(event.startsAt, now) : null
   const objectiveLabels = selectedObjectives.map((id) => allFundamentals.find((f) => f.id === id)?.label ?? id)
+  // A meeting has no queue or objectives: its own card asks the reason, the
+  // people concerned and, once started, who is there (MeetingSetupCard).
+  const isMeeting = event.kind === 'meeting'
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -327,7 +331,11 @@ export function TeamSessionPage() {
         </p>
       )}
 
-      {(canManage && session.status !== 'ended') || (session.status !== 'scheduled') ? (
+      {isMeeting && (
+        <MeetingSetupCard event={event} session={session} group={group} canManage={canManage} myUserId={myUserId ?? ''} onChanged={load} />
+      )}
+
+      {!isMeeting && ((canManage && session.status !== 'ended') || (session.status !== 'scheduled')) ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -409,7 +417,7 @@ export function TeamSessionPage() {
         </Card>
       ) : null}
 
-      {canManage && session.status === 'scheduled' && (
+      {!isMeeting && canManage && session.status === 'scheduled' && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">{t('teamSession.beforeStart', { defaultValue: 'Before starting' })}</CardTitle>

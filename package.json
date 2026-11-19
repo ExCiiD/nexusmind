@@ -1,6 +1,6 @@
 {
   "name": "nexusmind",
-  "version": "1.0.0-beta.6",
+  "version": "1.0.0-beta.7",
   "private": true,
   "description": "League of Legends Self-Coaching Desktop App",
   "author": "Ascend",
@@ -23,6 +23,7 @@
     "site:preview": "node site/serve.mjs",
     "site:og": "electron site/og.cjs",
     "lint": "eslint .",
+    "cutout:pack": "tsx scripts/cutout-pack.ts",
     "check:i18n": "node scripts/check-i18n.mjs",
     "check": "npm run typecheck && npm run lint && npm run check:i18n && npm test",
     "seed": "tsx prisma/seed.ts",
