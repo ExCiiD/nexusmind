@@ -1,0 +1,18 @@
+# #46 point 5 (20/11/2026): the champion cut-out pack, hosted as static files only (no script).
+# 1,608 cut-outs reviewed by the user (WebP, ~98 MB) + manifest.json, built from D:\DEV\NexusMind\cutout-pack by
+# leaving out the refused ones (the source pack is never modified). The files live outside the repository:
+#   ../../../cutout-pack-hosted  (= D:\DEV\NexusMind\cutout-pack-hosted)
+#
+# Cost: static asset requests are free and unlimited on Workers, there is no storage fee, and with no script no
+# request counts against the daily Worker quota. Limits: 20,000 files and 25 MiB per file (largest cut-out < 1 MiB).
+#
+# Deploy only with the user's approval:
+#   node ../discord-bot/node_modules/wrangler/bin/wrangler.js deploy
+# Address: https://ascend-cutouts.nexusmind-riot-proxy.workers.dev/<Champion>_<skin>.webp and /manifest.json
+name = "ascend-cutouts"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[assets]
+directory = "../../../cutout-pack-hosted"
+not_found_handling = "none"

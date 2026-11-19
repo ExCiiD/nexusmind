@@ -641,6 +641,12 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
     memberId: string,
     opts?: { matchCount?: number; masteryCount?: number; overwriteTiers?: boolean; roleOnly?: boolean },
   ) => Promise<{ upserted: number; matchesUsed: number; masteriesUsed: number }>
+  /**
+   * #46 point 2: a Lobby card's first champions within seconds, from the player's champion masteries only (1 Riot
+   * call, interactive priority), when their local pool is still empty. 0 when the pool was not empty. Call it
+   * first, then autoFillPool as before for the full pool. Optional: absent on older builds.
+   */
+  teamCardChampions?: (memberId: string) => Promise<{ upserted: number }>
   /** Solo/Duo and Flex rank of each roster member (Riot league-v4, cached 5 min; force skips the cache). Desktop only. */
   teamMemberRanks?: (teamId: string, opts?: { force?: boolean }) => Promise<import('./rankCore').MemberRankResult[]>
   /** MVP and Grinder holders of a local team, their streaks and totals, and this week's race. Reads Riot first

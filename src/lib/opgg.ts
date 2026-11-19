@@ -18,3 +18,11 @@ export function buildOpggUrl(ign: string | null | undefined, tagLine: string | n
   if (!slug) return null
   return `https://op.gg/lol/summoners/${slug}/${encodeURIComponent(ign)}-${encodeURIComponent(tagLine)}`
 }
+
+/** #49: an op.gg multi-search of several Riot IDs. Null without a known region or without any full Riot ID. */
+export function buildOpggMultiUrl(players: Array<{ ign: string; tagLine: string }>, region: string | null | undefined): string | null {
+  const slug = region ? REGION_TO_OPGG_SLUG[region.toUpperCase()] : undefined
+  const names = players.filter((p) => p.ign && p.tagLine).map((p) => `${p.ign}#${p.tagLine}`)
+  if (!slug || names.length === 0) return null
+  return `https://op.gg/multisearch/${slug}?summoners=${encodeURIComponent(names.join(','))}`
+}

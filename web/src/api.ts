@@ -4,6 +4,7 @@ import * as team from '@/lib/teamCore'
 import { scoutMemberWeb, autoFillPoolWeb } from './scoutingWeb'
 import { computeCombinedStatsWeb, computeCustomStatsWeb, computeTeamSynergyStatsWeb, listCustomGamesWeb } from './teamStatsWeb'
 import { analystWebApi } from './analystWeb'
+import * as matchEvents from '@/lib/matchEventCore'
 import * as dashboardCore from '@/lib/staffDashboardCore'
 import * as devPlanCore from '@/lib/devPlanCore'
 import * as calendarCore from '@/lib/calendarCore'
@@ -17,7 +18,8 @@ import * as announcementsCore from '@/lib/announcementsCore'
 import * as teamSessionsCore from '@/lib/teamSessionsCore'
 import type { TeamSession } from '@/lib/teamSessions'
 import * as teamSessionReviewsCore from '@/lib/teamSessionReviewsCore'
-import { getMatch as getMatchWeb } from './riotWeb'
+import { getMatch as getMatchWeb, getAccountByRiotId as getAccountWeb } from './riotWeb'
+import { checkRiotAccount } from '@/lib/riotAccountCheck'
 import * as reportCore from '@/lib/reportCore'
 import * as trialsCore from '@/lib/trialsCore'
 import * as scrimsReadCore from '@/lib/scrimsCore'
@@ -336,6 +338,15 @@ export const webApi = {
   calendarDeleteEvent: (id: string) => calendarCore.deleteEvent(sb, id),
   calendarRespond: (eventId: string, status: Parameters<typeof calendarCore.respondToEvent>[2], note?: string | null) =>
     calendarCore.respondToEvent(sb, eventId, status, note ?? null),
+  // #49 scrims in the Planning (docs/CONTRAT_SCRIMS_PLANNING.md).
+  calendarSaveMatchEvent: (groupId: string, event: Parameters<typeof matchEvents.saveMatchEvent>[2], match: Parameters<typeof matchEvents.saveMatchEvent>[3]) =>
+    matchEvents.saveMatchEvent(sb, groupId, event, match),
+  calendarGetMatchEvent: (calendarEventId: string) => matchEvents.getMatchEvent(sb, calendarEventId),
+  calendarUpdateMatchDetail: (scrimId: string, patch: Parameters<typeof matchEvents.updateMatchDetail>[2]) => matchEvents.updateMatchDetail(sb, scrimId, patch),
+  calendarListKnownOpponents: (groupId: string) => matchEvents.listKnownOpponents(sb, groupId),
+  // Interactive priority (not BACKGROUND): the user is waiting on the « ✓ trouvé / Introuvable » next to the field.
+  riotAccountExists: (riotId: string, region: string) =>
+    checkRiotAccount((gameName, tagLine, r) => getAccountWeb(gameName, tagLine, r), riotId, region),
   availabilityListRules: (groupId: string) => calendarCore.listAvailabilityRules(sb, groupId),
   availabilitySetRule: (groupId: string, input: Parameters<typeof calendarCore.setAvailabilityRule>[2]) => calendarCore.setAvailabilityRule(sb, groupId, input),
   availabilityDeleteRule: (id: string) => calendarCore.deleteAvailabilityRule(sb, id),
@@ -442,6 +453,8 @@ export const webApi = {
 
   // ── E1: shared team workspace (read-only snapshot view) ──
   teamGetShared: (groupId: string) => team.getSharedTeam(sb, groupId),
+  // #46: the staff link a published roster row to a member, or unlink it (null).
+  teamLinkRosterMember: (rosterId: string, userId: string | null) => team.linkRosterMember(sb, rosterId, userId),
 
   // ── E14: full Team page on the web (roster/pool/draft/scouting) ──
   // Called by the real desktop tab components (RosterTab/ChampPoolTab/

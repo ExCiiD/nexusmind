@@ -73,7 +73,7 @@
 | DA-1 | Migrations locales écrites à la main dans `prisma/migrations/<date>_<nom>/`, jamais `prisma migrate dev`, pas de `;` dans les commentaires SQL. | Revue de chaque nouvelle migration ; `grep -n "^--.*;" prisma/migrations/*/migration.sql`. | 0 écart. | P1 | ✅ | 19/11 (#19, non commité) : script `prisma:migrate` retiré de `package.json`. Plus aucune mention de `migrate dev` hors des docs, qui l'interdisent. |
 | DA-2 | Le runner de migrations ne masque pas une migration cassée. | Lecture de `electron/main/database.ts`. | Une erreur « no such column » inattendue fait échouer la migration. | P2 | ✅ | 19/11, second lot : `UNIQUE constraint failed` n'est **plus toléré du tout** (`isAlreadyAppliedError`). Les copies de reconstruction (`new_Session` ×2, `new_User`, `Recording_v2`) passent en `INSERT OR IGNORE`, pour qu'une reprise après interruption saute seulement les lignes déjà copiées. Le runner n'a pas de somme de contrôle, donc modifier ces anciennes migrations ne touche pas les bases déjà migrées. Tests sur vraie base (`ipcHandlers.test.ts:92-166`) : faute de frappe sur une colonne, donc échec et migration en attente ; reconstruction en échec UNIQUE, donc arrêt, ancienne table gardée, migration en attente ; `CREATE UNIQUE INDEX` sur des doublons, donc échec. Historique — avant ce lot : `no such column` / `no such index` n'étaient déjà plus tolérés que sur `DROP COLUMN` / `DROP INDEX` (`database.ts:64-74`), **mais `UNIQUE constraint failed` restait toléré pour toute instruction.** Dans une reconstruction de table SQLite (`INSERT INTO "new_X" SELECT …`, puis `DROP TABLE`, puis `RENAME` ; utilisée par 2 migrations), un échec UNIQUE sauterait la copie, puis supprimerait l'ancienne table : **perte de données silencieuse**. Un `CREATE UNIQUE INDEX` sur des doublons serait aussi marqué appliqué sans index. Voir la revue du lot J/Q/T/X/A-F. |
 | DA-3 | La sync filtre explicitement par uid, jamais par la RLS seule. | `grep -n "eq('user_id'" electron/main/sync/syncService.ts` ; test `syncEngine.test.ts`. | Chaque lecture de `sync_records` filtre l'uid. | P1 | ✅ | `syncService.ts:38` et `:49` filtrent `user_id` ; `syncAudit.ts` détecte les lignes étrangères. |
-| DA-4 | La base Supabase de production est recréable depuis le dépôt. | `supabase/migrations/` comparé à la production (lecture seule) ; `supabase/config.toml`. | 100 % des tables, RPC et policies versionnées. | P1 | ❌ | WSC-05 : 17 tables, 2 RPC et une migration prérequise absentes du dépôt ; pas de `config.toml`. |
+| DA-4 | La base Supabase de production est recréable depuis le dépôt. | `supabase/migrations/` comparé à la production (lecture seule) ; `supabase/config.toml`. | 100 % des tables, RPC et policies versionnées. | P1 | ✅ | 20/11 : les 15 migrations de production manquantes sont restaurées mot pour mot ; les 21 fichiers portent leur version de production. `node scripts/test-schema-baseline.mjs <pglite 0.3.x>` : 58 migrations de production toutes présentes, rejeu dans l'ordre de la production **et** dans l'ordre des fichiers, **139 objets identiques** à `supabase/baseline/prod_schema_20261120.txt`, contrôle négatif qui détecte une modification. Fichier de référence **recalculé en production** (lecture seule) le 20/11 : même md5 (`8396bb9b…`), 139 objets. Pas de `config.toml` (non nécessaire au rejeu). Avant : WSC-05, 17 tables, 2 RPC et une migration prérequise absentes du dépôt. |
 | DA-5 | Écritures en série groupées dans une transaction. | `grep -rn "\$transaction" electron/main \| wc -l` et revue des boucles d'écriture. | Toute boucle de > 10 écritures dans une transaction. | P3 | ❌ | 2 usages de `$transaction` ; E07 liste 5 boucles sans transaction. |
 | DA-6 | Les tables de cache ont une politique de taille. | Lecture du schéma + `backupCore.ts`. | Purge ou plafond documenté. | P2 | ❌ | E06 : `MatchCache` grossit sans limite et part dans chaque sauvegarde. |
 | DA-7 | Les lectures ne chargent que les colonnes utilisées et filtrent côté serveur. | Revue des `select` Prisma et des requêtes Supabase. | Pas de lecture de table entière côté client. | P2 | ❌ | WSC-06 : `getSharedTeam` lit toute `team_pool_entries` (aussi en rôle service dans le bot) ; WSC-08. |
@@ -163,14 +163,14 @@ reprend les critères pour le verdict de release et se range à ses conclusions.
 | UI/UX | 2 | 2 | 2 |
 | Front-end | 4 | 3 | 0 |
 | Back-end | 0 | 4 | 3 |
-| Données | 4 | 4 | 0 |
+| Données | 5 | 3 | 0 |
 | Sécurité | 1 | 5 | 2 |
 | Tests | 6 | 1 | 1 |
 | Performance | 2 | 2 | 1 |
 | i18n | 3 | 2 | 1 |
 | Accessibilité | 6 | 0 | 1 |
 | Release et ops | 3 | 2 | 2 |
-| **Total** | **31** | **25** | **13** |
+| **Total** | **32** | **24** | **13** |
 
 (Mises à jour : TE-2 passé à ✅ avec le verdict beta.8 ; A11Y-4 ❌ et A11Y-5 ✅
 avec le passage clavier ; A11Y-7 ajouté ; DA-1, REL-1, REL-2 passés à ✅
@@ -425,6 +425,91 @@ Correctif proposé :
   `fakeAuthServer` avec un délai court.
 
 **Non vérifié :** l'app réelle, côté utilisateur.
+
+### #49 Scrims dans le Planning — revue complète, front branché (20/11) — **OK avec une réserve P2 (ordre de mise en production)**
+
+**Contrôles :**
+- `vitest` **1 810 / 1 810** ;
+- `typecheck`, `lint`, `web:build` EXIT 0 ; `check:i18n` OK, 3 934 clés.
+
+**Harnais (FR, clavier), conformité à `DESIGN_STATE.md` § 13 :**
+
+| Élément | Résultat |
+|---|---|
+| **MatchBadge** | Carte « SCRIM BO3 · 19h–21h30 · VS KARMINE ACADEMY · BO3 · 1 ABSENT ». ✅ |
+| **Ouverture du créneau** | Au clavier (bouton, Entrée). ✅ |
+| **MatchDetailPanel, 8 blocs** | 1. en-tête « SCRIM · Prévu · VS KARMINE ACADEMY (KCA) · mercredi 18 novembre · 19:00–21:30 · BO3 » ; 2. nos joueurs avec présence ; 3. équipe adverse, OP.GG multi, OP.GG par joueur, « Corriger » sur un introuvable ; 4. « Ouvrir dans le Scouting », « Préparer la draft » ; 5. checklist (2 cases) et **Notes de préparation** (sauvegarde vérifiée : `{"prepNotes":"Test audit prep"}`) ; 6. drafts liées, **alerte « 1 brouillon lié est introuvable »** et « Lier une draft » ; 7. **Analyse post-scrim**, « Marquer terminé », « Annuler le scrim », Discussion ; 8. « Modifier », « Supprimer ». ✅ |
+| **EventPopup en Scrim** | **640 px** ; radiogroups « Format » (**Bo3 par défaut**) et « Équipe adverse » nommés ; Bo5 donne 20:00, Bo3 18:30 (fin recalculée) ; **« Équipe connue » au clavier** : sélecteur « Choisir une équipe du Scouting » qui pré-remplit nom, tag, Riot ID connus et titre ; 5 champs Riot ID nommés ; `<label>` pour Nom *, Tag, Lien OP.GG multi ; « Titulaires pré-remplis · 5 / 5 dispo » ; pied « L'équipe est ajoutée au Scouting et au Draft Sim. » ; **« Créer le scrim » grisé tant que le nom est vide**. ✅ |
+| **Enregistrement** | `calendarSaveMatchEvent` reçoit le type scrim, Bo3, 2 h 30, les 5 titulaires comme participants, l'adversaire (nom, tag, 2 joueurs avec rôle et région). ✅ |
+| **Vérification des Riot ID** | À la sortie du champ via le relais ; `aria-invalid` et contour rouge si introuvable ; sans réponse, état neutre (`MatchEventFields.tsx:55-59, 130-133`). ✅ (code) |
+| **Officiel** | « Créer le match officiel » (`fr.json:2938`) ; même formulaire. ✅ (code) |
+| **Web : page Scrims supprimée** | `web/src/pages/ScrimsPage.tsx` n'existe plus, plus d'entrée de menu. `/scrims` et `/scrims?scrim=<id>` passent par `ScrimsRedirect` vers `/management?tab=planning&event=<id>`, que le Planning ouvre (`PlanningSection.tsx:79`). Les liens de l'accueil web passent par cette redirection. ✅ |
+| **Rien de perdu** (tableau § 13.3) | Chaque fonction de l'ancienne page a sa place : grille par semaine, création, présence, checklist, notes, drafts liées et alerte, analyse, terminé, annuler, supprimer, discussion, lien Scouting. Le bot lit toujours `scrims`. ✅ |
+| **Sans migration** | Le Planning reste affiché, sans badges (testé côté back). **Mais la création d'un Scrim ou d'un Officiel échoue avec une erreur générique** : voir la réserve P2. |
+
+**Réserve P2 — ordre de mise en production.**
+- Sans la migration `20261120120000`, `save_match_event` n'existe pas : un créneau Scrim ou Officiel ne peut plus être
+  créé (toast `collabErrorKey` générique, `EventPopup.tsx:272-273`).
+- L'ancienne page Scrims étant supprimée sur le web, **on ne pourrait plus créer aucun scrim**, ni sur desktop ni sur
+  le web, pendant cet intervalle.
+- Il faut :
+  1. **appliquer la migration en production avant** de déployer la web app et de publier la version desktop qui
+     contient #49 (accord de l'utilisateur), puis rafraîchir la baseline ;
+  2. au minimum, afficher un message clair, comme l'état « table absente » de l'analyste (« Arrive avec la prochaine
+     mise à jour du serveur »), au lieu d'une erreur générique : détecter `PGRST202` ou « function … does not exist »
+     dans `matchErrorKey`.
+
+**Réserves P3 :**
+1. À l'ouverture de la pop-up en Scrim, **Bo3 est sélectionné mais la fin reste à +1 h** (16:00-17:00). Il faut
+   cliquer un format pour obtenir 18:30. Appliquer la durée Bo3 dès l'ouverture d'un nouveau créneau.
+2. Panneau, bloc 3 : le rôle des adversaires est affiché, pas modifiable sur place (spec : « select, éditable par le
+   staff »). On le modifie via « Modifier », qui rouvre la pop-up : acceptable, à confirmer avec Graphic Design.
+3. Zone de saisie de la discussion (`DiscussionThread.tsx:88-90`) nommée par son seul texte d'exemple : ajouter
+   `aria-label`.
+4. `ScrimsRedirect` : le spinner est `aria-hidden` sans texte ; ajouter un `sr-only` « Ouverture du Planning… ».
+
+### #49 Scrims dans le Planning — partie back (backend-dev, 20/11) — **OK** (revue complète après le branchement du Front)
+
+**Contrôles :**
+- `vitest` **1 810 / 1 810** (138 fichiers) ;
+- `typecheck`, `lint` EXIT 0 ; `check:i18n` OK, 3 934 clés ;
+- `tsc` du bot EXIT 0.
+
+| Point | Verdict | Preuve |
+|---|---|---|
+| **Migration `20261120120000`** + `supabase/rollback/20261120120000_rollback.sql` | ✅ | `scripts/test-scrims-in-planning.mjs` (PGlite 0.3.16, PostgreSQL 17) : **58 / 58**, retour arrière compris : les scrims et leurs créneaux sont gardés, et la migration se réapplique après le retour arrière. Les doublons de `team_scouting` reçoivent « (2) », « (3) » **avant** l'index unique `(group_id, opponent_key)`, donc rien n'est perdu. `scrims.calendar_event_id` est unique, en `on delete cascade` (CHOIX 3). Le lien OP.GG est limité à des domaines connus en `https`. **Pas appliquée en production** (accord de l'utilisateur requis). |
+| **RPC `save_match_event`** | ✅ | `security definer`, `search_path = ''`. Contrôle `can_edit_calendar` (owner, coach, manager, capitaine), sinon `FORBIDDEN`. `v_may_overwrite = is_group_staff` : manager et capitaine **complètent** un adversaire sans écraser ce qui existe, le staff le modifie (CHOIX 2). Codes d'erreur `INVALID_KIND`, `INVALID_EVENT`, `INVALID_OPPONENT`, `NOT_FOUND`. |
+| **`matchEvent.ts` / `matchEventCore.ts`** | ✅ | 28 tests (`matchEvents.test.ts`, `matchEventView.test.ts`) : « Officiel » = `tournament` (CHOIX 1), Riot ID coupé au dernier `#`, liens OP.GG, codes RPC traduits, patch partiel, lecture du créneau, de son scrim et de son adversaire par clé, et **état sans migration** (le Planning reste affiché sans badges). |
+| **IPC** | ✅ | `calendar:save-match-event`, `get-match-event`, `update-match-detail`, `list-known-opponents` sous `validatedHandle` (zod). |
+| **`publishTeam` par clé** | ✅ | Rapproche les équipes scoutées sur `opponent_key`, garde celles créées depuis un créneau (`source = 'match'`), retire les non publiées ; avant la migration, ancien comportement. Testé (`teamCore.test.ts:69, 104`). |
+| **`importGroupOpponents`** | ✅ | Crée un adversaire manquant avec ses joueurs connus ; ne complète que tag et rôles d'un adversaire local ; ne fait pas revenir un adversaire supprimé localement (tests `matchEvents.test.ts:181-200`). |
+| **Réserve P2 précédente : épinglage de PGlite** | ✅ **levée** | `supabase/baseline/README.md:15-20` épingle `@electric-sql/pglite@0.3.16`. Le test échoue avec un message clair sur une autre version majeure : « PostgreSQL 18 found (server_version_num 180007), production runs 17: install @electric-sql/pglite@0.3.16… ». Vérifié avec 0.5.17 (refus) et 0.3.16 (tout vert). |
+
+**À noter :**
+- deux migrations attendent maintenant la production : `20261119290000_analyst…` et `20261120120000_scrims…`. Le
+  test de baseline les liste à part, correctement. Il faudra rafraîchir la baseline après leur application ;
+- revue complète (écrans, clavier, droits affichés) quand le Front aura branché le contrat.
+
+### Baseline du schéma de production (WSC-05 / DA-4) (backend-dev, 20/11) — **OK ; DA-4 passe**
+
+| Vérification | Résultat |
+|---|---|
+| `test-schema-baseline.mjs` avec **PGlite 0.3.16 (PostgreSQL 17)** | **8 / 8 PASS** : 15 restaurées octet pour octet ; 58 migrations de production toutes dans le dépôt ; e8 « lock » repliée mot pour mot ; 57 migrations rejouées dans l'ordre de la prod et dans l'ordre des fichiers ; 139 objets et empreintes identiques ; contrôle négatif (colonne ajoutée, droit retiré) détecté. `20261119290000_analyst…` est correctement exclue (pas encore appliquée en prod). |
+| Fichier de référence contre la prod en direct | `scripts/schema-snapshot.sql` rejoué en production (lecture seule) : **md5 `8396bb9b198c2910bc834fdf9f582ded`, 139 objets**, identique au fichier `prod_schema_20261120.txt`. |
+| Renommage des 21 fichiers | Fait pendant la revue : les fichiers portent leur version de production (renommages `git mv`, déjà indexés). Le test passe après le renommage. |
+
+**Réserve P2 — la version de PGlite n'est pas épinglée.** Avec **PGlite 0.5.x (PostgreSQL 18)**, le test
+échoue sur **toutes** les tables, composante `k` (contraintes). Depuis PostgreSQL 18, chaque `NOT NULL` est une ligne
+de `pg_constraint` (`scrims_checklist_not_null NOT NULL checklist`), alors que la production est en **17.6**. Ce n'est
+pas un défaut du schéma, mais quelqu'un qui lance le test avec le dernier PGlite conclura à tort que la base a dérivé.
+
+Correctif, au choix :
+- épingler `@electric-sql/pglite@0.3` (PostgreSQL 17) dans le README et dans un message d'erreur du script si la
+  version de PostgreSQL n'est pas 17 (`select current_setting('server_version_num')`) ;
+- ou exclure `contype = 'n'` dans `schema-snapshot.sql`, sans effet en PostgreSQL 17.
+
+**Rappel du README :** ne jamais relancer en production les 15 migrations restaurées (elles y sont déjà) ; rafraîchir
+la baseline après chaque migration appliquée en production.
 
 ### #40 Fonctionnalités analyste : Objectifs, Journal des drafts, Dossier adverse (back + front, 19/11) — **OK avec une réserve P2 (spec § 11)**
 

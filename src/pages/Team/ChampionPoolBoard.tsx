@@ -50,9 +50,9 @@ export function useMemberLooks(): MemberLook[] {
   return looks
 }
 
-/** "3 main · 1 new · 5 comfort" — tier names stay in English, like the pills. */
+/** "3 main · 5 comfort · 1 new" — tier names stay in English, like the pills; same order as TIERS. */
 export function countsLabel(counts: Record<Tier, number>): string {
-  return (['main', 'new', 'comfort'] as Tier[])
+  return (['main', 'comfort', 'new'] as Tier[])
     .filter((t) => counts[t] > 0)
     .map((t) => `${counts[t]} ${t}`)
     .join(' · ')

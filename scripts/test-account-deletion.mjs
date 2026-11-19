@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * End-to-end check of supabase/migrations/20261119200000_account_deletion_keeps_groups.sql
+ * End-to-end check of supabase/migrations/20261119165228_account_deletion_keeps_groups.sql
  * (S19-16) on a throw-away Postgres, never on the project's database.
  *
  * Runs on PGlite (Postgres compiled to WebAssembly, in memory). The nine
@@ -22,8 +22,8 @@ const require = createRequire(join(pgliteDir, 'package.json'))
 const { PGlite } = await import(pathToFileURL(require.resolve('@electric-sql/pglite')).href)
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
-const migration = readFileSync(join(repo, 'supabase/migrations/20261119200000_account_deletion_keeps_groups.sql'), 'utf-8')
-const migrationContent = readFileSync(join(repo, 'supabase/migrations/20261119210000_account_deletion_keeps_group_content.sql'), 'utf-8')
+const migration = readFileSync(join(repo, 'supabase/migrations/20261119165228_account_deletion_keeps_groups.sql'), 'utf-8')
+const migrationContent = readFileSync(join(repo, 'supabase/migrations/20261119165258_account_deletion_keeps_group_content.sql'), 'utf-8')
 
 // #33: what a member created for the group (CASCADE in production today).
 const CONTENT = [

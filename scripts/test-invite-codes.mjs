@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * End-to-end check of supabase/migrations/20261119270000_invite_codes_crypto_random.sql (#44, CyberSecurity
+ * End-to-end check of supabase/migrations/20261119165525_invite_codes_crypto_random.sql (#44, CyberSecurity
  * review) on a throw-away Postgres (PGlite, in memory), never on the project's database.
  *
  * PGlite ships without pgcrypto, so extensions.gen_random_bytes is a stand-in here (test only): it returns
@@ -19,7 +19,7 @@ if (!pgliteDir) { console.error('Pass the folder that holds node_modules/@electr
 const require = createRequire(join(pgliteDir, 'package.json'))
 const { PGlite } = await import(pathToFileURL(require.resolve('@electric-sql/pglite')).href)
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
-const raw = readFileSync(join(repo, 'supabase/migrations/20261119270000_invite_codes_crypto_random.sql'), 'utf-8')
+const raw = readFileSync(join(repo, 'supabase/migrations/20261119165525_invite_codes_crypto_random.sql'), 'utf-8')
 const EXT = 'create extension if not exists pgcrypto with schema extensions;'
 if (!raw.includes(EXT)) { console.error('The migration no longer creates pgcrypto as expected.'); process.exit(2) }
 const migration = raw.replace(EXT, '-- pgcrypto: stand-in defined by the test')

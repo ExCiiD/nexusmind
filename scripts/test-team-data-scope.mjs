@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * End-to-end check, on a throw-away Postgres (PGlite, in memory), never on the project's database, of:
- *   - 20261119250000_team_data_staff_only.sql (#43 / S19-17): a member's team data in sync_records is readable by the
+ *   - 20261119165435_team_data_staff_only.sql (#43 / S19-17): a member's team data in sync_records is readable by the
  *     staff of a shared group only, and only when the member shared explicitly;
- *   - 20261119260000_team_custom_games.sql (#41a): the group's custom games, read by members, written by staff,
+ *   - 20261119165454_team_custom_games.sql (#41a): the group's custom games, read by members, written by staff,
  *     kept (author anonymised) when their importer deletes their account.
  * Stand-ins: auth.uid(), groups, members, sharing, sync_records, the production group_role / is_group_staff.
  *
@@ -67,7 +67,7 @@ await db.query(`insert into public.sync_records values ($1, 'DraftPrep', 'd1', '
 
 // ── #43 ──────────────────────────────────────────────────────────────────────
 let err = null
-try { await db.exec(read('20261119250000_team_data_staff_only.sql')) } catch (e) { err = e.message }
+try { await db.exec(read('20261119165435_team_data_staff_only.sql')) } catch (e) { err = e.message }
 check('#43 migration applies', err === null, err)
 await db.exec(`create policy "sync_records_read_shared" on public.sync_records for select to authenticated
   using (user_id = auth.uid() or private.can_read_player_table(user_id, table_name))`)
@@ -93,7 +93,7 @@ check('#43 everyone still reads their own rows', (await visible(player, player))
 
 // ── #41a ─────────────────────────────────────────────────────────────────────
 err = null
-try { await db.exec(read('20261119260000_team_custom_games.sql')) } catch (e) { err = e.message }
+try { await db.exec(read('20261119165454_team_custom_games.sql')) } catch (e) { err = e.message }
 check('#41a migration applies', err === null, err)
 
 const insertGame = (user, group, localId) => as(user, async () => {
@@ -116,7 +116,7 @@ await db.query('delete from auth.users where id = $1', [coach])
 check('#41a the importer deletes their account: the game stays, anonymised',
   (await db.query('select count(*)::int n from public.team_custom_games where created_by is null')).rows[0].n === 1)
 
-for (const f of ['20261119250000_team_data_staff_only.sql', '20261119260000_team_custom_games.sql']) {
+for (const f of ['20261119165435_team_data_staff_only.sql', '20261119165454_team_custom_games.sql']) {
   err = null
   try { await db.exec(read(f)) } catch (e) { err = e.message }
   check(`re-runnable: ${f}`, err === null, err)

@@ -45,8 +45,13 @@
  * Remakes (under 5 minutes, or ended by an early surrender vote) never count.
  *
  * ## MVP of the week, `mvpRace`
- * The average score of the player's games of the week, MVP_MIN_GAMES (3)
- * minimum. Equal averages (to 0.1) go to the player with more games.
+ * Team games only (#46, 20/11/2026: the MVP went four weeks running to a
+ * player whose team never played together): a game counts when at least
+ * MVP_MIN_TOGETHER (3) members of the roster played it on the same side
+ * (`teamGamesOnly`), the threshold of the team synergy stats. The average
+ * score of the player's team games of the week, MVP_MIN_GAMES (3) minimum.
+ * Equal averages (to 0.1) go to the player with more games. A roster with
+ * fewer than 3 known players has no MVP.
  *
  * ## Grinder of the week, `grinderWeek`
  * Riot keeps no LP history: the rank is read at start, every few hours and
@@ -117,6 +122,13 @@ export const AWARD_QUEUE_IDS: readonly number[] = [420, 440]
 /** Shorter games are remakes. */
 export const MIN_GAME_SECONDS = 300
 export const MVP_MIN_GAMES = 3
+/** Members of the roster who must have played a game on the same side for it to count for the MVP (a team game). */
+export const MVP_MIN_TOGETHER = 3
+/**
+ * Bumped when the MVP rule changes: the weeks stored under an older rule are computed again (electron/main/
+ * weeklyAwards.ts). 2: team games only (#46).
+ */
+export const MVP_RULE_VERSION = 2
 export const GRINDER_MIN_LP = 1
 /** Points of 100 that a win adds to a game's score. */
 export const WIN_BONUS = 10
@@ -387,6 +399,23 @@ export function scoreGame(match: unknown, puuid: string, queues: readonly number
 // ── Weekly rankings ────────────────────────────────────────────────────────
 
 const byMemberId = (a: AwardRaceEntry, b: AwardRaceEntry) => (a.memberId < b.memberId ? -1 : a.memberId > b.memberId ? 1 : 0)
+
+/**
+ * The team games among the roster's scored games: those at least `minTogether` different players of the roster
+ * played on the same side. Same match and same result means the same side (a game has one winning team), so two
+ * roster players who met on opposite sides in Solo/Duo never make a team game. `games` must hold the roster's
+ * players only.
+ */
+export function teamGamesOnly<T extends { puuid: string; matchId: string; win: boolean }>(games: readonly T[], minTogether = MVP_MIN_TOGETHER): T[] {
+  const side = new Map<string, Set<string>>()
+  for (const g of games) {
+    const key = `${g.matchId}|${g.win}`
+    const players = side.get(key) ?? new Set<string>()
+    players.add(g.puuid)
+    side.set(key, players)
+  }
+  return games.filter((g) => (side.get(`${g.matchId}|${g.win}`)?.size ?? 0) >= minTogether)
+}
 
 /**
  * MVP ranking from the scores of the week's counted games: average (one

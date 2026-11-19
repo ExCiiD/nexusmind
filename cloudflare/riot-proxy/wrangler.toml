@@ -14,6 +14,9 @@ INTERACTIVE_RESERVE = "0.3"
 # CyberSecurity: most of each window one account may use, so a single user (or a stolen token) cannot empty
 # the key for everyone. 0.25 of 95 calls / 2 min = 23 calls per user.
 USER_WINDOW_SHARE = "0.25"
+# #46 point 2: part of each player's share kept for their interactive calls: their background calls use at most 80 %
+# of it (and always leave one slot), so an open screen never waits behind their own background reads.
+USER_INTERACTIVE_RESERVE = "0.2"
 # Cost guard of the R2 store (src/r2Guard.ts), asked by the user on 19/11/2026: at most this much above R2's free
 # tier in a month (USD; 2 USD stays under 2 euros). Past it, the proxy stops using R2 until the next month.
 R2_EXTRA_BUDGET_USD = "2"
@@ -24,6 +27,13 @@ R2_EXTRA_BUDGET_USD = "2"
 name = "USER_LIMITER"
 namespace_id = "1001"
 simple = { limit = 20, period = 60 }
+
+# #46 point 2 (20/11/2026): background calls (weekly awards, scouts) also count here, 80 % of USER_LIMITER, so a
+# player's interactive calls (an open screen) always find room in their minute. Keep it at 80 % of USER_LIMITER.
+[[ratelimits]]
+name = "USER_LIMITER_BACKGROUND"
+namespace_id = "1002"
+simple = { limit = 16, period = 60 }
 
 # P1-2: the global budget, one Durable Object per Riot host (src/budgetObject.ts).
 [[durable_objects.bindings]]

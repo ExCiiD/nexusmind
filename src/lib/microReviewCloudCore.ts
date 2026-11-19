@@ -5,7 +5,7 @@ import type {
 import type { CodexEntry } from './microReview/codex'
 
 /**
- * Micro-review, coach side (supabase/migrations/20261117210000_micro_review_coach.sql),
+ * Micro-review, coach side (supabase/migrations/20261117123636_micro_review_coach.sql),
  * same pattern as vodReviewCore.ts — desktop and web call these identically.
  *
  * The migration may not be applied yet: a missing table surfaces as

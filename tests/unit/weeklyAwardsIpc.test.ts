@@ -5,7 +5,7 @@
  * and what team:weekly-awards returns.
  */
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
-import { rmSync } from 'fs'
+import { readFileSync, rmSync } from 'fs'
 import { join } from 'path'
 
 const h = vi.hoisted(() => {
@@ -55,7 +55,7 @@ import { initDatabase, closeDatabase, getPrisma } from '../../electron/main/data
 import * as riot from '../../electron/main/riotClient'
 import { getWeeklyAwards, recordRankSnapshots } from '../../electron/main/weeklyAwards'
 import { registerWeeklyAwardsHandlers } from '../../electron/main/ipc/weeklyAwards.ipc'
-import { ROLE_NORMS, type ScoreRole } from '../../src/lib/weeklyAwardsCore'
+import { MVP_RULE_VERSION, ROLE_NORMS, type ScoreRole } from '../../src/lib/weeklyAwardsCore'
 
 // Thursday 19 November 2026, 15:00 local: last week 2026-11-09, current 2026-11-16.
 const NOW = new Date(2026, 10, 19, 15, 0)
@@ -96,12 +96,13 @@ beforeAll(async () => {
   teamId = team.id
   ids.a = (await prisma.teamMember.create({ data: { teamId, displayName: 'Ana', ign: 'Ana', tagLine: 'EUW', region: 'EUW1', role: 'MID', puuid: 'pa' } })).id
   ids.b = (await prisma.teamMember.create({ data: { teamId, displayName: 'Bee', ign: 'Bee', tagLine: 'EUW', region: 'EUW1', role: 'ADC' } })).id
-  ids.c = (await prisma.teamMember.create({ data: { teamId, displayName: 'Cid', role: 'SUPPORT', region: 'EUW1' } })).id
+  ids.c = (await prisma.teamMember.create({ data: { teamId, displayName: 'Cid', role: 'SUPPORT', region: 'EUW1', puuid: 'pc' } })).id
 
-  // Last week: Ana carries three Flex games with Bee. This week: Bee plays
-  // three Solo/Duo games, Ana one.
+  // Last week: Ana carries three Flex games with Bee and Cid (team games: 3 of
+  // the roster on the same side). This week: Bee plays three Solo/Duo games,
+  // Ana one: no team game, so no MVP race (#46).
   for (const [i, d] of [10, 11, 12].entries()) {
-    addMatch(`EUW1_10${i}`, day(d), 440, [{ puuid: 'pa', role: 'MID', boost: 2 }, { puuid: 'pb', role: 'ADC', boost: 1 }])
+    addMatch(`EUW1_10${i}`, day(d), 440, [{ puuid: 'pa', role: 'MID', boost: 2 }, { puuid: 'pb', role: 'ADC', boost: 1 }, { puuid: 'pc', role: 'SUPPORT', boost: 1 }])
   }
   for (const [i, d] of [16, 17, 18].entries()) addMatch(`EUW1_20${i}`, day(d), 420, [{ puuid: 'pb', role: 'ADC', boost: 1 }])
   addMatch('EUW1_300', day(18), 420, [{ puuid: 'pa', role: 'MID', boost: 1.5 }])
@@ -136,12 +137,10 @@ describe('team:weekly-awards', () => {
     expect(awards.holders[1]).toEqual({ kind: 'grinder', memberId: ids.b, weekStart: lastMonday, live: false, value: 60, games: 8, streak: 1 })
     expect(awards.totals).toEqual({ [ids.a]: { mvp: 1, grinder: 0 }, [ids.b]: { mvp: 0, grinder: 1 }, [ids.c]: { mvp: 0, grinder: 0 } })
 
-    // This week: Bee qualifies with three games, Ana has one. Ana is +20 LP
-    // since Saturday, Bee played four games for no LP.
-    expect(awards.race.mvp).toEqual([
-      { memberId: ids.b, value: 55, games: 3 },
-      { memberId: ids.a, value: expect.any(Number), games: 1 },
-    ])
+    // This week: only Solo/Duo games, none played together: no MVP race (#46,
+    // before it Bee led it with three solo games). Ana is +20 LP since
+    // Saturday, Bee played four games for no LP.
+    expect(awards.race.mvp).toEqual([])
     expect(awards.race.grinder).toEqual([
       { memberId: ids.a, value: 20, games: 3 },
       { memberId: ids.b, value: 0, games: 4 },
@@ -155,6 +154,7 @@ describe('team:weekly-awards', () => {
     expect(await prisma.matchCache.count()).toBe(7)
     expect(await prisma.playerGameScore.count({ where: { puuid: 'pa' } })).toBe(4)
     expect(await prisma.playerGameScore.count({ where: { puuid: 'pb' } })).toBe(6)
+    expect(await prisma.playerGameScore.count({ where: { puuid: 'pc' } })).toBe(3)
     expect(riot.getMatch).toHaveBeenCalledTimes(7)
   })
 
@@ -167,6 +167,11 @@ describe('team:weekly-awards', () => {
       `2026-11-09 grinder ${ids.b}`, `2026-11-09 mvp ${ids.a}`,
     ])
     expect(JSON.parse(rows[7].raceJson!)[0]).toMatchObject({ memberId: ids.a, games: 3 })
+  })
+
+  it('#46: records that the stored MVP weeks follow the team-games rule (purged once, not at every start)', () => {
+    const rule = JSON.parse(readFileSync(join(h.root, 'userData', 'weekly-awards-rule.json'), 'utf-8'))
+    expect(rule).toEqual({ mvpRule: MVP_RULE_VERSION })
   })
 
   it('answers from the database while the data is fresh', async () => {

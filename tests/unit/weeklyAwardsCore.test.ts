@@ -6,6 +6,7 @@ import {
   FINALIZE_GRACE_MS,
   HOUR_MS,
   MVP_MIN_GAMES,
+  MVP_MIN_TOGETHER,
   ROLE_NORMS,
   ROLE_WEIGHTS,
   SCORE_ROLES,
@@ -22,6 +23,7 @@ import {
   scoreLobby,
   shiftWeekKey,
   streakEnding,
+  teamGamesOnly,
   toScoreRole,
   weekKeyOf,
   weekRange,
@@ -270,6 +272,37 @@ describe('scoreGame', () => {
     expect(toScoreRole('Invalid')).toBeNull()
     expect(toScoreRole('')).toBeNull()
     expect(toScoreRole(undefined)).toBeNull()
+  })
+})
+
+describe('teamGamesOnly (#46: the MVP counts team games only)', () => {
+  const g = (puuid: string, matchId: string, win: boolean, score = 60) => ({ puuid, matchId, win, score })
+
+  it('a game counts when 3 players of the roster played it on the same side', () => {
+    expect(MVP_MIN_TOGETHER).toBe(3)
+    const games = [g('a', 'M1', true), g('b', 'M1', true), g('c', 'M1', true), g('a', 'M2', true), g('b', 'M2', true)]
+    expect(teamGamesOnly(games).map((x) => `${x.puuid}:${x.matchId}`)).toEqual(['a:M1', 'b:M1', 'c:M1'])
+  })
+
+  it('Solo/Duo games alone never count, so no MVP without team games (the reported bug: MVP four weeks running)', () => {
+    const solo = Array.from({ length: 8 }, (_, i) => g('a', `S${i}`, i % 2 === 0, 90))
+    expect(teamGamesOnly(solo)).toEqual([])
+    expect(mvpRace(teamGamesOnly(solo).map((x) => ({ memberId: x.puuid, score: x.score })))).toEqual([])
+  })
+
+  it('roster players on opposite sides of one game are not a team game', () => {
+    const games = [g('a', 'M1', true), g('b', 'M1', true), g('c', 'M1', false), g('d', 'M1', false)]
+    expect(teamGamesOnly(games)).toEqual([])
+  })
+
+  it('the MVP is the best average over the team games', () => {
+    const games = [
+      ...['M1', 'M2', 'M3'].flatMap((m) => [g('a', m, true, 80), g('b', m, true, 50), g('c', m, true, 40)]),
+      g('b', 'SOLO', true, 100), g('b', 'SOLO2', true, 100), // b's solo games do not lift b
+    ]
+    const race = mvpRace(teamGamesOnly(games).map((x) => ({ memberId: x.puuid, score: x.score })))
+    expect(race[0]).toMatchObject({ memberId: 'a', value: 80, games: 3 })
+    expect(race.find((r) => r.memberId === 'b')).toMatchObject({ value: 50, games: 3 })
   })
 })
 

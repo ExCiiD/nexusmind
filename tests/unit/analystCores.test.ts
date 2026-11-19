@@ -228,6 +228,15 @@ describe('analystCore: objectives', () => {
     group_members: [{ group_id: 'G', riot_id: 'Us0#EUW' }, { group_id: 'G', riot_id: 'Us1#EUW' }],
   })
 
+  it('a reader the RPC refuses (a player who did not report the game) still gets the summary, just not cached', async () => {
+    const t = tables()
+    const sb = fakeSb(t, () => false)
+    const riot = { fetchMatch: vi.fn(), fetchTimeline: vi.fn(async () => timelineOf()) }
+    const summary = await loadTeamGameTimeline(sb, 'g1', riot)
+    expect(summary).toMatchObject({ version: TEAM_TIMELINE_VERSION, side: 'blue' })
+    expect(t.team_session_games[0].timeline_summary).toBeNull()
+  })
+
   it('lists the group\'s games, newest first, with their source', async () => {
     const sb = fakeSb(tables())
     const refs = await listTeamObjectivesGames(sb, 'G', { sources: ['scrim', 'tournament'], side: 'both' })
@@ -236,14 +245,21 @@ describe('analystCore: objectives', () => {
     expect((await listTeamObjectivesGames(sb, 'G', { sources: ['tournament'], side: 'both' })).map((r) => r.gameId)).toEqual(['g2'])
   })
 
-  it('extracts once, caches the summary and our side, then reads the cache without Riot', async () => {
+  it('extracts once, caches the summary (through the RPC) and our side, then reads the cache without Riot', async () => {
     const t = tables()
-    const sb = fakeSb(t)
+    // CyberSecurity S19-13: the summary is written by set_team_game_timeline_summary only (here: an allowed reader).
+    const rpc = vi.fn((name: string, args: any) => {
+      if (name !== 'set_team_game_timeline_summary') return null
+      t.team_session_games.find((g: Row) => g.id === args.p_game)!.timeline_summary = args.p_summary
+      return true
+    })
+    const sb = fakeSb(t, rpc)
     const riot = { fetchMatch: vi.fn(), fetchTimeline: vi.fn(async () => timelineOf()) }
     const first = await loadTeamGameTimeline(sb, 'g1', riot)
     expect(first).toMatchObject({ version: TEAM_TIMELINE_VERSION, side: 'blue', source: 'scrim', opponentName: 'Aegis' })
     expect(riot.fetchMatch).not.toHaveBeenCalled() // match already cached
     expect(t.team_session_games[0].our_team_id).toBe(100) // resolved from the roster's Riot IDs, then kept
+    expect(rpc).toHaveBeenCalledWith('set_team_game_timeline_summary', { p_game: 'g1', p_summary: first })
     expect(t.team_session_games[0].timeline_summary).toEqual(first)
     const second = await loadTeamGameTimeline(sb, 'g1', riot)
     expect(second).toEqual(first)

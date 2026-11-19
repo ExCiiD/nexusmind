@@ -10,7 +10,7 @@ import {
   listPendingDirectNotifications, markDirectMessageSent, directMessageText,
 } from '../../../src/lib/discordBotCore'
 import { listEvents, listAvailabilityRules, listAvailabilityExceptions, findCommonAvailability } from '../../../src/lib/calendarCore'
-import { listScrimsForGroup } from '../../../src/lib/scrimsCore'
+import { describeMatch, listScrimsForGroup } from '../../../src/lib/scrimsCore'
 import { getGroupRosterUserIds } from '../../../src/lib/teamCore'
 
 export interface Env {
@@ -84,17 +84,21 @@ export default {
           listEvents(sb, guild.groupId, now.toISOString(), in24h.toISOString()),
           listScrimsForGroup(sb, guild.groupId),
         ])
+        const at = (iso: string) => new Date(iso).toLocaleString('en-US', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
         for (const e of events) {
           if (!(await markNotifiedOnce(sb, guild.guildId, 'event', e.id))) continue
-          await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
-            `📅 **Starting soon:** ${e.title} — ${new Date(e.startsAt).toLocaleString('en-US', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC`)
+          // #49: a Scrim / Officiel slot is announced as the match it is, once (its scrim is skipped below).
+          await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId, e.match
+            ? `⚔️ **Starting soon:** ${describeMatch(e.match)} — ${at(e.startsAt)} UTC. Run /scrims for details.`
+            : `📅 **Starting soon:** ${e.title} — ${at(e.startsAt)} UTC`)
         }
         for (const s of scrims) {
+          if (s.calendarEventId) continue
           const t = Date.parse(s.scheduledAt)
           if (t < now.getTime() || t > in24h.getTime()) continue
           if (!(await markNotifiedOnce(sb, guild.guildId, 'scrim', s.id))) continue
           await postChannelMessage(env.DISCORD_BOT_TOKEN, guild.notifyChannelId,
-            `⚔️ **Scrim starting soon**${s.opponent ? ` vs ${s.opponent}` : ''} — ${new Date(s.scheduledAt).toLocaleString('en-US', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC. Run /scrims for details.`)
+            `⚔️ **Starting soon:** ${describeMatch(s)} — ${at(s.scheduledAt)} UTC. Run /scrims for details.`)
         }
 
         // Announcements (Phase 2, Planning rework) — broadcast, not tied to

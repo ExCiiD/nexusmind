@@ -51,6 +51,7 @@ import { registerBackupHandlers } from './ipc/backup.ipc'
 import { registerTeamHandlers, refreshAutoTiers } from './ipc/team.ipc'
 import { registerWeeklyAwardsHandlers } from './ipc/weeklyAwards.ipc'
 import { startWeeklyAwards } from './weeklyAwards'
+import { startIdentityRefresh } from './cloud/collab'
 import { attachWindow, claimSingleInstance, registerLaunchAtLoginHandlers, startedHidden } from './launchAtLogin'
 
 // One Ascend at a time: a second launch shows the running one (launchAtLogin.ts).
@@ -846,6 +847,10 @@ async function bootstrap() {
   // teams' members read in the background, two minutes after start then every
   // 4 hours (weeklyAwards.ts).
   startWeeklyAwards()
+
+  // #46: my current Riot ID and puuid on my groups' memberships, 30 s after
+  // start, without waiting for a screen to list the groups (cloud/collab.ts).
+  startIdentityRefresh()
 }
 
 app.whenReady().then(bootstrap).catch((err) => {

@@ -26,7 +26,7 @@
     "sessionLive": "Session en cours",
     "autoRecordTitle": "Enregistrement automatique activé",
     "management": "Management",
-    "teamSpace": "Espace d'équipe"
+    "teamSpace": "Lobby d'équipe"
   },
   "settings": {
     "title": "Paramètres",
@@ -1745,6 +1745,28 @@
         "required": "Minimum requis"
       }
     },
+    "rosterLink": {
+      "open": "Relier les comptes",
+      "title": "Relier les joueurs du roster aux membres",
+      "desc": "Pour les joueurs que le roster n’a pas reconnus par leur Riot ID : relie chacun à son compte membre, pour que le bot et le Planning le voient.",
+      "loadFailed": "Le roster publié n’a pas pu être chargé",
+      "empty": "Le roster n’a pas encore été publié dans le groupe.",
+      "link": "Relier à un membre",
+      "linkOf": "Relier {{row}} à un membre",
+      "unlink": "Délier",
+      "unlinkOf": "Délier {{row}}",
+      "noCandidate": "Plus aucun joueur à relier",
+      "linked": "{{row}} relié à {{name}}",
+      "linkedUnverified": "Riot ID du membre pas encore vérifié : la ligne garde son nom",
+      "unlinked": "{{row}} délié",
+      "errors": {
+        "FORBIDDEN": "Seul le staff du groupe peut relier le roster.",
+        "NOT_FOUND": "Ce joueur du roster n’existe plus. Recharge.",
+        "NOT_A_MEMBER": "Cette personne n’est plus membre du groupe.",
+        "notDeployed": "Relier le roster arrive avec la prochaine mise à jour du serveur. Réessaie après celle-ci.",
+        "generic": "Une erreur est survenue. Réessaie."
+      }
+    },
     "space": {
       "publishFailed": "Le roster n’a pas pu être publié dans le groupe"
     },
@@ -1984,7 +2006,7 @@
       "reports": "Rapport hebdo",
       "trials": "Essais",
       "players": "Joueurs",
-      "workspace": "Espace d'équipe",
+      "workspace": "Lobby d'équipe",
       "groups": "Groupes"
     },
     "overview": {
@@ -2028,7 +2050,7 @@
       "memberCount_other": "{{count}} membres",
       "logo": {
         "title": "Logo de l'équipe",
-        "desc": "Visible dans Groupes, dans le sélecteur de groupe et sur les cartes joueurs de l'Espace d'équipe.",
+        "desc": "Visible dans Groupes, dans le sélecteur de groupe et sur les cartes joueurs du Lobby d'équipe.",
         "add": "Ajouter un logo",
         "change": "Changer le logo",
         "remove": "Retirer",
@@ -2911,6 +2933,80 @@
       "keysHint": "Entrée enregistre · Échap ferme sans enregistrer",
       "save": "Enregistrer mes dispos",
       "saved": "Dispos enregistrées"
+    },
+    "match": {
+      "discussionLabel": "Discussion du match",
+      "opponentRoleOf": "Rôle de {{riotId}}",
+      "redirecting": "Ouverture du Planning…",
+      "format": "Format",
+      "opponent": "Équipe adverse",
+      "known": "Équipe connue",
+      "new": "Nouvelle équipe",
+      "pickKnown": "Choisir une équipe du Scouting",
+      "lastMatch": "dernier scrim le {{date}}",
+      "name": "Nom",
+      "tag": "Tag",
+      "multiLink": "Lien OP.GG multi",
+      "opponents": "Les 5 adversaires",
+      "roleOf": "Rôle de l’adversaire {{n}}",
+      "riotIdOf": "Riot ID de l’adversaire {{n}}",
+      "found": "trouvé",
+      "notFound": "Introuvable",
+      "roster": "Notre roster et nos rôles",
+      "rosterHeader": "Titulaires pré-remplis · {{available}} / {{total}} dispo",
+      "slotOf": "Joueur au poste {{role}}",
+      "available": "Disponible sur ce créneau",
+      "unavailable": "Indisponible sur ce créneau",
+      "availabilityUnknown": "Disponibilité inconnue",
+      "footer": "L’équipe est ajoutée au Scouting et au Draft Sim.",
+      "createScrim": "Créer le scrim",
+      "createOfficial": "Créer le match officiel",
+      "kind": {
+        "scrim": "Scrim",
+        "official": "Officiel",
+        "tournament": "Officiel"
+      },
+      "status": {
+        "planned": "Prévu",
+        "done": "Joué",
+        "cancelled": "Annulé"
+      },
+      "vs": "vs {{name}}",
+      "ourPlayers": "Nos joueurs",
+      "present": "Je serai là",
+      "absent": "Ne peut pas",
+      "noAnswer": "Pas de réponse",
+      "iWillBeThere": "Je serai là",
+      "iCannot": "Je ne peux pas",
+      "opggMulti": "OP.GG multi",
+      "opggOf": "OP.GG de {{riotId}}",
+      "fix": "Corriger",
+      "links": "Liens",
+      "openScouting": "Ouvrir dans le Scouting",
+      "prepareDraft": "Préparer la draft",
+      "prep": "Préparation",
+      "addItem": "Ajouter un point",
+      "prepNotes": "Notes de préparation",
+      "prepPlaceholder": "Plan de jeu, focus, rappels…",
+      "drafts": "Drafts liées",
+      "after": "Après le match",
+      "edit": "Modifier",
+      "deleteTitle": "Supprimer ce scrim ?",
+      "deleteDesc": "L’événement et le scrim lié sont supprimés. L’équipe adverse reste dans le Scouting.",
+      "badgeLabel": "Contre {{name}} {{format}}",
+      "noKnown": "Aucune équipe dans le Scouting pour l’instant : crée-la avec « Nouvelle équipe ».",
+      "noPlayers": "Aucun joueur connu.",
+      "loadFailed": "Impossible de charger le match",
+      "errors": {
+        "FORBIDDEN": "Tu n’as pas les droits pour modifier ce match.",
+        "NOT_FOUND": "Ce match n’existe plus.",
+        "INVALID_KIND": "Ce type d’événement n’est pas un match.",
+        "INVALID_EVENT": "Vérifie le titre, les dates et le format.",
+        "INVALID_OPPONENT": "Vérifie le nom, le tag, le lien OP.GG et les rôles de l’équipe adverse.",
+        "INVALID_DETAIL": "Cette modification n’est pas valide : vérifie la préparation, ou les rôles adverses (chaque rôle une fois, joueurs de cette équipe uniquement).",
+        "notDeployed": "Les scrims dans le Planning arrivent avec la prochaine mise à jour du serveur. Réessaie après celle-ci.",
+        "generic": "Une erreur est survenue. Réessaie."
+      }
     }
   },
   "teamSession": {
@@ -4576,7 +4672,7 @@
     "subtitle": "Faire tourner le groupe : vue d'ensemble, planning, bien-être, tâches, essais et groupes."
   },
   "teamSpace": {
-    "title": "Espace d'équipe",
+    "title": "Lobby d'équipe",
     "subtitle": "Le roster du groupe choisi : ses joueurs et leurs cartes."
   },
   "teamSection": {

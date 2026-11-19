@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PublishTeamInput, SharedDraft, SharedPoolEntry, SharedRosterMember, SharedScoutingEntry } from './team'
 import { normalizeSlots, groupDuplicates } from './teamIdentity'
 import { fail } from './supabaseErrors'
+import { opponentKeyOf } from './analyst'
+import { linkRosterToMembers, type GroupMemberIdentity } from './rosterLinkCore'
 
 /**
  * Local mirrors of the desktop-facing Team/TeamMember/ChampionPoolEntry/
@@ -65,7 +67,7 @@ export interface CoreDraftPrep {
 /**
  * Shared team workspace (E1) + full web CRUD (E14), same pattern as
  * collabCore.ts: pure functions over the signed-in Supabase client. Access
- * control is entirely in RLS — see supabase/migrations/20261113200000_e1_team_shared.sql
+ * control is entirely in RLS — see supabase/migrations/20261113200040_e1_team_shared.sql
  * and 20261114190000_e14_team_scouting_rosters.sql (the write policies
  * already cover every function below: staff write anything in their group,
  * a player writes only their own roster's pool entries).
@@ -195,14 +197,22 @@ export async function publishTeam(sb: SupabaseClient, groupId: string, data: Pub
     if (error) fail(error, 'clear roster') // cascades to team_pool_entries
   }
   { const { error } = await sb.from('team_drafts').delete().eq('group_id', groupId); if (error) fail(error, 'clear drafts') }
-  // Cascades: team_scouting -> team_rosters (scouting_id) -> team_pool_entries.
-  { const { error } = await sb.from('team_scouting').delete().eq('group_id', groupId); if (error) fail(error, 'clear scouting') }
+  // #49: the scouted teams are matched on their key, not replaced (see publishScouting). Before the
+  // scrims_in_planning migration the key column is missing: they are all replaced, as before.
+  const scoutingByKey = await readScoutingKeys(sb, groupId)
+  if (!scoutingByKey) {
+    // Cascades: team_scouting -> team_rosters (scouting_id) -> team_pool_entries.
+    const { error } = await sb.from('team_scouting').delete().eq('group_id', groupId); if (error) fail(error, 'clear scouting')
+  }
 
   let published = 0
-  for (const member of data.roster) {
+  // #46: each player is linked to their group member (account, verified puuid, current Riot ID after a rename).
+  const links = linkRosterToMembers(data.roster, await readMemberIdentities(sb, groupId))
+  for (const [i, member] of data.roster.entries()) {
+    const link = links[i]
     const { data: inserted, error } = await sb.from('team_rosters').insert({
-      group_id: groupId, display_name: member.displayName, ign: member.ign, tag_line: member.tagLine,
-      region: member.region, role: member.role, puuid: member.puuid,
+      group_id: groupId, display_name: member.displayName, ign: link.ign ?? member.ign, tag_line: link.ign ? link.tagLine : member.tagLine,
+      region: member.region, role: member.role, puuid: link.puuid, user_id: link.userId,
     }).select('id').single()
     if (error) fail(error, 'publish roster member')
     published++
@@ -226,11 +236,29 @@ export async function publishTeam(sb: SupabaseClient, groupId: string, data: Pub
     if (error) fail(error, 'publish drafts')
     published += data.drafts.length
   }
+  const publishedKeys = new Set<string>()
   for (const opp of data.scouting) {
-    const { data: scoutRow, error: scoutErr } = await sb.from('team_scouting').insert({
-      group_id: groupId, name: opp.name, tag: opp.tag, scout_notes: opp.scoutNotes,
-    }).select('id').single()
-    if (scoutErr) fail(scoutErr, 'publish scouting team')
+    const key = opponentKeyOf(opp.name)
+    // Two local opponents with the same key: the first one is published.
+    if (!key || publishedKeys.has(key)) continue
+    publishedKeys.add(key)
+    const existing = scoutingByKey?.get(key)
+    let scoutRow: { id: string }
+    if (existing) {
+      // The desktop's copy wins for an opponent it knows, including one first created from a Planning slot.
+      const { error: upErr } = await sb.from('team_scouting').update({ name: opp.name, tag: opp.tag, scout_notes: opp.scoutNotes, source: 'publish' }).eq('id', existing.id)
+      if (upErr) fail(upErr, 'publish scouting team')
+      const { error: delErr } = await sb.from('team_rosters').delete().eq('scouting_id', existing.id)
+      if (delErr) fail(delErr, 'clear scouted roster') // cascades to team_pool_entries
+      scoutRow = { id: existing.id }
+    } else {
+      const { data: inserted, error: scoutErr } = await sb.from('team_scouting').insert({
+        group_id: groupId, name: opp.name, tag: opp.tag, scout_notes: opp.scoutNotes,
+        ...(scoutingByKey ? { opponent_key: key, source: 'publish' } : {}),
+      }).select('id').single()
+      if (scoutErr) fail(scoutErr, 'publish scouting team')
+      scoutRow = inserted
+    }
     published++
     for (const member of opp.roster) {
       const { data: insertedOpp, error: oppErr } = await sb.from('team_rosters').insert({
@@ -250,7 +278,80 @@ export async function publishTeam(sb: SupabaseClient, groupId: string, data: Pub
       }
     }
   }
+  // A team the desktop published before and no longer has goes. One created from a Planning slot stays: the
+  // desktop imports it (importGroupOpponents) and publishes it from then on.
+  if (scoutingByKey) {
+    const gone = [...scoutingByKey.entries()].filter(([key, row]) => row.source === 'publish' && !publishedKeys.has(key)).map(([, row]) => row.id)
+    if (gone.length > 0) {
+      const { error } = await sb.from('team_scouting').delete().in('id', gone)
+      if (error) fail(error, 'remove unpublished scouting')
+    }
+  }
   return { published }
+}
+
+const POOL_TIERS: readonly string[] = ['main', 'comfort', 'flex', 'learning']
+const POOL_ROLES: readonly string[] = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
+
+/**
+ * #46 point 1: a player publishes their own pool on the group's roster row linked to their account (the RLS lets a
+ * player write that row's pool: team_pool_write, r.user_id = auth.uid()). Replaces that row's pool. False when no
+ * row of the group's roster is linked to them yet (the staff's publish or link_roster_member links it).
+ * The shared tables have no "new" tier: a "new" pick goes as flex, an unknown tier as comfort.
+ */
+export async function publishMyPool(sb: SupabaseClient, groupId: string, uid: string, entries: Array<{
+  championKey: string; role: string; tier: string | null; notes: string | null
+  playRate: number | null; winRate: number | null; masteryPoints: number | null; kda: number | null
+}>): Promise<boolean> {
+  const { data: rows, error } = await sb.from('team_rosters').select('id').eq('group_id', groupId).eq('user_id', uid).is('scouting_id', null).limit(1)
+  if (error) fail(error, 'find my roster row')
+  const rosterId = (rows as Array<{ id: string }> | null)?.[0]?.id
+  if (!rosterId) return false
+  const { error: delErr } = await sb.from('team_pool_entries').delete().eq('roster_id', rosterId)
+  if (delErr) fail(delErr, 'clear my pool')
+  const seen = new Set<string>()
+  const clean = entries.filter((e) => {
+    const k = `${e.championKey}|${e.role}`
+    if (!e.championKey || !POOL_ROLES.includes(e.role) || seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+  if (clean.length === 0) return true
+  const { error: insErr } = await sb.from('team_pool_entries').insert(clean.map((e) => ({
+    roster_id: rosterId, champion_key: e.championKey, role: e.role,
+    tier: e.tier && POOL_TIERS.includes(e.tier) ? e.tier : e.tier === 'new' ? 'flex' : 'comfort',
+    notes: e.notes, play_rate: e.playRate, win_rate: e.winRate, mastery_points: e.masteryPoints, kda: e.kda,
+  })))
+  if (insErr) fail(insErr, 'publish my pool')
+  return true
+}
+
+/** #46: the staff links a published roster row to a member (null unlinks). See TeamShareApi.teamLinkRosterMember. */
+export async function linkRosterMember(sb: SupabaseClient, rosterId: string, userId: string | null): Promise<boolean> {
+  const { data, error } = await sb.rpc('link_roster_member', { p_roster: rosterId, p_user: userId })
+  if (!error) return data === true
+  for (const code of ['NOT_A_MEMBER', 'NOT_FOUND', 'FORBIDDEN']) if (error.message?.includes(code)) throw new Error(code)
+  fail(error, 'link roster member')
+}
+
+/** #46: the group's members as publishTeam links them. Without the #38 columns (older database): Riot ID only. */
+async function readMemberIdentities(sb: SupabaseClient, groupId: string): Promise<GroupMemberIdentity[]> {
+  let res = await sb.from('group_members').select('user_id, riot_id, puuid, puuid_status').eq('group_id', groupId)
+  if (res.error?.code === '42703') res = await sb.from('group_members').select('user_id, riot_id').eq('group_id', groupId) as typeof res
+  if (res.error) fail(res.error, 'read group members')
+  return ((res.data ?? []) as Array<{ user_id: string; riot_id: string | null; puuid?: string | null; puuid_status?: string | null }>)
+    .map((m) => ({ userId: m.user_id, riotId: m.riot_id, puuid: m.puuid ?? null, puuidStatus: m.puuid_status ?? null }))
+}
+
+/**
+ * #49: the group's scouted teams by key, or null before the scrims_in_planning migration (no key column), in
+ * which case publishTeam replaces them all as before.
+ */
+async function readScoutingKeys(sb: SupabaseClient, groupId: string): Promise<Map<string, { id: string; source: 'publish' | 'match' }> | null> {
+  const { data, error } = await sb.from('team_scouting').select('id, opponent_key, source').eq('group_id', groupId)
+  if (error?.code === '42703') return null
+  if (error) fail(error, 'read scouting')
+  return new Map(((data ?? []) as Array<{ id: string; opponent_key: string; source: 'publish' | 'match' }>).map((r) => [r.opponent_key, { id: r.id, source: r.source }]))
 }
 
 // ── E14: full CRUD, desktop-shaped (Team/TeamMember/ChampionPoolEntry/DraftPrep) ──

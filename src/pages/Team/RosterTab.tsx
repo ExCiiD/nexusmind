@@ -55,6 +55,8 @@ function useMemberLooks(): MemberLook[] {
 export function RosterTab({ team, loading, onChange, logoUrl, actions, fill = false }: RosterTabProps) {
   const { t } = useTranslation()
   const [editingId, setEditingId] = useState<string | null>(null)
+  /** #46.2: the card whose first champions (masteries, a few seconds) are being read. */
+  const [quickId, setQuickId] = useState<string | null>(null)
 
   const user = useUserStore((s) => s.user)
   const prefs = useProfilePrefs(user?.id)
@@ -108,7 +110,17 @@ export function RosterTab({ team, loading, onChange, logoUrl, actions, fill = fa
     else others.push(m)
   }
 
-  const fetchChampions = (member: TeamMember) => {
+  const fetchChampions = async (member: TeamMember) => {
+    // #46.2: the card's first champions within seconds (masteries, one Riot call), shown at once; then the full
+    // pool in the background as before. 0 (pool not empty) or a failure: just the full pool.
+    if (window.api.teamCardChampions) {
+      setQuickId(member.id)
+      try {
+        const res = await window.api.teamCardChampions?.(member.id)
+        if ((res?.upserted ?? 0) > 0) onChange()
+      } catch { /* the full pool below still runs */ }
+      finally { setQuickId(null) }
+    }
     void runAutoFill({
       // The team name in the label lets the Champion Pool tab see the job too.
       label: t('team.roster.card.fetchJob', { team: team.name, name: member.displayName }),
@@ -132,8 +144,8 @@ export function RosterTab({ team, loading, onChange, logoUrl, actions, fill = fa
         holders={holdersOf(member.id)}
         totals={awards?.totals[member.id]}
         nameOf={nameOf}
-        fetching={fetching}
-        onFetch={canFetch ? () => fetchChampions(member) : null}
+        fetching={fetching || quickId === member.id}
+        onFetch={canFetch ? () => { void fetchChampions(member) } : null}
         onEdit={() => setEditingId(member.id)}
         onRenameSeen={() => onChange()}
         editForm={editingId === member.id ? (

@@ -7,7 +7,7 @@
  */
 
 import { ipcMain, dialog, BrowserWindow } from 'electron'
-import { inBackground } from '../riotPriority'
+import { inBackground, withRiotPriority } from '../riotPriority'
 import { readFileSync, existsSync } from 'node:fs'
 import { basename } from 'node:path'
 import { getPrisma } from '../database'
@@ -24,6 +24,8 @@ import { RIOT_LIMITS } from '../../../src/lib/riotLimits'
 import { refreshTeamMemberRiotIds } from '../teamMemberRefresh'
 import { getSupabase, isCloudConfigured, getSessionUserId } from '../cloud/supabase'
 import * as customGamesCore from '../../../src/lib/teamCustomGamesCore'
+import { importGroupOpponents, rememberDismissedOpponent } from '../cloud/opponentImport'
+import { importGroupPools, publishOwnPoolIfMine } from '../cloud/poolImport'
 import { z } from 'zod'
 import { validatedHandle, id as idSchema, shortText } from './validate'
 
@@ -433,7 +435,10 @@ export function registerTeamHandlers() {
     const user = await getActiveUser()
     // A "new" pick older than two weeks turns into a regular tier here.
     await refreshAutoTiers().catch((err) => console.warn('[team] tier refresh failed:', err))
-    const teams = await prisma.team.findMany({
+    // #49: a group's opponents include the ones entered in a Planning slot (Scouting tab, Draft Sim). At most once a
+    // minute per group, never failing the list.
+    if (opts?.isOpponent && opts.groupId) await importGroupOpponents(opts.groupId)
+    const listTeams = () => prisma.team.findMany({
       // #7: `groupId` scopes Scouting to the opponents of the chosen group.
       where: teamListWhere(user.id, opts ?? {}),
       orderBy: { updatedAt: 'desc' },
@@ -441,6 +446,13 @@ export function registerTeamHandlers() {
       // bookkeeping the renderer never reads: keep it off the IPC payload.
       include: { members: { omit: { seasonMatchIdsJson: true }, include: { champPool: true } } },
     })
+    let teams = await listTeams()
+    // #46 point 1: a group's own team takes its players' published pools for the pools still empty here, instead
+    // of fetching them from Riot again (cloud/poolImport.ts). At most once a minute per group, never failing the list.
+    const toFill = teams.filter((t) => !t.isOpponent && t.groupId && t.members.some((m) => m.champPool.length === 0))
+    if (toFill.length > 0 && (await Promise.all(toFill.map((t) => importGroupPools(t.groupId as string, t.id)))).some(Boolean)) {
+      teams = await listTeams()
+    }
     // #38: renamed players get their current Riot ID back (by puuid, once per member per run, in the background).
     void refreshTeamMemberRiotIds(teams.flatMap((t) => t.members)).catch(() => {})
     return teams
@@ -479,6 +491,9 @@ export function registerTeamHandlers() {
 
   ipcMain.handle('team:delete', async (_e, id: string) => {
     const prisma = getPrisma()
+    // #49: a group's opponent deleted here is not brought back by the next import from the group's scouting.
+    const team = await prisma.team.findUnique({ where: { id }, select: { isOpponent: true, groupId: true, name: true } })
+    if (team?.isOpponent && team.groupId) await rememberDismissedOpponent(team.groupId, team.name).catch(() => {})
     await prisma.team.delete({ where: { id } })
     return { ok: true }
   })
@@ -1041,12 +1056,55 @@ export function registerTeamHandlers() {
     const upserted = await writeTieredPool(memberId, Array.from(agg.values()), history, opts.overwriteTiers === true)
 
     await saveScoutCache(memberId, allSeasonIds)
+    // #46 point 1: my own pool, once filled here, goes to the group so my teammates don't fetch it again.
+    void publishOwnPoolIfMine(memberId)
     return {
       upserted,
       matchesUsed: matchIds.length,
       masteriesUsed: masteries.length,
     }
   })
+
+  /**
+   * #46 point 2: a Lobby card's champions within seconds. A card whose player has no pool yet used to wait for a
+   * full auto-fill (up to 100 games, ~23 uncached Riot calls per 2 minutes per player on the development key: over
+   * 4 minutes for Njord). This reads the player's champion masteries only (1 call, plus 1 for the account when the
+   * puuid is unknown), at interactive priority, and writes them as a first pool in the player's role. Only when the
+   * local pool is still EMPTY: it never overwrites a pool made from games. The full auto-fill can run after it as
+   * before and replaces these entries. Returns how many entries were written (0: the pool was not empty, or Riot
+   * had nothing).
+   */
+  validatedHandle('team:card-champions', z.tuple([idSchema]), (_e, memberId) => withRiotPriority('interactive', async () => {
+    const prisma = getPrisma()
+    const member = await prisma.teamMember.findUnique({ where: { id: memberId } })
+    if (!member) throw new Error('Member not found')
+    if (await prisma.championPoolEntry.count({ where: { memberId } }) > 0) return { upserted: 0 }
+    if (!member.region) throw new Error('Region missing')
+    let puuid = member.puuid
+    if (!puuid) {
+      if (!member.ign || !member.tagLine) throw new Error('Member needs IGN + tagLine + region')
+      const acct = await getAccountByRiotId(member.ign, member.tagLine, member.region)
+      if (!acct?.puuid) throw new Error('Could not resolve Riot account')
+      puuid = acct.puuid
+      await prisma.teamMember.update({ where: { id: memberId }, data: { puuid } })
+    }
+    const [masteries, idToKey] = await Promise.all([
+      getChampionMasteries(puuid, member.region, RIOT_LIMITS.DEFAULT_MASTERY_COUNT),
+      getChampionIdToKey(),
+    ])
+    const primaryRole = (member.role || 'MID').toUpperCase() as Role
+    const entries: PoolAgg[] = []
+    for (const m of masteries) {
+      const championKey = idToKey[m.championId]
+      if (!championKey || !championPlaysRole(championKey, primaryRole)) continue
+      entries.push({ championKey, role: primaryRole, count: 0, wins: 0, kills: 0, deaths: 0, assists: 0, masteryPoints: m.championPoints, firstAt: null, lastAt: null })
+    }
+    // Filled meanwhile by another fetch: leave it.
+    if (entries.length === 0 || await prisma.championPoolEntry.count({ where: { memberId } }) > 0) return { upserted: 0 }
+    const upserted = await writeTieredPool(memberId, entries, { from: null, to: null }, false)
+    void publishOwnPoolIfMine(memberId)
+    return { upserted }
+  }))
 
   /**
    * Team synergy stats: aggregates per-player averages, shares, and per-champion

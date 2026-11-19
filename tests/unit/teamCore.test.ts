@@ -66,7 +66,7 @@ describe('publishTeam', () => {
     scouting: [{ name: 'Rival', tag: 'RIV', scoutNotes: null, roster: [] }],
   }
 
-  it('clears the group\'s previous publish before writing the new snapshot', async () => {
+  it('before the #49 migration (no key column): clears the group\'s previous publish before writing the new snapshot', async () => {
     const calls: string[] = []
     const tables: Record<string, any> = {
       team_rosters: {
@@ -78,11 +78,13 @@ describe('publishTeam', () => {
         then: (resolve: (v: unknown) => void) => resolve({ data: [{ id: 'existing-1' }], error: null }),
       },
       team_pool_entries: { insert: vi.fn(() => { calls.push('insert-pool'); return Promise.resolve({ error: null }) }) },
+      group_members: { select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) },
       team_drafts: {
         delete: vi.fn(() => { calls.push('delete-drafts'); return { eq: vi.fn().mockResolvedValue({ error: null }) } }),
         insert: vi.fn(() => { calls.push('insert-drafts'); return Promise.resolve({ error: null }) }),
       },
       team_scouting: {
+        select: () => ({ eq: () => Promise.resolve({ data: null, error: { code: '42703', message: 'column team_scouting.opponent_key does not exist' } }) }),
         delete: vi.fn(() => { calls.push('delete-scouting'); return { eq: vi.fn().mockResolvedValue({ error: null }) } }),
         insert: vi.fn(() => {
           calls.push('insert-scouting')
@@ -98,6 +100,76 @@ describe('publishTeam', () => {
     expect(calls).toContain('delete-scouting')
     expect(calls.indexOf('delete-rosters')).toBeLessThan(calls.indexOf('insert-roster'))
     expect(result.published).toBe(3) // 1 roster member + 1 draft + 1 scouting entry
+  })
+
+  it('#49: matches scouted teams on their key, keeps the ones created from a Planning slot, drops the unpublished ones', async () => {
+    const calls: string[] = []
+    const existing = [
+      { id: 's-rival', opponent_key: 'rival', source: 'match' }, // created from a slot, now known locally: updated
+      { id: 's-old', opponent_key: 'old team', source: 'publish' }, // published before, gone locally: deleted
+      { id: 's-slot', opponent_key: 'slot only', source: 'match' }, // created from a slot, not known locally: kept
+    ]
+    const tables: Record<string, any> = {
+      team_rosters: {
+        select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(),
+        delete: vi.fn(() => ({
+          in: vi.fn(() => { calls.push('delete-own-roster'); return Promise.resolve({ error: null }) }),
+          eq: vi.fn((col: string, id: string) => { calls.push(`delete-roster-of:${id}`); return Promise.resolve({ error: null }) }),
+        })),
+        insert: vi.fn(() => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'r1' }, error: null }) }) })),
+        then: (resolve: (v: unknown) => void) => resolve({ data: [], error: null }),
+      },
+      team_pool_entries: { insert: vi.fn(() => Promise.resolve({ error: null })) },
+      group_members: { select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) },
+      team_drafts: { delete: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) })), insert: vi.fn(() => Promise.resolve({ error: null })) },
+      team_scouting: {
+        select: () => ({ eq: () => Promise.resolve({ data: existing, error: null }) }),
+        update: vi.fn((row: Record<string, unknown>) => ({ eq: (col: string, id: string) => { calls.push(`update:${id}:${row.source}`); return Promise.resolve({ error: null }) } })),
+        insert: vi.fn((row: Record<string, unknown>) => { calls.push(`insert:${row.opponent_key}:${row.source}`); return { select: () => ({ single: () => Promise.resolve({ data: { id: 's-new' }, error: null }) }) } }),
+        delete: vi.fn(() => ({ in: (col: string, ids: string[]) => { calls.push(`delete:${ids.join(',')}`); return Promise.resolve({ error: null }) } })),
+      },
+    }
+    const sb = { from: vi.fn((t: string) => tables[t]) } as never
+    await publishTeam(sb, 'g1', {
+      roster: [], drafts: [],
+      scouting: [
+        { name: '  RIVAL ', tag: 'RIV', scoutNotes: null, roster: [] },
+        { name: 'New Team', tag: null, scoutNotes: null, roster: [] },
+        { name: 'new  team', tag: null, scoutNotes: null, roster: [] }, // same key as the one above: skipped
+      ],
+    })
+    expect(calls).toContain('update:s-rival:publish')
+    expect(calls).toContain('delete-roster-of:s-rival')
+    expect(calls).toContain('insert:new team:publish')
+    expect(calls.filter((c) => c.startsWith('insert:'))).toHaveLength(1)
+    expect(calls).toContain('delete:s-old')
+    expect(calls.join(' ')).not.toContain('s-slot')
+  })
+
+  it('#46: links each published player to their group member (account, verified puuid, current Riot ID)', async () => {
+    const inserted: Array<Record<string, unknown>> = []
+    const tables: Record<string, any> = {
+      team_rosters: {
+        select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(),
+        insert: vi.fn((row: Record<string, unknown>) => { inserted.push(row); return { select: () => ({ single: () => Promise.resolve({ data: { id: `r${inserted.length}` }, error: null }) }) } }),
+        then: (resolve: (v: unknown) => void) => resolve({ data: [], error: null }),
+      },
+      team_pool_entries: { insert: vi.fn(() => Promise.resolve({ error: null })) },
+      team_drafts: { delete: vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) })) },
+      team_scouting: { select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) },
+      group_members: { select: () => ({ eq: () => Promise.resolve({ data: [
+        { user_id: 'u-ayura', riot_id: 'AYURA#1012', puuid: 'P-AYURA', puuid_status: 'verified' },
+        { user_id: 'u-mid', riot_id: 'Mid Laner#EUW', puuid: null, puuid_status: null },
+      ], error: null }) }) },
+    }
+    const member = (ign: string, tagLine: string, puuid: string | null) => ({ displayName: ign, ign, tagLine, region: 'EUW1', role: 'ADC' as const, puuid, pool: [] })
+    await publishTeam({ from: vi.fn((t: string) => tables[t]) } as never, 'g1', {
+      roster: [member('ORE WA AYURA', 'EUW', 'P-AYURA'), member('midlaner', 'euw', null), member('Stranger', 'EUW', null)],
+      drafts: [], scouting: [],
+    })
+    expect(inserted[0]).toMatchObject({ user_id: 'u-ayura', puuid: 'P-AYURA', ign: 'AYURA', tag_line: '1012' })
+    expect(inserted[1]).toMatchObject({ user_id: 'u-mid', puuid: null, ign: 'midlaner', tag_line: 'euw' })
+    expect(inserted[2]).toMatchObject({ user_id: null, ign: 'Stranger' })
   })
 })
 

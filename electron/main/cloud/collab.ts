@@ -1,11 +1,14 @@
-import { getSupabase, getAccessToken, getSupabaseUrl, requireSessionUserId } from './supabase'
+import { getSupabase, getAccessToken, getSupabaseUrl, getSessionUserId, isCloudConfigured, requireSessionUserId } from './supabase'
 import { getPrisma } from '../database'
-import { getAccountByPuuid } from '../riotClient'
+import { getAccountByPuuid, getAccountByRiotId } from '../riotClient'
 import { riotIdRename } from '../../../src/lib/teamIdentity'
 import * as core from '../../../src/lib/collabCore'
 import * as dashboard from '../../../src/lib/staffDashboardCore'
 import * as devPlan from '../../../src/lib/devPlanCore'
 import * as calendar from '../../../src/lib/calendarCore'
+import * as matchEvents from '../../../src/lib/matchEventCore'
+import type { MatchDetailPatch, MatchEventInput, MatchInput } from '../../../src/lib/matchEvent'
+import { importGroupOpponents } from './opponentImport'
 import * as vodReview from '../../../src/lib/vodReviewCore'
 import * as wellbeing from '../../../src/lib/wellbeingCore'
 import * as teamOps from '../../../src/lib/teamOpsCore'
@@ -54,11 +57,24 @@ async function localIdentity(): Promise<core.MemberIdentity> {
 // from Riot by puuid, stores it, and publishes it (with the puuid) on the memberships that differ.
 let identityPublishedFor: string | null = null
 
-/** Refreshes the active local profile's Riot ID from Riot (by puuid). Best effort: offline keeps the stored one. */
+/**
+ * Refreshes the active local profile's Riot ID from Riot (by puuid). Best effort: offline keeps the stored one.
+ * #46: a profile without a puuid (older profiles) gets it first from its Riot ID, else it could never follow a
+ * rename and was silently left out.
+ */
 export async function refreshOwnRiotId(): Promise<void> {
   const prisma = getPrisma()
-  const u = await prisma.user.findFirst({ where: { isActive: true } })
-  if (!u?.puuid || !u.region) return
+  let u = await prisma.user.findFirst({ where: { isActive: true } })
+  if (!u?.region) return
+  if (!u.puuid && u.summonerName && u.tagLine) {
+    try {
+      const acct = await getAccountByRiotId(u.summonerName, u.tagLine, u.region)
+      if (acct?.puuid) u = await prisma.user.update({ where: { id: u.id }, data: { puuid: acct.puuid } })
+    } catch (err) {
+      console.warn('[collab] could not resolve own puuid:', (err as Error)?.message)
+    }
+  }
+  if (!u.puuid) return
   try {
     const acct = await getAccountByPuuid(u.puuid, u.region)
     const change = riotIdRename({ ign: u.summonerName, tagLine: u.tagLine, displayName: u.displayName }, acct)
@@ -149,6 +165,20 @@ export function invalidateGroupsCache(): void {
 /** Runs a group mutation, then clears the cache (also when it failed: the server may have changed anyway). */
 const changesGroups = <T>(p: Promise<T>): Promise<T> => p.finally(invalidateGroupsCache)
 
+/**
+ * #46: at startup, the player's Riot ID and puuid are published on their memberships without waiting for a screen
+ * to list the groups (a renamed player used to stay under their old name until they opened Coaching). Signed out,
+ * offline or without a cloud: nothing, the next group listing does it.
+ */
+export function startIdentityRefresh(delayMs = 30_000): void {
+  setTimeout(() => {
+    void (async () => {
+      if (!isCloudConfigured() || !(await getSessionUserId().catch(() => null))) return
+      await listMyGroups()
+    })().catch((err) => console.warn('[collab] startup identity refresh skipped:', (err as Error)?.message))
+  }, delayMs)
+}
+
 export async function listMyGroups() {
   const uid = await me()
   const now = Date.now()
@@ -224,6 +254,16 @@ export const calendarCreateEvent = (groupId: string, input: NewEventInput) => ca
 export const calendarUpdateEvent = (id: string, input: NewEventInput) => calendar.updateEvent(getSupabase(), id, input)
 export const calendarDeleteEvent = (id: string) => calendar.deleteEvent(getSupabase(), id)
 export const calendarRespond = (eventId: string, status: EventResponseStatus, note?: string | null) => calendar.respondToEvent(getSupabase(), eventId, status, note)
+// #49: scrims and official matches planned from the Planning. A save may create the opponent in the group's
+// scouting: it is brought into the local Scouting / Draft Sim at once.
+export async function calendarSaveMatchEvent(groupId: string, event: MatchEventInput, match: MatchInput): Promise<string> {
+  const id = await matchEvents.saveMatchEvent(getSupabase(), groupId, event, match)
+  if (match.opponent) void importGroupOpponents(groupId, { force: true })
+  return id
+}
+export const calendarGetMatchEvent = (calendarEventId: string) => matchEvents.getMatchEvent(getSupabase(), calendarEventId)
+export const calendarUpdateMatchDetail = (scrimId: string, patch: MatchDetailPatch) => matchEvents.updateMatchDetail(getSupabase(), scrimId, patch)
+export const calendarListKnownOpponents = (groupId: string) => matchEvents.listKnownOpponents(getSupabase(), groupId)
 export const availabilityListRules = (groupId: string) => calendar.listAvailabilityRules(getSupabase(), groupId)
 export const availabilitySetRule = (groupId: string, input: NewAvailabilityRuleInput) => calendar.setAvailabilityRule(getSupabase(), groupId, input)
 export const availabilityDeleteRule = (id: string) => calendar.deleteAvailabilityRule(getSupabase(), id)

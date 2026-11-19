@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CalendarCheck, CalendarClock, CalendarDays, Check, ChevronLeft, ChevronRight, Copy, Download, Link2, Loader2, Pencil, Plus, RotateCw, Trash2, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/useToast'
 import { collabErrorKey, type Group } from '@/lib/collab'
-import { canEditCalendar as canEditCalendarRole } from '@/lib/permissions'
+import { canEditCalendar as canEditCalendarRole, isLegacyStaff } from '@/lib/permissions'
+import { isMatchKind } from '@/lib/matchEvent'
+import { MatchInspector } from '@/components/Planning/MatchInspector'
 import { eventsToICS, type AvailabilityException, type AvailabilityRule, type CalendarEvent, type CalendarSubscription, type CommonFreeWindow, type EventResponseStatus } from '@/lib/calendar'
 import { findCommonAvailability } from '@/lib/calendarCore'
 import type { ScrimSummary } from '@/lib/scrims'
@@ -72,6 +74,21 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
   const [myAvailOpen, setMyAvailOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // #49: ?event=<id> (the old /scrims?scrim= links) opens that slot: its week, its panel.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const eventParam = searchParams.get('event')
+  useEffect(() => {
+    if (!eventParam) return
+    let alive = true
+    window.api.calendarGetEvent(eventParam).then((ev) => {
+      if (!alive || !ev) return
+      setWeekStart(startOfWeek(new Date(ev.startsAt)))
+      setSelectedId(ev.id)
+    }).catch(() => {}).finally(() => {
+      if (alive) setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete('event'); return n }, { replace: true })
+    })
+    return () => { alive = false }
+  }, [eventParam, setSearchParams])
   const [roster, setRoster] = useState<Array<{ userId: string; displayName: string; role: string }>>([])
   const [mode, setModeState] = useState<GridMode>(() => { try { return localStorage.getItem(MODE_KEY) === 'day' ? 'day' : 'esport' } catch { return 'esport' } })
   const setMode = (m: GridMode) => { setModeState(m); try { localStorage.setItem(MODE_KEY, m) } catch { /* per-device preference */ } }
@@ -329,6 +346,22 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
           <section className="panel-surface rounded-xl border border-hextech-border-dim p-4">
             {!selected ? (
               <p className="text-xs text-hextech-text-dim">{t('planning.inspector.empty')}</p>
+            ) : isMatchKind(selected.kind) && selected.match && window.api.calendarGetMatchEvent && groupId ? (
+              // #49: a Scrim / Officiel slot with its match detail — the 8-block panel.
+              <MatchInspector
+                event={selected}
+                groupId={groupId}
+                roster={roster}
+                myUserId={myUserId}
+                nameOf={nameOf}
+                canEditSlot={canEdit}
+                canEditPrep={canEdit || (!!group && isLegacyStaff(group.myRole, group.myStaffRoles))}
+                onRespond={(status) => respond(selected.id, status)}
+                onEdit={() => setEditingEvent(selected)}
+                onDelete={deleteSelected}
+                onClose={() => setSelectedId(null)}
+                onChanged={load}
+              />
             ) : (
               <EventInspector
                 event={selected}
@@ -378,7 +411,10 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
           groupId={groupId}
           members={group?.members ?? []}
           myUserId={myUserId}
-          scrims={scrims}
+          roster={roster}
+          starterIds={starterIds}
+          rules={rules}
+          exceptions={exceptions}
           recentTitles={[...new Set((events ?? []).map((e) => e.title))]}
           initialRange={creatingRange}
           newSlot={newSlot}

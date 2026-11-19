@@ -20,7 +20,8 @@ const PROXY_BASE = ((import.meta.env.WEB_RIOT_PROXY_URL as string | undefined) ?
 
 export class RiotWebError extends Error {
   /** 'rate-limited': Riot (through the proxy) answered 429 and the wait or the tries ran out. */
-  constructor(message: string, readonly code?: 'rate-limited', readonly retryAfterSec?: number) {
+  /** `status`: Riot's HTTP status when it refused the call (404 no such account, 400 malformed, …). */
+  constructor(message: string, readonly code?: 'rate-limited', readonly retryAfterSec?: number, readonly status?: number) {
     super(message)
     this.name = 'RiotWebError'
   }
@@ -102,9 +103,9 @@ async function proxyFetch(host: string, path: string, allowedFallbackStatus?: nu
   if (!res.ok) {
     if (allowedFallbackStatus?.includes(res.status)) return { data: null, status: res.status }
     if (res.status === 401) throw new RiotWebError('Your Ascend session expired — sign in again.')
-    if (res.status === 404) throw new RiotWebError('Account not found. Check the Game Name and Tag.')
-    if (res.status === 502) throw new RiotWebError('Riot access is temporarily unavailable. Try again shortly.')
-    throw new RiotWebError(`Riot API error ${res.status}`)
+    if (res.status === 404) throw new RiotWebError('Account not found. Check the Game Name and Tag.', undefined, undefined, 404)
+    if (res.status === 502) throw new RiotWebError('Riot access is temporarily unavailable. Try again shortly.', undefined, undefined, 502)
+    throw new RiotWebError(`Riot API error ${res.status}`, undefined, undefined, res.status)
   }
   return { data: await res.json(), status: res.status }
 }

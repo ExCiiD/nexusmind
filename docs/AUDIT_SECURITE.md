@@ -272,6 +272,48 @@ Pourquoi cet ordre : la clé OpenAI est un secret **valide** qui ne demande qu'u
 
 ### Revues de livraisons
 
+#### Avant la prochaine mise en production (20/11) — migrations 290000, 20261120120000, 20261120130000, pool publié, détourages : **OK, 2 correctifs avant la production**
+**RPC (droits et `search_path`) :**
+- `set_opponent_dossier_status`, `save_match_event`, `update_match_detail` et `link_roster_member` sont toutes en `SECURITY DEFINER`, avec `search_path` vide, `auth.uid()` contrôlé et l'exécution retirée à `public` et `anon`.
+- Les fonctions de trigger et les fonctions privées ont leur exécution retirée aux clients.
+- Les fonctions `immutable` de validation (`is_champion_list`, `is_pick_list`, `opponent_key_of`, `match_kind_of`) ne lisent aucune table.
+
+**Tables :**
+- **`draft_log` :** lecture par les membres. Insertion par le staff avec `created_by = auth.uid()`. UPDATE limité **par colonnes**, sans `group_id` ni `match_id`. Tout est retiré à `anon`. Les contraintes bornent chaque champ JSON (5 picks, 40 caractères…).
+- **`opponent_dossiers` :** le **brouillon n'est visible que du staff**, et seul un dossier `published` est lisible par les joueurs. L'insertion est forcée en `draft`. Le statut ne change **que** par la RPC (`status` et `published_at` sont hors du `grant update`). L'instantané est limité à 64 Ko.
+- **`team_scouting.opgg_url` :** liste blanche d'hôtes ancrée, ce qui refuse `op.gg.evil.com`, `evil-op.gg` et `op.gg@evil.com`. La règle est vérifiée dans le `check` **et** dans la RPC.
+- **`save_match_event` :**
+  - Elle exige `can_edit_calendar`, donc staff, manager ou capitaine. Les participants sont filtrés sur les membres du groupe, l'événement modifié doit appartenir à `p_group`, et les adversaires sont validés (5 au maximum, rôles uniques).
+  - **Élargissement de droit, à acter :** un **capitaine ou un manager peut maintenant créer et modifier des scrims**, alors que la politique `scrims_insert_staff` le réservait au staff. C'est cohérent avec « les scrims passent par le Planning ». Mais un capitaine peut aussi créer des entrées `team_scouting` et des rosters adverses (sans écraser l'existant, `v_may_overwrite`).
+- **`update_match_detail` :** liste blanche des clés. `opponentRoles` ne modifie que les rosters **du scouting de ce scrim**. `draftIds` n'est pas validé en uuid, mais une valeur invalide fait échouer l'UPDATE, sans fuite possible puisque la lecture passe par la RLS.
+- **`link_roster_member` :** réservé au staff. La ligne doit être une ligne **de l'équipe** (`scouting_id is null`) du même groupe, et le membre doit appartenir au groupe. Ses autres liaisons sont retirées. Le **puuid n'est copié que s'il est `verified`**.
+  - **Usurpation :** un joueur ne peut **pas** se lier lui-même. `team_rosters` ne peut être écrit que par le staff, et `publishMyPool` n'écrit que sur la ligne où `user_id = auth.uid()` (politique `team_pool_write`). Le risque se limite à une erreur du staff.
+  - **Réserve (basse) :** l'`ign` et le `tag_line` de la ligne sont **écrasés par le Riot ID déclaré** du membre, même quand son `puuid_status` n'est pas `verified`. Un membre qui a déclaré le Riot ID d'un autre, puis qui est lié par le staff, fait calculer les stats de la ligne sur ce compte. **Correctif :** ne réécrire l'`ign` et le `tag` que si `puuid_status = 'verified'`, et sinon garder ceux de la ligne et l'indiquer à l'interface.
+- **`publishMyPool` et `poolImport` :** l'écriture est limitée à sa propre ligne (RLS), avec effacement puis réinsertion. La lecture est ouverte aux membres du groupe. Les rôles et tiers sont filtrés côté client, et les contraintes de la table s'appliquent. OK.
+
+**Correctifs avant la production :**
+1. **`timeline_summary` modifiable par tout membre (S19-13 aggravé).** La politique `team_session_games_write` (ALL) n'exige que d'être membre du groupe. Un joueur peut donc réécrire le résumé de timeline de n'importe quelle partie de session (64 Ko de JSON), ainsi que les parties elles-mêmes. Or ces analyses sont lues par le staff et par le dossier adverse : leur **intégrité** compte. **Correctif (Back-end, dans la migration 290000) :**
+   - remplacer la politique par une lecture pour les membres, une INSERT pour les membres avec `reported_by = auth.uid()`, et UPDATE et DELETE pour `can_manage_session` ou l'auteur de la ligne ;
+   - plus un `grant update (…)` par colonnes qui **exclut** `timeline_summary` ;
+   - celui-ci passe par une RPC réservée au staff, ou par l'auteur de la partie si c'est son app qui le calcule.
+2. **`link_roster_member` :** ne pas écraser l'`ign` et le `tag` avec un Riot ID non vérifié (voir la réserve ci-dessus).
+- **À acter (Chief, utilisateur) :** l'élargissement des scrims au capitaine et au manager via `save_match_event`.
+- **Notifications :** `dossier_published` est ajouté à la liste, et cette liste contient toutes les valeurs précédentes, y compris celles de la 280000. **Ordre d'application :** si la 290000 passe **avant** la 280000, les deux types `staff_roles_changed` et `member_staff_roles_changed` existent déjà dans la liste, ce qui est sans effet. C'est OK.
+
+**Contre-vérification des 2 correctifs (20/11) : OK.**
+1. **`team_session_games` :**
+   - L'ancienne politique ALL est supprimée, et la lecture reste réservée aux membres.
+   - INSERT exige `reported_by = auth.uid()` (valeur par défaut). UPDATE et DELETE sont permis à l'auteur ou à `can_manage_session`.
+   - UPDATE est limité par colonnes (`status`, `match_json`, `our_team_id`, `enemy_team_name`), **sans** `timeline_summary`, `reported_by` ni `session_id`.
+   - `set_team_game_timeline_summary` : definer, `search_path` vide, autorisée à l'auteur, au staff ou à `can_manage_session`, rien pour `anon`. La taille reste plafonnée à 64 Ko. **S19-13 est levé.**
+2. **`link_roster_member` :** l'`ign`, le `tag` et le puuid ne sont réécrits que si `puuid_status = 'verified'`. Sinon, l'`ign` et le `tag` de la ligne sont gardés et le puuid est vidé. La fonction renvoie l'état de vérification. OK.
+
+**Détourages (`ascend-cutouts`, `cutout-pack-hosted`) : OK.**
+- Le Worker est **statique** (assets seulement, aucun code), avec 1 608 images `.webp` et un `manifest.json` qui ne contient ni chemin local ni donnée personnelle (vérifié).
+- `Access-Control-Allow-Origin: *` est sans risque pour des images publiques sans authentification. `nosniff` est présent, et `not_found_handling = none` renvoie une 404 franche.
+- **Fonctionnel :** penser à ajouter cet hôte à `img-src` (et `connect-src` pour le manifest) dans la CSP du rendu (`electron.vite.config.ts`) et dans `web/public/_headers`.
+
+
 #### #2 — Déconnexion et reconnexion (19/11, modifs non commitées) : **OK avec réserves non bloquantes**
 **Périmètre :** `src/lib/accessCore.ts` (`authTimeoutFetch`, `signOutThisDevice`, `authStorageKey`), `electron/main/cloud/supabase.ts` (`keychainStorage`, `forgetLocalSession`), `electron/main/ipc/cloud.ipc.ts`, `web/src/api.ts`, `web/src/supabase.ts`. Comportement d'auth-js 2.100.1 vérifié dans `GoTrueClient._signOut`.
 

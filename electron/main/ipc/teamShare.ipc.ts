@@ -9,4 +9,7 @@ export function registerTeamShareHandlers() {
     (_e, groupId, teamId) => teamShare.publishTeamToGroup(groupId, teamId))
   validatedHandle('team:get-shared', z.tuple([uuid]),
     (_e, groupId) => teamShare.getSharedTeam(groupId))
+  // #46: the staff links a published roster row to a member (null unlinks). The RPC checks the staff and the member.
+  validatedHandle('team:link-roster-member', z.tuple([uuid, uuid.nullable()]),
+    (_e, rosterId, userId) => teamShare.linkRosterMember(rosterId, userId))
 }

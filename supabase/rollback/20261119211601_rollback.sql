@@ -1,4 +1,4 @@
--- Rollback of 20261119280000_member_staff_roles (multiple roles, also_plays, S19-07, run_* recipients).
+-- Rollback of 20261119211601_member_staff_roles (multiple roles, also_plays, S19-07, run_* recipients).
 --
 -- Every function body below is the production definition read on 20 November 2026, before the migration,
 -- with pg_get_functiondef (read-only export). The grants are the production ACLs read the same day.

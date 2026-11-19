@@ -155,7 +155,7 @@ export function canManageDiscordServer(permissions: string | undefined | null): 
 /**
  * The group roles that manage the team's Discord link: point the bot at a channel (/set-channel, without Discord
  * admin rights) and unlink the server (#34). One list on both sides: the server's private.is_discord_manager
- * (supabase/migrations/20261119230000_discord_unlink_guild.sql) uses the same roles, and a test keeps them equal.
+ * (supabase/migrations/20261119165350_discord_unlink_guild.sql) uses the same roles, and a test keeps them equal.
  */
 export const DISCORD_MANAGER_ROLES = ['owner', 'coach', 'manager'] as const
 

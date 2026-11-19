@@ -26,7 +26,7 @@
     "sessionLive": "Session running",
     "autoRecordTitle": "Automatic recording on",
     "management": "Management",
-    "teamSpace": "Team workspace"
+    "teamSpace": "Team Lobby"
   },
   "settings": {
     "title": "Settings",
@@ -1745,6 +1745,28 @@
         "required": "Minimum required"
       }
     },
+    "rosterLink": {
+      "open": "Link accounts",
+      "title": "Link roster players to members",
+      "desc": "For the players the roster couldn’t match by Riot ID: link each one to their member account so the bot and the Planning see them.",
+      "loadFailed": "Couldn’t load the published roster",
+      "empty": "The roster hasn’t been published to the group yet.",
+      "link": "Link to a member",
+      "linkOf": "Link {{row}} to a member",
+      "unlink": "Unlink",
+      "unlinkOf": "Unlink {{row}}",
+      "noCandidate": "No player left to link",
+      "linked": "{{row}} linked to {{name}}",
+      "linkedUnverified": "Member’s Riot ID not verified yet: the row keeps its name",
+      "unlinked": "{{row}} unlinked",
+      "errors": {
+        "FORBIDDEN": "Only the group’s staff can link the roster.",
+        "NOT_FOUND": "This roster player no longer exists. Reload.",
+        "NOT_A_MEMBER": "This person is no longer a member of the group.",
+        "notDeployed": "Linking the roster is coming with the next server update. Try again after it.",
+        "generic": "Something went wrong. Try again."
+      }
+    },
     "space": {
       "publishFailed": "The roster couldn’t be published to the group"
     },
@@ -1984,7 +2006,7 @@
       "reports": "Weekly report",
       "trials": "Trials",
       "players": "Players",
-      "workspace": "Team workspace",
+      "workspace": "Team Lobby",
       "groups": "Groups"
     },
     "overview": {
@@ -2028,7 +2050,7 @@
       "memberCount_other": "{{count}} members",
       "logo": {
         "title": "Team logo",
-        "desc": "Shown in Groupes, in the group picker and on the player cards of Espace d'équipe.",
+        "desc": "Shown in Groups, in the group picker and on the player cards of the Team Lobby.",
         "add": "Add a logo",
         "change": "Change the logo",
         "remove": "Remove",
@@ -2911,6 +2933,80 @@
       "keysHint": "Enter saves · Esc closes without saving",
       "save": "Save my availability",
       "saved": "Availability saved"
+    },
+    "match": {
+      "discussionLabel": "Match discussion",
+      "opponentRoleOf": "Role of {{riotId}}",
+      "redirecting": "Opening the Planning…",
+      "format": "Format",
+      "opponent": "Opposing team",
+      "known": "Known team",
+      "new": "New team",
+      "pickKnown": "Pick a team from Scouting",
+      "lastMatch": "last scrim on {{date}}",
+      "name": "Name",
+      "tag": "Tag",
+      "multiLink": "OP.GG multi link",
+      "opponents": "The 5 opponents",
+      "roleOf": "Role of opponent {{n}}",
+      "riotIdOf": "Riot ID of opponent {{n}}",
+      "found": "found",
+      "notFound": "Not found",
+      "roster": "Our roster and roles",
+      "rosterHeader": "Starters pre-filled · {{available}} / {{total}} available",
+      "slotOf": "Player at {{role}}",
+      "available": "Available on this slot",
+      "unavailable": "Unavailable on this slot",
+      "availabilityUnknown": "Availability unknown",
+      "footer": "The team is added to Scouting and the Draft Sim.",
+      "createScrim": "Create scrim",
+      "createOfficial": "Create official match",
+      "kind": {
+        "scrim": "Scrim",
+        "official": "Official",
+        "tournament": "Official"
+      },
+      "status": {
+        "planned": "Planned",
+        "done": "Played",
+        "cancelled": "Cancelled"
+      },
+      "vs": "vs {{name}}",
+      "ourPlayers": "Our players",
+      "present": "Will be there",
+      "absent": "Can’t make it",
+      "noAnswer": "No answer",
+      "iWillBeThere": "I’ll be there",
+      "iCannot": "I can’t",
+      "opggMulti": "OP.GG multi",
+      "opggOf": "OP.GG of {{riotId}}",
+      "fix": "Fix",
+      "links": "Links",
+      "openScouting": "Open in Scouting",
+      "prepareDraft": "Prepare the draft",
+      "prep": "Preparation",
+      "addItem": "Add an item",
+      "prepNotes": "Preparation notes",
+      "prepPlaceholder": "Game plan, focus, reminders…",
+      "drafts": "Linked drafts",
+      "after": "After the match",
+      "edit": "Edit",
+      "deleteTitle": "Delete this scrim?",
+      "deleteDesc": "The event and its scrim are deleted. The opposing team stays in Scouting.",
+      "badgeLabel": "Against {{name}} {{format}}",
+      "noKnown": "No team in Scouting yet: create it with “New team”.",
+      "noPlayers": "No known player.",
+      "loadFailed": "Couldn’t load the match",
+      "errors": {
+        "FORBIDDEN": "You can’t edit this match.",
+        "NOT_FOUND": "This match no longer exists.",
+        "INVALID_KIND": "This event type is not a match.",
+        "INVALID_EVENT": "Check the title, the dates and the format.",
+        "INVALID_OPPONENT": "Check the opposing team’s name, tag, OP.GG link and roles.",
+        "INVALID_DETAIL": "This change isn’t valid: check the preparation, or the opponent’s roles (each role once, players of this team only).",
+        "notDeployed": "Scrims in the Planning are coming with the next server update. Try again after it.",
+        "generic": "Something went wrong. Try again."
+      }
     }
   },
   "teamSession": {
@@ -4576,7 +4672,7 @@
     "subtitle": "Running the group: overview, planning, wellbeing, tasks, trials and groups."
   },
   "teamSpace": {
-    "title": "Team workspace",
+    "title": "Team Lobby",
     "subtitle": "The roster of the picked group: its players and their cards."
   },
   "teamSection": {

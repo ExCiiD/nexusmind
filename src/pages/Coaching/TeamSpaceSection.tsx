@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/useToast'
 import { GroupTeamGate } from '@/components/team/GroupTeamGate'
 import { LftExportButton } from '@/components/lft/LftExportButton'
 import { CardLookButton } from '@/components/team/CardLookButton'
+import { RosterLinkButton } from '@/components/team/RosterLinkButton'
 import { RosterTab } from '@/pages/Team/RosterTab'
 import { isLegacyStaff } from '@/lib/permissions'
 import type { Group } from '@/lib/collab'
@@ -41,7 +42,7 @@ export function TeamSpaceSection({ group }: { group: Group }) {
           fill
           onChange={() => { void reload(); publishSoon(team.id) }}
           logoUrl={group.logoUrl}
-          actions={<><CardLookButton /><LftExportButton team={team} /></>}
+          actions={<><CardLookButton /><RosterLinkButton group={group} /><LftExportButton team={team} /></>}
         />
       )}
     </GroupTeamGate>

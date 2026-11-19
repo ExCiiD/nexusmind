@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * End-to-end check of supabase/migrations/20261119280000_member_staff_roles.sql (#39, multiple roles) on a
+ * End-to-end check of supabase/migrations/20261119211601_member_staff_roles.sql (#39, multiple roles) on a
  * throw-away Postgres (PGlite, in memory), never on the project's database. Stand-in schema with the
  * production grants, RLS on wellbeing_checkins, and the functions as they were before the migration.
  *
@@ -16,7 +16,7 @@ if (!pgliteDir) { console.error('Pass the folder that holds node_modules/@electr
 const require = createRequire(join(pgliteDir, 'package.json'))
 const { PGlite } = await import(pathToFileURL(require.resolve('@electric-sql/pglite')).href)
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
-const migration = readFileSync(join(repo, 'supabase/migrations/20261119280000_member_staff_roles.sql'), 'utf-8')
+const migration = readFileSync(join(repo, 'supabase/migrations/20261119211601_member_staff_roles.sql'), 'utf-8')
 
 const db = new PGlite()
 let failures = 0
@@ -407,9 +407,9 @@ await handOverCase('a player-analyst beats the captain, and loses the extra role
 await handOverCase('without staff: the captain, then the oldest player, who keeps playing',
   [[u(28), 'player', [], false, 500], [u(29), 'player', [], true, 10]], u(29), true)
 
-// ── The rollback script (supabase/rollback/20261119280000_rollback.sql) ─────
+// ── The rollback script (supabase/rollback/20261119211601_rollback.sql) ─────
 {
-  const rollback = readFileSync(join(repo, 'supabase/rollback/20261119280000_rollback.sql'), 'utf-8')
+  const rollback = readFileSync(join(repo, 'supabase/rollback/20261119211601_rollback.sql'), 'utf-8')
   await db.query(`insert into public.notifications (user_id, type, data) values ($1, 'staff_roles_changed', '{}')`, [PLAYER])
   await db.exec(rollback)
   await db.exec(rollback)

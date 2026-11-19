@@ -41,7 +41,7 @@ import {
 
 
 /** Lanes shown open, in display order; "learning" is folded below them. */
-const OPEN_LANES: Tier[] = ['main', 'new', 'comfort', 'flex']
+const OPEN_LANES: Tier[] = ['main', 'comfort', 'flex', 'new']
 
 interface Props {
   team: Team | null

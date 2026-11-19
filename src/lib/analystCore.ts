@@ -141,8 +141,9 @@ export async function loadTeamGameTimeline(sb: SupabaseClient, gameId: string, r
     source: sourceOf(event?.kind, match?.info?.queueId),
   })
   if (!summary) return { unavailable: 'no-timeline' }
-  // Best effort: the next reader extracts again if this write fails.
-  await sb.from('team_session_games').update({ timeline_summary: summary }).eq('id', gameId)
+  // Best effort, through the RPC (CyberSecurity S19-13: the staff, the session's managers or the game's author). Any
+  // other reader, or a failed write, just returns the summary: the next allowed reader caches it.
+  await sb.rpc('set_team_game_timeline_summary', { p_game: gameId, p_summary: summary }).then(() => undefined, () => undefined)
   return summary
 }
 

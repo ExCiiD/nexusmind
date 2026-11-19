@@ -134,7 +134,7 @@ describe('permission helpers', () => {
     expect(isChannelStaffRole(null)).toBe(false)
   })
   it('one list of Discord roles for the bot and the server (#34)', () => {
-    const sql = readFileSync(resolve(__dirname, '../../supabase/migrations/20261119230000_discord_unlink_guild.sql'), 'utf-8')
+    const sql = readFileSync(resolve(__dirname, '../../supabase/migrations/20261119165350_discord_unlink_guild.sql'), 'utf-8')
     const m = sql.match(/function private\.is_discord_manager[\s\S]*?role in \(([^)]*)\)/)
     expect(m).not.toBeNull()
     const serverRoles = m![1].split(',').map((s) => s.trim().replace(/'/g, ''))

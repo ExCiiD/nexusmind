@@ -26,7 +26,7 @@ export function TeamSpacePage() {
       ) : !group ? (
         <NoGroupNotice />
       ) : (
-        <PanelErrorBoundary key={`workspace-${group.id}`} label="Team workspace">
+        <PanelErrorBoundary key={`workspace-${group.id}`} label="Team Lobby">
           <TeamSpaceSection group={group} />
         </PanelErrorBoundary>
       )}

@@ -118,4 +118,13 @@ export interface TeamShareApi {
     drafts: SharedDraft[]
     scouting: SharedScoutingEntry[]
   }>
+  /**
+   * #46: the group's staff links a row of the published roster (SharedRosterMember.id, own roster only) to a member
+   * of the group, or unlinks it (null). The row takes the member's account; another row linked to that member is
+   * unlinked. For the players the publish could not match by itself.
+   * Returns true when the row also took the member's current Riot ID and puuid (the server verified them), false
+   * when the member's Riot ID is not verified yet: the row keeps its own Riot ID, show "Riot ID not verified".
+   * Errors: FORBIDDEN, NOT_FOUND, NOT_A_MEMBER. Optional: absent before the roster_member_link migration's app.
+   */
+  teamLinkRosterMember?: (rosterId: string, userId: string | null) => Promise<boolean>
 }

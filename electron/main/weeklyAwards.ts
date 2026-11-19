@@ -20,6 +20,9 @@
  * background; the shared rate limiter (riotClient.ts) paces them.
  */
 
+import { app } from 'electron'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { getPrisma } from './database'
 import { getAccountByRiotId, getLeagueEntriesByPuuid, getMatch, getMatchIdsInRange } from './riotClient'
 import { RiotAuthError } from './riotTransport'
@@ -34,7 +37,9 @@ import {
   grinderRace,
   grinderWeek,
   mvpRace,
+  MVP_RULE_VERSION,
   pendingWeeks,
+  teamGamesOnly,
   scoreGame,
   shiftWeekKey,
   weekKeyOf,
@@ -248,10 +253,11 @@ async function weekRaces(members: Member[] | Array<{ id: string; puuid: string }
   const puuids = [...new Set(members.map((m) => m.puuid))]
   if (puuids.length === 0) return { mvp: [], grinder: [] }
   const prisma = getPrisma()
-  const games = await prisma.playerGameScore.findMany({
+  // #46: team games only (MVP_MIN_TOGETHER of the roster on the same side).
+  const games = teamGamesOnly(await prisma.playerGameScore.findMany({
     where: { puuid: { in: puuids }, playedAt: { gte: new Date(start), lt: new Date(end) }, score: { not: null } },
-    select: { puuid: true, score: true },
-  })
+    select: { puuid: true, score: true, matchId: true, win: true },
+  }))
   const mvp = mvpRace(members.flatMap((m) => games.filter((g) => g.puuid === m.puuid).map((g) => ({ memberId: m.id, score: g.score }))))
 
   const readings = await prisma.rankSnapshot.findMany({
@@ -298,6 +304,32 @@ async function storeWeeks(teamId: string, members: Member[], keys: string[]): Pr
   }
 }
 
+// ── MVP rule changes ───────────────────────────────────────────────────────
+// A stored week is never computed again (storeWeeks: update {}). When the MVP rule changes (MVP_RULE_VERSION), the
+// MVP weeks stored under the older rule are deleted once, so the next read computes them again with the new rule
+// (as far back as BACKFILL_WEEKS). The version this device applied lives in weekly-awards-rule.json (app data).
+
+let ruleChecked: Promise<void> | null = null
+
+function applyMvpRule(): Promise<void> {
+  ruleChecked ??= (async () => {
+    const file = join(app.getPath('userData'), 'weekly-awards-rule.json')
+    let applied = 1
+    try { applied = Number((JSON.parse(await readFile(file, 'utf-8')) as { mvpRule?: number }).mvpRule) || 1 } catch { /* never written: rule 1 */ }
+    if (applied >= MVP_RULE_VERSION) return
+    const { count } = await getPrisma().teamWeeklyAward.deleteMany({ where: { kind: 'mvp' } })
+    console.log(`[awards] MVP rule ${MVP_RULE_VERSION}: ${count} stored MVP week(s) will be computed again`)
+    // Not written: the purge runs again on the next start, never twice in this run (ruleChecked stays set).
+    await mkdir(dirname(file), { recursive: true })
+      .then(() => writeFile(file, JSON.stringify({ mvpRule: MVP_RULE_VERSION }), 'utf-8'))
+      .catch((err) => console.warn('[awards] could not record the MVP rule:', errorText(err)))
+  })().catch((err) => {
+    ruleChecked = null // the purge itself failed: tried again on the next read
+    console.warn('[awards] MVP rule update failed:', errorText(err))
+  })
+  return ruleChecked
+}
+
 // ── Sync ───────────────────────────────────────────────────────────────────
 
 /** Reads a team's games and ranks from Riot and stores its completed weeks.
@@ -315,6 +347,7 @@ export function syncTeam(teamId: string): Promise<void> {
 }
 
 async function runSync(teamId: string): Promise<void> {
+  await applyMvpRule()
   const prisma = getPrisma()
   const team = await prisma.team.findUnique({ where: { id: teamId }, include: { members: true } })
   if (!team || team.isOpponent) return
@@ -375,6 +408,7 @@ export async function getWeeklyAwards(teamId: string): Promise<WeeklyAwards> {
 }
 
 async function computeAwards(teamId: string): Promise<WeeklyAwards> {
+  await applyMvpRule()
   const prisma = getPrisma()
   const now = Date.now()
   const team = await prisma.team.findUnique({ where: { id: teamId }, include: { members: true } })

@@ -4,11 +4,11 @@ import { join } from 'node:path'
 import { setMyLook, updateMyMemberProfile } from '../../src/lib/collabCore'
 
 // A member may only UPDATE the columns granted in
-// 20261118200000_captain_roles_presence (role, is_captain, group and dates
+// 20261118202150_captain_roles_presence (role, is_captain, group and dates
 // go through SECURITY DEFINER RPCs). A direct write from the app to any other
 // column would be refused by Postgres, so the app's payloads must stay
 // inside that grant.
-const MIGRATION = join(__dirname, '../../supabase/migrations/20261118200000_captain_roles_presence.sql')
+const MIGRATION = join(__dirname, '../../supabase/migrations/20261118202150_captain_roles_presence.sql')
 
 function grantedUpdateColumns(): string[] {
   const sql = readFileSync(MIGRATION, 'utf8')

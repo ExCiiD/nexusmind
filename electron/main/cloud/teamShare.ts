@@ -103,6 +103,7 @@ export async function publishTeamToGroup(groupId: string, teamId: string): Promi
 }
 
 export const getSharedTeam = (groupId: string) => core.getSharedTeam(getSupabase(), groupId)
+export const linkRosterMember = (rosterId: string, userId: string | null) => core.linkRosterMember(getSupabase(), rosterId, userId)
 
 function safeJsonArray(raw: string): string[] {
   try { const v = JSON.parse(raw); return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [] } catch { return [] }

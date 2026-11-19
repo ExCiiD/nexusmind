@@ -43,7 +43,7 @@ describe('summarizePool', () => {
   })
 
   it('orders the segments by tier, then most played, and skips champions without games', () => {
-    expect(s.segments.map((x) => x.entry.championKey)).toEqual(['MonkeyKing', 'DrMundo', 'Viego', 'Ambessa', 'Jayce', 'Gnar'])
+    expect(s.segments.map((x) => x.entry.championKey)).toEqual(['MonkeyKing', 'DrMundo', 'Viego', 'Jayce', 'Ambessa', 'Gnar']) // TIERS order: main, comfort, flex, new, learning
   })
 
   it('gives the share of games per tier and of the top 3', () => {

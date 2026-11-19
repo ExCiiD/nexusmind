@@ -7,6 +7,7 @@ import type {
 import { generateCalendarSubscriptionToken } from './calendar'
 import type { GroupMember } from './collab'
 import { playsInGroup } from './permissions'
+import { isMatchKind, type MatchSummary } from './matchEvent'
 import { fail } from './supabaseErrors'
 
 /**
@@ -58,7 +59,7 @@ async function attendeesByEvent(sb: SupabaseClient, eventIds: string[]): Promise
 }
 
 /** Presence answers for a batch of events. Empty, not an error, when the
- *  table isn't there yet (before 20261118200000_captain_roles_presence):
+ *  table isn't there yet (before 20261118202150_captain_roles_presence):
  *  the planning keeps working without them. */
 async function responsesByEvent(sb: SupabaseClient, eventIds: string[]): Promise<Map<string, EventResponse[]>> {
   const byEvent = new Map<string, EventResponse[]>()
@@ -75,14 +76,36 @@ async function responsesByEvent(sb: SupabaseClient, eventIds: string[]): Promise
   return byEvent
 }
 
+/**
+ * #49: the match summary of each Scrim / Officiel slot (scrims.calendar_event_id). Empty, not an error, before the
+ * scrims_in_planning migration (the column is missing): the planning keeps working without the badges.
+ */
+export async function matchSummariesByEvent(sb: SupabaseClient, eventIds: string[]): Promise<Map<string, MatchSummary>> {
+  const byEvent = new Map<string, MatchSummary>()
+  if (eventIds.length === 0) return byEvent
+  try {
+    const { data, error } = await sb.from('scrims')
+      .select('id, calendar_event_id, kind, opponent, opponent_key, bo_format, status').in('calendar_event_id', eventIds)
+    if (error) return byEvent
+    for (const r of (data ?? []) as Array<{ id: string; calendar_event_id: string; kind: MatchSummary['kind']; opponent: string | null; opponent_key: string | null; bo_format: MatchSummary['boFormat']; status: MatchSummary['status'] }>) {
+      byEvent.set(r.calendar_event_id, { scrimId: r.id, kind: r.kind, opponentName: r.opponent, opponentKey: r.opponent_key, boFormat: r.bo_format, status: r.status })
+    }
+  } catch { /* no badges rather than no planning */ }
+  return byEvent
+}
+
 export async function listEvents(sb: SupabaseClient, groupId: string, fromISO: string, toISO: string): Promise<CalendarEvent[]> {
   const { data, error } = await sb.from('calendar_events')
     .select(EVENT_SELECT).eq('group_id', groupId).gte('starts_at', fromISO).lt('starts_at', toISO).order('starts_at')
   if (error) fail(error, 'list events')
   const rows = data as EventRow[]
   const ids = rows.map((r) => r.id)
-  const [byEvent, answers] = await Promise.all([attendeesByEvent(sb, ids), responsesByEvent(sb, ids)])
-  return rows.map((r) => ({ ...toEvent(r, byEvent.get(r.id) ?? []), responses: answers.get(r.id) ?? [] }))
+  const matchIds = rows.filter((r) => isMatchKind(r.kind)).map((r) => r.id)
+  const [byEvent, answers, matches] = await Promise.all([attendeesByEvent(sb, ids), responsesByEvent(sb, ids), matchSummariesByEvent(sb, matchIds)])
+  return rows.map((r) => {
+    const match = matches.get(r.id)
+    return { ...toEvent(r, byEvent.get(r.id) ?? []), responses: answers.get(r.id) ?? [], ...(match ? { match } : {}) }
+  })
 }
 
 /**
@@ -105,8 +128,12 @@ export async function getEvent(sb: SupabaseClient, id: string): Promise<Calendar
   const { data, error } = await sb.from('calendar_events').select(EVENT_SELECT).eq('id', id).maybeSingle()
   if (error) fail(error, 'get event')
   if (!data) return null
-  const [byEvent, answers] = await Promise.all([attendeesByEvent(sb, [data.id]), responsesByEvent(sb, [data.id])])
-  return { ...toEvent(data as EventRow, byEvent.get(data.id) ?? []), responses: answers.get(data.id) ?? [] }
+  const row = data as EventRow
+  const [byEvent, answers, matches] = await Promise.all([
+    attendeesByEvent(sb, [row.id]), responsesByEvent(sb, [row.id]), matchSummariesByEvent(sb, isMatchKind(row.kind) ? [row.id] : []),
+  ])
+  const match = matches.get(row.id)
+  return { ...toEvent(row, byEvent.get(row.id) ?? []), responses: answers.get(row.id) ?? [], ...(match ? { match } : {}) }
 }
 
 export async function createEvent(sb: SupabaseClient, groupId: string, input: NewEventInput): Promise<string> {

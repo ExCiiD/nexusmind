@@ -9,7 +9,7 @@
  * The instance named R2_GUARD_NAME also keeps the R2 cost guard (r2Guard.ts): those counters span a month, so
  * they are kept in the object's durable storage.
  */
-import { RiotBudget, parseWindows, parseReserve, parseUserShare } from './budget'
+import { RiotBudget, parseWindows, parseReserve, parseUserShare, parseUserInteractiveReserve } from './budget'
 import { decideR2, currentUsage, extraCostUSD, freeTierShare, parseBudgetUSD, storedGB, type R2Usage } from './r2Guard'
 
 export const R2_GUARD_NAME = 'r2-cost-guard'
@@ -21,6 +21,7 @@ export interface BudgetObjectEnv {
   INTERACTIVE_RESERVE?: string
   /** Most of each window one account may use (default 0.25). */
   USER_WINDOW_SHARE?: string
+  USER_INTERACTIVE_RESERVE?: string
   /** Most the R2 store may cost above its free tier in a month, in USD (default 2). */
   R2_EXTRA_BUDGET_USD?: string
 }
@@ -37,7 +38,8 @@ export class RiotBudgetObject {
   private loggedStep = 0
 
   constructor(private readonly state: ObjectState, env: BudgetObjectEnv) {
-    this.budget = new RiotBudget(parseWindows(env.RIOT_APP_LIMITS), parseReserve(env.INTERACTIVE_RESERVE), parseUserShare(env.USER_WINDOW_SHARE))
+    this.budget = new RiotBudget(parseWindows(env.RIOT_APP_LIMITS), parseReserve(env.INTERACTIVE_RESERVE), parseUserShare(env.USER_WINDOW_SHARE),
+      parseUserInteractiveReserve(env.USER_INTERACTIVE_RESERVE))
     this.r2BudgetUSD = parseBudgetUSD(env.R2_EXTRA_BUDGET_USD)
   }
 

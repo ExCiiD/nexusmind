@@ -2,6 +2,9 @@ import { z } from 'zod'
 import { validatedHandle } from './validate'
 import * as collab from '../cloud/collab'
 import { GROUP_LOGO_MAX_BYTES, LOOK_ID } from '../../../src/lib/collabCore'
+import { checkRiotAccount } from '../../../src/lib/riotAccountCheck'
+import { getAccountByRiotId } from '../riotClient'
+import { withRiotPriority } from '../riotPriority'
 
 const uuid = z.string().uuid()
 const recordId = z.string().min(1).max(128)
@@ -107,6 +110,39 @@ export function registerCollabHandlers() {
   validatedHandle('calendar:delete-event', z.tuple([uuid]), (_e, id) => collab.calendarDeleteEvent(id))
   validatedHandle('calendar:respond', z.tuple([uuid, z.enum(['confirmed', 'declined']), z.string().trim().max(300).nullable().optional()]),
     (_e, eventId, status, note) => collab.calendarRespond(eventId, status, note))
+
+  // #49: matches planned from the Planning. The RPCs check the rights and the values again.
+  const opponentRole = z.enum(['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'])
+  const matchEventInput = z.object({
+    id: uuid.optional(), kind: z.enum(['scrim', 'tournament']), title: z.string().trim().min(1).max(120), startsAt: isoDate, endsAt: isoDate,
+    notes: z.string().max(2000).nullable().optional(), attendeeScope: attendeeScope.optional(), attendeeUserIds: z.array(uuid).max(50).optional(),
+  }).strict()
+  const matchInput = z.object({
+    boFormat: z.enum(['bo1', 'bo3', 'bo5']).nullable().optional(),
+    opponent: z.object({
+      name: z.string().trim().min(1).max(80), tag: z.string().trim().max(16).nullable().optional(),
+      opggUrl: z.string().trim().url().startsWith('https://').max(1000).nullable().optional(),
+      players: z.array(z.object({ role: opponentRole, riotId: z.string().trim().max(64).nullable().optional(), region: z.string().trim().max(16).nullable().optional() }).strict())
+        .max(5).refine((a) => new Set(a.map((p) => p.role)).size === a.length, 'one player per role').optional(),
+    }).strict().nullable().optional(),
+  }).strict()
+  const matchDetailPatch = z.object({
+    prepNotes: z.string().max(8000).nullable().optional(), reviewNotes: z.string().max(8000).nullable().optional(),
+    checklist: z.array(z.object({ label: z.string().trim().min(1).max(200), done: z.boolean() }).strict()).max(50).optional(),
+    draftIds: z.array(z.string().min(1).max(128)).max(10).optional(), status: z.enum(['planned', 'done', 'cancelled']).optional(),
+    opponentRoles: z.array(z.object({ riotId: z.string().trim().min(3).max(64).includes('#'), role: opponentRole }).strict()).max(5)
+      .refine((a) => new Set(a.map((x) => x.role)).size === a.length, 'one player per role').optional(),
+  }).strict()
+  validatedHandle('calendar:save-match-event', z.tuple([uuid, matchEventInput, matchInput]),
+    (_e, groupId, event, match) => collab.calendarSaveMatchEvent(groupId, event, match))
+  validatedHandle('calendar:get-match-event', z.tuple([uuid]), (_e, id) => collab.calendarGetMatchEvent(id))
+  validatedHandle('calendar:update-match-detail', z.tuple([uuid, matchDetailPatch]), (_e, scrimId, patch) => collab.calendarUpdateMatchDetail(scrimId, patch))
+  validatedHandle('calendar:list-known-opponents', z.tuple([uuid]), (_e, groupId) => collab.calendarListKnownOpponents(groupId))
+  // "✓ trouvé" / "Introuvable" next to an opponent's Riot ID in the Scrim pop-up: account-v1 at interactive
+  // priority (an open screen waits for it). 404 / 400 → { exists: false }, anything else is thrown.
+  validatedHandle('riot:account-exists',
+    z.tuple([z.string().trim().min(1).max(64), z.enum(['BR1', 'LA1', 'LA2', 'NA1', 'OC1', 'PH2', 'SG2', 'TH2', 'TW2', 'VN2', 'JP1', 'KR', 'EUN1', 'EUW1', 'RU', 'TR1'])]),
+    (_e, riotId, region) => withRiotPriority('interactive', () => checkRiotAccount(getAccountByRiotId, riotId, region)))
 
   const eventRequestInput = z.object({
     eventName: z.string().trim().min(1).max(120), peopleConcerned: z.array(z.string().trim().min(1).max(80)).max(30),

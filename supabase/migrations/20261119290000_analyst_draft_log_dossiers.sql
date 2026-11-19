@@ -24,6 +24,59 @@ alter table public.team_session_games add constraint team_session_games_timeline
   or (jsonb_typeof(timeline_summary) = 'object' and pg_column_size(timeline_summary) <= 65536)
 );
 
+-- CyberSecurity (S19-13, 20/11/2026): the staff and the opponent dossier read these games and their summaries, so
+-- their integrity matters. Before, any member of the group could rewrite or delete any game of a session.
+--   - read: the group's members (unchanged)
+--   - insert: a member, as the game's author (reported_by = their account, filled in by default: the apps already
+--     released never send it)
+--   - update and delete: whoever may run the session (private.can_manage_session) or the game's author
+--   - update by column: never timeline_summary, which only set_team_game_timeline_summary writes (below)
+alter table public.team_session_games alter column reported_by set default auth.uid();
+drop policy if exists team_session_games_write on public.team_session_games;
+drop policy if exists team_session_games_insert on public.team_session_games;
+drop policy if exists team_session_games_update on public.team_session_games;
+drop policy if exists team_session_games_delete on public.team_session_games;
+create policy team_session_games_insert on public.team_session_games for insert to authenticated
+  with check (reported_by = (select auth.uid()) and private.group_role(private.team_session_group(session_id)) is not null);
+create policy team_session_games_update on public.team_session_games for update to authenticated
+  using (reported_by = (select auth.uid()) or private.can_manage_session(private.team_session_group(session_id)))
+  with check (reported_by = (select auth.uid()) or private.can_manage_session(private.team_session_group(session_id)));
+create policy team_session_games_delete on public.team_session_games for delete to authenticated
+  using (reported_by = (select auth.uid()) or private.can_manage_session(private.team_session_group(session_id)));
+revoke update on public.team_session_games from anon, authenticated;
+grant update (status, match_json, our_team_id, enemy_team_name) on public.team_session_games to authenticated;
+
+-- The summary of a game: the staff of the group, whoever may run the session, or the game's author (the app that
+-- extracts it). Returns false when the caller may not (the reader then simply does not cache it).
+create or replace function public.set_team_game_timeline_summary(p_game uuid, p_summary jsonb)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_game public.team_session_games;
+  v_group uuid;
+begin
+  if v_uid is null then
+    return false;
+  end if;
+  select * into v_game from public.team_session_games where id = p_game;
+  if v_game.id is null then
+    return false;
+  end if;
+  v_group := private.team_session_group(v_game.session_id);
+  if not (v_game.reported_by = v_uid or private.is_group_staff(v_group, v_uid) or private.can_manage_session(v_group, v_uid)) then
+    return false;
+  end if;
+  update public.team_session_games set timeline_summary = p_summary where id = p_game;
+  return true;
+end;
+$$;
+revoke all on function public.set_team_game_timeline_summary(uuid, jsonb) from public, anon;
+grant execute on function public.set_team_game_timeline_summary(uuid, jsonb) to authenticated;
+
 -- Shared by the two tables below.
 create or replace function private.touch_updated_at()
 returns trigger language plpgsql set search_path = ''

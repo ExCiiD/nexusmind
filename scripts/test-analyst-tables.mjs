@@ -65,6 +65,8 @@ await db.exec(`
   create table public.team_sessions (id uuid primary key, group_id uuid not null);
   create function private.team_session_group(p uuid) returns uuid language sql stable security definer set search_path = ''
     as $f$ select group_id from public.team_sessions where id = p $f$;
+  create function private.can_manage_session(p_group uuid, p_user uuid default auth.uid()) returns boolean language sql stable security definer set search_path = ''
+    as $f$ select exists (select 1 from public.group_members where group_id = p_group and user_id = p_user and role in ('owner', 'coach', 'manager')) $f$;
   create table public.team_session_games (id uuid primary key default gen_random_uuid(), session_id uuid not null, match_id text not null,
     reported_by uuid, status text not null default 'pending_fetch', created_at timestamptz not null default now(), match_json jsonb,
     our_team_id integer, enemy_team_name text);
@@ -178,21 +180,62 @@ check('anon cannot call the publish function', await (async () => {
 // ── team_session_games.timeline_summary ─────────────────────────────────
 const S1 = '20000000-0000-0000-0000-000000000001'
 await db.exec(`insert into public.team_sessions values ('${S1}', '${G}')`)
-const game = await one(`insert into public.team_session_games (session_id, match_id) values ('${S1}', 'EUW1_123') returning id`)
-check('any member caches a summary', (await fails(PLAYER, `update public.team_session_games set timeline_summary = $2 where id = $1`,
-  [game.id, JSON.stringify({ version: 1, events: [], goldDiffByMinute: [0, 120] })])) === null)
-check('a summary over 64 kB is refused', /check constraint/.test(await fails(PLAYER, `update public.team_session_games set timeline_summary = $2 where id = $1`,
-  [game.id, JSON.stringify({ blob: 'x'.repeat(70_000) })]) ?? ''))
-check('a summary that is not an object is refused', /check constraint/.test(await fails(PLAYER, `update public.team_session_games set timeline_summary = '[1]' where id = $1`, [game.id]) ?? ''))
-check('outsiders cannot write it', (await rowsAs(OUTSIDER, `update public.team_session_games set timeline_summary = '{}' where id = $1 returning id`, [game.id])).length === 0)
+// CyberSecurity S19-13: games are inserted by their author, changed or deleted by their author or the session's
+// managers, and the summary only goes through set_team_game_timeline_summary.
+const summaryJson = JSON.stringify({ version: 1, events: [], goldDiffByMinute: [0, 120] })
+const setSummary = (user, gameId, s = summaryJson) => as(user, () => db.query('select public.set_team_game_timeline_summary($1, $2) as ok', [gameId, s]))
+const game = (await rowsAs(PLAYER, `insert into public.team_session_games (session_id, match_id) values ($1, 'EUW1_123') returning id, reported_by`, [S1]))[0]
+check('a member reports a game, as its author (reported_by filled in by default, as old apps never send it)', game?.reported_by === PLAYER, JSON.stringify(game))
+check('a member cannot report a game in someone else\'s name',
+  /row-level security/.test(await fails(PLAYER, `insert into public.team_session_games (session_id, match_id, reported_by) values ($1, 'EUW1_124', $2)`, [S1, COACH]) ?? ''))
+const coachGame = (await rowsAs(COACH, `insert into public.team_session_games (session_id, match_id) values ($1, 'EUW1_125') returning id`, [S1]))[0]
+check('nobody writes timeline_summary directly, not even the staff',
+  /permission denied/.test(await fails(COACH, `update public.team_session_games set timeline_summary = '{}' where id = $1`, [coachGame.id]) ?? '')
+  && /permission denied/.test(await fails(PLAYER, `update public.team_session_games set timeline_summary = '{}' where id = $1`, [game.id]) ?? ''))
+check('the game\'s author caches its summary through the RPC', (await setSummary(PLAYER, game.id)).rows[0].ok === true
+  && (await one('select timeline_summary from public.team_session_games where id = $1', [game.id])).timeline_summary?.version === 1)
+check('the staff caches the summary of a game they did not report', (await setSummary(COACH, game.id)).rows[0].ok === true)
+check('a player who is not the author does not (false, nothing written)', (await setSummary(PLAYER, coachGame.id)).rows[0].ok === false
+  && (await one('select timeline_summary from public.team_session_games where id = $1', [coachGame.id])).timeline_summary === null)
+check('an outsider does not either', (await setSummary(OUTSIDER, game.id)).rows[0].ok === false)
+check('a summary over 64 kB is refused', /check constraint/.test(await fails(COACH, 'select public.set_team_game_timeline_summary($1, $2)', [game.id, JSON.stringify({ blob: 'x'.repeat(70_000) })]) ?? ''))
+check('a summary that is not an object is refused', /check constraint/.test(await fails(COACH, 'select public.set_team_game_timeline_summary($1, $2)', [game.id, '[1]']) ?? ''))
+check('a player cannot change or delete a game they did not report',
+  (await rowsAs(PLAYER, `update public.team_session_games set match_json = '{}' where id = $1 returning id`, [coachGame.id])).length === 0
+  && (await rowsAs(PLAYER, `delete from public.team_session_games where id = $1 returning id`, [coachGame.id])).length === 0)
+check('the author caches the match on their own game', (await rowsAs(PLAYER, `update public.team_session_games set match_json = '{}', status = 'fetched' where id = $1 returning id`, [game.id])).length === 1)
+check('outsiders cannot write it', (await rowsAs(OUTSIDER, `update public.team_session_games set match_json = '{}' where id = $1 returning id`, [game.id])).length === 0)
+check('anon may not call the RPC', await (async () => {
+  await db.exec('set role anon')
+  try { await db.query('select public.set_team_game_timeline_summary(null, null)'); return false } catch (e) { return /permission denied/.test(e.message) } finally { await db.exec('reset role') }
+})())
 
 // ── Notification types ───────────────────────────────────────────────────
 const def = (await one(`select pg_get_constraintdef(oid) d from pg_constraint where conname = 'notifications_type_check'`)).d
 check('the notification list has dossier_published and keeps the #39 types',
   ['dossier_published', 'staff_roles_changed', 'member_staff_roles_changed', 'calendar_event_request'].every((t) => def.includes(`'${t}'`)))
-const list280 = readFileSync(join(repo, 'supabase/migrations/20261119280000_member_staff_roles.sql'), 'utf-8')
+const list280 = readFileSync(join(repo, 'supabase/migrations/20261119211601_member_staff_roles.sql'), 'utf-8')
 const typesOf = (sql) => { const m = sql.match(/notifications_type_check check \(type = any \(array\[([\s\S]*?)\]\)\)/); return m ? [...m[1].matchAll(/'([a-z_0-9]+)'/g)].map((x) => x[1]).sort().join(',') : null }
 check('#39 (280000) and this migration carry the same full list, so either can go first', typesOf(list280) !== null && typesOf(list280) === typesOf(migration))
+
+// ── Rollback (supabase/rollback/20261119290000_rollback.sql) ─────────────
+{
+  const rollback = readFileSync(join(repo, 'supabase/rollback/20261119290000_rollback.sql'), 'utf-8')
+  await db.exec(rollback)
+  await db.exec(rollback)
+  check('the rollback applies twice', true)
+  const left = (await db.query(`select 'table ' || relname n from pg_class where relname in ('draft_log', 'opponent_dossiers')
+    union all select 'function ' || proname from pg_proc where proname in ('set_opponent_dossier_status', 'opponent_dossiers_touch', 'is_pick_list', 'is_champion_list')
+      or (proname = 'touch_updated_at' and pronamespace = 'private'::regnamespace)
+    union all select 'column ' || column_name from information_schema.columns where table_name = 'team_session_games' and column_name = 'timeline_summary'`)).rows.map((r) => r.n)
+  check('rollback: every object the migration added is gone', left.length === 0, JSON.stringify(left))
+  check('rollback: the team games themselves stay', Number((await one('select count(*) n from public.team_session_games')).n) === 2)
+  check('rollback: any member writes the games again, as in production before (one policy for all)',
+    (await rowsAs(PLAYER, `update public.team_session_games set match_json = '{}' where id = $1 returning id`, [coachGame.id])).length === 1)
+  check('rollback: the notification list is untouched (280000 holds the same one)', (await one(`select pg_get_constraintdef(oid) d from pg_constraint where conname = 'notifications_type_check'`)).d === def)
+  await db.exec(migration)
+  check('the migration applies again after the rollback', Number((await one(`select count(*) n from pg_class where relname in ('draft_log', 'opponent_dossiers')`)).n) === 2)
+}
 
 console.log(failures ? `\n${failures} check(s) failed` : '\nAll checks passed')
 process.exit(failures ? 1 : 0)

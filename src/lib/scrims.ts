@@ -12,6 +12,12 @@ export interface ScrimSummary {
    *  if linked — lets the Discord bot (E11) derive real OP.GG links from
    *  that team's roster instead of the free-text `opponent` name. */
   opponentScoutingId: string | null
+  /** #49: the Planning slot this scrim is the detail of. Null before the scrims_in_planning migration. */
+  calendarEventId: string | null
+  /** #49: 'official' for a match planned as "Officiel". 'scrim' before the migration. */
+  kind: 'scrim' | 'official'
+  /** #49: the opponent's key in the group's scouting (analyst.ts opponentKeyOf). Null before the migration. */
+  opponentKey: string | null
 }
 
 /**

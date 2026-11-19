@@ -536,3 +536,110 @@ plan, statut, date de publication), la jonction avec le Journal (§ 11) et
 les Objectifs (§ 10) quand on a joué l'équipe, et le calcul des duos (games
 communes entre membres). Volume Riot : 5 joueurs × 20 games en clé
 personnelle, 50 avec la clé de production (#42).
+
+## 13. Spec Front-end — Scrims intégrés au Planning (#49)
+
+Maquette Penpot : page « Planning — scrims (#49) » (faite le 20/11 : pop-up
+en type Scrim à gauche, panneau de détail à droite). Demande de l'utilisateur :
+la planification des scrims se fait dans le Planning ; la page Scrims (web,
+`web/src/pages/ScrimsPage.tsx`) disparaît.
+
+**Principe.** Un scrim reste une ligne `scrims` (Bot Discord, liens OP.GG,
+cases de préparation), mais on ne le crée plus à part : créer un événement
+de type **Scrim** ou **Officiel** dans le Planning crée en même temps la ligne
+`scrims` liée (`calendar_events.linked_scrim_id`, qui existe déjà) et l'équipe
+adverse (`team_scouting`). Le sélecteur « Lier à un scrim existant » du
+pop-up disparaît.
+
+### 1. Pop-up « Nouvel événement » en type Scrim ou Officiel
+
+Les champs actuels restent (type, jour / début / fin du § 8, personnes
+concernées, notes). Quand le type est **Scrim** ou **Officiel**, le pop-up
+s'élargit à 640 px et ajoute, dans cet ordre :
+
+- **Format** : segmenté Bo1 / Bo3 / Bo5 (Bo3 par défaut), sur la ligne des
+  heures. La fin se recalcule à la sélection (Bo1 1 h, Bo3 2 h 30, Bo5 4 h),
+  modifiable ensuite.
+- **Bloc « Équipe adverse »** (fond `black`, contour `border-dim`) :
+  - segmenté **Équipe connue / Nouvelle équipe**. « Équipe connue » = un
+    select des adversaires du Scouting du groupe (nom + tag, dernier scrim
+    contre eux) ; il pré-remplit tout le bloc ;
+  - **Nom** (obligatoire) et **Tag** (facultatif, 2 à 5 caractères) ;
+  - **Lien OP.GG multi** (facultatif). Coller un lien OP.GG, Blitz, etc.
+    remplit les 5 Riot ID (`src/lib/multiGgParser.ts` existe déjà) ;
+  - **Les 5 adversaires** : une ligne par joueur = select de rôle (TOP, JGL,
+    MID, ADC, SUP, pré-rempli dans l'ordre et modifiable) + Riot ID
+    (`Nom#TAG`) + statut à droite : « ✓ trouvé » vert, « Introuvable » rouge
+    (contour rouge du champ), « — » si vide. Vérification du Riot ID à la
+    sortie du champ, via le relais (account-v1). Les lignes vides sont
+    permises : un scrim peut se créer avec 0 à 5 joueurs connus.
+- **Notre roster et nos rôles** : 5 cases (TOP → SUP), pré-remplies avec les
+  titulaires publiés ; chaque case = rôle + joueur, menu pour mettre un
+  remplaçant. Point vert / rouge = dispo du joueur sur ce créneau (règles
+  et exceptions existantes). En-tête : « Titulaires pré-remplis · 5 / 5
+  dispo ». Ces 5 joueurs deviennent les personnes concernées de l'événement.
+- Pied : à gauche, en or, « L'équipe est ajoutée au Scouting et au Draft
+  Sim. » ; bouton principal **« Créer le scrim »** (ou « Créer le match
+  officiel »).
+
+Validation : Nom obligatoire ; un Riot ID introuvable n'empêche pas la
+création (on peut corriger plus tard), mais garde son contour rouge.
+
+### 2. Panneau de détail d'un scrim (clic dans le Planning)
+
+Le clic sur une carte Scrim / Officiel de la grille ouvre l'inspecteur de
+droite actuel (360 px), avec ces blocs :
+
+1. **En-tête** : tag `SCRIM` ou `OFFICIEL`, « vs Karmine Academy (KCA) »,
+   jour et heures, Bo3, statut (Prévu / Joué / Annulé).
+2. **Nos joueurs** : 5 lignes rôle + pseudo + réponse de présence
+   (« Je serai là / Je ne peux pas », mécanisme existant).
+3. **Adversaire** : bouton outline « OP.GG multi ↗ », puis les 5 adversaires
+   (rôle en select, éditable par le staff ; Riot ID ; lien « OP.GG ↗ » par
+   joueur). Un joueur introuvable affiche « Corriger ».
+4. **Liens** : « Ouvrir dans le Scouting » (le dossier de l'équipe, § 12),
+   « Préparer la draft » (Draft Sim, adversaire pré-sélectionné).
+5. **Préparation** : la checklist (cases à cocher) et les notes de
+   préparation, reprises de la page Scrims.
+6. **Drafts liées** : la liste des drafts du groupe liées au scrim, avec
+   « Lier une draft » ; l'alerte « drafts manquantes » de l'ancienne page
+   est gardée.
+7. **Après le match** : review du scrim (texte), « Marquer joué »,
+   « Annuler », puis le fil de discussion (DiscussionThread, sujet `scrim`).
+8. Pied : « Modifier » (rouvre le pop-up du § 1) et « Supprimer ».
+
+Lecture seule pour les joueurs (comme aujourd'hui : écriture réservée au
+staff).
+
+### 3. Ce que deviennent les fonctions de la page Scrims
+
+| Fonction de ScrimsPage | Nouvelle place |
+|---|---|
+| Liste des scrims à venir, « afficher les passés » | Grille du Planning (semaine) ; les scrims passés restent visibles en naviguant dans les semaines. Le Journal des drafts (§ 11) garde l'historique. |
+| Création (titre, adversaire, date, durée, Bo, lien Scouting) | Pop-up du Planning, § 1 |
+| Disponibilité par scrim + commentaire | Réponse de présence de l'événement (existante) ; le commentaire devient la raison d'absence |
+| Checklist de préparation | Panneau de détail, bloc 5 |
+| Notes de préparation | Panneau de détail, bloc 5 |
+| Drafts liées + alerte drafts manquantes | Panneau de détail, bloc 6 |
+| Review du scrim, Marquer joué, Annuler, Supprimer | Panneau de détail, blocs 7 et 8 |
+| Fil de discussion | Panneau de détail, bloc 7 |
+| Lien vers l'équipe scoutée | Créé automatiquement (§ 1) ; liens du bloc 4 |
+| Bot Discord (`/scrims`, OP.GG) | Inchangé : il lit toujours la table `scrims` |
+
+L'entrée de menu « Scrims » du web disparaît ; l'URL `/scrims?scrim=<id>`
+redirige vers le Planning, sur la semaine du scrim, panneau ouvert.
+
+**Scouting et Draft Sim.** Une équipe créée par un scrim apparaît dans
+Coaching → Scouting (avec ses 5 joueurs et leurs rôles) et dans la liste
+des adversaires du Draft Sim, sans autre action. Si l'équipe existait déjà
+(« Équipe connue »), les nouveaux Riot ID complètent sa fiche.
+
+**Scrims existants.** Les scrims déjà créés sans événement de planning
+reçoivent leur événement (migration Back-end), pour apparaître dans la grille.
+
+**Textes FR/EN** : « Équipe adverse » / « Opposing team », « Équipe connue /
+Nouvelle équipe » / « Known team / New team », « Lien OP.GG multi » /
+« OP.GG multi link », « Les 5 adversaires » / « The 5 opponents »,
+« Notre roster et nos rôles » / « Our roster and roles », « Créer le scrim »
+/ « Create scrim », « Ouvrir dans le Scouting » / « Open in Scouting »,
+« Préparer la draft » / « Prepare the draft ».

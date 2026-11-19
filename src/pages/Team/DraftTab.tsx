@@ -1218,7 +1218,8 @@ function MemberPoolBlock({ member, usedChampions }: {
             </p>
           ) : (
             // "learning" stays hidden here: champions touched a few times only.
-            (['main', 'new', 'comfort', 'flex'] as const).map((tier) => {
+            // Same order as the Champion Pool (TIERS): "new" below "flex".
+            (['main', 'comfort', 'flex', 'new'] as const).map((tier) => {
               const items = groups[tier]
               if (items.length === 0) return null
               return (

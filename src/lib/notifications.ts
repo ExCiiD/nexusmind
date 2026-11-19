@@ -22,7 +22,7 @@ export type NotificationType =
   | 'event_confirmed'
 
 /** Every type the server sends — kept in step with the `notifications_type_check`
- *  constraint (supabase/migrations/20261118195000_notification_types_fix.sql). */
+ *  constraint (supabase/migrations/20261118185457_notification_types_fix.sql). */
 export const NOTIFICATION_TYPES: NotificationType[] = [
   'review_comment', 'objective_assigned', 'scrim_created', 'scrim_updated',
   'scrim_reminder_24h', 'scrim_reminder_1h', 'player_inactive',

@@ -8,6 +8,7 @@ import { isLegacyStaff } from '@/lib/permissions'
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
 import type { Team } from '@/lib/ipc'
 import { RosterTab } from '@/pages/Team/RosterTab'
+import { RosterLinkButton } from '@/components/team/RosterLinkButton'
 import { ChampPoolTab } from '@/pages/Team/ChampPoolTab'
 import { DraftTab } from '@/pages/Team/DraftTab'
 import { ScoutingTab } from '@/pages/Team/ScoutingTab'
@@ -122,7 +123,7 @@ export function TeamPage() {
       <div className={cn(tab === 'roster' && 'flex flex-1 flex-col')}>
         {tab === 'roster' && (
           <PanelErrorBoundary key="roster" label="Roster">
-            <RosterTab team={myTeam} loading={loading} onChange={load} fill />
+            <RosterTab team={myTeam} loading={loading} onChange={load} fill actions={activeGroup ? <RosterLinkButton group={activeGroup} /> : undefined} />
           </PanelErrorBoundary>
         )}
         {tab === 'pool' && (

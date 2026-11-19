@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * End-to-end check of supabase/migrations/20261119240000_member_puuid.sql (#38 + CyberSecurity review) on a
+ * End-to-end check of supabase/migrations/20261119165409_member_puuid.sql (#38 + CyberSecurity review) on a
  * throw-away Postgres (PGlite, in memory), never on the project's database: the puuid is written by the server only,
  * a Riot ID change clears it, and two members of a group cannot hold the same puuid.
  *
@@ -16,7 +16,7 @@ if (!pgliteDir) { console.error('Pass the folder that holds node_modules/@electr
 const require = createRequire(join(pgliteDir, 'package.json'))
 const { PGlite } = await import(pathToFileURL(require.resolve('@electric-sql/pglite')).href)
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
-const migration = readFileSync(join(repo, 'supabase/migrations/20261119240000_member_puuid.sql'), 'utf-8')
+const migration = readFileSync(join(repo, 'supabase/migrations/20261119165409_member_puuid.sql'), 'utf-8')
 
 const db = new PGlite()
 let failures = 0

@@ -12,7 +12,7 @@ import { TeamSessionPage } from '@/pages/TeamSession/TeamSessionPage'
 import { WebLayout } from './WebLayout'
 import { HomePage } from './pages/HomePage'
 import { MyReviewsPage } from './pages/MyReviewsPage'
-import { ScrimsPage } from './pages/ScrimsPage'
+import { ScrimsRedirect } from './pages/ScrimsRedirect'
 import { TeamPage } from './pages/TeamPage'
 import { TeamStatsPage } from './pages/TeamStatsPage'
 import { AccountPage } from './pages/AccountPage'
@@ -45,7 +45,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route element={<WebLayout />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/reviews" element={<MyReviewsPage />} />
-            <Route path="/scrims" element={<ScrimsPage />} />
+            {/* #49: scrims are planned in the Planning; old links land there. */}
+            <Route path="/scrims" element={<ScrimsRedirect />} />
             <Route path="/management" element={<ManagementPage />} />
             <Route path="/coaching" element={<CoachingPage />} />
             <Route path="/team-session/:calendarEventId" element={<TeamSessionPage />} />

@@ -8,9 +8,9 @@
  */
 
 export type Tier = 'main' | 'new' | 'comfort' | 'flex' | 'learning'
-/** Display order, strongest first. "new" sits right after "main": it is
- *  what the player is grinding right now. */
-export const TIERS: readonly Tier[] = ['main', 'new', 'comfort', 'flex', 'learning']
+/** Display order (user request, 20/11/2026): the settled tiers first (main, comfort, flex), then "new" — what the
+ *  player is grinding right now — then "learning". The weights (TIER_RANK) do not follow this order. */
+export const TIERS: readonly Tier[] = ['main', 'comfort', 'flex', 'new', 'learning']
 /** Weight of each tier where several entries compete (Draft Sim role attribution). */
 export const TIER_RANK: Record<Tier, number> = { main: 5, new: 4, comfort: 3, flex: 2, learning: 1 }
 export const isTier = (v: unknown): v is Tier => typeof v === 'string' && (TIERS as readonly string[]).includes(v)

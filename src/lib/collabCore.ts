@@ -71,7 +71,7 @@ export async function listMyGroups(sb: SupabaseClient, uid: string): Promise<Gro
       sharing: {
         shareReviews: share?.share_reviews ?? true,
         shareStats: share?.share_stats ?? true,
-        // S19-17 (20261119250000_team_data_staff_only): team data is shared only when explicitly turned on, so a
+        // S19-17 (20261119165435_team_data_staff_only): team data is shared only when explicitly turned on, so a
         // member who never set it shows "not shared", as the server reads it.
         shareTeam: share?.share_team ?? false,
         shareWellbeing: share?.share_wellbeing ?? false,
@@ -147,7 +147,7 @@ async function selectGroups(sb: SupabaseClient, ids: string[]): Promise<{ data: 
 // ── Team logos (Coaching → Groupes, player cards) ───────────────────────────
 // A group's logo is a file of its folder in the public group-logos bucket
 // (`<group id>/logo-<time>.<ext>`), pointed at by groups.logo_url through
-// set_group_logo (management only, see 20261119010000_group_logos.sql).
+// set_group_logo (management only, see 20261119032543_group_logos.sql).
 
 export const GROUP_LOGO_BUCKET = 'group-logos'
 export const GROUP_LOGO_MAX_BYTES = 512 * 1024
@@ -241,7 +241,7 @@ export async function verifyMyMemberPuuid(sb: SupabaseClient): Promise<{ verifie
 // ── Profile looks (Team → Roster player cards) ──────────────────────────────
 // The icon and banner a player picked on their Profile page, copied on each
 // of their memberships so their teammates' roster cards show them. Columns
-// added by migration 20261118160000_member_profile_look; before it, reads
+// added by migration 20261119034003_member_profile_look; before it, reads
 // come back empty and writes report false instead of failing the caller.
 
 /** Ids of the app's own artwork only (src/lib/profile.ts), never a URL. */

@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import type { AvailabilityException, AvailabilityRule, CalendarEvent, CommonFreeWindow } from '@/lib/calendar'
 import type { ScrimSummary } from '@/lib/scrims'
 import { KIND_STYLE, attendanceOf, availableAnyTime, localDateKey } from '@/lib/planningView'
+import { MatchBadge } from './MatchBadge'
 
 export interface HourRange { day: Date; startHour: number; endHour: number }
 
@@ -196,6 +197,7 @@ export function WeekGrid({
                     return (
                       <EventCard key={e.id} accent={(KIND_STYLE[e.kind] ?? KIND_STYLE.other).accent} tag={t(`planning.tag.${e.kind}`, { defaultValue: e.kind })}
                         time={`${shortH(startMin)}–${shortH(startMin + durMin)}`} title={e.title} notes={e.notes}
+                        badge={e.match ? <MatchBadge match={e.match} className="mt-0.5" /> : undefined}
                         attendance={count.total ? { free: count.present, total: count.total, declined: count.declined } : undefined}
                         declinedLabel={count.declined ? t('planning.grid.declined', { count: count.declined }) : undefined}
                         top={top(startMin)} height={(durMin / 60) * ROW} selected={selectedEventId === e.id} onClick={() => onEventClick(e)} />
@@ -246,9 +248,11 @@ export function WeekGrid({
   )
 }
 
-function EventCard({ accent, tag, time, title, notes, attendance, declinedLabel, top, height, selected, onClick }: {
+function EventCard({ accent, tag, time, title, notes, badge, attendance, declinedLabel, top, height, selected, onClick }: {
   accent: string
   tag: string
+  /** #49: « vs X · BO3 » on a Scrim / Officiel slot. */
+  badge?: React.ReactNode
   time: string
   title: string
   notes?: string | null
@@ -276,6 +280,7 @@ function EventCard({ accent, tag, time, title, notes, attendance, declinedLabel,
         <span className={cn('max-w-[64%] rounded border px-1 font-mono text-[9px] font-semibold uppercase leading-[1.25] tracking-wide', !roomy && 'truncate')} style={{ borderColor: `${accent}66`, color: accent }}>{tag}</span>
         <span className="shrink-0 font-mono text-[10px] font-bold text-hextech-text-bright">{time}</span>
       </div>
+      {badge}
       {declinedLabel && (
         <span className="mt-0.5 flex w-fit items-center gap-0.5 rounded bg-hextech-red/20 px-1 font-mono text-[9px] font-bold uppercase text-hextech-red">
           <X className="h-2.5 w-2.5" />{declinedLabel}

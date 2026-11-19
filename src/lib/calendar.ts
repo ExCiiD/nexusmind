@@ -1,6 +1,7 @@
 /** Renderer-side mirror of the shared planning tables (E4, extended in the
  *  Planning rework — see docs/PLAN_GESTION_EQUIPE.md §9 Phase 1). */
 import { randomHexToken } from './tokens'
+import type { MatchEventApi, MatchSummary } from './matchEvent'
 
 export type CalendarEventKind =
   | 'tournament' | 'team_review' | 'one_on_one' | 'soloq_block' | 'rest' | 'other' | 'warmup_draft'
@@ -28,6 +29,11 @@ export interface CalendarEvent {
   attendeeUserIds: string[]
   /** Who said they'll be there or can't come (calendar_event_responses). */
   responses?: EventResponse[]
+  /**
+   * #49: set on a Scrim / Officiel slot that has its match detail (scrims.calendar_event_id): what the grid card
+   * shows ("vs X · BO3"). Absent on other slots and before the scrims_in_planning migration.
+   */
+  match?: MatchSummary
   createdBy: string | null // null once the author deleted their account (S19-16 / #33)
   createdAt: string
   updatedAt: string
@@ -182,7 +188,8 @@ export function generateCalendarSubscriptionToken(): string {
   return randomHexToken(20)
 }
 
-export interface CalendarApi {
+/** #49's match calls (MatchEventApi, all optional) come with the calendar's. */
+export interface CalendarApi extends MatchEventApi {
   calendarListEvents: (groupId: string, fromISO: string, toISO: string) => Promise<CalendarEvent[]>
   calendarGetEvent: (id: string) => Promise<CalendarEvent | null>
   calendarCreateEvent: (groupId: string, input: NewEventInput) => Promise<string>

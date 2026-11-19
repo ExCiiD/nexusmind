@@ -23,6 +23,17 @@ export interface RateWindow {
 export const DEFAULT_WINDOWS: RateWindow[] = [{ limit: 18, seconds: 1 }, { limit: 95, seconds: 120 }]
 export const DEFAULT_RESERVE = 0.3
 export const DEFAULT_USER_SHARE = 0.25
+/**
+ * #46 point 2 (20/11/2026): part of each player's own share kept for their interactive calls. Without it, a player
+ * whose background reads (weekly awards, scouts) had used their share made an open screen wait up to a minute.
+ */
+export const DEFAULT_USER_INTERACTIVE_RESERVE = 0.2
+
+/** USER_INTERACTIVE_RESERVE as a ratio in [0, 0.9]. */
+export function parseUserInteractiveReserve(raw: string | undefined | null): number {
+  const n = Number(raw)
+  return raw != null && raw !== '' && Number.isFinite(n) && n >= 0 && n <= 0.9 ? n : DEFAULT_USER_INTERACTIVE_RESERVE
+}
 
 /** "18:1,95:120" (calls:seconds, comma separated), as in RIOT_APP_LIMITS. Falls back to the default on bad input. */
 export function parseWindows(raw: string | undefined | null): RateWindow[] {
@@ -64,13 +75,20 @@ export class RiotBudget {
     private readonly windows: RateWindow[] = DEFAULT_WINDOWS,
     private readonly reserve: number = DEFAULT_RESERVE,
     private readonly userShare: number = DEFAULT_USER_SHARE,
+    private readonly userInteractiveReserve: number = DEFAULT_USER_INTERACTIVE_RESERVE,
   ) {
     this.hits = windows.map(() => [])
   }
 
-  /** The calls one user may make in a window: at least one. */
-  userCapFor(w: RateWindow): number {
-    return Math.max(1, Math.floor(w.limit * this.userShare))
+  /**
+   * The calls one user may make in a window: at least one. A background call may only use the share less its
+   * interactive reserve, and always leaves at least one of the user's slots to their interactive calls (when the
+   * share has two slots or more).
+   */
+  userCapFor(w: RateWindow, priority: Priority = 'interactive'): number {
+    const share = Math.max(1, Math.floor(w.limit * this.userShare))
+    if (priority === 'interactive' || share < 2) return share
+    return Math.max(1, Math.min(share - 1, Math.floor(share * (1 - this.userInteractiveReserve))))
   }
 
   /** The calls a priority may use in a window. A background call always keeps at least one slot free for interactive ones. */
@@ -84,7 +102,7 @@ export class RiotBudget {
     // The user's own share first: a user over it waits for their own calls to age, whatever the others do.
     const mine = user ? this.userLists(user, now) : null
     if (mine) {
-      const userWait = this.waitFor(mine, (w) => this.userCapFor(w), now)
+      const userWait = this.waitFor(mine, (w) => this.userCapFor(w, priority), now)
       if (userWait > 0) return { ok: false, retryAfterMs: userWait, reason: 'user_share' }
     }
     this.windows.forEach((_, i) => this.prune(i, now))

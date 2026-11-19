@@ -75,7 +75,7 @@ export function App() {
             <Route path="/team" element={<PanelErrorBoundary label="Team page"><TeamPage /></PanelErrorBoundary>} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/management" element={<PanelErrorBoundary label="Management page"><ManagementPage /></PanelErrorBoundary>} />
-            <Route path="/team-space" element={<PanelErrorBoundary label="Team workspace page"><TeamSpacePage /></PanelErrorBoundary>} />
+            <Route path="/team-space" element={<PanelErrorBoundary label="Team Lobby page"><TeamSpacePage /></PanelErrorBoundary>} />
             <Route path="/coaching" element={<PanelErrorBoundary label="Coaching page"><CoachingPage /></PanelErrorBoundary>} />
             <Route path="/team-session/:calendarEventId" element={<PanelErrorBoundary label="Team session"><TeamSessionPage /></PanelErrorBoundary>} />
             <Route path="/help" element={<HelpPage />} />

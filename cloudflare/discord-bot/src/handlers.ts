@@ -5,7 +5,8 @@ import {
   getGroupMemberRole, getGroupMemberRoles, canManageDiscordServer, isChannelStaffRole,
 } from '../../../src/lib/discordBotCore'
 import { listEvents, listAvailabilityRules, listAvailabilityExceptions, findCommonAvailability } from '../../../src/lib/calendarCore'
-import { listScrimsForGroup } from '../../../src/lib/scrimsCore'
+import { describeMatch, listScrimsForGroup } from '../../../src/lib/scrimsCore'
+import { opponentKeyOf } from '../../../src/lib/analyst'
 import { getSharedTeam, getGroupRosterUserIds } from '../../../src/lib/teamCore'
 import { buildOpggUrl } from '../../../src/lib/opgg'
 import { ephemeralReply, publicReply } from './discordApi'
@@ -88,13 +89,18 @@ export async function handleCalendar(i: Interaction, sb: SupabaseClient) {
     listEvents(sb, link.groupId, now.toISOString(), horizon.toISOString()),
     listScrimsForGroup(sb, link.groupId),
   ])
+  // #49: a scrim planned from the Planning is listed once, as its slot.
   const upcomingScrims = scrims.filter((s) => {
     const t = Date.parse(s.scheduledAt)
-    return t >= now.getTime() && t <= horizon.getTime()
+    return !s.calendarEventId && t >= now.getTime() && t <= horizon.getTime()
   })
   const lines: string[] = []
-  for (const e of events) lines.push(`📅 **${fmtDate(e.startsAt)}** — ${e.title} _(${e.kind.replace('_', ' ')})_`)
-  for (const s of upcomingScrims) lines.push(`⚔️ **${fmtDate(s.scheduledAt)}** — Scrim${s.opponent ? ` vs ${s.opponent}` : ''}${s.boFormat ? ` (${s.boFormat.toUpperCase()})` : ''}`)
+  for (const e of events) {
+    lines.push(e.match
+      ? `⚔️ **${fmtDate(e.startsAt)}** — ${describeMatch(e.match)}`
+      : `📅 **${fmtDate(e.startsAt)}** — ${e.title} _(${e.kind.replace('_', ' ')})_`)
+  }
+  for (const s of upcomingScrims) lines.push(`⚔️ **${fmtDate(s.scheduledAt)}** — ${describeMatch(s)}`)
   if (lines.length === 0) return publicReply('Nothing on the calendar in the next 14 days.')
   lines.sort()
   return publicReply(`**Next 14 days:**\n${lines.join('\n')}`)
@@ -115,8 +121,10 @@ export async function handleScrims(i: Interaction, sb: SupabaseClient) {
   const shared = await getSharedTeam(sb, link.groupId, { pools: false, drafts: false })
   const blocks: string[] = []
   for (const s of scrims) {
-    const parts = [`⚔️ **${fmtDate(s.scheduledAt)}**${s.opponent ? ` vs ${s.opponent}` : ''}${s.boFormat ? ` — ${s.boFormat.toUpperCase()}` : ''}`]
-    const scouted = shared.scouting.find((sc) => sc.id === s.opponentScoutingId)
+    const parts = [`⚔️ **${fmtDate(s.scheduledAt)}** — ${describeMatch(s)}`]
+    // #49: by the opponent's key first (it survives a republish of the team), else by the stored link.
+    const scouted = (s.opponentKey ? shared.scouting.find((sc) => opponentKeyOf(sc.name) === s.opponentKey) : undefined)
+      ?? shared.scouting.find((sc) => sc.id === s.opponentScoutingId)
     if (scouted) {
       const links = scouted.roster
         .map((m) => ({ role: m.role, url: buildOpggUrl(m.ign, m.tagLine, m.region) }))

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * End-to-end check of supabase/migrations/20261119220000_wellbeing_consent.sql on a throw-away Postgres (PGlite,
+ * End-to-end check of supabase/migrations/20261119165331_wellbeing_consent.sql on a throw-away Postgres (PGlite,
  * in memory), never on the project's database. The wellbeing tables are created from the repo's own migration
- * (20261114050000_e6_wellbeing.sql) on a minimal stand-in of groups and sharing; RLS is real.
+ * (20261113212035_e6_wellbeing.sql) on a minimal stand-in of groups and sharing; RLS is real.
  *
  * Usage: node scripts/test-wellbeing-consent.mjs <folder where @electric-sql/pglite is installed>
  */
@@ -49,7 +49,7 @@ await db.exec(`
   -- revoke and RLS can stop a direct write.
   alter default privileges in schema public grant all on tables to anon, authenticated;
 `)
-await db.exec(read('20261114050000_e6_wellbeing.sql'))
+await db.exec(read('20261113212035_e6_wellbeing.sql'))
 await db.exec('grant select, insert, update, delete on public.wellbeing_checkins to authenticated')
 await db.exec('grant select, update on public.group_sharing to authenticated')
 
@@ -61,7 +61,7 @@ await db.query('insert into public.group_sharing (group_id, user_id, share_wellb
 await db.query('insert into public.wellbeing_checkins (user_id, energy, mood, sleep) values ($1, 3, 3, 3)', [me])
 
 let err = null
-try { await db.exec(read('20261119220000_wellbeing_consent.sql')) } catch (e) { err = e.message }
+try { await db.exec(read('20261119165331_wellbeing_consent.sql')) } catch (e) { err = e.message }
 check('migration applies', err === null, err)
 if (err) process.exit(1)
 
@@ -110,7 +110,7 @@ check('the log keeps both events (proof)', (await count('select count(*) n from 
 check('anon cannot call the RPC', !(await db.query(`select has_function_privilege('anon', 'public.set_wellbeing_consent(boolean, text)', 'execute') as x`)).rows[0].x)
 
 err = null
-try { await db.exec(read('20261119220000_wellbeing_consent.sql')) } catch (e) { err = e.message }
+try { await db.exec(read('20261119165331_wellbeing_consent.sql')) } catch (e) { err = e.message }
 check('migration is re-runnable', err === null, err)
 
 await db.close()

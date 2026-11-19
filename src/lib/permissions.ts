@@ -3,7 +3,7 @@ import type { GroupRole, StaffRole } from './collab'
 /**
  * Permission predicates for the Planning rework + team sessions. Pure, no
  * I/O — mirrors the SQL helpers 1:1 (e_phase0_manager_role_captain, then
- * 20261118200000_captain_roles_presence), so client-side UI gating and
+ * 20261118202150_captain_roles_presence), so client-side UI gating and
  * server-side RLS never drift:
  *
  *   - `private.is_group_staff`    (owner/coach/analyst)               → isLegacyStaff

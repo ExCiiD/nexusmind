@@ -31,6 +31,8 @@ export interface BudgetGate {
 export interface HandlerEnv {
   RIOT_API_KEY: string
   USER_LIMITER?: { limit: (opts: { key: string }) => Promise<{ success: boolean }> }
+  /** #46: the per-player limit for background calls only (smaller than USER_LIMITER). */
+  USER_LIMITER_BACKGROUND?: { limit: (opts: { key: string }) => Promise<{ success: boolean }> }
   METRICS?: AnalyticsDataset
 }
 
@@ -93,6 +95,15 @@ export async function handleRequest(req: Request, env: HandlerEnv, deps: Handler
     if (!success) {
       metric('user_limited', 429)
       return json(429, { error: 'user_rate_limited' }, { 'retry-after': '10', 'x-rate-limit-type': 'proxy-user' })
+    }
+  }
+  // #46 point 2: a player's background calls also go through a smaller per-player limiter (80 % of USER_LIMITER),
+  // so their interactive calls always keep room in their minute.
+  if (priority === 'background' && env.USER_LIMITER_BACKGROUND) {
+    const { success } = await env.USER_LIMITER_BACKGROUND.limit({ key: user.sub })
+    if (!success) {
+      metric('user_limited', 429)
+      return json(429, { error: 'user_rate_limited' }, { 'retry-after': '10', 'x-rate-limit-type': 'proxy-user-background' })
     }
   }
 

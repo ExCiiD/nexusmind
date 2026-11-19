@@ -139,3 +139,10 @@ export async function listTeamDrafts(groupId: string | string[]): Promise<TeamDr
     notes: d.notes ?? null,
   }))
 }
+
+/** #49: the Planning slot of a scrim (scrims.calendar_event_id), for the old /scrims?scrim=<id> links. Null without one. */
+export async function scrimCalendarEventId(scrimId: string): Promise<string | null> {
+  const { data, error } = await sb.from('scrims').select('calendar_event_id').eq('id', scrimId).maybeSingle()
+  if (error) return null // before the scrims_in_planning migration (no column), or no access
+  return (data as { calendar_event_id?: string | null } | null)?.calendar_event_id ?? null
+}

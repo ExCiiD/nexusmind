@@ -184,6 +184,7 @@ const api = {
   // E1: shared team workspace
   teamPublishToGroup: (groupId: string, teamId: string) => ipcRenderer.invoke('team:publish-to-group', groupId, teamId),
   teamGetShared: (groupId: string) => ipcRenderer.invoke('team:get-shared', groupId),
+  teamLinkRosterMember: (rosterId: string, userId: string | null) => ipcRenderer.invoke('team:link-roster-member', rosterId, userId),
 
   // E3: individual development plans
   devPlanGetMine: (groupId: string) => ipcRenderer.invoke('devplan:get-mine', groupId),
@@ -205,6 +206,12 @@ const api = {
   calendarUpdateEvent: (id: string, input: unknown) => ipcRenderer.invoke('calendar:update-event', id, input),
   calendarDeleteEvent: (id: string) => ipcRenderer.invoke('calendar:delete-event', id),
   calendarRespond: (eventId: string, status: 'confirmed' | 'declined', note?: string | null) => ipcRenderer.invoke('calendar:respond', eventId, status, note ?? null),
+  // #49: matches planned from the Planning (src/lib/matchEvent.ts, docs/CONTRAT_SCRIMS_PLANNING.md).
+  calendarSaveMatchEvent: (groupId: string, event: unknown, match: unknown) => ipcRenderer.invoke('calendar:save-match-event', groupId, event, match),
+  calendarGetMatchEvent: (calendarEventId: string) => ipcRenderer.invoke('calendar:get-match-event', calendarEventId),
+  calendarUpdateMatchDetail: (scrimId: string, patch: unknown) => ipcRenderer.invoke('calendar:update-match-detail', scrimId, patch),
+  calendarListKnownOpponents: (groupId: string) => ipcRenderer.invoke('calendar:list-known-opponents', groupId),
+  riotAccountExists: (riotId: string, region: string) => ipcRenderer.invoke('riot:account-exists', riotId, region),
   availabilityListRules: (groupId: string) => ipcRenderer.invoke('availability:list-rules', groupId),
   availabilitySetRule: (groupId: string, input: unknown) => ipcRenderer.invoke('availability:set-rule', groupId, input),
   availabilityDeleteRule: (id: string) => ipcRenderer.invoke('availability:delete-rule', id),
@@ -486,6 +493,7 @@ const api = {
     ipcRenderer.invoke('team:scout-member', memberId, count, opts),
   autoFillPool: (memberId: string, opts?: { matchCount?: number; masteryCount?: number; overwriteTiers?: boolean; roleOnly?: boolean }) =>
     ipcRenderer.invoke('team:auto-fill-pool', memberId, opts),
+  teamCardChampions: (memberId: string) => ipcRenderer.invoke('team:card-champions', memberId),
   // Weekly MVP / Grinder awards (src/lib/weeklyAwardsCore.ts, electron/main/weeklyAwards.ts)
   teamWeeklyAwards: (teamId: string) => ipcRenderer.invoke('team:weekly-awards', teamId),
   // Looking-for-team announcements (src/components/lft)
