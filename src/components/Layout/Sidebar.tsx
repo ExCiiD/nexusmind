@@ -158,8 +158,9 @@ export function Sidebar() {
     {
       id: 'team',
       items: [
-        { to: '/team', icon: Users, label: t('nav.team', { defaultValue: 'Team' }), active: path.startsWith('/team') },
-        { to: '/coaching', icon: GraduationCap, label: t('nav.coaching') },
+        { to: '/team', icon: Users, label: t('nav.team', { defaultValue: 'Team' }), active: path === '/team' },
+        // Team sessions are launched from Coaching's planning and return there.
+        { to: '/coaching', icon: GraduationCap, label: t('nav.coaching'), active: path.startsWith('/coaching') || path.startsWith('/team-session') },
       ],
     },
     {
