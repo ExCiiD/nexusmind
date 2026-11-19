@@ -126,6 +126,8 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
   /** Season clock: 16.x games start 35 s earlier (minions 0:30) and respawn on the 2026 timers (gameClock.ts). */
   const clock = gameClockOf(match)
   const early = clock === 2025 ? 0 : 35 * SEC
+  /** Baron spawn: 20:00 in 2026, 25:00 in 2025 (docs/DONNEES_JEU_2026.md). */
+  const baronFrom = (clock === 2025 ? 25 : 20) * MIN
 
   // ── M5 death-before-objective ────────────────────────────────────────
   for (const d of myDeaths) {
@@ -218,8 +220,9 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
     const involved = 1 + (Array.isArray(d.assistingParticipantIds) ? d.assistingParticipantIds.length : 0)
     let soloBaron = false
 
-    // M8 solo-baron-died
-    if (pos && dist(pos, TOP_PIT) <= 1800 && ts >= 8 * MIN) {
+    // M8 solo-baron-died. #45 D1: only once the Baron is there (20:00 in 2026, 25:00 in 2025). Before that the top pit
+    // holds the Void Grubs (8:00) and the Herald (15:00), and a death there is not a death at the Baron.
+    if (pos && dist(pos, TOP_PIT) <= 1800 && ts >= baronFrom) {
       const near = alliesWithin(ts, pos, 3000)
       if (near <= 1) {
         soloBaron = true

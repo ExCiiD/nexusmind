@@ -131,7 +131,7 @@ asks GitHub once and repoints the button when a newer installer exists.
 
 ## Online
 
-Preview: <https://ascend-site.nexusmind-riot-proxy.workers.dev> (Cloudflare worker `ascend-site`, online since 18 November 2026; it was called `nexusmind-site` for its first hours, and that address no longer answers).
+Public address: <https://asc3nd.app> (`www.asc3nd.app` redirects to it), set as `SITE_URL` on 19 November 2026; the web app moves to <https://app.asc3nd.app>. The domain is written `asc3nd.app`; the product name stays « Ascend ». The domain and the deploy are wired by the Back-end. Until then the site stays online as a preview at <https://ascend-site.nexusmind-riot-proxy.workers.dev> (Cloudflare worker `ascend-site`, online since 18 November 2026; it was called `nexusmind-site` for its first hours, and that address no longer answers).
 
 The second part of the address, `nexusmind-riot-proxy`, is the workers.dev name of the whole Cloudflare account. The Riot proxy, the web app and the Discord bot live under it, and released versions of the app have those addresses built in, so it is not renamed. An address without it takes a custom domain.
 
@@ -141,6 +141,6 @@ The second part of the address, `nexusmind-riot-proxy`, is the workers.dev name 
 
 ## Still to do by the publisher
 
-- Open the site to search engines: attach a domain (or keep the workers.dev address), set `SITE_URL` in `site.config.mjs`, rebuild and deploy. The `noindex` marks go away; canonical links, absolute preview images and the sitemap appear. On a custom domain, turn on "Always Use HTTPS" in Cloudflare.
+- ~~Open the site to search engines~~: `SITE_URL` is `https://asc3nd.app` since 19 November 2026 (canonical links, `og:url`, absolute preview images, hreflang, sitemap and robots.txt with the sitemap; no more `noindex` except on the 404). Left to the Back-end: attach the domain, redirect `www`, turn on "Always Use HTTPS", deploy.
 - The publisher's details are in the four legal texts (`src/legal/*.html`) since 18 November 2026: publisher ExCiiD, Réunion (France), French law, a contact address. They are also in the app's own texts (`src/legal/*.md` at the repo root). A change of contact address is made in both places.
 - The legal texts are a version 0.2 that no lawyer has reviewed.

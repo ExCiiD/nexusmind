@@ -233,6 +233,11 @@ describe('deathTimerSec', () => {
     expect(deathTimerSec(1, 3, 2025)).toBe(6)
     expect(deathTimerSec(18, 40)).toBeGreaterThan(deathTimerSec(18, 15))
   })
+  it('#45 D4: levels 19 and 20 (top lane quest) use the level-18 wait, the last one the wiki gives', () => {
+    expect(deathTimerSec(19, 40)).toBe(deathTimerSec(18, 40))
+    expect(deathTimerSec(20, 40)).toBe(deathTimerSec(18, 40))
+    expect(deathTimerSec(18, 0)).toBe(52.5)
+  })
 })
 
 describe('performance', () => {

@@ -147,7 +147,8 @@ export const DETECTOR_SPEC = {
   tempoWindow: { fromSec: 115, untilSec: 720, distance: 8000, windowSec: 45, respawnGraceSec: 20 },
   carry: { bounty: 450, kda: 4, goldShare: 0.25, enemies: 3, fightRadius: 2500, lostWithinSec: 60, firstDeathSec: 10 },
   rotation: { untilSec: 840, awaySec: 30, cs: 8, xp: 350, deathGuardSec: 45 },
-  pit: { fromSec: 840, fightRadius: PIT_FIGHT_RADIUS, insideRadius: PIT_INSIDE_RADIUS, beforeSec: 15, fightGapSec: 20 },
+  // #45 D5: pit fights count from 15:00, when the Herald spawns (it was 14:00, the Herald's spawn before 2025).
+  pit: { fromSec: 900, fightRadius: PIT_FIGHT_RADIUS, insideRadius: PIT_INSIDE_RADIUS, beforeSec: 15, fightGapSec: 20 },
   /**
    * Mid roam paid in plates. Plates no longer fall at 14:00 in 2026 (on cached 16.x games they are taken up to 47:47,
    * three quarters of them after 14:00): a roam can cost plates for as long as the mid T1 stands, so the window runs to
@@ -233,12 +234,15 @@ export const DETECTOR_SPEC = {
    */
   sideTower: { fromSec: 0, untilSec: 1200 },
   /**
-   * Jungler dead in a fight 14:00–19:30 while holding the Eye of the Herald (item 3513). Riot logs no pick-up, but the eye
+   * Jungler dead in a fight 15:00–22:00 while holding the Eye of the Herald (item 3513). Riot logs no pick-up, but the eye
    * leaving an inventory (used, or expired about 300 s after the kill) is an ITEM_DESTROYED naming its holder: the jungler
    * held it at that death when that event is theirs and comes after it. Deaths in the 20 s after the Herald fell (the
    * time the eye lies on the ground) are the Herald fight itself, not a fight entered with the eye.
+   * #45 D2 (19/11/2026): the Herald spawns at 15:00 and leaves at 19:45 in 2026 (League of Legends Wiki). On the cached
+   * 16.x games (128 games, 108 eyes) the eye left its holder by 21:21 in 90 % of cases, by 21:52 in 95 % (latest 23:09),
+   * so the window runs to 22:00. The ITEM_DESTROYED check keeps a wider window exact. 2025: CLOCK_2025.
    */
-  heraldEye: { fromSec: 840, untilSec: 1170, itemId: 3513, pickupSec: 20 },
+  heraldEye: { fromSec: 900, untilSec: 1320, itemId: 3513, pickupSec: 20 },
   /**
    * Fled an invade: before 15:00, a snapshot shows the jungler under 15 % HP in their own jungle, the enemy jungler within
    * 2000 above 70 % and an ally of ours within 2000; the jungler is alive 15 s later and the enemy jungler takes 4+
@@ -287,6 +291,12 @@ export const CLOCK_2025 = {
   midRoam: { ...DETECTOR_SPEC.midRoam, untilSec: 840 },
   dive: { ...DETECTOR_SPEC.dive, untilSec: 840 },
   sideTower: { fromSec: 840, untilSec: 1200 },
+  // #45 D2: in 2025 the Herald stayed until 24:45 (patch 25.S1.1), the Baron coming at 25:00. On the cached 15.x games
+  // (79 games, 74 eyes) the eye left its holder by 22:15 in 95 % of cases, latest 25:45. Patches 15.1 to 15.8 (Herald
+  // at 16:00) are not told apart (D3, docs/RAPPORT_MOTEUR.md).
+  heraldEye: { ...DETECTOR_SPEC.heraldEye, untilSec: 1500 },
+  // #45 D5 changes 2026 only: 2025 analyses keep pit fights from 14:00, as before.
+  pit: { ...DETECTOR_SPEC.pit, fromSec: 840 },
 } satisfies Partial<DetectorSpec>
 
 /** The rules of a game on `clock`. */
@@ -956,7 +966,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       }
     }
 
-    // V7 — jungler dead in a fight 14:00–19:30 with the Eye of the Herald in their pocket: the team took the Herald before, and
+    // V7 — jungler dead in a fight 15:00–22:00 (2025: to 25:00) with the Eye of the Herald in their pocket: the team took the Herald before, and
     // the eye left the jungler's own inventory (ITEM_DESTROYED: used or expired) only after this death.
     const HE = S.heraldEye
     if (!pattern && role === 'JUNGLE' && sec >= HE.fromSec && sec <= HE.untilSec && involved.length > 0) {

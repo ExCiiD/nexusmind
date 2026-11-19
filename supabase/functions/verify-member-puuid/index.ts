@@ -13,7 +13,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2.49.4'
 
 // CORS: only the web app (the desktop calls from its main process, without an Origin header). WEB_APP_ORIGINS is a
 // comma-separated list; the default is the web app's current address.
-const ALLOWED_ORIGINS = (Deno.env.get('WEB_APP_ORIGINS') ?? 'https://nexusmind-web.nexusmind-riot-proxy.workers.dev')
+// asc3nd.app (19/11/2026): the web app moved to app.asc3nd.app; the old address stays allowed during the transition.
+const ALLOWED_ORIGINS = (Deno.env.get('WEB_APP_ORIGINS') ?? 'https://app.asc3nd.app,https://nexusmind-web.nexusmind-riot-proxy.workers.dev')
   .split(',').map((s) => s.trim().replace(/\/+$/, '')).filter(Boolean)
 function corsFor(req: Request): Record<string, string> | null {
   const origin = req.headers.get('origin')

@@ -3,6 +3,7 @@ import * as notifications from '@/lib/notificationsCore'
 import * as team from '@/lib/teamCore'
 import { scoutMemberWeb, autoFillPoolWeb } from './scoutingWeb'
 import { computeCombinedStatsWeb, computeCustomStatsWeb, computeTeamSynergyStatsWeb, listCustomGamesWeb } from './teamStatsWeb'
+import { analystWebApi } from './analystWeb'
 import * as dashboardCore from '@/lib/staffDashboardCore'
 import * as devPlanCore from '@/lib/devPlanCore'
 import * as calendarCore from '@/lib/calendarCore'
@@ -145,6 +146,8 @@ function scoutingIdFor(teamId: string): string | null {
 }
 
 export const webApi = {
+  // #40 analyst screens (Objectifs, Journal des drafts, Dossier adverse): analystCore with the web Riot client.
+  ...analystWebApi,
   /** Invite code from an invite link, for the sign-in screen. */
   pendingInviteCode: (): string | null => pendingInvite,
   // ── account ──

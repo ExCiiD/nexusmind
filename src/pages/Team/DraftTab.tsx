@@ -183,9 +183,11 @@ interface Props {
   myUserId?: string
   nameOf?: NameOf
   isStaff?: boolean
+  /** #40: a draft to open once the list is loaded (the Journal's « Ouvrir dans Préparation »). */
+  openDraftId?: string | null
 }
 
-export function DraftTab({ myTeam, groupId, opponentsGroupId, myUserId, nameOf, isStaff }: Props) {
+export function DraftTab({ myTeam, groupId, opponentsGroupId, myUserId, nameOf, isStaff, openDraftId }: Props) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const { champions } = useAllChampions()
@@ -239,7 +241,12 @@ export function DraftTab({ myTeam, groupId, opponentsGroupId, myUserId, nameOf, 
   }, [])
 
   const loadDrafts = async () => {
-    try { setDrafts(await window.api.listDrafts()) }
+    try {
+      const list = await window.api.listDrafts()
+      setDrafts(list)
+      const toOpen = openDraftId ? list.find((d) => d.id === openDraftId) : undefined
+      if (toOpen) loadDraft(toOpen)
+    }
     catch (err) { console.error('[DraftTab] Failed to load drafts:', err) }
   }
   const loadOpponents = async () => {

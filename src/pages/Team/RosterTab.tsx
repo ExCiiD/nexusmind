@@ -17,6 +17,7 @@ import { useUserStore } from '@/store/useUserStore'
 import { useBackgroundJobsStore } from '@/store/useBackgroundJobsStore'
 import { EmptySlotCard, PlayerCard } from './PlayerCard'
 import { ROLES, type Role } from '@/lib/championRoles'
+import { cn } from '@/lib/utils'
 
 
 // No width here: each field sets its own (a shared w-full would beat w-14).
@@ -33,6 +34,9 @@ interface RosterTabProps {
   /** The roster is the group's players: no adding or removing here. Always
    *  true since 19/11/2026 (the only caller is Espace d'équipe). */
   groupManaged?: boolean
+  /** Espace d'équipe: the card row fills the remaining height of the page, centred vertically, and the cards
+   *  shrink to fit the window's height (a 1 : 1.75 card under the header and the action row). */
+  fill?: boolean
 }
 
 /** Looks the members of my cloud groups shared (empty when signed out). */
@@ -48,7 +52,7 @@ function useMemberLooks(): MemberLook[] {
   return looks
 }
 
-export function RosterTab({ team, loading, onChange, logoUrl, actions }: RosterTabProps) {
+export function RosterTab({ team, loading, onChange, logoUrl, actions, fill = false }: RosterTabProps) {
   const { t } = useTranslation()
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -146,14 +150,18 @@ export function RosterTab({ team, loading, onChange, logoUrl, actions }: RosterT
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="space-y-3">
+      <div className={fill ? 'flex flex-1 flex-col gap-3' : 'space-y-3'}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-hextech-text-dim">{t('team.roster.fromGroup')}</p>
           <div className="flex flex-wrap gap-2">{actions}</div>
         </div>
 
         {/* Room between the cards for the award frames (6 % outside each card). */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-8 px-2 pt-2 sm:grid-cols-3 xl:grid-cols-5">
+        <div
+          className={cn('grid grid-cols-2 gap-x-6 gap-y-8 px-2 pt-2 sm:grid-cols-3 xl:grid-cols-5', fill && 'my-auto w-full [&>*]:max-w-[var(--card-max)]')}
+          // Under 16rem of header, tabs and actions, a card is 1.75 times as tall as it is wide.
+          style={fill ? { ['--card-max' as string]: 'min(250px, calc((100dvh - 16rem) / 1.75))' } : undefined}
+        >
           {ROLES.map((role) => {
             const member = starters.get(role)
             if (member) return card(member, role)

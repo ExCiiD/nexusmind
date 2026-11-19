@@ -2,7 +2,7 @@
  * Season clock of a Summoner's Rift game, read from Match-V5 `info.gameVersion`.
  *
  * Patch 26.1 (game version 16.1, January 2026) moved the start of the game 35 s earlier: minions spawn at 0:30 (1:05
- * before), camps at 0:55 (1:30), the Scuttle Crabs at 2:55 (3:30). Cached games of 2025 (15.x) keep the 2025 clock, so
+ * before), camps at 0:55 (1:30), Krugs and Gromp at 1:07, the Scuttle Crabs at 2:55 (3:30). Cached games of 2025 (15.x) keep the 2025 clock, so
  * an analysis of an old game does not change meaning. Checked on cached games (431 of 16.x, 73 of 15.x): median laner
  * level 2 at 1:40 vs 2:11, support level 2 at 1:44 vs 2:16, jungler level 3 at 1:59 vs 2:31, jungler first back at 3:45
  * vs 4:18, support first ward at 1:10 vs 1:47.
@@ -54,9 +54,16 @@ export function respawnTimeFactor(minutes: number): number {
   return 0.5
 }
 
-/** Respawn timer (s) of a champion of `level` (clamped to 1–18) dying at `minutes`. */
+/**
+ * Respawn timer (s) of a champion of `level` dying at `minutes`.
+ * #45 D4: since 2026 the top lane quest raises the level cap to 20, but the wiki gives base waits for levels 1-18 only
+ * ("Death", read 19/11/2026: nothing for 19-20). Levels 19 and 20 use the level-18 wait, on purpose, until a source
+ * gives theirs: a guess would move every analysis that relies on it.
+ */
+export const MAX_SOURCED_RESPAWN_LEVEL = 18
+
 export function deathTimerSec(level: number, minutes: number, clock: GameClock = 2026): number {
   const table = BASE_RESPAWN_SEC[clock]
-  const base = table[Math.min(table.length, Math.max(1, Math.round(level))) - 1]
+  const base = table[Math.min(MAX_SOURCED_RESPAWN_LEVEL, table.length, Math.max(1, Math.round(level))) - 1]
   return base * (1 + respawnTimeFactor(minutes))
 }

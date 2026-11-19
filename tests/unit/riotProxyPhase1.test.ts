@@ -174,6 +174,8 @@ function setup(over: Partial<HandlerDeps> = {}, budget?: BudgetGate) {
     verifyUser: async (req) => (req.headers.get('authorization') === 'Bearer ok' ? { sub: 'user-1' } : null),
     fetchRiot: riot,
     store,
+    // The store is only used with its cost guard: one that always allows, unless a test passes another.
+    r2Guard: { allow: async () => true },
     budget,
     waitUntil: (p) => { pending.push(p) },
     log: (l) => { lines.push(l) },

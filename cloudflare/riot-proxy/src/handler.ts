@@ -17,6 +17,11 @@ export interface ResponseStore {
   put(key: string, body: ArrayBuffer, contentType: string): Promise<void>
 }
 
+/** The R2 cost guard: true when one more read or write stays under the monthly extra-cost budget. */
+export interface R2CostGuard {
+  allow(op: 'read' | 'write', bytes: number): Promise<boolean>
+}
+
 /** The global budget for one Riot host (a Durable Object in production). `user`: whose share the call counts in. */
 export interface BudgetGate {
   acquire(host: string, priority: Priority, user: string): Promise<{ ok: true } | { ok: false; retryAfterMs: number; reason?: string }>
@@ -33,6 +38,11 @@ export interface HandlerDeps {
   verifyUser: (req: Request) => Promise<{ sub?: string; is_anonymous?: boolean } | null>
   fetchRiot: (url: string, init: RequestInit) => Promise<Response>
   store?: ResponseStore
+  /**
+   * The R2 cost guard (r2Guard.ts): asked before every read and write of the store. The store is only used with a
+   * guard, and a guard that cannot be reached means "no": R2 never runs uncounted.
+   */
+  r2Guard?: R2CostGuard
   budget?: BudgetGate
   /** Work that may finish after the answer (ctx.waitUntil). */
   waitUntil: (p: Promise<unknown>) => void
@@ -87,9 +97,19 @@ export async function handleRequest(req: Request, env: HandlerEnv, deps: Handler
   }
 
   // P1-1: a finished game's match and timeline, already fetched by anyone.
-  const storable = isImmutableRiotPath(route.path) && route.query === '' && deps.store !== undefined
+  const storable = isImmutableRiotPath(route.path) && route.query === '' && deps.store !== undefined && deps.r2Guard !== undefined
   const key = cacheKeyFor(route.host, route.path)
-  if (storable) {
+  const guardAllows = async (op: 'read' | 'write', bytes: number): Promise<boolean> => {
+    try {
+      const ok = await deps.r2Guard!.allow(op, bytes)
+      if (!ok) metric('r2_guard_stopped', 0)
+      return ok
+    } catch (err) {
+      deps.log?.(JSON.stringify({ warn: 'r2_guard_unreachable', message: (err as Error)?.message }))
+      return false
+    }
+  }
+  if (storable && await guardAllows('read', 0)) {
     try {
       const hit = await deps.store!.get(key)
       if (hit) {
@@ -154,7 +174,10 @@ export async function handleRequest(req: Request, env: HandlerEnv, deps: Handler
   const body = await upstream.arrayBuffer()
   const contentType = upstream.headers.get('content-type')
   if (shouldStore(upstream.status, body, contentType) && body.byteLength <= MAX_STORED_BYTES) {
-    deps.waitUntil(deps.store!.put(key, body, contentType ?? 'application/json').catch((err) => {
+    deps.waitUntil((async () => {
+      if (!(await guardAllows('write', body.byteLength))) return
+      await deps.store!.put(key, body, contentType ?? 'application/json')
+    })().catch((err) => {
       deps.log?.(JSON.stringify({ warn: 'store_write_failed', message: (err as Error)?.message }))
     }))
   }

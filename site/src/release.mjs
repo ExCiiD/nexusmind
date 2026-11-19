@@ -20,11 +20,11 @@ import { existsSync, readFileSync } from 'node:fs'
 const REPO = 'ExCiiD/nexusmind'
 const root = new URL('../../', import.meta.url)
 
-/** Last release published on GitHub (from its latest.yml, 19/11/2026). */
+/** Last release published on GitHub (beta.9, from its latest.yml, 19/11/2026). */
 const PUBLISHED = {
-  version: '1.0.0-beta.8',
-  bytes: 266867502,
-  sha512: 'XQd2SuA+JUQbkoNRjlVCj1EQovurAsPFksuq7pTzddZbhog4d5f7YA7OYlFBWq91fhqR9aCB2h7X5WB5m6sK0g==',
+  version: '1.0.0-beta.9',
+  bytes: 266933392,
+  sha512: '+xe83gVkI6/yOU5Vm3AIlUJC/Mqw8xbwJQK782M3DEa26oswXrAcCKEuenXpqMctCbC9R+b4lcf0CI9YkVZCFg==',
 }
 
 const appVersion = JSON.parse(readFileSync(new URL('package.json', root), 'utf8')).version
@@ -59,6 +59,6 @@ export const releaseUrls = (r = RELEASE) => ({
 })
 
 /** The coach / team web app (web/, deployed as a Cloudflare Worker). */
-export const WEB_APP_URL = 'https://nexusmind-web.nexusmind-riot-proxy.workers.dev'
+export const WEB_APP_URL = 'https://app.asc3nd.app'
 
 export const megabytes = (bytes) => Math.round(bytes / 1048576)

@@ -6,7 +6,16 @@
 # editing the repo's package.json or creating a root vite config.
 name = "nexusmind-web"
 compatibility_date = "2025-09-01"
+# asc3nd.app (19/11/2026): served at app.asc3nd.app. The old workers.dev address stays on and answers a 301 to it
+# (worker.ts, cloudflare/shared/hostRedirect.ts): released desktop apps still open it for the web hand-off.
+main = "worker.ts"
+workers_dev = true
+routes = [{ pattern = "app.asc3nd.app", custom_domain = true }]
 
 [assets]
 directory = "./dist"
+binding = "ASSETS"
 not_found_handling = "single-page-application"
+# The script decides first (redirect or not), then serves the files. Each request counts as a Worker request
+# (free plan: 100 000 a day).
+run_worker_first = true

@@ -15,6 +15,7 @@ export type Outcome =
   | 'riot_key_rejected' // Riot refused the key (401/403)
   | 'upstream_error' // Riot unreachable
   | 'budget_unreachable' // the global budget could not be asked: a background call gets 503
+  | 'r2_guard_stopped' // the R2 cost guard refused a read or write: Riot is called directly (status 0)
 
 export interface MetricPoint {
   endpoint: string

@@ -12,6 +12,7 @@ import { WeeklyReportSection } from './WeeklyReportSection'
 import { ChampPoolTab } from '@/pages/Team/ChampPoolTab'
 import { DraftTab } from '@/pages/Team/DraftTab'
 import { ScoutingTab } from '@/pages/Team/ScoutingTab'
+import { DraftSimSection } from '@/components/analyst/DraftJournalSection'
 
 type TabId = 'pool' | 'draft' | 'scouting' | 'players' | 'vod' | 'reports'
 
@@ -69,7 +70,9 @@ export function CoachingPage() {
             )}
             {tab === 'draft' && (
               <PanelErrorBoundary key={`draft-${k}`} label="Draft sim">
-                <GroupTeamGate group={group}>{(team) => <DraftTab myTeam={team} opponentsGroupId={group.id} />}</GroupTeamGate>
+                <DraftSimSection groupId={group.id} preparation={(openDraftId) => (
+                  <GroupTeamGate group={group}>{(team) => <DraftTab myTeam={team} opponentsGroupId={group.id} openDraftId={openDraftId} />}</GroupTeamGate>
+                )} />
               </PanelErrorBoundary>
             )}
             {tab === 'scouting' && (

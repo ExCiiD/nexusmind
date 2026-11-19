@@ -138,3 +138,4 @@ Chief.
 | 7 | Scouting : adversaires de toutes les équipes de l'ordinateur | `src/pages/Team/ScoutingTab.tsx` (filtrer sur le groupe actif) ; au passage, toast en anglais en dur et `confirm()` natif à traduire / remplacer | Back-end (filtre côté IPC / `Team.groupId`) |
 | 3 | Choix du skin détouré sur la page Profil | `src/pages/Profile/ProfilePage.tsx` | Pack de détourage (Graphic Design, en cours) puis hébergement (Back-end) |
 | 12 | Backlog audit, items UI (UI-08, UI-11…) | `docs/AUDIT_APP_2026-11.md` § 3 | Attribution par le Chief |
+| 40 | Tuile Grubs (Objectifs) : pied « camp complet : X % » au lieu de « 1er camp » | `src/components/analyst/ObjectivesView.tsx` → `ControlTiles`, clé `analyst.objectives.tiles.firstCamp` | Back-end : `grubs.fullCampShare` dans `TeamObjectivesSummary`, après la mise en production (décision du Chief, 19/11) |

@@ -74,6 +74,22 @@ describe('429 handling', () => {
   })
 })
 
+describe('#40 calls (timeline, league entries, ranked solo ids)', () => {
+  const urlOf = (call: number) => fetchMock.mock.calls[call][0] as string
+  it('hit the allowed proxy paths, background when asked', async () => {
+    fetchMock.mockResolvedValue(res(200, undefined, [{ queueType: 'RANKED_SOLO_5x5', tier: 'MASTER', rank: 'I', leaguePoints: 120, wins: 10, losses: 8 }]))
+    await riot.getMatchTimeline('EUW1_42', 'EUW1', riot.BACKGROUND)
+    const entries = await riot.getLeagueEntriesByPuuid('p1', 'EUW1')
+    await riot.getRankedSoloMatchIds('p1', 'EUW1', 20, riot.BACKGROUND)
+    expect(urlOf(0)).toBe('https://proxy.test/europe/lol/match/v5/matches/EUW1_42/timeline')
+    expect(urlOf(1)).toBe('https://proxy.test/euw1/lol/league/v4/entries/by-puuid/p1')
+    expect(urlOf(2)).toBe('https://proxy.test/europe/lol/match/v5/matches/by-puuid/p1/ids?queue=420&start=0&count=20')
+    expect(entries[0].tier).toBe('MASTER')
+    const prio = (i: number) => (fetchMock.mock.calls[i][1] as { headers: Record<string, string> }).headers['x-nxm-priority']
+    expect([prio(0), prio(1), prio(2)]).toEqual(['background', undefined, 'background'])
+  })
+})
+
 describe('x-nxm-priority (P2)', () => {
   const headersOf = (call: number) => (fetchMock.mock.calls[call][1] as { headers: Record<string, string> }).headers
 

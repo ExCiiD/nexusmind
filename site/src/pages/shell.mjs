@@ -37,7 +37,7 @@ function head(c, ctx, page) {
 <meta property="og:title" content="${tx(page.og.title, L)}">
 <meta property="og:description" content="${tx(page.og.description, L)}">
 <meta property="og:locale" content="${L === 'fr' ? 'fr_FR' : 'en_US'}">
-${ctx.assets.og ? `<meta property="og:image" content="${esc(abs(ctx.assets.og))}">
+${ctx.siteUrl ? `<meta property="og:url" content="${esc(abs(page.path))}">\n` : ''}${ctx.assets.og ? `<meta property="og:image" content="${esc(abs(ctx.assets.og))}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">` : ''}` : ''

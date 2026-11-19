@@ -101,6 +101,21 @@ describe('mistake rules M5–M13', () => {
     expect(tags(detectAdvancedMistakes(grouped, match(), PLAYER))).not.toContain('solo-baron-died')
   })
 
+  it('M8 (#45 D1): only once the Baron is up, 20:00 in 2026 and 25:00 in 2025 (grubs and Herald before)', () => {
+    const pit = { x: 5007, y: 10471 }
+    const diesAt = (minute: number, version?: string) => {
+      const death = { type: 'CHAMPION_KILL', timestamp: minute * 60_000, victimId: 1, killerId: 7, assistingParticipantIds: [8], position: pit }
+      const m = { info: { ...match('MIDDLE', 2400).info, ...(version ? { gameVersion: version } : {}) } }
+      return tags(detectAdvancedMistakes(timeline([{ minute: Math.ceil(minute), events: [death, ...steadyWards()] }]), m, PLAYER)).includes('solo-baron-died')
+    }
+    expect(diesAt(10, '16.22.1.1')).toBe(false) // Void Grubs
+    expect(diesAt(17, '16.22.1.1')).toBe(false) // Herald
+    expect(diesAt(19.9, '16.22.1.1')).toBe(false)
+    expect(diesAt(20, '16.22.1.1')).toBe(true)
+    expect(diesAt(24, '15.24.715.2077')).toBe(false) // 2025: the Herald until 24:45
+    expect(diesAt(25, '15.24.715.2077')).toBe(true)
+  })
+
   it('M9: caught alone by several enemies after 14:00', () => {
     const far = { x: 12000, y: 3000 }
     const tl = timeline([{ minute: 22, pos: { 1: far }, events: [

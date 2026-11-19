@@ -176,6 +176,38 @@ export async function getMatch(matchId: string, region: string, opts: RiotCallOp
 }
 
 /**
+ * #40 (Objectifs): a finished game's match-v5 timeline (0.5-2 MB). The proxy keeps it in its shared store, so a
+ * timeline anyone already read costs nothing on the key. The region of the match id wins, `region` is the fallback.
+ */
+export async function getMatchTimeline(matchId: string, region = 'EUW1', opts: RiotCallOptions = {}): Promise<any> {
+  const platformFromId = matchId.split('_')[0]
+  const routing = REGION_TO_ROUTING[platformFromId] || REGION_TO_ROUTING[region] || 'europe'
+  return regionalFetch(routing, `/lol/match/v5/matches/${matchId}/timeline`, opts)
+}
+
+export interface LeagueEntry {
+  queueType: string
+  tier: string
+  rank: string
+  leaguePoints: number
+  wins: number
+  losses: number
+}
+
+/** #40 (Dossier): a player's ranked entries (solo / flex), from their platform. [] when unranked. */
+export async function getLeagueEntriesByPuuid(puuid: string, region: string, opts: RiotCallOptions = {}): Promise<LeagueEntry[]> {
+  const host = PLATFORM_HOSTS[region]
+  if (!host) throw new RiotWebError(`Unknown region: ${region}`)
+  const { data } = await proxyFetch(host, `/lol/league/v4/entries/by-puuid/${puuid}`, undefined, opts)
+  return Array.isArray(data) ? (data as LeagueEntry[]) : []
+}
+
+/** #40 (Dossier): the latest ranked solo/duo match ids (queue 420), most recent first. One request. */
+export function getRankedSoloMatchIds(puuid: string, region: string, count: number, opts: RiotCallOptions = {}): Promise<string[]> {
+  return getRecentMatchIds(puuid, region, count, 420, opts)
+}
+
+/**
  * Bulk match fetch with a small concurrency cap — the browser has no
  * persistent match cache (unlike desktop's MatchCache), so every scout
  * re-fetches; capped concurrency keeps this under the proxy's per-user

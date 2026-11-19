@@ -391,7 +391,7 @@ export const FUNDAMENTALS_FR: FundamentalCategory[] = [
         description: 'Utiliser les timers de camps, la vision de rivière et les infos de carte pour prédire la position du jungler ennemi.',
         kpis: [
           { id: 'jungler_prediction', label: 'Prédiction du jungler', description: 'Prédire dans quel quadrant se trouve le jungler ennemi' },
-          { id: 'camp_timer_knowledge', label: 'Connaissance des timers de camps', description: 'Connaître les timers des camps pour suivre le pathing du jungler (2026 : camps à 0:55, Carapateur à 2:55, petits camps de retour 2:15 après le kill)' },
+          { id: 'camp_timer_knowledge', label: 'Connaissance des timers de camps', description: 'Connaître les timers des camps pour suivre le pathing du jungler (2026 : camps à 0:55, Krugs et Gromp à 1:07, Carapateur à 2:55, petits camps de retour 2:15 après le kill)' },
           { id: 'position_adjustment', label: 'Ajustement de position', description: 'Ajuster la position en lane selon la position prédite du jungler' },
           { id: 'opening_info_gathering', label: 'Collecte d\'infos en ouverture', description: 'Utiliser la vision niveau 1, les premiers états de lane et la première apparition du jungler pour identifier son ouverture probable' },
           { id: 'jungler_cs_verification', label: 'Vérification du CS jungler', description: 'Vérifier le CS du jungler ennemi quand il apparaît pour déduire son clear, son côté de départ et les camps restants' },

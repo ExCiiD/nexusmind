@@ -14,6 +14,9 @@ INTERACTIVE_RESERVE = "0.3"
 # CyberSecurity: most of each window one account may use, so a single user (or a stolen token) cannot empty
 # the key for everyone. 0.25 of 95 calls / 2 min = 23 calls per user.
 USER_WINDOW_SHARE = "0.25"
+# Cost guard of the R2 store (src/r2Guard.ts), asked by the user on 19/11/2026: at most this much above R2's free
+# tier in a month (USD; 2 USD stays under 2 euros). Past it, the proxy stops using R2 until the next month.
+R2_EXTRA_BUDGET_USD = "2"
 
 # Per-player limit (Workers Rate Limiting binding). 20 calls/min with the development key (was 300, then 60:
 # CyberSecurity, one account must not be able to drain the shared budget). Raise it with the production key.

@@ -11,8 +11,11 @@ import { RosterTab } from '@/pages/Team/RosterTab'
 import { ChampPoolTab } from '@/pages/Team/ChampPoolTab'
 import { DraftTab } from '@/pages/Team/DraftTab'
 import { ScoutingTab } from '@/pages/Team/ScoutingTab'
+import { DraftSimSection } from '@/components/analyst/DraftJournalSection'
+import { useTabParam } from '@/components/team/TeamSection'
 
 type TabId = 'roster' | 'pool' | 'draft' | 'scouting'
+const TAB_IDS: readonly TabId[] = ['roster', 'pool', 'draft', 'scouting']
 
 /**
  * Web Team page (E14, docs/PLAN_GESTION_EQUIPE.md): the SAME roster/
@@ -40,7 +43,7 @@ export function TeamPage() {
   const activeGroup = teamGroups.find((g) => g.id === groupId)
   const [myTeam, setMyTeam] = useState<Team | null>(null)
   const [loading, setLoading] = useState(false)
-  const [tab, setTab] = useState<TabId>('roster')
+  const [tab, setTab] = useTabParam(TAB_IDS, 'roster')
 
   useEffect(() => {
     if (!groupId && teamGroups.length > 0) setGroupId(teamGroups[0].id)
@@ -86,7 +89,7 @@ export function TeamPage() {
   ]
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className={cn('animate-fade-in', tab === 'roster' ? 'flex min-h-[calc(100dvh-4rem)] flex-col gap-4' : 'space-y-4')}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('web.team.title', { defaultValue: 'Team' })}</h1>
         {teamGroups.length > 1 && (
@@ -116,10 +119,10 @@ export function TeamPage() {
         ))}
       </div>
 
-      <div>
+      <div className={cn(tab === 'roster' && 'flex flex-1 flex-col')}>
         {tab === 'roster' && (
           <PanelErrorBoundary key="roster" label="Roster">
-            <RosterTab team={myTeam} loading={loading} onChange={load} />
+            <RosterTab team={myTeam} loading={loading} onChange={load} fill />
           </PanelErrorBoundary>
         )}
         {tab === 'pool' && (
@@ -129,7 +132,13 @@ export function TeamPage() {
         )}
         {tab === 'draft' && (
           <PanelErrorBoundary key="draft" label="Draft sim">
-            <DraftTab myTeam={myTeam} groupId={groupId ?? undefined} myUserId={myUserId ?? undefined} nameOf={nameOf} isStaff={!!activeGroup && isLegacyStaff(activeGroup.myRole, activeGroup.myStaffRoles)} />
+            {groupId ? (
+              <DraftSimSection groupId={groupId} preparation={(openDraftId) => (
+                <DraftTab myTeam={myTeam} groupId={groupId} myUserId={myUserId ?? undefined} nameOf={nameOf} isStaff={!!activeGroup && isLegacyStaff(activeGroup.myRole, activeGroup.myStaffRoles)} openDraftId={openDraftId} />
+              )} />
+            ) : (
+              <DraftTab myTeam={myTeam} groupId={undefined} myUserId={myUserId ?? undefined} nameOf={nameOf} isStaff={false} />
+            )}
           </PanelErrorBoundary>
         )}
         {tab === 'scouting' && (

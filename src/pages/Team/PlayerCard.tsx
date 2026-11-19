@@ -86,9 +86,6 @@ function CardFront({ member, role, team, artChampion, holders, totals, onFlip }:
 }) {
   const { t } = useTranslation()
   const [artBroken, setArtBroken] = useState(false)
-  const [look] = useCardLook()
-  const lookStyle = cardLookStyle(look)
-  const [sx, sy] = cardSeed(member.id)
   const name = member.displayName.trim() || member.ign || '?'
   const roleLabel = t(`team.roster.roles.${role}`, { defaultValue: role })
   const badges = [
@@ -104,24 +101,7 @@ function CardFront({ member, role, team, artChampion, holders, totals, onFlip }:
       className="group/front absolute inset-0 overflow-hidden rounded-lg bg-[#120b19] text-left shadow-[0_10px_30px_rgba(0,0,0,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold"
       style={{ ['--stroke' as string]: '0.55cqw' }}
     >
-      {/* Background: violet glow, the chosen line pattern, scratches; the
-          card look (Espace d'équipe → Apparence des cartes) filters them. */}
-      <div aria-hidden className="absolute inset-0" style={{ filter: lookStyle.filter }}>
-      <div aria-hidden className="absolute inset-0 bg-[radial-gradient(130%_80%_at_50%_0%,#432a5e_0%,#1f1430_48%,#0c0812_100%)]" />
-      <div
-        aria-hidden
-        className="absolute inset-[-6%]"
-        style={{ opacity: CARD_PATTERN_OPACITY[look.background], backgroundImage: `url(${CARD_PATTERN_URLS[look.background]})`, backgroundSize: '135% auto', backgroundPosition: `${(sx * 100).toFixed(0)}% ${(sy * 100).toFixed(0)}%`, transform: parallax(-5) }}
-      />
-      <div
-        aria-hidden
-        className="absolute inset-[-6%] opacity-50"
-        style={{ backgroundImage: `url(${scratchesUrl})`, backgroundSize: '120% auto', backgroundPosition: `${(sy * 100).toFixed(0)}% ${(sx * 100).toFixed(0)}%`, transform: parallax(-3) }}
-      />
-      </div>
-      {lookStyle.tint && (
-        <div aria-hidden className="absolute inset-0" style={{ background: lookStyle.tint.color, opacity: lookStyle.tint.opacity, mixBlendMode: 'color' }} />
-      )}
+      <CardLookBackground memberId={member.id} />
 
       {/* The main champion: the faded art, then cut out of its scene. */}
       {artChampion && !artBroken ? (
@@ -189,6 +169,38 @@ function CardFront({ member, role, team, artChampion, holders, totals, onFlip }:
       </span>
       <CardGlare />
     </button>
+  )
+}
+
+/**
+ * The card's background, the same on both faces: violet glow, the chosen line pattern and scratches, filtered and
+ * tinted by the card look (Espace d'équipe → Apparence des cartes). Placed per member (cardSeed), so each card's
+ * pattern sits differently. `parallax` false on the back, which does not tilt with the pointer.
+ */
+function CardLookBackground({ memberId, parallaxOn = true }: { memberId: string; parallaxOn?: boolean }) {
+  const [look] = useCardLook()
+  const lookStyle = cardLookStyle(look)
+  const [sx, sy] = cardSeed(memberId)
+  const depth = (d: number) => (parallaxOn ? parallax(d) : undefined)
+  return (
+    <>
+      <div aria-hidden className="absolute inset-0" style={{ filter: lookStyle.filter }}>
+        <div aria-hidden className="absolute inset-0 bg-[radial-gradient(130%_80%_at_50%_0%,#432a5e_0%,#1f1430_48%,#0c0812_100%)]" />
+        <div
+          aria-hidden
+          className="absolute inset-[-6%]"
+          style={{ opacity: CARD_PATTERN_OPACITY[look.background], backgroundImage: `url(${CARD_PATTERN_URLS[look.background]})`, backgroundSize: '135% auto', backgroundPosition: `${(sx * 100).toFixed(0)}% ${(sy * 100).toFixed(0)}%`, transform: depth(-5) }}
+        />
+        <div
+          aria-hidden
+          className="absolute inset-[-6%] opacity-50"
+          style={{ backgroundImage: `url(${scratchesUrl})`, backgroundSize: '120% auto', backgroundPosition: `${(sy * 100).toFixed(0)}% ${(sx * 100).toFixed(0)}%`, transform: depth(-3) }}
+        />
+      </div>
+      {lookStyle.tint && (
+        <div aria-hidden className="absolute inset-0" style={{ background: lookStyle.tint.color, opacity: lookStyle.tint.opacity, mixBlendMode: 'color' }} />
+      )}
+    </>
   )
 }
 
@@ -417,7 +429,10 @@ export function PlayerCard({
         />
       )}
       back={(
-        <div className="absolute inset-0 flex flex-col overflow-hidden rounded-lg border border-hextech-border-dim bg-hextech-elevated shadow-[0_10px_30px_rgba(0,0,0,0.45)]">
+        <div className="absolute inset-0 flex flex-col overflow-hidden rounded-lg border border-hextech-border-dim bg-[#120b19] shadow-[0_10px_30px_rgba(0,0,0,0.45)]">
+          {/* The front's background (card look), under a veil so the details read well. */}
+          <CardLookBackground memberId={member.id} parallaxOn={false} />
+          <div aria-hidden className="absolute inset-0 bg-hextech-black/35" />
           <CardBanner bannerId={look?.bannerId ?? null} />
           <div className="relative flex items-start justify-between p-[3cqw]">
             <button

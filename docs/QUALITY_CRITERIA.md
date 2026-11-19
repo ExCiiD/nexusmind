@@ -426,6 +426,80 @@ Correctif proposé :
 
 **Non vérifié :** l'app réelle, côté utilisateur.
 
+### #40 Fonctionnalités analyste : Objectifs, Journal des drafts, Dossier adverse (back + front, 19/11) — **OK avec une réserve P2 (spec § 11)**
+
+**Contrôles :**
+- `vitest` **1 748 / 1 748** ;
+- `typecheck`, `lint` et `web:build` EXIT 0 ;
+- `check:i18n` OK, 3 857 clés.
+
+**Back-end :**
+- **Migration `20261119290000`** :
+  - `draft_log` et `opponent_dossiers` en RLS : les membres lisent ; un joueur ne voit qu'un dossier publié ; le staff,
+    analyste compris (`is_group_staff`), écrit ;
+  - `status` et `published_at` **non accordés en UPDATE**, donc la publication passe forcément par
+    `set_opponent_dossier_status`, qui notifie le groupe ;
+  - formats contrôlés : `match_id`, picks, 5 bans, ordre de 10, textes de 600 caractères au plus, `snapshot` de 64 ko au
+    plus.
+- **Tests des modules** (37 cas) :
+  - `teamTimelineCore` (9) : côté rouge inversé, exécution, **grubs 3 ou 6 selon le patch** (`grubsAvailableOf`,
+    cohérent avec #45), courbe d'or, timings, petit échantillon, `null` plutôt que 0 ;
+  - `analystCores` (20) : bans dans l'ordre, custom sans draft (`null`), filtres, synthèse, forme, nouveau pool,
+    duos, cartes, vue du dossier, texte Discord, source ;
+  - `analystViews` (5) et `analystErrors` (3) : table absente, limite Riot.
+
+**Harnais (FR, clavier) :**
+
+| Écran | Résultat |
+|---|---|
+| `/team?tab=objectives` | Affiché. 17 éléments, **tous nommés, anneau de focus partout**. Frise doublée d'un texte `sr-only` par partie (« Premier sang · 03:10 · pris par nous ; Larves… »). « Afficher plus » présent. |
+| `/coaching?tab=draft&draftView=journal` | Affiché, sous-onglet dans l'URL. 39 éléments, tous nommés et avec anneau. Tuiles de synthèse. **Ligne ouverte au clavier** (bouton `aria-expanded`), panneau avec notes et « Ouvrir dans Préparation ». |
+| `DraftManualDialog` | S'ouvre avec Entrée ; champs nommés (« Adversaire », « Date », picks et bans par rôle) ; radiogroups « Côté » et « Résultat » nommés ; Échap ferme. |
+| Dossier (Scouting → « Dossier ») | Ouvert au clavier (`?dossier=…`). Retour vers Scouting, badge « Brouillon », Publier, Copier pour Discord, bandeau du mode réduit (20 games), cartes des 5 rôles, Duos, « Contre nous », plan de jeu limité à 600. 19 éléments, tous nommés. |
+| `?analystMissing=1` | Sur les 3 écrans : `role="status"`, « Arrive avec la prochaine mise à jour du serveur… », sans erreur brute. |
+
+**Réserve P2 — l'ordre de pick ne peut pas être saisi (spec § 11).**
+- Le panneau de détail **affiche** l'ordre ou « inconnu » (`DraftLogView.tsx:225-232`), mais aucune interface ne
+  permet de le **saisir**. Ni le panneau ni `DraftManualDialog` ne le proposent.
+- Le back-end est prêt : `DraftLogPatch.pickOrder`, zod `max(10)`, colonne `pick_order`.
+- Conséquence : la tuile « Notre 1er champion pické » ne se débloquera jamais.
+- À faire (frontend-dev) : un éditeur accessible au clavier dans le panneau. Par exemple, 10 cases B1, R1, R2, B2… avec
+  un sélecteur de champion parmi les 10 picks de la partie, ou une liste réordonnable avec des boutons « monter » et
+  « descendre ». **Pas** de glisser-déposer seul.
+
+**Réserves P3 :**
+1. Le bouton de ligne du Journal a pour nom la seule date (« 19 nov. ») : y ajouter l'adversaire et le résultat
+   (`aria-label`).
+2. `DraftManualDialog` : après Échap, le focus part en haut de la page (même correctif que `ConfirmDialog`). Les
+   radios ont toutes `tabindex=0` (pas de tabindex mobile) ; ça marche, mais ce n'est pas le modèle de
+   `MyAvailabilityDialog`.
+3. i18n : les nouvelles clés françaises disent « **Herald** » (`fr.json:4778, 4801, 4825`), alors que le reste de l'app
+   dit « Héraut ».
+4. Doublure du harnais : Larves à 05:30 dans les données simulées, alors que les parties 16.x les ont à 8:00 (sans
+   effet sur l'app).
+
+### #45 Données de jeu 2026, corrections D1 à D5 (backend-dev, 19/11) — **OK ; fenêtre D2 acceptée**
+
+**Contrôles :**
+- `vitest` **1 710 / 1 710** (129 fichiers) ;
+- `typecheck` et `lint` EXIT 0 ;
+- `ANALYSIS_VERSION` = 10 ;
+- **`check:i18n` en échec**, mais pas à cause de #45 : la clé `analyst.objectives.partial` est utilisée sans traduction
+  dans `src/components/analyst/ObjectivesView.tsx`, un dossier nouveau, non suivi par git et en cours ailleurs.
+
+| Point | Verdict | Preuve |
+|---|---|---|
+| **D1 — M8** | ✅ | `baronFrom = (clock === 2025 ? 25 : 20) * MIN` (`mistakeRules.ts:130`), saison lue par `gameClockOf`. Test aux bornes (`mistakeRules.test.ts:103-116`) : 16.x à 10:00 (Larves), 17:00 (Héraut) et 19:54, pas de tag ; à 20:00, tag. 15.x à 24:00, pas de tag ; à 25:00, tag. |
+| **D2 — œil du Héraut** | ✅ **fenêtre mesurée acceptée** | 16.x : 15:00-22:00 (`untilSec: 1320`). Sur 128 parties en cache, 108 yeux : 90 % partis à 21:21, 95 % à 21:52, le dernier à 23:09. 15.x : 15:00-25:00 (`CLOCK_2025`, `untilSec: 1500`) ; 79 parties, 74 yeux : 95 % partis à 22:15, le dernier à 25:45, et le Héraut vivait jusqu'à 24:45. **Une fenêtre plus large ne crée pas de faux positif**, car la règle exige un Héraut à nous déjà tué **et** un `ITEM_DESTROYED` de l'œil, par ce jungler, après sa mort. La fenêtre ne sert qu'à borner : plus large, elle rate moins de cas. Les tests suivent (`microReviewV7.test.ts:275-276`, `anomalyDetectorMath`). |
+| **D3 — patchs 15.1 à 15.8** | ✅ documenté | `RAPPORT_MOTEUR.md:72` : non séparés, avec les valeurs de l'époque. |
+| **D4 — niveaux 19 et 20** | ✅ | Temps du niveau 18, faute de source. Choix raisonnable et commenté. |
+| **D5 — `pit`** | ✅ | 16.x : `fromSec: 900` (Héraut à 15:00) ; 15.x : 840 conservé, pour ne pas faire bouger les analyses 2025. |
+| **Textes** | ✅ | « Krugs et Gromp à 1:07 » dans les fondamentaux ; `RAPPORT_MOTEUR.md:69` (3 Larves à 8:00 depuis 25.09, avant 6:00 avec réapparition) ; commentaires du détecteur à « 15:00–22:00 (2025 : jusqu'à 25:00) ». |
+
+**Point bloquant hors #45 :** tant que `analyst.objectives.partial` n'a pas sa traduction, `npm run check:i18n`
+échoue. Le pré-contrôle de `release.ps1` refusera donc toute release. À signaler à la session qui écrit
+`src/components/analyst/`.
+
 ### #39 rôles staff cumulables, phase 1 du proxy Riot, R7 (19/11) — **OK avec une réserve P2**
 
 **Contrôles :**

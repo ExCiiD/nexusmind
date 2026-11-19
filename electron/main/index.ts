@@ -78,6 +78,7 @@ import { registerNotificationsHandlers } from './ipc/notifications.ipc'
 import { registerTeamShareHandlers } from './ipc/teamShare.ipc'
 import { registerLftHandlers } from './ipc/lft.ipc'
 import { registerChampionCutoutHandlers } from './ipc/championCutout.ipc'
+import { registerAnalystHandlers } from './ipc/analyst.ipc'
 import { seedBuiltInMistakeTags } from './seeds/mistakeTags'
 import { isMediaPathAllowed } from './mediaAccess'
 
@@ -467,6 +468,7 @@ async function bootstrap() {
   registerTeamShareHandlers()
   registerLftHandlers()
   registerChampionCutoutHandlers()
+  registerAnalystHandlers()
   if (isCloudConfigured()) {
     startAutoCloudBackup()
     startSyncService()

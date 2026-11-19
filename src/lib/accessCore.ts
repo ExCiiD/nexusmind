@@ -17,8 +17,11 @@ export interface AccessInvite {
   revoked: boolean
 }
 
-/** Public web app (the desktop can override it with MAIN_VITE_WEB_URL). */
-export const DEFAULT_WEB_URL = 'https://nexusmind-web.nexusmind-riot-proxy.workers.dev'
+/**
+ * Public web app (the desktop can override it with MAIN_VITE_WEB_URL). #47: on its own domain since 19/11/2026
+ * (it was https://nexusmind-web.nexusmind-riot-proxy.workers.dev); the site is https://asc3nd.app.
+ */
+export const DEFAULT_WEB_URL = 'https://app.asc3nd.app'
 
 /** Same bounds as the redeem-invite function (#44): codes are 10 or 12 characters, a shorter one is never sent. */
 export const INVITE_CODE = /^[A-Z0-9]{10,16}$/

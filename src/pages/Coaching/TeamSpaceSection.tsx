@@ -38,6 +38,7 @@ export function TeamSpaceSection({ group }: { group: Group }) {
           team={team}
           loading={false}
           groupManaged
+          fill
           onChange={() => { void reload(); publishSoon(team.id) }}
           logoUrl={group.logoUrl}
           actions={<><CardLookButton /><LftExportButton team={team} /></>}

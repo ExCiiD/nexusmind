@@ -319,7 +319,7 @@ le halo violet des cartes joueurs (`#432A5E` en haut, `#1F1430`). Tout est
 
 ## 10. Spec Front-end — Objectifs et rythme de jeu (#40 · 1/3)
 
-Maquette Penpot : page « Stats collectives — Objectifs » (à venir). Source :
+Maquette Penpot : page « Stats collectives — Objectifs » (faite le 19/11 : écran principal + planche d'états à droite). Source :
 docs/PROPOSITION_ANALYSTE.md § 2. Visible par tout le groupe (staff,
 analyste, joueurs) : ce sont des stats d'équipe.
 
@@ -339,7 +339,7 @@ après « Stats Tournoi ». Même sélecteur de groupe que les autres onglets.
 | Tuile | Valeur | Pied de tuile |
 |---|---|---|
 | Drakes | % des drakes tués par nous | « 1er drake : 61 % · âme : 4 / 9 » |
-| Grubs | moyenne prise sur 6 (« 3.8 / 6 ») | « 1er camp : 72 % » |
+| Grubs | moyenne prise sur le nombre disponible, `grubs.available` (« 2.4 / 3 » ; 3 à partir des games 15.9 / 25.09, 6 avant) | « camp complet : 52 % » |
 | Herald | % pris | timing moyen « 14:20 » |
 | Baron | % pris | « Baron → victoire : 83 % » |
 | Premier sang | % | timing moyen |
@@ -359,8 +359,9 @@ avec la valeur à la minute.
 - à gauche (220 px) : date, adversaire, côté (pastille bleu / rouge), badge
   Victoire / Défaite, durée ;
 - à droite : une frise 0 → durée de la game, graduée toutes les 5 min, avec
-  un marqueur par événement : drake (losange), grubs (petit rond, groupés
-  par camp), Herald (triangle), Baron (carré), Atakhan, tours (barre fine),
+  un marqueur par événement : drake (losange), grubs (petit rond, 3 par game à partir
+  des games 15.9, 6 avant), Herald (triangle), Baron (carré), Atakhan (rond,
+  games 15.x seulement : il n'existe plus en 2026), tours (barre fine),
   premier sang (étoile). **Nous** = marqueur plein `gold`, **eux** =
   contour `wr-bad`. Survol d'un marqueur : « Drake infernal · 08:42 · pris
   par nous » ; clic sur la ligne : ouvre la game (stats par game / VOD).
@@ -368,7 +369,7 @@ avec la valeur à la minute.
 
 **4. Timings moyens** (petit tableau sous la frise) : pour chaque objectif,
 timing moyen chez nous / chez eux et l'écart (« 1er drake : 07:40 vs 08:55 ·
-−1:15 »). Mono, aligné à droite.
+−1:15 », « Grubs : 05:42 vs 06:10 »). Mono, aligné à droite.
 
 **États.**
 - *Chargement* : squelettes des 6 tuiles + bandeau « Lecture des timelines :
@@ -399,7 +400,7 @@ texte (liste des événements) pour les lecteurs d'écran (`sr-only`).
 
 ## 11. Spec Front-end — Journal des drafts (#40 · 2/3)
 
-Maquette Penpot : page « Coaching — Journal des drafts » (à venir). Source :
+Maquette Penpot : page « Coaching — Journal des drafts » (faite le 19/11 : écran principal + planche d'états à droite). Source :
 docs/PROPOSITION_ANALYSTE.md § 1. Visible par le staff et l'analyste ;
 lecture seule pour les joueurs (même règle que le Draft Sim).
 
@@ -413,8 +414,13 @@ les drafts où il est pické ou banni, chez nous ou chez eux), résultat. À
 droite, en mono : « 24 drafts · 15 V – 9 D ».
 
 **1. Synthèse** (rangée de 4 tuiles) :
-- *Côté bleu* / *Côté rouge* : winrate et nombre de games (échelle § 9) ;
-- *Notre first pick* : winrate quand nous avons le premier pick ;
+- *Côté bleu (1er pick)* / *Côté rouge* : winrate et nombre de games
+  (échelle § 9). Le côté bleu pick toujours en premier : pas de tuile
+  « first pick » séparée ;
+- *Notre 1er champion pické* : winrate de notre premier champion pické (B1
+  côté bleu, R1 côté rouge), seulement sur les drafts dont l'ordre est saisi ;
+  pied « 11 drafts avec ordre saisi ». Sans ordre saisi : « — » et « Saisis
+  l'ordre de pick dans le détail d'une draft » ;
 - *Bans subis* : les 3 champions les plus bannis contre nous (icônes + nombre).
 
 **2. Tableau des drafts** (une ligne par game, la plus récente en haut) :
@@ -430,7 +436,7 @@ droite, en mono : « 24 drafts · 15 V – 9 D ».
 | Leurs bans | 5 icônes grisées |
 | Résultat | badge Victoire / Défaite + durée |
 
-Survol : fond `elevated`. Clic : panneau de détail à droite (420 px) avec
+Survol : fond `elevated`. Clic : panneau de détail à droite (360 px) avec
 l'ordre de pick s'il est connu (B1 R1 R2 B2…), les notes de l'analyste
 (texte libre, éditable par le staff), les liens « Stats par game » et
 « Review VOD », et le bouton « Ouvrir dans Préparation » qui recopie la
@@ -443,7 +449,8 @@ draft dans le Draft Sim.
 
 **Ordre de pick.** Match-v5 ne le donne pas. Le tableau l'omet par défaut ;
 l'analyste peut le saisir dans le panneau de détail (glisser les 10 picks
-dans l'ordre, ou rien). Saisi, il débloque la stat « first pick ».
+dans l'ordre, ou rien). Saisi, il débloque la tuile « Notre 1er champion
+pické ».
 
 **États.**
 - *Chargement* : 6 lignes squelettes (icônes rondes grises).
@@ -465,7 +472,7 @@ de pick facultatif, notes) pour garder les notes et les saisies manuelles.
 
 ## 12. Spec Front-end — Dossier adverse (#40 · 3/3)
 
-Maquette Penpot : page « Coaching — Dossier adverse » (à venir). Source :
+Maquette Penpot : page « Coaching — Dossier adverse » (faite le 19/11 : écran principal + planche d'états à droite). Source :
 docs/PROPOSITION_ANALYSTE.md § 3. Rédaction par le staff et l'analyste ;
 lecture par les joueurs une fois publié.
 

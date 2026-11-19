@@ -16,7 +16,8 @@ export function TeamSpacePage() {
   const { available, loading, myUserId, group } = section
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    // The page fills the visible height, so the card row can sit centred in it (RosterTab `fill`).
+    <div className="flex min-h-[calc(100dvh-4rem)] flex-col gap-4 animate-fade-in">
       <TeamSectionHeader title={t('teamSpace.title')} subtitle={t('teamSpace.subtitle')} section={section} />
       {loading ? (
         <Loader2 className="h-6 w-6 animate-spin text-hextech-gold" />

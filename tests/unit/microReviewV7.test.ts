@@ -272,7 +272,8 @@ describe('detector — the V7–V10 numbers and places', () => {
     // 2026: plates stay on until the tower falls, so there is no start time (2025: from 14:00, plates gone).
     expect(DETECTOR_SPEC.sideTower).toEqual({ fromSec: 0, untilSec: 1200 })
     expect(CLOCK_2025.sideTower).toEqual({ fromSec: 840, untilSec: 1200 })
-    expect(DETECTOR_SPEC.heraldEye).toEqual({ fromSec: 840, untilSec: 1170, itemId: 3513, pickupSec: 20 })
+    expect(DETECTOR_SPEC.heraldEye).toEqual({ fromSec: 900, untilSec: 1320, itemId: 3513, pickupSec: 20 })
+    expect(CLOCK_2025.heraldEye).toEqual({ fromSec: 900, untilSec: 1500, itemId: 3513, pickupSec: 20 })
     expect(DETECTOR_SPEC.fledInvade).toMatchObject({ untilSec: 900, hpPct: 15, enemyHpPct: 70, radius: 2000 })
     expect(DETECTOR_SPEC.outsmite).toEqual({ pitRadius: 900 })
     expect(DETECTOR_SPEC.aheadOfWave).toMatchObject({ untilSec: 720 })
@@ -532,7 +533,7 @@ describe('pattern — jungle: a side-lane T1 destroyed between 14:00 and 20:00 (
   })
 })
 
-describe('pattern — jungle: dead with the Eye of the Herald in their pocket (14:00–19:30)', () => {
+describe('pattern — jungle: dead with the Eye of the Herald in their pocket (15:00–22:00, 2025: to 25:00)', () => {
   const S = DETECTOR_SPEC.heraldEye
   const P_ = 'jungle-herald-unused-death' as const
   // Riot logs the eye (item 3513) leaving its holder's inventory — used or expired — as ITEM_DESTROYED; the pick-up is not logged.
@@ -540,7 +541,8 @@ describe('pattern — jungle: dead with the Eye of the Herald in their pocket (1
   const game = (o: { heraldAt?: number; deathAt?: number; goneAt?: number | null; holder?: number; team?: number; killer?: number } = {}) => {
     const deathAt = o.deathAt ?? 1_000_000
     const team = o.team ?? 100
-    return buildGame({ minutes: 25, me: 2, events: [
+    // A 16.x game: S is DETECTOR_SPEC, the 2026 window (2025 games run to 25:00, tested below).
+    return buildGame({ minutes: 25, me: 2, gameVersion: '16.22.1.1', events: [
       { type: 'ELITE_MONSTER_KILL', timestamp: o.heraldAt ?? 930_000, monsterType: 'RIFTHERALD', killerTeamId: team, killerId: team === 100 ? 1 : 6, position: BARON_PIT },
       kill(deathAt, 2, o.killer ?? 8, o.killer === 0 ? [] : [9], { x: 6000, y: 9000 }),
       ...(o.goneAt === null ? [] : [eyeGone(o.goneAt ?? deathAt + 60_000, o.holder ?? 2)]),
@@ -561,12 +563,27 @@ describe('pattern — jungle: dead with the Eye of the Herald in their pocket (1
     expect(withPattern(game({ heraldAt: 1_000_000 - S.pickupSec * 1000 }), P_)).toBeDefined()
     expect(withPattern(game({ heraldAt: 1_000_000 - S.pickupSec * 1000 + 1 }), P_)).toBeUndefined()
   })
-  it('a death in a fight, from 14:00 to 19:30 inclusive', () => {
+  it('a death in a fight, from 15:00 to 22:00 inclusive (#45 D2)', () => {
     expect(withPattern(game({ heraldAt: 800_000, deathAt: S.fromSec * 1000 }), P_)).toBeDefined()
     expect(withPattern(game({ heraldAt: 800_000, deathAt: S.fromSec * 1000 - 1 }), P_)).toBeUndefined()
     expect(withPattern(game({ deathAt: S.untilSec * 1000 }), P_)).toBeDefined()
     expect(withPattern(game({ deathAt: S.untilSec * 1000 + 1 }), P_)).toBeUndefined()
     expect(withPattern(game({ killer: 0 }), P_)).toBeUndefined()
+  })
+  it('#45 D2: 2026 games stop at 22:00, 2025 games (Herald to 24:45) run to 25:00', () => {
+    const at = (deathAt: number, gameVersion: string) => {
+      const g = buildGame({ minutes: 27, me: 2, gameVersion, events: [
+        { type: 'ELITE_MONSTER_KILL', timestamp: 1_200_000, monsterType: 'RIFTHERALD', killerTeamId: 100, killerId: 1, position: BARON_PIT },
+        kill(deathAt, 2, 8, [9], { x: 6000, y: 9000 }),
+        eyeGone(deathAt + 30_000, 2),
+      ] })
+      return withPattern(g, P_)
+    }
+    expect(at(1_320_000, '16.22.1.1')).toBeDefined()
+    expect(at(1_380_000, '16.22.1.1')).toBeUndefined() // 23:00 in 2026
+    expect(at(1_380_000, '15.24.715.2077')).toBeDefined() // 23:00 in 2025
+    expect(at(1_500_000, '15.24.715.2077')).toBeDefined()
+    expect(at(1_500_001, '15.24.715.2077')).toBeUndefined()
   })
 })
 

@@ -277,7 +277,8 @@ $$;
 revoke all on function public.set_member_staff_roles(uuid, uuid, text[]) from public, anon;
 grant execute on function public.set_member_staff_roles(uuid, uuid, text[]) to authenticated;
 
--- 6. Notification types (list of 20261118195000_notification_types_fix plus the two above) ---
+-- 6. Notification types (list of 20261118195000_notification_types_fix plus the two above, and dossier_published
+--    of 20261119290000: the two migrations keep the same full list, so either can be applied first) ---
 
 alter table public.notifications drop constraint if exists notifications_type_check;
 alter table public.notifications add constraint notifications_type_check check (type = any (array[
@@ -286,7 +287,8 @@ alter table public.notifications add constraint notifications_type_check check (
   'review_pending', 'scrim_low_availability', 'scrim_availability_missing', 'dev_plan_period_ending',
   'weekly_load_alert', 'calendar_event_request',
   'event_declined', 'event_confirmed',
-  'staff_roles_changed', 'member_staff_roles_changed'
+  'staff_roles_changed', 'member_staff_roles_changed',
+  'dossier_published'
 ]));
 
 -- 7. Fan-outs to the staff, read as effective roles ------------------------------------

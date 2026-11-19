@@ -4,7 +4,10 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useToast } from '@/hooks/useToast'
-import { Plus, Trash2, RefreshCw, Loader2, UserPlus, Eye, Wand2, BarChart3, Link2, Monitor } from 'lucide-react'
+import { Plus, Trash2, RefreshCw, Loader2, UserPlus, Eye, Wand2, BarChart3, Link2, Monitor, FileText } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { opponentKeyOf } from '@/lib/analyst'
+import { OpponentDossierPage } from '@/components/analyst/OpponentDossierPage'
 import { EmptyState } from '@/components/ui/data-state'
 import { cn } from '@/lib/utils'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
@@ -26,6 +29,7 @@ import { riotErrorText } from '@/lib/riotErrors'
  *  `groupId` field and are all the group's. */
 export function ScoutingTab({ groupId }: { groupId?: string }) {
   const { t } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { toast } = useToast()
   const [opponents, setOpponents] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
@@ -255,6 +259,18 @@ export function ScoutingTab({ groupId }: { groupId?: string }) {
     })
   }
 
+  // #40 · 3/3: « Dossier » opens a full-width page over the scouting screen, its key kept in the URL.
+  const dossierKey = searchParams.get('dossier')
+  const setDossier = (key: string | null) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev)
+    if (key) next.set('dossier', key); else next.delete('dossier')
+    return next
+  })
+  if (groupId && dossierKey) {
+    const name = groupOpponents.find((x) => opponentKeyOf(x.name) === dossierKey)?.name ?? dossierKey
+    return <OpponentDossierPage key={dossierKey} groupId={groupId} opponentKey={dossierKey} opponentName={name} onBack={() => setDossier(null)} />
+  }
+
   return (
     <div className="space-y-3">
       {/* Opponent team selector + create */}
@@ -335,6 +351,7 @@ export function ScoutingTab({ groupId }: { groupId?: string }) {
           scoutingMemberName={scoutingMemberId}
           onScout={handleScout}
           onScoutAll={() => handleScoutAll(activeTeam)}
+          onOpenDossier={groupId ? () => setDossier(opponentKeyOf(activeTeam.name)) : undefined}
         />
       ) : (
         <Card className="p-6 text-center text-hextech-text-dim">
@@ -373,7 +390,7 @@ export function ScoutingTab({ groupId }: { groupId?: string }) {
   )
 }
 
-function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAll }: {
+function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAll, onOpenDossier }: {
   team: Team
   onChange: () => void
   /** Display name of the member currently being scouted by ANY active
@@ -382,6 +399,8 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
   scoutingMemberName: string | null
   onScout: (memberId: string) => void
   onScoutAll: () => void
+  /** #40: opens the opponent's dossier (group scouting only). */
+  onOpenDossier?: () => void
 }) {
   const { t } = useTranslation()
   const { toast } = useToast()
@@ -501,6 +520,11 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
               <Button size="sm" variant="outline" onClick={() => setAddingMember(true)}>
                 <UserPlus className="h-3 w-3 mr-1" aria-hidden />{t('team.scouting.addMember')}
               </Button>
+              {onOpenDossier && (
+                <Button size="sm" variant="outline" onClick={onOpenDossier}>
+                  <FileText className="h-3 w-3 mr-1" aria-hidden />{t('analyst.dossier.open')}
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="default"

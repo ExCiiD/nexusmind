@@ -66,9 +66,10 @@ Quand les données ne prouvent rien, le moteur se tait.
 | Connaissance | Valeur codée | Code |
 |---|---|---|
 | Premier Dragon | 5:00, puis 5:00 après chaque Dragon tué (vérifié sur les parties en cache, patchs 15.20 à 16.22) | `DETECTOR_SPEC.spawns` |
-| Larves du Néant | un camp à 8:00 | idem |
+| Larves du Néant | un camp de 3 Larves à 8:00, sans réapparition, depuis le patch 25.09 (avant : 6:00, puis une réapparition) | idem |
 | Valeur d'un objectif dans l'estimation de la partie | tour 1 · inhibiteur 1,5 · Dragon 1 · Ancien 2,5 · Héraut 0,5 · Larves 0,3 · Baron 2 · Atakhan 1 | `winProbability.ts` |
-| Œil du Héraut | objet 3513 ; il disparaît de l'inventaire à l'usage ou environ 300 s après le kill (son ramassage n'est pas journalisé) | V7, jungler mort avec l'œil en poche |
+| Œil du Héraut | objet 3513 ; il disparaît de l'inventaire à l'usage ou environ 300 s après le kill (son ramassage n'est pas journalisé). Héraut de 15:00 à 19:45 en 2026 (jusqu'à 24:45 en 2025). Fenêtre de la règle : 15:00-22:00 en 2026 (l'œil quitte son porteur avant 21:52 dans 95 % des 108 cas en cache), 15:00-25:00 en 2025 | V7, jungler mort avec l'œil en poche |
+| Patchs 15.1 à 15.8 | non séparés du reste de 2025 : les Larves y apparaissaient à 6:00 avec une réapparition et le Héraut à 16:00, alors que `CLOCK_2025` suit les patchs 15.9 et suivants (Larves à 8:00, Héraut à 15:00). Pas de sous-cas, par choix (#45, D3) : ces parties sont rares dans le cache et l'écart ne touche que les règles de fosse | `gameClockOf`, `CLOCK_2025` |
 | Retour au premier camp | le premier camp réapparaît : un jungler encore sur la carte à 3:30 (4:05 en 2025) a raté le recall à T−25 s | V7 |
 | Premier Carapateur (2:55 ; 3:30 en 2025) | absent des données : lu à travers une mort de ton jungler dans la rivière basse entre 2:50 et 3:15 (3:25 et 3:50 en 2025) | V10 support |
 | Réapparition | attente de base par niveau 10 / 10 / 12 / 12 / 14 / 16 / 20 / 25 / 28 / 32,5 … 52,5 s (wiki « Death ») × (1 + facteur de temps : 0 avant 15:00, puis +0,425 % par 30 s jusqu'à 30:00, +0,30 % par 30 s jusqu'à 45:00, +1,45 % par 30 s ensuite, plafond +50 %) ; les parties 15.x gardent l'ancienne table (6 / 6 / 8 / 8 / 10 / 12 / 16 / 21 / 26 s aux niveaux 1 à 9) | `gameClock.ts`, positions des morts (micro-revue), M15 |
@@ -181,7 +182,7 @@ fenêtre (2025 : en base sur le relevé de 3:00).
 |---|---|
 | Première ward | aucune ward posée par toi avant 1:10 (1:45 en 2025 ; les wards d'objets de champion ne comptent pas) |
 | All-in niveau 2 | tué entre 1:30 et 2:05 (2:05 et 2:40 en 2025) sous le niveau d'un ennemi du fight |
-| Goulet ou fosse | à partir de 14:00, dans la fosse (moins de 900) pendant les 15 s avant le premier kill au lieu de tenir l'entrée (support ou mage de contrôle mid) |
+| Goulet ou fosse | à partir de 15:00 (14:00 en 2025), dans la fosse (moins de 900) pendant les 15 s avant le premier kill au lieu de tenir l'entrée (support ou mage de contrôle mid) |
 | Collé à l'ADC après 6 | niveau 6 à 9:00, à moins de 2 000 de l'ADC sur 6 des 7 relevés de 9:00 à 15:00, moins de 45 % de participation aux kills à 15:00 |
 | Absent au premier Carapateur | ton jungler meurt dans la rivière basse entre 2:50 et 3:15 (3:25 et 3:50 en 2025), toi à plus de 2 000 |
 | Weak side non wardée | camps volés côté bot pendant que ton jungler est top, sans ward de toi dans ta jungle bot dans les 120 s avant (avant 18:00) |
@@ -405,14 +406,14 @@ dégâts, synchronisation de vague, objectif sans vision, runes) ne viennent que
 | M5 | Mort avant un objectif perdu | l'ennemi prend Dragon, Baron, Héraut, Larves ou Atakhan dans les 60 s après ta mort | 2 ; 3 pour Baron / Atakhan, et toujours 3 pour un jungler | mort à 24:10, Baron adverse à 24:35 → gravité 3 |
 | M6 | Pas de ward avant un objectif | aucune ward posée dans les 90 s avant un objectif (après 5:00, Larves exclues) ; support et jungler pour tous les objectifs, laner seulement pour ceux perdus ; rien si tu étais mort dans ce créneau | 2 (support, jungler) ; 1 (laner) | support sans ward avant le Dragon de 17:20 → erreur datée de 15:50 |
 | M7 | Trinket oublié | plus de 4 min sans ward (2 min 30 en support), +1 min par mort dans l'intervalle, à partir de 3:00, 3 fois par partie au plus | 1 | dernière ward à 12:00, suivante à 18:30, une mort entre les deux → erreur à 16:00 |
-| M8 | Mort au Baron | mort à moins de 1 800 de la fosse du haut après 8:00, au plus un allié à moins de 3 000 | 3 | mort seul devant le Baron à 27:00 |
+| M8 | Mort au Baron | mort à moins de 1 800 de la fosse du haut une fois le Baron apparu (20:00 en 2026, 25:00 en 2025 ; avant, la fosse abrite les Larves et le Héraut), au plus un allié à moins de 3 000 | 3 | mort seul devant le Baron à 27:00 |
 | M9 | Pris seul | après 14:00, aucun objectif à ±30 s, 2 ennemis ou plus sur le kill, aucun allié à moins de 2 500 | 2 | tué par 3 ennemis en side lane à 21:05 |
 | M10 | Mauvais trade | avant 14:00, tué seul par ton vis-à-vis direct | 2 | solo-kill de ton adversaire de lane à 6:12 |
 | M11 | Mauvais placement | premier mort d'un fight (aucun kill dans les 15 s avant ta mort, au moins 3 kills dans les 15 s après) | 2 pour mid et ADC ; 1 sinon | ADC qui meurt en premier dans un fight à 5 kills |
 | M12 | Mauvaise ouverture de lane | laner, à 5:00 : mort avant 3:25 (4:00 sur une partie 15.x), ou −8 CS, ou −400 or face au vis-à-vis | 2 ; 3 si deux raisons | −9 CS et −450 or à 5:00 → gravité 3 |
 | M13 | Retard de CS à 10 min | laner : −15 CS ou plus à 10:00 face au vis-à-vis (sbires et jungle) | 2 ; 3 à −25 | 62 CS contre 80 → −18, gravité 2 |
 | M14 | Retard d'XP | laner : 2 niveaux de moins que le vis-à-vis à 10:00 ou 15:00, une fois par partie | 2 ; 3 à 3 niveaux | niveau 9 contre 11 à 15:00 |
-| M15 | Mort quand l'objectif est tombé | l'ennemi prend Dragon, Baron, Héraut, Larves ou Atakhan plus de 60 s après ta mort (M5 couvre la minute d'avant) et au moins 2 s avant ta réapparition (niveau lu sur les LEVEL_UP, formule du wiki) ; rien si tu poses une ward ou fais un kill entre les deux (résurrection) | 2 ; 3 pour Baron et Ancien | niveau 18 mort à 50:00 (71,5 s de réapparition), Baron adverse à 51:05 → gravité 3 |
+| M15 | Mort quand l'objectif est tombé | l'ennemi prend Dragon, Baron, Héraut, Larves ou Atakhan plus de 60 s après ta mort (M5 couvre la minute d'avant) et au moins 2 s avant ta réapparition (niveau lu sur les LEVEL_UP, formule du wiki ; les niveaux 19 et 20 de la quête top comptent comme le niveau 18, faute de valeur publiée) ; rien si tu poses une ward ou fais un kill entre les deux (résurrection) | 2 ; 3 pour Baron et Ancien | niveau 18 mort à 50:00 (71,5 s de réapparition), Baron adverse à 51:05 → gravité 3 |
 | M19 | Mort en retard de niveaux | laner ou jungler, mort entre 0:55 et 3:55 (1:30 et 4:30 sur une partie 15.x) contre un adversaire d'au moins 1 niveau de plus | 2 ; 3 à 2 niveaux | tué niveau 2 par un niveau 3 à 3:40 |
 
 Une même mort peut produire plusieurs erreurs **de tags différents** quand elle prouve plusieurs choses. Exemple : un

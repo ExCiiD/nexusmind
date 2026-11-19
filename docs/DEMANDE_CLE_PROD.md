@@ -42,20 +42,20 @@ formulaire (bouton *Register Product* du tableau de bord).
 | R1 | ⏳ | Une fiche existe forcément (la clé Personal en dépend), mais son type et son contenu ne sont pas lisibles depuis le dépôt | relire la fiche du portail ; créer ou convertir en produit public | **utilisateur** |
 | R2 | ✅ textes prêts | brouillons en anglais au § 4 | copier, puis ajuster au vrai formulaire | utilisateur |
 | R3 | ✅ | app desktop en bêta publique (1.0.0-beta.8), web app, CI verte, 1 656 tests | — | — |
-| R4 | ❌ **bloquant** | le site est en ligne mais en **aperçu non indexé** : pas d'URL publique configurée (`site/build.mjs:46-47`, `preview = !siteUrl`), `X-Robots-Tag: noindex` (`site/public/_headers:8`), adresse en `workers.dev` | choisir le domaine, définir `SITE_URL`, retirer le `noindex`, redéployer | utilisateur (domaine) puis graphic-design / backend-dev |
+| R4 | ⏳ **en cours** (19/11) | Domaine acheté : **asc3nd.app**. Site public prévu sur **https://asc3nd.app**, web app sur **https://app.asc3nd.app** (branchement en cours, backend-dev + graphic-design). Avant : aperçu non indexé (`site/build.mjs:46-47`, `X-Robots-Tag: noindex` dans `site/public/_headers:8`, adresse en `workers.dev`). **À vérifier une fois en ligne :**<br>- HTTPS ;<br>- `SITE_URL` défini (balise canonique, `sitemap.xml`, `robots.txt` avec `Allow`) ;<br>- plus de `noindex` ni de `X-Robots-Tag` ;<br>- textes légaux v0.3 en ligne (`/en/privacy`, `/en/terms`, et leurs versions FR) ;<br>- mention Riot en pied de page ;<br>- liens vers le téléchargement et vers la web app. | brancher le domaine, définir `SITE_URL`, retirer le `noindex`, redéployer ; puis vérification par l'Audit | backend-dev + graphic-design, puis audit |
 | R5 | ⏳ | méthode inconnue avant le dépôt (souvent un fichier ou une balise sur le site) | suivre l'instruction du portail le moment venu ; prévoir 1 déploiement du site | utilisateur + graphic-design |
 | R6 | ✅ | coaching après la partie, micro-review, plan de progression, gestion d'équipe ; rien n'est automatisé en partie | argumenter (§ 4.3) | — |
 | R7 | ✅ | **Site** : pied de page de toutes les pages, CGU et politique. **App** (19/11, `src/components/legal/RiotLegalNotice.tsx`) : écran de connexion desktop et web (`CloudGate.tsx:366`), onboarding (`OnboardingPage.tsx:124`), Aide desktop (`HelpPage.tsx:192`), page Compte web (`web/src/pages/AccountPage.tsx:68`). Texte **identique au caractère près** à celui du site (271 caractères, comparaison par script) et conforme au texte officiel de Riot ; balisé `lang="en"`. Vu dans le harnais : affiché sur l'écran de connexion et dans l'Aide (680 × 36 px), contraste 5,63:1. Onboarding et page Compte web vérifiés dans le code seulement. | — | — |
 | R8 | ✅ | clé seulement en secret Cloudflare (`RIOT_API_KEY`), proxy authentifié par le JWT Supabase, liste blanche de 9 endpoints GET, HTTPS ; jamais dans le binaire (mode direct réservé au dev, `.env` jamais embarqué) | décrire au § 4.6 | — |
 | R9 | ✅ | la Live Client Data API sert seulement à détecter début et fin de partie ; aucun affichage pendant la partie ; pas de MMR (le « niveau » d'Ascend mesure le travail fait dans l'app, `src/lib/profile.ts`) ; le scouting n'utilise que des données publiques par Riot ID | le dire explicitement au § 4.5 | — |
-| R10 | ⏳ **décision** | « Free during the beta » sur le site ; modèle futur non décidé | décider : gratuit, ou gratuit + abonnement plus tard (palier gratuit obligatoire) | **utilisateur** |
+| R10 | ✅ **décidé** (19/11) | Décision de l'utilisateur : **gratuit pendant la bêta**, puis palier gratuit permanent + abonnements **Pro** (joueur) et **Team** (groupe), qui vendent de l'analyse et de la collaboration (contenu transformatif), pas la donnée brute de Riot. Détail dans `docs/PLAN_MONETISATION.md`. Rien de payant avant l'approbation de la clé. | utiliser la 2e option du § 4.9 | — |
 | R11 | ✅ | un seul produit, Ascend (desktop + web = un produit) | — | — |
 | R12 | ✅ | **v0.3** dans l'app (`src/legal/privacy.*.md:3`, `terms.*.md:3`) et sur le site (`site/src/legal/*.html`), 19/11/2026 ; suppression de compte (edge function `delete-account`), consentement bien-être | vérifier que la v0.3 est bien celle validée par l'utilisateur (le brouillon `LEGAL_V0.3_DRAFT.md` dit encore « pas en vigueur ») | utilisateur + cybersecurity |
 | R13 | ⚠️ | connexion Ascend par e-mail (code ou mot de passe, Supabase). Compte Riot lié par **saisie du Riot ID, sans preuve de propriété** | annoncer RSO comme prévu après approbation ; en attendant, preuve par icône (P1-8 de `PLAN_CLE_PROD.md`) | backend-dev + frontend-dev |
 | R14 | ⏳ | captures automatiques du site (`site/shots.cjs`, à remettre d'aplomb : WSC-12) | 5 ou 6 captures : micro-review, Mistake Lab, plan, Stats collectives, Planning, Scouting | graphic-design |
 | R15 | ✅ textes prêts | cas d'usage clair (scrims entre équipes, aujourd'hui importés en CSV) | inclure le § 4.4 | — |
 
-**Bloquants avant dépôt :** R4 (site public), R10 (décision de monétisation). R7 est réglé depuis le 19/11.
+**Bloquant avant dépôt :** R4 (site public sur https://asc3nd.app, en cours). R7 et R10 sont réglés depuis le 19/11.
 **Fortement conseillés :** R13 (preuve du compte Riot), R14 (captures), R12 (confirmer la v0.3).
 
 ## 3. Volumétrie estimée
@@ -106,8 +106,8 @@ autorisées par le proxy).
 > with timestamped comments, track team statistics on Flex and scrim games, keep a champion pool per player, run
 > draft simulations, and scout opposing teams from public match history.
 >
-> Ascend is used today by [N] players in [N] groups (public beta since [date]). The website is [URL] and the
-> download page is [URL].
+> Ascend is used today by [N] players in [N] groups (public beta since [date]). The website is https://asc3nd.app
+> (download: https://asc3nd.app/en/#download) and the web app is https://app.asc3nd.app.
 
 ### 4.3 Use case and player benefit
 
@@ -166,14 +166,16 @@ player's own game.
 > is deleted automatically after 90 days. Personal data is stored in the
 > EU (Supabase, Frankfurt/Zurich region), and players can export or delete their account and data from the app at any
 > time. Optional wellbeing check-ins are stored only after explicit consent and are never shared without the player
-> turning sharing on. Privacy policy: [URL]. Terms of service: [URL].
+> turning sharing on. Privacy policy: https://asc3nd.app/en/privacy. Terms of service: https://asc3nd.app/en/terms.
 
 ### 4.9 Monetization
 
-> [Choose one:]
-> - Ascend is free. There is no paid tier and no advertising.
-> - Ascend is free during the beta. Any future paid plan will keep a free tier with the core features, will follow
->   Riot's monetization policies, and will only start after approval.
+> Ascend is free during the beta, with no advertising. After the beta, the core of Ascend stays free for every player:
+> post-game micro-reviews, the mistake library, the improvement plan, recent statistics, creating a team group, LFT
+> posts and the team space. Optional subscriptions (a player plan and a team plan) will add transformative features:
+> season-long analyses, aggregated opponent scouting reports, team synergy, collaborative VOD review and weekly team
+> reports. We will not sell access to raw Riot data. Paid plans will only start once the product is Approved or
+> Acknowledged, and will follow Riot's monetization policies.
 
 ### 4.10 Required notice (to show in the app and on the site)
 

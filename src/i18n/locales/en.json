@@ -1167,7 +1167,8 @@
       "dashboard": "Dashboard",
       "statsFlex": "Stats Flex",
       "statsScrim": "Stats Scrim",
-      "statsTournament": "Stats Tournament"
+      "statsTournament": "Stats Tournament",
+      "objectives": "Objectives"
     },
     "roster": {
       "noTeam": "Create a team above to start adding members.",
@@ -4725,5 +4726,272 @@
   "riotErrors": {
     "rateLimited_one": "Too many Riot requests right now. Try again in about {{count}} second.",
     "rateLimited_other": "Too many Riot requests right now. Try again in about {{count}} seconds."
+  },
+  "analyst": {
+    "common": {
+      "side": {
+        "blue": "Blue",
+        "red": "Red"
+      },
+      "source": {
+        "flex": "Flex",
+        "scrim": "Scrim",
+        "tournament": "Tournament",
+        "manual": "Typed by hand"
+      },
+      "win": "Victory",
+      "loss": "Defeat",
+      "lowSample": "small sample",
+      "showMore": "Show more",
+      "games_one": "{{count}} game",
+      "games_other": "{{count}} games",
+      "unknownOpponent": "Unknown opponent",
+      "notDeployedTitle": "Coming with the next server update",
+      "notDeployed": "This screen needs a server update that isn’t live yet. Try again after the next update.",
+      "genericError": "Something went wrong. Try again."
+    },
+    "filters": {
+      "period": "Period",
+      "source": "Source",
+      "side": "Side",
+      "from": "From",
+      "to": "To",
+      "periods": {
+        "7d": "7 days",
+        "30d": "30 days",
+        "season": "Season",
+        "custom": "Custom"
+      },
+      "sides": {
+        "both": "Both",
+        "blue": "Blue",
+        "red": "Red"
+      }
+    },
+    "objectives": {
+      "count_one": "{{count}} game",
+      "count_other": "{{count}} games",
+      "patch": "patch {{patch}}",
+      "tiles": {
+        "dragons": "Drakes",
+        "grubs": "Grubs",
+        "herald": "Herald",
+        "baron": "Baron",
+        "firstBlood": "First blood",
+        "firstTower": "First tower",
+        "firstDrake": "1st drake: {{pct}} %",
+        "soul": "soul: {{ours}} / {{games}}",
+        "firstCamp": "1st camp: {{pct}} %",
+        "baronToWin": "Baron → win: {{pct}} %"
+      },
+      "lanes": {
+        "TOP": "top",
+        "MID": "mid",
+        "BOT": "bot"
+      },
+      "gold": {
+        "title": "Mean gold difference (us − them)",
+        "all": "Both sides",
+        "aria": "Mean gold difference: {{values}}",
+        "tooltip": "{{min}} min: {{value}}"
+      },
+      "kinds": {
+        "dragon": "Drake",
+        "grubs": "Grubs",
+        "herald": "Herald",
+        "baron": "Baron",
+        "atakhan": "Atakhan",
+        "tower": "Tower",
+        "firstBlood": "First blood",
+        "elder": "Elder dragon"
+      },
+      "frieze": {
+        "title": "Games timeline",
+        "us": "Us",
+        "them": "Them",
+        "byUs": "taken by us",
+        "byThem": "taken by them",
+        "event": "{{name}} · {{time}} · {{who}}"
+      },
+      "timings": {
+        "title": "Mean timings",
+        "objective": "Objective",
+        "us": "Us",
+        "them": "Them",
+        "gap": "Gap",
+        "kinds": {
+          "dragon": "Drake",
+          "grubs": "Grubs",
+          "herald": "Herald",
+          "baron": "Baron",
+          "atakhan": "Atakhan",
+          "tower": "Tower",
+          "firstBlood": "First blood",
+          "elder": "Elder dragon"
+        }
+      },
+      "loading": "Reading timelines: {{done}} / {{total}} games",
+      "empty": {
+        "title": "No team game in this period",
+        "desc": "Scrims and tournaments recorded in a team session will show here.",
+        "widen": "Widen to 30 days",
+        "planning": "Open the Schedule"
+      },
+      "partial_one": "{{count}} timeline unavailable (game too old, or custom without a timeline): that game is left out of the averages.",
+      "partial_other": "{{count}} timelines unavailable (games too old, or customs without a timeline): those games are left out of the averages.",
+      "error": "Couldn’t load the objectives",
+      "dragonTypes": {
+        "FIRE": "Infernal drake",
+        "WATER": "Ocean drake",
+        "EARTH": "Mountain drake",
+        "AIR": "Cloud drake",
+        "HEXTECH": "Hextech drake",
+        "CHEMTECH": "Chemtech drake"
+      }
+    },
+    "draftLog": {
+      "count": "{{count}} drafts · {{wins}} W – {{losses}} L",
+      "filters": {
+        "opponent": "Opponent",
+        "allOpponents": "All opponents",
+        "allSources": "All",
+        "patch": "Patch",
+        "allPatches": "All patches",
+        "champion": "Champion",
+        "result": "Result",
+        "allResults": "All"
+      },
+      "summary": {
+        "red": "Red side",
+        "bannedAgainst": "Banned against us",
+        "blueFirstPick": "Blue side (1st pick)",
+        "firstPicked": "Our first picked champion",
+        "firstPickedFoot_one": "{{count}} draft with a typed order",
+        "firstPickedFoot_other": "{{count}} drafts with a typed order",
+        "firstPickedNone": "Type the pick order in a draft’s detail"
+      },
+      "cols": {
+        "date": "Date",
+        "opponent": "Opponent",
+        "side": "Side",
+        "ourBans": "Our bans",
+        "ourPicks": "Our picks",
+        "theirPicks": "Their picks",
+        "theirBans": "Their bans",
+        "result": "Result"
+      },
+      "noBans": "No bans in this game",
+      "detail": {
+        "title": "Draft detail",
+        "vs": "Against {{name}}",
+        "pickOrder": "Pick order",
+        "pickOrderUnknown": "Not entered (Riot doesn’t provide it).",
+        "notes": "Analyst notes",
+        "notesPlaceholder": "What we take away from this draft…",
+        "stats": "Game stats",
+        "vod": "VOD review",
+        "openInPrep": "Open in Preparation"
+      },
+      "champions": {
+        "title": "Champions",
+        "ours": "Our picks",
+        "theirs": "What opponents pick against us"
+      },
+      "empty": {
+        "title": "No draft recorded",
+        "desc": "Drafts of scrims and tournaments played in a team session are added automatically.",
+        "addManual": "Add a draft by hand"
+      },
+      "noMatch": {
+        "title": "No draft matches",
+        "clear": "Clear filters"
+      },
+      "error": "Couldn’t load the draft log",
+      "subTabs": {
+        "label": "Draft Sim view",
+        "prep": "Preparation",
+        "journal": "Journal"
+      },
+      "actionFailed": "Couldn’t save the draft log",
+      "copyName": "vs {{name}} · {{date}}",
+      "manual": {
+        "title": "Add a draft by hand",
+        "desc": "For a game the app didn’t record. Bans can stay empty.",
+        "opponent": "Opponent",
+        "date": "Date",
+        "noResult": "Unknown",
+        "bansHint": "Champions, comma-separated",
+        "save": "Add the draft"
+      },
+      "pickOrder": {
+        "blue": "Blue side picks, in pick order",
+        "red": "Red side picks, in pick order",
+        "hint": "Put each side’s picks in the order they were locked in: drag them, or use ↑ / ↓ on a pick’s handle.",
+        "handle": "Move {{champion}} ({{slot}}) with the up and down arrows",
+        "up": "Move {{champion}} up",
+        "down": "Move {{champion}} down",
+        "moved": "{{champion}} is now {{slot}}",
+        "save": "Save the order",
+        "clear": "Remove the order",
+        "saved": "Pick order saved",
+        "cleared": "Pick order removed",
+        "incomplete": "The order can be typed once both sides have their 5 picks."
+      },
+      "rowLabel": "{{date}} · {{opponent}} · {{result}}: show the detail"
+    },
+    "dossier": {
+      "back": "Scouting",
+      "refresh": "Refresh data",
+      "copy": "Copy for Discord",
+      "publish": "Publish to roster",
+      "draft": "Draft",
+      "published": "Published {{date}}",
+      "updated_one": "updated {{count}} h ago",
+      "updated_other": "updated {{count}} h ago",
+      "summary": {
+        "title": "Analyst summary",
+        "how": "How they play",
+        "howPlaceholder": "E.g. scaling comp, little pressure before 15 min",
+        "bans": "Advised bans",
+        "banSlot": "Advised ban {{n}}",
+        "plan": "Game plan"
+      },
+      "player": {
+        "unranked": "Unranked",
+        "notFound": "Riot ID not found",
+        "fix": "Fix",
+        "form": "Recent form: {{wins}} W – {{losses}} L",
+        "poolChange_one": "New: {{champion}}, {{count}} game in {{days}} days",
+        "poolChange_other": "New: {{champion}}, {{count}} games in {{days}} days",
+        "notRefreshed": "Not refreshed yet: run “Refresh data”."
+      },
+      "threat": {
+        "dominant": "Dominant",
+        "threat": "Threat",
+        "comfort": "Comfort"
+      },
+      "versus": {
+        "title": "Against us",
+        "record": "{{wins}} W – {{losses}} L"
+      },
+      "duos": {
+        "title": "Duos",
+        "none": "No regular duo in ranked."
+      },
+      "loading": "Analysing 5 players: {{done}} / {{total}}",
+      "reduced": "Analysis limited to {{count}} games per player with the current Riot key.",
+      "noPlayers": {
+        "title": "Add the team’s 5 players to build the dossier",
+        "add": "Add players"
+      },
+      "error": "Couldn’t load the dossier",
+      "unpublish": "Back to draft",
+      "open": "Dossier",
+      "actionFailed": "Couldn’t save the dossier",
+      "publishedToast": "Dossier published: {{name}}",
+      "unpublishedToast": "Dossier back to draft: {{name}}",
+      "copied": "Summary copied for Discord",
+      "refreshing": "Reading the players’ Riot data…"
+    }
   }
 }

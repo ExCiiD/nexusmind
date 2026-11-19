@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BarChart3, LayoutDashboard, Loader2, Sword, Trophy } from 'lucide-react'
+import { BarChart3, LayoutDashboard, Loader2, Sword, Target, Trophy } from 'lucide-react'
 import { NoGroupNotice, SectionTabs, TeamSectionHeader, useTabParam, useTeamSection } from '@/components/team/TeamSection'
 import { ErrorState } from '@/components/ui/data-state'
 import { DashboardTab } from '@/pages/Team/DashboardTab'
 import { StatsTab } from '@/pages/Team/StatsTab'
 import { CustomGamesStatsTab } from '@/pages/Team/CustomGamesStatsTab'
+import { TeamObjectivesTab } from '@/components/analyst/TeamObjectivesTab'
 import type { Team } from '@/lib/ipc'
 
 /**
@@ -27,6 +28,7 @@ export function TeamStatsPage() {
     { id: 'stats' as const, label: t('team.tabs.statsFlex', { defaultValue: 'Stats Flex' }), icon: BarChart3 },
     { id: 'scrim' as const, label: t('team.tabs.statsScrim', { defaultValue: 'Stats Scrim' }), icon: Sword },
     { id: 'tournament' as const, label: t('team.tabs.statsTournament', { defaultValue: 'Stats Tournoi' }), icon: Trophy },
+    { id: 'objectives' as const, label: t('team.tabs.objectives'), icon: Target },
   ]
   const [tab, setTab] = useTabParam(tabs.map((x) => x.id), 'dashboard')
 
@@ -54,6 +56,9 @@ export function TeamStatsPage() {
         <p className="text-sm text-hextech-text-dim">{t('team.signedOut')}</p>
       ) : !group ? (
         <NoGroupNotice>{t('team.noGroup')}</NoGroupNotice>
+      ) : tab === 'objectives' ? (
+        // #40 · 1/3: the group's games (analystWeb.ts), not the roster.
+        <TeamObjectivesTab key={group.id} groupId={group.id} />
       ) : teamState === 'error' || !team ? (
         <ErrorState title={t('web.teamStats.loadFailed')} cause={t('web.teamStats.loadFailedCause')} onRetry={() => setAttempt((n) => n + 1)} />
       ) : (

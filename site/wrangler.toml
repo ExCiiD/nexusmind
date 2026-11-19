@@ -5,12 +5,24 @@
 #   npm run site:preview        local check, with the production headers
 #   cd site && npx wrangler deploy
 #
-# Online as a preview at https://ascend-site.nexusmind-riot-proxy.workers.dev
-# (pages marked noindex while SITE_URL is empty in site.config.mjs).
-# To open it to search engines: set SITE_URL, rebuild, deploy.
+# Public address: https://asc3nd.app (SITE_URL in site.config.mjs, 19/11/2026);
+# the domain route is attached by the Back-end. Before that, online as a
+# preview at https://ascend-site.nexusmind-riot-proxy.workers.dev.
 name = "ascend-site"
 compatibility_date = "2025-09-01"
+# asc3nd.app (19/11/2026): served at asc3nd.app. www.asc3nd.app and the old workers.dev address answer a 301 to it
+# (worker.ts, cloudflare/shared/hostRedirect.ts).
+main = "worker.ts"
+workers_dev = true
+routes = [
+  { pattern = "asc3nd.app", custom_domain = true },
+  { pattern = "www.asc3nd.app", custom_domain = true },
+]
 
 [assets]
 directory = "./public"
+binding = "ASSETS"
 not_found_handling = "404-page"
+# The script decides first (redirect or not), then serves the files. Each request counts as a Worker request
+# (free plan: 100 000 a day).
+run_worker_first = true

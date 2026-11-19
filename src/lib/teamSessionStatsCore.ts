@@ -1,4 +1,5 @@
 import { normalizeRole } from './teamIdentity'
+import { normName, participantName } from './matchSide'
 import type { SynergyPlayerStats } from './ipc'
 
 /**
@@ -47,10 +48,8 @@ export interface RiotMatch {
   }
 }
 
-export function participantName(p: RiotMatchParticipant): string {
-  return p.riotIdGameName || p.summonerName || 'Unknown'
-}
-const normName = (s: string) => s.trim().toLowerCase()
+// Moved to matchSide.ts (importable by the main process), re-exported for the existing callers.
+export { participantName, resolveOurTeamId } from './matchSide'
 
 export interface RiotIdMember { userId: string; riotId: string | null; displayName: string | null }
 
@@ -62,25 +61,6 @@ export function matchParticipantToMember(p: RiotMatchParticipant, members: RiotI
   return members.find((m) => m.riotId && normName(m.riotId.split('#')[0]) === name)
 }
 
-/**
- * Which of the two Riot `teamId`s (100/200) is "ours", based on how many
- * participants' in-game names match one of the group's stored Riot IDs
- * (the `GameName` part, before the `#tag` — group members have no cached
- * puuid, unlike the local roster `aggregateMatchLike` matches in
- * team.ipc.ts). Returns null when neither side has any match — e.g. the
- * group's Riot IDs aren't filled in yet — so the caller can fall back to
- * showing both sides unlabeled rather than guessing.
- */
-export function resolveOurTeamId(participants: RiotMatchParticipant[], memberRiotIds: string[]): 100 | 200 | null {
-  const names = new Set(memberRiotIds.filter(Boolean).map((id) => normName(id.split('#')[0])))
-  const score: Record<100 | 200, number> = { 100: 0, 200: 0 }
-  for (const p of participants) {
-    if (p.teamId !== 100 && p.teamId !== 200) continue
-    if (names.has(normName(participantName(p)))) score[p.teamId as 100 | 200]++
-  }
-  if (score[100] === 0 && score[200] === 0) return null
-  return score[100] >= score[200] ? 100 : 200
-}
 
 /**
  * One match's participants on one side → the same `SynergyPlayerStats[]`

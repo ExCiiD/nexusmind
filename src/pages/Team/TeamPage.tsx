@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { BarChart3, LayoutDashboard, Loader2, Sword, Trophy } from 'lucide-react'
+import { BarChart3, LayoutDashboard, Loader2, Sword, Target, Trophy } from 'lucide-react'
 import type { Team } from '@/lib/ipc'
 import { GroupTeamGate } from '@/components/team/GroupTeamGate'
 import { NoGroupNotice, SectionTabs, TeamSectionHeader, useTabParam, useTeamSection } from '@/components/team/TeamSection'
@@ -7,6 +7,7 @@ import { StatsTab } from './StatsTab'
 import { DashboardTab } from './DashboardTab'
 import { CustomGamesStatsTab } from './CustomGamesStatsTab'
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
+import { TeamObjectivesTab } from '@/components/analyst/TeamObjectivesTab'
 
 /**
  * Stats collectives (the Team page until 18 November 2026): the stats of the
@@ -29,6 +30,8 @@ export function TeamPage() {
     { id: 'stats' as const, label: t('team.tabs.statsFlex', { defaultValue: 'Stats Flex' }), icon: BarChart3 },
     { id: 'scrim' as const, label: t('team.tabs.statsScrim', { defaultValue: 'Stats Scrim' }), icon: Sword },
     { id: 'tournament' as const, label: t('team.tabs.statsTournament', { defaultValue: 'Stats Tournoi' }), icon: Trophy },
+    // #40 · 1/3: the group's games, not the local team (no GroupTeamGate needed).
+    { id: 'objectives' as const, label: t('team.tabs.objectives'), icon: Target },
   ]
   const [tab, setTab] = useTabParam(tabs.map((x) => x.id), 'dashboard')
 
@@ -48,6 +51,8 @@ export function TeamPage() {
 
       {loading ? (
         <Loader2 className="h-5 w-5 animate-spin text-hextech-gold" />
+      ) : groupMode && group && tab === 'objectives' ? (
+        <PanelErrorBoundary key={`objectives-${group.id}`} label="objectives"><TeamObjectivesTab groupId={group.id} /></PanelErrorBoundary>
       ) : groupMode && group ? (
         <GroupTeamGate key={group.id} group={group}>{(team) => content(team)}</GroupTeamGate>
       ) : available ? (

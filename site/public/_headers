@@ -5,7 +5,6 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), interest-cohort=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains
-  X-Robots-Tag: noindex
 
 /assets/*
   Cache-Control: public, max-age=604800

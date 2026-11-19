@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { DraftLogInput, DraftLogPatch, OpponentDossierInput, TeamObjectivesFilters } from '../../src/lib/analyst'
 
 const api = {
   connectRiot: (gameName: string, tagLine: string, region: string, displayName?: string) =>
@@ -134,6 +135,20 @@ const api = {
   },
   teamSessionListGames: (sessionId: string) => ipcRenderer.invoke('team-session:list-games', sessionId),
   teamSessionFetchMatch: (gameId: string) => ipcRenderer.invoke('team-session:fetch-match', gameId),
+
+  // #40 analyst features (src/lib/analyst.ts AnalystApi): Objectives, draft log, opponent dossier.
+  teamObjectivesGames: (groupId: string, filters: TeamObjectivesFilters) => ipcRenderer.invoke('analyst:objectives-games', groupId, filters),
+  teamObjectivesGameTimeline: (gameId: string) => ipcRenderer.invoke('analyst:objectives-game-timeline', gameId),
+  draftLogList: (groupId: string) => ipcRenderer.invoke('analyst:draft-log-list', groupId),
+  draftLogSyncFromGames: (groupId: string) => ipcRenderer.invoke('analyst:draft-log-sync', groupId),
+  draftLogCreate: (groupId: string, input: DraftLogInput) => ipcRenderer.invoke('analyst:draft-log-create', groupId, input),
+  draftLogUpdate: (id: string, patch: DraftLogPatch) => ipcRenderer.invoke('analyst:draft-log-update', id, patch),
+  draftLogDelete: (id: string) => ipcRenderer.invoke('analyst:draft-log-delete', id),
+  opponentDossierGet: (groupId: string, opponentKey: string) => ipcRenderer.invoke('analyst:dossier-get', groupId, opponentKey),
+  opponentDossierSave: (groupId: string, opponentKey: string, input: OpponentDossierInput) => ipcRenderer.invoke('analyst:dossier-save', groupId, opponentKey, input),
+  opponentDossierPublish: (groupId: string, opponentKey: string) => ipcRenderer.invoke('analyst:dossier-publish', groupId, opponentKey),
+  opponentDossierUnpublish: (groupId: string, opponentKey: string) => ipcRenderer.invoke('analyst:dossier-unpublish', groupId, opponentKey),
+  opponentDossierRefresh: (groupId: string, opponentKey: string) => ipcRenderer.invoke('analyst:dossier-refresh', groupId, opponentKey),
   teamSessionSetOurTeamId: (gameId: string, ourTeamId: 100 | 200) => ipcRenderer.invoke('team-session:set-our-team-id', gameId, ourTeamId),
   teamSessionSetEnemyTeamName: (gameId: string, name: string | null) => ipcRenderer.invoke('team-session:set-enemy-team-name', gameId, name),
   groupFundamentalsList: (groupId: string) => ipcRenderer.invoke('group-fundamentals:list', groupId),

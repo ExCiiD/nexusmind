@@ -20,8 +20,8 @@
  *   RIOT_APP_LIMITS, INTERACTIVE_RESERVE  vars — the budget (budgetObject.ts)
  */
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
-import { handleRequest, type BudgetGate, type ResponseStore, type HandlerEnv } from './handler'
-import type { BudgetObjectEnv } from './budgetObject'
+import { handleRequest, type BudgetGate, type R2CostGuard, type ResponseStore, type HandlerEnv } from './handler'
+import { R2_GUARD_NAME, type BudgetObjectEnv } from './budgetObject'
 
 export { RiotBudgetObject } from './budgetObject'
 
@@ -68,6 +68,17 @@ function r2Store(bucket: R2Bucket): ResponseStore {
   }
 }
 
+/** The R2 cost guard: the Durable Object instance R2_GUARD_NAME counts R2 use for the month (r2Guard.ts). */
+function r2CostGuard(ns: DurableObjectNamespace): R2CostGuard {
+  const stub = ns.get(ns.idFromName(R2_GUARD_NAME))
+  return {
+    async allow(op, bytes) {
+      const res = await stub.fetch(`https://budget/r2/allow?op=${op}&bytes=${Math.max(0, Math.round(bytes))}`)
+      return ((await res.json()) as { allow?: boolean }).allow === true
+    },
+  }
+}
+
 /** P1-2: one Durable Object per Riot host. */
 function budgetGate(ns: DurableObjectNamespace): BudgetGate {
   const stub = (host: string) => ns.get(ns.idFromName(host))
@@ -87,7 +98,9 @@ export default {
     return handleRequest(req, env, {
       verifyUser: (r) => verifyUser(r, env) as Promise<{ sub?: string; is_anonymous?: boolean } | null>,
       fetchRiot: (url, init) => fetch(url, init),
-      store: env.MATCH_STORE ? r2Store(env.MATCH_STORE) : undefined,
+      // The store is only used with its cost guard (no Durable Object binding, no R2).
+      store: env.MATCH_STORE && env.RIOT_BUDGET ? r2Store(env.MATCH_STORE) : undefined,
+      r2Guard: env.RIOT_BUDGET ? r2CostGuard(env.RIOT_BUDGET) : undefined,
       budget: env.RIOT_BUDGET ? budgetGate(env.RIOT_BUDGET) : undefined,
       waitUntil: (p) => ctx.waitUntil(p),
     })

@@ -15,7 +15,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.49.4'
 
 const ALLOWED_ORIGINS = (Deno.env.get('INVITE_ALLOWED_ORIGINS')
-  ?? 'https://nexusmind-web.nexusmind-riot-proxy.workers.dev,https://ascend-site.nexusmind-riot-proxy.workers.dev')
+  // asc3nd.app (19/11/2026): the site and web app moved; the old addresses stay allowed during the transition.
+  ?? 'https://app.asc3nd.app,https://asc3nd.app,https://nexusmind-web.nexusmind-riot-proxy.workers.dev,https://ascend-site.nexusmind-riot-proxy.workers.dev')
   .split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean)
 
 /** CORS headers for this request: {} without an Origin, null for a site that is not allowed. */

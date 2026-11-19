@@ -8,7 +8,7 @@
  * is what opens the site to search engines; the build then refuses a legal
  * page that still prints a bracketed placeholder.
  */
-export const SITE_URL = ''
+export const SITE_URL = 'https://asc3nd.app'
 
 /**
  * Where "request access" and "write to us" lead: the publisher's contact

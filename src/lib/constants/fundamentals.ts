@@ -418,7 +418,7 @@ export const FUNDAMENTALS: FundamentalCategory[] = [
         description: 'Using camp timers, river vision, and map information to predict the enemy jungler\'s location.',
         kpis: [
           { id: 'jungler_prediction', label: 'Jungler Prediction', description: 'Predicting which quadrant the enemy jungler is in' },
-          { id: 'camp_timer_knowledge', label: 'Camp Timer Knowledge', description: 'Knowing camp timers to track jungler pathing (2026: camps at 0:55, Scuttle Crab at 2:55, small camps back 2:15 after the kill)' },
+          { id: 'camp_timer_knowledge', label: 'Camp Timer Knowledge', description: 'Knowing camp timers to track jungler pathing (2026: camps at 0:55, Krugs and Gromp at 1:07, Scuttle Crab at 2:55, small camps back 2:15 after the kill)' },
           { id: 'position_adjustment', label: 'Position Adjustment', description: 'Adjusting lane position based on predicted jungler location' },
           { id: 'opening_info_gathering', label: 'Opening Info Gathering', description: 'Using level 1 vision, first lane states, and the jungler\'s first reveal to identify their likely opening route' },
           { id: 'jungler_cs_verification', label: 'Jungler CS Verification', description: 'Checking the enemy jungler\'s CS when seen to infer their clear, starting side, and which camps are still up' },

@@ -29,8 +29,8 @@ import { microReviewPushAnswer } from '../cloud/collab'
 import { momentWindow } from '../mistakeDedupe'
 import { mistakeSlug } from '../../../src/lib/mistakeSlug'
 
-/** Bump when the detector's output changes, to recompute cached analyses. 6: V5 laning + V6 role patterns; 7: V7–V10 jungle, mid and support patterns; 8: season-2026 clock (16.x games 35 s earlier, wiki respawn timers, facts.season); 9: 2026 plates stay up after 14:00 (dive, mid roam on plates, side-lane T1). */
-export const ANALYSIS_VERSION = 9
+/** Bump when the detector's output changes, to recompute cached analyses. 6: V5 laning + V6 role patterns; 7: V7–V10 jungle, mid and support patterns; 8: season-2026 clock (16.x games 35 s earlier, wiki respawn timers, facts.season); 9: 2026 plates stay up after 14:00 (dive, mid roam on plates, side-lane T1); 10: #45 game data (Herald eye 15:00-22:00, 2025 to 25:00; pit fights from 15:00 in 2026; M8 Baron deaths only once the Baron is up). */
+export const ANALYSIS_VERSION = 10
 export const MICRO_REVIEW_XP = 30
 
 async function userPuuids(userId: string): Promise<string[]> {

@@ -242,6 +242,34 @@ Pourquoi cet ordre : la clé OpenAI est un secret **valide** qui ne demande qu'u
   Le déploiement de la fonction et le secret Supabase relèvent de la production, donc de l'accord de l'utilisateur.
 - **Qui :** le Chief fait trancher A ou B par l'utilisateur ; le Back-end réalise (et le Front-end pour A).
 
+### Revue d'après déploiement — 19/11/2026, vers 17:05 (lecture seule)
+**Verdict : la production correspond à ce qui a été revu. Un problème bloquant pour le bot Discord, qui n'est pas une régression.**
+
+**Base (migrations 20261119165228 à 20261119165525, c'est-à-dire de 200000 à 270000 en local ; la 280000, rôles staff, n'est pas appliquée, comme prévu) :**
+- Suppression de compte : **0** clé étrangère `NO ACTION` vers `auth.users`, `groups.created_by` en `SET NULL`, trigger `hand_over_groups_before_delete` présent. `hand_over_groups_of` contient bien la condition « autre owner » et le capitaine, et n'est pas exécutable par `authenticated`. Seuls `group_invites`, `access_invites` et `discord_guild_link_codes` restent en `CASCADE` sur l'auteur, comme prévu.
+- La politique `micro_verdicts_delete_orphaned` (`coach_id is null and is_group_staff`) est en place.
+- **Bien-être :** les 4 politiques prévues (INSERT conditionné au consentement), `set_wellbeing_consent` et `unlink_discord_guild` non exécutables par `anon`. Sur `wellbeing_consent_events`, `authenticated` n'a ni INSERT, ni UPDATE, ni DELETE. Il garde en revanche `TRUNCATE`, `REFERENCES` et `TRIGGER`, droits par défaut de Supabase. Ils sont inaccessibles par PostgREST, mais je recommande un `revoke truncate` par prudence, pour tout le schéma (basse).
+- **puuid :** `puuid` et `puuid_status` non modifiables par `authenticated`, index unique `group_members_group_puuid_uniq` et trigger `group_members_riot_id_resets_puuid` présents.
+- **S19-17 :** la branche « équipe » de `can_read_player_table` exige le rôle principal staff **et** `share_team is true`. `team_custom_games` a la RLS active, avec lecture pour les membres et écriture pour le staff.
+- **Codes d'invitation :** `private.random_code` utilise `extensions.gen_random_bytes`, avec un tirage sans biais (rejet au-delà de 248 = 31×8). Il n'est pas exécutable par `anon`. Longueurs de 12 (accès) et 10 (groupe).
+- **Advisors de sécurité :** **aucun nouveau constat.** `set_wellbeing_consent` et `unlink_discord_guild` apparaissent dans « exécutable par authenticated », ce qui est voulu, puisqu'elles se contrôlent elles-mêmes. S19-07 est inchangé, puisque la 280000 qui retire les `run_*` n'est pas appliquée. Il reste en plus `run_review_pending_check`, les deux fonctions de trigger, et `set_captain` et `set_weekly_load_threshold` pour `anon`.
+
+**Fonctions serveur :**
+- `verify-member-puuid` v1, `redeem-invite` v3 et `team-report` v3 sont actives, toutes en `verify_jwt = false` avec authentification interne.
+- Les tests de fumée visibles dans les journaux sont conformes : 403 pour une origine non autorisée, 415 sans JSON, 400 sur des entrées invalides, 401 sans jeton, OPTIONS 204 pour l'origine autorisée.
+- **`cf-connecting-ip` est présent sur 8 requêtes sur 8** (attributs des journaux), et l'avertissement « no cf-connecting-ip » n'apparaît pas. La limite par IP fonctionne donc.
+
+**Web app :** CSP, HSTS, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy` et `Permissions-Policy` servis en ligne.
+
+**Secrets :**
+- Proxy Riot : `RIOT_API_KEY` est présent. Pas de `SUPABASE_JWT_SECRET`, donc la vérification se fait par JWKS, ce qui est normal. La phase 1 du proxy n'est pas encore déployée, donc la vérification de R2 est reportée.
+- Supabase : les noms des secrets des fonctions ne sont **pas lisibles** avec mes outils. Le Back-end doit vérifier `RIOT_PROXY_URL` avec `supabase secrets list` (noms seulement). Sans lui, `verify-member-puuid` répond 500 `proxy_not_configured`. `WEB_APP_ORIGINS` et `INVITE_ALLOWED_ORIGINS` ont des valeurs par défaut correctes.
+- **Bot Discord : bloquant (fonctionnel).** La version déployée `9f0e4bae` **n'a aucun secret** : seule `SUPABASE_URL` est liée. `DISCORD_PUBLIC_KEY`, `DISCORD_BOT_TOKEN` et `SUPABASE_SERVICE_ROLE_KEY` manquent. La version précédente `f9312e8b` (18/11) n'en avait pas non plus : **le bot n'a jamais été configuré en production**. Côté sécurité, il **échoue fermé** : un POST non signé reçoit 401, testé. Côté fonctionnement, toutes les commandes et le cron échouent.
+  - **À faire par l'utilisateur**, puisque les valeurs sont des secrets : `wrangler secret put` pour les 3 secrets, dans `cloudflare/discord-bot`, **puis** réenregistrer les commandes.
+  - La clé service_role ne doit être posée **que** comme secret du worker, jamais dans `wrangler.toml`.
+
+**« Leaked password protection » désactivée — avis :** à activer, en priorité basse à moyenne. L'app propose un mot de passe facultatif, en plus de la connexion par code e-mail. La règle actuelle, `isAcceptablePassword` (longueur, une lettre et un chiffre), laisse passer des mots de passe connus des fuites, comme « azerty123 ». La vérification contre HaveIBeenPwned (k-anonymat : seuls 5 caractères du hash partent) les refuse sans coût pour l'utilisateur. Réglage : Authentication → Policies → Password. **À vérifier :** Supabase réserve cette option aux offres payantes. Si le projet est en offre gratuite, la compenser par une longueur minimale de 10 et une liste locale des mots de passe les plus courants dans `isAcceptablePassword` (Back-end).
+
 ### Revues de livraisons
 
 #### #2 — Déconnexion et reconnexion (19/11, modifs non commitées) : **OK avec réserves non bloquantes**
