@@ -2,11 +2,7 @@ import { useState } from 'react'
 import { Loader2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
-
-const REGIONS = [
-  'BR1', 'EUN1', 'EUW1', 'JP1', 'KR', 'LA1', 'LA2', 'NA1',
-  'OC1', 'PH2', 'RU', 'SG2', 'TH2', 'TR1', 'TW2', 'VN2',
-]
+import { PLATFORM_REGIONS } from '@/lib/regions'
 
 interface Props {
   state: { gameName: string; tagLine: string; region: string }
@@ -81,7 +77,7 @@ export function ExternalReviewPlayerStep({ state, onChange, onGames }: Props) {
           onChange={(e) => onChange({ region: e.target.value })}
           className="w-full rounded-md border border-hextech-border-dim bg-hextech-elevated px-3 py-2 text-sm text-hextech-text focus:outline-none focus:border-hextech-gold"
         >
-          {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+          {PLATFORM_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
       </div>
 
