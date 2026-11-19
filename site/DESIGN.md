@@ -100,7 +100,6 @@ site/
     copy/fr.mjs|en.mjs every sentence of the site; `{{slots}}` are filled with those facts
     pages/*.mjs        shell (head, top bar, invitation, footer), home, product (solo and team), legal, link-preview card
     lib/media.mjs      a capture or a clip; lib/tour.mjs the demonstration window
-    exhibits/*.mjs     the interactive previews of the first site, no longer on a page (data.mjs still feeds the link-preview radar)
     legal/*.html       the four legal texts, published as written
     styles/*.css       base (tokens, type), layout (the pages), app (the old previews)
     client/main.js     browser entry: menu, clips, demonstration windows, release lookup

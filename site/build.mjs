@@ -12,7 +12,7 @@
  *   3. renders every page, bundles the browser script and the stylesheet;
  *   4. checks the result (see `verify` below) and fails loudly on any miss.
  *
- * It only writes the files it owns; fonts, favicon and icons in site/public
+ * It only writes the files it owns; fonts and the favicon in site/public
  * are left alone. No dependency beyond the repo's own esbuild.
  */
 import { build, transform } from 'esbuild'
