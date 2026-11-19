@@ -26,7 +26,7 @@ interface Props { groups: Group[]; myUserId: string; nameOf: (userId: string) =>
 export function VodReviewSection({ groups, myUserId, nameOf }: Props) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
-  const [groupId, setGroupId] = useState(groups[0]?.id ?? null)
+  const groupId = groups[0]?.id ?? null
   const group = groups.find((g) => g.id === groupId)
   const isStaff = !!group && isLegacyStaff(group.myRole)
 
@@ -60,12 +60,6 @@ export function VodReviewSection({ groups, myUserId, nameOf }: Props) {
           <CardTitle className="flex items-center gap-2 text-base">
             <Film className="h-5 w-5 text-hextech-gold" />{t('vodReview.title', { defaultValue: 'VOD review' })}
           </CardTitle>
-          {groups.length > 1 && (
-            <select value={groupId ?? ''} onChange={(e) => setGroupId(e.target.value)}
-              className="rounded border border-hextech-border-dim bg-hextech-elevated px-2 py-1 text-xs text-hextech-text">
-              {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-          )}
         </div>
         <CardDescription>{t('vodReview.desc', { defaultValue: 'Review a scrim VOD together: timestamped comments, team mistakes, action items, and watch assignments.' })}</CardDescription>
       </CardHeader>

@@ -3689,7 +3689,6 @@
     "codex": {
       "title": "Team Codex",
       "desc": "Your rules take precedence over the built-in Codex entries for every member.",
-      "group": "Group",
       "empty": "No team rule yet. Add the first one below.",
       "mistake": "Target mistake",
       "mistakePlaceholder": "Type a mistake, or hover a family",

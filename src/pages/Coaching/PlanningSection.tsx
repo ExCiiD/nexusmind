@@ -49,7 +49,7 @@ interface Props { groups: Group[]; myUserId: string; nameOf: (userId: string) =>
 export function PlanningSection({ groups, myUserId, nameOf }: Props) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
-  const [groupId, setGroupId] = useState(groups[0]?.id ?? null)
+  const groupId = groups[0]?.id ?? null
   const group = groups.find((g) => g.id === groupId)
   const myMember = group?.members.find((m) => m.userId === myUserId)
   // The captain has the manager's hand on the planning (permissions.ts).
@@ -206,12 +206,6 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
           <p className="mt-1 text-xs text-hextech-text">{t('planning.hint')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {groups.length > 1 && (
-            <select value={groupId ?? ''} onChange={(e) => { setGroupId(e.target.value); setSelectedId(null) }}
-              className="rounded border border-hextech-border-dim bg-hextech-elevated px-2 py-1.5 text-xs text-hextech-text">
-              {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-          )}
           {!canEdit && groupId && <RequestEventDialog groupId={groupId} onSent={load} />}
           <Button size="sm" variant="outline" onClick={downloadICS}>
             <Download className="mr-1 h-3.5 w-3.5" />{t('planning.exportIcs', { defaultValue: 'Export .ics' })}

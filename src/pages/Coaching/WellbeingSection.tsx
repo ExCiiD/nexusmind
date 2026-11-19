@@ -132,7 +132,7 @@ function MyCheckin({ myUserId }: { myUserId: string }) {
 function TeamWellbeing({ staffGroups, nameOf }: { staffGroups: Group[]; nameOf: (id: string) => string }) {
   const { t } = useTranslation()
   const { toast } = useToast()
-  const [groupId, setGroupId] = useState(staffGroups[0]?.id ?? null)
+  const groupId = staffGroups[0]?.id ?? null
   const group = staffGroups.find((g) => g.id === groupId)
   const [byPlayer, setByPlayer] = useState<Map<string, WellbeingCheckin[]> | null>(null)
   const [loadThreshold, setLoadThreshold] = useState<number | null>(null)
@@ -171,12 +171,6 @@ function TeamWellbeing({ staffGroups, nameOf }: { staffGroups: Group[]; nameOf: 
     <div className="space-y-2 rounded-lg border border-hextech-border-dim p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-sm font-medium text-hextech-text-bright">{t('wellbeing.team', { defaultValue: 'Team wellbeing' })}</h4>
-        {staffGroups.length > 1 && (
-          <select value={groupId ?? ''} onChange={(e) => setGroupId(e.target.value)}
-            className="rounded border border-hextech-border-dim bg-hextech-elevated px-2 py-1 text-xs text-hextech-text">
-            {staffGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-          </select>
-        )}
       </div>
       {loadThreshold !== null && (
         <label className="flex items-center gap-2 text-xs text-hextech-text-dim">

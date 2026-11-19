@@ -3689,7 +3689,6 @@
     "codex": {
       "title": "Codex de l'équipe",
       "desc": "Tes règles passent avant les fiches Codex intégrées pour tous les membres.",
-      "group": "Groupe",
       "empty": "Aucune règle d'équipe. Ajoute la première ci-dessous.",
       "mistake": "Erreur visée",
       "mistakePlaceholder": "Tape une erreur, ou survole une famille",

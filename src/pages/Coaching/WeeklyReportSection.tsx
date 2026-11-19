@@ -24,7 +24,7 @@ function startOfWeek(d: Date): Date {
 export function WeeklyReportSection({ staffGroups }: { staffGroups: Group[] }) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
-  const [groupId, setGroupId] = useState(staffGroups[0]?.id ?? null)
+  const groupId = staffGroups[0]?.id ?? null
   const group = staffGroups.find((g) => g.id === groupId)
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()).toISOString().slice(0, 10))
   const [mode, setMode] = useState<'week' | 'tournament'>('week')
@@ -106,12 +106,6 @@ export function WeeklyReportSection({ staffGroups }: { staffGroups: Group[] }) {
           <CardTitle className="flex items-center gap-2 text-base">
             <FileBarChart className="h-5 w-5 text-hextech-gold" />{t('weeklyReport.title', { defaultValue: 'Weekly report' })}
           </CardTitle>
-          {staffGroups.length > 1 && (
-            <select value={groupId ?? ''} onChange={(e) => setGroupId(e.target.value)}
-              className="rounded border border-hextech-border-dim bg-hextech-elevated px-2 py-1 text-xs text-hextech-text">
-              {staffGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-          )}
         </div>
         <CardDescription>{t('weeklyReport.desc', { defaultValue: 'Volume, form, objectives, experiment verdicts, and mistake trends — computed on demand, not stored.' })}</CardDescription>
       </CardHeader>

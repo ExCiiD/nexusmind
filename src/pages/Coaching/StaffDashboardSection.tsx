@@ -30,7 +30,7 @@ function HelpHeader({ label, help }: { label: string; help: string }) {
 /** E2 (docs/PLAN_GESTION_EQUIPE.md): one row per player, shared by desktop + web. */
 export function StaffDashboardSection({ staffGroups }: { staffGroups: Group[] }) {
   const { t } = useTranslation()
-  const [groupId, setGroupId] = useState(staffGroups[0]?.id ?? null)
+  const groupId = staffGroups[0]?.id ?? null
   const [rows, setRows] = useState<PlayerDashboardRow[] | null>(null)
 
   useEffect(() => {
@@ -51,15 +51,6 @@ export function StaffDashboardSection({ staffGroups }: { staffGroups: Group[] })
             <LayoutDashboard className="h-5 w-5 text-hextech-gold" />
             {t('team.dashboard.title', { defaultValue: 'Staff dashboard' })}
           </CardTitle>
-          {staffGroups.length > 1 && (
-            <select
-              value={groupId ?? ''}
-              onChange={(e) => setGroupId(e.target.value)}
-              className="rounded border border-hextech-border-dim bg-hextech-elevated px-2 py-1 text-xs text-hextech-text"
-            >
-              {staffGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-          )}
         </div>
       </CardHeader>
       <CardContent>
