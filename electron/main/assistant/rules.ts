@@ -492,6 +492,107 @@ export const RULES: Rule[] = [
     why: { key: 'lastSessions', n: 'c0.sessions' },
   },
 
+  // ─ Benchmarks from the Nov. 2026 research (docs/RECHERCHE_CONNAISSANCES.md) ─
+  // Thresholds calibrated on 3,004 cached ranked games (patches 16.1–16.10): win rate by bucket, per role.
+  {
+    // Time dead: < 5 % of the game → 84 % wins, 8–11 % → 50 %, ≥ 14 % → under 31 %.
+    id: 'dead_time_high',
+    moments: TRENDS,
+    tone: 'negative',
+    priority: 76,
+    confidence: 0.8,
+    group: 'deaths',
+    when: [{ kind: 'stat', metric: 'deadPct', field: 'recentMean', op: '>=', value: 14, minGames: 5 }],
+    variants: 2,
+    params: { pct: { from: 'c0.value', digits: 0 }, n: 'c0.recentN' },
+    why: { key: 'lastGames', n: 'c0.recentN' },
+    action: { type: 'objective', objectiveId: 'tempo' },
+  },
+  {
+    id: 'pg_dead_time_high',
+    moments: ['post_game'],
+    tone: 'negative',
+    priority: 71,
+    confidence: 0.75,
+    group: 'deaths',
+    when: [
+      { kind: 'game', metric: 'deadPct', op: '>=', value: 17 },
+      { kind: 'gameZ', metric: 'deadPct', op: '>=', value: 1, minGames: 5 },
+    ],
+    variants: 2,
+    params: { pct: { from: 'c0.value', digits: 0 }, avg: { from: 'c1.avg', digits: 0 } },
+    why: { key: 'baseline', n: 'c1.n' },
+    action: { type: 'objective', objectiveId: 'tempo' },
+  },
+  {
+    // Supports: 0 control ward → 41 % wins, 1 → 47 %, 2 or more → 50–54 %.
+    id: 'support_control_wards_low',
+    moments: TRENDS,
+    tone: 'warning',
+    priority: 58,
+    confidence: 0.7,
+    group: 'vision',
+    when: [
+      { kind: 'role', bucket: 'support' },
+      { kind: 'stat', metric: 'controlWards', field: 'recentMean', op: '<', value: 2, minGames: 5 },
+    ],
+    variants: 2,
+    params: { wards: { from: 'c1.value', digits: 1 }, n: 'c1.recentN' },
+    why: { key: 'lastGames', n: 'c1.recentN' },
+    action: { type: 'drill', drillId: 'ward_timers' },
+  },
+  {
+    // Laners and junglers: no control ward → 47–48 % wins, at least one → 51–54 %.
+    id: 'control_wards_never',
+    moments: TRENDS,
+    tone: 'warning',
+    priority: 46,
+    confidence: 0.6,
+    group: 'vision',
+    when: [
+      { kind: 'role', bucket: 'support', not: true },
+      { kind: 'count', metric: 'controlWards', op: '<', value: 1, atLeast: 4, of: 5 },
+    ],
+    variants: 2,
+    params: { count: 'c1.matched', n: 'c1.of' },
+    why: { key: 'lastGames', n: 'c1.of' },
+    action: { type: 'drill', drillId: 'ward_timers' },
+  },
+  {
+    // Supports: under 1.5 vision/min → 31 % wins, 1.5–1.8 → 41 %, 2.7 and more → 55 %+.
+    id: 'support_vision_benchmark',
+    moments: TRENDS,
+    tone: 'warning',
+    priority: 62,
+    confidence: 0.7,
+    group: 'vision',
+    when: [
+      { kind: 'role', bucket: 'support' },
+      { kind: 'stat', metric: 'visionPerMin', field: 'recentMean', op: '<', value: 1.8, minGames: 5 },
+    ],
+    variants: 2,
+    params: { vision: { from: 'c1.value', digits: 2 }, n: 'c1.recentN' },
+    why: { key: 'lastGames', n: 'c1.recentN' },
+    action: { type: 'objective', objectiveId: 'vision_setup' },
+  },
+  {
+    // Junglers: under 0.6 vision/min → 40 % wins, 0.6–0.8 → 47 %, 1.0 and more → 54 %+.
+    id: 'jungle_vision_benchmark',
+    moments: TRENDS,
+    tone: 'warning',
+    priority: 58,
+    confidence: 0.65,
+    group: 'vision',
+    when: [
+      { kind: 'role', bucket: 'jungle' },
+      { kind: 'stat', metric: 'visionPerMin', field: 'recentMean', op: '<', value: 0.7, minGames: 5 },
+    ],
+    variants: 2,
+    params: { vision: { from: 'c1.value', digits: 2 }, n: 'c1.recentN' },
+    why: { key: 'lastGames', n: 'c1.recentN' },
+    action: { type: 'objective', objectiveId: 'vision_control' },
+  },
+
   // ─ Mental ─
   {
     id: 'tilt_break',

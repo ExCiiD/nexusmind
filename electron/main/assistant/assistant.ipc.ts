@@ -119,6 +119,8 @@ async function loadInputs(userId: string, puuids: string[]): Promise<{ games: Ga
       deathTimesSec: facts?.deathTimesSec ?? null,
       killParticipation: facts?.killParticipation ?? null,
       finalGoldDiff: facts?.finalGoldDiff ?? null,
+      controlWardsBought: facts?.controlWardsBought ?? null,
+      timeDeadSec: facts?.timeDeadSec ?? null,
       mistakes: g.mistakes.map((m) => ({
         id: m.id,
         tagSlug: m.tag.slug,

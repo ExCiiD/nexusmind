@@ -14,6 +14,10 @@ export interface TimelineFacts {
   lane: LaneRecord | null
   /** The player's team's total gold minus the enemy team's, at game end (R4). */
   finalGoldDiff: number | null
+  /** Control wards bought in the game (Match-V5 `visionWardsBoughtInGame`), null = unknown. */
+  controlWardsBought: number | null
+  /** Seconds spent dead in the game (Match-V5 `totalTimeSpentDead`), null = unknown. */
+  timeDeadSec: number | null
 }
 
 function parse(json: string | object | null | undefined): any {
@@ -46,10 +50,13 @@ export function extractTimelineFacts(
 ): TimelineFacts {
   const match = parse(matchJson)
   const timeline = parse(timelineJson)
-  const empty: TimelineFacts = { deathTimesSec: null, killParticipation: null, lane: null, finalGoldDiff: null }
+  const empty: TimelineFacts = { deathTimesSec: null, killParticipation: null, lane: null, finalGoldDiff: null, controlWardsBought: null, timeDeadSec: null }
   if (!match) return empty
   const p = resolveParticipant(match, selector)
   if (!p) return empty
+  const count = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null)
+  const controlWardsBought = count(p.visionWardsBoughtInGame)
+  const timeDeadSec = count(p.totalTimeSpentDead)
 
   const allParticipants = match.info.participants as any[]
   const teamKills = allParticipants
@@ -81,5 +88,5 @@ export function extractTimelineFacts(
       lane = laneFromReport(analyzeLanePhase({ matchJson: match, timelineJson: timeline, selector }).report)
     } catch { lane = null }
   }
-  return { deathTimesSec, killParticipation, lane, finalGoldDiff }
+  return { deathTimesSec, killParticipation, lane, finalGoldDiff, controlWardsBought, timeDeadSec }
 }

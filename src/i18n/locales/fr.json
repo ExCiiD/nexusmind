@@ -1772,7 +1772,9 @@
       "laneScore": "Score de phase de lane",
       "objectiveRespected": "Objectif respecté",
       "kda": "KDA",
-      "goldDiff14": "Écart d'or à 14 min"
+      "goldDiff14": "Écart d'or à 14 min",
+      "controlWards": "Pinks achetées",
+      "deadPct": "Part de la partie passée mort"
     },
     "rules": {
       "early_deaths_pattern": {
@@ -1910,6 +1912,30 @@
       "session_fatigue": {
         "v1": "Sur {{sessions}} sessions de 4 games ou plus, vos performances baissent nettement à partir de la 4e partie. Une pause plus tôt pourrait aider.",
         "v2": "Fatigue de série détectée sur {{sessions}} sessions : les games 4+ sont clairement en dessous des 3 premières."
+      },
+      "dead_time_high": {
+        "v1": "Vous avez passé en moyenne {{pct}} % de vos {{n}} dernières parties mort. Le temps passé mort est le vrai coût d'une mort : sur 3 000 parties classées récentes, les joueurs sous 8 % gagnent la plupart de leurs parties, et moins d'une sur trois au-delà de 14 %.",
+        "v2": "{{pct}} % de chaque partie passé mort ces derniers temps ({{n}} parties). Visez moins de 10 % : moins de morts, et aucune dans la minute qui précède un objectif, quand le timer est long et la carte ouverte."
+      },
+      "pg_dead_time_high": {
+        "v1": "Vous avez passé {{pct}} % de cette partie mort, contre {{avg}} % d'habitude. Les morts de fin de partie coûtent le plus : leurs timers de respawn sont les plus longs.",
+        "v2": "{{pct}} % de cette partie sous timer de respawn (d'habitude {{avg}} %). Cherchez la mort qui précède un objectif ou une tour perdus."
+      },
+      "support_control_wards_low": {
+        "v1": "{{wards}} pinks par partie sur vos {{n}} dernières parties. Les supports qui en achètent 2 ou plus gagnent nettement plus souvent que ceux qui en achètent 0 ou 1 : achetez-en une à chaque retour en base.",
+        "v2": "Seulement {{wards}} pinks par partie récemment ({{n}} parties). Gardez-en toujours une sur la carte : dans votre buisson de lane en début de partie, puis à l'entrée du prochain objectif."
+      },
+      "control_wards_never": {
+        "v1": "Aucune pink dans {{count}} de vos {{n}} dernières parties. Une par retour en base suffit : elle protège votre lane des ganks, ou l'objectif que vous jouez.",
+        "v2": "{{count}} de vos {{n}} dernières parties sans une seule pink. Les joueurs qui en achètent au moins une gagnent plus souvent : ajoutez-la à votre premier ou deuxième back."
+      },
+      "support_vision_benchmark": {
+        "v1": "{{vision}} de score de vision par minute sur vos {{n}} dernières parties. Pour un support, sous 1,8 les défaites sont bien plus fréquentes : visez 2 ou plus.",
+        "v2": "Vision de support à {{vision}} par minute récemment ({{n}} parties). Wardez à chaque rotation, utilisez votre trinket dès qu'il est disponible et nettoyez la vision avant chaque objectif."
+      },
+      "jungle_vision_benchmark": {
+        "v1": "{{vision}} de score de vision par minute sur vos {{n}} dernières parties. Sous 0,7, un jungler joue les objectifs à l'aveugle : visez 1 ou plus.",
+        "v2": "Vision de jungle à {{vision}} par minute récemment ({{n}} parties). Utilisez votre trinket dès qu'il est disponible et finissez vos clears du côté du prochain objectif, avec une ward."
       }
     },
     "focus": "Focus",

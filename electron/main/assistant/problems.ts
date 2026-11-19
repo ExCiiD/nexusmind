@@ -43,7 +43,7 @@ export const PROBLEMS: Problem[] = [
   {
     id: 'deaths',
     fundamentalId: 'tempo',
-    rules: ['high_deaths_trend', 'pg_deaths_spike'],
+    rules: ['high_deaths_trend', 'pg_deaths_spike', 'dead_time_high', 'pg_dead_time_high'],
     mistakeTags: ['dove-tower', 'overstay'],
     driverMetric: 'deaths',
     impactPrior: { laner: 1.15, jungle: 1.15, support: 1.1 },
@@ -59,7 +59,7 @@ export const PROBLEMS: Problem[] = [
   {
     id: 'vision',
     fundamentalId: 'vision_control',
-    rules: ['vision_drop', 'pg_vision_low', 'pg_vision_high'],
+    rules: ['vision_drop', 'pg_vision_low', 'pg_vision_high', 'support_control_wards_low', 'control_wards_never', 'support_vision_benchmark', 'jungle_vision_benchmark'],
     mistakeTags: ['forgot-trinket', 'walked-into-ward', 'face-checked'],
     driverMetric: 'visionPerMin',
     impactPrior: { laner: 0.85, jungle: 1.1, support: 1.25 },
