@@ -1885,12 +1885,12 @@
         "v3": "Session longue ({{hours}} h) et {{losses}} défaites d'affilée : la prochaine partie a plus de risques de mal tourner. Éloignez-vous un moment."
       },
       "loss_streak": {
-        "v1": "{{losses}} défaites d'affilée. Faites une courte pause et repartez à zéro avant de relancer.",
-        "v2": "Série de défaites ({{losses}}). Respirez, buvez un verre d'eau et revenez l'esprit clair."
+        "v1": "{{losses}} défaites d'affilée. Le tilt dure en moyenne une trentaine de minutes : faites une vraie pause avant de relancer.",
+        "v2": "Série de défaites ({{losses}}). Éloignez-vous une demi-heure, buvez un verre d'eau et revenez l'esprit clair — ou arrêtez pour aujourd'hui."
       },
       "long_session": {
-        "v1": "Déjà {{games}} parties cette session. La fatigue s'installe — prévoyez une pause.",
-        "v2": "Cela fait {{games}} parties. La concentration baisse avec le temps : une courte pause vous aidera."
+        "v1": "Déjà {{games}} parties cette session. Le winrate baisse de plus de 10 % entre la première et la dernière partie des longues sessions : prévoyez une pause ou arrêtez-vous ici.",
+        "v2": "Cela fait {{games}} parties. La concentration baisse partie après partie : une pause de 15 minutes, ou la fin de la session, vous aidera."
       },
       "win_streak": {
         "v1": "{{wins}} victoires d'affilée ! Gardez la même routine.",
@@ -1936,6 +1936,18 @@
       "jungle_vision_benchmark": {
         "v1": "{{vision}} de score de vision par minute sur vos {{n}} dernières parties. Sous 0,7, un jungler joue les objectifs à l'aveugle : visez 1 ou plus.",
         "v2": "Vision de jungle à {{vision}} par minute récemment ({{n}} parties). Utilisez votre trinket dès qu'il est disponible et finissez vos clears du côté du prochain objectif, avec une ward."
+      },
+      "two_loss_stop": {
+        "v1": "{{losses}} défaites d'affilée. Relancer tout de suite, c'est là que la partie suivante se passe le moins bien : faites une vraie pause (une trentaine de minutes) ou arrêtez la session ici.",
+        "v2": "Deux défaites de suite. Le tilt dure en moyenne une demi-heure : éloignez-vous avant la prochaine partie, et gardez votre champion principal au retour."
+      },
+      "movement_break": {
+        "v1": "{{hours}} h de jeu sans vraie pause. Levez-vous et marchez 6 minutes avant la prochaine partie : la planification et les décisions en sortent plus nettes.",
+        "v2": "Plus d'une heure sur la chaise ({{hours}} h). 6 minutes de marche entre deux parties font plus pour votre concentration qu'une pause assise."
+      },
+      "new_champion_learning": {
+        "v1": "Partie n° {{count}} sur {{champion}} dans votre historique récent. Les champions joués moins d'une vingtaine de fois gagnent moins souvent : apprenez les nouveaux en partie normale d'abord.",
+        "v2": "{{champion}} est encore nouveau pour vous ({{count}} parties récentes). Comptez une phase d'apprentissage d'environ 20 parties, et jugez-le sur les morts et le CS avant le winrate."
       }
     },
     "focus": "Focus",

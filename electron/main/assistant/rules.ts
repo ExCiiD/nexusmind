@@ -52,6 +52,8 @@ export type Condition =
   | { kind: 'badHour'; startHour: number; endHour: number; minGames: number; gapAtLeast: number; as?: string }
   /** AS5: mean perfIndex of games 4+ in a session is at least `gapAtLeast` below games 1-3, across enough sessions. */
   | { kind: 'sessionFatigue'; minSessionGames: number; minQualifyingSessions: number; gapAtLeast: number; as?: string }
+  /** The target (or newest) game is on a champion with at most `maxPriorGames` earlier games in the loaded history. */
+  | { kind: 'newChampion'; maxPriorGames: number; as?: string }
 
 export type ActionSpec =
   | { type: 'objective'; objectiveId: string }
@@ -462,7 +464,9 @@ export const RULES: Rule[] = [
     tone: 'warning',
     priority: 56,
     confidence: 0.6,
-    when: [{ kind: 'weakChampion', minGames: 10, maxWinrate: 40 }],
+    // 20 games, not 10: a new champion runs at ~44 % for its first ~20 games, and 4 wins in 10 games is compatible
+    // with a true winrate anywhere from 17 to 69 % (docs/RECHERCHE_CONNAISSANCES.md).
+    when: [{ kind: 'weakChampion', minGames: 20, maxWinrate: 40 }],
     variants: 2,
     params: { champion: 'c0.champion', games: 'c0.games', winrate: 'c0.winrate' },
     why: { key: 'lastGames', n: 'c0.games' },
@@ -474,7 +478,8 @@ export const RULES: Rule[] = [
     tone: 'warning',
     priority: 50,
     confidence: 0.55,
-    when: [{ kind: 'badHour', startHour: 0, endHour: 5, minGames: 15, gapAtLeast: 10 }],
+    // 20 games in each bucket: the population evidence for late-night play is weak, so the insight stays personal.
+    when: [{ kind: 'badHour', startHour: 0, endHour: 5, minGames: 20, gapAtLeast: 10 }],
     variants: 2,
     params: { nightWinrate: 'c0.nightWinrate', overallWinrate: 'c0.overallWinrate', n: 'c0.nightGames' },
     why: { key: 'lastGames', n: 'c0.nightGames' },
@@ -609,7 +614,8 @@ export const RULES: Rule[] = [
     variants: 3,
     params: { losses: 'c0.value', hours: { from: 'c1.hours', digits: 1 } },
     why: { key: 'thisSession' },
-    action: { type: 'break', minutes: 15 },
+    // Tilt lasts about 30 minutes on average (TILT questionnaire study, 2024): a 10-15 minute pause is too short.
+    action: { type: 'break', minutes: 30 },
   },
   {
     id: 'loss_streak',
@@ -622,20 +628,68 @@ export const RULES: Rule[] = [
     variants: 2,
     params: { losses: 'c0.value' },
     why: { key: 'lastGames', n: 'c0.value' },
-    action: { type: 'break', minutes: 10 },
+    action: { type: 'break', minutes: 30 },
   },
   {
+    // Stop-loss at 2: re-queuing at once after two losses gave the worst next-game results (Riot-API study, ~100k games).
+    id: 'two_loss_stop',
+    moments: ['session', 'post_game'],
+    tone: 'warning',
+    priority: 78,
+    confidence: 0.65,
+    group: 'tilt',
+    when: [
+      { kind: 'context', key: 'lossStreak', op: '>=', value: 2 },
+      { kind: 'context', key: 'sessionLosses', op: '>=', value: 2 },
+    ],
+    variants: 2,
+    params: { losses: 'c0.value' },
+    why: { key: 'thisSession' },
+    action: { type: 'break', minutes: 30 },
+  },
+  {
+    // Session fatigue (242k ranked games, 2018): win rate falls by more than 10 % from the first to the last game of
+    // sessions of 3+ games; coaches cap sessions around 3 games.
     id: 'long_session',
     moments: ['session', 'post_game'],
     tone: 'neutral',
     priority: 55,
     confidence: 0.7,
     group: 'tilt',
-    when: [{ kind: 'context', key: 'sessionGames', op: '>=', value: 6 }],
+    when: [{ kind: 'context', key: 'sessionGames', op: '>=', value: 4 }],
     variants: 2,
     params: { games: 'c0.value' },
     why: { key: 'thisSession' },
-    action: { type: 'break', minutes: 10 },
+    action: { type: 'break', minutes: 15 },
+  },
+  {
+    // A 6-minute walk every 60 minutes of play (randomised crossover trials with esports players, 2021 and 2024).
+    id: 'movement_break',
+    moments: ['session', 'post_game'],
+    tone: 'neutral',
+    priority: 40,
+    confidence: 0.6,
+    group: 'tilt',
+    when: [
+      { kind: 'context', key: 'sessionMinutes', op: '>=', value: 60 },
+      { kind: 'context', key: 'sessionGames', op: '>=', value: 2 },
+    ],
+    variants: 2,
+    params: { hours: { from: 'c0.hours', digits: 1 } },
+    why: { key: 'thisSession' },
+    action: { type: 'break', minutes: 6 },
+  },
+  {
+    // Champion experience: ~44 % win rate under ~20 games on a champion (1M-game Riot-API analyses, 2022-2023).
+    id: 'new_champion_learning',
+    moments: ['post_game'],
+    tone: 'neutral',
+    priority: 40,
+    confidence: 0.6,
+    when: [{ kind: 'newChampion', maxPriorGames: 4 }],
+    variants: 2,
+    params: { champion: 'c0.champion', count: 'c0.count' },
+    why: { key: 'thisGame' },
   },
   {
     id: 'win_streak',
@@ -809,7 +863,8 @@ export function evaluateCondition(c: Condition, ctx: PlayerContext, target: Eval
     case 'badHour': {
       const inWindow = (hour: number) => (c.startHour <= c.endHour ? hour >= c.startHour && hour < c.endHour : hour >= c.startHour || hour < c.endHour)
       const night = ctx.games.filter((g) => inWindow(new Date(g.endedAt).getHours()))
-      if (night.length < c.minGames || ctx.games.length < c.minGames) return { ok: false, evidence: {} }
+      // Enough games on both sides of the comparison, not just at night.
+      if (night.length < c.minGames || ctx.games.length - night.length < c.minGames) return { ok: false, evidence: {} }
       const nightWinrate = (night.filter((g) => g.values.win === 1).length / night.length) * 100
       const overallWinrate = (ctx.games.filter((g) => g.values.win === 1).length / ctx.games.length) * 100
       const gap = overallWinrate - nightWinrate
@@ -842,6 +897,12 @@ export function evaluateCondition(c: Condition, ctx: PlayerContext, target: Eval
         ok: gap >= c.gapAtLeast,
         evidence: { sessions: qualifying, earlyPerf: Number(earlyMean.toFixed(2)), latePerf: Number(lateMean.toFixed(2)), gap: Number(gap.toFixed(2)) },
       }
+    }
+    case 'newChampion': {
+      const g = targetGame ?? ctx.games[0]
+      if (!g || !g.champion) return { ok: false, evidence: {} }
+      const prior = ctx.games.filter((x) => x.champion === g.champion && x.endedAt < g.endedAt).length
+      return { ok: prior <= c.maxPriorGames, evidence: { champion: g.champion, prior, count: prior + 1 }, games: [g] }
     }
   }
 }

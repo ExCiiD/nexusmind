@@ -117,10 +117,10 @@ export const PROBLEMS: Problem[] = [
   },
   { id: 'self-assessment', fundamentalId: null, rules: ['kpi_bias', 'pg_self_bias', 'pg_harsh_self'], mistakeTags: [], impactPrior: EVEN, unscored: true },
   { id: 'review-habit', fundamentalId: null, rules: ['review_backlog'], mistakeTags: [], impactPrior: EVEN, unscored: true },
-  { id: 'tilt-fatigue', fundamentalId: 'resilience', rules: ['tilt_break', 'loss_streak', 'long_session'], mistakeTags: [], impactPrior: EVEN, unscored: true },
+  { id: 'tilt-fatigue', fundamentalId: 'resilience', rules: ['tilt_break', 'loss_streak', 'two_loss_stop', 'long_session', 'movement_break'], mistakeTags: [], impactPrior: EVEN, unscored: true },
   { id: 'momentum', fundamentalId: null, rules: ['win_streak'], mistakeTags: [], impactPrior: EVEN, unscored: true },
   // AS3/AS4/AS5: patterns rather than fundamentals — informational, no measurable experiment.
-  { id: 'champion-pool', fundamentalId: null, rules: ['weak_champion_pool'], mistakeTags: [], impactPrior: EVEN, unscored: true },
+  { id: 'champion-pool', fundamentalId: null, rules: ['weak_champion_pool', 'new_champion_learning'], mistakeTags: [], impactPrior: EVEN, unscored: true },
   { id: 'play-schedule', fundamentalId: null, rules: ['bad_hour_performance'], mistakeTags: [], impactPrior: EVEN, unscored: true },
   { id: 'session-fatigue', fundamentalId: null, rules: ['session_fatigue'], mistakeTags: [], impactPrior: EVEN, unscored: true },
 ]
