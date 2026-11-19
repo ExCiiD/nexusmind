@@ -178,12 +178,9 @@ export function registerShareHandlers() {
     const MAX_DISCORD_BYTES = 8 * 1024 * 1024 // 8 MB (free tier)
     if (fileSize > MAX_DISCORD_BYTES) throw new Error('FILE_TOO_LARGE')
 
-    // Build multipart form via native fetch (Node 18+)
-    const { FormData, Blob } = await import('buffer').then(() => require('undici')).catch(() => ({
-      FormData: globalThis.FormData,
-      Blob: globalThis.Blob,
-    }))
-
+    // Node's global FormData/Blob (Electron 33 ships Node 20). Taking them from
+    // the npm `undici` package broke this once it became a dependency: it has
+    // no Blob export ("Blob is not a constructor").
     const fileBuffer = await require('fs').promises.readFile(filePath)
     const form = new FormData()
 
@@ -210,22 +207,11 @@ export function registerShareHandlers() {
 
     const fileBuffer = await require('fs').promises.readFile(filePath)
 
-    // Use undici FormData if native FormData is not available in this Node version
-    let FormDataClass: typeof FormData
-    let BlobClass: typeof Blob
-    try {
-      const undici = require('undici')
-      FormDataClass = undici.FormData
-      BlobClass = undici.Blob
-    } catch {
-      FormDataClass = globalThis.FormData
-      BlobClass = globalThis.Blob
-    }
-
-    const form = new FormDataClass()
+    // Global FormData/Blob, as above (the npm undici package has no Blob).
+    const form = new FormData()
     form.append('reqtype', 'fileupload')
     form.append('time', `${expiryHours}h`)
-    form.append('fileToUpload', new BlobClass([fileBuffer], { type: 'video/mp4' }), basename(filePath))
+    form.append('fileToUpload', new Blob([fileBuffer], { type: 'video/mp4' }), basename(filePath))
 
     const res = await fetch('https://litterbox.catbox.moe/resources/internals/api.php', {
       method: 'POST',
