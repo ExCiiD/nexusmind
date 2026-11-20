@@ -53,7 +53,10 @@ export default defineConfig({
     // onnxruntime-node (champion cut-outs) is only a transitive dependency, via
     // @huggingface/transformers: kept external so its native binding loads
     // from node_modules (asar-unpacked) instead of being bundled.
-    plugins: [externalizeDepsPlugin({ include: ['onnxruntime-node'] })],
+    // ws (Supabase Realtime, beta.15) stays external too: bundled, its optional `bufferutil` require
+    // became an empty stub and every frame >= 48 bytes threw "bufferUtil.mask is not a function".
+    // Loaded by Node from node_modules, the optional require fails cleanly and ws uses its JS fallback.
+    plugins: [externalizeDepsPlugin({ include: ['onnxruntime-node', 'ws'] })],
     build: {
       rollupOptions: {
         input: {
