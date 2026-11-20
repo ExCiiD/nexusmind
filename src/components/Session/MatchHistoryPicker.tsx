@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, History, Download, Swords, Check, AlertTriangle, Filter, ChevronsDown } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { formatGameTime, formatKDA } from '@/lib/utils'
 import { useTranslation } from 'react-i18next'
+import { PICKER_SLOW_MS, normalizeHistoryResult, pickerErrorKey } from '@/lib/matchHistoryPickerView'
+import { riotErrorText, riotRateLimitSeconds } from '@/lib/riotErrors'
 import { useUserStore } from '@/store/useUserStore'
 import { AccountBadge } from '@/components/ui/AccountBadge'
 
@@ -24,6 +26,7 @@ interface MatchEntry {
   win: boolean
   gameEndAt: string
   alreadyImported: boolean
+  offSession?: boolean
   accountName?: string
   accountProfileIconId?: number
 }
@@ -43,35 +46,50 @@ export function MatchHistoryPicker({ onImported }: MatchHistoryPickerProps) {
   const [matches, setMatches] = useState<MatchEntry[]>([])
   const [fetchedCount, setFetchedCount] = useState(15)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  // Never a spinner forever: after 25 s « Riot met du temps à répondre » with Réessayer / Fermer (a late answer is
+  // still shown); an error is shown translated, in place. Each request has an id: Fermer or a newer request makes an
+  // older answer stale.
+  const [problem, setProblem] = useState<{ kind: 'slow' | 'error'; text?: string } | null>(null)
+  const [partial, setPartial] = useState(false)
+  const requestId = useRef(0)
+  const slowTimer = useRef<ReturnType<typeof setTimeout>>()
+  useEffect(() => () => clearTimeout(slowTimer.current), [])
 
-  const fetchHistory = async () => {
-    setLoading(true)
-    setSelected(new Set())
-    setFetchedCount(15)
+  const load = async (count: number, more: boolean) => {
+    const id = ++requestId.current
+    clearTimeout(slowTimer.current)
+    setProblem(null)
+    if (more) setLoadingMore(true); else { setLoading(true); setSelected(new Set()) }
+    slowTimer.current = setTimeout(() => {
+      if (id !== requestId.current) return
+      setLoading(false); setLoadingMore(false)
+      setProblem({ kind: 'slow' })
+    }, PICKER_SLOW_MS)
     try {
-      const history = await window.api.fetchMatchHistory(15)
-      setMatches(history)
+      const { list, partial: isPartial } = normalizeHistoryResult<MatchEntry>(await window.api.fetchMatchHistory(count))
+      if (id !== requestId.current) return
+      setMatches(list)
+      setPartial(isPartial)
+      setFetchedCount(count)
+      setProblem(null)
       setOpen(true)
-    } catch (err: any) {
-      toast({ title: t('history.picker.errorTitle'), description: err.message, variant: 'destructive' })
+    } catch (err) {
+      if (id !== requestId.current) return
+      setProblem({ kind: 'error', text: riotRateLimitSeconds(err) !== null ? riotErrorText(err, t) : t(pickerErrorKey(err)) })
     } finally {
-      setLoading(false)
+      if (id === requestId.current) { clearTimeout(slowTimer.current); setLoading(false); setLoadingMore(false) }
     }
   }
-
-  const fetchMore = async () => {
-    const nextCount = fetchedCount + 10
-    setLoadingMore(true)
-    try {
-      const history = await window.api.fetchMatchHistory(nextCount)
-      setMatches(history)
-      setFetchedCount(nextCount)
-    } catch (err: any) {
-      toast({ title: t('history.picker.errorTitle'), description: err.message, variant: 'destructive' })
-    } finally {
-      setLoadingMore(false)
-    }
-  }
+  const fetchHistory = () => load(15, false)
+  const fetchMore = () => load(fetchedCount + 10, true)
+  const closeProblem = () => { requestId.current++; clearTimeout(slowTimer.current); setProblem(null); setLoading(false); setLoadingMore(false) }
+  const problemPanel = problem && (
+    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-hextech-gold/40 bg-hextech-gold/5 px-3 py-2 text-sm text-hextech-text">
+      <span className="min-w-0 flex-1">{problem.kind === 'slow' ? t('history.picker.slow') : problem.text}</span>
+      <Button size="sm" variant="outline" onClick={() => { void (open ? load(fetchedCount + 10, true) : fetchHistory()) }}>{t('history.picker.retry')}</Button>
+      <Button size="sm" variant="ghost" onClick={closeProblem}>{t('common.close')}</Button>
+    </div>
+  )
 
   const toggleSelect = (matchId: string, alreadyImported: boolean) => {
     if (alreadyImported) return
@@ -110,10 +128,13 @@ export function MatchHistoryPicker({ onImported }: MatchHistoryPickerProps) {
 
   if (!open) {
     return (
-      <Button variant="outline" onClick={fetchHistory} disabled={loading} className="gap-2">
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <History className="h-4 w-4" />}
-        {t('history.picker.button')}
-      </Button>
+      <div className="space-y-2">
+        <Button variant="outline" onClick={() => { void fetchHistory() }} disabled={loading} className="gap-2">
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <History className="h-4 w-4" />}
+          {t('history.picker.button')}
+        </Button>
+        {problemPanel}
+      </div>
     )
   }
 
@@ -122,6 +143,8 @@ export function MatchHistoryPicker({ onImported }: MatchHistoryPickerProps) {
 
   return (
     <div className="space-y-4 rounded-xl border border-hextech-border bg-hextech-panel p-4">
+      {problemPanel}
+      {partial && <p className="text-xs text-hextech-gold">{t('history.picker.partial')}</p>}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-display font-semibold text-hextech-gold-bright flex items-center gap-2">
@@ -206,6 +229,9 @@ export function MatchHistoryPicker({ onImported }: MatchHistoryPickerProps) {
                     {disabled && (
                       <div className="text-xs text-hextech-text-dim">{t('history.picker.alreadyImported')}</div>
                     )}
+                    {!disabled && m.offSession && (
+                      <div className="text-xs text-hextech-cyan">{t('history.picker.offSession')}</div>
+                    )}
                   </div>
                 </div>
               </button>
@@ -220,13 +246,13 @@ export function MatchHistoryPicker({ onImported }: MatchHistoryPickerProps) {
             variant="ghost"
             size="sm"
             className="gap-1.5 text-xs text-hextech-text-dim hover:text-hextech-text"
-            onClick={fetchMore}
+            onClick={() => { void fetchMore() }}
             disabled={loadingMore}
           >
             {loadingMore
               ? <Loader2 className="h-3 w-3 animate-spin" />
               : <ChevronsDown className="h-3 w-3" />}
-            {loadingMore ? 'Loading…' : 'Load 10 more'}
+            {loadingMore ? t('common.loading') : t('history.picker.loadMore')}
           </Button>
         </div>
       )}

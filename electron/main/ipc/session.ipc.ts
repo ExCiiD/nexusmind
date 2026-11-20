@@ -3,6 +3,8 @@ import { getPrisma } from '../database'
 import { tryUnlockBadge } from '../badgeUnlock'
 import { getMatchIds, getMatch, getMatchTimeline, extractPlayerStats } from '../riotClient'
 import { forgetIgnoredMatches, rememberDeletedMatches } from '../ignoredMatches'
+import { pickNewest, PICK_CONCURRENCY, PICK_DEADLINE_MS } from '../matchHistoryPickCore'
+import { isOffSessionSession } from '../offSessionGames'
 
 /**
  * Completes a session: status, optional conclusion/summary, XP, session-count
@@ -152,6 +154,9 @@ export function registerSessionHandlers() {
     }
   })
 
+  // Beta.16: the picker of "Importer depuis l'historique". The `count` newest games of all accounts, read from the
+  // local cache first, at most 4 Riot reads at a time, and what is ready after 20 s rather than nothing
+  // (matchHistoryPickCore.ts). It used to read every listed match of every account at once, without the cache.
   ipcMain.handle('riot:fetch-match-history', async (_event, count = 10) => {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })
@@ -159,49 +164,63 @@ export function registerSessionHandlers() {
 
     const accounts = await prisma.account.findMany({ where: { userId: user.id } })
     const queueFilter = (user.queueFilter ?? 'both') as 'soloq' | 'flex' | 'both'
-
-    const allAccountPuuids = [
-      { puuid: user.puuid, region: user.region },
-      ...accounts.map((a) => ({ puuid: a.puuid, region: a.region })),
-    ]
-    const allPuuids = allAccountPuuids.map((a) => a.puuid)
-
     const parsed = Number(count)
     const clampedCount = Number.isFinite(parsed) ? Math.max(1, Math.min(parsed, 100)) : 10
+    const deadlineAt = Date.now() + PICK_DEADLINE_MS
 
-    const perAccount = await Promise.all(
-      allAccountPuuids.map(({ puuid, region }) =>
-        getMatchIds(puuid, region, clampedCount, 0, queueFilter).catch(() => [] as string[]),
-      ),
-    )
-    const merged = [...new Set(perAccount.flat())]
-    if (merged.length === 0) return []
+    const owners = [
+      { puuid: user.puuid, region: user.region, name: user.displayName || user.summonerName },
+      ...accounts.map((a) => ({ puuid: a.puuid, region: a.region, name: a.gameName ?? (user.displayName || user.summonerName) })),
+    ].filter((a) => a.puuid)
 
-    const results = await Promise.allSettled(
-      merged.map(async (id) => {
-        const existing = await prisma.game.findUnique({ where: { matchId: id } })
-        const matchData = await getMatch(id, user.region)
-        const resolvedPuuid = allPuuids.find((p) =>
-          matchData.info?.participants?.some((pp: any) => pp.puuid === p),
-        ) ?? user.puuid
-        const stats = extractPlayerStats(matchData, resolvedPuuid)
-        if (!stats) return null
+    // The lists, on each account's own server (riotRegionCore.ts), within the same deadline.
+    const lists = await Promise.race([
+      Promise.all(owners.map(async (owner) => ({
+        tag: owner,
+        ids: await getMatchIds(owner.puuid, owner.region, clampedCount, 0, queueFilter).catch(() => [] as string[]),
+      }))),
+      new Promise<null>((r) => setTimeout(() => r(null), PICK_DEADLINE_MS)),
+    ])
+    if (!lists) return []
 
-        let accountName = user.displayName || user.summonerName
-        if (resolvedPuuid !== user.puuid) {
-          const acc = accounts.find((a) => a.puuid === resolvedPuuid)
-          if (acc) accountName = acc.gameName ?? accountName
-        }
+    const load = async (matchId: string, owner: (typeof owners)[number]) => {
+      let matchData: any = null
+      const cached = await prisma.matchCache.findUnique({ where: { matchId }, select: { matchJson: true } }).catch(() => null)
+      if (cached?.matchJson) {
+        try { matchData = JSON.parse(cached.matchJson) } catch { matchData = null }
+      }
+      if (!matchData) {
+        // The match id names its server; the account's region is only the fallback.
+        matchData = await getMatch(matchId, owner.region)
+        await prisma.matchCache.upsert({
+          where: { matchId },
+          create: { matchId, matchJson: JSON.stringify(matchData) },
+          update: {},
+        }).catch(() => {})
+      }
+      const at = Number(matchData?.info?.gameEndTimestamp ?? matchData?.info?.gameStartTimestamp ?? matchData?.info?.gameCreation ?? 0)
+      return at ? { at, data: matchData } : null
+    }
 
-        return { ...stats, alreadyImported: !!existing, accountName }
-      }),
-    )
+    const picked = await pickNewest(lists, clampedCount, load, { concurrency: PICK_CONCURRENCY, deadlineAt })
+    // A game in the off-session container (played with no session, found by the detector or the catch-up) is not
+    // "already imported": the player can still add it to the session, and session:import-games moves it there.
+    const existing = await prisma.game.findMany({
+      where: { matchId: { in: picked.map((p) => p.id) } },
+      select: { matchId: true, session: { select: { objectiveId: true } } },
+    })
+    const inSession = new Set(existing.filter((g) => !isOffSessionSession(g.session)).map((g) => g.matchId))
+    const offSession = new Set(existing.filter((g) => isOffSessionSession(g.session)).map((g) => g.matchId))
 
-    return results
-      .filter((r) => r.status === 'fulfilled' && r.value !== null)
-      .map((r) => (r as PromiseFulfilledResult<any>).value)
+    return picked
+      .map((p) => {
+        const stats = extractPlayerStats(p.data, p.tag.puuid)
+        return stats
+          ? { ...stats, alreadyImported: inSession.has(p.id), offSession: offSession.has(p.id), accountName: p.tag.name }
+          : null
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
       .sort((a: any, b: any) => new Date(b.gameEndAt).getTime() - new Date(a.gameEndAt).getTime())
-      .slice(0, clampedCount)
   })
 
   ipcMain.handle('session:import-games', async (_event, matchIds: string[]) => {
@@ -220,8 +239,20 @@ export function registerSessionHandlers() {
 
     const imported: any[] = []
     for (const matchId of matchIds) {
-      const existing = await prisma.game.findUnique({ where: { matchId } })
-      if (existing) continue
+      const existing = await prisma.game.findUnique({ where: { matchId }, include: { session: { select: { userId: true, objectiveId: true } } } })
+      if (existing) {
+        // Off-session game of this profile: moved into the session with its recording, review and mistakes
+        // (they hang off the Game), and counted in the session since the player picked it.
+        if (isOffSessionSession(existing.session) && existing.session.userId === user.id) {
+          const { session: _s, ...moved } = await prisma.game.update({
+            where: { id: existing.id },
+            data: { sessionId: activeSession.id, isSessionEligible: true },
+            include: { session: { select: { userId: true, objectiveId: true } } },
+          })
+          imported.push(moved)
+        }
+        continue
+      }
 
       try {
         // Check cache first — avoids redundant API calls and cross-region issues

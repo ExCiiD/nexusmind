@@ -970,13 +970,25 @@
       "subtitle": "Select games to add to the current session",
       "empty": "No recent games found.",
       "alreadyImported": "Already imported",
+      "offSession": "Off-session · add it",
       "selectAll": "Select all",
       "selectNone": "Clear",
       "import": "Import {{count}} game(s)",
       "importedTitle": "Games imported",
       "importedDesc": "{{count}} game(s) added to the session.",
       "importErrorTitle": "Import failed",
-      "errorTitle": "Could not fetch history"
+      "errorTitle": "Could not fetch history",
+      "slow": "Riot is taking a while to answer.",
+      "retry": "Try again",
+      "partial": "Partial list: Riot didn’t return every game. Try again later for the rest.",
+      "loadMore": "Load 10 more",
+      "errors": {
+        "noAccount": "No Riot account is set up in the app.",
+        "timeout": "Riot didn’t answer in time.",
+        "offline": "No connection to Riot. Check your internet connection.",
+        "riotUnavailable": "Riot access is unavailable right now.",
+        "generic": "Your match history couldn’t be loaded."
+      }
     },
     "deleteSelected": "Delete",
     "selected": "selected",

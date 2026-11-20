@@ -970,13 +970,25 @@
       "subtitle": "Sélectionnez des parties à ajouter à la session en cours",
       "empty": "Aucune partie récente trouvée.",
       "alreadyImported": "Déjà importée",
+      "offSession": "Hors session · à ajouter",
       "selectAll": "Tout sélectionner",
       "selectNone": "Effacer",
       "import": "Importer {{count}} partie(s)",
       "importedTitle": "Parties importées",
       "importedDesc": "{{count}} partie(s) ajoutée(s) à la session.",
       "importErrorTitle": "Échec de l'importation",
-      "errorTitle": "Impossible de récupérer l'historique"
+      "errorTitle": "Impossible de récupérer l'historique",
+      "slow": "Riot met du temps à répondre.",
+      "retry": "Réessayer",
+      "partial": "Liste partielle : Riot n’a pas renvoyé toutes les parties. Réessaie plus tard pour le reste.",
+      "loadMore": "Charger 10 de plus",
+      "errors": {
+        "noAccount": "Aucun compte Riot n’est configuré dans l’app.",
+        "timeout": "Riot n’a pas répondu à temps.",
+        "offline": "Pas de connexion à Riot. Vérifie ta connexion internet.",
+        "riotUnavailable": "L’accès à Riot est indisponible pour le moment.",
+        "generic": "Ton historique de parties n’a pas pu être chargé."
+      }
     },
     "deleteSelected": "Supprimer",
     "selected": "sélectionné(s)",

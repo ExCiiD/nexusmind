@@ -350,6 +350,8 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
     win: boolean
     gameEndAt: string
     alreadyImported: boolean
+    /** In the off-session container: importable, the import moves it into the session. */
+    offSession?: boolean
   }>>
   importGamesToSession: (matchIds: string[]) => Promise<any[]>
 
