@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
 import { tryUnlockBadge } from '../badgeUnlock'
 import { getMatchIds, getMatch, getMatchTimeline, extractPlayerStats } from '../riotClient'
+import { forgetIgnoredMatches, rememberDeletedMatches } from '../ignoredMatches'
 
 /**
  * Completes a session: status, optional conclusion/summary, XP, session-count
@@ -296,6 +297,8 @@ export function registerSessionHandlers() {
           },
         })
         imported.push(game)
+        // Imported on purpose: a game deleted earlier is no longer hidden from the catch-up.
+        await forgetIgnoredMatches([game.matchId])
       } catch (err: any) {
         console.error(`[import] Failed to import match ${matchId}:`, err)
       }
@@ -372,9 +375,11 @@ export function registerSessionHandlers() {
 
     const games = await prisma.game.findMany({
       where: { sessionId: id },
-      select: { id: true },
+      select: { id: true, matchId: true },
     })
     const gameIds = games.map((g) => g.id)
+    // Deleted on purpose: the start-up catch-up must not bring them back (ignoredMatches.ts).
+    await rememberDeletedMatches(games.map((g) => g.matchId))
 
     if (gameIds.length > 0) {
       await prisma.recording.updateMany({ where: { gameId: { in: gameIds } }, data: { gameId: null } })
@@ -392,9 +397,10 @@ export function registerSessionHandlers() {
 
     const games = await prisma.game.findMany({
       where: { sessionId: { in: ids } },
-      select: { id: true },
+      select: { id: true, matchId: true },
     })
     const gameIds = games.map((g) => g.id)
+    await rememberDeletedMatches(games.map((g) => g.matchId))
 
     if (gameIds.length > 0) {
       await prisma.recording.updateMany({ where: { gameId: { in: gameIds } }, data: { gameId: null } })
@@ -453,6 +459,9 @@ export function registerSessionHandlers() {
 
   ipcMain.handle('game:delete', async (_event, gameId: string) => {
     const prisma = getPrisma()
+    // Deleted on purpose: neither the start-up catch-up nor the orphan backfill brings it back (ignoredMatches.ts).
+    const game = await prisma.game.findUnique({ where: { id: gameId }, select: { matchId: true } })
+    await rememberDeletedMatches([game?.matchId])
     await prisma.recording.updateMany({ where: { gameId }, data: { gameId: null } })
     await prisma.gameDetailedStats.deleteMany({ where: { gameId } })
     await prisma.review.deleteMany({ where: { gameId } })

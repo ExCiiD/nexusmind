@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AssignedObjectivesCard } from '@/components/Coaching/AssignedObjectivesCard'
 import { useCollab } from '@/hooks/useCollab'
 import type { ReviewComment } from '@/lib/collab'
-import { listScrims, type Scrim } from '../scrims'
+import { listUpcomingScrims, type Scrim } from '../scrims'
 import { DownloadButton } from '../DownloadButton'
 
 /** What changed since you last opened your PC: coach feedback, objectives, next scrims. */
@@ -20,8 +20,9 @@ export function HomePage() {
     window.api.collabMyOpenComments().then(setComments).catch(() => setComments([]))
   }, [])
   useEffect(() => {
-    listScrims(groups.map((g) => g.id))
-      .then((all) => setScrims(all.filter((s) => s.status === 'planned' && Date.parse(s.scheduledAt) > Date.now() - 3 * 3600_000).slice(0, 3)))
+    // The 3 next planned scrims, filtered by the server (from 3 h before now), instead of loading them all (WSC-08).
+    listUpcomingScrims(groups.map((g) => g.id), 3)
+      .then(setScrims)
       .catch(() => setScrims([]))
   }, [groups])
 

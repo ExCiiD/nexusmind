@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CalibrationFlash } from '@/components/MicroReview/CalibrationFlash'
+import type { CalibrationStatus } from '@/lib/microReview/types'
 
 /**
  * P1 + micro-review §D: the long periodic form is replaced by the
@@ -15,15 +16,17 @@ import { CalibrationFlash } from '@/components/MicroReview/CalibrationFlash'
 export function ReassessmentBanner() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // The status is read once here and handed to the flash (it used to read it again: 2 requests per Dashboard).
+  const [calibration, setCalibration] = useState<CalibrationStatus | null>(null)
   const [flashDue, setFlashDue] = useState<boolean | null>(null)
   const [statGapCount, setStatGapCount] = useState(0)
 
   useEffect(() => {
-    window.api.calibrationStatus?.().then((s) => setFlashDue(!!s?.due)).catch(() => setFlashDue(false))
+    window.api.calibrationStatus?.().then((s) => { setCalibration(s ?? null); setFlashDue(!!s?.due) }).catch(() => setFlashDue(false))
     window.api.coachReassessmentCheck?.().then((r) => setStatGapCount(r?.gaps.length ?? 0)).catch(() => {})
   }, [])
 
-  if (flashDue) return <CalibrationFlash />
+  if (flashDue) return <CalibrationFlash initialStatus={calibration} />
   if (flashDue === null || statGapCount < 3) return null
 
   return (

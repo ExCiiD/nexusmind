@@ -25,9 +25,10 @@ import { useUserStore } from '@/store/useUserStore'
 import { useSessionStore } from '@/store/useSessionStore'
 import { getLevelFromXp } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
+import { useVisiblePolling } from '@/hooks/useVisiblePolling'
 import i18n from '../../i18n/config'
 import { SyncIndicator } from '@/components/Cloud/SyncIndicator'
 import { FeedbackButton } from '@/components/Feedback/FeedbackDialog'
@@ -53,19 +54,18 @@ export function Sidebar() {
     window.api.getAppVersion?.().then(setAppVersion).catch(() => {})
   }, [])
 
+  // Recording state: pushed on start / stop; the read is only a safety net (scalability lot 1: every 60 s while the
+  // window is shown, refreshed on return, instead of every 10 s whatever the window).
+  const readCapture = useCallback(() => { window.api.getCaptureStatus().then((s) => setIsRecording(s.isRecording)).catch(() => {}) }, [])
   useEffect(() => {
-    window.api.getCaptureStatus().then((s) => setIsRecording(s.isRecording)).catch(() => {})
     const offStarted = window.api.onRecordingStarted(() => setIsRecording(true))
     const offStopped = window.api.onRecordingStopped(() => setIsRecording(false))
-    const poll = setInterval(() => {
-      window.api.getCaptureStatus().then((s) => setIsRecording(s.isRecording)).catch(() => {})
-    }, 10_000)
     return () => {
       offStarted()
       offStopped()
-      clearInterval(poll)
     }
   }, [])
+  useVisiblePolling(readCapture, 60_000)
   const levelInfo = user ? getLevelFromXp(user.xp) : { level: 1, currentXp: 0, nextLevelXp: 100 }
   const xpPercent = (levelInfo.currentXp / levelInfo.nextLevelXp) * 100
   const [disconnecting, setDisconnecting] = useState(false)

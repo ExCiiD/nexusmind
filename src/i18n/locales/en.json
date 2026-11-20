@@ -417,6 +417,21 @@
       "setupDesc": "Add <code>MAIN_VITE_GOOGLE_CLIENT_ID</code> and <code>MAIN_VITE_GOOGLE_CLIENT_SECRET</code> to your <code>.env</code> file to enable YouTube uploads.",
       "connecting": "Connecting…",
       "connect": "Connect YouTube"
+    },
+    "region": {
+      "label": "Server of {{account}}",
+      "autoDetected": "Auto (detected: {{region}})",
+      "autoPending": "Auto (not detected yet)",
+      "previous": "previously {{region}}",
+      "manualDiffers": "Riot detects {{region}}",
+      "redetect": "Detect again",
+      "redetected": "Servers detected again",
+      "saved": "Server saved",
+      "errors": {
+        "badRegion": "Unknown server.",
+        "notFound": "This account no longer exists.",
+        "generic": "The server couldn’t be saved."
+      }
     }
   },
   "sidebar": {
@@ -978,6 +993,10 @@
       "sessionsEmptyTitle": "No sessions yet",
       "sessionsEmptyDesc": "Create your first session to start tracking your objectives.",
       "createSession": "Create a session"
+    },
+    "offSession": {
+      "title": "Games outside a session",
+      "badge": "Off session"
     }
   },
   "statsAvg": {

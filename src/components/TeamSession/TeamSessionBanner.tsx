@@ -5,7 +5,7 @@ import { CalendarClock, ClipboardCheck } from 'lucide-react'
 import { useCollab } from '@/hooks/useCollab'
 import type { TeamSession } from '@/lib/teamSessions'
 import type { PendingFinalReview } from '@/lib/teamSessionReviewsCore'
-import { useVisiblePolling } from '@/hooks/useVisiblePolling'
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
 
 /** Task I: live sessions come from the app's single poller (teamSessionLiveCached
  *  + the 'team-session:live' push, desktop sync / web adapter). Only the
@@ -46,7 +46,7 @@ export function TeamSessionBanner() {
 
   // Postponed final reviews: mount + route change, then focus / visible (useVisiblePolling).
   useEffect(() => { void refreshReviews() }, [refreshReviews, location.pathname])
-  useVisiblePolling(refreshReviews, REVIEWS_SAFETY_MS, available)
+  useRealtimeRefresh(['team_session_reviews'], refreshReviews, REVIEWS_SAFETY_MS, { enabled: available })
 
   // Already on that session's page: the card would only point at itself.
   const here = (calendarEventId: string) => location.pathname === `/team-session/${calendarEventId}`

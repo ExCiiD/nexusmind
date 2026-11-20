@@ -93,6 +93,8 @@ const api = {
   addAccount: (gameName: string, tagLine: string, region: string) =>
     ipcRenderer.invoke('account:add', gameName, tagLine, region),
   removeAccount: (accountId: string) => ipcRenderer.invoke('account:remove', accountId),
+  listAccountRegions: (opts?: { force?: boolean }) => ipcRenderer.invoke('account:regions', opts),
+  setAccountRegionMode: (accountId: string, mode: string) => ipcRenderer.invoke('account:set-region-mode', accountId, mode),
 
   simulateGame: () => ipcRenderer.invoke('dev:simulate-game'),
   isDev: () => ipcRenderer.invoke('dev:is-dev'),
@@ -339,6 +341,18 @@ const api = {
     ipcRenderer.on('sync:applied', handler)
     return () => { ipcRenderer.removeListener('sync:applied', handler) }
   },
+  // Realtime (docs/contracts/realtime.md): light change events, and the hub's status.
+  onCloudRealtime: (cb: (e: import('../../src/lib/realtimeCore').RealtimeEvent) => void) => {
+    const handler = (_e: unknown, payload: import('../../src/lib/realtimeCore').RealtimeEvent) => cb(payload)
+    ipcRenderer.on('cloud:realtime', handler)
+    return () => { ipcRenderer.removeListener('cloud:realtime', handler) }
+  },
+  onCloudRealtimeStatus: (cb: (s: import('../../src/lib/realtimeCore').RealtimeStatus) => void) => {
+    const handler = (_e: unknown, s: import('../../src/lib/realtimeCore').RealtimeStatus) => cb(s)
+    ipcRenderer.on('cloud:realtime-status', handler)
+    return () => { ipcRenderer.removeListener('cloud:realtime-status', handler) }
+  },
+  cloudRealtimeStatus: (): Promise<import('../../src/lib/realtimeCore').RealtimeStatus> => ipcRenderer.invoke('cloud:realtime-status'),
   onCloudAuthChanged: (cb: (user: { id: string; email: string | null } | null) => void) => {
     const handler = (_: Electron.IpcRendererEvent, user: { id: string; email: string | null } | null) => cb(user)
     ipcRenderer.on('cloud:auth-changed', handler)

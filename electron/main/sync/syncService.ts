@@ -4,6 +4,7 @@ import { getSupabase, isCloudConfigured, getSessionUserId } from '../cloud/supab
 import { SyncEngine, SyncError, type PushRecord, type RemoteRecord, type SyncRemote, type SyncStatus } from './syncEngine'
 import { listMyLiveSessions, liveSessionsKey, livePollDelay } from '../../../src/lib/teamSessionsCore'
 import type { TeamSession } from '../../../src/lib/teamSessions'
+import { onRealtimeEvent, realtimeLive, startRealtimeService } from '../cloud/realtime'
 
 /**
  * sync_records / sync_push over the signed-in Supabase session.
@@ -116,8 +117,12 @@ export async function getLiveSessionsCached(): Promise<TeamSession[]> {
   return liveSessions ?? refreshLiveSessions()
 }
 
-/** Pure, tested: the wait before the next cycle. */
-export function nextSyncDelay(visible: boolean, liveSession: boolean): number {
+/**
+ * Pure, tested: the wait before the next cycle. With Realtime live (cloud/realtime.ts), team sessions arrive as
+ * events: the cycle only pulls the other devices' changes, every minute during a live session, else every 5 min.
+ */
+export function nextSyncDelay(visible: boolean, liveSession: boolean, realtime = false): number {
+  if (realtime) return liveSession ? 60_000 : 5 * 60_000
   return livePollDelay(visible, liveSession)
 }
 
@@ -172,7 +177,7 @@ export function syncNow(): Promise<void> {
  *  `setInterval`) so the interval can shorten/lengthen between runs —
  *  shortened while any of the user's groups has a live team session. */
 function scheduleNextSync(): void {
-  const delay = nextSyncDelay(anyWindowVisible(), hasLiveSession)
+  const delay = nextSyncDelay(anyWindowVisible(), hasLiveSession, realtimeLive())
   scheduledDelay = delay
   timer = setTimeout(async () => {
     await syncNow().catch(() => {})
@@ -187,9 +192,18 @@ export function startSyncService(): void {
   setTimeout(() => { syncNow().catch(() => {}) }, 3_000)
   scheduleNextSync()
 
+  // Realtime: a team session that starts, ends or changes refreshes the live list at once (one request), so the
+  // banner and the end-of-game prompt hear about it without a fast poll.
+  startRealtimeService()
+  let liveRefresh: ReturnType<typeof setTimeout> | null = null
+  onRealtimeEvent((e) => {
+    if (e.topic !== 'team_sessions' || liveRefresh) return
+    liveRefresh = setTimeout(() => { liveRefresh = null; void refreshLiveSessions() }, 1_000)
+  })
+
   // A window coming back while a hidden-mode wait (up to 5 min) is pending: back to the visible cadence now.
   app.on('browser-window-focus', () => {
-    if (!timer || scheduledDelay <= nextSyncDelay(true, hasLiveSession)) return
+    if (!timer || scheduledDelay <= nextSyncDelay(true, hasLiveSession, realtimeLive())) return
     clearTimeout(timer)
     timer = null
     syncNow().catch(() => {}).finally(() => { if (!timer) scheduleNextSync() })

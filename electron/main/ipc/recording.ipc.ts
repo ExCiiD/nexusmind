@@ -1,5 +1,7 @@
 import { ipcMain, dialog, app, BrowserWindow, shell } from 'electron'
 import { getPrisma } from '../database'
+import { getOrCreateOffSessionSession } from '../offSessionGames'
+import { ignoredAmong } from '../ignoredMatches'
 import { z } from 'zod'
 import { validatedHandle, id, youtubeUrl as youtubeUrlSchema } from './validate'
 import { getActiveRecorder } from '../recorderBackend'
@@ -173,32 +175,8 @@ async function reconcileOrphanClips(baseDir: string): Promise<number> {
 // fetches (cached after the first time). Only runs when there's at least
 // one orphan, so a typical scan with no orphans pays nothing.
 
-const REVIEW_ONLY_OBJECTIVE_ID = '__review_only__'
-
-/**
- * Returns the per-user session that hosts backfilled Game rows for games
- * the user played outside of any active Ascend session. Created on
- * first need, then reused. Always marked `status: 'closed'` and tagged
- * via `objectiveId` so other queries can filter it out of session KPIs.
- */
-async function getOrCreateReviewOnlySession(userId: string): Promise<string> {
-  const prisma = getPrisma()
-  const existing = await prisma.session.findFirst({
-    where: { userId, objectiveId: REVIEW_ONLY_OBJECTIVE_ID },
-  })
-  if (existing) return existing.id
-  const created = await prisma.session.create({
-    data: {
-      userId,
-      objectiveId: REVIEW_ONLY_OBJECTIVE_ID,
-      status: 'closed',
-      sessionConclusion:
-        'System container for backfilled games (videos linked to Riot matches that were played outside any active session).',
-    },
-  })
-  console.log(`[backfill] Created review-only session ${created.id} for user ${userId}`)
-  return created.id
-}
+// The container is shared with the games played outside a session (offSessionGames.ts).
+const getOrCreateReviewOnlySession = getOrCreateOffSessionSession
 
 interface BackfillResult {
   /** Total orphans considered this run. */
@@ -220,7 +198,7 @@ interface BackfillResult {
  * Returns a tally so the caller can show a toast like
  * "Linked 1 recording, 2 not found".
  */
-async function backfillOrphanRecordings(opts: { recordingIds?: string[] } = {}): Promise<BackfillResult> {
+export async function backfillOrphanRecordings(opts: { recordingIds?: string[] } = {}): Promise<BackfillResult> {
   const prisma = getPrisma()
   const user = await prisma.user.findFirst({ where: { isActive: true } })
   if (!user) return { considered: 0, linked: 0, notFound: 0, skipped: 0 }
@@ -315,6 +293,13 @@ async function backfillOrphanRecordings(opts: { recordingIds?: string[] } = {}):
         }
       }
       if (bestMatch) break
+    }
+
+    if (bestMatch && !(await prisma.game.findUnique({ where: { matchId: bestMatch.matchId }, select: { id: true } })) && (await ignoredAmong([bestMatch.matchId])).size > 0) {
+      // The player deleted that game: its video stays an orphan, the game is not recreated.
+      console.log(`[backfill] ${bestMatch.matchId} was deleted by the player: not recreated for ${orphan.id}`)
+      skipped++
+      continue
     }
 
     if (!bestMatch) {

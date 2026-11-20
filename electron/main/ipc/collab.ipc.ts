@@ -1,3 +1,4 @@
+import { refreshRealtimeGroups } from '../cloud/realtime'
 import { z } from 'zod'
 import { validatedHandle } from './validate'
 import * as collab from '../cloud/collab'
@@ -15,13 +16,13 @@ const objectiveId = z.string().min(1).max(64)
 export function registerCollabHandlers() {
   validatedHandle('collab:list-groups', z.tuple([]), () => collab.listMyGroups())
   validatedHandle('collab:create-group', z.tuple([z.string().trim().min(1).max(80), z.enum(['team', 'coaching'])]),
-    (_e, name, kind) => collab.createGroup(name, kind))
+    (_e, name, kind) => collab.createGroup(name, kind).finally(() => { void refreshRealtimeGroups() }))
   validatedHandle('collab:create-invite', z.tuple([uuid, role, z.number().int().min(1).max(30)]),
     (_e, groupId, r, days) => collab.createInvite(groupId, r, days))
   validatedHandle('collab:join', z.tuple([z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6,16}$/, 'invalid code'), z.string().trim().max(40).nullish()]),
-    (_e, code, riotId) => collab.joinGroup(code, riotId ?? null))
-  validatedHandle('collab:leave', z.tuple([uuid]), (_e, groupId) => collab.leaveGroup(groupId))
-  validatedHandle('collab:delete-group', z.tuple([uuid, z.literal('DELETE')]), (_e, groupId) => collab.deleteGroup(groupId))
+    (_e, code, riotId) => collab.joinGroup(code, riotId ?? null).finally(() => { void refreshRealtimeGroups() }))
+  validatedHandle('collab:leave', z.tuple([uuid]), (_e, groupId) => collab.leaveGroup(groupId).finally(() => { void refreshRealtimeGroups() }))
+  validatedHandle('collab:delete-group', z.tuple([uuid, z.literal('DELETE')]), (_e, groupId) => collab.deleteGroup(groupId).finally(() => { void refreshRealtimeGroups() }))
   validatedHandle('collab:remove-member', z.tuple([uuid, uuid]), (_e, groupId, userId) => collab.removeMember(groupId, userId))
   validatedHandle('collab:set-captain', z.tuple([uuid, uuid, z.boolean()]), (_e, groupId, userId, isCaptain) => collab.setCaptain(groupId, userId, isCaptain))
   validatedHandle('collab:set-member-role', z.tuple([uuid, uuid, role]), (_e, groupId, userId, r) => collab.setMemberRole(groupId, userId, r))

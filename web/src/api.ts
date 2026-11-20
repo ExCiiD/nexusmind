@@ -9,6 +9,7 @@ import { teamSessionHistoryWebApi } from './teamSessionHistoryWeb'
 import { sessionPrepWebApi } from './sessionPrepWeb'
 import { myTeamWebApi } from './myTeamWeb'
 import { organisationWebApi } from './organisationWeb'
+import { realtimeWebApi } from './realtimeWeb'
 import * as matchEvents from '@/lib/matchEventCore'
 import * as dashboardCore from '@/lib/staffDashboardCore'
 import * as devPlanCore from '@/lib/devPlanCore'
@@ -67,6 +68,8 @@ async function refreshLiveWeb(): Promise<TeamSession[]> {
 function scheduleLiveWeb(): void {
   if (live.timer || live.listeners.size === 0) return
   const visible = typeof document === 'undefined' || document.visibilityState !== 'hidden'
+  // Scalability lot 1: nothing while the tab is hidden; back to the tab refreshes and restarts (listener below).
+  if (!visible) return
   live.timer = setTimeout(async () => {
     live.timer = null
     await refreshLiveWeb()
@@ -102,8 +105,9 @@ function toUser(u: { id: string; email?: string | null; is_anonymous?: boolean; 
 
 /** On the web there is no local Riot profile: show the e-mail's name part. */
 async function webIdentity(): Promise<core.MemberIdentity> {
-  const { data } = await sb.auth.getUser()
-  const email = data.user?.email ?? ''
+  // The local session (no /auth/v1/user request, L15).
+  const { data } = await sb.auth.getSession()
+  const email = data.session?.user?.email ?? ''
   return { displayName: email ? email.split('@')[0].slice(0, 64) : null, riotId: null }
 }
 
@@ -165,6 +169,8 @@ export const webApi = {
   ...myTeamWebApi,
   // § 18: « Relancer », the published opponent dossiers.
   ...organisationWebApi,
+  // Realtime instead of polling (docs/contracts/realtime.md): onCloudRealtime, its status.
+  ...realtimeWebApi,
   /** Invite code from an invite link, for the sign-in screen. */
   pendingInviteCode: (): string | null => pendingInvite,
   // ── account ──
@@ -197,8 +203,9 @@ export const webApi = {
   },
   async cloudSetPassword(password: string) {
     await access.setPassword(sb, password)
-    const { data } = await sb.auth.getUser()
-    return toUser(data.user)
+    // The local session, refreshed by setPassword's updateUser (no /auth/v1/user request, L15).
+    const { data } = await sb.auth.getSession()
+    return toUser(data.session?.user ?? null)
   },
   async cloudSignOut() {
     // This browser only. When the server cannot be reached, forget the

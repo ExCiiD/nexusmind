@@ -401,38 +401,62 @@ export async function setSharing(sb: SupabaseClient, uid: string, groupId: strin
 
 // ── A player's synced sessions (own data, or shared with my group) ─────────
 
-export async function getPlayerSessions(sb: SupabaseClient, playerId: string, limit = 30): Promise<PlayerSessionView[]> {
-  const { data, error } = await sb.from('sync_records')
-    .select('table_name, record_id, data')
-    .eq('user_id', playerId)
-    .eq('deleted', false)
-    .in('table_name', ['Session', 'Game', 'Review'])
-    .limit(5000)
-  if (error) fail(error, 'load player data failed')
+/** The off-session container's objective (electron/main/offSessionGames.ts). */
+const OFF_SESSION_OBJECTIVE = '__review_only__'
+/** Ids per `.in()` filter: keeps the URL short. */
+const SYNC_IN_CHUNK = 100
 
-  const rows = data ?? []
+/**
+ * WSC-08 (20/11/2026): it used to read up to 5 000 rows (every Session, Game and Review ever synced) to show 30
+ * sessions. Now: the Session rows (small), then only the games of the `limit` latest sessions, then only their
+ * reviews, each filtered on the server (`data->>sessionId`, `data->>gameId`).
+ */
+export async function getPlayerSessions(sb: SupabaseClient, playerId: string, limit = 30): Promise<PlayerSessionView[]> {
+  const base = (table: string) => sb.from('sync_records').select('record_id, data').eq('user_id', playerId).eq('deleted', false).eq('table_name', table)
+  const ts = (v: unknown) => (typeof v === 'number' ? v : Date.parse(String(v ?? '')) || 0)
+
+  const { data: sessionRows, error } = await base('Session').limit(2000)
+  if (error) fail(error, 'load player data failed')
+  const all = (sessionRows ?? []).map((r) => r.data as any).filter((d) => d && d.id)
+  // The off-session container always counts: its date is when it was made, its games are the latest ones.
+  const sessions = [
+    ...all.filter((d) => d.objectiveId === OFF_SESSION_OBJECTIVE),
+    ...all.filter((d) => d.objectiveId !== OFF_SESSION_OBJECTIVE).sort((a, b) => ts(b.date) - ts(a.date)).slice(0, limit),
+  ]
+  if (sessions.length === 0) return []
+
+  const inChunks = async (table: string, column: string, ids: string[]): Promise<any[]> => {
+    const out: any[] = []
+    for (let i = 0; i < ids.length; i += SYNC_IN_CHUNK) {
+      const { data, error: err } = await base(table).in(`data->>${column}`, ids.slice(i, i + SYNC_IN_CHUNK))
+      if (err) fail(err, 'load player data failed')
+      out.push(...(data ?? []).map((r) => r.data))
+    }
+    return out
+  }
+  const games = await inChunks('Game', 'sessionId', sessions.map((s) => String(s.id)))
+  const reviews = games.length ? await inChunks('Review', 'gameId', games.map((g) => String(g.id))) : []
+
   const reviewsByGame = new Map<string, any>()
-  for (const r of rows.filter((x) => x.table_name === 'Review')) reviewsByGame.set((r.data as any).gameId, r.data)
+  for (const rv of reviews) reviewsByGame.set(rv.gameId, rv)
   const gamesBySession = new Map<string, any[]>()
-  for (const g of rows.filter((x) => x.table_name === 'Game')) {
-    const d = g.data as any
+  for (const d of games) {
     const list = gamesBySession.get(d.sessionId) ?? []
     list.push(d)
     gamesBySession.set(d.sessionId, list)
   }
 
-  const ts = (v: unknown) => (typeof v === 'number' ? v : Date.parse(String(v ?? '')) || 0)
-  return rows
-    .filter((x) => x.table_name === 'Session')
-    .map((s) => {
-      const d = s.data as any
+  return sessions
+    .map((d) => {
       const games = (gamesBySession.get(d.id) ?? []).sort((a, b) => ts(b.gameEndAt) - ts(a.gameEndAt))
+      const offSession = d.objectiveId === OFF_SESSION_OBJECTIVE
       return {
         id: d.id,
         date: d.date ?? null,
-        objectiveIds: parseJson<string[]>(d.objectiveIds, d.objectiveId ? [d.objectiveId] : []),
+        objectiveIds: offSession ? [] : parseJson<string[]>(d.objectiveIds, d.objectiveId ? [d.objectiveId] : []),
         status: d.status ?? null,
-        sessionConclusion: d.sessionConclusion ?? null,
+        sessionConclusion: offSession ? null : d.sessionConclusion ?? null,
+        offSession,
         games: games.map((g) => {
           const rv = reviewsByGame.get(g.id)
           return {
@@ -451,8 +475,10 @@ export async function getPlayerSessions(sb: SupabaseClient, playerId: string, li
         }),
       }
     })
-    .sort((a, b) => ts(b.date) - ts(a.date))
-    .slice(0, limit)
+    // The off-session container is dated when it was made: placed by its latest game instead.
+    .map((s) => ({ s, at: s.offSession ? Math.max(0, ...s.games.map((g) => ts(g.gameEndAt))) : ts(s.date) }))
+    .sort((a, b) => b.at - a.at)
+    .map((x) => x.s)
 }
 
 // ── Comments ────────────────────────────────────────────────────────────────

@@ -23,6 +23,8 @@ const ALLOWED_PATHS: Array<{ re: RegExp; label: string }> = [
   // Percent-encoded Riot IDs: up to 16/5 unicode chars, i.e. ~9 bytes each.
   { re: new RegExp(`^/riot/account/v1/accounts/by-riot-id/[^/]{1,200}/[^/]{1,64}$`), label: '/riot/account/v1/accounts/by-riot-id/{name}/{tag}' },
   { re: new RegExp(`^/riot/account/v1/accounts/by-puuid/${ID}$`), label: '/riot/account/v1/accounts/by-puuid/{id}' },
+  // The server an account plays on now (20/11/2026: transfers, accounts on several servers). lol only.
+  { re: new RegExp(`^/riot/account/v1/region/by-game/lol/by-puuid/${ID}$`), label: '/riot/account/v1/region/by-game/lol/by-puuid/{id}' },
   { re: new RegExp(`^/lol/summoner/v4/summoners/by-puuid/${ID}$`), label: '/lol/summoner/v4/summoners/by-puuid/{id}' },
   { re: new RegExp(`^/lol/champion-mastery/v4/champion-masteries/by-puuid/${ID}/top$`), label: '/lol/champion-mastery/v4/champion-masteries/by-puuid/{id}/top' },
   { re: new RegExp(`^/lol/league/v4/entries/by-summoner/${ID}$`), label: '/lol/league/v4/entries/by-summoner/{id}' },

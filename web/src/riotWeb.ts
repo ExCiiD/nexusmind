@@ -1,6 +1,7 @@
 import { sb } from './supabase'
 import { RIOT_LIMITS } from '@/lib/riotLimits'
 import { mergeMatchIdsByRecency } from '@/lib/scoutingCore'
+import { ACTIVE_REGION_PATH, accountRoutingFor, createRegionResolver, platformFromActiveRegion } from '@/lib/riotRegionCore'
 import { DDRAGON_BASE, getDdragonVersion } from '@/lib/ddragon'
 
 /**
@@ -122,13 +123,30 @@ async function regionalFetch(routing: string, path: string, opts: RiotCallOption
   return data
 }
 
+/**
+ * The server each account plays on now, from its puuid (20/11/2026, src/lib/riotRegionCore.ts): a roster or a profile
+ * keeps the region it was saved with, which goes stale after a transfer. Detected per puuid, cached 10 min, detected
+ * again when a listing finds nothing. The web has no manual choice: that one lives in the desktop settings.
+ */
+export const regionResolver = createRegionResolver({
+  detect: async (puuid, hint) => {
+    // 403: a proxy without this route yet, 404: no lol account. Both: keep the stored region.
+    const { data, status } = await proxyFetch(accountRoutingFor(hint), ACTIVE_REGION_PATH(puuid), [403, 404], BACKGROUND)
+    return status === 200 ? platformFromActiveRegion(data) : null
+  },
+})
+
+async function platformFor(puuid: string, region: string): Promise<string> {
+  return (await regionResolver.resolve(puuid, region)).platform
+}
+
 export async function getAccountByRiotId(gameName: string, tagLine: string, region: string, opts: RiotCallOptions = {}): Promise<{ puuid: string; gameName: string; tagLine: string }> {
   const routing = REGION_TO_ROUTING[region] || 'europe'
   return regionalFetch(routing, `/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`, opts) as Promise<{ puuid: string; gameName: string; tagLine: string }>
 }
 
 export async function getChampionMasteries(puuid: string, region: string, count = 20, opts: RiotCallOptions = {}): Promise<Array<{ championId: number; championPoints: number }>> {
-  const host = PLATFORM_HOSTS[region]
+  const host = PLATFORM_HOSTS[await platformFor(puuid, region)]
   if (!host) throw new RiotWebError(`Unknown region: ${region}`)
   const { data } = await proxyFetch(host, `/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=${Math.min(count, RIOT_LIMITS.MAX_MASTERY_COUNT)}`, undefined, opts)
   return (data ?? []) as Array<{ championId: number; championPoints: number }>
@@ -153,22 +171,27 @@ async function getMatchIdsInRange(puuid: string, routing: string, queueId: 420 |
 
 /** SoloQ + Flex + Clash match ids since the start of the current season, most-recent first. */
 export async function getSeasonMatchIds(puuid: string, region: string, since: Date = currentSeasonStart(), opts: RiotCallOptions = {}): Promise<string[]> {
-  const routing = REGION_TO_ROUTING[region] || 'europe'
   const ts = Math.floor(since.getTime() / 1000)
-  const [solo, flex, clash] = await Promise.all([
-    getMatchIdsInRange(puuid, routing, 420, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED, opts).catch(() => [] as string[]),
-    getMatchIdsInRange(puuid, routing, 440, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED, opts).catch(() => [] as string[]),
-    getMatchIdsInRange(puuid, routing, 700, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_CLASH, opts).catch(() => [] as string[]),
-  ])
-  return mergeMatchIdsByRecency(mergeMatchIdsByRecency(solo, flex), clash)
+  // After a transfer the old server's games of the season are read too.
+  return regionResolver.list(puuid, region, async (platform) => {
+    const routing = REGION_TO_ROUTING[platform] || 'europe'
+    const [solo, flex, clash] = await Promise.all([
+      getMatchIdsInRange(puuid, routing, 420, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED, opts).catch(() => [] as string[]),
+      getMatchIdsInRange(puuid, routing, 440, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED, opts).catch(() => [] as string[]),
+      getMatchIdsInRange(puuid, routing, 700, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_CLASH, opts).catch(() => [] as string[]),
+    ])
+    return mergeMatchIdsByRecency(mergeMatchIdsByRecency(solo, flex), clash)
+  }, { mergePrevious: true })
 }
 
 /** The latest `count` match ids of one queue (Stats collectives: Flex = 440), most recent first. One request. */
 export async function getRecentMatchIds(puuid: string, region: string, count: number, queueId: 420 | 440 | 700 = 440, opts: RiotCallOptions = {}): Promise<string[]> {
-  const routing = REGION_TO_ROUTING[region] || 'europe'
   const n = Math.max(1, Math.min(count, RIOT_LIMITS.MAX_IDS_PER_REQUEST))
-  const ids = await regionalFetch(routing, `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queueId}&start=0&count=${n}`, opts)
-  return Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : []
+  const ids = await regionResolver.list(puuid, region, async (platform) => {
+    const page = await regionalFetch(REGION_TO_ROUTING[platform] || 'europe', `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queueId}&start=0&count=${n}`, opts)
+    return Array.isArray(page) ? page.filter((x): x is string => typeof x === 'string') : []
+  }, { mergePrevious: true })
+  return ids.slice(0, n)
 }
 export async function getMatch(matchId: string, region: string, opts: RiotCallOptions = {}): Promise<any> {
   const platformFromId = matchId.split('_')[0]
@@ -197,7 +220,7 @@ export interface LeagueEntry {
 
 /** #40 (Dossier): a player's ranked entries (solo / flex), from their platform. [] when unranked. */
 export async function getLeagueEntriesByPuuid(puuid: string, region: string, opts: RiotCallOptions = {}): Promise<LeagueEntry[]> {
-  const host = PLATFORM_HOSTS[region]
+  const host = PLATFORM_HOSTS[await platformFor(puuid, region)]
   if (!host) throw new RiotWebError(`Unknown region: ${region}`)
   const { data } = await proxyFetch(host, `/lol/league/v4/entries/by-puuid/${puuid}`, undefined, opts)
   return Array.isArray(data) ? (data as LeagueEntry[]) : []

@@ -291,6 +291,34 @@ Pourquoi cet ordre : la clé OpenAI est un secret **valide** qui ne demande qu'u
 
 ### Revues de livraisons
 
+#### beta.15 (suite) — Realtime (`20261120140000_realtime_publication`), `realtimeCore`, hub desktop, correctifs demandés (20/11, lecture seule) : **OK, 2 remarques basses**
+- **Publication :** les 6 tables (`notifications`, `team_sessions`, `calendar_events`, `calendar_event_responses`, `announcements`, `team_session_reviews`) sont ajoutées à `supabase_realtime` de façon idempotente. Vérifié en production : aucune n'est encore publiée, et toutes sont en `REPLICA IDENTITY DEFAULT`, donc l'ancien contenu d'une ligne n'est **pas** diffusé. **Rollback :** chaque table est retirée de la publication, de façon idempotente. OK.
+- **Isolement entre utilisateurs et entre groupes :**
+  - Les `postgres_changes` de Supabase appliquent **la RLS de SELECT de chaque table** avec le JWT de l'abonné. Un client ne reçoit donc que les lignes qu'il pourrait lire. Même un client modifié qui s'abonnerait à `group:<autre groupe>` ne recevrait rien de ce groupe.
+  - Les filtres de canal (`user_id=eq.<uid>` pour les notifications, `group_id=eq.<gid>` pour les groupes) sont une économie de bande passante **en plus** de la RLS, pas la protection elle-même. Les identifiants sont vérifiés par `SAFE_ID`.
+  - **Seuls INSERT et UPDATE sont écoutés.** Les DELETE, que la RLS ne filtre pas, sont exclus comme il le faut. Le hub n'écoute ni `broadcast` ni `presence`, donc un message injecté sur un canal public est ignoré.
+- **Correctifs demandés :**
+  - `account:regions` et `account:set-region-mode` passent maintenant par `validatedHandle` : options `strict()`, schémas d'identifiant de compte et de mode de région. **Levé.**
+  - Le rattrapage passe tout entier par `withRiotPriority('background', …)`, et `riotTransport` envoie `x-nxm-priority: background`. **Levé.**
+- **Remarques (basses) :**
+  1. **Rollback de la carte de membre écrasé :** `supabase/rollback/20261120140000_rollback.sql` contient maintenant le rollback **Realtime**. Celui de `member_card_champion` (migration renommée `20261120080011`) **n'existe plus**. Il faut le recréer sous `supabase/rollback/20261120080011_rollback.sql` : retrait du droit, de la contrainte et des deux colonnes (Back-end).
+  2. **Canaux publics :** dans les réglages Realtime du projet, activer « canaux privés seulement » (Realtime Authorization) **si** aucun écran n'utilise de broadcast. C'est une défense en profondeur, sans effet sur les `postgres_changes`. Une ligne de `team_session_reviews` peut contenir une longue transcription : surveiller la taille des messages (fonctionnel).
+
+#### beta.15 — proxy (`region/by-game`), log du client LoL, région des comptes, rattrapage des parties (20/11, lecture seule) : **OK, 2 remarques basses**
+*Registre `docs/DECISIONS.md` relu (lot de scalabilité). Rien de contraire.*
+- **Proxy :** une seule route est ajoutée, `^/riot/account/v1/region/by-game/lol/by-puuid/{ID}$` : jeu fixé à `lol`, identifiant en regex stricte, GET seulement, avec un libellé fixe pour les métriques. Elle n'a **aucune règle de paramètres**, donc toute requête avec query est refusée (400). L'authentification, la limite par compte et le budget global restent inchangés. Le déploiement est sans risque, mais reste un déploiement en production, donc soumis à l'accord de l'utilisateur.
+- **Log du client LoL (`gameLog`) :**
+  - Il lit les dossiers déclarés dans `C:/ProgramData/Riot Games/RiotClientInstalls.json` (clés contenant « league of legends ») et `C:/Riot Games/League of Legends`, sous `Logs/GameLogs`.
+  - Il ne retient que les dossiers nommés `AAAA-MM-JJTHH-MM-SS`, et ne lit que les **64 premiers Ko** d'un fichier `*_r3dlog.txt`, sans rien exécuter ni écrire.
+  - **Pas d'injection possible :** la plateforme passe par une liste blanche (`normalizePlatform`) et l'identifiant de partie par `\d{5,15}`. Le `matchId` obtenu est revérifié par la regex du proxy.
+- **`setAccountRegionMode` :** la région n'est acceptée que si elle vaut `auto` ou figure dans la liste blanche `PLATFORMS`, sinon `BAD_REGION`. Le compte doit être **l'un des siens** (`ownAccounts()`), sinon `NOT_FOUND`. ⚠️ Contrairement à ce qu'annonçait le Chief, **ce n'est pas du zod** : `account:regions` et `account:set-region-mode` sont des `ipcMain.handle` bruts. La validation faite dans le code est suffisante, mais il vaudrait mieux les passer en `validatedHandle`, par cohérence avec S19-11.
+- **`gameCatchUp` :**
+  - Il ne traite que l'utilisateur **actif** et **ses** comptes liés. Une partie n'est importée que si l'un de **ces** puuid y figure (`pickCatchUpMatches`, puis `extractPlayerStats(data, pick.puuid)`) : **pas de fuite d'un compte à l'autre**.
+  - Les appels sont bornés : 20 identifiants par compte, 30 logs au plus, sur une fenêtre de `CATCH_UP_DAYS`. Les parties déjà connues ou en cache local sont ignorées, et un seul rattrapage tourne à la fois (`running`).
+- **Remarques (basses) :**
+  1. **Pointe d'appels Riot au rattrapage :** avec 3 comptes, on peut atteindre environ 90 lectures de matchs d'un coup. Le cache R2 du proxy et la limite de 20 par minute les bornent, mais elles passent en priorité **interactive**, donc dans la réserve de tout le monde. **Suggestion :** envoyer `x-nxm-priority: background` pour le rattrapage, ou espacer les appels (Back-end).
+  2. **Passer `account:*` en `validatedHandle`** (voir plus haut).
+
 #### beta.14 — relances de réponse, DM du bot, dossiers publiés, LFT solo, API Organisation (20/11, lecture seule) : **OK, 2 remarques basses**
 *Registre `docs/DECISIONS.md` relu : dashboard « Organisation » du manager validé, objectif d'une app scalable, Supabase Pro conservé.*
 - **`remind_event_responses` :**

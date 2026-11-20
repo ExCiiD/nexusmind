@@ -393,6 +393,10 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   listAccounts: () => Promise<Array<{ id: string; puuid: string; gameName: string; tagLine: string; region: string; createdAt: string }>>
   addAccount: (gameName: string, tagLine: string, region: string) => Promise<any>
   removeAccount: (accountId: string) => Promise<{ success: boolean }>
+  /** The server of each account, main one included ('main'). force: detect again now. */
+  listAccountRegions?: (opts?: { force?: boolean }) => Promise<import('./riotRegionCore').AccountRegionInfo[]>
+  /** mode: 'auto' or a platform ('EUW1', 'SG2'…). Errors: BAD_REGION, NOT_FOUND. */
+  setAccountRegionMode?: (accountId: string, mode: string) => Promise<import('./riotRegionCore').AccountRegionInfo>
 
   simulateGame: () => Promise<any>
   isDev: () => Promise<boolean>
@@ -457,6 +461,10 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   cloudRestoreBackup: (id: string) => Promise<{ sessionsAdded: number; gamesAdded: number; reviewsAdded: number; assessmentsAdded: number; snapshotsAdded: number; recordingsAdded: number; externalReviewsAdded: number; conflicts: number; skipped: number }>
   cloudDeleteBackup: (id: string) => Promise<{ deleted: boolean }>
   cloudDeleteAccount: (confirm: 'DELETE') => Promise<{ deleted: boolean }>
+  /** Realtime change events (docs/contracts/realtime.md). Desktop only: the web uses web/src/realtimeWeb.ts. */
+  onCloudRealtime?: (cb: (e: import('./realtimeCore').RealtimeEvent) => void) => () => void
+  onCloudRealtimeStatus?: (cb: (s: import('./realtimeCore').RealtimeStatus) => void) => () => void
+  cloudRealtimeStatus?: () => Promise<import('./realtimeCore').RealtimeStatus>
   onCloudAuthChanged: (cb: (user: CloudUser | null) => void) => () => void
 
   // Multi-device sync

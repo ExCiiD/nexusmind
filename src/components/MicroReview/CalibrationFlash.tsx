@@ -15,17 +15,21 @@ import { usePrepareSession } from './usePrepareSession'
  * between what the player thinks costs them and what their micro-reviews
  * and tagged mistakes say. Replaces the long periodic assessment form.
  */
-export function CalibrationFlash() {
+/** `initialStatus`: the status the caller already read (ReassessmentBanner), so it is not requested twice. */
+export function CalibrationFlash({ initialStatus = null }: { initialStatus?: CalibrationStatus | null } = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const prepare = usePrepareSession()
   const role = useUserStore((s) => s.user?.mainRole ?? null)
-  const [status, setStatus] = useState<CalibrationStatus | null>(null)
+  const [status, setStatus] = useState<CalibrationStatus | null>(initialStatus)
   const [busy, setBusy] = useState<MistakeFamily | null>(null)
   const [result, setResult] = useState<CalibrationResult | null>(null)
   const [hidden, setHidden] = useState(false)
 
-  useEffect(() => { window.api.calibrationStatus().then(setStatus).catch(() => {}) }, [])
+  useEffect(() => {
+    if (initialStatus) return
+    window.api.calibrationStatus().then(setStatus).catch(() => {})
+  }, [initialStatus])
 
   if (hidden || !status) return null
   const fam = (f: MistakeFamily) => t(`mistakeLab.family.${f}`)

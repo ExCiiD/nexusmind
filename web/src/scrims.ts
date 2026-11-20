@@ -61,14 +61,27 @@ export async function listScrims(groupIds: string[]): Promise<Scrim[]> {
   return (data ?? []).map(map)
 }
 
+/**
+ * WSC-08: the Home card's next planned scrims, filtered and limited on the server (it used to load every scrim of
+ * every group and keep 3). Same window as before: from 3 hours ago.
+ */
+export async function listUpcomingScrims(groupIds: string[], limit = 3, now = Date.now()): Promise<Scrim[]> {
+  if (groupIds.length === 0) return []
+  const { data, error } = await sb.from('scrims').select('*').in('group_id', groupIds).eq('status', 'planned')
+    .gt('scheduled_at', new Date(now - 3 * 3600_000).toISOString()).order('scheduled_at', { ascending: true }).limit(limit)
+  check(error)
+  return (data ?? []).map(map)
+}
+
 export async function createScrim(s: {
   groupId: string; title: string; opponent?: string | null; scheduledAt: string; durationMin: number
   prepNotes?: string | null; checklist?: ChecklistItem[]; boFormat?: string | null; opponentScoutingId?: string | null
 }): Promise<Scrim> {
-  const { data: u } = await sb.auth.getUser()
+  // The local session, no auth round trip (L15): RLS still checks created_by on the server.
+  const { data: u } = await sb.auth.getSession()
   const { data, error } = await sb.from('scrims').insert({
     group_id: s.groupId, title: s.title.trim(), opponent: s.opponent?.trim() || null, scheduled_at: s.scheduledAt,
-    duration_min: s.durationMin, prep_notes: s.prepNotes || null, checklist: s.checklist ?? [], created_by: u.user?.id,
+    duration_min: s.durationMin, prep_notes: s.prepNotes || null, checklist: s.checklist ?? [], created_by: u.session?.user.id,
     bo_format: s.boFormat || null, opponent_scouting_id: s.opponentScoutingId || null,
   }).select('*').single()
   check(error)

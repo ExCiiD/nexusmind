@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient, type Session } from '@supabase/supabase-js'
+import WebSocketNode from 'ws'
 import { BrowserWindow, app } from 'electron'
 import { join } from 'path'
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs'
@@ -132,6 +133,8 @@ export function getSupabase(): SupabaseClient {
     },
     // A silent auth server must not leave the app on its spinner (accessCore.ts).
     global: { fetch: authTimeoutFetch() },
+    // Electron 33 runs Node 20, which has no WebSocket of its own: Realtime needs ws (cloud/realtime.ts).
+    realtime: { transport: WebSocketNode as any },
   })
   client.auth.onAuthStateChange((event, session) => {
     broadcastAuth(session)

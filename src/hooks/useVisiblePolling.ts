@@ -13,16 +13,18 @@ const MIN_EVENT_GAP_MS = 30_000
  * `fn` is read through a ref, so a new function each render does not
  * restart the timer.
  */
-export function useVisiblePolling(fn: () => unknown, intervalMs: number, enabled = true) {
+export function useVisiblePolling(fn: () => unknown, intervalMs: number, enabled = true, immediate = true) {
   const fnRef = useRef(fn)
   fnRef.current = fn
+  // Kept across effect re-runs: a new interval (e.g. Realtime going live) must not trigger an extra run.
+  const lastRunRef = useRef(0)
+  const startedRef = useRef(false)
 
   useEffect(() => {
     if (!enabled) return
     let timer: ReturnType<typeof setInterval> | null = null
-    let lastRun = 0
-    const run = () => { lastRun = Date.now(); void fnRef.current() }
-    const runIfStale = () => { if (Date.now() - lastRun >= MIN_EVENT_GAP_MS) run() }
+    const run = () => { lastRunRef.current = Date.now(); void fnRef.current() }
+    const runIfStale = () => { if (Date.now() - lastRunRef.current >= MIN_EVENT_GAP_MS) run() }
     const start = () => { if (!timer) timer = setInterval(run, intervalMs) }
     const stop = () => { if (timer) { clearInterval(timer); timer = null } }
     const onVisibility = () => {
@@ -31,7 +33,12 @@ export function useVisiblePolling(fn: () => unknown, intervalMs: number, enabled
     }
     const onFocus = () => { if (document.visibilityState !== 'hidden') runIfStale() }
 
-    run()
+    // First mount only, and only when the screen does not load on its own (`immediate`).
+    if (!startedRef.current) {
+      startedRef.current = true
+      if (immediate) run()
+      else lastRunRef.current = Date.now()
+    }
     if (document.visibilityState !== 'hidden') start()
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('focus', onFocus)
@@ -40,5 +47,5 @@ export function useVisiblePolling(fn: () => unknown, intervalMs: number, enabled
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('focus', onFocus)
     }
-  }, [intervalMs, enabled])
+  }, [intervalMs, enabled, immediate])
 }

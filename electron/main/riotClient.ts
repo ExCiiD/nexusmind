@@ -17,6 +17,7 @@ import { prepareRiotRequest, RiotAuthError } from './riotTransport'
 import { currentRiotPriority, PRIORITY_RANK, type RiotPriority } from './riotPriority'
 import { RIOT_LIMITS } from '../../src/lib/riotLimits'
 import { mergeMatchIdsByRecency } from '../../src/lib/scoutingCore'
+import { ACTIVE_REGION_PATH, accountRoutingFor, createRegionResolver, platformFromActiveRegion, type Platform } from '../../src/lib/riotRegionCore'
 
 try {
   // Lazy require — keeps any import-time errors inside the try/catch
@@ -257,6 +258,14 @@ function endpointKeyFromUrl(url: string): string {
 export const RIOT_MAX_ATTEMPTS = 3
 
 /** Riot's limit (or the shared budget) still full after RIOT_MAX_ATTEMPTS tries. `code` for the screens to translate. */
+/** Riot has no such resource (an unknown match id, e.g. a practice tool game). Same message as before. */
+export class RiotNotFoundError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'RiotNotFoundError'
+  }
+}
+
 export class RiotRateLimitError extends Error {
   readonly code = 'RIOT_RATE_LIMITED'
   constructor(readonly retryAfterSec: number, readonly limitType: string) {
@@ -319,7 +328,7 @@ async function riotFetch(url: string, allowedFallbackStatus?: number[], attempt 
       throw new Error('Riot API key is expired or invalid. Development keys expire every 24 hours — please regenerate at developer.riotgames.com')
     }
     if (res.status === 404) {
-      throw new Error(`Account not found (404). Make sure your Game Name and Tag are correct for the selected region.`)
+      throw new RiotNotFoundError(`Account not found (404). Make sure your Game Name and Tag are correct for the selected region.`)
     }
     if (res.status === 400) {
       throw new Error(`Bad request (400). Check that your Game Name and Tag are spelled correctly.`)
@@ -358,6 +367,39 @@ async function riotFetchWithRoutingFallback(
   return data
 }
 
+// ── Server of each account (20/11/2026, src/lib/riotRegionCore.ts) ─────────────
+// Every by-puuid call goes to the server the account plays on now, found from its puuid: a stored region goes
+// stale after a transfer (SG2 → EUW1) or for a player with accounts on several servers.
+
+type RegionChangeListener = (puuid: string, from: Platform | null, to: Platform) => void
+const regionChangeListeners = new Set<RegionChangeListener>()
+
+/** Told when an account turns out to play on another server than the one stored (the caller saves it). */
+export function onDetectedRegionChange(fn: RegionChangeListener): () => void {
+  regionChangeListeners.add(fn)
+  return () => regionChangeListeners.delete(fn)
+}
+
+export const regionResolver = createRegionResolver({
+  detect: async (puuid, hint) => {
+    const routing = accountRoutingFor(hint)
+    // 403: a proxy without this route yet, 404: no lol account. Both: keep the stored region.
+    const { data, status } = await riotFetch(`${REGIONAL_URLS[routing]}${ACTIVE_REGION_PATH(puuid)}`, [403, 404])
+    return status === 200 ? platformFromActiveRegion(data) : null
+  },
+  onDetectedChange: (puuid, from, to) => {
+    console.log(`[riotClient] account plays on ${to} now (stored: ${from ?? 'none'})`)
+    for (const fn of regionChangeListeners) {
+      try { fn(puuid, from, to) } catch (err) { console.warn('[riotClient] region listener failed:', (err as Error)?.message) }
+    }
+  },
+})
+
+/** The platform to use for a by-puuid call. */
+export async function platformFor(puuid: string, region: string): Promise<Platform> {
+  return (await regionResolver.resolve(puuid, region)).platform
+}
+
 export async function getAccountByRiotId(
   gameName: string,
   tagLine: string,
@@ -385,7 +427,7 @@ export async function getSummonerByPuuid(
   puuid: string,
   region: string,
 ): Promise<{ id: string; accountId: string; puuid: string; profileIconId: number; summonerLevel: number }> {
-  const base = PLATFORM_URLS[region]
+  const base = PLATFORM_URLS[await platformFor(puuid, region)]
   return riotFetchJson(`${base}/lol/summoner/v4/summoners/by-puuid/${puuid}`)
 }
 
@@ -405,7 +447,7 @@ export async function getChampionMasteries(
   lastPlayTime: number
   championPointsSinceLastLevel: number
 }>> {
-  const base = PLATFORM_URLS[region]
+  const base = PLATFORM_URLS[await platformFor(puuid, region)]
   if (!base) throw new Error(`Unknown region: ${region}`)
   return riotFetchJson(`${base}/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=${Math.min(count, RIOT_LIMITS.MAX_MASTERY_COUNT)}`)
 }
@@ -416,7 +458,7 @@ export async function getChampionMasteries(
  * parseLeagueEntries (src/lib/rankCore.ts).
  */
 export async function getLeagueEntriesByPuuid(puuid: string, region: string): Promise<unknown[]> {
-  const base = PLATFORM_URLS[region]
+  const base = PLATFORM_URLS[await platformFor(puuid, region)]
   if (!base) throw new Error(`Unknown region: ${region}`)
   const entries = await riotFetchJson(`${base}/lol/league/v4/entries/by-puuid/${encodeURIComponent(puuid)}`)
   return Array.isArray(entries) ? entries : []
@@ -428,6 +470,18 @@ export async function getMatchIds(
   count = 5,
   start = 0,
   queueFilter: 'soloq' | 'flex' | 'both' = 'both',
+): Promise<string[]> {
+  // After a transfer, page one also reads the old server, so the latest games of both show.
+  const ids = await regionResolver.list(puuid, region, (platform) => matchIdsOn(puuid, platform, count, start, queueFilter), { mergePrevious: start === 0 })
+  return ids.slice(0, count)
+}
+
+async function matchIdsOn(
+  puuid: string,
+  region: string,
+  count: number,
+  start: number,
+  queueFilter: 'soloq' | 'flex' | 'both',
 ): Promise<string[]> {
   const routing = REGION_TO_ROUTING[region] || 'europe'
 
@@ -456,7 +510,8 @@ export async function getMatchIds(
 
   const queue = queueFilter === 'soloq' ? 420 : 440
   const path = `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${queue}&start=${start}&count=${count}`
-  return riotFetchWithRoutingFallback(path, routing)
+  const ids = await riotFetchWithRoutingFallback(path, routing)
+  return Array.isArray(ids) ? ids : []
 }
 
 /**
@@ -475,10 +530,12 @@ export async function getAnyQueueMatchIds(
   count = 20,
   start = 0,
 ): Promise<string[]> {
-  const routing = REGION_TO_ROUTING[region] || 'europe'
-  const path = `/lol/match/v5/matches/by-puuid/${puuid}/ids?start=${start}&count=${count}`
-  const ids = await riotFetchWithRoutingFallback(path, routing)
-  return Array.isArray(ids) ? ids : []
+  const ids = await regionResolver.list(puuid, region, async (platform) => {
+    const path = `/lol/match/v5/matches/by-puuid/${puuid}/ids?start=${start}&count=${count}`
+    const page = await riotFetchWithRoutingFallback(path, REGION_TO_ROUTING[platform] || 'europe')
+    return Array.isArray(page) ? page : []
+  }, { mergePrevious: start === 0 })
+  return ids.slice(0, count)
 }
 
 /**
@@ -498,12 +555,13 @@ export function getCurrentSeasonStart(): Date {
  * one call. Used to find the match a provisional game was (strandedGames.ts).
  */
 export async function getMatchIdsBetween(puuid: string, region: string, startSec: number, endSec: number, count = 20): Promise<string[]> {
-  const routing = REGION_TO_ROUTING[region] || 'europe'
-  const ids = await riotFetchWithRoutingFallback(
-    `/lol/match/v5/matches/by-puuid/${puuid}/ids?startTime=${Math.floor(startSec)}&endTime=${Math.floor(endSec)}&start=0&count=${count}`,
-    routing,
-  )
-  return Array.isArray(ids) ? ids : []
+  return regionResolver.list(puuid, region, async (platform) => {
+    const ids = await riotFetchWithRoutingFallback(
+      `/lol/match/v5/matches/by-puuid/${puuid}/ids?startTime=${Math.floor(startSec)}&endTime=${Math.floor(endSec)}&start=0&count=${count}`,
+      REGION_TO_ROUTING[platform] || 'europe',
+    )
+    return Array.isArray(ids) ? ids : []
+  }, { mergePrevious: true })
 }
 
 /**
@@ -520,6 +578,10 @@ export async function getMatchIdsInRange(
   startTimestampSec: number,
   maxPages: number = RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED,
 ): Promise<string[]> {
+  return regionResolver.list(puuid, region, (platform) => matchIdsInRangeOn(puuid, platform, queueId, startTimestampSec, maxPages), { mergePrevious: true })
+}
+
+async function matchIdsInRangeOn(puuid: string, region: string, queueId: number, startTimestampSec: number, maxPages: number): Promise<string[]> {
   const routing = REGION_TO_ROUTING[region] || 'europe'
   const pageSize = RIOT_LIMITS.MAX_IDS_PER_REQUEST
   const out: string[] = []

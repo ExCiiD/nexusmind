@@ -114,11 +114,16 @@ reprend les critères pour le verdict de release et se range à ses conclusions.
 
 | ID | Règle | Vérification | Seuil | Prio | Statut | Preuve |
 |---|---|---|---|---|---|---|
-| PE-1 | Bundle renderer de production minifié. | `electron.vite.config.ts` ; taille de `out/renderer/assets/index-*.js`. | Minifié ; < 3 Mo. | P2 | ✅ | 19/11 (tâche F) : `minify: 'esbuild'`, `keepNames: true` (piles d'erreurs lisibles), `sourcemap: false` (`electron.vite.config.ts:75-79`). Renderer : **2 844 ko** (4 527 avant, −37 %). |
+| PE-1 | Bundle renderer de production minifié. | `electron.vite.config.ts` ; taille de `out/renderer/assets/index-*.js`. | Minifié ; < 3 Mo. | P2 | ❌ | 19/11 (tâche F) : `minify: 'esbuild'`, `keepNames: true` (piles d'erreurs lisibles), `sourcemap: false` (`electron.vite.config.ts:75-79`). Renderer : **2 844 ko** (4 527 avant, −37 %). **20/11 : régression à 3 123 ko** (+280 ko, chunk unique) : voir `docs/AUDIT_PERF.md` § 2 n° 1. |
 | PE-2 | Routes hors démarrage chargées à la demande. | `grep -c "lazy(" src/App.tsx`. | Routes lourdes (stats, revue vidéo, coaching) en `React.lazy`. | P3 | ❌ | 0 (UI-09, WSC-20 pour le web). |
 | PE-3 | Pas de parsing de timeline répété sur le thread principal. | Profil du tableau de bord ; revue de `stats.ipc.ts`. | Une timeline parsée au plus une fois par session. | P2 | ✅ | 19/11 (tâche G) : `electron/main/detailedStatsMemo.ts` (mémo des stats détaillées, lu par `stats.ipc.ts`) ; le flux post-partie fait un seul `getMatch` et un seul parse. Avant : E02 (~40 `JSON.parse` de 0,5-2 Mo par visite du tableau de bord), E09. Gain non mesuré en temps. |
 | PE-4 | Application au repos économe (fenêtre réduite incluse). | Réseau du harnais ; `backgroundThrottling`. | Voir FE-5. | P2 | ❌ | `backgroundThrottling: false` (`index.ts:295`) + polling UI-11. |
 | PE-5 | Installeur sans poids mort. | `npm run dist:dir` puis taille de `release/win-unpacked`. | < 250 Mo ; pas de runtime ONNX d'autres plateformes, pas de source maps. | P2 | ⏳ | Exclusions de l'audit fusionnées, mais P2 (ONNX, 363 Mo) et D3/D4 en attente ; build de contrôle non fait. |
+| PE-6 | Démarrage rapide. | e2e sur l'app compilée (`firstWindow`, puis `main` rempli), 3 essais, copie d'une vraie base. | À chaud : fenêtre < 1,5 s, tableau de bord < 2 s. 1er lancement après mise à jour < 3 s. | P2 | ✅ | 20/11 : à chaud 0,83-0,85 s / 0,97-0,99 s ; 1er lancement 2,95 s / 3,13 s (copie de 494 Mo de la base avant la migration), à la limite. |
+| PE-7 | Pages principales rapides. | Même e2e : navigation par hash, attente de la fin des spinners. | < 300 ms par page sur la vraie base. | P2 | ✅ | 20/11 : 43-143 ms (réglages la plus lente). Pages d'équipe (réseau) non mesurées, cloud coupé. |
+| PE-8 | Peu de requêtes au repos. | `pg_stat_statements` (lecture), remis à zéro puis relu à J+2 ; réseau du harnais. | ≤ 3 req/min Supabase par client, fenêtre visible ; ≈ 0 fenêtre masquée. | P2 | ❌ | 12-20/11 : 9,6 req/min au total (avant le lot 1) ; 54 % = notifications / annonces / sessions en polling. À remesurer après le lot 1. |
+| PE-9 | Bundles initiaux légers. | Taille de `out/renderer/assets/index-*.js` ; gzip du JS initial de `web/dist`. | Desktop : chunk initial < 2,5 Mo. Web : < 600 Ko gzip. | P2 | ❌ | 20/11 : desktop 3 123 ko, web 807 ko gzip, un seul chunk chacun. |
+| PE-10 | Stockage local maîtrisé. | Taille de `data/nexusmind.db` et de `data/backups` d'un utilisateur actif. | Base < 300 Mo ; `backups` < 1 Go. | P2 | ❌ | 20/11 : base 494 Mo (timelines 301 Mo), backups 2,1 Go. |
 
 ## 8. i18n
 
@@ -167,11 +172,13 @@ reprend les critères pour le verdict de release et se range à ses conclusions.
 | Données | 5 | 3 | 0 |
 | Sécurité | 1 | 5 | 2 |
 | Tests | 6 | 1 | 1 |
-| Performance | 2 | 2 | 1 |
+| Performance | 3 | 6 | 1 |
 | i18n | 3 | 2 | 1 |
 | Accessibilité | 6 | 0 | 1 |
 | Release et ops | 3 | 2 | 2 |
-| **Total** | **34** | **23** | **13** |
+| **Total** | **35** | **27** | **13** |
+
+(20/11 : PE-1 repassé à ❌ (régression du bundle), PE-6 à PE-10 ajoutés par l'audit perf, voir docs/AUDIT_PERF.md.)
 
 (Mises à jour : TE-2 passé à ✅ avec le verdict beta.8 ; A11Y-4 ❌ et A11Y-5 ✅
 avec le passage clavier ; A11Y-7 ajouté ; DA-1, REL-1, REL-2 passés à ✅
@@ -1155,6 +1162,36 @@ n'est pas redirigée.
 5. **Information — état actuel du dossier :** le typecheck échoue sur
    `web/src/pages/TeamPage.tsx:137` (travail #7 en cours). Une release lancée
    maintenant serait refusée, ce qui est le comportement voulu.
+
+### Revue beta.15 (20/11/2026), non-commité depuis `f9392ae` — **OK, avec 2 P2**
+
+Contenu revu : serveur par compte (`riotRegionCore`, `accountRegions`, migration `20261120130000_account_region_mode`, Paramètres › Comptes), toutes les parties (`offSessionGames`, Historique, « Dernière partie »), plateforme lue dans le log du client (`gameLog*`), rattrapage au démarrage (`gameCatchUp*`), front du lot 1 (`useVisiblePolling`, `useCollab` dans la cloche).
+
+Vérifié :
+
+- **Migration sur une copie de la vraie base** (494 Mo) : appliquée au lancement de l'app compilée, sauvegarde `before-20261120130000_account_region_mode` créée, 1 profil et 3 comptes en `auto`, l'app démarre sur le tableau de bord. Aucun point-virgule dans les commentaires SQL.
+- **Pas de doublon** : `Game.matchId` est `@unique`, le rattrapage saute les matchId déjà présents et les parties provisoires `live_…` à ± 10 min, et une course avec la chaîne post-partie tombe dans le `catch`.
+- **Pas de remake** : durée < 300 s exclue (`MIN_DURATION_SEC`).
+- **DECISIONS.md** : serveur par compte en auto (puuid, puis dernière partie et log du client) plus un choix manuel par compte qui l'emporte (`regionMode`, jamais écrasé). L'ancien serveur est gardé dans `previousRegion`.
+- **Lot 1 front** : Sidebar passée de 10 s fixes à 60 s fenêtre visible ; la cloche réutilise `useCollab` au lieu d'un `cloudStatus` de plus.
+- `npm run typecheck` ✅. Vitest : **155 fichiers, 1 965 tests ✅**. Clés i18n `history.offSession.*` présentes en FR et EN.
+
+Écarts :
+
+1. **P2 — « Every game » incomplet pour les parties jouées app fermée.** `TRACKABLE_QUEUES` (`gameCatchUpCore.ts:13`) = 420, 440, 400, 430, 490, 1700, 1710. Il manque donc l'ARAM (450), Swiftplay (480, la file normale actuelle) et les customs. La détection en direct, elle, enregistre tous les modes (`resolveQueueType`). Correction proposée : passer à une liste d'exclusion (practice tool, remakes) ou ajouter 450 et 480.
+2. **P2 — Une partie supprimée revient.** `game:delete` (`session.ipc.ts:454`) ne garde aucune trace. Une partie supprimée depuis moins de 3 jours est donc réimportée au démarrage suivant. Correction proposée : garder les matchId supprimés (table ou réglage) et les exclure dans `pickCatchUpMatches`.
+3. **P3 — Pas de cache négatif.** Un matchId trouvé dans les logs mais absent de match-v5 (practice tool, certaines customs) est redemandé à Riot à chaque démarrage pendant 3 jours.
+
+#### Complément beta.15 (20/11/2026, Realtime + correctifs) — **NON, 1 P1**
+
+- **Migration Prisma `20261120150000_ignored_match`** : testée sur une copie fraîche de la vraie base avec l'app recompilée. Les migrations 130000 et 150000 passent en un seul lancement (une seule sauvegarde), et 2 lancements se font sans erreur de page. Pas de point-virgule dans les commentaires. Typecheck ✅, Vitest 158 fichiers / 1 986 tests ✅.
+- **Mes 2 P2 et le P3 sont corrigés** : 480, 450 et 0 ajoutés à `TRACKABLE_QUEUES` ; `IgnoredMatch` couvre `deleted` et `not_found` (redemandé après 1 jour).
+- **P1 — Avant la migration Realtime en production, l'app ne se comporte pas comme avant.**
+  - Sonde en lecture seule sur la prod, où la publication `supabase_realtime` est vide : un canal `postgres_changes` sur `notifications` reçoit d'abord **`SUBSCRIBED`**, puis seulement un message `system` « Unable to subscribe to changes… » avec `status: error`.
+  - Le callback de `subscribe` ne voit jamais `CHANNEL_ERROR`. Comme `realtimeCore.ts:175` n'écoute pas `system`, il passe à `live`.
+  - Conséquence : les écrans ralentissent à 15 min (`REALTIME_BACKUP_POLL_MS`) et la sync à 5 min (`syncService.ts:125`), alors qu'aucun événement n'arrive. Notifications, annonces et sessions ont jusqu'à 15 min de retard.
+  - Correction : écouter `.on('system', …)` et traiter `status === 'error'` comme `CHANNEL_ERROR` (repli et nouvel essai), avec un test.
+  - Autre option : appliquer la migration 140000 avant la release, avec l'accord de l'utilisateur. Le repli resterait faux en cas de retour arrière.
 
 ## Procédure de revue avant release
 

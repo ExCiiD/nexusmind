@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { useUserStore } from '@/store/useUserStore'
 import { useToast } from '@/hooks/useToast'
 import { Trans, useTranslation } from 'react-i18next'
+import { AccountRegionControl, RedetectButton, useAccountRegions } from '@/components/Settings/AccountRegionControl'
 import { useDiscordWebhooks, type DiscordWebhook } from '@/hooks/useDiscordWebhooks'
 import { UserCircle2, Plus, Trash2, Loader2, ShieldCheck, Target, Video, Circle, FolderOpen, X, Pencil, Check, FlaskConical, Youtube, Volume2, Mic, AlertTriangle, ExternalLink } from 'lucide-react'
 import { AppearanceCard } from './AppearanceCard'
@@ -38,6 +39,8 @@ export function SettingsPage() {
 
   const [accounts, setAccounts] = useState<AccountEntry[]>([])
   const [loadingAccounts, setLoadingAccounts] = useState(true)
+  // Each account's server (« Auto » or picked by hand), desktop (docs/contracts/account-region.md).
+  const regions = useAccountRegions()
   const [ffmpegAvailable, setFfmpegAvailable] = useState<boolean | null>(null)
   const [recordingsDir, setRecordingsDir] = useState('')
   const [isRecording, setIsRecording] = useState(false)
@@ -859,6 +862,7 @@ export function SettingsPage() {
             {t('settings.accounts.title')}
           </CardTitle>
           <CardDescription>{t('settings.accounts.desc')}</CardDescription>
+          {regions.available && <div><RedetectButton onClick={() => { void regions.redetect() }} busy={regions.detecting} /></div>}
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Main account */}
@@ -872,7 +876,9 @@ export function SettingsPage() {
                   </span>
                   <Badge variant="gold" className="text-[10px] h-5">{t('settings.accounts.main')}</Badge>
                 </div>
-                <span className="text-xs text-hextech-text-dim">{user.region}</span>
+                {regions.available
+                  ? <AccountRegionControl info={regions.byAccount('main')} fallback={user.region ?? null} onChange={(mode) => { void regions.setMode('main', mode) }} />
+                  : <span className="text-xs text-hextech-text-dim">{user.region}</span>}
               </div>
             </div>
           )}
@@ -901,7 +907,9 @@ export function SettingsPage() {
                         {t('settings.accounts.secondary')}
                       </Badge>
                     </div>
-                    <span className="text-xs text-hextech-text-dim">{acc.region}</span>
+                    {regions.available
+                      ? <AccountRegionControl info={regions.byAccount(acc.id)} fallback={acc.region ?? null} onChange={(mode) => { void regions.setMode(acc.id, mode) }} />
+                      : <span className="text-xs text-hextech-text-dim">{acc.region}</span>}
                   </div>
                   <div className="shrink-0">
                     {confirmRemoveId === acc.id ? (

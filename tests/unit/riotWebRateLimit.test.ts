@@ -20,6 +20,9 @@ let fetchMock: ReturnType<typeof vi.fn>
 beforeEach(() => {
   vi.useFakeTimers()
   riot.resetRiotRateLimitForTests()
+  // These tests count the transport calls: the server of their puuids is pinned, so no detection call is added.
+  riot.regionResolver.invalidate()
+  for (const id of ['puuid', 'p1', 'p']) riot.regionResolver.setMode(id, 'EUW1')
   fetchMock = vi.fn()
   vi.stubGlobal('fetch', fetchMock)
 })
@@ -102,5 +105,24 @@ describe('x-nxm-priority (P2)', () => {
     expect(headersOf(1)['x-nxm-priority']).toBe('background')
     expect(headersOf(2)['x-nxm-priority']).toBeUndefined()
     expect(headersOf(2).Authorization).toBe('Bearer tok')
+  })
+})
+
+describe('server of the account (20/11/2026)', () => {
+  const urlOf = (call: number) => fetchMock.mock.calls[call][0] as string
+  it('a roster saved on SG2 whose player moved to EUW1: detected on asia, then listed on europe', async () => {
+    fetchMock
+      .mockResolvedValueOnce(res(200, undefined, { puuid: 'moved', game: 'lol', region: 'euw1' }))
+      .mockResolvedValue(res(200, undefined, ['EUW1_8051837730']))
+    const ids = await riot.getRecentMatchIds('moved', 'SG2', 5, 420)
+    expect(urlOf(0)).toBe('https://proxy.test/asia/riot/account/v1/region/by-game/lol/by-puuid/moved')
+    expect(urlOf(1)).toBe('https://proxy.test/europe/lol/match/v5/matches/by-puuid/moved/ids?queue=420&start=0&count=5')
+    expect(ids[0]).toBe('EUW1_8051837730')
+  })
+
+  it('a proxy without the route yet (403): the stored server is kept', async () => {
+    fetchMock.mockResolvedValueOnce(res(403)).mockResolvedValue(res(200, undefined, []))
+    await riot.getLeagueEntriesByPuuid('old-proxy', 'SG2')
+    expect(urlOf(1)).toBe('https://proxy.test/sg2/lol/league/v4/entries/by-puuid/old-proxy')
   })
 })

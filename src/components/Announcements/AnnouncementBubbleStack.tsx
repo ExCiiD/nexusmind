@@ -4,7 +4,7 @@ import { X } from 'lucide-react'
 import { useCollab } from '@/hooks/useCollab'
 import { undismissedFor } from '@/lib/announcementsCore'
 import type { Announcement, AnnouncementDismissal } from '@/lib/announcements'
-import { useVisiblePolling } from '@/hooks/useVisiblePolling'
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
 
 /** Task I: every 10 min while visible, plus on focus; paused when hidden (useVisiblePolling). */
 const POLL_MS = 600_000
@@ -50,7 +50,8 @@ export function AnnouncementBubbleStack() {
     setDismissals(myDismissals ?? [])
   }, [available, groups])
 
-  useVisiblePolling(load, POLL_MS, available && groups.length > 0)
+  // Realtime: a new or edited announcement reloads; the 10 min poll only while Realtime is not live.
+  useRealtimeRefresh(['announcements'], load, POLL_MS, { enabled: available && groups.length > 0 })
 
   if (!available || !myUserId) return null
 

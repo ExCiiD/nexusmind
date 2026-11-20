@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useCollab } from '@/hooks/useCollab'
 import { Bell, CheckCheck, ExternalLink } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { AppNotification } from '@/lib/notifications'
-import { useVisiblePolling } from '@/hooks/useVisiblePolling'
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
 
 /** Task I: every 2 min while visible, plus on focus; paused when hidden (useVisiblePolling). */
 const POLL_MS = 120_000
@@ -77,20 +78,16 @@ export function NotificationBell() {
   const [busy, setBusy] = useState(false)
   // Nothing to show when there is no signed-in cloud account (local-only use,
   // or the login screen itself) — same gate as CloudAccountCard / SyncIndicator.
-  const [signedIn, setSignedIn] = useState(false)
+  // Signed in: from the shared collab store (useCollab already follows sign-in / sign-out), not a cloudStatus of its own.
+  const { available: signedIn } = useCollab()
 
   const refreshCount = useCallback(() => {
     window.api.notificationsUnreadCount?.().then(setUnread).catch(() => {})
   }, [])
 
-  useEffect(() => {
-    let alive = true
-    window.api.cloudStatus().then((s) => { if (alive) setSignedIn(!!s.configured && !!s.user) }).catch(() => {})
-    const off = window.api.onCloudAuthChanged((user) => { if (alive) setSignedIn(!!user) })
-    return () => { alive = false; off() }
-  }, [])
-
-  useVisiblePolling(refreshCount, POLL_MS, signedIn)
+  // Realtime (docs/contracts/realtime.md): a new notification refreshes the count; the 2 min poll stays while
+  // Realtime is not live (before the publication migration), 15 min once it is.
+  useRealtimeRefresh(['notifications'], refreshCount, POLL_MS, { enabled: signedIn })
 
   const openPanel = async () => {
     setOpen(true)

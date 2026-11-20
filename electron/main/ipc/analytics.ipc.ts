@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
+import { OFF_SESSION_OBJECTIVE_ID } from '../offSessionGames'
 import { FUNDAMENTALS } from '../../../src/lib/constants/fundamentals'
 
 function includeInAnalytics(game: { reviewStatus?: string | null }) {
@@ -75,7 +76,7 @@ export function registerAnalyticsHandlers() {
     const sessions = await prisma.session.findMany({
       // Exclude the system "review-only" container — it groups backfilled
       // games from outside any real session and would clutter session lists.
-      where: { userId: user.id, objectiveId: { not: '__review_only__' } },
+      where: { userId: user.id, objectiveId: { not: OFF_SESSION_OBJECTIVE_ID } },
       orderBy: { date: 'desc' },
       include: {
         games: {
@@ -208,13 +209,16 @@ export function registerAnalyticsHandlers() {
       orderBy: { date: 'desc' },
     })
 
+    // Games played outside a session sit in the off-session container (offSessionGames.ts): listed too, flagged
+    // offSession. Newest first across sessions (the container's date says nothing about its games).
     return sessions.flatMap((s) =>
       s.games.map((g) => ({
         ...g,
         objectiveId: s.objectiveId,
         subObjective: s.subObjective,
+        offSession: s.objectiveId === OFF_SESSION_OBJECTIVE_ID,
       })),
-    ).slice(0, limit)
+    ).sort((a, b) => new Date(b.gameEndAt).getTime() - new Date(a.gameEndAt).getTime()).slice(0, limit)
   })
 
   /**

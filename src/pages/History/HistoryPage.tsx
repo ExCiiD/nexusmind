@@ -36,8 +36,15 @@ import { wrText } from '@/lib/winrate'
 
 const GAMES_PAGE_SIZE = 20
 
+/** The container of the games played outside a session (electron/main/offSessionGames.ts, contract account-region.md). */
+const OFF_SESSION_OBJECTIVE_ID = '__review_only__'
+/** An entry of games played outside a session: flagged by the server, or the off-session container. */
+const isOffSession = (s: { offSession?: boolean; objectiveId: string | null }) => s.offSession === true || s.objectiveId === OFF_SESSION_OBJECTIVE_ID || !s.objectiveId
+
 interface SessionSummary {
   id: string
+  /** Games recorded without an active session (decision of 20/11/2026): one entry per day, no objective. */
+  offSession?: boolean
   objectiveId: string
   subObjective: string | null
   customNote: string | null
@@ -911,8 +918,9 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
             <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-hextech-text-bright truncate">
-                {fundamental?.label || session.objectiveId}
+                {isOffSession(session) ? t('history.offSession.title') : fundamental?.label || session.objectiveId}
               </span>
+              {isOffSession(session) && <Badge variant="outline" className="shrink-0 text-xs text-hextech-text-dim">{t('history.offSession.badge')}</Badge>}
               {session.subObjective && (
                 <Badge variant="outline" className="text-xs shrink-0">{session.subObjective}</Badge>
               )}
@@ -938,7 +946,7 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
             <Stat label={t('history.stats.kda')} value={session.avgKDA.toFixed(2)} />
             <Stat label={t('history.stats.csMin')} value={session.avgCSPerMin.toFixed(1)} />
             {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- event barrier only: stops the click from reaching the clickable row; the buttons inside handle the keyboard. */}
-            <div onClick={(e) => e.stopPropagation()}>
+            <div onClick={(e) => e.stopPropagation()} className={cn(isOffSession(session) && 'hidden')}>
               <ShareSessionButton
                 data={{
                   objectiveId: session.objectiveId,

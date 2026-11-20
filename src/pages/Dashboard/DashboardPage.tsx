@@ -44,6 +44,8 @@ import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
 import { wrText } from '@/lib/winrate'
 
 interface RecentGame {
+  /** Played outside a session (decision of 20/11/2026): from getGameHistory's `offSession`, matched by matchId. */
+  offSession?: boolean
   matchId: string
   champion: string
   opponentChampion: string | null
@@ -143,7 +145,15 @@ export function DashboardPage() {
     loadActiveSession()
     loadStats()
     loadProgressData()
-    window.api.getMatchHistoryWithStatus(10).then((games: any[]) => setRecentGames(games ?? [])).catch(() => {})
+    // « Dernière partie » comes from the Riot list, which knows nothing of sessions: the local history flags the games
+    // played outside one (offSession, contract account-region.md), matched by matchId.
+    Promise.all([
+      window.api.getMatchHistoryWithStatus(10),
+      window.api.getGameHistory(10).catch(() => []),
+    ]).then(([games, local]: [any[], any[]]) => {
+      const off = new Set((local ?? []).filter((g) => g?.offSession).map((g) => g.matchId))
+      setRecentGames((games ?? []).map((g) => ({ ...g, offSession: off.has(g.matchId) })))
+    }).catch(() => {})
     window.api.getStatsSnapshots().then(setSnapshots).catch(() => {})
   }, [loadActiveSession, loadStats, loadProgressData])
 
@@ -700,6 +710,7 @@ function LastGameCard({ game, onViewDetails, onReview }: { game: RecentGame; onV
           <Swords className="h-4 w-4 text-hextech-gold" />
           <h3 className="text-sm font-bold text-hextech-text-bright">{t('dashboard.lastGame.title')}</h3>
           <span className="text-[11px] text-hextech-text-dim">• {timeAgo(game.gameEndAt, t)}</span>
+          {game.offSession && <span className="rounded border border-hextech-border-dim px-1.5 py-0.5 text-[10px] text-hextech-text-dim">{t('history.offSession.badge')}</span>}
         </div>
         {needsReview && (
           <button onClick={onReview} className="flex items-center gap-1 rounded border border-hextech-gold/30 bg-hextech-gold/15 px-2 py-0.5 text-[11px] font-medium text-hextech-gold-bright hover:bg-hextech-gold/25">

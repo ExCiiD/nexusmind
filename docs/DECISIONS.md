@@ -9,6 +9,10 @@ les mots de l'utilisateur quand c'est possible.
 
 | Date | Décision | Concerne |
 |---|---|---|
+| 20/11 | **« Lance-le »** : lot 1 de scalabilité (Supabase Realtime à la place du polling, auth vérifiée une fois, groupes chargés une fois, requêtes filtrées). **Chercher d’autres optimisations de charge et de vitesse.** | back, front, audit |
+| 20/11 | **Ne pas restaurer l’historique effacé le 19/11, et ne plus poser la question.** Rester sur la demande en cours. | toutes |
+| 20/11 | **« Yes, every game »** : l’app enregistre **toutes les parties**, même sans session active (historique, stats, enregistrement) ; la session reste un cadre en plus. | back, front |
+| 20/11 | **Serveur de chaque compte** : un joueur peut avoir plusieurs comptes sur des serveurs différents (ex. EUW et SG). **Détection automatique par compte** (à partir du puuid), **plus un choix manuel par compte dans les Paramètres** (« Auto » par défaut). Valable pour tous les utilisateurs, y compris après un transfert de région. | back, front |
 | 20/11 | Écrans du § 18 (`DESIGN_STATE.md`) **« Validées »** : dashboard « Organisation » du manager, page « Rejoins une équipe » (entrée unique « Équipe » sans groupe), toast de check-in au lancement d'une session. Maquettes : page Penpot « Rôles — manager, sans groupe, check-in ». | design, front, back |
 | 20/11 | **Objectif : app largement scalable** (plus de fonctionnalités et d’utilisateurs) **et rapide** (requêtes et chargements) ; garder Supabase Pro (pris à cause des erreurs de connexion / chargements infinis). | toutes |
 | 20/11 | **« Yes, all »** sur l’audit des liaisons (docs/AUDIT_LIAISONS.md) : Scouting d’un joueur **réduit aux dossiers publiés** ; **manager : dashboard d’organisation** (événements, présence, tâches, annonces) ; **joueur sans groupe : une seule entrée « Équipe »** (rejoindre ou créer, annonce LFT) ; **check-in bien-être proposé au lancement d’une session** ; **l’analyste peut fixer les objectifs de session** ; liaisons L1-L6 à faire. | design, front, back |

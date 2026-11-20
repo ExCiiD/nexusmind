@@ -143,6 +143,8 @@ export interface PlayerSessionView {
   status: string | null
   sessionConclusion: string | null
   games: PlayerGameView[]
+  /** The container of the games played outside any session (beta.15): show it as "Hors session", no objective. */
+  offSession?: boolean
 }
 
 export interface CollabApi extends DevPlanApi {

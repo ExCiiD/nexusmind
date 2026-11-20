@@ -1,6 +1,7 @@
 import { getPrisma } from './database'
 import { extractPlayerStats, getMatch, getMatchIdsBetween, isQueueSessionEligible } from './riotClient'
 import { GIVE_UP_AFTER_MS, pickMatchForProvisional, provisionalStartMs, type CandidateMatch } from './strandedGamesCore'
+import { isOffSessionSession } from './offSessionGames'
 
 /**
  * Recovery of the provisional games the detector couldn't enrich (see
@@ -84,7 +85,7 @@ export async function recoverStrandedGames(onRecovered: (info: RecoveredGame) =>
     const now = Date.now()
     const stranded = (await prisma.game.findMany({
       where: { matchId: { startsWith: 'live_' }, gameEndAt: { lt: new Date(now - SETTLE_MS) } },
-      select: { id: true, matchId: true, champion: true, gameEndAt: true },
+      select: { id: true, matchId: true, champion: true, gameEndAt: true, session: { select: { objectiveId: true } } },
     })).filter((g) => provisionalStartMs(g.matchId) !== null && now - g.gameEndAt.getTime() < GIVE_UP_AFTER_MS)
     tally.stranded = stranded.length
     if (stranded.length === 0) return tally
@@ -144,7 +145,8 @@ export async function recoverStrandedGames(onRecovered: (info: RecoveredGame) =>
             win: stats.win,
             gameEndAt: stats.gameEndAt,
             queueType,
-            isSessionEligible: isQueueSessionEligible(queueType),
+            // A game outside a session never counts in the session KPIs (offSessionGames.ts).
+            isSessionEligible: isQueueSessionEligible(queueType) && !isOffSessionSession(game.session),
             opponentChampion: stats.opponentChampion ?? null,
           },
         })

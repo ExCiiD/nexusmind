@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CalendarCheck, CalendarClock, CalendarDays, Check, ChevronLeft, ChevronRight, Copy, Download, Link2, Loader2, Pencil, Plus, RotateCw, Trash2, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -133,6 +134,9 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
   }, [groupId, weekStart, weekEnd, t, toast])
 
   useEffect(() => { load() }, [load])
+  // Realtime: an event or an answer of this group reloads the week while the Planning stays open (it used to reload
+  // only on opening); a 10 min backup poll while Realtime is not live.
+  useRealtimeRefresh(['calendar'], load, 10 * 60_000, { enabled: !!groupId, groupId, immediate: false })
 
   if (groups.length === 0) return null
 

@@ -417,6 +417,21 @@
       "setupDesc": "Ajoutez <code>MAIN_VITE_GOOGLE_CLIENT_ID</code> et <code>MAIN_VITE_GOOGLE_CLIENT_SECRET</code> à votre fichier <code>.env</code> pour activer l’envoi sur YouTube.",
       "connecting": "Connexion…",
       "connect": "Connecter YouTube"
+    },
+    "region": {
+      "label": "Serveur de {{account}}",
+      "autoDetected": "Auto (détecté : {{region}})",
+      "autoPending": "Auto (pas encore détecté)",
+      "previous": "avant : {{region}}",
+      "manualDiffers": "Riot détecte {{region}}",
+      "redetect": "Détecter à nouveau",
+      "redetected": "Serveurs détectés à nouveau",
+      "saved": "Serveur enregistré",
+      "errors": {
+        "badRegion": "Serveur inconnu.",
+        "notFound": "Ce compte n’existe plus.",
+        "generic": "Le serveur n’a pas pu être enregistré."
+      }
     }
   },
   "sidebar": {
@@ -978,6 +993,10 @@
       "sessionsEmptyTitle": "Aucune session",
       "sessionsEmptyDesc": "Créez votre première session pour commencer à suivre vos objectifs.",
       "createSession": "Créer une session"
+    },
+    "offSession": {
+      "title": "Parties hors session",
+      "badge": "Hors session"
     }
   },
   "statsAvg": {

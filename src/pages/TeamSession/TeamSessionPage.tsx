@@ -17,6 +17,7 @@ import { FundamentalPickerDialog } from '@/components/Session/FundamentalPickerD
 import { mergedFundamentalCategories, getAllFundamentalsForGroup } from '@/lib/fundamentals'
 import { TeamSessionHistoryView } from '@/pages/TeamSessions/TeamSessionHistoryView'
 import { SessionPrepPanel } from '@/components/TeamSession/SessionPrepPanel'
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
 import { historyApi } from '@/pages/TeamSessions/historyContract'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { countdownState } from '@/lib/teamSessionsCore'
@@ -98,12 +99,13 @@ export function TeamSessionPage() {
 
   useEffect(() => { load() }, [load])
 
-  useEffect(() => {
-    if (!session || session.status === 'ended') return
-    const id = setInterval(load, FAST_POLL_MS)
-    return () => clearInterval(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only restart the interval on a status change, not on every poll's new session object
-  }, [session?.status, load])
+  // Realtime (docs/contracts/realtime.md): a change of the session or its reviews reloads the page; the 15 s poll
+  // only while Realtime is not live (15 min once it is). Nothing once the session has ended.
+  useRealtimeRefresh(['team_sessions', 'team_session_reviews'], load, FAST_POLL_MS, {
+    enabled: !!session && session.status !== 'ended',
+    groupId: session?.groupId ?? null,
+    immediate: false,
+  })
 
   // The 1 s clock only drives the countdown of a scheduled session: no need to
   // re-render this page every second once it is live or ended.

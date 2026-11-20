@@ -1,5 +1,8 @@
 import https from 'https'
-import { getMatch, getMatchIds, extractPlayerStats, isQueueSessionEligible } from './riotClient'
+import { getMatch, getMatchIds, extractPlayerStats, isQueueSessionEligible, regionResolver } from './riotClient'
+import { readGameLogRef } from './gameLog'
+import type { GameLogRef } from './gameLogCore'
+import { isOffSessionSession, sessionForNewGame } from './offSessionGames'
 import { getPrisma } from './database'
 import { withRiotPriority } from './riotPriority'
 
@@ -121,6 +124,9 @@ export class GameDetector {
    */
   private liveSnapshot: LiveSnapshot | null = null
 
+  /** The real match of the game being played, read from the League game log (gameLog.ts). */
+  private gameRef: GameLogRef | null = null
+
   constructor(
     private onGameEnd: (matchData: any) => void,
     private onGameStart?: () => void,
@@ -158,6 +164,14 @@ export class GameDetector {
           this.wasInGame = true
           this.gameStartedAt = Date.now()
           this.liveSnapshot = null
+          this.gameRef = null
+          // The client writes its game log as the game loads: read once it is there.
+          const startedAt = this.gameStartedAt
+          setTimeout(() => {
+            if (this.gameStartedAt !== startedAt) return
+            try { this.gameRef = readGameLogRef(startedAt) } catch { /* best effort */ }
+            if (this.gameRef) console.log(`[detector] Game log: ${this.gameRef.matchId}`)
+          }, 20_000)
           console.log(`[detector] Game start detected (gameTime: ${res.data?.gameTime ?? 0}s)`)
           try { this.onGameStart?.() } catch (err) {
             console.error('[detector] onGameStart error:', err)
@@ -220,8 +234,13 @@ export class GameDetector {
     this.currentGameTime = 0
     const gameStartedAt = this.gameStartedAt ?? Date.now()
     const snapshot = this.liveSnapshot
+    let gameRef = this.gameRef
+    if (!gameRef) {
+      try { gameRef = readGameLogRef(gameStartedAt) } catch { gameRef = null }
+    }
     this.gameStartedAt = null
     this.liveSnapshot = null
+    this.gameRef = null
 
     try {
       await Promise.resolve(this.onGameRawEnd?.())
@@ -239,7 +258,7 @@ export class GameDetector {
 
     // ── Phase 2: Background enrich with Riot Match API ─────────────────
     // P1-3: the game that just ended goes before any scout or background read (riotPriority.ts).
-    withRiotPriority('gameEnd', () => this.enrichWithMatchApi(gameStartedAt, snapshot)).catch((err) => {
+    withRiotPriority('gameEnd', () => this.enrichWithMatchApi(gameStartedAt, snapshot, gameRef)).catch((err) => {
       console.error('[detector] Background enrich failed:', err)
     })
   }
@@ -266,19 +285,19 @@ export class GameDetector {
       const isAram = snapshot.gameMode === 'ARAM'
       const isArena = snapshot.gameMode === 'CHERRY'
       // Modes for which we create a Game row so the user gets review +
-      // markers on the video timeline. Summoner's Rift drives session
-      // KPIs; Arena is review-only (still gets timeline events from
-      // match-v5). ARAM intentionally excluded for now — separate model.
-      const isTrackableMode = isSummonersRift || isArena
+      // markers on the video timeline. "Every game" (20/11/2026): Summoner's
+      // Rift (ranked, normals, Swiftplay, customs), ARAM and Arena. Only
+      // ranked games count in the session KPIs (the enrichment decides).
+      const isTrackableMode = isSummonersRift || isArena || isAram
 
-      const activeSession = await prisma.session.findFirst({
-        where: { userId: user.id, status: 'active' },
-      })
-
-      if (activeSession && isTrackableMode) {
+      // 20/11/2026, "every game": the active session when there is one, otherwise the off-session container
+      // (offSessionGames.ts). Only a game played in a session counts in its KPIs.
+      if (isTrackableMode) {
+        const { sessionId, inSession } = await sessionForNewGame(user.id)
+        const eligible = inSession && !isArena && !isAram
         const game = await prisma.game.create({
           data: {
-            sessionId: activeSession.id,
+            sessionId,
             matchId: `live_${gameStartedAt}`,
             champion: snapshot.champion,
             role: snapshot.role,
@@ -291,34 +310,30 @@ export class GameDetector {
             win: false,
             gameEndAt: new Date(),
             queueType: isArena ? 'arena' : 'pending',
-            // Arena games are review-only — they don't count toward
+            // Arena games and games outside a session are review-only: they don't count toward
             // session win-rate / role KPIs.
-            isSessionEligible: !isArena,
+            isSessionEligible: eligible,
           },
         })
 
         const isOffRole =
-          !isArena &&
+          eligible &&
           !!user.mainRole &&
           !!snapshot.role &&
           snapshot.role !== 'UNKNOWN' &&
           user.mainRole.toUpperCase() !== snapshot.role.toUpperCase()
 
-        console.log(`[detector] Provisional game created (id=${game.id}, mode=${snapshot.gameMode}) — review page should open now`)
+        console.log(`[detector] Provisional game created (id=${game.id}, mode=${snapshot.gameMode}, ${inSession ? 'in session' : 'off session'})`)
 
         this.onGameEnd({
           game,
           stats: { ...snapshot, gameEndAt: new Date().toISOString(), matchId: game.matchId, queueType: isArena ? 'arena' : 'pending' },
-          sessionId: activeSession.id,
+          sessionId: inSession ? sessionId : null,
           isOffRole,
-          isSessionEligible: !isArena,
+          isSessionEligible: eligible,
         })
       } else {
-        const reason = !activeSession
-          ? 'no active session'
-          : isAram
-            ? 'ARAM'
-            : `gameMode=${snapshot.gameMode}`
+        const reason = isAram ? 'ARAM' : `gameMode=${snapshot.gameMode}`
         console.log(`[detector] No provisional game — ${reason}`)
 
         this.onGameEnd({
@@ -341,7 +356,7 @@ export class GameDetector {
    */
   // `_snapshot` (the live champion) is not used yet: matching the Riot match on
   // it is the fix proposed in docs/AUDIT_APP_2026-11.md (E10).
-  private async enrichWithMatchApi(gameStartedAt: number, _snapshot: LiveSnapshot | null) {
+  private async enrichWithMatchApi(gameStartedAt: number, _snapshot: LiveSnapshot | null, gameRef: GameLogRef | null = null) {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return
@@ -363,6 +378,22 @@ export class GameDetector {
 
     for (let attempt = 0; attempt < DELAYS_MS.length; attempt++) {
       await new Promise((r) => setTimeout(r, DELAYS_MS[attempt]))
+
+      // The game log names the exact match (its platform included): read it directly, whatever server the
+      // accounts are stored on. The account that played is the one in the match.
+      if (gameRef) {
+        const matchData = await getMatch(gameRef.matchId, gameRef.platform).catch(() => null)
+        const acc = matchData ? allAccounts.find((a) => extractPlayerStats(matchData, a.puuid)) : undefined
+        if (matchData && acc) {
+          latestMatchId = gameRef.matchId
+          stats = extractPlayerStats(matchData, acc.puuid)
+          winningMatchData = matchData
+          // A stored server that differs: the account moved (transfer), detect it again.
+          if (acc.region !== gameRef.platform) regionResolver.invalidate(acc.puuid)
+          console.log(`[detector] Enrich: match from the game log found on attempt ${attempt + 1}: ${latestMatchId}`)
+          break
+        }
+      }
 
       const results = await Promise.allSettled(
         allAccounts.map(async (acc) => {
@@ -436,8 +467,11 @@ export class GameDetector {
 
     const provisionalMatchId = `live_${gameStartedAt}`
     try {
-      const provisionalGame = await prisma.game.findFirst({ where: { matchId: provisionalMatchId } })
+      const provisionalGame = await prisma.game.findFirst({ where: { matchId: provisionalMatchId }, include: { session: { select: { objectiveId: true } } } })
       if (provisionalGame) {
+        // A game outside a session never counts in the session KPIs.
+        const offSession = isOffSessionSession(provisionalGame.session)
+        const eligible = sessionEligible && !offSession
         await prisma.game.update({
           where: { id: provisionalGame.id },
           data: {
@@ -453,16 +487,16 @@ export class GameDetector {
             win: stats.win,
             gameEndAt: stats.gameEndAt,
             queueType,
-            isSessionEligible: sessionEligible,
+            isSessionEligible: eligible,
             opponentChampion: stats.opponentChampion ?? null,
           },
         })
         console.log(
           `[detector] Enrich: updated game ${provisionalGame.id} — ` +
-            `${latestMatchId} ${stats.win ? 'WIN' : 'LOSS'} (queue=${queueType}, eligible=${sessionEligible})`,
+            `${latestMatchId} ${stats.win ? 'WIN' : 'LOSS'} (queue=${queueType}, eligible=${eligible})`,
         )
 
-        if (!sessionEligible) {
+        if (!eligible) {
           console.log(`[detector] Enrich: game was NOT ranked — removing from session`)
           await prisma.game.update({
             where: { id: provisionalGame.id },
@@ -483,9 +517,7 @@ export class GameDetector {
       } else {
         const existing = await prisma.game.findUnique({ where: { matchId: latestMatchId } })
         if (!existing) {
-          const activeSession = await prisma.session.findFirst({
-            where: { userId: user.id, status: 'active' },
-          })
+          const target = await sessionForNewGame(user.id)
 
           // Symmetric with `fireInstantGameEnd`: accept any queue type
           // the provisional path would have accepted (CLASSIC → soloq/
@@ -498,11 +530,12 @@ export class GameDetector {
           // ranked-only.
           const isTrackableQueue =
             queueType === 'soloq' || queueType === 'flex' ||
-            queueType === 'normal' || queueType === 'arena'
-          if (activeSession && isTrackableQueue) {
+            queueType === 'normal' || queueType === 'arena' ||
+            queueType === 'aram' || queueType === 'custom'
+          if (isTrackableQueue) {
             const newGame = await prisma.game.create({
               data: {
-                sessionId: activeSession.id,
+                sessionId: target.sessionId,
                 matchId: latestMatchId,
                 champion: stats.champion,
                 role: stats.role,
@@ -515,7 +548,7 @@ export class GameDetector {
                 win: stats.win,
                 gameEndAt: stats.gameEndAt,
                 queueType,
-                isSessionEligible: sessionEligible,
+                isSessionEligible: sessionEligible && target.inSession,
                 opponentChampion: stats.opponentChampion ?? null,
               },
             })
@@ -547,7 +580,7 @@ export class GameDetector {
               console.warn('[detector] onGameEnriched callback failed:', err)
             }
           } else {
-            const reason = !activeSession ? 'no active session' : `untrackable queue (${queueType})`
+            const reason = `untrackable queue (${queueType})`
             console.log(`[detector] Enrich: no provisional game — ${reason}, skipping game creation`)
           }
         } else {

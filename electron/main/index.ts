@@ -40,9 +40,13 @@ import { registerAssessmentHandlers } from './ipc/assessment.ipc'
 import { registerAnalyticsHandlers } from './ipc/analytics.ipc'
 import { registerStatsHandlers, prefetchGameAnalysis } from './ipc/stats.ipc'
 import { recoverStrandedGames } from './strandedGames'
+import { catchUpRecentGames } from './gameCatchUp'
+import { registerRealtimeHandlers } from './cloud/realtime'
+import { withRiotPriority } from './riotPriority'
 import { registerAccountHandlers } from './ipc/account.ipc'
+import { initAccountRegions, registerAccountRegionHandlers } from './accountRegions'
 import { registerDevHandlers } from './ipc/dev.ipc'
-import { registerRecordingHandlers } from './ipc/recording.ipc'
+import { registerRecordingHandlers, backfillOrphanRecordings } from './ipc/recording.ipc'
 import { registerExternalReviewHandlers } from './ipc/externalReview.ipc'
 import { registerShareHandlers } from './ipc/share.ipc'
 import { registerCoachingHandlers } from './ipc/coaching.ipc'
@@ -444,6 +448,9 @@ async function bootstrap() {
   registerAnalyticsHandlers()
   registerStatsHandlers()
   registerAccountHandlers()
+  registerAccountRegionHandlers()
+  // The server of each account, from its puuid (transfers, accounts on several servers): in the background.
+  initAccountRegions().catch((err) => console.warn('[regions] init failed:', (err as Error)?.message))
   registerRecordingHandlers()
   registerExternalReviewHandlers()
   registerShareHandlers()
@@ -470,6 +477,7 @@ async function bootstrap() {
   registerLftHandlers()
   registerChampionCutoutHandlers()
   registerAnalystHandlers()
+  registerRealtimeHandlers()
   if (isCloudConfigured()) {
     startAutoCloudBackup()
     startSyncService()
@@ -842,6 +850,14 @@ async function bootstrap() {
   }
   setTimeout(recover, 60_000)
   setInterval(recover, 20 * 60_000)
+
+  // 20/11/2026, every game: the recent games missing locally (app closed, other server, transfer) are imported
+  // once after the start, then the orphan recordings are linked to them (gameCatchUp.ts).
+  setTimeout(() => {
+    withRiotPriority('background', () => catchUpRecentGames(backfillOrphanRecordings))
+      .then((r) => { if (r.imported) console.log(`[catch-up] ${r.imported} game(s) imported`) })
+      .catch((err) => console.warn('[catch-up] failed:', (err as Error)?.message))
+  }, 90_000)
 
   // Weekly MVP / Grinder awards of the roster cards: ranks and games of the
   // teams' members read in the background, two minutes after start then every

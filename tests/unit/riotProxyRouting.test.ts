@@ -13,8 +13,16 @@ describe('riot proxy routing', () => {
       '/europe/lol/match/v5/matches/by-puuid/abc/ids?queue=420&start=0&count=20',
       '/europe/lol/match/v5/matches/EUW1_7123456789',
       '/europe/lol/match/v5/matches/EUW1_7123456789/timeline',
+      '/asia/riot/account/v1/region/by-game/lol/by-puuid/abc-DEF_123',
     ]
     for (const c of cases) expect(route(c).ok, c).toBe(true)
+  })
+
+  it('allows the active region of a lol account only, labelled without the puuid', () => {
+    expect(route('/europe/riot/account/v1/region/by-game/lol/by-puuid/abc')).toMatchObject({ ok: true, endpoint: '/riot/account/v1/region/by-game/lol/by-puuid/{id}' })
+    expect(route('/europe/riot/account/v1/region/by-game/tft/by-puuid/abc')).toMatchObject({ ok: false, status: 403 })
+    expect(route('/europe/riot/account/v1/active-shards/by-game/val/by-puuid/abc')).toMatchObject({ ok: false, status: 403 })
+    expect(route('/europe/riot/account/v1/region/by-game/lol/by-puuid/abc?x=1')).toMatchObject({ ok: false, status: 400 })
   })
 
   it('builds the Riot URL with the query string', () => {

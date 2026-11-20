@@ -8,6 +8,12 @@ vi.mock('../../electron/main/cloud/supabase', () => ({ getSupabase: () => ({}), 
 const { nextSyncDelay } = await import('../../electron/main/sync/syncService')
 
 describe('sync cadence', () => {
+  it('Realtime live: team sessions come as events, the pull slows to 1 min (live session) or 5 min', () => {
+    expect(nextSyncDelay(true, false, true)).toBe(5 * 60_000)
+    expect(nextSyncDelay(true, true, true)).toBe(60_000)
+    expect(nextSyncDelay(false, false, true)).toBe(5 * 60_000)
+  })
+
   it('60 s at rest, 15 s while a team session is live', () => {
     expect(nextSyncDelay(true, false)).toBe(60_000)
     expect(nextSyncDelay(true, true)).toBe(15_000)
