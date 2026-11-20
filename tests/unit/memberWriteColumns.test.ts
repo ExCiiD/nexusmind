@@ -1,20 +1,25 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { setMyLook, updateMyMemberProfile } from '../../src/lib/collabCore'
+import { setMyCardChampion, setMyLook, updateMyMemberProfile } from '../../src/lib/collabCore'
 
 // A member may only UPDATE the columns granted in
 // 20261118202150_captain_roles_presence (role, is_captain, group and dates
 // go through SECURITY DEFINER RPCs). A direct write from the app to any other
 // column would be refused by Postgres, so the app's payloads must stay
 // inside that grant.
-const MIGRATION = join(__dirname, '../../supabase/migrations/20261118202150_captain_roles_presence.sql')
+// 20261120140000_member_card_champion adds the Team Lobby card's two columns to that grant.
+const MIGRATIONS = [
+  join(__dirname, '../../supabase/migrations/20261118202150_captain_roles_presence.sql'),
+  join(__dirname, '../../supabase/migrations/20261120140000_member_card_champion.sql'),
+]
 
 function grantedUpdateColumns(): string[] {
-  const sql = readFileSync(MIGRATION, 'utf8')
-  const m = sql.match(/grant update \(([^)]+)\) on public\.group_members to authenticated/i)
-  if (!m) throw new Error('column grant not found')
-  return m[1].split(',').map((c) => c.trim())
+  return MIGRATIONS.flatMap((file) => {
+    const m = readFileSync(file, 'utf8').match(/grant update \(([^)]+)\) on public\.group_members to authenticated/i)
+    if (!m) throw new Error(`column grant not found in ${file}`)
+    return m[1].split(',').map((c) => c.trim())
+  })
 }
 
 /** Records every `.update()` payload; every chained filter stays awaitable. */
@@ -46,7 +51,8 @@ describe('group_members writes from the app', () => {
     const { sb, updates } = fakeSupabase()
     await updateMyMemberProfile(sb, 'u1', 'g1', { displayName: 'Nami', riotId: 'Nami#EUW' } as never)
     await setMyLook(sb, 'u1', { iconId: 'halo', bannerId: 'abysse' })
-    expect(updates).toHaveLength(2)
+    await setMyCardChampion(sb, 'u1', { championId: 'MonkeyKing', skinNum: 7 })
+    expect(updates).toHaveLength(3)
     const granted = grantedUpdateColumns()
     for (const u of updates) {
       expect(u.table).toBe('group_members')

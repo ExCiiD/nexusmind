@@ -77,7 +77,6 @@ describe('extractGameEvents', () => {
     const tl = frames([
       { type: 'ELITE_MONSTER_KILL', timestamp: 1_500_000, monsterType: 'BARON_NASHOR', killerId: 1 },
       { type: 'ELITE_MONSTER_KILL', timestamp: 300_000, monsterType: 'DRAGON', monsterSubType: 'FIRE_DRAGON', killerId: 2, assistingParticipantIds: [1] },
-      { type: 'ELITE_MONSTER_KILL', timestamp: 2_400_000, monsterType: 'ATAKHAN', killerId: 1 },
       // Teammate took these — emitted but isPlayer=false
       { type: 'ELITE_MONSTER_KILL', timestamp: 480_000, monsterType: 'RIFTHERALD', killerId: 2 },
       { type: 'ELITE_MONSTER_KILL', timestamp: 360_000, monsterType: 'HORDE', killerId: 2 },
@@ -85,7 +84,7 @@ describe('extractGameEvents', () => {
       { type: 'ELITE_MONSTER_KILL', timestamp: 9_999, monsterType: 'UNKNOWN_BOSS', killerId: 1 },
     ])
     const res = extractGameEvents(tl, baseMatch, PLAYER_PUUID)
-    expect(res.map((e) => e.type).sort()).toEqual(['atakhan', 'baron', 'dragon', 'herald', 'voidgrub'])
+    expect(res.map((e) => e.type).sort()).toEqual(['baron', 'dragon', 'herald', 'voidgrub'])
     const baron = res.find((e) => e.type === 'baron')!
     expect(baron.isPlayer).toBe(true)
     const dragon = res.find((e) => e.type === 'dragon')!

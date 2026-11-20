@@ -1197,6 +1197,29 @@
         "fetch": "Récupérer",
         "fetching": "Récupération des champions…",
         "fetchJob": "Champions — {{team}} · {{name}}",
+        "pick": {
+          "help": "Clique un champion pour l’afficher sur ta carte",
+          "showOnCard": "Afficher {{name}} sur ma carte",
+          "subtitle": "Choisis le skin affiché sur ta carte",
+          "skinsOf": "Skins de {{name}}",
+          "withCutout_one": "{{count}} avec détouré",
+          "withCutout_other": "{{count}} avec détouré",
+          "withoutCount_one": "{{count}} skin sans détouré",
+          "withoutCount_other": "{{count}} skins sans détouré",
+          "noCutout": "Pas de détouré",
+          "noCutoutHelp": "Ce skin n’a pas encore de détouré : il ne peut pas être affiché sur la carte.",
+          "withCutoutA11y": "avec détouré",
+          "selectedA11y": "sélectionné",
+          "classic": "{{name}} (classique)",
+          "previewOf": "Aperçu · {{name}}",
+          "noneWithCutout": "Aucun skin de {{name}} n’a encore de détouré : la carte affichera son illustration.",
+          "backToAuto": "Revenir en automatique",
+          "save": "Afficher sur ma carte",
+          "visible": "Visible par tout le groupe",
+          "saved": "Carte mise à jour",
+          "saveFailed": "Ta carte n’a pas pu être mise à jour",
+          "saveFailedHint": "Vérifie que tu es connecté. Si ça continue, cette fonction attend la prochaine mise à jour du serveur."
+        },
         "edit": "Modifier",
         "remove": "Retirer du roster",
         "add": "Ajouter un joueur",
@@ -4048,7 +4071,6 @@
       "baron": "Nashor",
       "voidgrub": "Larves",
       "herald": "Héraut",
-      "atakhan": "Atakhan",
       "turret": "Tour",
       "inhibitor": "Inhib",
       "plate": "Plaque"
@@ -4245,7 +4267,6 @@
       "baron": "du Baron",
       "herald": "du Héraut",
       "grubs": "des Larves",
-      "atakhan": "d'Atakhan",
       "tower": "d'une tour",
       "inhibitor": "d'un inhibiteur"
     },
@@ -4255,7 +4276,6 @@
       "baron": "le Baron",
       "herald": "le Héraut",
       "grubs": "les Larves",
-      "atakhan": "Atakhan",
       "tower": "une tour",
       "inhibitor": "un inhibiteur"
     },
@@ -4557,7 +4577,8 @@
       "support-weakside-unwarded": "Weak side non couverte"
     },
     "otherJustified": "Ce n'était pas une erreur : décision assumée",
-    "unsupported": "La micro-review ne couvre que les parties classiques sur la Faille de l'invocateur."
+    "unsupported": "La micro-review ne couvre que les parties classiques sur la Faille de l'invocateur.",
+    "previousSeason": "Saison précédente : la micro-review n'analyse que les parties de cette saison."
   },
   "codex": {
     "title": "Conseil Codex",
@@ -4900,7 +4921,6 @@
         "grubs": "Larves",
         "herald": "Héraut",
         "baron": "Baron",
-        "atakhan": "Atakhan",
         "tower": "Tour",
         "firstBlood": "Premier sang",
         "elder": "Drake ancestral"
@@ -4924,7 +4944,6 @@
           "grubs": "Larves",
           "herald": "Héraut",
           "baron": "Baron",
-          "atakhan": "Atakhan",
           "tower": "Tour",
           "firstBlood": "Premier sang",
           "elder": "Drake ancestral"

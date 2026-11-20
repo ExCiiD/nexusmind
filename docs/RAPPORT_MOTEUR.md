@@ -65,59 +65,51 @@ Quand les données ne prouvent rien, le moteur se tait.
 
 | Connaissance | Valeur codée | Code |
 |---|---|---|
-| Premier Dragon | 5:00, puis 5:00 après chaque Dragon tué (vérifié sur les parties en cache, patchs 15.20 à 16.22) | `DETECTOR_SPEC.spawns` |
-| Larves du Néant | un camp de 3 Larves à 8:00, sans réapparition, depuis le patch 25.09 (avant : 6:00, puis une réapparition) | idem |
-| Valeur d'un objectif dans l'estimation de la partie | tour 1 · inhibiteur 1,5 · Dragon 1 · Ancien 2,5 · Héraut 0,5 · Larves 0,3 · Baron 2 · Atakhan 1 | `winProbability.ts` |
-| Œil du Héraut | objet 3513 ; il disparaît de l'inventaire à l'usage ou environ 300 s après le kill (son ramassage n'est pas journalisé). Héraut de 15:00 à 19:45 en 2026 (jusqu'à 24:45 en 2025). Fenêtre de la règle : 15:00-22:00 en 2026 (l'œil quitte son porteur avant 21:52 dans 95 % des 108 cas en cache), 15:00-25:00 en 2025 | V7, jungler mort avec l'œil en poche |
-| Patchs 15.1 à 15.8 | non séparés du reste de 2025 : les Larves y apparaissaient à 6:00 avec une réapparition et le Héraut à 16:00, alors que `CLOCK_2025` suit les patchs 15.9 et suivants (Larves à 8:00, Héraut à 15:00). Pas de sous-cas, par choix (#45, D3) : ces parties sont rares dans le cache et l'écart ne touche que les règles de fosse | `gameClockOf`, `CLOCK_2025` |
-| Retour au premier camp | le premier camp réapparaît : un jungler encore sur la carte à 3:30 (4:05 en 2025) a raté le recall à T−25 s | V7 |
-| Premier Carapateur (2:55 ; 3:30 en 2025) | absent des données : lu à travers une mort de ton jungler dans la rivière basse entre 2:50 et 3:15 (3:25 et 3:50 en 2025) | V10 support |
-| Réapparition | attente de base par niveau 10 / 10 / 12 / 12 / 14 / 16 / 20 / 25 / 28 / 32,5 … 52,5 s (wiki « Death ») × (1 + facteur de temps : 0 avant 15:00, puis +0,425 % par 30 s jusqu'à 30:00, +0,30 % par 30 s jusqu'à 45:00, +1,45 % par 30 s ensuite, plafond +50 %) ; les parties 15.x gardent l'ancienne table (6 / 6 / 8 / 8 / 10 / 12 / 16 / 21 / 26 s aux niveaux 1 à 9) | `gameClock.ts`, positions des morts (micro-revue), M15 |
+| Premier Dragon | 5:00, puis 5:00 après chaque Dragon tué (vérifié sur les parties 16.x en cache) | `DETECTOR_SPEC.spawns` |
+| Larves du Néant | un camp de 3 Larves à 8:00, sans réapparition | idem |
+| Valeur d'un objectif dans l'estimation de la partie | tour 1 · inhibiteur 1,5 · Dragon 1 · Ancien 2,5 · Héraut 0,5 · Larves 0,3 · Baron 2 | `winProbability.ts` |
+| Œil du Héraut | objet 3513 ; il disparaît de l'inventaire à l'usage ou environ 300 s après le kill (son ramassage n'est pas journalisé). Héraut de 15:00 à 19:45. Fenêtre de la règle : 15:00-22:00 (l'œil quitte son porteur avant 21:52 dans 95 % des 108 cas en cache) | V7, jungler mort avec l'œil en poche |
+| Retour au premier camp | le premier camp réapparaît : un jungler encore sur la carte à 3:30 a raté le recall à T−25 s | V7 |
+| Premier Carapateur (2:55) | absent des données : lu à travers une mort de ton jungler dans la rivière basse entre 2:50 et 3:15 | V10 support |
+| Réapparition | attente de base par niveau 10 / 10 / 12 / 12 / 14 / 16 / 20 / 25 / 28 / 32,5 … 52,5 s (wiki « Death ») × (1 + facteur de temps : 0 avant 15:00, puis +0,425 % par 30 s jusqu'à 30:00, +0,30 % par 30 s jusqu'à 45:00, +1,45 % par 30 s ensuite, plafond +50 %) | `gameClock.ts`, positions des morts (micro-revue), M15 |
 | Baron | buff de Baron de ton équipe, fights à moins de 3 000 de la fosse | V4, V6 |
-| Saison 2026 (patch 26.1 et suivants) | Baron à **20:00** (25:00 en 2025), **Atakhan supprimé** ; sbires à 0:30, camps à 0:55, Carapateur à 2:55 (35 s plus tôt qu'en 2025) ; plates à 120 g qui ne tombent plus à 14:00 ; Smite 1 000 / 1 400 ; vérifié sur 207 timelines en cache (128 de 2026) | fiches Codex, règles de l'assistant et détecteurs (voir ci-dessous) |
+| Saison 2026 (patch 26.1 et suivants) | Baron à **20:00** ; sbires à 0:30, camps à 0:55, Carapateur à 2:55 ; plates à 120 g qui restent jusqu'à la chute de la tour ; Smite 1 000 / 1 400 ; vérifié sur 128 timelines 2026 en cache | fiches Codex, règles de l'assistant et détecteurs (voir ci-dessous) |
 
-**Horloge de la saison.** Les détecteurs lisent la saison dans `info.gameVersion` de Match-V5 (`gameClock.ts`) :
-version 16 et plus (ou inconnue) → horloge 2026 ; 15.x et avant → horloge 2025. Sur une partie 16.x, tous les repères du
-début de partie arrivent **35 s plus tôt** (sbires 0:30 au lieu de 1:05, camps 0:55 au lieu de 1:30, Carapateur 2:55 au
-lieu de 3:30) : fenêtres de gank, Carapateur, premier back du jungler, première ward et all-in niveau 2 du support, pic
-de niveau 2/3, cheater recall, overchase, full clear passif, contre-tempo, fenêtre de tempo et course aux niveaux (M19).
-Les parties 15.x en cache gardent leurs anciennes fenêtres (`CLOCK_2025`), et les cartes citent les heures de la saison
-de la partie. Vérifié sur les parties en cache (431 en 16.x, 73 en 15.x), médianes 2026 contre 2025 : niveau 2 d'un
-laner 1:40 contre 2:11, niveau 2 du support 1:44 contre 2:16, niveau 3 du jungler 1:59 contre 2:31, premier back du
-jungler 3:45 contre 4:18, première ward du support 1:10 contre 1:47, premier back d'un laner 3:25 contre 4:00.
-`ANALYSIS_VERSION` passe à 8 : chaque analyse en cache est recalculée une fois.
+**Saison analysée.** Le moteur ne connaît que la saison en cours. Il lit la saison dans `info.gameVersion` de Match-V5
+(`gameClock.ts`, `seasonOf`) : version 16 et plus (ou inconnue) → saison en cours ; 15.x et avant → **non analysée**
+(ni micro-revue, ni erreurs automatiques du Labo). Les analyses et erreurs déjà enregistrées sur ces parties ne sont pas
+touchées (décision de l'utilisateur du 20/11/2026, `docs/engine-reports/2026-11-20-inventaire-regles-avant-2026.md`).
+Repères du début de partie : sbires 0:30, camps 0:55, Carapateur 2:55. Ils fixent les fenêtres de gank, Carapateur,
+premier back du jungler, première ward et all-in niveau 2 du support, pic de niveau 2/3, cheater recall, overchase, full
+clear passif, contre-tempo, fenêtre de tempo et course aux niveaux (M19). Vérifié sur les parties 16.x en cache
+(médianes) : niveau 2 d'un laner 1:40, niveau 2 du support 1:44, niveau 3 du jungler 1:59, premier back du jungler 3:45,
+première ward du support 1:10, premier back d'un laner 3:25. `ANALYSIS_VERSION` 11 : chaque analyse en cache est
+recalculée une fois.
 
-**Plaques en 2026 (19/11, `ANALYSIS_VERSION` 9).** Les plaques ne tombent plus à 14:00 : sur les parties en cache, aucune
-plaque n'est prise après 13:59 en 15.x (794 plaques, 79 parties), alors qu'en 16.x elles le sont jusqu'à 47:47 (7 098
-plaques, 128 parties, dont 5 336 après 14:00). Les T1 tombent aux mêmes heures dans les deux saisons (médianes top 16:58
-contre 17:15, mid 17:52 contre 17:52, bot 16:50 contre 16:50). Les trois règles liées aux plaques suivent donc la T1 debout
-en 2026, avec une limite à 20:00 (apparition du Baron, la carte se regroupe) : dive 1 pour 1 et roam mid payé en plaques
-jusqu'à 20:00 ; tour de side lane dès que la première tour est tombée, sans heure de début (le dernier coup prend aussi les
-plaques restantes). La note de phase de lane garde sa fenêtre de 14 minutes. M12 (« mort avant 4:00 ») passe à 3:25 sur
-les parties 16.x, comme les autres repères du début de partie : 28,9 % des laners 16.x meurent avant 3:25, 28,5 % des
-laners 15.x avant 4:00. Les parties 15.x gardent 14:00 et 4:00 (`CLOCK_2025`).
+**Plaques (19/11, `ANALYSIS_VERSION` 9).** Les plaques restent jusqu'à la chute de la tour : sur les parties 16.x en cache,
+elles sont prises jusqu'à 47:47 (7 098 plaques, 128 parties, dont 5 336 après 14:00). Les trois règles liées aux plaques
+suivent donc la T1 debout, avec une limite à 20:00 (apparition du Baron, la carte se regroupe) : dive 1 pour 1 et roam mid
+payé en plaques jusqu'à 20:00 ; tour de side lane dès que la première tour est tombée, sans heure de début (le dernier
+coup prend aussi les plaques restantes). La note de phase de lane garde sa fenêtre de 14 minutes. M12 compte une mort
+avant 3:25 : 28,9 % des laners 16.x en cache meurent avant 3:25.
 
-| Schéma (pour 100 parties-joueur) | 16.x avant | 16.x après | 15.x (inchangé) |
-|---|---|---|---|
-| Dive 1 pour 1 | 1,33 | 1,48 (2 après 14:00) | 1,39 |
-| Roam mid payé en plaques | 0,16 | 0,31 (2 après 14:00) | 0,00 |
-| Tour de side lane du jungler | 0,39 | 0,39 | 0,00 |
+| Schéma (pour 100 parties-joueur, 16.x) | avant le 19/11 | après |
+|---|---|---|
+| Dive 1 pour 1 | 1,33 | 1,48 (2 après 14:00) |
+| Roam mid payé en plaques | 0,16 | 0,31 (2 après 14:00) |
+| Tour de side lane du jungler | 0,39 | 0,39 |
+| Gank sur timer | 5,43 | 5,96 |
+| Support sans ward à temps | 4,43 | 6,13 |
+| Premier back du jungler en retard | 1,11 | 3,57 |
+| Contre-tempo | 0,72 | 0,88 |
+| Full clear passif | 0,07 | 0,23 |
+| All-in niveau 2 du support | 0,51 | 0,23 |
+| Cheater recall | 0,02 | 0,07 |
+| Absent au Carapateur | 0,07 | 0,09 |
 
-| Schéma (pour 100 parties-joueur, 16.x) | avant | après | 15.x (inchangé) |
-|---|---|---|---|
-| Gank sur timer | 5,43 | 5,96 | 8,63 |
-| Support sans ward à temps | 4,43 | 6,13 | 6,44 |
-| Premier back du jungler en retard | 1,11 | 3,57 | 2,33 |
-| Contre-tempo | 0,72 | 0,88 | 1,92 |
-| Full clear passif | 0,07 | 0,23 | 0,00 |
-| All-in niveau 2 du support | 0,51 | 0,23 | 0,14 |
-| Cheater recall | 0,02 | 0,07 | 0,00 |
-| Absent au Carapateur | 0,07 | 0,09 | 0,27 |
-
-Le premier back du jungler en retard passe au-dessus de son taux de 2025 (≈ 18 % des parties de jungler contre 12 %) :
-le seuil suit la règle (premier camp réapparu à 3:10, + 20 s), pas la fréquence. À surveiller avec les retours des
-joueurs. Le cheater recall de 2026 se lit sur un achat entre 2:00 et 2:40 : aucun relevé par minute ne tombe dans cette
-fenêtre (2025 : en base sur le relevé de 3:00).
+Le premier back du jungler en retard touche ≈ 18 % des parties de jungler : le seuil suit la règle (premier camp réapparu
+à 3:10, + 20 s), pas la fréquence. À surveiller avec les retours des joueurs. Le cheater recall se lit sur un achat entre
+2:00 et 2:40 : aucun relevé par minute ne tombe dans cette fenêtre.
 
 ### 1.3 Économie et objets
 
@@ -136,33 +128,33 @@ fenêtre (2025 : en base sur le relevé de 3:00).
 | Connaissance | Valeur codée | Où |
 |---|---|---|
 | Phases de la partie | début 0–14:00, milieu 14:00–25:00, fin 25:00+ | partout |
-| Course aux niveaux | entre 0:55 et 3:55 (1:30 et 4:30 en 2025), mourir contre un adversaire qui a au moins 1 niveau de plus | Labo, M19 |
-| Pic de niveau 2 / 3 | tué par ton vis-à-vis dans les 10 s après qu'il a pris son niveau 2 ou 3, toi encore en dessous (avant 3:55 ; 4:30 en 2025) | V5 |
+| Course aux niveaux | entre 0:55 et 3:55, mourir contre un adversaire qui a au moins 1 niveau de plus | Labo, M19 |
+| Pic de niveau 2 / 3 | tué par ton vis-à-vis dans les 10 s après qu'il a pris son niveau 2 ou 3, toi encore en dessous (avant 3:55) | V5 |
 | Distance contre mêlée | avant 8:00 : distance sous 60 % PV au niveau ≤ 3, ou mêlée sous 50 % au niveau ≤ 4 face à un distance au-dessus de 85 % | V5 (`championClasses.ts` : type d'attaque par champion) |
-| Cheater recall | back entre 2:00 et 2:40 (un achat ; 2025 : en base sur le relevé de 3:00, back entre 2:35 et 3:15) avec plus de 75 % PV à 2:00, sans Téléportation, 1 niveau de retard ou plus à 4:00 | V5 |
-| Dive 1 pour 1 | tu tues ton vis-à-vis à moins de 850 d'une T1 ennemie encore debout et tu meurs dans les 4 s, sans le jungler adverse, avant 20:00 (14:00 en 2025) | V5 |
-| Ouverture de lane | à 5:00 : mort avant 3:25 (4:00 en 2025), ou −8 CS, ou −400 or face au vis-à-vis | Labo, M12 |
+| Cheater recall | back entre 2:00 et 2:40 (un achat) avec plus de 75 % PV à 2:00, sans Téléportation, 1 niveau de retard ou plus à 4:00 | V5 |
+| Dive 1 pour 1 | tu tues ton vis-à-vis à moins de 850 d'une T1 ennemie encore debout et tu meurs dans les 4 s, sans le jungler adverse, avant 20:00 | V5 |
+| Ouverture de lane | à 5:00 : mort avant 3:25, ou −8 CS, ou −400 or face au vis-à-vis | Labo, M12 |
 | Retard à 10:00 | −15 CS (Labo M13, grave à −25) ; −15 CS ou −400 XP (micro-revue, sauf 2 kills/assists ou plus) | Labo, micro-revue |
 | Retard de niveaux | 2 niveaux de moins que le vis-à-vis à 10:00 ou 15:00 (grave à 3) | Labo, M14 |
 | Mid à 6:00 | −12 CS, aucun sort de base à 2 points au niveau 3, moins de 2 kills/assists | V7 |
-| Plaques | plaques prises et perdues sur la lane : avant 14:00 pour la note de lane ; jusqu'à 20:00 pour le roam mid en 2026 (14:00 en 2025) | note de lane, roam mid |
+| Plaques | plaques prises et perdues sur la lane : avant 14:00 pour la note de lane ; jusqu'à 20:00 pour le roam mid | note de lane, roam mid |
 
 ### 1.5 Jungle
 
 | Situation reconnue | Règle | Version |
 |---|---|---|
-| Overchase | entre 1:55 (2:30 en 2025) et 8:00, 20 s de l'autre côté de la rivière ou dans la jungle adverse, sans kill ni camp, puis mort | V2 |
-| Full clear passif | la bot lane a 250 or d'avance à 3:00 et le mid n'est pas derrière, mais tu restes dans ta jungle jusqu'à 3:25 (4:00 en 2025) sans kill, et tu n'es pas devant en XP à 6:00 : l'invade à 3 camps était là | V2 |
-| Contre-tempo | un play en rivière vers 2:40–3:40 (3:15–4:15 en 2025), puis retour dans ton quart de départ, et plus de 150 XP de retard sur le jungler adverse à 6:00 | V2 |
-| Fenêtre de tempo non punie | entre 1:55 (2:30 en 2025) et 12:00, le jungler adverse se montre à plus de 8 000 de toi et rien n'est pris dans les 45 s | V3 |
-| Timers de gank | fenêtres 1:50–2:25 et 2:40–3:50 (2025 : 2:25–3:00 et 3:15–4:25) ; une ward profonde dure 150 s | V3 |
-| Premier back | encore sur la carte à 3:30 (4:05 en 2025 ; aucun back après 1:00, ni kill, ni mort) | V7 |
+| Overchase | entre 1:55 et 8:00, 20 s de l'autre côté de la rivière ou dans la jungle adverse, sans kill ni camp, puis mort | V2 |
+| Full clear passif | la bot lane a 250 or d'avance à 3:00 et le mid n'est pas derrière, mais tu restes dans ta jungle jusqu'à 3:25 sans kill, et tu n'es pas devant en XP à 6:00 : l'invade à 3 camps était là | V2 |
+| Contre-tempo | un play en rivière vers 2:40–3:40, puis retour dans ton quart de départ, et plus de 150 XP de retard sur le jungler adverse à 6:00 | V2 |
+| Fenêtre de tempo non punie | entre 1:55 et 12:00, le jungler adverse se montre à plus de 8 000 de toi et rien n'est pris dans les 45 s | V3 |
+| Timers de gank | fenêtres 1:50–2:25 et 2:40–3:50 ; une ward profonde dure 150 s | V3 |
+| Premier back | encore sur la carte à 3:30 (aucun back après 1:00, ni kill, ni mort) | V7 |
 | Gank qui coûte les camps | entre 2:00 et 12:00 : en lane avec un ennemi à moins de 2 500, aucun kill ni mort dans la minute, et 8 CS de jungle perdus sur le jungler adverse pendant cette minute | V7 |
 | Camps volés | le jungler adverse gagne 8 CS de jungle entre deux relevés en restant dans le même quart de ta jungle | V7 (weak side) |
 | Mort en invade | avant 16:00, dans la jungle adverse, seul ou avec un allié, après avoir pris un camp (4 CS), sans kill dans les 30 s avant | V7 |
 | Dragon tanké | mort entre 5:00 et 12:00 à moins de 3 000 de la fosse, le Dragon t'ayant infligé 60 % de tes PV max | V7 |
 | Mort de compensation | un allié tombe à moins de 3 000 dans les 15 s avant, tu meurs à 2 contre 1 de plus, et l'ennemi prend un monstre épique à cette fosse dans les 60 s | V7 |
-| Tour de side lane | T1 de side lane détruite par toi avant 20:00 alors qu'une tour était déjà tombée (2025 : à partir de 14:00, plaques tombées) | V7 |
+| Tour de side lane | T1 de side lane détruite par toi avant 20:00 alors qu'une tour était déjà tombée | V7 |
 | Smite volé | Dragon, Ancien, Héraut ou Baron pris par l'ennemi alors que tu étais vivant à moins de 900 de la fosse | V7 |
 | Recall sous Baron | jungler en avance (KDA > 3 ou 10 000 or dépensés) en base ou dans sa jungle pendant le Baron de l'équipe, alors que 3 alliés sont en avant et que 2 meurent | V6 |
 | Dive après inhibiteur | tué dans la base ennemie dans les 15 s qui suivent la chute d'un inhibiteur ennemi | V6 |
@@ -171,7 +163,7 @@ fenêtre (2025 : en base sur le relevé de 3:00).
 
 | Situation reconnue | Règle |
 |---|---|
-| Roam payé en plaques | roam avant 20:00 (14:00 en 2025 ; à plus de 2 600 de la diagonale), aucun kill/assist, au moins 1 plaque mid et 10 CS perdus |
+| Roam payé en plaques | roam avant 20:00 (à plus de 2 600 de la diagonale), aucun kill/assist, au moins 1 plaque mid et 10 CS perdus |
 | Devant sa vague | mort en mid avant 12:00, au plus 45 s après être sorti de base |
 | Piège du reset | l'adversaire rentre en premier ; toi, sous 30 % PV ou de mana (réserve de plus de 200, donc pas d'énergie ni de rage), tu restes et tu meurs dans les 90 s |
 | Lane donnée à 6:00 | voir 1.4 ; remplace le retard de 10:00 pour la même lane |
@@ -180,11 +172,11 @@ fenêtre (2025 : en base sur le relevé de 3:00).
 
 | Situation reconnue | Règle |
 |---|---|
-| Première ward | aucune ward posée par toi avant 1:10 (1:45 en 2025 ; les wards d'objets de champion ne comptent pas) |
-| All-in niveau 2 | tué entre 1:30 et 2:05 (2:05 et 2:40 en 2025) sous le niveau d'un ennemi du fight |
-| Goulet ou fosse | à partir de 15:00 (14:00 en 2025), dans la fosse (moins de 900) pendant les 15 s avant le premier kill au lieu de tenir l'entrée (support ou mage de contrôle mid) |
+| Première ward | aucune ward posée par toi avant 1:10 (les wards d'objets de champion ne comptent pas) |
+| All-in niveau 2 | tué entre 1:30 et 2:05 sous le niveau d'un ennemi du fight |
+| Goulet ou fosse | à partir de 15:00, dans la fosse (moins de 900) pendant les 15 s avant le premier kill au lieu de tenir l'entrée (support ou mage de contrôle mid) |
 | Collé à l'ADC après 6 | niveau 6 à 9:00, à moins de 2 000 de l'ADC sur 6 des 7 relevés de 9:00 à 15:00, moins de 45 % de participation aux kills à 15:00 |
-| Absent au premier Carapateur | ton jungler meurt dans la rivière basse entre 2:50 et 3:15 (3:25 et 3:50 en 2025), toi à plus de 2 000 |
+| Absent au premier Carapateur | ton jungler meurt dans la rivière basse entre 2:50 et 3:15, toi à plus de 2 000 |
 | Weak side non wardée | camps volés côté bot pendant que ton jungler est top, sans ward de toi dans ta jungle bot dans les 120 s avant (avant 18:00) |
 | ADC qui rouvre une side lane | après 14:00, tué seul dans une side lane de l'autre côté de la rivière au plus 45 s après l'avoir atteinte |
 | Carry donné en premier | prime de 450 or, KDA 4 ou 25 % de l'or de l'équipe, mort la première dans un fight à 3 ennemis |
@@ -403,18 +395,18 @@ dégâts, synchronisation de vague, objectif sans vision, runes) ne viennent que
 | M2 | Dive | mort à moins de 700 d'une tour ennemie (extérieure, intérieure ou d'inhibiteur) | 3 | mort à 650 de la T2 mid adverse |
 | M3 | Back tardif | arrivée en fontaine avec plus de 2 000 or, aucun achat depuis plus de 4 min | 2 | base à 22:10 avec 2 300 or, dernier achat à 17:40 |
 | M4 | Overstay | mort hors fight d'objectif (aucun monstre épique à ±30 s), après avoir pris une plaque dans les 20 s, ou à plus de 60 % du chemin vers la fontaine adverse | 2 ; 3 si les deux | mort à 70 % du chemin dans la jungle adverse, sans objectif autour |
-| M5 | Mort avant un objectif perdu | l'ennemi prend Dragon, Baron, Héraut, Larves ou Atakhan dans les 60 s après ta mort | 2 ; 3 pour Baron / Atakhan, et toujours 3 pour un jungler | mort à 24:10, Baron adverse à 24:35 → gravité 3 |
+| M5 | Mort avant un objectif perdu | l'ennemi prend Dragon, Baron, Héraut ou Larves dans les 60 s après ta mort | 2 ; 3 pour Baron, et toujours 3 pour un jungler | mort à 24:10, Baron adverse à 24:35 → gravité 3 |
 | M6 | Pas de ward avant un objectif | aucune ward posée dans les 90 s avant un objectif (après 5:00, Larves exclues) ; support et jungler pour tous les objectifs, laner seulement pour ceux perdus ; rien si tu étais mort dans ce créneau | 2 (support, jungler) ; 1 (laner) | support sans ward avant le Dragon de 17:20 → erreur datée de 15:50 |
 | M7 | Trinket oublié | plus de 4 min sans ward (2 min 30 en support), +1 min par mort dans l'intervalle, à partir de 3:00, 3 fois par partie au plus | 1 | dernière ward à 12:00, suivante à 18:30, une mort entre les deux → erreur à 16:00 |
-| M8 | Mort au Baron | mort à moins de 1 800 de la fosse du haut une fois le Baron apparu (20:00 en 2026, 25:00 en 2025 ; avant, la fosse abrite les Larves et le Héraut), au plus un allié à moins de 3 000 | 3 | mort seul devant le Baron à 27:00 |
+| M8 | Mort au Baron | mort à moins de 1 800 de la fosse du haut une fois le Baron apparu (20:00 ; avant, la fosse abrite les Larves et le Héraut), au plus un allié à moins de 3 000 | 3 | mort seul devant le Baron à 27:00 |
 | M9 | Pris seul | après 14:00, aucun objectif à ±30 s, 2 ennemis ou plus sur le kill, aucun allié à moins de 2 500 | 2 | tué par 3 ennemis en side lane à 21:05 |
 | M10 | Mauvais trade | avant 14:00, tué seul par ton vis-à-vis direct | 2 | solo-kill de ton adversaire de lane à 6:12 |
 | M11 | Mauvais placement | premier mort d'un fight (aucun kill dans les 15 s avant ta mort, au moins 3 kills dans les 15 s après) | 2 pour mid et ADC ; 1 sinon | ADC qui meurt en premier dans un fight à 5 kills |
-| M12 | Mauvaise ouverture de lane | laner, à 5:00 : mort avant 3:25 (4:00 sur une partie 15.x), ou −8 CS, ou −400 or face au vis-à-vis | 2 ; 3 si deux raisons | −9 CS et −450 or à 5:00 → gravité 3 |
+| M12 | Mauvaise ouverture de lane | laner, à 5:00 : mort avant 3:25, ou −8 CS, ou −400 or face au vis-à-vis | 2 ; 3 si deux raisons | −9 CS et −450 or à 5:00 → gravité 3 |
 | M13 | Retard de CS à 10 min | laner : −15 CS ou plus à 10:00 face au vis-à-vis (sbires et jungle) | 2 ; 3 à −25 | 62 CS contre 80 → −18, gravité 2 |
 | M14 | Retard d'XP | laner : 2 niveaux de moins que le vis-à-vis à 10:00 ou 15:00, une fois par partie | 2 ; 3 à 3 niveaux | niveau 9 contre 11 à 15:00 |
-| M15 | Mort quand l'objectif est tombé | l'ennemi prend Dragon, Baron, Héraut, Larves ou Atakhan plus de 60 s après ta mort (M5 couvre la minute d'avant) et au moins 2 s avant ta réapparition (niveau lu sur les LEVEL_UP, formule du wiki ; les niveaux 19 et 20 de la quête top comptent comme le niveau 18, faute de valeur publiée) ; rien si tu poses une ward ou fais un kill entre les deux (résurrection) | 2 ; 3 pour Baron et Ancien | niveau 18 mort à 50:00 (71,5 s de réapparition), Baron adverse à 51:05 → gravité 3 |
-| M19 | Mort en retard de niveaux | laner ou jungler, mort entre 0:55 et 3:55 (1:30 et 4:30 sur une partie 15.x) contre un adversaire d'au moins 1 niveau de plus | 2 ; 3 à 2 niveaux | tué niveau 2 par un niveau 3 à 3:40 |
+| M15 | Mort quand l'objectif est tombé | l'ennemi prend Dragon, Baron, Héraut ou Larves plus de 60 s après ta mort (M5 couvre la minute d'avant) et au moins 2 s avant ta réapparition (niveau lu sur les LEVEL_UP, formule du wiki ; les niveaux 19 et 20 de la quête top comptent comme le niveau 18, faute de valeur publiée) ; rien si tu poses une ward ou fais un kill entre les deux (résurrection) | 2 ; 3 pour Baron et Ancien | niveau 18 mort à 50:00 (71,5 s de réapparition), Baron adverse à 51:05 → gravité 3 |
+| M19 | Mort en retard de niveaux | laner ou jungler, mort entre 0:55 et 3:55 contre un adversaire d'au moins 1 niveau de plus | 2 ; 3 à 2 niveaux | tué niveau 2 par un niveau 3 à 3:40 |
 
 Une même mort peut produire plusieurs erreurs **de tags différents** quand elle prouve plusieurs choses. Exemple : un
 mid laner tué seul par son adversaire de lane, niveau 2 contre 3, à 3:15 (partie 16.x), reçoit « mauvais trade » (M10), « mort

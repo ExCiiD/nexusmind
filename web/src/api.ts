@@ -4,6 +4,7 @@ import * as team from '@/lib/teamCore'
 import { scoutMemberWeb, autoFillPoolWeb } from './scoutingWeb'
 import { computeCombinedStatsWeb, computeCustomStatsWeb, computeTeamSynergyStatsWeb, listCustomGamesWeb } from './teamStatsWeb'
 import { analystWebApi } from './analystWeb'
+import { cardChampionWebApi } from './cardChampionWeb'
 import * as matchEvents from '@/lib/matchEventCore'
 import * as dashboardCore from '@/lib/staffDashboardCore'
 import * as devPlanCore from '@/lib/devPlanCore'
@@ -150,6 +151,8 @@ function scoutingIdFor(teamId: string): string | null {
 export const webApi = {
   // #40 analyst screens (Objectifs, Journal des drafts, Dossier adverse): analystCore with the web Riot client.
   ...analystWebApi,
+  // Team Lobby cards: the champion and skin each member shows (members' looks, my choice, hosted skins).
+  ...cardChampionWebApi,
   /** Invite code from an invite link, for the sign-in screen. */
   pendingInviteCode: (): string | null => pendingInvite,
   // ── account ──
@@ -237,7 +240,13 @@ export const webApi = {
     return id
   },
   collabCreateInvite: (groupId: string, role: 'coach' | 'manager' | 'analyst' | 'player', days: number) => core.createInvite(sb, groupId, role, days),
-  collabJoin: async (code: string, riotId?: string | null) => core.joinGroup(sb, code.trim().toUpperCase(), { ...(await webIdentity()), riotId: riotId ?? null }),
+  collabJoin: async (code: string, riotId?: string | null) => {
+    const id = await core.joinGroup(sb, code.trim().toUpperCase(), { ...(await webIdentity()), riotId: riotId ?? null })
+    // My card's champion and skin follow me into the new group (same as the desktop).
+    const uid = await currentUserId().catch(() => null)
+    if (uid) await core.spreadMyCardChampion(sb, uid)
+    return id
+  },
   collabLeave: async (groupId: string) => core.leaveGroup(sb, await currentUserId(), groupId),
   collabSetMemberRole: (groupId: string, userId: string, role: Parameters<typeof core.setMemberRole>[3]) => core.setMemberRole(sb, groupId, userId, role),
   // #39: staff roles on top of the main role (owner only, set_member_staff_roles).

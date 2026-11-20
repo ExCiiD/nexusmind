@@ -24,7 +24,6 @@ export const OBJECTIVE_WEIGHT = {
   herald: 0.5,
   grubs: 0.3,
   baron: 2,
-  atakhan: 1,
 } as const
 export type ObjectiveKind = keyof typeof OBJECTIVE_WEIGHT
 
@@ -49,7 +48,6 @@ export function objectiveKindOf(ev: { type?: string; monsterType?: string; monst
       case 'BARON_NASHOR': return 'baron'
       case 'RIFTHERALD': return 'herald'
       case 'HORDE': return 'grubs'
-      case 'ATAKHAN': return 'atakhan'
       default: return null
     }
   }

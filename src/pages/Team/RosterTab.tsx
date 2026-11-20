@@ -8,7 +8,9 @@ import { Save, X } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RoleGlyph } from '@/components/team/RoleGlyph'
 import type { AwardHolder, Team, TeamMember } from '@/lib/ipc'
-import type { MemberLook } from '@/lib/collab'
+import type { CardChampion, MemberLook } from '@/lib/collab'
+import { cardChoiceOf, frontChampion, isOwnMember } from '@/lib/cardChampionView'
+import { CardSkinDialog } from '@/components/team/CardSkinDialog'
 import { bestChampions, lookForMember, mainChampion, type LookSources } from '@/lib/playerCard'
 import { useWeeklyAwards } from '@/hooks/useWeeklyAwards'
 import { useAllChampions } from '@/hooks/useAllChampions'
@@ -57,6 +59,11 @@ export function RosterTab({ team, loading, onChange, logoUrl, actions, fill = fa
   const [editingId, setEditingId] = useState<string | null>(null)
   /** #46.2: the card whose first champions (masteries, a few seconds) are being read. */
   const [quickId, setQuickId] = useState<string | null>(null)
+  const { toast } = useToast()
+  /** § 14: my card's choice once saved here (the shared looks are read once); undefined: as the looks say. */
+  const [myCard, setMyCard] = useState<CardChampion | null | undefined>(undefined)
+  /** The skin picker open for a champion of my card's back. */
+  const [picking, setPicking] = useState<{ memberId: string; championId: string } | null>(null)
 
   const user = useUserStore((s) => s.user)
   const prefs = useProfilePrefs(user?.id)
@@ -130,17 +137,43 @@ export function RosterTab({ team, loading, onChange, logoUrl, actions, fill = fa
     })
   }
 
+  // § 14: the champion and skin on the front, and the picker on my own card.
+  const canPick = !!window.api.collabSetMyCardChampion && !!window.api.collabListCardSkins
+  const frontOf = (member: TeamMember) => {
+    const own = isOwnMember(member, lookSources.me)
+    const choice = own && myCard !== undefined ? myCard : cardChoiceOf(member, looks)
+    const best = bestChampions(member.champPool)
+    const front = frontChampion(choice, best.champions.map((c) => c.championKey), mainChampion(member.champPool))
+    return { own, choice, best, front }
+  }
+  const saveMyCard = async (choice: CardChampion | null): Promise<boolean> => {
+    const ok = await window.api.collabSetMyCardChampion?.(choice).catch(() => false)
+    if (ok) {
+      setMyCard(choice)
+      toast({ title: t('team.roster.card.pick.saved') })
+      return true
+    }
+    // Signed out, refused, or the database without the card columns yet (migration 20261120140000).
+    toast({ title: t('team.roster.card.pick.saveFailed'), description: t('team.roster.card.pick.saveFailedHint'), variant: 'destructive' })
+    return false
+  }
+
   const card = (member: TeamMember, role: Role) => {
     const canFetch = !!(member.ign && member.tagLine && member.region)
+    const { own, best, front } = frontOf(member)
     return (
       <PlayerCard
         key={member.id}
         member={member}
         role={role}
         look={lookForMember(member, lookSources)}
-        champions={bestChampions(member.champPool)}
+        champions={best}
         team={{ name: team.name, tag: team.tag, logoUrl }}
-        artChampion={mainChampion(member.champPool)}
+        artChampion={front?.championId ?? null}
+        artSkin={front?.skinNum ?? 0}
+        picker={own && canPick && best.champions.length > 0
+          ? { shownKey: front?.championId ?? null, onPick: (championId) => setPicking({ memberId: member.id, championId }) }
+          : undefined}
         holders={holdersOf(member.id)}
         totals={awards?.totals[member.id]}
         nameOf={nameOf}
@@ -185,6 +218,39 @@ export function RosterTab({ team, loading, onChange, logoUrl, actions, fill = fa
           })}
           {others.map((m) => card(m, (ROLES.includes(m.role as Role) ? m.role : 'TOP') as Role))}
         </div>
+        {picking && (() => {
+          const member = members.find((m) => m.id === picking.memberId)
+          if (!member) return null
+          const { choice, best } = frontOf(member)
+          const role = (ROLES.includes(member.role as Role) ? member.role : 'TOP') as Role
+          return (
+            <CardSkinDialog
+              championId={picking.championId}
+              championName={nameOf(picking.championId)}
+              current={choice}
+              onSave={saveMyCard}
+              onClose={() => setPicking(null)}
+              preview={(skinNum) => (
+                <PlayerCard
+                  preview
+                  member={member}
+                  role={role}
+                  look={lookForMember(member, lookSources)}
+                  champions={best}
+                  team={{ name: team.name, tag: team.tag, logoUrl }}
+                  artChampion={picking.championId}
+                  artSkin={skinNum}
+                  holders={holdersOf(member.id)}
+                  totals={awards?.totals[member.id]}
+                  nameOf={nameOf}
+                  fetching={false}
+                  onFetch={null}
+                  onEdit={() => {}}
+                />
+              )}
+            />
+          )
+        })()}
       </div>
     </TooltipProvider>
   )

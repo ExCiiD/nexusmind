@@ -29,8 +29,9 @@ const files = migrationFiles()
 const inProduction = files.filter((f) => prodMigrations.includes(f))
 const releaseFiles = RELEASE.map((name) => `${name}.sql`)
 check('the release files exist and are not in production yet', releaseFiles.every((f) => files.includes(f) && !inProduction.includes(f)), releaseFiles.join(', '))
-check('nothing else is waiting to be released', files.filter((f) => !inProduction.includes(f) && !releaseFiles.includes(f)).length === 0,
-  files.filter((f) => !inProduction.includes(f) && !releaseFiles.includes(f)).join(', '))
+// Files numbered after the release belong to the next one.
+const waiting = files.filter((f) => !inProduction.includes(f) && !releaseFiles.includes(f) && f < releaseFiles[releaseFiles.length - 1])
+check('nothing else is waiting to be released', waiting.length === 0, waiting.join(', '))
 
 const db = await openPglite(pgliteDir)
 await replay(db, inProduction)

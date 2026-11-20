@@ -99,7 +99,7 @@ describe('Codex research upgrade — season 2026 facts', () => {
   it('teaches the 2026 numbers', () => {
     const fr = all('fr')
     const keep = [
-      /la Baron apparaît à 20:00/, // Baron back at 20:00, Atakhan removed (26.1)
+      /la Baron apparaît à 20:00/, // Baron at 20:00
       /Carapateur de 2:55/, // Scuttle Crab 2:55 (26.1)
       /camps à 0:55/, // camps 35 s earlier (26.1)
       /1000 \(Unleashed\) dès que ton familier a mangé 15 friandises, 1400 \(Primal\) à 35/, // Smite (26.1)
@@ -127,9 +127,9 @@ describe('Codex research upgrade — season 2026 facts', () => {
       expect(t).not.toMatch(/T-60 s, always push|À T-60 s d'un objectif, push toujours/)
       expect(t).not.toMatch(/plates have expired|plaques expirées/)
     }
-    // Atakhan only appears to say it is gone.
-    expect(all('fr').match(/Atakhan \S+ \S+/g)).toEqual(['Atakhan a disparu),'])
-    expect(all('en').match(/Atakhan \S+ \S+/g)).toEqual(['Atakhan is gone),'])
+    // Atakhan left the game in 26.1: the Codex no longer names it.
+    expect(all('fr')).not.toMatch(/Atakhan/)
+    expect(all('en')).not.toMatch(/Atakhan/)
   })
 
   it('keeps the text rules of the Codex: no rank or creator name, LoL jargon in English in French', () => {

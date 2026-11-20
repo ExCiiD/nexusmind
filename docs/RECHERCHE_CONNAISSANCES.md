@@ -19,7 +19,7 @@ n'affiche jamais de nom de coach, de joueur pro ni de créateur (règle de `code
   (20 requêtes par jour) était épuisé. D'autres vidéos de coachs ont été lues par leurs sous-titres. Les résumés de Gemini
   sont restés hors du dépôt ; seules nos synthèses en sont tirées.
 - **Vérification sur nos propres données** : les faits de jeu 2026 ont été contrôlés sur le cache local de l'app (lecture
-  seule) — 3 004 parties classées de 15 minutes ou plus (patchs 16.1 à 16.10) et 207 timelines (128 de 2026, 79 de 2025).
+  seule) — 3 004 parties classées de 15 minutes ou plus (patchs 16.1 à 16.10) et 128 timelines 2026.
   Les seuils des nouvelles règles de l'assistant y ont été calibrés (taux de victoire par tranche et par rôle).
 - **Droits** : aucun texte d'article ni aucune transcription n'entre dans le dépôt. Fiches et règles sont rédigées avec nos
   propres mots, à partir de plusieurs sources quand c'est possible.
@@ -38,8 +38,7 @@ n'affiche jamais de nom de coach, de joueur pro ni de créateur (règle de `code
 - `bad-kiting` n'avait de fiche que pour l'ADC, `bad-dmg-maximisation` que pour le jungler.
 - Plusieurs tags qui arrivent surtout en milieu ou fin de partie renvoyaient à une fiche de phase de lane : `dove-tower`,
   `bad-trade`, `xp-deficit`, `late-back`, `cs-deficit`, `bad-wave-sync`, `walked-into-ward`.
-- Les fiches enseignaient l'horloge de 2025 : Carapateur à 3:30, camps à 1:30, Smite 900/1 200, plates à 160 g qui
-  tombent à 14:00, portée d'XP de 1 400.
+- Les fiches enseignaient d'anciennes valeurs (Carapateur, camps, Smite, plates, portée d'XP) au lieu de celles de 2026.
 
 ### Assistant (32 règles)
 
@@ -57,12 +56,11 @@ n'affiche jamais de nom de coach, de joueur pro ni de créateur (règle de `code
 
 | Fait | Valeur 2026 | Source | Vérifié sur nos données |
 |---|---|---|---|
-| Atakhan | **supprimé** (26.1) | notes 26.1, wiki | 0 kill sur 128 parties 2026, 71 parties sur 79 en 2025 |
-| Baron | **20:00** (25:00 en 2025), respawn 6:00, buff 180 s | notes 26.1, wiki Baron | 1er kill au plus tôt à 20:17 (2025 : 25:21) |
+| Baron | **20:00**, respawn 6:00, buff 180 s | notes 26.1, wiki Baron | 1er kill au plus tôt à 20:17 |
 | Dragon, Larves, Héraut | 5:00 (+5:00) ; 8:00, une seule apparition ; 15:00-19:45 | notes 26.1, wiki | 5:31 / 8:03 / 15:15 au plus tôt |
-| Sbires, camps, Carapateur | sbires **0:30** (1:05 avant), camps **0:55**, Carapateur **2:55** (3:30 avant) | notes 26.1, wiki Minion et Rift Scuttler | CS de lane à 2:00 : 57 contre 23 ; CS de jungle d'un jungler à 2:00 : 12 contre 4 |
+| Sbires, camps, Carapateur | sbires **0:30**, camps **0:55**, Carapateur **2:55** | notes 26.1, wiki Minion et Rift Scuttler | CS de lane à 2:00 : 57 ; CS de jungle d'un jungler à 2:00 : 12 |
 | Waves | toutes les 30 s, 25 s dès 14:00, 20 s dès 30:00 ; canon aux waves 3, 6, 9… | wiki Minion | — |
-| Plates | **120 g**, **ne tombent plus à 14:00**, aussi sur les tours intérieures et d'inhibiteur ; 1re tour +300 g | notes 26.1, wiki Turret | plates jusqu'à 47:47 en 2026 (toujours avant 14:00 en 2025) |
+| Plates | **120 g**, **ne tombent plus à 14:00**, aussi sur les tours intérieures et d'inhibiteur ; 1re tour +300 g | notes 26.1, wiki Turret | plates prises jusqu'à 47:47 |
 | Smite | 600, puis **1 000** (15 friandises) et **1 400** (35) ; 2e charge vers 2:18 | wiki Smite (V26.01) | — |
 | Quêtes de rôle (26.01+) | top ~14:25 → Teleport de quête (390 s), niveau 20 ; mid/ADC ~16:05 ; support : pinks à 40 g ; 1 min de roam libre par 2 min en lane ; support −33 % hors bot avant le niveau 5 (26.16) | wiki Role Quests | — |
 | Respawn | attente de base par niveau (10 s au 1, 52,5 s au 18) × facteur de temps dès 15:00 (plafond +50 %) : ~44 s niveau 13 à 25:00, ~54 s niveau 16 à 30:00 | wiki Death | — |
@@ -188,12 +186,9 @@ respawn ». Le français reste un miroir exact de l'anglais (testé).
 
 ## 6. Ce qui n'a pas été repris, et pourquoi
 
-- **Les détecteurs encore réglés sur l'horloge de 2025** (hors du périmètre de cette branche,
-  `src/lib/microReview/anomalyDetector.ts` et `electron/main/mistakeRules.ts`) : fenêtre du Carapateur V10 (3:25-3:50,
-  il faut maintenant ~2:50-3:15), fenêtres de gank V3 (2:25-3:00 et 3:15-4:25, environ 35 s trop tard), premier back du
-  jungler V7 (4:05), poids d'Atakhan dans l'estimation de partie (sans effet en 2026 : il n'y a plus d'événement). À
-  traiter dans une session dédiée, avec `ANALYSIS_VERSION` relevé. **Fait ensuite** (branche `detectors-2026`,
-  `ANALYSIS_VERSION` 8) : horloge lue dans `gameVersion`, détail dans `RAPPORT_MOTEUR.md` § 1.2.
+- **Les détecteurs** (hors du périmètre de cette branche) : leurs fenêtres du début de partie ont été mises sur
+  l'horloge 2026 ensuite (`ANALYSIS_VERSION` 8), et le moteur n'analyse plus que la saison en cours
+  (`ANALYSIS_VERSION` 11). Détail dans `RAPPORT_MOTEUR.md` § 1.2.
 - **M15 (« mort pendant l'objectif »)** : la formule fiable du respawn qui manquait est maintenant connue (section 3).
   **Écrite ensuite** dans `mistakeRules.ts` (branche `detectors-2026`).
 - **Les contrôles de macro proposés par la recherche** (pick non converti, Baron gaspillée, objectif donné gratuitement,

@@ -242,6 +242,25 @@ Pourquoi cet ordre : la clé OpenAI est un secret **valide** qui ne demande qu'u
   Le déploiement de la fonction et le secret Supabase relèvent de la production, donc de l'accord de l'utilisateur.
 - **Qui :** le Chief fait trancher A ou B par l'utilisateur ; le Back-end réalise (et le Front-end pour A).
 
+### Revue d'après mise en production de la beta.10 — 20/11/2026, vers 07:05 (lecture seule) : **OK, aucun problème critique, haut ou moyen**
+- **Migrations appliquées :** de `member_staff_roles` à `roster_member_link` (4 nouvelles). Les objets en production correspondent à ce qui a été revu :
+  - `staff_roles` non modifiable par les clients ;
+  - `can_read_wellbeing` exige `role <> 'player'` **et** `not also_plays` ;
+  - `team_session_games` a 4 politiques séparées, avec un UPDATE par colonnes sans `timeline_summary` ;
+  - `link_roster_member` ne réécrit qu'un Riot ID vérifié ;
+  - un dossier adverse brouillon n'est visible que du staff ;
+  - la RLS est active sur **toutes** les tables de `public`.
+- **Advisors :** la catégorie « exécutable par `anon` » a **disparu** : les 8 `run_*`, les fonctions de trigger, `set_captain` et `set_weekly_load_threshold`. **S19-07 est levé.** « Leaked password protection » n'apparaît plus, donc elle est **activée** : **S19-09 est levé.** Les 18 fonctions « exécutables par `authenticated` » se contrôlent toutes elles-mêmes et ont été revues.
+- **Nouvelle fonction non revue jusqu'ici, `set_my_also_plays` :** vérifiée, OK. Réservée à l'owner, elle ne touche que **sa propre** ligne. La colonne `also_plays` n'est pas modifiable directement (valeur par défaut `false`, NOT NULL), et un owner qui joue est exclu de la lecture du bien-être.
+- **Infrastructure :**
+  - **Bot Discord : les 3 secrets sont maintenant présents** (`DISCORD_BOT_TOKEN`, `DISCORD_PUBLIC_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, noms seulement), et un POST non signé reçoit toujours 401. Le blocage du 19/11 est levé.
+  - **Proxy Riot** (version du 20/11 à 06:07) : `RIOT_API_KEY` présent. **R2 : cycle de vie de 90 jours actif, et accès public `r2.dev` désactivé** (vérifié).
+- **Web :** la web app est maintenant sur `https://app.asc3nd.app` (l'ancienne adresse `workers.dev` redirige en 301). CSP, HSTS et `X-Frame-Options` y sont servis, avec l'hôte des détourages dans `img-src`. Préflight CORS testé sur les fonctions serveur : `app.asc3nd.app` est accepté par `verify-member-puuid` et `redeem-invite`, `asc3nd.app` (le site) par `redeem-invite` seulement, et une origine tierce reçoit 403. C'est conforme.
+- **Restent ouverts, en basse priorité :**
+  - S19-17 résiduel : la lecture des données d'équipe n'est pas restreinte au groupe d'origine.
+  - Le droit `TRUNCATE` par défaut pour `authenticated`, hors de portée de PostgREST.
+  - S19-01 (Electron 33) et S19-02 (signature, reportée à environ 300 utilisateurs, décision de l'utilisateur) restent hors de cette release.
+
 ### Revue d'après déploiement — 19/11/2026, vers 17:05 (lecture seule)
 **Verdict : la production correspond à ce qui a été revu. Un problème bloquant pour le bot Discord, qui n'est pas une régression.**
 
@@ -271,6 +290,18 @@ Pourquoi cet ordre : la clé OpenAI est un secret **valide** qui ne demande qu'u
 **« Leaked password protection » désactivée — avis :** à activer, en priorité basse à moyenne. L'app propose un mot de passe facultatif, en plus de la connexion par code e-mail. La règle actuelle, `isAcceptablePassword` (longueur, une lettre et un chiffre), laisse passer des mots de passe connus des fuites, comme « azerty123 ». La vérification contre HaveIBeenPwned (k-anonymat : seuls 5 caractères du hash partent) les refuse sans coût pour l'utilisateur. Réglage : Authentication → Policies → Password. **À vérifier :** Supabase réserve cette option aux offres payantes. Si le projet est en offre gratuite, la compenser par une longueur minimale de 10 et une liste locale des mots de passe les plus courants dans `isAcceptablePassword` (Back-end).
 
 ### Revues de livraisons
+
+#### `20261120140000_member_card_champion.sql`, son rollback et l'API des cartes (20/11, lecture seule) : **OK**
+- **Écriture limitée à soi :** `grant update (card_champion, card_skin_num)` donne l'accès **par colonnes**, à `authenticated` seulement. La politique existante `members_update_self_profile` limite déjà l'UPDATE à `user_id = auth.uid()` et interdit de changer de rôle. Un membre ne modifie donc que **ses** lignes, sans toucher à son rôle ni à ses droits.
+- **Valeurs bornées côté serveur :** le `check` exige les deux colonnes nulles ensemble, ou un `card_champion` de 1 à 40 caractères `[A-Za-z0-9]` avec `card_skin_num` entre 0 et 999. Il n'y a donc aucun moyen d'injecter un chemin ou une URL dans `cutoutUrl()` (hôte fixe, puis `${id}_${num}.webp`).
+- **Côté client :**
+  - le desktop valide par zod (`championId` et une locale en `enum`) ;
+  - `listCardSkins` revérifie l'identifiant, valide la version DDragon par regex et n'appelle que deux hôtes fixes (ascend-cutouts et ddragon) ;
+  - `setMyCardChampion` filtre sur `user_id = uid`, en plus de la RLS ;
+  - le web passe par le même cœur, avec la CSP déjà à jour.
+- **Visibilité :** le champion et le skin choisis sont lisibles par les membres des groupes de l'utilisateur. C'est une donnée de présentation, sans enjeu de confidentialité.
+- **Rollback :** il retire le droit, la contrainte et les deux colonnes, dans le bon ordre. Les choix de cartes sont perdus, ce qui est attendu. Les anciennes versions de l'app tolèrent l'absence des colonnes (lecture en mode dégradé).
+- **Mineur :** le serveur ne vérifie pas que le skin choisi est bien hébergé. Au pire, l'image de la carte ne s'affiche pas, sans risque de sécurité.
 
 #### Avant la prochaine mise en production (20/11) — migrations 290000, 20261120120000, 20261120130000, pool publié, détourages : **OK, 2 correctifs avant la production**
 **RPC (droits et `search_path`) :**

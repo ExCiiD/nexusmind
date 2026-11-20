@@ -16,7 +16,7 @@
  */
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download, Edit2, Info, Loader2, RotateCcw, Trash2 } from 'lucide-react'
+import { Check, Download, Edit2, Info, Loader2, RotateCcw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Role } from '@/lib/championRoles'
@@ -75,17 +75,22 @@ function TeamCrest({ team }: { team: CardTeam }) {
   )
 }
 
-function CardFront({ member, role, team, artChampion, holders, totals, onFlip }: {
+function CardFront({ member, role, team, artChampion, artSkin = 0, holders, totals, onFlip }: {
   member: TeamMember
   role: Role
   team: CardTeam
   artChampion: string | null
+  artSkin?: number
   holders: AwardHolder[]
   totals?: { mvp: number; grinder: number }
-  onFlip: () => void
+  /** Absent: the live preview, not clickable. */
+  onFlip?: () => void
 }) {
   const { t } = useTranslation()
-  const [artBroken, setArtBroken] = useState(false)
+  // Keyed by champion and skin, so a new pick tries its art again.
+  const [brokenArt, setBrokenArt] = useState<string | null>(null)
+  const artId = artChampion ? `${artChampion}_${artSkin}` : null
+  const artBroken = !!artId && brokenArt === artId
   const name = member.displayName.trim() || member.ign || '?'
   const roleLabel = t(`team.roster.roles.${role}`, { defaultValue: role })
   const badges = [
@@ -97,15 +102,18 @@ function CardFront({ member, role, team, artChampion, holders, totals, onFlip }:
     <button
       type="button"
       onClick={onFlip}
+      // The picker's preview: not a control (the caption under it names the skin).
+      disabled={!onFlip}
+      aria-hidden={onFlip ? undefined : true}
       aria-label={t('team.roster.card.showDetails', { name })}
-      className="group/front absolute inset-0 overflow-hidden rounded-lg bg-[#120b19] text-left shadow-[0_10px_30px_rgba(0,0,0,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold"
+      className="group/front absolute inset-0 disabled:cursor-default overflow-hidden rounded-lg bg-[#120b19] text-left shadow-[0_10px_30px_rgba(0,0,0,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold"
       style={{ ['--stroke' as string]: '0.55cqw' }}
     >
       <CardLookBackground memberId={member.id} />
 
       {/* The main champion: the faded art, then cut out of its scene. */}
       {artChampion && !artBroken ? (
-        <CardChampionArt championKey={artChampion} onBroken={() => setArtBroken(true)} />
+        <CardChampionArt championKey={artChampion} skinNum={artSkin} onBroken={() => setBrokenArt(artId)} />
       ) : (
         <div aria-hidden className="absolute inset-x-0 bottom-[10%] flex justify-center text-white/[0.06]" style={{ transform: parallax(6) }}>
           <RoleGlyph role={role} className="h-[70cqw] w-[70cqw]" />
@@ -247,30 +255,60 @@ function CardAvatar({ look, name }: { look: Look | null; name: string }) {
   )
 }
 
-function ChampionTile({ champion, name }: { champion: CardChampion; name: string }) {
+function ChampionTile({ champion, name, picker }: {
+  champion: CardChampion
+  name: string
+  /** On my own card (§ 14): the icon opens the skin picker of this champion; `shown` when it is the front's champion. */
+  picker?: { shown: boolean; onPick: () => void }
+}) {
   const { t } = useTranslation()
   const icon = useChampionIconUrl(champion.championKey)
   const losses = champion.games - champion.wins
+  const iconBox = picker
+    ? 'aspect-square w-full rounded-[4px] border border-hextech-border-dim object-cover transition-[transform,border-color] duration-150 motion-safe:group-hover/pick:scale-[1.15] motion-safe:group-focus-visible/pick:scale-[1.15] group-hover/pick:border-hextech-gold group-focus-visible/pick:border-hextech-gold'
+    : 'aspect-square w-full rounded-[4px] border border-hextech-border-dim object-cover'
+  const inner = (
+    <>
+      <div className="relative w-full">
+        {icon ? (
+          <img src={icon} alt={picker ? '' : name} className={iconBox} draggable={false} />
+        ) : (
+          <div className={cn(iconBox, 'bg-hextech-elevated')} />
+        )}
+        {picker?.shown && (
+          <span aria-hidden className="absolute -left-[1cqw] -top-[1cqw] z-10 flex h-[4.6cqw] w-[4.6cqw] items-center justify-center rounded-full bg-hextech-gold text-hextech-black shadow">
+            <Check className="h-[3.4cqw] w-[3.4cqw]" strokeWidth={3} />
+          </span>
+        )}
+        <span className="absolute -bottom-[1cqw] -right-[1cqw] rounded-[3px] border border-hextech-border-dim bg-hextech-black/90 px-[0.8cqw] font-mono text-[3.6cqw] leading-tight text-hextech-text tabular-nums">
+          {champion.games}
+        </span>
+      </div>
+      <span className={cn('font-mono text-[4.6cqw] font-semibold tabular-nums', wrText(champion.winRate, champion.games, champion.lowSample))}>
+        {champion.winRate}%
+      </span>
+    </>
+  )
   return (
-    <li className="min-w-0">
+    <li className={cn('min-w-0', picker && 'relative hover:z-10 focus-within:z-10')}>
       <Tooltip>
         <TooltipTrigger asChild>
-          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable so keyboard users can open the champion tooltip. */}
-          <div tabIndex={0} className="flex cursor-default flex-col items-center gap-[1cqw] rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold">
-            <div className="relative w-full">
-              {icon ? (
-                <img src={icon} alt={name} className="aspect-square w-full rounded-[4px] border border-hextech-border-dim object-cover" draggable={false} />
-              ) : (
-                <div className="aspect-square w-full rounded-[4px] border border-hextech-border-dim bg-hextech-elevated" />
-              )}
-              <span className="absolute -bottom-[1cqw] -right-[1cqw] rounded-[3px] border border-hextech-border-dim bg-hextech-black/90 px-[0.8cqw] font-mono text-[3.6cqw] leading-tight text-hextech-text tabular-nums">
-                {champion.games}
-              </span>
+          {picker ? (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); picker.onPick() }}
+              aria-label={t('team.roster.card.pick.showOnCard', { name })}
+              aria-pressed={picker.shown}
+              className="group/pick flex w-full cursor-pointer flex-col items-center gap-[1cqw] rounded-md focus-visible:outline-none"
+            >
+              {inner}
+            </button>
+          ) : (
+            /* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable so keyboard users can open the champion tooltip. */
+            <div tabIndex={0} className="flex cursor-default flex-col items-center gap-[1cqw] rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold">
+              {inner}
             </div>
-            <span className={cn('font-mono text-[4.6cqw] font-semibold tabular-nums', wrText(champion.winRate, champion.games, champion.lowSample))}>
-              {champion.winRate}%
-            </span>
-          </div>
+          )}
         </TooltipTrigger>
         <TooltipContent side="bottom" className="px-3 py-2">
           <p className="font-semibold text-hextech-text-bright">{name}</p>
@@ -284,12 +322,13 @@ function ChampionTile({ champion, name }: { champion: CardChampion; name: string
   )
 }
 
-function ChampionsSection({ data, nameOf, hasRiotId, fetching, onFetch }: {
+function ChampionsSection({ data, nameOf, hasRiotId, fetching, onFetch, picker }: {
   data: CardChampions
   nameOf: (key: string) => string
   hasRiotId: boolean
   fetching: boolean
   onFetch: (() => void) | null
+  picker?: CardPicker
 }) {
   const { t } = useTranslation()
   const empty = data.champions.length === 0
@@ -336,7 +375,14 @@ function ChampionsSection({ data, nameOf, hasRiotId, fetching, onFetch }: {
       ) : (
         <>
           <ul className="grid grid-cols-5 gap-[2cqw]">
-            {data.champions.map((c) => <ChampionTile key={c.championKey} champion={c} name={nameOf(c.championKey)} />)}
+            {data.champions.map((c) => (
+              <ChampionTile
+                key={c.championKey}
+                champion={c}
+                name={nameOf(c.championKey)}
+                picker={picker ? { shown: picker.shownKey === c.championKey, onPick: () => picker.onPick(c.championKey) } : undefined}
+              />
+            ))}
             {Array.from({ length: Math.max(0, CARD_CHAMPIONS - data.champions.length) }, (_, i) => (
               <li key={`empty-${i}`} aria-hidden className="aspect-square w-full rounded-[4px] border border-dashed border-hextech-border-dim" />
             ))}
@@ -344,6 +390,7 @@ function ChampionsSection({ data, nameOf, hasRiotId, fetching, onFetch }: {
           <p className="mt-[2cqw] text-center font-mono text-[4cqw] text-hextech-text-dim tabular-nums">
             {t('team.roster.card.games', { count: data.games })}
           </p>
+          {picker && <p className="mt-[1cqw] text-center text-[3.8cqw] text-hextech-text-dim">{t('team.roster.card.pick.help')}</p>}
         </>
       )}
     </section>
@@ -376,6 +423,12 @@ function AwardLines({ holders }: { holders: AwardHolder[] }) {
   )
 }
 
+/** My own card's champion picker (§ 14): the front's champion, and opening the picker for a champion of the back. */
+export interface CardPicker {
+  shownKey: string | null
+  onPick: (championKey: string) => void
+}
+
 interface PlayerCardProps {
   member: TeamMember
   role: Role
@@ -385,6 +438,12 @@ interface PlayerCardProps {
   team: CardTeam
   /** Champion of the front art (Data Dragon key); null: the role icon. */
   artChampion: string | null
+  /** Skin of the front art (Data Dragon number), 0 by default. */
+  artSkin?: number
+  /** My own card (§ 14): the back's champions open the skin picker. Absent on the other members' cards. */
+  picker?: CardPicker
+  /** Front only, not clickable (the picker's live preview). */
+  preview?: boolean
   /** The weekly awards this player holds (at most one per kind). */
   holders?: AwardHolder[]
   /** Completed weeks this player won, per award. */
@@ -403,7 +462,7 @@ interface PlayerCardProps {
 }
 
 export function PlayerCard({
-  member, role, look, champions, nameOf, team, artChampion, holders = [], totals, fetching, onFetch, onEdit, onRemove, editForm, onRenameSeen,
+  member, role, look, champions, nameOf, team, artChampion, artSkin = 0, picker, preview = false, holders = [], totals, fetching, onFetch, onEdit, onRemove, editForm, onRenameSeen,
 }: PlayerCardProps) {
   const { t } = useTranslation()
   const [turned, setTurned] = useState(false)
@@ -423,9 +482,10 @@ export function PlayerCard({
           role={role}
           team={team}
           artChampion={artChampion}
+          artSkin={artSkin}
           holders={holders}
           totals={totals}
-          onFlip={() => setTurned(true)}
+          onFlip={preview ? undefined : () => setTurned(true)}
         />
       )}
       back={(
@@ -483,6 +543,7 @@ export function PlayerCard({
                   hasRiotId={!!(member.ign && member.tagLine)}
                   fetching={fetching}
                   onFetch={onFetch}
+                  picker={picker}
                 />
                 <Button size="sm" variant="outline" className="mt-auto h-8 w-full text-xs" onClick={onEdit}>
                   <Edit2 className="mr-1 h-3 w-3" />

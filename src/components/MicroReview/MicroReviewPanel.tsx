@@ -129,7 +129,7 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
     return (
       <section className={cn(panel, 'p-4')} data-testid="micro-review-unavailable">
         <Header count={0} done={0} />
-        <p className="mt-2 text-xs text-hextech-text-dim">{loadError ?? t(data?.reason === 'unsupported-mode' ? 'microReview.unsupported' : 'microReview.unavailable')}</p>
+        <p className="mt-2 text-xs text-hextech-text-dim">{loadError ?? t(data?.reason === 'unsupported-mode' ? 'microReview.unsupported' : data?.reason === 'previous-season' ? 'microReview.previousSeason' : 'microReview.unavailable')}</p>
       </section>
     )
   }

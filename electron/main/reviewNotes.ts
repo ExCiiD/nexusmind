@@ -24,7 +24,7 @@ export interface MistakeForNotes {
 export const MAX_NOTES = 12
 /** Kills within this window of each other count as one multi-kill. */
 const MULTI_KILL_WINDOW_MS = 10_000
-const OBJECTIVE_TYPES: ReadonlySet<GameEventType> = new Set(['dragon', 'baron', 'herald', 'voidgrub', 'atakhan'])
+const OBJECTIVE_TYPES: ReadonlySet<GameEventType> = new Set(['dragon', 'baron', 'herald', 'voidgrub'])
 
 function fmt(ms: number): string {
   const totalSec = Math.max(0, Math.floor(ms / 1000))

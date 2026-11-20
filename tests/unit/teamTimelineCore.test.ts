@@ -3,7 +3,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  extractTeamTimeline, summarizeTeamObjectives, filterTeamTimelines, isCurrentTimeline, patchOf, grubsAvailableOf,
+  extractTeamTimeline, summarizeTeamObjectives, filterTeamTimelines, isCurrentTimeline, patchOf, GRUBS_PER_GAME,
   TEAM_TIMELINE_VERSION,
 } from '../../src/lib/teamTimelineCore'
 import { opponentKeyOf, type TeamGameTimeline, type TeamObjectivesFilters } from '../../src/lib/analyst'
@@ -75,12 +75,9 @@ describe('extractTeamTimeline', () => {
     expect(t.goldDiffByMinute[2]).toBe(-1000)
   })
 
-  it('no frames, no summary; one camp of 3 grubs since 15.9 (patch 25.09), two camps before', () => {
+  it('no frames, no summary; one camp of 3 grubs', () => {
     expect(extractTeamTimeline(match(), { info: { frames: [] } }, meta(100))).toBeNull()
-    expect(grubsAvailableOf('15.8.1.1')).toBe(6)
-    expect(grubsAvailableOf('15.9.1.1')).toBe(3)
-    expect(grubsAvailableOf('15.24.715.2077')).toBe(3)
-    expect(grubsAvailableOf('16.1.1.1')).toBe(3)
+    expect(GRUBS_PER_GAME).toBe(3)
     expect(patchOf('15.24.715.2077')).toBe('15.24')
     expect(patchOf(undefined)).toBe('')
   })
@@ -130,7 +127,7 @@ describe('summarizeTeamObjectives', () => {
     expect(s.goldCurve.all[2]).toBe(0)
     expect(s.goldCurve.all).toHaveLength(31)
     expect(s.avgTimings.find((t) => t.kind === 'baron')).toEqual({ kind: 'baron', oursSec: 1320, theirsSec: 1320 })
-    expect(s.avgTimings.find((t) => t.kind === 'atakhan')).toBeUndefined()
+    expect(s.avgTimings.map((t) => t.kind)).toEqual(['firstBlood', 'tower', 'dragon', 'grubs', 'herald', 'baron', 'elder'])
   })
 
   it('no games: nulls, not zeros', () => {

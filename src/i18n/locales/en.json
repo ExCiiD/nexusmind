@@ -1197,6 +1197,29 @@
         "fetch": "Fetch",
         "fetching": "Fetching champions…",
         "fetchJob": "Champions — {{team}} · {{name}}",
+        "pick": {
+          "help": "Click a champion to show it on your card",
+          "showOnCard": "Show {{name}} on my card",
+          "subtitle": "Pick the skin shown on your card",
+          "skinsOf": "{{name}} skins",
+          "withCutout_one": "{{count}} with cut-out",
+          "withCutout_other": "{{count}} with cut-out",
+          "withoutCount_one": "{{count}} skin without cut-out",
+          "withoutCount_other": "{{count}} skins without cut-out",
+          "noCutout": "No cut-out",
+          "noCutoutHelp": "This skin has no cut-out yet: it can’t be shown on the card.",
+          "withCutoutA11y": "with cut-out",
+          "selectedA11y": "selected",
+          "classic": "{{name}} (classic)",
+          "previewOf": "Preview · {{name}}",
+          "noneWithCutout": "No {{name}} skin has a cut-out yet: the card will show its artwork.",
+          "backToAuto": "Back to automatic",
+          "save": "Show on my card",
+          "visible": "Visible to the whole group",
+          "saved": "Card updated",
+          "saveFailed": "Your card couldn’t be updated",
+          "saveFailedHint": "Check that you’re signed in. If it keeps failing, this feature is waiting for the next server update."
+        },
         "edit": "Edit",
         "remove": "Remove from roster",
         "add": "Add a player",
@@ -4048,7 +4071,6 @@
       "baron": "Nashor",
       "voidgrub": "Voidgrub",
       "herald": "Herald",
-      "atakhan": "Atakhan",
       "turret": "Tower",
       "inhibitor": "Inhib",
       "plate": "Plate"
@@ -4245,7 +4267,6 @@
       "baron": "Baron",
       "herald": "Herald",
       "grubs": "the Voidgrubs",
-      "atakhan": "Atakhan",
       "tower": "a tower",
       "inhibitor": "an inhibitor"
     },
@@ -4255,7 +4276,6 @@
       "baron": "Baron",
       "herald": "Herald",
       "grubs": "the Voidgrubs",
-      "atakhan": "Atakhan",
       "tower": "a tower",
       "inhibitor": "an inhibitor"
     },
@@ -4557,7 +4577,8 @@
       "support-weakside-unwarded": "Weak side uncovered"
     },
     "otherJustified": "This was not a mistake: it was my call",
-    "unsupported": "The micro-review only covers classic games on Summoner's Rift."
+    "unsupported": "The micro-review only covers classic games on Summoner's Rift.",
+    "previousSeason": "Previous season: the micro-review only analyses this season's games."
   },
   "codex": {
     "title": "Codex advice",
@@ -4900,7 +4921,6 @@
         "grubs": "Grubs",
         "herald": "Herald",
         "baron": "Baron",
-        "atakhan": "Atakhan",
         "tower": "Tower",
         "firstBlood": "First blood",
         "elder": "Elder dragon"
@@ -4924,7 +4944,6 @@
           "grubs": "Grubs",
           "herald": "Herald",
           "baron": "Baron",
-          "atakhan": "Atakhan",
           "tower": "Tower",
           "firstBlood": "First blood",
           "elder": "Elder dragon"

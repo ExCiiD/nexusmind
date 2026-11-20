@@ -426,6 +426,25 @@ Correctif proposé :
 
 **Non vérifié :** l'app réelle, côté utilisateur.
 
+### #51 Champion Pool, lobby, détouré hébergé, sélecteur champion / skin (21/11) — **OK**
+
+**Contrôles :**
+- 19 / 19 tests propres à #51 (`cardChampion`, `cardChampionView`) ;
+- `tsc` du renderer et de la web app EXIT 0 ; `eslint` des 8 fichiers EXIT 0 ; `check:i18n` OK ; `web:build` EXIT 0.
+- **Hors #51** : 25 tests en échec (7 fichiers micro-review / anomalyDetector / mistakeRules) et `npm run typecheck`
+  en échec **uniquement** dans des tests de ce même chantier (`microReviewSeason2026`, V5-V7, `teamTimelineCore:133`
+  sur `atakhan`), dus au retrait de 2025 en cours côté back. **À reverifier avant la release.**
+
+| Point | Verdict | Preuve |
+|---|---|---|
+| (1) Menu de tier | ✅ | Menu en `fixed` positionné depuis le bouton, à l'intérieur du dialogue : il échappe au rognage de la liste et s'ouvre vers le haut près du bas ; refermé au défilement (`ChampionPoolBoard.tsx`). |
+| (2) Lobby d'équipe en tête de section | ✅ | Ordre de la barre latérale changé, sans autre effet (`Sidebar.tsx`). |
+| (3) Détouré hébergé | ✅ | `cutoutUrl` (Worker `ascend-cutouts`), avec repli sur l'image d'origine estompée en cas de 404 ou hors ligne (`onError`). |
+| (4) Sélecteur champion / skin | ✅ | `CardSkinDialog` : `radiogroup` nommé (« Skins de X »), `radio` + `aria-checked` + `aria-label`, `aria-disabled` pour les skins sans détouré (avec une explication en `title`), **tabindex mobile qui retombe toujours sur un skin sélectionnable** (skin de base au minimum), flèches, images en `loading="lazy"`. Branché sur le web (`cardChampionWeb.ts`, `api.ts`). |
+| (5) Back | ✅ | Migration `20261120140000` : `card_champion` et `card_skin_num` avec une contrainte de format, `grant update` limité à ces 2 colonnes (déjà validé par CyberSecurity). API `collabSetMyCardChampion` / `collabListCardSkins`. Manifeste lu une seule fois, état hors ligne, Data Dragon indisponible : couverts par les tests. **Pas appliquée en production.** |
+
+**Non vérifié :** le rendu dans le harnais (revue de code et tests seulement).
+
 ### #49 Scrims dans le Planning — revue complète, front branché (20/11) — **OK avec une réserve P2 (ordre de mise en production)**
 
 **Contrôles :**

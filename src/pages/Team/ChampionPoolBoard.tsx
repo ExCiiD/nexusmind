@@ -5,7 +5,7 @@
  * the "add a champion" dialog. Assembled by ChampPoolTab.tsx; the numbers
  * come from src/lib/poolView.ts, the tier rules from src/lib/threatCore.ts.
  */
-import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type DragEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, Search, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -198,12 +198,13 @@ export function GamesDistribution({ summary, nameOf }: { summary: PoolSummary; n
 
 // ── Tier menu (click on a tile, or on a champion in the add dialog) ─────────
 
-function TierMenu({ current, onPick, onRemove, onClose, className }: {
+function TierMenu({ current, onPick, onRemove, onClose, className, style }: {
   current?: Tier
   onPick: (tier: Tier) => void
   onRemove?: () => void
   onClose: () => void
   className?: string
+  style?: CSSProperties
 }) {
   const { t } = useTranslation()
   useEffect(() => {
@@ -219,6 +220,7 @@ function TierMenu({ current, onPick, onRemove, onClose, className }: {
         role="menu"
         tabIndex={-1}
         className={cn('absolute z-40 flex min-w-[150px] flex-col gap-px rounded-md border border-hextech-border bg-hextech-dark p-1 shadow-2xl', className)}
+        style={style}
         onClick={(e) => e.stopPropagation()}
       >
         {MANUAL_TIERS.map((tier) => (
@@ -502,20 +504,43 @@ export function LearningLane(props: Omit<LaneProps, 'tier'>) {
 
 // ── Add a champion ──────────────────────────────────────────────────────────
 
+/** The tier menu's height (4 tiers and « remove »), to open it upward near the dialog's bottom. */
+const MENU_HEIGHT = 170
+
 function PickableChampion({ champion, entry, onPick, onRemove }: {
   champion: { key: string; name: string }
   entry?: ChampionPoolEntry
   onPick: (tier: Tier) => void
   onRemove: () => void
 }) {
-  const [open, setOpen] = useState(false)
+  const [menuAt, setMenuAt] = useState<CSSProperties | null>(null)
+  const open = menuAt !== null
   const icon = useChampionIconUrl(champion.key)
   const tier = entry ? tierOf(entry) : undefined
+  // The dialog's list scrolls (overflow), which clipped a menu opened under a tile of its last visible row, or under
+  // the only row left after a search: the click seemed to do nothing. The menu is now fixed: inside the dialog
+  // (transformed, so it is the containing block) it escapes the list's clipping, below the tile, or above it near
+  // the dialog's bottom. Scrolling the list closes it.
+  const toggle = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (open) { setMenuAt(null); return }
+    const btn = e.currentTarget.getBoundingClientRect()
+    const box = (e.currentTarget.closest('[role="dialog"]') as HTMLElement | null)?.getBoundingClientRect()
+    if (!box) { setMenuAt({}); return }
+    const left = btn.left + btn.width / 2 - box.left
+    const below = btn.bottom + MENU_HEIGHT + 8 <= box.bottom
+    setMenuAt(below ? { position: 'fixed', left, top: btn.bottom - box.top + 4 } : { position: 'fixed', left, bottom: box.bottom - btn.top + 4 })
+  }
+  useEffect(() => {
+    if (!open) return
+    const close = () => setMenuAt(null)
+    window.addEventListener('scroll', close, true)
+    return () => window.removeEventListener('scroll', close, true)
+  }, [open])
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
         title={tier ? `${champion.name} (${tier})` : champion.name}
@@ -533,11 +558,12 @@ function PickableChampion({ champion, entry, onPick, onRemove }: {
       </button>
       {open && (
         <TierMenu
-          className="left-1/2 top-full mt-1 -translate-x-1/2"
+          className={menuAt?.position === 'fixed' ? '-translate-x-1/2' : 'left-1/2 top-full mt-1 -translate-x-1/2'}
+          style={menuAt ?? undefined}
           current={tier}
-          onPick={(next) => { setOpen(false); onPick(next) }}
-          onRemove={entry ? () => { setOpen(false); onRemove() } : undefined}
-          onClose={() => setOpen(false)}
+          onPick={(next) => { setMenuAt(null); onPick(next) }}
+          onRemove={entry ? () => { setMenuAt(null); onRemove() } : undefined}
+          onClose={() => setMenuAt(null)}
         />
       )}
     </div>

@@ -105,15 +105,15 @@ describe('pattern — tempo hesitation / missed cross-map', () => {
   })
 })
 
-describe('pattern — jungle overchase (2:30–8:00)', () => {
+describe('pattern — jungle overchase (1:55–8:00)', () => {
   const ENEMY_SIDE = { x: 10500, y: 8500 }
   const chase = (deathMs: number, o: { pos?: P; extra?: any[]; frame?: (i: number, pid: number) => any } = {}) => buildGame({ minutes: 12, me: 2,
     frame: o.frame ?? ((_i, pid) => (pid === 2 ? { position: o.pos ?? ENEMY_SIDE } : undefined)),
     events: [kill(deathMs, 2, 8, [], o.pos ?? ENEMY_SIDE), ...(o.extra ?? [])] })
 
-  it('window 150 s – 480 s, inclusive, anchored 20 s before the death', () => {
-    expect(patterns(chase(149_999))).toEqual([])
-    expect(withPattern(chase(150_000), 'jungle-overchase')).toMatchObject({ trigger: 'early-deficit', gameTimeSec: 130 })
+  it('window 115 s – 480 s, inclusive, anchored 20 s before the death', () => {
+    expect(patterns(chase(114_999))).toEqual([])
+    expect(withPattern(chase(115_000), 'jungle-overchase')).toMatchObject({ trigger: 'early-deficit', gameTimeSec: 95 })
     expect(withPattern(chase(480_000), 'jungle-overchase')!.gameTimeSec).toBe(460)
     expect(patterns(chase(480_001))).toEqual([])
   })
@@ -154,15 +154,15 @@ describe('pattern — jungle overchase (2:30–8:00)', () => {
     const fromBank = (i: number, pid: number) => (pid === 2 ? { position: { x: 6500, y: 8200 } } : undefined)
     expect(patterns(chase(at(4, 30), { pos: { x: 9500, y: 9000 }, frame: fromBank }))).toEqual(['jungle-overchase'])
   })
-  it('the XP variant stays inside 2:30–8:00: frame pairs 3:00→4:00 … 7:00→8:00', () => {
+  it('the XP variant stays inside 1:55–8:00: frame pairs 2:00→3:00 … 7:00→8:00', () => {
     const lead = (k: number, extra: any[] = []) => buildGame({ minutes: 12, me: 2, events: extra, frame: (i, pid) => {
       if (pid !== 2) return undefined
       if (i === k) return { position: ENEMY_SIDE, xp: k * 500 + 100 }
       if (i === k + 1) return { xp: (k + 1) * 500 - 50 }
       return undefined
     } })
-    expect(patterns(lead(2))).toEqual([])
-    expect(withPattern(lead(3), 'jungle-overchase')!.gameTimeSec).toBe(180)
+    expect(patterns(lead(1))).toEqual([])
+    expect(withPattern(lead(2), 'jungle-overchase')!.gameTimeSec).toBe(120)
     expect(withPattern(lead(7), 'jungle-overchase')!.gameTimeSec).toBe(420)
     expect(patterns(lead(8))).toEqual([])
     // A death during that minute explains the lost lead: it is case A's business (here on the player's own side → nothing).
@@ -177,14 +177,14 @@ describe('pattern — jungle overchase (2:30–8:00)', () => {
 describe('pattern — jungle counter-tempo and passive clear', () => {
   const counter = (xp6: number, o: { back?: P; river?: P } = {}) => buildGame({ minutes: 10, me: 2, frame: (i, pid) => {
     if (pid !== 2) return undefined
-    if (i === 2) return { position: { x: 7000, y: 3500 } }
-    if (i === 3 || i === 4) return { position: o.river ?? { x: 9000, y: 6000 } }
-    if (i === 5) return { position: o.back ?? { x: 7200, y: 3800 } }
+    if (i <= 2) return { position: { x: 7000, y: 3500 } }
+    if (i === 3) return { position: o.river ?? { x: 9000, y: 6000 } }
+    if (i === 4 || i === 5) return { position: o.back ?? { x: 7200, y: 3800 } }
     if (i === 6) return { xp: xp6 }
     return undefined
   } })
   it('counter-tempo: more than 150 XP behind the enemy jungler at 6:00', () => {
-    expect(withPattern(counter(3000 - 151), 'jungle-counter-tempo')).toMatchObject({ gameTimeSec: 270, facts: { xpDiffJungle: -151 } })
+    expect(withPattern(counter(3000 - 151), 'jungle-counter-tempo')).toMatchObject({ gameTimeSec: 235, facts: { xpDiffJungle: -151 } })
     expect(patterns(counter(3000 - 150))).toEqual([])
   })
   it('counter-tempo: needs the river play and the return to the SAME quadrant', () => {
@@ -192,75 +192,75 @@ describe('pattern — jungle counter-tempo and passive clear', () => {
     expect(patterns(counter(2000, { back: { x: 3800, y: 7200 } }))).toEqual([]) // went on to the other quadrant
   })
 
-  const passive = (botLead: number, o: { xp6?: number; midDelta?: number; extra?: any[]; leftAt4?: boolean } = {}) => buildGame({ minutes: 10, me: 2, events: o.extra ?? [], frame: (i, pid) => {
-    if (pid === 2 && i <= 4) return { position: o.leftAt4 && i === 4 ? { x: 9000, y: 9000 } : { x: 3500, y: 7000 } }
+  const passive = (botLead: number, o: { xp6?: number; midDelta?: number; extra?: any[]; leftAt3?: boolean } = {}) => buildGame({ minutes: 10, me: 2, events: o.extra ?? [], frame: (i, pid) => {
+    if (pid === 2 && i <= 4) return { position: o.leftAt3 && i === 3 ? { x: 9000, y: 9000 } : { x: 3500, y: 7000 } }
     if (pid === 2 && i === 6) return { xp: o.xp6 ?? 3000 }
     if (i === 3 && pid === 4) return { totalGold: 1700 + botLead }
     if (i === 3 && pid === 3) return { totalGold: 1700 + (o.midDelta ?? 0) }
     return undefined
   } })
   it('passive clear: bot duo at least 250 g ahead at 3:00', () => {
-    expect(withPattern(passive(250), 'jungle-passive-clear')).toMatchObject({ gameTimeSec: 195, facts: { botGoldLead: 250, xpDiffJungle: 0 } })
+    expect(withPattern(passive(250), 'jungle-passive-clear')).toMatchObject({ gameTimeSec: 160, facts: { botGoldLead: 250, xpDiffJungle: 0 } })
     expect(patterns(passive(249))).toEqual([])
   })
   it('passive clear: not when mid is behind, the jungler is ahead, got a takedown or left their side', () => {
     expect(patterns(passive(400, { midDelta: -1 }))).toEqual([])
     expect(patterns(passive(400, { xp6: 3001 }))).toEqual([])
-    expect(patterns(passive(400, { extra: [kill(at(3, 30), 6, 1, [2])] }))).toEqual([])
-    expect(patterns(passive(400, { leftAt4: true }))).toEqual([])
+    expect(patterns(passive(400, { extra: [kill(at(3, 0), 6, 1, [2])] }))).toEqual([])
+    expect(patterns(passive(400, { leftAt3: true }))).toEqual([])
   })
 })
 
-describe('pattern — gank on a predictable jungle timer (2:30 and 4:10)', () => {
+describe('pattern — gank on a predictable jungle timer (2:00 and 3:15)', () => {
   const LANE = { x: 1500, y: 9000 }
   const ENEMY_JUNGLE = { x: 11000, y: 9000 }
   const gank = (ms: number, o: { me?: number; killer?: number; assists?: number[]; extra?: any[]; frame?: (i: number, pid: number) => any } = {}) =>
     buildGame({ minutes: 8, me: o.me ?? 1, frame: o.frame, events: [kill(ms, o.me ?? 1, o.killer ?? 7, o.assists ?? [], LANE), ...(o.extra ?? [])] })
   const facts = (g: Game): MomentFacts | undefined => withPattern(g, 'gank-timer')?.facts
 
-  it('window 1 — 2:25 to 3:00 (145 s – 180 s), inclusive: the 3-camp gank', () => {
-    expect(facts(gank(144_999))).toBeUndefined()
+  it('window 1 — 1:50 to 2:25 (110 s – 145 s), inclusive: the 3-camp gank', () => {
+    expect(facts(gank(109_999))).toBeUndefined()
+    expect(facts(gank(110_000))).toMatchObject({ gankWindow: 1 })
+    expect(facts(gank(120_000))).toMatchObject({ gankWindow: 1 })
     expect(facts(gank(145_000))).toMatchObject({ gankWindow: 1 })
-    expect(facts(gank(150_000))).toMatchObject({ gankWindow: 1 })
-    expect(facts(gank(180_000))).toMatchObject({ gankWindow: 1 })
-    expect(facts(gank(180_001))).toBeUndefined()
+    expect(facts(gank(145_001))).toBeUndefined()
   })
-  it('window 2 — 3:15 to 4:25 (195 s – 265 s), inclusive: end of the first clear', () => {
-    expect(facts(gank(194_999))).toBeUndefined()
-    expect(facts(gank(195_000))).toMatchObject({ gankWindow: 2, deepWard: false, wardedRecently: false })
-    expect(facts(gank(250_000))).toMatchObject({ gankWindow: 2 })
-    expect(facts(gank(265_000))).toMatchObject({ gankWindow: 2 })
-    expect(facts(gank(265_001))).toBeUndefined()
+  it('window 2 — 2:40 to 3:50 (160 s – 230 s), inclusive: end of the first clear', () => {
+    expect(facts(gank(159_999))).toBeUndefined()
+    expect(facts(gank(160_000))).toMatchObject({ gankWindow: 2, deepWard: false, wardedRecently: false })
+    expect(facts(gank(200_000))).toMatchObject({ gankWindow: 2 })
+    expect(facts(gank(230_000))).toMatchObject({ gankWindow: 2 })
+    expect(facts(gank(230_001))).toBeUndefined()
   })
   it('between the windows, and outside them, the death is an ordinary one', () => {
-    for (const ms of [120_000, 187_000, 300_000]) expect(run(gank(ms)).moments).toHaveLength(0)
+    for (const ms of [100_000, 152_000, 300_000]) expect(run(gank(ms)).moments).toHaveLength(0)
   })
   it('the enemy jungler must be the killer or an assister', () => {
-    expect(facts(gank(150_000, { killer: 6, assists: [7] }))).toMatchObject({ gankWindow: 1 })
-    expect(facts(gank(150_000, { killer: 6, assists: [8] }))).toBeUndefined()
-    expect(facts(gank(150_000, { killer: 0, assists: [7] }))).toMatchObject({ gankWindow: 1 }) // executed under tower with the jungler's help
+    expect(facts(gank(120_000, { killer: 6, assists: [7] }))).toMatchObject({ gankWindow: 1 })
+    expect(facts(gank(120_000, { killer: 6, assists: [8] }))).toBeUndefined()
+    expect(facts(gank(120_000, { killer: 0, assists: [7] }))).toMatchObject({ gankWindow: 1 }) // executed under tower with the jungler's help
   })
   it('laners only (top, mid, bot, support) — a jungler dying there is not a gank', () => {
-    for (const me of [1, 3, 4, 5]) expect(facts(gank(150_000, { me }))).toMatchObject({ gankWindow: 1 })
-    expect(run(gank(150_000, { me: 2 })).moments).toHaveLength(0)
+    for (const me of [1, 3, 4, 5]) expect(facts(gank(120_000, { me }))).toMatchObject({ gankWindow: 1 })
+    expect(run(gank(120_000, { me: 2 })).moments).toHaveLength(0)
   })
   it('window 2 is excused by a deep ward placed in the previous 150 s', () => {
-    // The player was in the enemy jungle around 1:00–2:00, so a ward placed then is a deep ward.
-    const deep = (i: number, pid: number) => (pid === 1 && (i === 1 || i === 2) ? { position: ENEMY_JUNGLE } : undefined)
+    // The player was in the enemy jungle until 2:00, so a ward placed then is a deep ward.
+    const deep = (i: number, pid: number) => (pid === 1 && i <= 2 ? { position: ENEMY_JUNGLE } : undefined)
     expect(zoneOf(ENEMY_JUNGLE, 100)).toBe('enemy-jungle')
-    expect(run(gank(240_000, { frame: deep, extra: [ward(240_000 - 150_000, 1)] })).moments).toHaveLength(0)
+    expect(run(gank(200_000, { frame: deep, extra: [ward(200_000 - 150_000, 1)] })).moments).toHaveLength(0)
     // 1 ms older: the ward has expired.
-    expect(facts(gank(240_000, { frame: deep, extra: [ward(240_000 - 150_001, 1)] }))).toMatchObject({ gankWindow: 2, deepWard: false, wardedRecently: false })
+    expect(facts(gank(200_000, { frame: deep, extra: [ward(200_000 - 150_001, 1)] }))).toMatchObject({ gankWindow: 2, deepWard: false, wardedRecently: false })
     // A recent ward on the player's own side is not a deep ward.
-    expect(facts(gank(240_000, { extra: [ward(200_000, 1)] }))).toMatchObject({ gankWindow: 2, deepWard: false, wardedRecently: true })
+    expect(facts(gank(200_000, { extra: [ward(160_000, 1)] }))).toMatchObject({ gankWindow: 2, deepWard: false, wardedRecently: true })
   })
-  it('window 1 is flagged even with a deep ward (the 2:30 gank is the universal alert)', () => {
+  it('window 1 is flagged even with a deep ward (the 2:00 gank is the universal alert)', () => {
     const deep = (i: number, pid: number) => (pid === 1 && i <= 1 ? { position: ENEMY_JUNGLE } : undefined)
-    expect(facts(gank(150_000, { frame: deep, extra: [ward(60_000, 1)] }))).toMatchObject({ gankWindow: 1, deepWard: true, wardedRecently: true })
+    expect(facts(gank(120_000, { frame: deep, extra: [ward(60_000, 1)] }))).toMatchObject({ gankWindow: 1, deepWard: true, wardedRecently: true })
   })
   it('mirrored for a red-side laner (enemy jungler = participant 2)', () => {
-    const g = buildGame({ minutes: 8, me: 6, events: [kill(150_000, 6, 2, [], { x: 13500, y: 6000 })] })
-    expect(withPattern(g, 'gank-timer')).toMatchObject({ trigger: 'critical-death', gameTimeSec: 150, facts: { gankWindow: 1 } })
+    const g = buildGame({ minutes: 8, me: 6, events: [kill(120_000, 6, 2, [], { x: 13500, y: 6000 })] })
+    expect(withPattern(g, 'gank-timer')).toMatchObject({ trigger: 'critical-death', gameTimeSec: 120, facts: { gankWindow: 1 } })
   })
 })
 
@@ -420,18 +420,18 @@ describe('pattern — jungle tempo window not punished (before 12:00)', () => {
     expect(withPattern(show(), 'jungle-window-unpunished')).toMatchObject({ trigger: 'early-deficit', gameTimeSec: 360, facts: { playerDistance: 8001 } })
     expect(patterns(show({ pos: { x: 11000, y: 3000 } }))).toEqual([])
   })
-  it('from 2:30, strictly before 12:00', () => {
-    expect(patterns(show({ ms: 149_999 }))).toEqual([]) // a level-1 skirmish is not a tempo window
-    expect(patterns(show({ ms: 150_000 }))).toEqual(['jungle-window-unpunished'])
+  it('from 1:55, strictly before 12:00', () => {
+    expect(patterns(show({ ms: 114_999 }))).toEqual([]) // a level-1 skirmish is not a tempo window
+    expect(patterns(show({ ms: 115_000 }))).toEqual(['jungle-window-unpunished'])
     expect(patterns(show({ ms: 719_999 }))).toEqual(['jungle-window-unpunished'])
     expect(patterns(show({ ms: 720_000 }))).toEqual([])
   })
   it('no window for a player who is dead or back for less than 20 s', () => {
-    // Level 3 dying at 5:50: 8 s of respawn → back at 5:58, available again at 6:18.
+    // Level 3 dying at 5:50: 12 s of respawn → back at 6:02, available again at 6:22.
     const afterDeath = (ms: number) => patterns(show({ ms, extra: [kill(at(5, 50), 2, 8, [], { x: 3000, y: 3000 })] }))
     expect(afterDeath(at(6, 5))).toEqual([])
-    expect(afterDeath(at(6, 18) - 1)).toEqual([])
-    expect(afterDeath(at(6, 18))).toEqual(['jungle-window-unpunished'])
+    expect(afterDeath(at(6, 22) - 1)).toEqual([])
+    expect(afterDeath(at(6, 22))).toEqual(['jungle-window-unpunished'])
     // Dying during the 45 s is not "farming passively" either.
     expect(patterns(show({ extra: [kill(at(6, 30), 2, 8, [], { x: 3000, y: 3000 })] }))).toEqual([])
   })
@@ -521,7 +521,7 @@ describe('pattern — bad rotation (laners, before 14:00)', () => {
   })
 })
 
-describe('pattern — mid roam that costs plates (before 14:00)', () => {
+describe('pattern — mid roam that costs plates (before 20:00)', () => {
   const BLUE_MID_OUTER = { x: 5846, y: 6396 }
   const RED_MID_OUTER = { x: 9164, y: 8609 }
   const plate = (ms: number, o: { killerId?: number; pos?: P | null; lane?: string } = {}) =>
@@ -529,7 +529,7 @@ describe('pattern — mid roam that costs plates (before 14:00)', () => {
   const midRoam = (o: { k?: number; me?: number; from?: P; to?: P; cs?: number; xp?: number; plates?: any[]; extra?: any[] } = {}) => {
     const k = o.k ?? 5
     const me = o.me ?? 3
-    return buildGame({ minutes: 18, me, events: [...(o.plates ?? [plate(k * 60_000 + 40_000)]), ...(o.extra ?? [])],
+    return buildGame({ minutes: 24, me, events: [...(o.plates ?? [plate(k * 60_000 + 40_000)]), ...(o.extra ?? [])],
       frame: (i, pid) => {
         if (pid !== me) return undefined
         if (i === k) return { position: o.from ?? { x: 7400, y: 7600 } }
@@ -577,9 +577,9 @@ describe('pattern — mid roam that costs plates (before 14:00)', () => {
     const grubs = midRoam({ extra: [epic(at(5, 10), 200, 'HORDE', BARON_PIT)] })
     expect(withPattern(grubs, 'mid-roam-plates')!.facts.enemyGrubs).toBe(true)
   })
-  it('strictly before 14:00, mid laners only', () => {
-    expect(patterns(midRoam({ k: 13 }))).toEqual(['mid-roam-plates'])
-    expect(patterns(midRoam({ k: 14 }))).toEqual([])
+  it('strictly before 20:00, mid laners only', () => {
+    expect(patterns(midRoam({ k: 19 }))).toEqual(['mid-roam-plates'])
+    expect(patterns(midRoam({ k: 20 }))).toEqual([])
     expect(patterns(midRoam({ me: 1 }))).toEqual([])
   })
   it('replaces the generic bad-rotation moment for the same roam', () => {
@@ -593,7 +593,7 @@ describe('pattern — mid roam that costs plates (before 14:00)', () => {
   })
 })
 
-describe('pattern — choke points: in the pit instead of zoning (from 14:00)', () => {
+describe('pattern — choke points: in the pit instead of zoning (from 15:00)', () => {
   // Two allies die near the pit at M:00 and M:00 + gap; the player stands `playerDist` from the pit centre from M−1:00 to M+1:00.
   const pitFight = (o: { me?: number; pit?: P; minute?: number; offset?: number; playerDist?: number; fightDist?: number; gap?: number; champions?: Record<number, string>; events?: (t0: number, near: P) => any[]; frame?: (i: number, pid: number) => any } = {}) => {
     const me = o.me ?? 5
@@ -626,9 +626,9 @@ describe('pattern — choke points: in the pit instead of zoning (from 14:00)', 
     expect(patterns(pitFight({ gap: 20_000 }))).toEqual(['pit-chokepoint'])
     expect(patterns(pitFight({ gap: 20_001 }))).toEqual([])
   })
-  it('from 14:00', () => {
-    expect(patterns(pitFight({ minute: 14 }))).toEqual(['pit-chokepoint'])
-    expect(patterns(pitFight({ minute: 14, offset: -1 }))).toEqual([])
+  it('from 15:00', () => {
+    expect(patterns(pitFight({ minute: 15 }))).toEqual(['pit-chokepoint'])
+    expect(patterns(pitFight({ minute: 15, offset: -1 }))).toEqual([])
   })
   it('the player must have been in the pit for the whole 15 s before the fight', () => {
     // Walking in: 3000 units out at 25:00, inside at 26:00 → still outside at 25:45.
@@ -682,7 +682,7 @@ describe('pattern — choke points: in the pit instead of zoning (from 14:00)', 
 
 describe('precedence and limits', () => {
   it('a gank-timer death never also raises another death pattern', () => {
-    const g = buildGame({ minutes: 8, me: 1, events: [kill(150_000, 1, 7, [8, 9], { x: 1500, y: 9000 })] })
+    const g = buildGame({ minutes: 8, me: 1, events: [kill(120_000, 1, 7, [8, 9], { x: 1500, y: 9000 })] })
     expect(patterns(g)).toEqual(['gank-timer'])
   })
   it('every moment carries a win probability and its geometry', () => {

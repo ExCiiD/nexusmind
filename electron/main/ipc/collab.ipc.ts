@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { validatedHandle } from './validate'
 import * as collab from '../cloud/collab'
 import { GROUP_LOGO_MAX_BYTES, LOOK_ID } from '../../../src/lib/collabCore'
+import { CARD_CHAMPION_ID, CARD_SKIN_LOCALES } from '../../../src/lib/cardSkinsCore'
 import { checkRiotAccount } from '../../../src/lib/riotAccountCheck'
 import { getAccountByRiotId } from '../riotClient'
 import { withRiotPriority } from '../riotPriority'
@@ -37,6 +38,13 @@ export function registerCollabHandlers() {
   const lookId = z.string().regex(LOOK_ID)
   validatedHandle('collab:set-my-look', z.tuple([z.object({ iconId: lookId, bannerId: lookId })]), (_e, look) => collab.setMyLook(look))
   validatedHandle('collab:list-member-looks', z.tuple([]), () => collab.listMemberLooks())
+  // Team Lobby card: a Data Dragon champion id and a skin number, or null for the default champion.
+  const championId = z.string().regex(CARD_CHAMPION_ID)
+  validatedHandle('collab:set-my-card-champion',
+    z.tuple([z.object({ championId, skinNum: z.number().int().min(0).max(999) }).strict().nullable()]),
+    (_e, choice) => collab.setMyCardChampion(choice))
+  validatedHandle('collab:list-card-skins', z.tuple([championId, z.enum(CARD_SKIN_LOCALES).optional()]),
+    (_e, id, locale) => collab.listCardSkins(id, locale))
   const logoImage = z.object({
     bytes: z.instanceof(Uint8Array).refine((b) => b.byteLength > 0 && b.byteLength <= GROUP_LOGO_MAX_BYTES, 'logo too large'),
     contentType: z.enum(['image/webp', 'image/png', 'image/jpeg']),

@@ -3,6 +3,8 @@ import { getPrisma } from '../database'
 import { getAccountByPuuid, getAccountByRiotId } from '../riotClient'
 import { riotIdRename } from '../../../src/lib/teamIdentity'
 import * as core from '../../../src/lib/collabCore'
+import * as cardSkins from '../../../src/lib/cardSkinsCore'
+import type { CardChampion, CardSkinLocale } from '../../../src/lib/cardSkinsCore'
 import * as dashboard from '../../../src/lib/staffDashboardCore'
 import * as devPlan from '../../../src/lib/devPlanCore'
 import * as calendar from '../../../src/lib/calendarCore'
@@ -152,6 +154,15 @@ export async function listMemberLooks() {
   return uid ? core.listMemberLooks(getSupabase(), uid) : []
 }
 
+/** Team Lobby card: my champion and skin, on all my memberships (null: the default champion). */
+export async function setMyCardChampion(choice: CardChampion | null): Promise<boolean> {
+  const uid = await signedInUid()
+  return uid ? core.setMyCardChampion(getSupabase(), uid, choice).catch(() => false) : false
+}
+
+/** The skins of a champion with a hosted cut-out (manifest of ascend-cutouts, names from Data Dragon). */
+export const listCardSkins = (championId: string, locale?: CardSkinLocale) => cardSkins.listCardSkins(fetch, championId, locale)
+
 // ── Group list cache (item I, 19/11/2026) ─────────────────────────────────────
 // Nine screens load the group list as they mount (12 requests at launch, L02). One list per user for 60 s, the
 // in-flight request shared, cleared by every mutation below. Changes made by others show within the 60 s.
@@ -203,6 +214,7 @@ export async function createGroup(name: string, kind: GroupKind): Promise<string
   await core.updateMyMemberProfile(sb, uid, id, await localIdentity()).catch(() => {})
   invalidateGroupsCache()
   await shareLook(uid, true)
+  await core.spreadMyCardChampion(sb, uid)
   return id
 }
 
@@ -212,7 +224,10 @@ export async function joinGroup(code: string, typedRiotId: string | null = null)
   const local = await localIdentity()
   const id = await changesGroups(core.joinGroup(getSupabase(), code, local.riotId ? local : { ...local, riotId: typedRiotId }))
   const uid = await signedInUid()
-  if (uid) await shareLook(uid, true)
+  if (uid) {
+    await shareLook(uid, true)
+    await core.spreadMyCardChampion(getSupabase(), uid)
+  }
   return id
 }
 export const leaveGroup = async (groupId: string) => changesGroups(core.leaveGroup(getSupabase(), await me(), groupId))

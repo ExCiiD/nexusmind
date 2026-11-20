@@ -29,7 +29,7 @@ export type { AwardKind, AwardHolder, AwardRaceEntry, WeeklyAwards } from './wee
 
 export type GameEventType =
   | 'kill' | 'death' | 'assist'
-  | 'dragon' | 'baron' | 'voidgrub' | 'herald' | 'atakhan'
+  | 'dragon' | 'baron' | 'voidgrub' | 'herald'
   | 'turret' | 'inhibitor' | 'plate'
 
 export interface GameEvent {

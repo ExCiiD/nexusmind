@@ -11,8 +11,7 @@ export interface FixtureOptions {
   frame?: (i: number, pid: number) => Record<string, unknown> | undefined
   events?: Array<Record<string, unknown> & { type: string; timestamp: number }>
   /**
-   * Match-V5 gameVersion. Default 15.24: the suites written before the season-2026 clock keep testing the 2025 one
-   * (tests/unit/microReviewSeason2026.test.ts covers 16.x games); null leaves the field out.
+   * Match-V5 gameVersion. Default 16.22, the current season (15.x games are not analysed); null leaves the field out.
    */
   gameVersion?: string | null
 }
@@ -53,7 +52,7 @@ export function buildGame(opts: FixtureOptions = {}) {
     frames[idx].events.push(ev)
   }
   return {
-    match: { info: { ...(opts.gameVersion === null ? {} : { gameVersion: opts.gameVersion ?? '15.24.715.2077' }), participants, teams: [{ teamId: 100, win: false }, { teamId: 200, win: true }] } },
+    match: { info: { ...(opts.gameVersion === null ? {} : { gameVersion: opts.gameVersion ?? '16.22.734.1234' }), participants, teams: [{ teamId: 100, win: false }, { teamId: 200, win: true }] } },
     timeline: { info: { frames } },
     selector: { puuids: [`puuid-${opts.me ?? 2}`] },
   }

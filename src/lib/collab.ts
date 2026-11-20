@@ -1,6 +1,8 @@
 /** Renderer-side mirror of electron/main/cloud/collab.ts types. */
 import type { PlayerDashboardRow } from './staffDashboard'
 import type { DevPlanApi } from './devPlan'
+import type { CardChampion, CardSkin, CardSkinLocale } from './cardSkinsCore'
+export type { CardChampion, CardSkin, CardSkinLocale } from './cardSkinsCore'
 
 export type GroupRole = 'owner' | 'coach' | 'manager' | 'analyst' | 'player'
 /** #39: the staff roles a member may hold on top of their main role (group_members.staff_roles). */
@@ -50,6 +52,9 @@ export interface MemberLook {
   riotId: string | null
   iconId: string | null
   bannerId: string | null
+  /** Team Lobby card: the champion and skin the member picked (20261120140000_member_card_champion), null for the
+   *  card's default champion. Absent on a build or a database without it. */
+  card?: CardChampion | null
 }
 
 export interface GroupSharing {
@@ -171,6 +176,14 @@ export interface CollabApi extends DevPlanApi {
   collabSetMyLook: (look: { iconId: string; bannerId: string }) => Promise<boolean>
   /** Looks of everyone in my groups (player cards); empty when signed out. */
   collabListMemberLooks: () => Promise<MemberLook[]>
+  /**
+   * Team Lobby card: shows this champion and skin on my card in all my groups (null: back to the default champion).
+   * The screen offers champions of my top and skins from collabListCardSkins only. False when signed out, refused,
+   * or before the migration. Optional: absent on an app or web build without it.
+   */
+  collabSetMyCardChampion?: (choice: CardChampion | null) => Promise<boolean>
+  /** The skins of a champion that have a hosted cut-out, base skin first; empty when none or offline. */
+  collabListCardSkins?: (championId: string, locale?: CardSkinLocale) => Promise<CardSkin[]>
   /** Management only (owner, coach, manager, captain). Null clears the logo;
    *  returns the new logo's URL. */
   collabSetGroupLogo: (groupId: string, image: GroupLogoImage | null) => Promise<string | null>

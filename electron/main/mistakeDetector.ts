@@ -12,6 +12,7 @@
 
 import type { PlayerSelector } from './eventExtractor'
 import { detectAdvancedMistakes, type AdvancedTag } from './mistakeRules'
+import { seasonOf } from '../../src/lib/microReview/gameClock'
 
 export interface MistakeCandidate {
   tagSlug: 'unused-gold' | 'dove-tower' | 'late-back' | 'overstay' | AdvancedTag
@@ -141,6 +142,8 @@ export function detectMistakes(
     return []
   }
   if (!timeline?.info?.frames || !match?.info?.participants) return []
+  // Games of an older season (15.x) are not analysed (gameClock.ts). Mistakes already found on them stay as they are.
+  if (seasonOf(match) !== 'current') return []
 
   const participants: ParticipantInfo[] = match.info.participants.map((p: any) => ({
     participantId: p.participantId,
@@ -193,7 +196,7 @@ export function detectMistakes(
   }
 
   // Pre-pass: collect timestamps of major objective kills (dragon, baron,
-  // herald, atakhan, voidgrubs). The overstay heuristic excludes deaths
+  // herald, voidgrubs). The overstay heuristic excludes deaths
   // that happen within OBJECTIVE_WINDOW_MS of one of these — those are
   // teamfight deaths in a contested objective context, not actual
   // "should have reset" overstays. Massive false-positive reducer.

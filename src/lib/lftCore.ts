@@ -54,7 +54,8 @@ export interface LftChampion {
   winRate: number | null
 }
 
-const TIER_ORDER = ['main', 'new', 'comfort', 'flex', 'learning']
+// Same order as the Champion Pool (threatCore TIERS): "new" below "flex".
+const TIER_ORDER = ['main', 'comfort', 'flex', 'new', 'learning']
 const tierRank = (tier: string | null | undefined) => {
   const i = TIER_ORDER.indexOf(tier ?? '')
   return i < 0 ? TIER_ORDER.length : i

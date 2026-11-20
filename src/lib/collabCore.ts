@@ -12,6 +12,7 @@ import type {
   ReviewComment,
   StaffRole,
 } from './collab'
+import { isCardChampion, type CardChampion } from './cardSkinsCore'
 
 /**
  * Collaboration data access, shared by the desktop main process and the web
@@ -255,22 +256,71 @@ export async function setMyLook(sb: SupabaseClient, uid: string, look: { iconId:
   return !error
 }
 
+const LOOK_COLUMNS = 'user_id, riot_id, profile_icon, profile_banner'
+const CARD_COLUMNS = 'card_champion, card_skin_num'
+
 export async function listMemberLooks(sb: SupabaseClient, uid: string): Promise<MemberLook[]> {
   const { data: memberships, error } = await sb.from('group_members').select('group_id').eq('user_id', uid)
   if (error || !memberships?.length) return []
-  const { data, error: looksError } = await sb.from('group_members')
-    .select('user_id, riot_id, profile_icon, profile_banner')
-    .in('group_id', memberships.map((m) => m.group_id))
+  const groupIds = memberships.map((m) => m.group_id)
+  // The card columns come with 20261120140000_member_card_champion: before it the select is refused (42703), and
+  // the looks are read without them.
+  type LooksRead = { data: Array<Record<string, unknown>> | null; error: { code?: string } | null }
+  let res: LooksRead = await sb.from('group_members').select(`${LOOK_COLUMNS}, ${CARD_COLUMNS}`).in('group_id', groupIds)
+  if (res.error?.code === '42703') res = await sb.from('group_members').select(LOOK_COLUMNS).in('group_id', groupIds)
+  const { data, error: looksError } = res
   if (looksError) return []
   const byUser = new Map<string, MemberLook>()
-  for (const r of data ?? []) {
+  for (const r of (data ?? []) as Array<Record<string, unknown>>) {
+    const userId = r.user_id as string
     const iconId = typeof r.profile_icon === 'string' && LOOK_ID.test(r.profile_icon) ? r.profile_icon : null
     const bannerId = typeof r.profile_banner === 'string' && LOOK_ID.test(r.profile_banner) ? r.profile_banner : null
-    const known = byUser.get(r.user_id)
-    if (known && (known.iconId || known.bannerId)) continue
-    byUser.set(r.user_id, { userId: r.user_id, riotId: r.riot_id ?? known?.riotId ?? null, iconId, bannerId })
+    const choice = { championId: r.card_champion, skinNum: r.card_skin_num }
+    const card = isCardChampion(choice) ? { championId: choice.championId, skinNum: choice.skinNum } : null
+    // The app writes the same look and card on every membership: the first filled one found wins, each on its own.
+    const known = byUser.get(userId)
+    const keepLook = !!known && !!(known.iconId || known.bannerId)
+    byUser.set(userId, {
+      userId,
+      riotId: keepLook ? known!.riotId : (r.riot_id as string | null) ?? known?.riotId ?? null,
+      iconId: keepLook ? known!.iconId : iconId,
+      bannerId: keepLook ? known!.bannerId : bannerId,
+      card: known?.card ?? card,
+    })
   }
   return [...byUser.values()]
+}
+
+/**
+ * Team Lobby card: the champion and skin I show on my card, written on every membership (like the look). Null goes
+ * back to the default champion. False when the choice is malformed or the write is refused (before the migration,
+ * the columns do not exist).
+ */
+export async function setMyCardChampion(sb: SupabaseClient, uid: string, choice: CardChampion | null): Promise<boolean> {
+  if (choice !== null && !isCardChampion(choice)) return false
+  const { error } = await sb.from('group_members')
+    .update({ card_champion: choice?.championId ?? null, card_skin_num: choice?.skinNum ?? null })
+    .eq('user_id', uid)
+  return !error
+}
+
+/**
+ * After joining or creating a group, the new membership has no card yet: copies the choice already on my other
+ * memberships, when there is one and a row differs. Returns whether it wrote. Never throws (before the migration
+ * the read is refused and nothing happens).
+ */
+export async function spreadMyCardChampion(sb: SupabaseClient, uid: string): Promise<boolean> {
+  try {
+    const { data, error } = await sb.from('group_members').select(CARD_COLUMNS).eq('user_id', uid)
+    if (error || !data?.length) return false
+    const rows = data as Array<{ card_champion: unknown; card_skin_num: unknown }>
+    const filled = rows.map((r) => ({ championId: r.card_champion, skinNum: r.card_skin_num })).find(isCardChampion)
+    if (!filled) return false
+    if (rows.every((r) => r.card_champion === filled.championId && r.card_skin_num === filled.skinNum)) return false
+    return await setMyCardChampion(sb, uid, { championId: filled.championId, skinNum: filled.skinNum })
+  } catch {
+    return false
+  }
 }
 
 export async function createGroup(sb: SupabaseClient, name: string, kind: GroupKind): Promise<string> {

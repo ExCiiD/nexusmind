@@ -11,7 +11,7 @@ import {
   CODEX_JGL_T1_HERALD, CODEX_JGL_NEVER_FLEE, CODEX_JGL_INVADE_STOP, CODEX_JGL_VISION, CODEX_JGL_SMITE, CODEX_MID_MICRO, CODEX_MID_WAVES,
   CODEX_SUP_POST_CRASH, CODEX_SUP_POST6, CODEX_JUNGLE_CYCLE, CODEX_OBJ_SETUP,
 } from '../../src/lib/microReview/smartQcm'
-import { analyzeGame, CLOCK_2025, DETECTOR_SPEC, MOMENT_PATTERNS, type CriticalMoment, type MomentFacts, type MomentPattern } from '../../src/lib/microReview/anomalyDetector'
+import { analyzeGame, DETECTOR_SPEC, MOMENT_PATTERNS, type CriticalMoment, type MomentFacts, type MomentPattern } from '../../src/lib/microReview/anomalyDetector'
 import { BARON_PIT, DRAGON_PIT, laneOf, territoryOf, zoneOf } from '../../src/lib/microReview/geometry'
 import { buildGame, at } from './microReviewFixtures'
 
@@ -262,18 +262,15 @@ const NEAR_DRAGON: P = { x: DRAGON_PIT.x + 500, y: DRAGON_PIT.y }
 describe('detector — the V7–V10 numbers and places', () => {
   it('are the ones of the briefs', () => {
     expect(DETECTOR_SPEC.jungleFirstBack).toEqual({ bySec: 210, startSec: 60 })
-    expect(CLOCK_2025.jungleFirstBack).toEqual({ bySec: 245, startSec: 60 })
     expect(DETECTOR_SPEC.gankCost).toEqual({ fromSec: 120, untilSec: 720, cs: 8, enemyRadius: 2500 })
     expect(DETECTOR_SPEC.campsStolen).toMatchObject({ cs: 8, weakSideUntilSec: 960, supportUntilSec: 1080 })
     expect(DETECTOR_SPEC.invadeDeath).toMatchObject({ untilSec: 960 })
     expect(DETECTOR_SPEC.dragonTank).toEqual({ fromSec: 300, untilSec: 720, damageShare: 0.6 })
     expect(DETECTOR_SPEC.compensation).toMatchObject({ windowSec: 15 })
     expect(DETECTOR_SPEC.earlyBoots).toEqual({ untilSec: 480, itemId: 1001 })
-    // 2026: plates stay on until the tower falls, so there is no start time (2025: from 14:00, plates gone).
+    // Plates stay on until the tower falls, so there is no start time.
     expect(DETECTOR_SPEC.sideTower).toEqual({ fromSec: 0, untilSec: 1200 })
-    expect(CLOCK_2025.sideTower).toEqual({ fromSec: 840, untilSec: 1200 })
     expect(DETECTOR_SPEC.heraldEye).toEqual({ fromSec: 900, untilSec: 1320, itemId: 3513, pickupSec: 20 })
-    expect(CLOCK_2025.heraldEye).toEqual({ fromSec: 900, untilSec: 1500, itemId: 3513, pickupSec: 20 })
     expect(DETECTOR_SPEC.fledInvade).toMatchObject({ untilSec: 900, hpPct: 15, enemyHpPct: 70, radius: 2000 })
     expect(DETECTOR_SPEC.outsmite).toEqual({ pitRadius: 900 })
     expect(DETECTOR_SPEC.aheadOfWave).toMatchObject({ untilSec: 720 })
@@ -281,7 +278,6 @@ describe('detector — the V7–V10 numbers and places', () => {
     expect(DETECTOR_SPEC.midWaveLoss).toEqual({ atSec: 360, csDiff: -12, takedowns: 2 })
     expect(DETECTOR_SPEC.supportLeech).toMatchObject({ fromSec: 540, untilSec: 900, level: 6, kp: 0.45 })
     expect(DETECTOR_SPEC.supportScuttle).toMatchObject({ fromSec: 170, untilSec: 195 })
-    expect(CLOCK_2025.supportScuttle).toMatchObject({ fromSec: 205, untilSec: 230 })
   })
   it('reads the places it relies on', () => {
     expect([territoryOf(OUR_BOT_JUNGLE, 100), laneOf(OUR_BOT_JUNGLE), territoryOf(OUR_TOP_JUNGLE, 100), laneOf(OUR_TOP_JUNGLE)]).toEqual(['own', 'JUNGLE', 'own', 'JUNGLE'])
@@ -289,19 +285,18 @@ describe('detector — the V7–V10 numbers and places', () => {
   })
 })
 
-describe('pattern — jungle: first back after 4:05', () => {
-  // Fixtures are 15.x games: the 2025 clock (microReviewSeason2026.test.ts covers 16.x).
-  const S = CLOCK_2025.jungleFirstBack
+describe('pattern — jungle: first back after 3:30', () => {
+  const S = DETECTOR_SPEC.jungleFirstBack
   const game = (o: { back?: number | null; me?: number; extra?: any[]; noShop?: boolean } = {}) => buildGame({ minutes: 8, me: o.me ?? 2, events: [
-    ...(o.noShop ? [] : [buy(10_000, o.me ?? 2)]), ...(o.back === null || o.noShop ? [] : [buy(o.back ?? 268_000, o.me ?? 2)]), ...(o.extra ?? []),
+    ...(o.noShop ? [] : [buy(10_000, o.me ?? 2)]), ...(o.back === null || o.noShop ? [] : [buy(o.back ?? 233_000, o.me ?? 2)]), ...(o.extra ?? []),
   ] })
-  it('still on the map at 4:05: a back at 4:05 is in time, one after is late', () => {
-    expect(withPattern(game(), 'jungle-late-first-recall')).toMatchObject({ trigger: 'early-deficit', gameTimeSec: S.bySec, facts: { firstBackSec: 268 } })
+  it('still on the map at 3:30: a back at 3:30 is in time, one after is late', () => {
+    expect(withPattern(game(), 'jungle-late-first-recall')).toMatchObject({ trigger: 'early-deficit', gameTimeSec: S.bySec, facts: { firstBackSec: 233 } })
     expect(withPattern(game({ back: S.bySec * 1000 }), 'jungle-late-first-recall')).toBeUndefined()
     expect(withPattern(game({ back: S.bySec * 1000 + 1 }), 'jungle-late-first-recall')).toBeDefined()
     expect(withPattern(game({ back: null }), 'jungle-late-first-recall')).toMatchObject({ facts: { firstBackSec: null } })
   })
-  it('a takedown or a death before 4:05 explains it; a timeline without purchases proves nothing; junglers only', () => {
+  it('a takedown or a death before 3:30 explains it; a timeline without purchases proves nothing; junglers only', () => {
     expect(withPattern(game({ extra: [kill(200_000, 7, 2)] }), 'jungle-late-first-recall')).toBeUndefined()
     expect(withPattern(game({ extra: [kill(200_000, 2, 7)] }), 'jungle-late-first-recall')).toBeUndefined()
     expect(withPattern(game({ noShop: true }), 'jungle-late-first-recall')).toBeUndefined()
@@ -511,17 +506,15 @@ describe('pattern — jungle: boots before 8:00 without a kill', () => {
   })
 })
 
-describe('pattern — jungle: a side-lane T1 destroyed between 14:00 and 20:00 (2025 clock)', () => {
-  // Fixtures are 15.x games: the 2025 clock (microReviewSeason2026.test.ts covers 16.x).
-  const S = CLOCK_2025.sideTower
+describe('pattern — jungle: a side-lane T1 destroyed before 20:00', () => {
+  const S = DETECTOR_SPEC.sideTower
   const tower = (ts: number, o: { lane?: string; owner?: number; killer?: number; first?: boolean } = {}) => ({ type: 'BUILDING_KILL', timestamp: ts, buildingType: 'TOWER_BUILDING',
     towerType: 'OUTER_TURRET', laneType: o.lane ?? 'TOP_LANE', teamId: o.owner ?? 200, killerId: o.killer ?? 2, position: { x: 4318, y: 13875 } })
   const game = (ts: number, o: Parameters<typeof tower>[1] = {}, first = true) => buildGame({ minutes: 25, me: 2,
     events: [...(first ? [tower(600_000, { lane: 'MID_LANE', killer: 3 })] : []), tower(ts, o)] })
-  it('last-hit by the jungler after 14:00 (plates gone) and until 20:00, once a tower has fallen', () => {
+  it('last-hit by the jungler until 20:00 (plates still on), once a tower has fallen', () => {
     expect(withPattern(game(900_000), 'jungle-side-t1-destroyed')).toMatchObject({ trigger: 'early-deficit', gameTimeSec: 900, facts: { turretLane: 'TOP' } })
-    expect(withPattern(game(S.fromSec * 1000), 'jungle-side-t1-destroyed')).toBeUndefined()
-    expect(withPattern(game(S.fromSec * 1000 + 1), 'jungle-side-t1-destroyed')).toBeDefined()
+    expect(withPattern(game(700_000), 'jungle-side-t1-destroyed')).toBeDefined()
     expect(withPattern(game(S.untilSec * 1000), 'jungle-side-t1-destroyed')).toBeDefined()
     expect(withPattern(game(S.untilSec * 1000 + 1), 'jungle-side-t1-destroyed')).toBeUndefined()
   })
@@ -533,7 +526,7 @@ describe('pattern — jungle: a side-lane T1 destroyed between 14:00 and 20:00 (
   })
 })
 
-describe('pattern — jungle: dead with the Eye of the Herald in their pocket (15:00–22:00, 2025: to 25:00)', () => {
+describe('pattern — jungle: dead with the Eye of the Herald in their pocket (15:00–22:00)', () => {
   const S = DETECTOR_SPEC.heraldEye
   const P_ = 'jungle-herald-unused-death' as const
   // Riot logs the eye (item 3513) leaving its holder's inventory — used or expired — as ITEM_DESTROYED; the pick-up is not logged.
@@ -541,8 +534,7 @@ describe('pattern — jungle: dead with the Eye of the Herald in their pocket (1
   const game = (o: { heraldAt?: number; deathAt?: number; goneAt?: number | null; holder?: number; team?: number; killer?: number } = {}) => {
     const deathAt = o.deathAt ?? 1_000_000
     const team = o.team ?? 100
-    // A 16.x game: S is DETECTOR_SPEC, the 2026 window (2025 games run to 25:00, tested below).
-    return buildGame({ minutes: 25, me: 2, gameVersion: '16.22.1.1', events: [
+    return buildGame({ minutes: 25, me: 2, events: [
       { type: 'ELITE_MONSTER_KILL', timestamp: o.heraldAt ?? 930_000, monsterType: 'RIFTHERALD', killerTeamId: team, killerId: team === 100 ? 1 : 6, position: BARON_PIT },
       kill(deathAt, 2, o.killer ?? 8, o.killer === 0 ? [] : [9], { x: 6000, y: 9000 }),
       ...(o.goneAt === null ? [] : [eyeGone(o.goneAt ?? deathAt + 60_000, o.holder ?? 2)]),
@@ -570,7 +562,7 @@ describe('pattern — jungle: dead with the Eye of the Herald in their pocket (1
     expect(withPattern(game({ deathAt: S.untilSec * 1000 + 1 }), P_)).toBeUndefined()
     expect(withPattern(game({ killer: 0 }), P_)).toBeUndefined()
   })
-  it('#45 D2: 2026 games stop at 22:00, 2025 games (Herald to 24:45) run to 25:00', () => {
+  it('#45 D2: the window stops at 22:00 (the Herald leaves at 19:45)', () => {
     const at = (deathAt: number, gameVersion: string) => {
       const g = buildGame({ minutes: 27, me: 2, gameVersion, events: [
         { type: 'ELITE_MONSTER_KILL', timestamp: 1_200_000, monsterType: 'RIFTHERALD', killerTeamId: 100, killerId: 1, position: BARON_PIT },
@@ -580,10 +572,7 @@ describe('pattern — jungle: dead with the Eye of the Herald in their pocket (1
       return withPattern(g, P_)
     }
     expect(at(1_320_000, '16.22.1.1')).toBeDefined()
-    expect(at(1_380_000, '16.22.1.1')).toBeUndefined() // 23:00 in 2026
-    expect(at(1_380_000, '15.24.715.2077')).toBeDefined() // 23:00 in 2025
-    expect(at(1_500_000, '15.24.715.2077')).toBeDefined()
-    expect(at(1_500_001, '15.24.715.2077')).toBeUndefined()
+    expect(at(1_380_000, '16.22.1.1')).toBeUndefined() // 23:00
   })
 })
 
@@ -725,13 +714,13 @@ describe('pattern — support: glued to the ADC after level 6', () => {
   })
 })
 
-describe('pattern — support: missing at the 3:30 Scuttle Crab', () => {
-  const S = CLOCK_2025.supportScuttle
+describe('pattern — support: missing at the 2:55 Scuttle Crab', () => {
+  const S = DETECTOR_SPEC.supportScuttle
   const scuttle = (o: { deathAt?: number; where?: P; supportAt?: P; extra?: any[] } = {}) => buildGame({ minutes: 8, me: 5,
     frame: (i, pid) => (pid === 5 && (i === 3 || i === 4) && o.supportAt ? { position: o.supportAt } : undefined),
-    events: [ward(60_000, 5), kill(o.deathAt ?? 215_000, 2, 7, [10], o.where ?? BOT_RIVER), ...(o.extra ?? [])] })
-  it('our jungler dead in the bot river from 3:25 to 3:50, the support more than 2000 away', () => {
-    expect(withPattern(scuttle(), 'support-absent-scuttle')).toMatchObject({ trigger: 'absent-objective', gameTimeSec: 205 })
+    events: [ward(60_000, 5), kill(o.deathAt ?? 180_000, 2, 7, [10], o.where ?? BOT_RIVER), ...(o.extra ?? [])] })
+  it('our jungler dead in the bot river from 2:50 to 3:15, the support more than 2000 away', () => {
+    expect(withPattern(scuttle(), 'support-absent-scuttle')).toMatchObject({ trigger: 'absent-objective', gameTimeSec: 170 })
     expect(withPattern(scuttle({ deathAt: S.fromSec * 1000 }), 'support-absent-scuttle')).toBeDefined()
     expect(withPattern(scuttle({ deathAt: S.fromSec * 1000 - 1 }), 'support-absent-scuttle')).toBeUndefined()
     expect(withPattern(scuttle({ deathAt: S.untilSec * 1000 }), 'support-absent-scuttle')).toBeDefined()
@@ -739,7 +728,7 @@ describe('pattern — support: missing at the 3:30 Scuttle Crab', () => {
   })
   it('not when the support was close or got a takedown there, nor for a top-river death', () => {
     expect(withPattern(scuttle({ supportAt: { x: BOT_RIVER.x - 500, y: BOT_RIVER.y } }), 'support-absent-scuttle')).toBeUndefined()
-    expect(withPattern(scuttle({ extra: [kill(220_000, 7, 5)] }), 'support-absent-scuttle')).toBeUndefined()
+    expect(withPattern(scuttle({ extra: [kill(185_000, 7, 5)] }), 'support-absent-scuttle')).toBeUndefined()
     expect(withPattern(scuttle({ where: { x: 5000, y: 9500 } }), 'support-absent-scuttle')).toBeUndefined()
   })
 })

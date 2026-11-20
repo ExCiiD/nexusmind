@@ -67,9 +67,9 @@ describe('listMemberLooks', () => {
       },
     ])
     await expect(listMemberLooks(sb, 'u1')).resolves.toEqual([
-      { userId: 'a', riotId: 'Kaito#EUW', iconId: 'brasier', bannerId: 'abysse' },
-      { userId: 'b', riotId: 'Nyra#EUW', iconId: null, bannerId: 'fracture' },
-      { userId: 'c', riotId: null, iconId: null, bannerId: null },
+      { userId: 'a', riotId: 'Kaito#EUW', iconId: 'brasier', bannerId: 'abysse', card: null },
+      { userId: 'b', riotId: 'Nyra#EUW', iconId: null, bannerId: 'fracture', card: null },
+      { userId: 'c', riotId: null, iconId: null, bannerId: null, card: null },
     ])
     expect(calls).toContainEqual(['in', 'group_id', ['g1', 'g2']])
   })

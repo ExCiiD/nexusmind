@@ -19,6 +19,7 @@ import { getPrisma } from '../database'
 import { validatedHandle, id } from './validate'
 import { ensureMatchCache } from './stats.ipc'
 import { analyzeGame, isSupportedGame, type GameAnalysis } from '../../../src/lib/microReview/anomalyDetector'
+import { seasonOf } from '../../../src/lib/microReview/gameClock'
 import { verifySessionObjectives } from '../../../src/lib/microReview/objectiveVerification'
 import { CALIBRATION_EVERY, calibrationDue, calibrationGap, measuredDistribution } from '../../../src/lib/microReview/calibration'
 import { tagFamily, FAMILIES, type MistakeFamily } from '../../../src/lib/mistakeInsights'
@@ -29,8 +30,8 @@ import { microReviewPushAnswer } from '../cloud/collab'
 import { momentWindow } from '../mistakeDedupe'
 import { mistakeSlug } from '../../../src/lib/mistakeSlug'
 
-/** Bump when the detector's output changes, to recompute cached analyses. 6: V5 laning + V6 role patterns; 7: V7–V10 jungle, mid and support patterns; 8: season-2026 clock (16.x games 35 s earlier, wiki respawn timers, facts.season); 9: 2026 plates stay up after 14:00 (dive, mid roam on plates, side-lane T1); 10: #45 game data (Herald eye 15:00-22:00, 2025 to 25:00; pit fights from 15:00 in 2026; M8 Baron deaths only once the Baron is up). */
-export const ANALYSIS_VERSION = 10
+/** Bump when the detector's output changes, to recompute cached analyses. 6: V5 laning + V6 role patterns; 7: V7–V10 jungle, mid and support patterns; 8: season-2026 clock (16.x games 35 s earlier, wiki respawn timers); 9: plates stay up after 14:00 (dive, mid roam on plates, side-lane T1); 10: #45 game data (Herald eye 15:00-22:00, pit fights from 15:00, M8 Baron deaths only once the Baron is up); 11: current season only (15.x games not analysed, Atakhan removed). */
+export const ANALYSIS_VERSION = 11
 export const MICRO_REVIEW_XP = 30
 
 async function userPuuids(userId: string): Promise<string[]> {
@@ -72,6 +73,8 @@ export async function ensureGameAnalysis(gameId: string, fetch: boolean): Promis
     const match = JSON.parse(matchJson)
     // Another map or game mode: the detector's geometry and timers do not apply.
     if (!isSupportedGame(match)) return { analysis: null, reason: 'unsupported-mode' }
+    // A game of an older season (15.x): the engine only knows the current clock. Its cached analysis is left as it is.
+    if (seasonOf(match) !== 'current') return { analysis: null, reason: 'previous-season' }
     analysis = analyzeGame(match, JSON.parse(timelineJson), selector)
   } catch (err) {
     console.warn('[microreview] analysis failed:', (err as Error)?.message ?? err)

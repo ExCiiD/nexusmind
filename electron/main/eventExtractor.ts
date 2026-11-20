@@ -2,7 +2,7 @@
  * Game event extraction from Riot Match-Timeline-V5 data.
  *
  * Extracts a compact list of "interesting" events for video player markers:
- *   - All ELITE_MONSTER_KILL (dragon, baron, herald, voidgrubs, atakhan)
+ *   - All ELITE_MONSTER_KILL (dragon, baron, herald, voidgrubs)
  *   - All BUILDING_KILL involving the player (turrets, inhibitors)
  *   - TURRET_PLATE_DESTROYED involving the player
  *   - CHAMPION_KILL where the player is killer / victim / assistant
@@ -21,7 +21,6 @@ export type GameEventType =
   | 'baron'
   | 'voidgrub'
   | 'herald'
-  | 'atakhan'
   | 'turret'
   | 'inhibitor'
   | 'plate'
@@ -108,8 +107,6 @@ function eliteMonsterEvent(e: RawTimelineEvent, participants: ParticipantInfo[],
     case 'HORDE':
       // Riot's name for voidgrubs (added in 2024).
       return { type: 'voidgrub', gameTimeMs: ts, label: 'Voidgrub', teamId, isPlayer }
-    case 'ATAKHAN':
-      return { type: 'atakhan', gameTimeMs: ts, label: 'Atakhan', teamId, isPlayer }
     default:
       // Unknown monster type — skip rather than render a confusing marker.
       return null

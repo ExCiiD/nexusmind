@@ -643,3 +643,103 @@ Nouvelle équipe » / « Known team / New team », « Lien OP.GG multi » /
 « Notre roster et nos rôles » / « Our roster and roles », « Créer le scrim »
 / « Create scrim », « Ouvrir dans le Scouting » / « Open in Scouting »,
 « Préparer la draft » / « Prepare the draft ».
+
+## 14. Spec Front-end — champion et skin de sa carte, depuis le Lobby d'équipe
+
+Pas de maquette Penpot (onglet non connecté) : spécification écrite, revue
+avec l'utilisateur le 20/11/2026. Elle reprend les tuiles de skin du § 6
+(choix du skin sur Profil). C'est **le même choix**, stocké une fois par
+joueur et partagé avec le groupe : on peut le faire depuis Profil ou depuis
+sa carte du Lobby, et les deux restent alignés.
+
+**Qui.** Seul le joueur lié à la carte (le membre dont l'utilisateur est le
+compte) peut changer. Sur les cartes des autres membres, staff compris, rien
+n'est cliquable : on y voit seulement le résultat.
+
+**Où ça s'ouvre : les 5 icônes du dos de la carte.** Pas de bouton en plus.
+Au dos de la carte, dans la section « Top 5 » (ChampionsSection) :
+
+- **Sur sa propre carte**, chaque icône de champion devient un bouton :
+  - survol et focus clavier : l'icône **grossit** (`scale-[1.15]`, 150 ms,
+    origine au centre, au-dessus de ses voisines) avec un contour or 1 px et
+    `cursor-pointer` ; `prefers-reduced-motion` : pas de zoom, contour seul ;
+  - le champion actuellement affiché sur la face avant porte une petite
+    pastille or ✓ en coin, pour qu'on sache ce qui est choisi ;
+  - nom accessible : « Afficher Ahri sur ma carte » ;
+  - clic : ouvre le pop-up de ce champion (plus bas) ; le clic ne retourne
+    **pas** la carte (`stopPropagation`).
+  - sous la grille, une ligne `text-dim` en petit : « Clique un champion
+    pour l'afficher sur ta carte ».
+- **Sur la carte d'un autre membre** : icônes inchangées (pas de zoom, pas de
+  curseur main, pas de rôle bouton, pas de pastille ✓ cliquable, pas de ligne
+  d'aide). Le clic garde son comportement actuel (retourner la carte).
+- Cases vides en pointillé (moins de 5 champions) : jamais cliquables.
+
+**Le pop-up — les skins du champion cliqué uniquement.** Même allure que le
+choix de skin du Profil (§ 6) : Dialog du Design System, 880 px, deux
+colonnes.
+
+- **Titre** : « AHRI » en condensé, sous-titre « Choisis le skin affiché sur
+  ta carte ».
+- **Gauche, 260 px : aperçu en direct.** La face avant réelle de la carte
+  (PlayerCard : motif, halo, nom vertical, cadre MVP / Grinder s'il y en a),
+  à 240 × 420, avec ce champion. Elle suit le survol et la sélection.
+  Légende dessous, `Small text-dim` : « Aperçu · K/DA Ahri ».
+- **Droite : la grille des skins de ce champion seulement.** Pas de rangée
+  de champions, pas de recherche : pour changer de champion, on ferme et on
+  clique une autre icône du dos.
+  - En-tête : « SKINS D'AHRI » à gauche, « 18 avec détouré » en mono à droite.
+  - Grille de tuiles 3:4 de 112 × 150, écart 10 px, retour à la ligne (5 par
+    ligne dans 600 px), même rendu que le § 6 (fond violet radial, skin
+    détouré posé en bas, nom en pied).
+  - **Skin de base** en premier, puis les skins qui **ont** un détouré
+    hébergé, dans l'ordre de Data Dragon.
+  - **Skins sans détouré** : regroupés à la fin derrière une ligne repliée
+    « 5 skins sans détouré ▸ ». Dépliés : tuiles grisées (illustration à 35 %
+    + flou), contour pointillé `border-field`, badge « PAS DE DÉTOURÉ » en
+    haut, **non sélectionnables** (`aria-disabled`, infobulle « Ce skin n'a
+    pas encore de détouré : il ne peut pas être affiché sur la carte. »).
+  - États des tuiles : défaut, survol (aperçu mis à jour sans valider), focus
+    clavier (anneau or), sélectionné (contour or 2 px + pastille ✓).
+- **Pied** :
+  - à gauche : « Visible par tout le groupe » (`Small text-dim`) et, si ce
+    champion est déjà celui de la carte, le lien `gold` **« Revenir en
+    automatique »** (la carte reprend le champion le plus joué, skin de
+    base) ;
+  - à droite : « Annuler » (outline) et **« Afficher sur ma carte »**
+    (principal). Valider ferme le pop-up, met la carte à jour (face avant) et
+    affiche le toast « Carte mise à jour ». Annuler ou Échap : rien ne change.
+
+**États.**
+- *Chargement des skins* : 10 tuiles squelette 112 × 150 (§ 7).
+- *Champion sans aucun détouré* (tous refusés dans le pack) : à la place de
+  la grille, la ligne « Aucun skin d'Ahri n'a encore de détouré : la carte
+  affichera son illustration. » ; le skin de base reste sélectionnable (il
+  retombe sur l'illustration estompée actuelle).
+- *Pas de champion au dos* (Riot ID manquant, stats non récupérées) : rien
+  de cliquable ; le message actuel du dos reste.
+- *Erreur d'enregistrement* : toast d'erreur, pop-up gardé ouvert.
+- *Choix devenu invalide* (le champion choisi sort du top 5) : la carte
+  repasse en automatique, sans message ; la pastille ✓ suit.
+
+**Clavier et accessibilité.** Au dos de sa carte, Tab atteint les 5 icônes
+(boutons). Dans le pop-up, la grille est un `radiogroup` (flèches, Espace /
+Entrée) ; Tab passe de la grille au pied. Chaque tuile a un nom accessible
+complet (« K/DA Ahri, avec détouré, sélectionné »).
+
+**Données (pour le Back-end).** Deux champs par joueur, partagés avec ses
+groupes comme l'icône et la bannière de profil (`useShareProfileLook`) :
+`cardChampion` (clé du champion ou `null` = automatique) et `cardSkin`
+(numéro de skin, 0 par défaut). La liste « avec détouré » vient du manifest
+hébergé du pack (statut `ok`, après la relecture : 1 608 découpes). Le Front
+lit le détouré du skin choisi à la place de `useChampionCutout(champion, 0)`.
+
+**Textes FR / EN.** « Clique un champion pour l'afficher sur ta carte » /
+« Click a champion to show it on your card » ; « Afficher Ahri sur ma carte »
+/ « Show Ahri on my card » ; « Choisis le skin affiché sur ta carte » /
+« Pick the skin shown on your card » ; « Skins d'Ahri » / « Ahri skins » ;
+« N avec détouré » / « N with cut-out » ; « N skins sans détouré » / « N skins
+without cut-out » ; « Pas de détouré » / « No cut-out » ; « Revenir en
+automatique » / « Back to automatic » ; « Afficher sur ma carte » / « Show on
+my card » ; « Visible par tout le groupe » / « Visible to the whole group » ;
+« Carte mise à jour » / « Card updated ».

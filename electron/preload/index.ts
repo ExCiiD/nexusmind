@@ -159,6 +159,8 @@ const api = {
   collabPlayerSessions: (playerId: string) => ipcRenderer.invoke('collab:player-sessions', playerId),
   collabSetMyLook: (look: { iconId: string; bannerId: string }) => ipcRenderer.invoke('collab:set-my-look', look),
   collabListMemberLooks: () => ipcRenderer.invoke('collab:list-member-looks'),
+  collabSetMyCardChampion: (choice: { championId: string; skinNum: number } | null) => ipcRenderer.invoke('collab:set-my-card-champion', choice),
+  collabListCardSkins: (championId: string, locale?: 'fr_FR' | 'en_US') => ipcRenderer.invoke('collab:list-card-skins', championId, locale),
   collabSetGroupLogo: (groupId: string, image: { bytes: Uint8Array; contentType: 'image/webp' | 'image/png' | 'image/jpeg' } | null) =>
     ipcRenderer.invoke('collab:set-group-logo', groupId, image),
   discordUnlinkGuild: (groupId: string) => ipcRenderer.invoke('discord:unlink-guild', groupId),

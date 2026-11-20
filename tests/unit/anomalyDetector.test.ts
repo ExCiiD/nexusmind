@@ -230,7 +230,6 @@ describe('pickMoments', () => {
 describe('deathTimerSec', () => {
   it('grows with level and late game', () => {
     expect(deathTimerSec(1, 3)).toBe(10)
-    expect(deathTimerSec(1, 3, 2025)).toBe(6)
     expect(deathTimerSec(18, 40)).toBeGreaterThan(deathTimerSec(18, 15))
   })
   it('#45 D4: levels 19 and 20 (top lane quest) use the level-18 wait, the last one the wiki gives', () => {
@@ -316,7 +315,7 @@ describe('analyzeGame — jungle cycle', () => {
     })
     const m = analyzeGame(match, timeline, selector)!.moments.find((x) => x.facts.pattern === 'jungle-counter-tempo')!
     expect(m.facts.xpDiffJungle).toBe(-600)
-    expect(m.gameTimeSec).toBe(270)
+    expect(m.gameTimeSec).toBe(235)
   })
   it('ignores laners', () => {
     const { match, timeline, selector } = buildGame({ minutes: 10, me: 1, frame: (i, pid) => (pid === 1 && i === 6 ? { xp: 1000 } : undefined) })
@@ -352,7 +351,7 @@ describe('analyzeGame — jungle passive clear', () => {
   it('flags a full clear at home while bot (and mid) had priority', () => {
     const { match, timeline, selector } = game(400)
     const m = analyzeGame(match, timeline, selector)!.moments.find((x) => x.facts.pattern === 'jungle-passive-clear')!
-    expect(m).toMatchObject({ trigger: 'early-deficit', gameTimeSec: 195, facts: { botGoldLead: 400 } })
+    expect(m).toMatchObject({ trigger: 'early-deficit', gameTimeSec: 160, facts: { botGoldLead: 400 } })
   })
   it('stays quiet without a real bot lead or when the jungler got ahead anyway', () => {
     expect(analyzeGame(...Object.values(game(100)) as [any, any, any])!.moments.some((x) => x.facts.pattern === 'jungle-passive-clear')).toBe(false)
@@ -378,8 +377,8 @@ describe('analyzeGame — death under allied Baron', () => {
 describe('analyzeGame — V3 detectors', () => {
   const find = (g: ReturnType<typeof buildGame>, pattern: string) => analyzeGame(g.match, g.timeline, g.selector)!.moments.find((m) => m.facts.pattern === pattern)
 
-  it('gank timer: laner killed with the enemy jungler at 2:40', () => {
-    const g = buildGame({ minutes: 10, me: 1, events: [{ type: 'CHAMPION_KILL', timestamp: at(2, 40), victimId: 1, killerId: 7, assistingParticipantIds: [6], position: { x: 1500, y: 9000 } }] })
+  it('gank timer: laner killed with the enemy jungler at 2:00', () => {
+    const g = buildGame({ minutes: 10, me: 1, events: [{ type: 'CHAMPION_KILL', timestamp: at(2, 0), victimId: 1, killerId: 7, assistingParticipantIds: [6], position: { x: 1500, y: 9000 } }] })
     expect(find(g, 'gank-timer')).toMatchObject({ trigger: 'critical-death', facts: { gankWindow: 1 } })
   })
   it('gank timer: window 2 is excused by a deep ward on an enemy camp', () => {

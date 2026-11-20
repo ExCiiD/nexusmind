@@ -40,13 +40,10 @@ export function patchOf(gameVersion: unknown): string {
 }
 
 /**
- * Void Grubs a game offers: one camp of 3 since patch 25.09 (game version 15.9), two camps of 3 before (6:00 and a
- * respawn, docs/DONNEES_JEU_2026.md). On the cached games: 2.93 taken per 16.x game, 2.87 per 15.x one.
+ * Void Grubs a game offers: one camp of 3 at 8:00, without a respawn (docs/DONNEES_JEU_2026.md). On the cached games:
+ * 2.93 taken per game.
  */
-export function grubsAvailableOf(gameVersion: unknown): number {
-  const [major, minor] = String(gameVersion ?? '').split('.').map((s) => Number.parseInt(s, 10))
-  return Number.isFinite(major) && Number.isFinite(minor) && (major < 15 || (major === 15 && minor < 9)) ? 6 : 3
-}
+export const GRUBS_PER_GAME = 3
 
 /**
  * A game reduced to the Objectives tab's needs. `timeline` is the match-v5 timeline (frames of one minute), `match`
@@ -82,7 +79,6 @@ export function extractTeamTimeline(match: any, timeline: any, meta: ExtractMeta
             break
           case 'BARON_NASHOR': events.push({ kind: 'baron', atSec, ours }); break
           case 'RIFTHERALD': events.push({ kind: 'herald', atSec, ours }); break
-          case 'ATAKHAN': events.push({ kind: 'atakhan', atSec, ours }); break
           case 'HORDE': {
             // One event per grub: kills of the same team within 30 s are one take of the camp.
             const last = [...events].reverse().find((x) => x.kind === 'grubs')
@@ -135,7 +131,7 @@ export function extractTeamTimeline(match: any, timeline: any, meta: ExtractMeta
     win: !!(ourTeam?.win ?? participants.find((p) => p.teamId === us)?.win),
     opponentName: meta.opponentName,
     patch: patchOf(info.gameVersion),
-    grubsAvailable: grubsAvailableOf(info.gameVersion),
+    grubsAvailable: GRUBS_PER_GAME,
     events,
     goldDiffByMinute,
   }
@@ -221,7 +217,7 @@ export function summarizeTeamObjectives(all: TeamGameTimeline[], filters: TeamOb
   const curve = (subset: TeamGameTimeline[]) =>
     Array.from({ length: GOLD_CURVE_MINUTES + 1 }, (_, m) => avg(subset.filter((g) => g.goldDiffByMinute.length > m).map((g) => g.goldDiffByMinute[m])))
 
-  const KINDS: ObjectiveKind[] = ['firstBlood', 'tower', 'dragon', 'grubs', 'herald', 'baron', 'elder', 'atakhan']
+  const KINDS: ObjectiveKind[] = ['firstBlood', 'tower', 'dragon', 'grubs', 'herald', 'baron', 'elder']
   const avgTimings = KINDS.map((kind) => {
     const firsts = games.map((g) => firstOf(g, kind)).filter((e): e is TeamTimelineEvent => !!e)
     return {
@@ -239,7 +235,7 @@ export function summarizeTeamObjectives(all: TeamGameTimeline[], filters: TeamOb
     lowSample: n < LOW_SAMPLE_GAMES,
     tiles: {
       dragons: { share: share(dragonsOurs, dragonsAll), firstDragonShare: share(firstDragonOurs, firstDragonGames), soulsOurs, soulGames },
-      grubs: { avgTaken: avg(grubsTaken), available: grubsAvailable || 3, firstCampShare: share(firstCampOurs, firstCampGames) },
+      grubs: { avgTaken: avg(grubsTaken), available: grubsAvailable || GRUBS_PER_GAME, firstCampShare: share(firstCampOurs, firstCampGames) },
       herald: { share: share(heraldOurs, heraldGames), avgAtSec: avg(heraldTimes) },
       baron: { share: share(baronOurs, baronGames), baronToWinShare: share(baronWins, baronOursGames) },
       firstBlood: { share: share(fbOurs, fbGames), avgAtSec: avg(fbTimes) },

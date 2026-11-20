@@ -374,8 +374,7 @@ function summaryOf(m: CriticalMoment): QcmSummary {
   const f = m.facts
   const extras: SummaryPart[] = []
   let head: SummaryPart
-  // Facts without a season come from ANALYSIS_VERSION ≤ 7, which read every game on the 2025 clock.
-  const times = CLOCK_TIMES[f.season ?? 2025]
+  const times = CLOCK_TIMES
   const span = (w: readonly [number, number]) => ({ from: clockText(w[0]), to: clockText(w[1]) })
   switch (f.pattern) {
     case 'tempo-hesitation':

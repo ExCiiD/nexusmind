@@ -1,4 +1,4 @@
-import { deathTimerSec, gameClockOf } from '../../src/lib/microReview/gameClock'
+import { deathTimerSec, seasonOf } from '../../src/lib/microReview/gameClock'
 
 /**
  * Mistake Library — additional business rules (M5–M19, see
@@ -45,7 +45,6 @@ const MAJOR_OBJECTIVES: Record<string, string> = {
   DRAGON: 'Dragon',
   BARON_NASHOR: 'Baron',
   RIFTHERALD: 'Rift Herald',
-  ATAKHAN: 'Atakhan',
   HORDE: 'Void Grubs',
 }
 /** Top-side pit (Baron / Herald / Grubs). */
@@ -61,7 +60,8 @@ const mmss = (ms: number) => `${Math.floor(ms / MIN)}:${String(Math.floor((ms % 
 
 export function detectAdvancedMistakes(timeline: any, match: any, player: RuleParticipant): AdvancedCandidate[] {
   const frames: any[] = timeline?.info?.frames ?? []
-  if (frames.length === 0) return []
+  // Games of an older season (15.x) are not analysed: the engine only knows the current clock (gameClock.ts).
+  if (frames.length === 0 || seasonOf(match) !== 'current') return []
 
   const participants: RuleParticipant[] = (match?.info?.participants ?? []).map((p: any) => ({
     participantId: p.participantId,
@@ -123,17 +123,14 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
   const champOf = (id: number) => participants.find((p) => p.participantId === id)?.championName ?? 'an enemy'
 
   const out: AdvancedCandidate[] = []
-  /** Season clock: 16.x games start 35 s earlier (minions 0:30) and respawn on the 2026 timers (gameClock.ts). */
-  const clock = gameClockOf(match)
-  const early = clock === 2025 ? 0 : 35 * SEC
-  /** Baron spawn: 20:00 in 2026, 25:00 in 2025 (docs/DONNEES_JEU_2026.md). */
-  const baronFrom = (clock === 2025 ? 25 : 20) * MIN
+  /** Baron spawn: 20:00 (docs/DONNEES_JEU_2026.md). */
+  const baronFrom = 20 * MIN
 
   // ── M5 death-before-objective ────────────────────────────────────────
   for (const d of myDeaths) {
     const lost = objectives.find((o) => o.teamId !== player.teamId && o.ts > d.timestamp && o.ts - d.timestamp <= 60 * SEC)
     if (!lost) continue
-    let severity: 1 | 2 | 3 = lost.type === 'BARON_NASHOR' || lost.type === 'ATAKHAN' ? 3 : 2
+    let severity: 1 | 2 | 3 = lost.type === 'BARON_NASHOR' ? 3 : 2
     if (role === 'JUNGLE' && severity < 3) severity = 3
     out.push({
       tagSlug: 'death-before-objective',
@@ -161,7 +158,7 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
     }
     const levelAt = (ts: number) => levelUps.length > 0 ? 1 + levelUps.filter((t) => t <= ts).length : levelOf(frameNear(ts), pid) ?? 1
     for (const d of myDeaths) {
-      const respawnMs = d.timestamp + deathTimerSec(levelAt(d.timestamp), d.timestamp / MIN, clock) * SEC
+      const respawnMs = d.timestamp + deathTimerSec(levelAt(d.timestamp), d.timestamp / MIN) * SEC
       const lost = objectives.find((o) => o.teamId !== player.teamId && o.ts - d.timestamp > 60 * SEC && o.ts < respawnMs - 2 * SEC)
       if (!lost || aliveSigns.some((t) => t > d.timestamp && t <= lost.ts)) continue
       const name = lost.type === 'DRAGON' && lost.subType === 'ELDER_DRAGON' ? 'Elder Dragon' : MAJOR_OBJECTIVES[lost.type]
@@ -220,7 +217,7 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
     const involved = 1 + (Array.isArray(d.assistingParticipantIds) ? d.assistingParticipantIds.length : 0)
     let soloBaron = false
 
-    // M8 solo-baron-died. #45 D1: only once the Baron is there (20:00 in 2026, 25:00 in 2025). Before that the top pit
+    // M8 solo-baron-died. #45 D1: only once the Baron is there (20:00). Before that the top pit
     // holds the Void Grubs (8:00) and the Herald (15:00), and a death there is not a death at the Baron.
     if (pos && dist(pos, TOP_PIT) <= 1800 && ts >= baronFrom) {
       const near = alliesWithin(ts, pos, 3000)
@@ -272,9 +269,8 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
   if (opponent) {
     const f5 = frameAtMinute(5)
     const reasons: string[] = []
-    // "Died before 4:00" on the 2025 clock, 3:25 on 16.x games (35 s earlier): 28.9 % of 2026 laners die
-    // before 3:25 on cached games, 28.5 % of 2025 laners before 4:00, so the rule keeps its meaning.
-    const earlyDeath = myDeaths.find((d) => d.timestamp < 4 * MIN - early)
+    // "Died before 3:25": 28.9 % of laners die before 3:25 on cached 16.x games.
+    const earlyDeath = myDeaths.find((d) => d.timestamp < 3 * MIN + 25 * SEC)
     if (earlyDeath) reasons.push(`died at ${mmss(earlyDeath.timestamp)}`)
     const cs5 = [csOf(f5, pid), csOf(f5, opponent.participantId)]
     if (cs5[0] != null && cs5[1] != null && cs5[0] - cs5[1] <= -8) reasons.push(`${cs5[0] - cs5[1]} CS at 5:00`)
@@ -318,14 +314,14 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
   }
 
   // ── M19 behind-on-levels-death ──────────────────────────────────────
-  // Coaching reference: the level-2/3 transition fight (≈0:55–3:55; 2025: 1:30–4:30) is won
+  // Coaching reference: the level-2/3 transition fight (≈0:55–3:55) is won
   // by whoever hits it first — an avoidable death to someone already ahead
   // on level there is a provable, early signal, not just "got outplayed".
   // Laners + jungle only: supports don't race levels the same way.
   if (role === 'JUNGLE' || LANERS.has(role)) {
     for (const d of myDeaths) {
       const ts: number = d.timestamp
-      if (ts < 90 * SEC - early || ts > 270 * SEC - early) continue
+      if (ts < 55 * SEC || ts > 235 * SEC) continue
       const f = frameNear(ts)
       const myLevel = levelOf(f, pid)
       const killerLevel = typeof d.killerId === 'number' ? levelOf(f, d.killerId) : null

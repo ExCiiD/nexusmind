@@ -162,8 +162,9 @@ export function Sidebar() {
       items: [
         // One group drives these four pages (the switcher in each header).
         // Team sessions are launched from Management's planning and return there.
-        { to: '/management', icon: Briefcase, label: t('nav.management'), active: path.startsWith('/management') || path.startsWith('/team-session') },
+        // The Team Lobby first (user request, 21/11/2026).
         { to: '/team-space', icon: Shield, label: t('nav.teamSpace') },
+        { to: '/management', icon: Briefcase, label: t('nav.management'), active: path.startsWith('/management') || path.startsWith('/team-session') },
         { to: '/coaching', icon: GraduationCap, label: t('nav.coaching') },
         { to: '/team', icon: Users, label: t('nav.team', { defaultValue: 'Team' }), active: path === '/team' },
       ],

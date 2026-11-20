@@ -101,7 +101,7 @@ describe('mistake rules M5–M13', () => {
     expect(tags(detectAdvancedMistakes(grouped, match(), PLAYER))).not.toContain('solo-baron-died')
   })
 
-  it('M8 (#45 D1): only once the Baron is up, 20:00 in 2026 and 25:00 in 2025 (grubs and Herald before)', () => {
+  it('M8 (#45 D1): only once the Baron is up at 20:00 (grubs and Herald before)', () => {
     const pit = { x: 5007, y: 10471 }
     const diesAt = (minute: number, version?: string) => {
       const death = { type: 'CHAMPION_KILL', timestamp: minute * 60_000, victimId: 1, killerId: 7, assistingParticipantIds: [8], position: pit }
@@ -112,8 +112,8 @@ describe('mistake rules M5–M13', () => {
     expect(diesAt(17, '16.22.1.1')).toBe(false) // Herald
     expect(diesAt(19.9, '16.22.1.1')).toBe(false)
     expect(diesAt(20, '16.22.1.1')).toBe(true)
-    expect(diesAt(24, '15.24.715.2077')).toBe(false) // 2025: the Herald until 24:45
-    expect(diesAt(25, '15.24.715.2077')).toBe(true)
+    // A game of an older season is not analysed.
+    expect(diesAt(25, '15.24.715.2077')).toBe(false)
   })
 
   it('M9: caught alone by several enemies after 14:00', () => {
@@ -207,7 +207,7 @@ describe('mistake rules M5–M13', () => {
     expect(tags(support)).not.toContain('behind-on-levels-death')
   })
 
-  it('M19: the level race runs 0:55–3:55 on 16.x games (minions at 0:30), 1:30–4:30 on 15.x', () => {
+  it('M19: the level race runs 0:55–3:55 (minions at 0:30)', () => {
     const at = (sec: number, version?: string) => {
       // Levels on the snapshots either side of the death (the rule reads the nearest one).
       const level = { 1: 1, 6: 2 }
@@ -219,10 +219,10 @@ describe('mistake rules M5–M13', () => {
     for (const v of [undefined, '16.1.732.4020']) {
       expect([at(54.999, v), at(55, v), at(235, v), at(235.001, v)], v).toEqual([false, true, true, false])
     }
-    expect([at(89.999, '15.24.1'), at(90, '15.24.1'), at(270, '15.24.1'), at(270.001, '15.24.1')]).toEqual([false, true, true, false])
+    expect([at(55, '15.24.1'), at(90, '15.24.1'), at(235, '15.24.1')]).toEqual([false, false, false]) // older season: not analysed
   })
 
-  it('M12: "died before 4:00" is 3:25 on 16.x games (35 s earlier), 4:00 on 15.x', () => {
+  it('M12: "died before 3:25"', () => {
     // CS and gold level at 5:00: only the early death can make the lane opening rough.
     const opening = (sec: number, version?: string) => {
       const death = { type: 'CHAMPION_KILL', timestamp: sec * 1000, victimId: 1, killerId: 6 }
@@ -234,9 +234,7 @@ describe('mistake rules M5–M13', () => {
       expect(opening(204.999, v), v).toMatch(/died at 3:24/)
       expect(opening(205, v), v).toBeNull()
     }
-    expect(opening(205, '15.24.1')).toMatch(/died at 3:25/)
-    expect(opening(239.999, '15.24.1')).toMatch(/died at 3:59/)
-    expect(opening(240, '15.24.1')).toBeNull()
+    expect(opening(100, '15.24.1')).toBeNull() // older season: not analysed
   })
 })
 

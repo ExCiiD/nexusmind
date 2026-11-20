@@ -18,7 +18,7 @@ export function opponentKeyOf(name: string): string {
 
 // ── § 10 Objectives and game rhythm ──────────────────────────────────────
 
-export type ObjectiveKind = 'dragon' | 'elder' | 'grubs' | 'herald' | 'baron' | 'atakhan' | 'tower' | 'firstBlood'
+export type ObjectiveKind = 'dragon' | 'elder' | 'grubs' | 'herald' | 'baron' | 'tower' | 'firstBlood'
 
 export interface TeamTimelineEvent {
   kind: ObjectiveKind

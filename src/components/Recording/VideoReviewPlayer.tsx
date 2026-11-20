@@ -6,7 +6,7 @@ import {
   Bookmark, Play, Pause, Volume2, VolumeX, Maximize2, Minimize2,
   Check, X, RotateCcw, RotateCw, PanelRight, PanelLeft, PanelRightClose,
   ZoomIn, ZoomOut, StepBack, StepForward, Trash2, Loader2,
-  Sword, Skull, Handshake, Flame, Crown, Eye, Bug, Sparkles, RadioTower, ShieldOff, Shield,
+  Sword, Skull, Handshake, Flame, Crown, Eye, Bug, RadioTower, ShieldOff, Shield,
   User, Users, Target, AlertTriangle, MessageSquare, EyeOff,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -25,7 +25,6 @@ const EVENT_COLORS: Record<GameEventType, string> = {
   baron:     'bg-purple-600 text-white',
   voidgrub:  'bg-emerald-700 text-white',
   herald:    'bg-blue-500 text-white',
-  atakhan:   'bg-amber-500 text-black',
   turret:    'bg-zinc-300 text-black',
   inhibitor: 'bg-pink-500 text-white',
   plate:     'bg-zinc-500 text-white',
@@ -39,7 +38,6 @@ const EVENT_ICONS: Record<GameEventType, LucideIcon> = {
   baron: Crown,
   voidgrub: Bug,
   herald: Eye,
-  atakhan: Sparkles,
   // Watchtower silhouette (thin column on a base) — reads as "tower"
   // instead of the previous Castle icon which looked like a fortress.
   turret: RadioTower,
@@ -56,7 +54,7 @@ const EVENT_LABELS = new Proxy({} as Record<GameEventType, string>, {
 // Order used by the legend / filter chips — most important categories first.
 const EVENT_ORDER: GameEventType[] = [
   'kill', 'death', 'assist',
-  'dragon', 'baron', 'herald', 'voidgrub', 'atakhan',
+  'dragon', 'baron', 'herald', 'voidgrub',
   'turret', 'inhibitor', 'plate',
 ]
 
@@ -66,7 +64,7 @@ const EVENT_ORDER: GameEventType[] = [
 // important), objectives middle, buildings furthest (least critical).
 const EVENT_LANE: Record<GameEventType, number> = {
   kill: -16, death: -16, assist: -16,
-  dragon: -32, baron: -32, herald: -32, voidgrub: -32, atakhan: -32,
+  dragon: -32, baron: -32, herald: -32, voidgrub: -32,
   turret: -48, inhibitor: -48, plate: -48,
 }
 
@@ -94,12 +92,12 @@ const COLLISION_BUMP_PX = 22
  * user's choice sticks across recordings.
  *  - mine: only events the user participated in (default)
  *  - all: every event the extractor returned, including team-fight context
- *  - objectives: dragons / baron / herald / voidgrub / atakhan / turrets /
+ *  - objectives: dragons / baron / herald / voidgrub / turrets /
  *    inhibitors regardless of player involvement (drops K/D/A and plates)
  */
 type EventFilterMode = 'mine' | 'all' | 'objectives'
 const OBJECTIVE_TYPES = new Set<GameEventType>([
-  'dragon', 'baron', 'herald', 'voidgrub', 'atakhan', 'turret', 'inhibitor',
+  'dragon', 'baron', 'herald', 'voidgrub', 'turret', 'inhibitor',
 ])
 
 function fmt(seconds: number): string {

@@ -207,7 +207,6 @@ function Marker({ kind, ours }: { kind: ObjectiveKind; ours: boolean }) {
       case 'grubs': return <circle cx="6" cy="6" r="3" />
       case 'herald': return <path d="M6 1.5 L11 10.5 L1 10.5 Z" />
       case 'baron': return <rect x="1.5" y="1.5" width="9" height="9" />
-      case 'atakhan': return <circle cx="6" cy="6" r="4.8" />
       case 'tower': return <rect x="5" y="0.5" width="2" height="11" />
       case 'firstBlood': return <path d="M6 0.8 L7.5 4.4 L11.3 4.6 L8.3 7 L9.3 10.8 L6 8.7 L2.7 10.8 L3.7 7 L0.7 4.6 L4.5 4.4 Z" />
     }
@@ -227,7 +226,7 @@ function eventLabel(t: (k: string, o?: Record<string, unknown>) => string, e: Te
 
 export function FriezeLegend() {
   const { t } = useTranslation()
-  const kinds: ObjectiveKind[] = ['dragon', 'elder', 'grubs', 'herald', 'baron', 'atakhan', 'tower', 'firstBlood']
+  const kinds: ObjectiveKind[] = ['dragon', 'elder', 'grubs', 'herald', 'baron', 'tower', 'firstBlood']
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-hextech-text-dim">
       {kinds.map((k) => <span key={k} className="flex items-center gap-1"><Marker kind={k} ours />{t(`analyst.objectives.kinds.${k}`)}</span>)}
