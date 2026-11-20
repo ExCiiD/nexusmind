@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * End-to-end check of supabase/migrations/20261120170000_team_session_prep.sql (preparing a team session ahead: each
+ * End-to-end check of supabase/migrations/20261120110520_team_session_prep.sql (preparing a team session ahead: each
  * player's objectives, the coach's message, drafts attached) and its rollback, on a throw-away Postgres (PGlite 0.3, PostgreSQL 17) rebuilt
  * from the migrations production has applied (prod_migrations_20261120_beta11.txt). Also checks that the collective
  * objectives (team_session_objectives) can be set while the session is scheduled.
@@ -14,8 +14,8 @@ import { openPglite, replay, migrationFiles, repo, migDir } from './lib/pgliteSu
 const pgliteDir = process.argv[2]
 if (!pgliteDir) { console.error('Pass the folder that holds node_modules/@electric-sql/pglite.'); process.exit(2) }
 
-const migration = readFileSync(join(migDir, '20261120170000_team_session_prep.sql'), 'utf-8')
-const rollback = readFileSync(join(repo, 'supabase/rollback/20261120170000_rollback.sql'), 'utf-8')
+const migration = readFileSync(join(migDir, '20261120110520_team_session_prep.sql'), 'utf-8')
+const rollback = readFileSync(join(repo, 'supabase/rollback/20261120110520_rollback.sql'), 'utf-8')
 const inProduction = readFileSync(join(repo, 'supabase/baseline/prod_migrations_20261120_beta11.txt'), 'utf-8')
   .split(/\r?\n/).filter(Boolean).map((l) => l.split('|').slice(0, 2).join('_') + '.sql')
 

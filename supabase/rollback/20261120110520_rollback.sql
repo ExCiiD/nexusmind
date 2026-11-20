@@ -1,4 +1,4 @@
--- Rollback of 20261120170000_team_session_prep (preparing a team session ahead). Run it as one transaction.
+-- Rollback of 20261120110520_team_session_prep (preparing a team session ahead). Run it as one transaction.
 -- Lost: each player's session objectives, the coach's messages and the drafts attached to sessions. The collective
 -- objectives stay.
 

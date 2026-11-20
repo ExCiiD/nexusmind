@@ -154,7 +154,7 @@ Le filtre par game (`?game=2`) est côté Front : `games[1]` pour une game, `who
 (owner, coach, manager, capitaine : `private.can_manage_session`). Les autres reçoivent `FORBIDDEN`.
 
 **Migration nécessaire** (écrite, **non appliquée**) :
-- `supabase/migrations/20261120150000_team_session_objective_results.sql`, avec son rollback et son test PGlite ;
+- `supabase/migrations/20261120110354_team_session_objective_results.sql`, avec son rollback et son test PGlite ;
 - ajoute la table `team_session_objective_results` : le verdict tenu / pas tenu du staff, par objectif et par game ;
 - la mesure automatique (§ 8 de `PROPOSITION_ANALYSTE.md`) n'existe pas encore, et les KPI sont qualitatifs.
 
@@ -215,7 +215,7 @@ Règles :
 - **Temps enregistré** : non stocké aujourd'hui, l'enregistreur ne garde pas de durée. `recordedSec: null`, et la tuile
   affiche « — » tant qu'il ne l'enregistre pas.
 
-## 6. Sessions automatiques (migration `20261120160000_team_session_auto_lifecycle`, non appliquée)
+## 6. Sessions automatiques (migration `20261120110436_team_session_auto_lifecycle`, non appliquée)
 
 Création (existait déjà) : un créneau scrim, flex, tournoi ou réunion crée sa session vide (`scheduled`), à la création,
 ou quand un créneau change pour l'un de ces types.

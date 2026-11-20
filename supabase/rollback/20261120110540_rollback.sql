@@ -1,4 +1,4 @@
--- Rollback of 20261120180000_team_sessions_hardening. Run it as one transaction.
+-- Rollback of 20261120110540_team_sessions_hardening. Run it as one transaction.
 -- The table-level UPDATE grant comes back, to authenticated only (CyberSecurity: anon never needed it, the RLS refused it).
 -- The availability policies go back to their 20261115221015 body. The recording paths already shortened to a file name stay short: the full
 -- local paths cannot be rebuilt (and should not be).

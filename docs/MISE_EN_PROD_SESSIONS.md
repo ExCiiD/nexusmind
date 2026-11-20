@@ -22,10 +22,10 @@ la baseline d'abord.
 
 | # | Fichier | Ce qu'elle fait | Retour arrière | Perdu au retour arrière |
 |---|---|---|---|---|
-| 1 | `20261120150000_team_session_objective_results` | verdicts « tenu / pas tenu » du staff | `supabase/rollback/20261120150000_rollback.sql` | les verdicts |
-| 2 | `20261120160000_team_session_auto_lifecycle` | sessions qui s'ouvrent et se ferment seules (pg_cron chaque minute), annulation, sessions gardées après suppression du créneau | `supabase/rollback/20261120160000_rollback.sql` | **les sessions détachées** (voir l'avertissement) |
-| 3 | `20261120170000_team_session_prep` | objectifs par joueur, message du coach, drafts rattachés (préparation tant que la session est prévue) ; l'analyste écrit aussi les objectifs collectifs | `supabase/rollback/20261120170000_rollback.sql` | objectifs individuels, messages et drafts rattachés ; les objectifs collectifs reviennent aux seuls gestionnaires |
-| 4 | `20261120180000_team_sessions_hardening` | UPDATE de `team_sessions` par colonnes ; enregistrements par nom de fichier | `supabase/rollback/20261120180000_rollback.sql` | rien (les chemins déjà réduits au nom restent réduits) |
+| 1 | `20261120110354_team_session_objective_results` | verdicts « tenu / pas tenu » du staff | `supabase/rollback/20261120110354_rollback.sql` | les verdicts |
+| 2 | `20261120110436_team_session_auto_lifecycle` | sessions qui s'ouvrent et se ferment seules (pg_cron chaque minute), annulation, sessions gardées après suppression du créneau | `supabase/rollback/20261120110436_rollback.sql` | **les sessions détachées** (voir l'avertissement) |
+| 3 | `20261120110520_team_session_prep` | objectifs par joueur, message du coach, drafts rattachés (préparation tant que la session est prévue) ; l'analyste écrit aussi les objectifs collectifs | `supabase/rollback/20261120110520_rollback.sql` | objectifs individuels, messages et drafts rattachés ; les objectifs collectifs reviennent aux seuls gestionnaires |
+| 4 | `20261120110540_team_sessions_hardening` | UPDATE de `team_sessions` par colonnes ; enregistrements par nom de fichier | `supabase/rollback/20261120110540_rollback.sql` | rien (les chemins déjà réduits au nom restent réduits) |
 
 > **Avertissement (CyberSecurity, 20/11) : le retour arrière de 2 supprime les sessions détachées.**
 > Ce sont les sessions commencées dont le créneau a été supprimé (`calendar_event_id` null). L'ancien schéma ne sait pas

@@ -62,7 +62,7 @@ export interface MyTeamApi {
   myNextEvent: () => Promise<MyNextEvent | null>
   /** Open tasks given to me, the soonest due first (no due date last). */
   myOpenTasks: () => Promise<MyTask[]>
-  /** My objectives for the sessions not ended yet, the soonest first. Empty before migration 20261120170000. */
+  /** My objectives for the sessions not ended yet, the soonest first. Empty before migration 20261120110520. */
   mySessionObjectives: () => Promise<MySessionObjectives[]>
   /** The actions of the VOD reviews I am assigned to, open ones only unless `all`. */
   myVodActionItems: (all?: boolean) => Promise<MyVodActionItem[]>

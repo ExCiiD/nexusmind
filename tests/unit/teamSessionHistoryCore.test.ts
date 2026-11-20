@@ -333,7 +333,7 @@ describe('setObjectiveResult', () => {
   })
 })
 
-// ── Meetings and kept sessions (migration 20261120160000) ────────────────
+// ── Meetings and kept sessions (migration 20261120110436) ────────────────
 const MM = (userId: string, role: string, o: { staff?: string[]; plays?: boolean } = {}) => ({ userId, role, staffRoles: o.staff ?? [], alsoPlays: o.plays ?? false })
 
 describe('the people a meeting concerns', () => {

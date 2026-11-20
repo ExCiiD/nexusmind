@@ -64,7 +64,7 @@ export async function createReview(sb: SupabaseClient, uid: string, sessionId: s
 /**
  * The recording's file name only (CyberSecurity, 20/11/2026): the full local path carries the Windows user name and the
  * group's members read this column. The desktop finds the file again in its recordings folders (resolveMediaFile).
- * Migration 20261120180000 strips the folders on the database side too.
+ * Migration 20261120110540 strips the folders on the database side too.
  */
 export function recordingFileName(p: string | null | undefined): string | null {
   if (!p) return null
@@ -193,7 +193,7 @@ export async function listPendingFinalReviews(sb: SupabaseClient, uid: string | 
   const { data: sessions, error: sErr } = await sb.from('team_sessions').select('id, calendar_event_id')
     .in('id', rows.map((r) => r.session_id)).contains('responsible_user_ids', [uid])
   if (sErr) fail(sErr, 'list pending final review sessions')
-  // A session kept after its slot was deleted (calendar_event_id null, migration 20261120160000) has no page to open.
+  // A session kept after its slot was deleted (calendar_event_id null, migration 20261120110436) has no page to open.
   const sess = ((sessions ?? []) as Array<{ id: string; calendar_event_id: string | null }>).filter((s): s is { id: string; calendar_event_id: string } => !!s.calendar_event_id)
   if (sess.length === 0) return []
   const { data: events } = await sb.from('calendar_events').select('id, title, starts_at').in('id', sess.map((s) => s.calendar_event_id))

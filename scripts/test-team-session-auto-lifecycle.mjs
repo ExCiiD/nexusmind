@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * End-to-end check of supabase/migrations/20261120160000_team_session_auto_lifecycle.sql (team sessions that open on
+ * End-to-end check of supabase/migrations/20261120110436_team_session_auto_lifecycle.sql (team sessions that open on
  * their own, follow their slot, and go away with an empty slot) and its rollback, on a throw-away Postgres (PGlite
  * 0.3, PostgreSQL 17) rebuilt from the migrations production has applied (prod_migrations_20261120_beta11.txt).
  *
@@ -13,8 +13,8 @@ import { openPglite, replay, migrationFiles, repo, migDir } from './lib/pgliteSu
 const pgliteDir = process.argv[2]
 if (!pgliteDir) { console.error('Pass the folder that holds node_modules/@electric-sql/pglite.'); process.exit(2) }
 
-const migration = readFileSync(join(migDir, '20261120160000_team_session_auto_lifecycle.sql'), 'utf-8')
-const rollback = readFileSync(join(repo, 'supabase/rollback/20261120160000_rollback.sql'), 'utf-8')
+const migration = readFileSync(join(migDir, '20261120110436_team_session_auto_lifecycle.sql'), 'utf-8')
+const rollback = readFileSync(join(repo, 'supabase/rollback/20261120110436_rollback.sql'), 'utf-8')
 const inProduction = readFileSync(join(repo, 'supabase/baseline/prod_migrations_20261120_beta11.txt'), 'utf-8')
   .split(/\r?\n/).filter(Boolean).map((l) => l.split('|').slice(0, 2).join('_') + '.sql')
 

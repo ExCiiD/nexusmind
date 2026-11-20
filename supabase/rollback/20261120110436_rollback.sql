@@ -1,4 +1,4 @@
--- Rollback of 20261120160000_team_session_auto_lifecycle (team sessions that open on their own). Run it as one
+-- Rollback of 20261120110436_team_session_auto_lifecycle (team sessions that open on their own). Run it as one
 -- transaction. Sessions go back to the manual start and end, and to "deleting the slot deletes the session".
 -- Lost: the sessions kept after their slot was deleted (calendar_event_id null), which the old schema cannot hold.
 

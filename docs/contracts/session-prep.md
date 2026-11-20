@@ -9,7 +9,7 @@ Fichiers :
 - desktop : IPC `session-prep:*` et preload ;
 - web : `web/src/sessionPrepWeb.ts`. Le Front ajoute `...sessionPrepWebApi` à `web/src/api.ts`.
 
-Migration : `20261120170000_team_session_prep.sql`, avec son rollback et son test PGlite, **non appliquée**. Avant
+Migration : `20261120110520_team_session_prep.sql`, avec son rollback et son test PGlite, **non appliquée**. Avant
 elle, la lecture renvoie des listes vides (`available: false`) et les écritures rejettent `NOT_AVAILABLE`.
 
 ## Qui prépare, et quand

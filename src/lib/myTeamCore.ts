@@ -78,7 +78,7 @@ export async function listMyOpenTasks(sb: SupabaseClient, uid: string, now = Dat
 
 export async function listMySessionObjectives(sb: SupabaseClient, uid: string): Promise<MySessionObjectives[]> {
   const { data, error } = await sb.from('team_session_player_objectives').select('session_id, objective_ids, kpi_ids, note').eq('player_id', uid)
-  if (isMissingRelation(error)) return [] // before migration 20261120170000
+  if (isMissingRelation(error)) return [] // before migration 20261120110520
   if (error) fail(error, 'my session objectives')
   const rows = (data ?? []) as Array<{ session_id: string; objective_ids: string[]; kpi_ids: string[]; note: string | null }>
   if (rows.length === 0) return []

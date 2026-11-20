@@ -7,7 +7,7 @@ import { normalizeSlots } from './teamIdentity'
 import { fail } from './supabaseErrors'
 
 /**
- * Preparing a team session ahead (contract docs/contracts/session-prep.md, migration 20261120170000_team_session_prep).
+ * Preparing a team session ahead (contract docs/contracts/session-prep.md, migration 20261120110520_team_session_prep).
  * Access is in Postgres RLS: the session's managers or the group's staff write while the session is scheduled; the group
  * reads it all.
  */

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * End-to-end check of supabase/migrations/20261120180000_team_sessions_hardening.sql (team_sessions UPDATE granted per
+ * End-to-end check of supabase/migrations/20261120110540_team_sessions_hardening.sql (team_sessions UPDATE granted per
  * column; recording paths kept as file names) and its rollback, on a throw-away Postgres (PGlite 0.3, PostgreSQL 17)
- * rebuilt from the migrations production has applied, plus 20261120160000 (which adds the slot's copy, event_*).
+ * rebuilt from the migrations production has applied, plus 20261120110436 (which adds the slot's copy, event_*).
  *
  * Usage: node scripts/test-team-sessions-hardening.mjs <folder where @electric-sql/pglite is installed>
  */
@@ -13,8 +13,8 @@ import { openPglite, replay, migrationFiles, repo, migDir } from './lib/pgliteSu
 const pgliteDir = process.argv[2]
 if (!pgliteDir) { console.error('Pass the folder that holds node_modules/@electric-sql/pglite.'); process.exit(2) }
 
-const migration = readFileSync(join(migDir, '20261120180000_team_sessions_hardening.sql'), 'utf-8')
-const rollback = readFileSync(join(repo, 'supabase/rollback/20261120180000_rollback.sql'), 'utf-8')
+const migration = readFileSync(join(migDir, '20261120110540_team_sessions_hardening.sql'), 'utf-8')
+const rollback = readFileSync(join(repo, 'supabase/rollback/20261120110540_rollback.sql'), 'utf-8')
 const inProduction = readFileSync(join(repo, 'supabase/baseline/prod_migrations_20261120_beta11.txt'), 'utf-8')
   .split(/\r?\n/).filter(Boolean).map((l) => l.split('|').slice(0, 2).join('_') + '.sql')
 
@@ -25,7 +25,7 @@ const check = (label, ok, detail = '') => {
 }
 
 const db = await openPglite(pgliteDir)
-await replay(db, [...migrationFiles().filter((f) => inProduction.includes(f)), '20261120160000_team_session_auto_lifecycle.sql'])
+await replay(db, [...migrationFiles().filter((f) => inProduction.includes(f)), '20261120110436_team_session_auto_lifecycle.sql'])
 const snapshotSql = readFileSync(join(repo, 'scripts/schema-snapshot.sql'), 'utf-8')
 const snapshot = async () => String((await db.query(snapshotSql)).rows[0].snapshot ?? '')
 const before = await snapshot()

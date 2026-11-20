@@ -214,7 +214,7 @@ export interface TeamSessionHistoryApi {
   teamSessionHistoryDetail: (sessionId: string) => Promise<TeamSessionHistoryDetail>
   /**
    * The staff's verdict on one objective: gameId null for the whole session, met null clears it. The session's
-   * managers only (FORBIDDEN otherwise); NOT_AVAILABLE before migration 20261120150000_team_session_objective_results.
+   * managers only (FORBIDDEN otherwise); NOT_AVAILABLE before migration 20261120110354_team_session_objective_results.
    */
   teamSessionSetObjectiveResult: (sessionId: string, objectiveId: string, gameId: string | null, met: boolean | null) => Promise<void>
 }

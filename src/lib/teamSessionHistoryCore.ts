@@ -18,7 +18,7 @@ import { fail } from './supabaseErrors'
  * Team session history (DESIGN_STATE.md § 15), contract docs/contracts/team-session-history.md. Reads what the team
  * sessions already store (sessions, their calendar slot, games with the cached Riot match and timeline summary,
  * reviews, feedback, attendance, objectives, scrim notes) and the staff's objective verdicts
- * (team_session_objective_results, migration 20261120150000). Never calls Riot.
+ * (team_session_objective_results, migration 20261120110354). Never calls Riot.
  */
 
 export const HISTORY_PAGE_SIZE = 20
@@ -279,7 +279,7 @@ const isMissingColumn = (e: { code?: string } | null) => e?.code === '42703'
 async function objectiveResults(sb: SupabaseClient, sessionIds: string[]): Promise<Array<ResultRow & { sessionId: string }>> {
   if (sessionIds.length === 0) return []
   const { data, error } = await sb.from('team_session_objective_results').select('session_id, objective_id, game_id, met').in('session_id', sessionIds)
-  if (isMissingRelation(error)) return [] // before migration 20261120150000
+  if (isMissingRelation(error)) return [] // before migration 20261120110354
   if (error) fail(error, 'objective results')
   return (data ?? []).map((r: any) => ({ sessionId: r.session_id, objectiveId: r.objective_id, gameId: r.game_id, met: r.met }))
 }
@@ -295,10 +295,10 @@ function checklistOf(v: unknown): ScrimNotes['checklist'] {
 }
 
 const SESSION_COLS = 'id, group_id, calendar_event_id, status, responsible_user_ids, started_at, ended_at, created_at'
-// The session's copy of its slot (migration 20261120160000): kept when the slot is deleted after the session started.
+// The session's copy of its slot (migration 20261120110436): kept when the slot is deleted after the session started.
 const SNAPSHOT_COLS = 'event_id, event_kind, event_title, event_starts_at, event_ends_at'
 
-/** Sessions with their slot's copy when the column exists, without it before migration 20261120160000. */
+/** Sessions with their slot's copy when the column exists, without it before migration 20261120110436. */
 async function selectSessions(build: (cols: string) => PromiseLike<{ data: any; error: any }>): Promise<{ data: any; error: any }> {
   const res = await build(`${SESSION_COLS}, ${SNAPSHOT_COLS}`)
   return isMissingColumn(res.error) ? build(SESSION_COLS) : res
@@ -517,7 +517,7 @@ export async function getTeamSessionHistoryDetail(sb: SupabaseClient, sessionId:
   return detail
 }
 
-/** The staff's verdict on one objective (RPC set_team_session_objective_result, migration 20261120150000). */
+/** The staff's verdict on one objective (RPC set_team_session_objective_result, migration 20261120110354). */
 export async function setObjectiveResult(sb: SupabaseClient, sessionId: string, objectiveId: string, gameId: string | null, met: boolean | null): Promise<void> {
   const { error } = await sb.rpc('set_team_session_objective_result', { p_session: sessionId, p_objective: objectiveId, p_game: gameId, p_met: met })
   if (!error) return

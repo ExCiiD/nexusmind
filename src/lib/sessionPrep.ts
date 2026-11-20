@@ -53,7 +53,7 @@ export interface SessionDraftInput {
 
 export interface SessionPrep {
   sessionId: string
-  /** False before migration 20261120170000_team_session_prep. */
+  /** False before migration 20261120110520_team_session_prep. */
   available: boolean
   /** The reader may write: the session's manager or the group's staff, while the session is scheduled. */
   canPrepare: boolean
