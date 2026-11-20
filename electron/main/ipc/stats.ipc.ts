@@ -2,13 +2,13 @@ import { ipcMain } from 'electron'
 import { existsSync as fsExistsSync, statSync as fsStatSync } from 'fs'
 import { getPrisma } from '../database'
 import {
-  getMatchIds,
   getMatch,
   getMatchTimeline,
   getAccountByRiotId,
   extractPlayerStats,
   extractDetailedStats,
 } from '../riotClient'
+import { getMatchIdsCached } from '../matchIdsCache'
 import { extractGameEvents, type GameEvent } from '../eventExtractor'
 import { analyzeLanePhase, type LanePhaseResult } from '../lanePhaseAnalyzer'
 import { autoDetectMistakesSilently, type ParsedMatch } from '../mistakeAutoDetect'
@@ -36,7 +36,7 @@ async function getAggregatedMatchIds(
 
   const perAccountIds = await Promise.all(
     allAccounts.map(({ puuid, region }) =>
-      getMatchIds(puuid, region, count, 0, queueFilter).catch(() => [] as string[]),
+      getMatchIdsCached(puuid, region, count, 0, queueFilter).catch(() => [] as string[]),
     ),
   )
 
@@ -712,7 +712,7 @@ export function registerStatsHandlers() {
     const queueFilter = (user.queueFilter ?? 'both') as 'soloq' | 'flex' | 'both'
     const perAccountIds = await Promise.all(
       targetAccounts.map(({ puuid: p, region }) =>
-        getMatchIds(p, region, 40, 0, queueFilter).catch(() => [] as string[]),
+        getMatchIdsCached(p, region, 40, 0, queueFilter).catch(() => [] as string[]),
       ),
     )
     const matchIds = [...new Set(perAccountIds.flat())]
@@ -766,7 +766,7 @@ export function registerStatsHandlers() {
     if (followedPlayerId) {
       const followed = await prisma.followedPlayer.findFirst({ where: { id: followedPlayerId, userId: user.id } })
       if (followed) {
-        const theirIds = await getMatchIds(followed.puuid, followed.region, 40, 0, 'soloq').catch(() => [] as string[])
+        const theirIds = await getMatchIdsCached(followed.puuid, followed.region, 40, 0, 'soloq').catch(() => [] as string[])
         const theirStats = theirIds.length > 0
           ? await fetchDetailedStatsForMatches(prisma, theirIds, [followed.puuid], followed.region, mainRole, 40)
           : []

@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle, Info, Loader2, LayoutDashboard } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -6,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils'
 import type { Group } from '@/lib/collab'
 import type { DashboardAlert, PlayerDashboardRow } from '@/lib/staffDashboard'
+import { useCachedQuery } from '@/hooks/useCachedQuery'
 
 /** A column title whose computation is explained on hover (and on keyboard focus). */
 function HelpHeader({ label, help }: { label: string; help: string }) {
@@ -31,13 +31,9 @@ function HelpHeader({ label, help }: { label: string; help: string }) {
 export function StaffDashboardSection({ staffGroups }: { staffGroups: Group[] }) {
   const { t } = useTranslation()
   const groupId = staffGroups[0]?.id ?? null
-  const [rows, setRows] = useState<PlayerDashboardRow[] | null>(null)
-
-  useEffect(() => {
-    if (!groupId) return
-    setRows(null)
-    window.api.collabStaffDashboard(groupId).then(setRows).catch(() => setRows([]))
-  }, [groupId])
+  // Cached (useCachedQuery): back on the dashboard, the rows show at once and refresh behind.
+  const q = useCachedQuery<PlayerDashboardRow[]>(groupId ? `staff:dashboard:${groupId}` : null, () => window.api.collabStaffDashboard(groupId!))
+  const rows: PlayerDashboardRow[] | null = q.data ?? (q.error ? [] : null)
 
   if (staffGroups.length === 0) return null
 

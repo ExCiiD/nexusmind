@@ -42,6 +42,21 @@ import { MyTeamCard } from '@/components/team/MyTeamCard'
 import { formatKDA, formatGameTime, cn } from '@/lib/utils'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
 import { wrText } from '@/lib/winrate'
+import { useCachedQuery } from '@/hooks/useCachedQuery'
+
+const NO_GAMES: RecentGame[] = []
+const NO_ROWS: any[] = []
+
+/** « Dernière partie » comes from the Riot list, which knows nothing of sessions: the local history flags the games
+ * played outside one (offSession, contract account-region.md), matched by matchId. */
+async function loadDashboardRecentGames(): Promise<RecentGame[]> {
+  const [games, local] = await Promise.all([
+    window.api.getMatchHistoryWithStatus(10),
+    window.api.getGameHistory(10).catch(() => [] as any[]),
+  ])
+  const off = new Set(((local ?? []) as any[]).filter((g) => g?.offSession).map((g) => g.matchId))
+  return ((games ?? []) as any[]).map((g) => ({ ...g, offSession: off.has(g.matchId) }))
+}
 
 interface RecentGame {
   /** Played outside a session (decision of 20/11/2026): from getGameHistory's `offSession`, matched by matchId. */
@@ -134,8 +149,9 @@ export function DashboardPage() {
   const loadProgressData = useGameStore((s) => s.loadProgressData)
   const navigate = useNavigate()
   const allFundamentals = useLocalizedFundamentalList()
-  const [recentGames, setRecentGames] = useState<RecentGame[]>([])
-  const [snapshots, setSnapshots] = useState<any[]>([])
+  // Cached (useCachedQuery): back on the dashboard, the last data shows at once and refreshes behind.
+  const { data: recentGames = NO_GAMES } = useCachedQuery<RecentGame[]>('games:dashboard-recent', loadDashboardRecentGames)
+  const { data: snapshots = NO_ROWS } = useCachedQuery<any[]>('games:snapshots', () => window.api.getStatsSnapshots())
   const leftColumn = useRef<HTMLDivElement>(null)
   const rightColumn = useRef<HTMLDivElement>(null)
   const patternsBox = useRef<HTMLDivElement>(null)
@@ -145,16 +161,6 @@ export function DashboardPage() {
     loadActiveSession()
     loadStats()
     loadProgressData()
-    // « Dernière partie » comes from the Riot list, which knows nothing of sessions: the local history flags the games
-    // played outside one (offSession, contract account-region.md), matched by matchId.
-    Promise.all([
-      window.api.getMatchHistoryWithStatus(10),
-      window.api.getGameHistory(10).catch(() => []),
-    ]).then(([games, local]: [any[], any[]]) => {
-      const off = new Set((local ?? []).filter((g) => g?.offSession).map((g) => g.matchId))
-      setRecentGames((games ?? []).map((g) => ({ ...g, offSession: off.has(g.matchId) })))
-    }).catch(() => {})
-    window.api.getStatsSnapshots().then(setSnapshots).catch(() => {})
   }, [loadActiveSession, loadStats, loadProgressData])
 
   if (!user) return null
@@ -449,12 +455,12 @@ function KpiCard({ icon: Icon, label, value, unit, badge, footer, tone, accentVa
  */
 function FundamentalsRadarCard({ role }: { role: string | null }) {
   const { t } = useTranslation()
-  const [data, setData] = useState<{ recent: any; recentGameCount: number; snapshot: any; snapshotGameCount: number } | null | undefined>(undefined)
+  const radar = useCachedQuery<{ recent: any; recentGameCount: number; snapshot: any; snapshotGameCount: number } | null>(
+    'games:radar', () => window.api.getFundamentalsRadar(),
+  )
+  const data = radar.error ? null : radar.data
   const [showModal, setShowModal] = useState(false)
 
-  useEffect(() => {
-    window.api.getFundamentalsRadar().then(setData).catch(() => setData(null))
-  }, [])
 
   if (data === undefined) {
     return (
@@ -561,12 +567,8 @@ function fmtNum(v: number | null): string {
 
 function MistakeFrequencyCard({ onViewAll }: { onViewAll: () => void }) {
   const { t } = useTranslation()
-  const [top, setTop] = useState<MistakeTopTagEntry[]>([])
-  useEffect(() => {
-    window.api.getMistakeTopTags({ days: 7 })
-      .then((rows) => setTop(rows.slice(0, 3)))
-      .catch(() => setTop([]))
-  }, [])
+  const { data: rows } = useCachedQuery<MistakeTopTagEntry[]>('games:mistake-top-7d', () => window.api.getMistakeTopTags({ days: 7 }))
+  const top = (rows ?? []).slice(0, 3)
   if (top.length === 0) return null
 
   return (

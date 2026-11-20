@@ -28,6 +28,11 @@ import {
   Legend,
 } from 'recharts'
 import { StatsInsightsTab } from './StatsInsightsTab'
+import { useCachedQuery } from '@/hooks/useCachedQuery'
+import { invalidateCached } from '@/lib/queryCache'
+
+const NO_ACCOUNTS: any[] = []
+const NO_SNAPSHOTS: any[] = []
 
 type ActiveTab = 'insights' | 'averages' | 'progression'
 
@@ -54,74 +59,52 @@ interface LinkedAccount {
 export function StatsLandingPage() {
   const { t } = useTranslation()
   const user = useUserStore((s) => s.user)
-  const [averages, setAverages] = useState<any>(null)
-  const [averagesMeta, setAveragesMeta] = useState<{ gameCount: number; firstGameAt: string; lastGameAt: string } | null>(null)
-  const [snapshots, setSnapshots] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<ActiveTab>('insights')
   const [avgChartSeries, setAvgChartSeries] = useState<string[]>(DEFAULT_SERIES)
   const [autoSnapMsg, setAutoSnapMsg] = useState<string | null>(null)
 
   // Account filter: null = all accounts, user.puuid = main (default), account.puuid = secondary
-  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([])
   const [selectedAccountPuuid, setSelectedAccountPuuid] = useState<string | null | '__main__'>('__main__')
-  const [accountLoading, setAccountLoading] = useState(false)
-
   const mainRole = user?.mainRole ?? null
+  const resolvedPuuid = selectedAccountPuuid === '__main__' ? (user?.puuid ?? null) : selectedAccountPuuid
 
-  const loadSnapshots = async () => {
-    const data = await window.api.getStatsSnapshots()
-    setSnapshots(data)
-    return data
-  }
-
-  /** Fetch and display averages for the given puuid filter. */
-  const loadAveragesForAccount = async (puuid: string | null) => {
-    setAccountLoading(true)
-    try {
-      const result = await window.api.getAccountAverages(puuid)
-      setAverages(result?.averages ?? null)
-      setAveragesMeta(result ? { gameCount: result.gameCount, firstGameAt: result.firstGameAt, lastGameAt: result.lastGameAt } : null)
-    } catch { /* silent */ }
-    finally { setAccountLoading(false) }
-  }
+  // Cached (useCachedQuery): back on the page, everything shows at once and refreshes behind. The page no longer
+  // waits for the automatic snapshot (Riot reads): it runs after, and refreshes the snapshots when it adds one.
+  const accountsQ = useCachedQuery<LinkedAccount[]>('accounts:list', () => window.api.listAccounts())
+  const snapshotsQ = useCachedQuery<any[]>('games:snapshots', () => window.api.getStatsSnapshots())
+  const averagesQ = useCachedQuery<any>(
+    user?.puuid || selectedAccountPuuid !== '__main__' ? `games:averages:${resolvedPuuid ?? 'all'}` : null,
+    () => window.api.getAccountAverages(resolvedPuuid),
+  )
+  const linkedAccounts = accountsQ.data ?? NO_ACCOUNTS
+  const snapshots = snapshotsQ.data ?? NO_SNAPSHOTS
+  const loading = (accountsQ.loading || snapshotsQ.loading) && !accountsQ.error && !snapshotsQ.error
+  const accountLoading = averagesQ.loading
+  const latestSnapshot = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null
+  const averageSource = averagesQ.data
+    ? averagesQ.data
+    : !user?.puuid && selectedAccountPuuid === '__main__' && latestSnapshot
+      ? { averages: latestSnapshot.stats, gameCount: latestSnapshot.gameCount, firstGameAt: latestSnapshot.firstGameAt, lastGameAt: latestSnapshot.lastGameAt }
+      : null
+  const averages = averageSource?.averages ?? null
+  const averagesMeta: { gameCount: number; firstGameAt: string; lastGameAt: string } | null = averageSource
+    ? { gameCount: averageSource.gameCount, firstGameAt: averageSource.firstGameAt, lastGameAt: averageSource.lastGameAt }
+    : null
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        const [accts, snaps] = await Promise.all([
-          window.api.listAccounts(),
-          loadSnapshots(),
-        ])
-        setLinkedAccounts(accts)
-
-        const snapResult = await window.api.autoSnapshot()
-        if (snapResult.created > 0) {
-          setAutoSnapMsg(t('statsAvg.autoSnapshotDone', { count: snapResult.created }))
-          setTimeout(() => setAutoSnapMsg(null), 5000)
-          await loadSnapshots()
-        }
-
-        // Default: show averages for main account
-        if (user?.puuid) {
-          await loadAveragesForAccount(user.puuid)
-        } else if (snaps.length > 0) {
-          const latest = snaps[snaps.length - 1]
-          setAverages(latest.stats)
-          setAveragesMeta({ gameCount: latest.gameCount, firstGameAt: latest.firstGameAt, lastGameAt: latest.lastGameAt })
-        }
-      } catch { /* silent */ }
-      finally { setLoading(false) }
-    }
-
-    init()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let cancelled = false
+    window.api.autoSnapshot().then((snapResult) => {
+      if (cancelled || !snapResult || snapResult.created <= 0) return
+      setAutoSnapMsg(t('statsAvg.autoSnapshotDone', { count: snapResult.created }))
+      setTimeout(() => setAutoSnapMsg(null), 5000)
+      invalidateCached('games:snapshots')
+    }).catch(() => {})
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per visit
   }, [])
 
-  const handleAccountSelect = async (puuid: string | null | '__main__') => {
+  const handleAccountSelect = (puuid: string | null | '__main__') => {
     setSelectedAccountPuuid(puuid)
-    const resolvedPuuid = puuid === '__main__' ? (user?.puuid ?? null) : puuid
-    await loadAveragesForAccount(resolvedPuuid)
   }
 
   if (loading) {

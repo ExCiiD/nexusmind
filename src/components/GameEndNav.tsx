@@ -5,6 +5,7 @@ import { useUserStore } from '@/store/useUserStore'
 import { useSessionStore } from '@/store/useSessionStore'
 import { useToast } from '@/hooks/useToast'
 import { ToastAction } from '@/components/ui/toast'
+import { invalidateCached } from '@/lib/queryCache'
 
 /**
  * Handles post-match navigation inside React Router (HashRouter-safe). `window.location.hash`
@@ -19,6 +20,8 @@ export function GameEndNav() {
   useEffect(() => {
     if (!user) return
     const off = window.api.onGameEnd((data) => {
+      // A new game: the cached game lists (dashboard, history, stats) refetch, still shown meanwhile.
+      invalidateCached('games:')
       if (data?.game?.id && data.isSessionEligible !== false) {
         navigate(`/review?gameId=${encodeURIComponent(data.game.id)}`, { replace: true })
       }
@@ -56,6 +59,7 @@ export function GameEndNav() {
   useEffect(() => {
     if (!user) return
     const off = window.api.onGameUpdated(() => {
+      invalidateCached('games:')
       useSessionStore.getState().refreshSession()
     })
     return off

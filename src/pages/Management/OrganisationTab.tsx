@@ -17,6 +17,10 @@ import { Announcements, Panel } from './MySpaceTab'
 import { useToast } from '@/hooks/useToast'
 import { isServerNotReadyError } from '@/lib/matchEventView'
 import type { EventReminder } from '@/lib/organisation'
+import { useCachedQuery } from '@/hooks/useCachedQuery'
+
+const NO_RULES: AvailabilityRule[] = []
+const NO_EXCEPTIONS: AvailabilityException[] = []
 
 const DAY = 86_400_000
 const minutesOf = (d: Date) => d.getHours() * 60 + d.getMinutes()
@@ -29,28 +33,30 @@ const minutesOf = (d: Date) => d.getHours() * 60 + d.getMinutes()
  */
 export function OrganisationTab({ group, nameOf, onTab }: { group: Group; nameOf: NameOf; onTab: (tab: 'planning' | 'teamOps') => void }) {
   const { t } = useTranslation()
-  const [events, setEvents] = useState<CalendarEvent[] | null>(null)
-  const [rules, setRules] = useState<AvailabilityRule[]>([])
-  const [exceptions, setExceptions] = useState<AvailabilityException[]>([])
-  const [failed, setFailed] = useState(false)
   const now = useMemo(() => new Date(), [])
   const monday = useMemo(() => weekStart(now), [now])
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => new Date(monday.getTime() + i * DAY)), [monday])
   const players = useMemo(() => group.members.filter((m) => playsInGroup({ role: m.role, alsoPlays: m.alsoPlays })).map((m) => m.userId), [group.members])
 
-  const load = useCallback(async () => {
-    setFailed(false)
-    try {
+  // Cached (useCachedQuery): back on the tab, the week shows at once and refreshes behind.
+  const week = useCachedQuery<{ ev: CalendarEvent[]; r: AvailabilityRule[]; ex: AvailabilityException[] }>(
+    `org:week:${group.id}:${localDateKey(monday)}`,
+    async () => {
       const to = new Date(Math.max(now.getTime() + 7 * DAY, monday.getTime() + 7 * DAY))
       const [ev, r, ex] = await Promise.all([
         window.api.calendarListEvents(group.id, monday.toISOString(), to.toISOString()),
         window.api.availabilityListRules(group.id),
         window.api.availabilityListExceptions(group.id, localDateKey(monday), localDateKey(to)),
       ])
-      setEvents(ev); setRules(r); setExceptions(ex)
-    } catch { setFailed(true) }
-  }, [group.id, monday, now])
-  useEffect(() => { void load() }, [load])
+      return { ev, r, ex }
+    },
+  )
+  const events: CalendarEvent[] | null = week.data?.ev ?? null
+  const rules: AvailabilityRule[] = week.data?.r ?? NO_RULES
+  const exceptions: AvailabilityException[] = week.data?.ex ?? NO_EXCEPTIONS
+  const failed = !!week.error
+  const reloadWeek = week.reload
+  const load = useCallback(async () => { await reloadWeek().catch(() => {}) }, [reloadWeek])
 
   const upcoming = (events ?? [])
     .filter((e) => new Date(e.endsAt).getTime() > now.getTime() && new Date(e.startsAt).getTime() < now.getTime() + 7 * DAY)
@@ -138,14 +144,12 @@ function UpcomingRow({ event: e, group, players, rules, exceptions, nameOf }: {
 
 function GroupTasks({ groupId, nameOf, onNew }: { groupId: string; nameOf: NameOf; onNew: () => void }) {
   const { t, i18n } = useTranslation()
-  const [items, setItems] = useState<Task[] | null>(null)
-  const [failed, setFailed] = useState(false)
+  const tasksQ = useCachedQuery<Task[]>(`org:tasks:${groupId}`, async () => (await window.api.tasksList(groupId)).filter((x) => x.status === 'open'))
+  const items: Task[] | null = tasksQ.data ?? null
+  const failed = !!tasksQ.error
   const [filter, setFilter] = useState<'all' | 'overdue' | 'unassigned'>('all')
-  const load = useCallback(async () => {
-    setFailed(false)
-    try { setItems((await window.api.tasksList(groupId)).filter((x) => x.status === 'open')) } catch { setFailed(true) }
-  }, [groupId])
-  useEffect(() => { void load() }, [load])
+  const reloadTasks = tasksQ.reload
+  const load = useCallback(async () => { await reloadTasks().catch(() => {}) }, [reloadTasks])
   const today = localDateKey(new Date())
   const list = (items ?? [])
     .filter((x) => filter === 'all' || (filter === 'overdue' ? !!x.dueDate && x.dueDate < today : !x.assigneeId))

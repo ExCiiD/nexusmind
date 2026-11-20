@@ -27,6 +27,13 @@ const INACTIVE_DAYS = 5
 const BACKLOG_THRESHOLD = 3
 const RECENT_GAMES_WINDOW = 10
 
+/** Every `data` field getStaffDashboard reads, across the seven tables. */
+const DASHBOARD_FIELD_NAMES = [
+  'id', 'gameEndAt', 'win', 'gameId', 'label', 'tagId', 'problemId', 'status', 'verdict', 'passRate', 'startedAt',
+  'createdAt', 'assessmentId', 'score',
+] as const
+export const DASHBOARD_FIELDS = ['user_id', 'table_name', ...DASHBOARD_FIELD_NAMES.map((f) => `${f}:data->${f}`)].join(', ')
+
 export async function getStaffDashboard(sb: SupabaseClient, groupId: string): Promise<PlayerDashboardRow[]> {
   const { data: members, error: membersErr } = await sb.from('group_members')
     .select('user_id, display_name').eq('group_id', groupId).eq('role', 'player')
@@ -36,8 +43,10 @@ export async function getStaffDashboard(sb: SupabaseClient, groupId: string): Pr
 
   const playerIds = players.map((p) => p.user_id)
   const [syncRes, checkinsRes] = await Promise.all([
+    // Only the JSON fields read below (20/11/2026: the whole `data` of every Game, Review — notes included — and
+    // Mistake was downloaded to build a few lines). `data->x` keeps each value's JSON type.
     sb.from('sync_records')
-      .select('user_id, table_name, record_id, data')
+      .select(DASHBOARD_FIELDS)
       .in('user_id', playerIds)
       .eq('deleted', false)
       .in('table_name', ['Game', 'Review', 'Mistake', 'MistakeTag', 'CoachingExperiment', 'Assessment', 'AssessmentScore'])
@@ -47,7 +56,8 @@ export async function getStaffDashboard(sb: SupabaseClient, groupId: string): Pr
   ])
   if (syncRes.error) throw new Error(syncRes.error.message)
   if (checkinsRes.error) throw new Error(checkinsRes.error.message)
-  const rows = syncRes.data
+  // The projected fields stand in for `data` (the aggregation below reads `r.data.x`).
+  const rows = ((syncRes.data ?? []) as any[]).map((r) => ({ user_id: r.user_id as string, table_name: r.table_name as string, data: r }))
 
   const byUser = new Map<string, typeof rows>()
   for (const r of rows ?? []) {

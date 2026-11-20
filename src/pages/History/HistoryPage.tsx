@@ -33,6 +33,9 @@ import { useUserStore } from '@/store/useUserStore'
 import { cn } from '@/lib/utils'
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/data-state'
 import { wrText } from '@/lib/winrate'
+import { useCachedQuery } from '@/hooks/useCachedQuery'
+
+const NO_HISTORY: any[] = []
 
 const GAMES_PAGE_SIZE = 20
 
@@ -180,9 +183,11 @@ function GamesTab() {
   const navigate = useNavigate()
   const navigateToReview = (gameId: string | null) => navigate(gameId ? `/review?gameId=${gameId}` : '/review')
   const user = useUserStore((s) => s.user)
-  const [games, setGames] = useState<RiotGameEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // Cached (useCachedQuery): back on the page, the list shows at once and refreshes behind.
+  const history = useCachedQuery<RiotGameEntry[]>('games:history-100', () => window.api.getMatchHistoryWithStatus(100))
+  const games = history.data ?? NO_HISTORY
+  const loading = history.loading
+  const error = history.error ? ((history.error as any)?.message || t('history.state.unknownCause')) as string : null
   const [page, setPage] = useState(0)
 
   // Role filter — restore from localStorage, fallback to main-role-only if user has mainRole set
@@ -217,16 +222,6 @@ function GamesTab() {
     } catch { /* ignore */ }
   }, [mainRoleOnly, selectedRoles, selectedAccounts])
 
-  const [attempt, setAttempt] = useState(0)
-  useEffect(() => {
-    setLoading(true)
-    setError(null)
-    window.api.getMatchHistoryWithStatus(100)
-      .then((data: any[]) => setGames(data))
-      .catch((err: any) => setError(err?.message || t('history.state.unknownCause')))
-      .finally(() => setLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- reload on retry only
-  }, [attempt])
 
   const toggleRole = (role: string) => {
     setSelectedRoles((prev) =>
@@ -286,7 +281,7 @@ function GamesTab() {
         title={t('history.state.gamesErrorTitle')}
         cause={error}
         hint={t('history.state.gamesErrorHint')}
-        onRetry={() => setAttempt((n) => n + 1)}
+        onRetry={() => { void history.reload().catch(() => {}) }}
       />
     )
   }

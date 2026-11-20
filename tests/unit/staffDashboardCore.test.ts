@@ -10,6 +10,11 @@ function chain(result: unknown) {
 
 const DAY = 86_400_000
 
+/** What PostgREST returns for the dashboard's select: each `alias:data->field` as a column of the row. */
+function projected(rows: Array<{ user_id: string; table_name: string; data: Record<string, unknown> }>) {
+  return rows.map(({ data, ...r }) => ({ ...r, ...data }))
+}
+
 describe('getStaffDashboard', () => {
   it('returns an empty array with no player members', async () => {
     const sb = { from: vi.fn(() => chain({ data: [], error: null })) } as never
@@ -29,7 +34,7 @@ describe('getStaffDashboard', () => {
       { user_id: 'p1', table_name: 'Mistake', data: { gameId: 'g2', tagId: 'tag1' } },
       { user_id: 'p1', table_name: 'CoachingExperiment', data: { problemId: 'vision', status: 'active', verdict: null, startedAt: now - 1 * DAY } },
     ]
-    const records = chain({ data: syncRows, error: null })
+    const records = chain({ data: projected(syncRows), error: null })
     const checkins = chain({ data: [{ user_id: 'p1', mood: 4, created_at: new Date(now).toISOString() }], error: null })
     const sb = { from: vi.fn((t: string) => ({ group_members: members, sync_records: records, wellbeing_checkins: checkins }[t])) } as never
 
@@ -50,7 +55,7 @@ describe('getStaffDashboard', () => {
   it('returns a null mood for a player who has not shared wellbeing check-ins', async () => {
     const now = Date.now()
     const members = chain({ data: [{ user_id: 'p1', display_name: 'Top' }], error: null })
-    const records = chain({ data: [{ user_id: 'p1', table_name: 'Game', data: { id: 'g1', win: true, gameEndAt: now } }], error: null })
+    const records = chain({ data: projected([{ user_id: 'p1', table_name: 'Game', data: { id: 'g1', win: true, gameEndAt: now } }]), error: null })
     const checkins = chain({ data: [], error: null })
     const sb = { from: vi.fn((t: string) => ({ group_members: members, sync_records: records, wellbeing_checkins: checkins }[t])) } as never
 
@@ -68,7 +73,7 @@ describe('getStaffDashboard', () => {
       ...games, // 4 games, 0 reviewed -> backlog of 4 (> 3), last game 6 days ago -> inactive
       { user_id: 'p1', table_name: 'CoachingExperiment', data: { problemId: 'deaths', status: 'done', verdict: 'no_effect', startedAt: now - 7 * DAY } },
     ]
-    const records = chain({ data: syncRows, error: null })
+    const records = chain({ data: projected(syncRows), error: null })
     const checkins = chain({ data: [], error: null })
     const sb = { from: vi.fn((t: string) => ({ group_members: members, sync_records: records, wellbeing_checkins: checkins }[t])) } as never
 
@@ -87,7 +92,7 @@ describe('getStaffDashboard', () => {
       { user_id: 'p1', table_name: 'Game', data: { id: 'g1', win: true, gameEndAt: now } }, // 100%
       { user_id: 'p2', table_name: 'Game', data: { id: 'g2', win: false, gameEndAt: now } }, // 0%
     ]
-    const records = chain({ data: syncRows, error: null })
+    const records = chain({ data: projected(syncRows), error: null })
     const checkins = chain({ data: [], error: null })
     const sb = { from: vi.fn((t: string) => ({ group_members: members, sync_records: records, wellbeing_checkins: checkins }[t])) } as never
 
@@ -108,7 +113,7 @@ describe('getStaffDashboard', () => {
       { user_id: 'p1', table_name: 'AssessmentScore', data: { assessmentId: 'a-new', fundamentalId: 'mastery', score: 8 } },
       { user_id: 'p1', table_name: 'AssessmentScore', data: { assessmentId: 'a-new', fundamentalId: 'tempo', score: 6 } },
     ]
-    const records = chain({ data: syncRows, error: null })
+    const records = chain({ data: projected(syncRows), error: null })
     const checkins = chain({ data: [], error: null })
     const sb = { from: vi.fn((t: string) => ({ group_members: members, sync_records: records, wellbeing_checkins: checkins }[t])) } as never
 
@@ -119,7 +124,7 @@ describe('getStaffDashboard', () => {
   it('returns a null perfIndex for a player who has never run a self-assessment', async () => {
     const now = Date.now()
     const members = chain({ data: [{ user_id: 'p1', display_name: 'Top' }], error: null })
-    const records = chain({ data: [{ user_id: 'p1', table_name: 'Game', data: { id: 'g1', win: true, gameEndAt: now } }], error: null })
+    const records = chain({ data: projected([{ user_id: 'p1', table_name: 'Game', data: { id: 'g1', win: true, gameEndAt: now } }]), error: null })
     const checkins = chain({ data: [], error: null })
     const sb = { from: vi.fn((t: string) => ({ group_members: members, sync_records: records, wellbeing_checkins: checkins }[t])) } as never
 

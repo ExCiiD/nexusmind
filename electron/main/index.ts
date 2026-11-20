@@ -27,6 +27,7 @@ import { join } from 'path'
 import { createReadStream, statSync, readFileSync, existsSync } from 'fs'
 import { autoUpdater } from 'electron-updater'
 import { initDatabase, getPrisma } from './database'
+import { invalidateMatchIds } from './matchIdsCache'
 import { GameDetector } from './gameDetector'
 import { recordingManager, isFfmpegAvailable, generateThumbnailForRecording, mergeAudioIntoVideo, waitUntilReadable, probeReadable, type RecordingSettings } from './recorder'
 import { wgcRecorder } from './wgcRecorder'
@@ -243,6 +244,7 @@ async function stopSystemAudioCapture(): Promise<SystemAudioResult | null> {
  *  team session gets the match. */
 async function afterGameEnriched(info: { gameId: string; matchId: string; win: boolean; queueType: string }): Promise<void> {
   try {
+    invalidateMatchIds()
     mainWindow?.webContents.send('game:updated', info)
     console.log(`[main] Enrich complete → game:updated emitted (gameId=${info.gameId}, win=${info.win}, queue=${info.queueType})`)
   } catch (err) {
@@ -606,6 +608,7 @@ async function bootstrap() {
         suggestExternalReview: !matchData.game?.id && Boolean(captureRecordingId),
       }
 
+      invalidateMatchIds()
       mainWindow?.webContents.send('game:ended', payload)
 
       // Settings → Recording → "Ouvrir la review": Ascend comes to the front on
