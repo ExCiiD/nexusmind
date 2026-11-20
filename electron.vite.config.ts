@@ -21,7 +21,10 @@ const RENDERER_CSP = [
   "style-src 'self' 'unsafe-inline'",
   // *.supabase.co: team logos (public group-logos bucket) — without it the
   // <img> errors and the crest falls back to the initials.
-  "img-src 'self' data: blob: nxm: https://ddragon.leagueoflegends.com https://raw.communitydragon.org https://*.supabase.co",
+  // ascend-cutouts: the Team Lobby cards' hosted champion cut-outs (WebP). Images only: the skin list and the
+  // manifest are fetched by the main process (collabListCardSkins), not by the renderer.
+  // i.ytimg.com: the Codex cards' YouTube thumbnails (microReview/codex.ts).
+  "img-src 'self' data: blob: nxm: https://ddragon.leagueoflegends.com https://raw.communitydragon.org https://*.supabase.co https://ascend-cutouts.nexusmind-riot-proxy.workers.dev https://i.ytimg.com",
   "media-src 'self' blob: nxm:",
   "connect-src 'self' nxm: https://ddragon.leagueoflegends.com https://raw.communitydragon.org",
   "frame-src https://www.youtube.com https://www.youtube-nocookie.com",

@@ -49,6 +49,9 @@ vérification d'objectif et assistant.
 
 ## 3. Règles à tenir dans chaque rapport
 
+- **Relire `docs/DECISIONS.md` avant chaque rapport**, et y ajouter une ligne datée pour chaque décision donnée
+  directement par l'utilisateur à la session Engine (puis prévenir le Chief).
+
 - **Saison en cours seulement** (demande de l'utilisateur du 20/11/2026) : aucune valeur ni calibrage 2025 (15.x) ;
   toute valeur est celle de la saison en cours, au dernier patch, avec ses paliers de patch internes (ex. 16.9, 16.16).
   Préparer la saison suivante sans l'appliquer avant d'avoir vérifié ses valeurs (voir

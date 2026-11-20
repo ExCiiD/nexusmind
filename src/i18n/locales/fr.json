@@ -1212,7 +1212,7 @@
           "selectedA11y": "sélectionné",
           "classic": "{{name}} (classique)",
           "previewOf": "Aperçu · {{name}}",
-          "noneWithCutout": "Aucun skin de {{name}} n’a encore de détouré : la carte affichera son illustration.",
+          "noneWithCutout": "Aucun skin de {{name}} n’a encore de détouré : la carte affichera un halo vide à la place du champion.",
           "backToAuto": "Revenir en automatique",
           "save": "Afficher sur ma carte",
           "visible": "Visible par tout le groupe",

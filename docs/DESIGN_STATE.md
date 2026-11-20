@@ -176,7 +176,7 @@ dégradé noir en pied sous le nom (`text-sm` 600, une ligne, troncature +
 | Survol | contour 1 px `border-field`, ombre portée, l'aperçu de gauche montre le skin (sans valider) |
 | Focus clavier | anneau or 2 px décalé de 2 px (même règle que les boutons) |
 | Sélectionné | contour 2 px or, pastille or ✓ en haut à droite, nom en `gold-bright` ; `aria-pressed="true"` |
-| Pas encore détouré (`refused`/`missing`, ou pas encore calculé) | contour pointillé `border-field`, skin à 35 % flouté, badge « EN ATTENTE » en haut à gauche (texte complet « Pas encore détouré » en info-bulle : la version longue déborde d'une tuile de 142 px) ; reste choisissable : la carte garde alors l'illustration estompée (comportement actuel de `CardChampionArt`) |
+| Pas encore détouré (`refused`/`missing`, ou pas encore calculé) | contour pointillé `border-field`, skin à 35 % flouté, badge « EN ATTENTE » en haut à gauche (texte complet « Pas encore détouré » en info-bulle : la version longue déborde d'une tuile de 142 px) ; **non choisissable** : la carte n'affiche que des détourés (décision du 20/11) — sans détouré, premier skin détouré du champion, sinon halo neutre |
 | Chargement | tuiles squelette (silhouette 70 × 120 + barre de nom), autant que de skins connus, pas de spinner plein écran |
 
 **Navigation clavier.** La grille est un groupe radio (`role="radiogroup"`,
@@ -339,7 +339,7 @@ après « Stats Tournoi ». Même sélecteur de groupe que les autres onglets.
 | Tuile | Valeur | Pied de tuile |
 |---|---|---|
 | Drakes | % des drakes tués par nous | « 1er drake : 61 % · âme : 4 / 9 » |
-| Grubs | moyenne prise sur le nombre disponible, `grubs.available` (« 2.4 / 3 » ; 3 à partir des games 15.9 / 25.09, 6 avant) | « camp complet : 52 % » |
+| Grubs | moyenne prise sur le nombre disponible, `grubs.available` (« 2.4 / 3 » : un seul camp de 3 en 2026 ; saison en cours seulement, aucune game 2025 / 15.x) | « camp complet : 52 % » |
 | Herald | % pris | timing moyen « 14:20 » |
 | Baron | % pris | « Baron → victoire : 83 % » |
 | Premier sang | % | timing moyen |
@@ -359,9 +359,9 @@ avec la valeur à la minute.
 - à gauche (220 px) : date, adversaire, côté (pastille bleu / rouge), badge
   Victoire / Défaite, durée ;
 - à droite : une frise 0 → durée de la game, graduée toutes les 5 min, avec
-  un marqueur par événement : drake (losange), grubs (petit rond, 3 par game à partir
-  des games 15.9, 6 avant), Herald (triangle), Baron (carré), Atakhan (rond,
-  games 15.x seulement : il n'existe plus en 2026), tours (barre fine),
+  un marqueur par événement : drake (losange), grubs (petit rond, 3 par game),
+  Herald (triangle), Baron (carré), tours (barre fine) — pas d'Atakhan : il
+  n'existe plus en 2026 et seule la saison en cours est montrée,
   premier sang (étoile). **Nous** = marqueur plein `gold`, **eux** =
   contour `wr-bad`. Survol d'un marqueur : « Drake infernal · 08:42 · pris
   par nous » ; clic sur la ligne : ouvre la game (stats par game / VOD).
@@ -387,7 +387,7 @@ timing moyen chez nous / chez eux et l'écart (« 1er drake : 07:40 vs 08:55 ·
 **Données (pour le Back-end).** Par game de l'équipe (même sélection que
 `aggregateMatchLike`) : la timeline match-v5 (déjà autorisée par le relais),
 mise en cache. L'extraction des `ELITE_MONSTER_KILL` existe déjà dans
-`electron/main/eventExtractor.ts` (drakes, Baron, Herald, grubs, Atakhan),
+`electron/main/eventExtractor.ts` (drakes, Baron, Herald, grubs),
 mais seulement pour le joueur : il faut une variante **équipe** (killerTeamId
 comparé à notre côté), plus `BUILDING_KILL` (tours), le premier
 `CHAMPION_KILL`, et l'or total par équipe à chaque frame
@@ -714,8 +714,9 @@ colonnes.
 - *Chargement des skins* : 10 tuiles squelette 112 × 150 (§ 7).
 - *Champion sans aucun détouré* (tous refusés dans le pack) : à la place de
   la grille, la ligne « Aucun skin d'Ahri n'a encore de détouré : la carte
-  affichera son illustration. » ; le skin de base reste sélectionnable (il
-  retombe sur l'illustration estompée actuelle).
+  affichera un halo neutre. » ; rien n'est sélectionnable. La carte n'affiche
+  **jamais** l'art d'origine (décision du 20/11, `docs/DECISIONS.md`) : skin
+  choisi sans détouré → premier skin détouré du champion, sinon halo neutre.
 - *Pas de champion au dos* (Riot ID manquant, stats non récupérées) : rien
   de cliquable ; le message actuel du dos reste.
 - *Erreur d'enregistrement* : toast d'erreur, pop-up gardé ouvert.
@@ -743,3 +744,122 @@ without cut-out » ; « Pas de détouré » / « No cut-out » ; « Revenir en
 automatique » / « Back to automatic » ; « Afficher sur ma carte » / « Show on
 my card » ; « Visible par tout le groupe » / « Visible to the whole group » ;
 « Carte mise à jour » / « Card updated ».
+
+## 15. Spec Front-end — historique des sessions d'équipe
+
+Demande directe de l'utilisateur (20/11/2026) : une page d'historique des
+sessions d'équipe filtrable par type, chaque session ouvrant sa page avec les
+stats d'équipe et individuelles, un filtre par game, les notes et reviews.
+Maquette Penpot : page « Sessions d'équipe — historique » (faite le 20/11 : la liste en haut, la page d'une session dessous).
+
+### 1. Page « Sessions d'équipe » (liste)
+
+**Place.** Nouvelle entrée de la sidebar, section *Équipe & staff*, sous
+« Stats collectives » : **« Sessions d'équipe »**, route `/team-sessions`.
+Ordre de la section (décision du 20/11, `docs/DECISIONS.md`) : **Lobby
+d'équipe**, Management, Coaching, Stats collectives, Sessions d'équipe.
+Même sélecteur de groupe que les autres pages de la section. Visible par tout
+le groupe ; chacun voit les sessions dont il fait partie, le staff les voit
+toutes.
+
+**Filtres** (barre sous l'en-tête) : **Type** segmenté *Toutes · Flex ·
+Scrim · Tournoi* ; **Période** *30 jours · Saison · Tout*. À droite, en
+mono : « 14 sessions · 41 games · 25 V – 16 D ». Le type se garde dans l'URL
+(`?type=scrim`).
+
+**Synthèse** (4 tuiles KPI) : *Sessions* (« dont 6 scrims, 2 tournois ») ;
+*Winrate* (échelle § 9) ; *Objectifs tenus* (« 27 sur 40 ») ; *Reviews
+faites* (« 11 / 14 · 3 sessions sans review »).
+
+**Liste**, groupée par semaine (« CETTE SEMAINE · 17 – 23 NOV. », plus récent
+en haut). Une ligne par session, entièrement cliquable :
+- liseré gauche 3 px à la couleur du type (`KIND_STYLE` : scrim / flex
+  orange, tournoi rouge) ;
+- badge du type + titre (« vs Karmine Academy », « Soirée flex à 5 ») ;
+  dessous, en mono : jour, heures, format (« Jeu. 20 nov. · 20:00 – 22:40 ·
+  Bo3 ») ;
+- résultat : une pastille V / D par game (vert / rouge 20 %), puis « 2 – 1 ·
+  1 h 34 de jeu » ;
+- objectifs : « 2 / 3 tenus », coloré avec l'échelle § 9 ;
+- contenus : badges « NOTES » et « REVIEW ✓ » (vert) ou « REVIEW À FAIRE »
+  (or) ;
+- chevron « › » à droite.
+Survol : fond `elevated`, contour `border`, ombre ; focus clavier : anneau or.
+Clic ou Entrée : ouvre la page de la session (§ 2). 20 sessions, puis
+« Afficher les sessions plus anciennes ».
+
+**États.** Chargement : 5 lignes squelette. Vide : « Aucune session d'équipe
+sur la période » + « Les sessions se lancent depuis un événement du
+Planning. » + bouton « Ouvrir le Planning ». Filtre sans résultat : « Aucune
+session de ce type » + « Voir toutes les sessions ». Erreur : gabarit § 7.
+
+### 2. Page d'une session terminée
+
+On garde la route actuelle `/team-session/:calendarEventId`. Une session
+**terminée** s'affiche en mode historique (la page actuelle reste telle quelle
+pour une session prévue ou en cours). Fil d'Ariane « ← Sessions d'équipe ».
+
+**En-tête.** Badge du type, titre, date et heures, format, résultat en grand
+(« 2 – 1 »), responsables. Boutons outline à droite : « Revoir dans le
+Planning », « Exporter le résumé » (texte, comme le rapport hebdo).
+
+**Filtre par game** (segmenté, sticky sous l'en-tête) : *Toute la session ·
+G1 V · G2 V · G3 D*. Chaque pastille montre le résultat. Tout ce qui suit
+(stats d'équipe, stats individuelles, duels, timeline) se recalcule pour la
+sélection ; les notes et reviews restent visibles, celles de la game choisie
+en premier. Le choix se garde dans l'URL (`?game=2`).
+
+**Bloc 1 — Stats d'équipe** (rangée de tuiles, nous contre eux) : K / D / A
+d'équipe, or total et écart d'or à 15 min, dégâts, vision, durée moyenne ;
+chaque tuile donne « nous » en grand et « eux » en `text-dim`, l'écart coloré
+vert / rouge. Source : `SessionPerformance` et les timelines (§ 10). Pour une
+game seule : la mini-frise d'objectifs de la game (§ 10).
+
+**Bloc 2 — Stats individuelles** (tableau, gabarit du § 7) : une ligne par
+joueur de l'équipe (rôle, joueur, champion), colonnes KDA, CS/min, or/min,
+dégâts/min, vision, part des dégâts, kill participation ; en vue « Toute la
+session », moyennes avec le nombre de games. Chaque ligne se déplie pour
+montrer le **duel** contre le vis-à-vis (`buildDuelRows` existant).
+
+**Bloc 3 — Objectifs de la session** : les objectifs fixés au lancement, avec
+« tenu / pas tenu » par game (§ 8 de la proposition analyste) ou, à défaut,
+la case cochée par le staff.
+
+**Bloc 4 — Notes et reviews** (seulement s'il y en a) :
+- *Review de session* et *review de chaque game* (`team_session_reviews`) :
+  résumé, lien VOD / YouTube s'il existe, transcription repliée ;
+- *Retours des joueurs* (`team_session_feedback`) : une carte par joueur ;
+- *Notes du scrim* (préparation, review, checklist, § 13) pour un scrim ;
+- *Présence* (`team_session_attendance`).
+S'il n'y a rien : une ligne « Pas encore de review pour cette session » et,
+pour le staff, « Faire la review ».
+
+**États.** Chargement par bloc (squelettes) ; game sans stats Riot
+(« Stats indisponibles pour la G3 : game non trouvée chez Riot ») ; session
+sans game (« Aucune game enregistrée ») ; erreur : gabarit § 7.
+
+### 3. Propositions à ajouter (à choisir)
+
+1. **Comparer deux sessions** : cocher deux sessions dans la liste →
+   vue côte à côte (winrate, objectifs, écart d'or, stats par rôle). Utile
+   pour voir si un travail a payé d'un scrim à l'autre.
+2. **Tendance sur la liste** : une petite courbe de winrate et d'objectifs
+   tenus sur les 10 dernières sessions, au-dessus de la liste.
+3. **Recherche par adversaire** : champ « Adversaire » dans les filtres, et un
+   bilan contre lui (« 3 sessions contre Aegis : 2 V – 1 D »), relié au
+   dossier adverse (§ 12).
+4. **Moments clés de la session** : 3 moments repérés dans les timelines
+   (premier drake perdu, plus gros écart d'or, Baron), avec lien vers la VOD.
+5. **Joueur de la session** : un MVP calculé (comme l'award hebdo) affiché
+   dans l'en-tête, et l'accès direct à sa carte.
+6. **Rappel de review** : badge sur la sidebar quand une session terminée n'a
+   pas de review depuis 48 h, pour le staff.
+7. **Lien avec le Journal des drafts** (§ 11) : la draft de chaque game
+   affichée dans le bloc stats, avec « Ouvrir dans le Journal ».
+
+**Textes FR / EN.** « Sessions d'équipe » / « Team sessions » ; « Toutes ·
+Flex · Scrim · Tournoi » / « All · Flex · Scrim · Tournament » ; « Objectifs
+tenus » / « Objectives met » ; « Reviews faites » / « Reviews done » ;
+« Review à faire » / « Review pending » ; « Toute la session » / « Whole
+session » ; « Stats d'équipe » / « Team stats » ; « Stats individuelles » /
+« Player stats » ; « Notes et reviews » / « Notes and reviews ».

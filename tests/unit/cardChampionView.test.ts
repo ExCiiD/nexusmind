@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cardChoiceOf, frontChampion, isOwnMember, skinLocale, skinTiles } from '../../src/lib/cardChampionView'
+import { cardChoiceOf, cutoutCandidates, frontChampion, isOwnMember, skinLocale, skinTiles } from '../../src/lib/cardChampionView'
 
 // docs/DESIGN_STATE.md § 14: the Team Lobby card's champion and skin.
 describe('my card', () => {
@@ -22,6 +22,20 @@ describe('the front of a card', () => {
     expect(frontChampion({ championId: 'Ahri', skinNum: 14 }, ['Ahri', 'Lux'], 'Lux')).toEqual({ championId: 'Ahri', skinNum: 14 })
     expect(frontChampion({ championId: 'Ahri', skinNum: 14 }, ['Lux'], 'Lux')).toEqual({ championId: 'Lux', skinNum: 0 })
     expect(frontChampion(null, [], null)).toBeNull()
+  })
+})
+
+describe('the cut-out a card shows (never the raw art)', () => {
+  it('the picked skin first, then the hosted ones, base first', () => {
+    expect(cutoutCandidates(14, [27, 0, 14])).toEqual([14, 0, 27])
+  })
+  it('a picked or base skin without a cut-out is skipped for the first hosted one', () => {
+    expect(cutoutCandidates(0, [20, 29])).toEqual([20, 29])
+    expect(cutoutCandidates(5, [0, 3])).toEqual([0, 3])
+  })
+  it('no cut-out at all: nothing (the glow alone); list unknown yet: the picked skin only', () => {
+    expect(cutoutCandidates(0, [])).toEqual([])
+    expect(cutoutCandidates(7, null)).toEqual([7])
   })
 })
 

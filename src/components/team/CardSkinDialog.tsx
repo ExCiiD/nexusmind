@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { DDRAGON_BASE, getDdragonVersion } from '@/lib/ddragon'
-import { loadingArtUrl } from '@/lib/playerCard'
 import { skinLocale, skinTiles, type SkinTile } from '@/lib/cardChampionView'
 import type { CardChampion, CardSkin } from '@/lib/collab'
 
@@ -119,11 +118,9 @@ export function CardSkinDialog({ championId, championName, current, preview, onS
             : 'cursor-not-allowed border border-dashed border-hextech-border',
         )}
       >
-        {s.cutoutUrl ? (
+        {/* Only cut-outs, never the raw art (docs/DECISIONS.md, 20/11): a skin without one is the empty halo + its badge. */}
+        {s.cutoutUrl && (
           <img src={s.cutoutUrl} alt="" loading="lazy" draggable={false} className="absolute bottom-0 left-1/2 h-[92%] w-auto max-w-none -translate-x-1/2 object-contain" />
-        ) : (
-          <img src={loadingArtUrl(championId, s.num)} alt="" loading="lazy" draggable={false}
-            className={cn('absolute inset-0 h-full w-full object-cover object-top', !s.selectable && 'opacity-35 blur-[1px]')} />
         )}
         {!s.selectable && (
           <span className="absolute inset-x-1 top-1 rounded bg-black/70 px-1 py-0.5 text-center font-mono text-[9px] font-bold uppercase tracking-wider text-hextech-text-dim">

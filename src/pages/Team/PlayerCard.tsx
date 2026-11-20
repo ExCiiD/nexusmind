@@ -87,10 +87,6 @@ function CardFront({ member, role, team, artChampion, artSkin = 0, holders, tota
   onFlip?: () => void
 }) {
   const { t } = useTranslation()
-  // Keyed by champion and skin, so a new pick tries its art again.
-  const [brokenArt, setBrokenArt] = useState<string | null>(null)
-  const artId = artChampion ? `${artChampion}_${artSkin}` : null
-  const artBroken = !!artId && brokenArt === artId
   const name = member.displayName.trim() || member.ign || '?'
   const roleLabel = t(`team.roster.roles.${role}`, { defaultValue: role })
   const badges = [
@@ -111,9 +107,9 @@ function CardFront({ member, role, team, artChampion, artSkin = 0, holders, tota
     >
       <CardLookBackground memberId={member.id} />
 
-      {/* The main champion: the faded art, then cut out of its scene. */}
-      {artChampion && !artBroken ? (
-        <CardChampionArt championKey={artChampion} skinNum={artSkin} onBroken={() => setBrokenArt(artId)} />
+      {/* The main champion's hosted cut-out (never the raw art); without a champion, the role's silhouette. */}
+      {artChampion ? (
+        <CardChampionArt championKey={artChampion} skinNum={artSkin} />
       ) : (
         <div aria-hidden className="absolute inset-x-0 bottom-[10%] flex justify-center text-white/[0.06]" style={{ transform: parallax(6) }}>
           <RoleGlyph role={role} className="h-[70cqw] w-[70cqw]" />

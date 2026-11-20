@@ -1212,7 +1212,7 @@
           "selectedA11y": "selected",
           "classic": "{{name}} (classic)",
           "previewOf": "Preview · {{name}}",
-          "noneWithCutout": "No {{name}} skin has a cut-out yet: the card will show its artwork.",
+          "noneWithCutout": "No {{name}} skin has a cut-out yet: the card will show an empty glow instead of the champion.",
           "backToAuto": "Back to automatic",
           "save": "Show on my card",
           "visible": "Visible to the whole group",

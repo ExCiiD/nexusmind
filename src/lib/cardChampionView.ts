@@ -35,6 +35,17 @@ export function frontChampion(choice: CardChampion | null, topKeys: readonly str
   return autoKey ? { championId: autoKey, skinNum: 0 } : null
 }
 
+/**
+ * The cut-outs a card tries, in order (never the raw art): the picked skin, then the champion's other skins with a
+ * hosted cut-out, base skin first. While the hosted list is unknown (null), only the picked skin; when it is known
+ * and the picked skin is not in it, that skin is skipped (no request bound to fail). Empty: the neutral glow only.
+ */
+export function cutoutCandidates(skinNum: number, hosted: readonly number[] | null): number[] {
+  if (!hosted) return [skinNum]
+  const sorted = [...hosted].sort((a, b) => a - b)
+  return sorted.includes(skinNum) ? [skinNum, ...sorted.filter((n) => n !== skinNum)] : sorted
+}
+
 /** One tile of the pop-up's grid. */
 export interface SkinTile {
   num: number

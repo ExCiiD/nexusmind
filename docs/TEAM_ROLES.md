@@ -6,6 +6,11 @@ regroupées dans le groupe « NexusMind » de la barre latérale. Chaque session
 lit d'abord `docs/SESSION_HANDOFF.md`, ce document, `docs/INBOX.md` et
 l'index de mémoire.
 
+**Registre des décisions (`docs/DECISIONS.md`) :** chaque session le relit
+avant toute tâche et s'y conforme. Une demande de l'utilisateur reçue par
+une session y est ajoutée tout de suite, puis signalée au Chief, qui la
+transmet à toutes les sessions concernées.
+
 ## Les rôles
 
 | Session (nom) | Rôle | Responsable de | Ne fait pas |

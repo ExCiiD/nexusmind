@@ -52,7 +52,8 @@
 | FE-4 | L'adaptateur web implémente ce que les pages web appellent. | `web/src/api.ts` typé `satisfies Partial<AscendAPI>` + test de couverture (WSC-16). | Test présent et vert. | P1 | ✅ | 19/11 (#18) : `web/src/apiContract.ts` vérifie par les types, via `npm run typecheck`, le preload contre `AscendAPI` (sans méthode en trop) et `webApi` contre `Partial<AscendAPI>`. `tests/unit/webApiCoverage.test.ts` parcourt le bundle web (166 fichiers) : chaque appel non gardé doit exister. Les 3 types de dérive ont été prouvés détectés (voir « Revues de livraisons »). |
 | FE-5 | Pas de requêtes en double ni de polling inutile. | Onglet réseau du harnais au repos, 1 min. | ≤ 3 appels Supabase/min au repos ; 1 seul chargement des groupes au lancement. | P2 | ❌ | UI-11/L02/WSC-07 : ~12 appels/min au repos, 12 requêtes identiques au lancement (`useCollab`). |
 | FE-6 | Le code partagé n'est pas dupliqué entre composants (helpers, éditeur de clip, `m:ss`). | Revue de code des livraisons. | Pas de nouvelle copie. | P3 | ❌ | UI-14, UI-16, L17 encore ouverts. |
-| FE-7 | DOM valide : pas d'élément interactif dans un autre. | Revue + avertissement React en console du harnais. | 0. | P2 | ❌ | UI-B2 : bouton dans un bouton dans `ScoutingTab.tsx`. |
+| FE-7 | DOM valide : pas d'élément interactif dans un autre. | Revue + avertissement React en console du harnais. | 0. | P2 | ✅ | 19/11 (revue #6) : la puce d'adversaire de `ScoutingTab.tsx` est séparée en deux boutons frères ; `jsx-a11y` en erreur depuis #36. Avant : UI-B2. |
+| FE-8 | **Toute origine externe ajoutée au renderer (image, fetch, média, iframe) figure dans la CSP du build réel** : desktop (`RENDERER_CSP` de `electron.vite.config.ts`, injectée dans `out/renderer/index.html`) **et** web (`web/public/_headers`, copié dans `web/dist/_headers`). Le harnais n'a **pas** de CSP : il ne peut pas servir de preuve. | 1. Relever les origines utilisées : `grep -rhoE "https://[a-z0-9.-]+\.[a-z]{2,}" src web/src --include=*.ts --include=*.tsx \| sort -u`, et pour chacune la directive concernée (`<img src>` → `img-src`, `fetch` → `connect-src`, `<video>`/`<audio>` → `media-src`, `<iframe>` → `frame-src`). 2. `npm run build` puis lire la balise `<meta http-equiv="Content-Security-Policy">` de `out/renderer/index.html` ; `npm run web:build` puis lire `web/dist/_headers`. 3. Pour une livraison qui ajoute une origine : ouvrir l'écran dans l'app packagée (ou `npm run preview`) et dans la web app, **console sans « Refused to load »**. | 0 origine utilisée absente de la CSP ; vérifié sur un build, pas dans le harnais. | P1 | ✅ | **21/11, beta.12 :** `npm run build` puis `out/renderer/index.html` (meta décodé) : `img-src` contient `https://ascend-cutouts.nexusmind-riot-proxy.workers.dev` et `https://i.ytimg.com`. `npm run web:build` puis `web/dist/_headers` : les deux aussi. Relevé des origines de `src` et `web/src` : aucune autre origine chargée hors CSP (`discord.com` et `youtube.com` ne sont que des placeholders ou des commentaires ; les iframes YouTube sont en `frame-src`). Console de l'app packagée non relue (build lu seulement). **Avant le correctif :** **(a)** `https://ascend-cutouts.nexusmind-riot-proxy.workers.dev` (détourés, #51) est dans la CSP web mais **absent de la CSP desktop** (`electron.vite.config.ts:24`) : détourés bloqués dans la beta.11, correctif attendu en beta.12. **(b)** `https://i.ytimg.com` (vignettes officielles du Codex, `src/lib/microReview/codex.ts:79`, affichées par `CodexCard.tsx:54`) est **absent des deux CSP** : ces vignettes sont bloquées sur desktop et sur le web. Précédent : les logos de groupe le 19/11. |
 
 ## 3. Back-end (processus principal Electron et `src/lib/*Core.ts`)
 
@@ -161,7 +162,7 @@ reprend les critères pour le verdict de release et se range à ses conclusions.
 | Catégorie | ✅ | ❌ | ⏳ |
 |---|---|---|---|
 | UI/UX | 2 | 2 | 2 |
-| Front-end | 4 | 3 | 0 |
+| Front-end | 6 | 2 | 0 |
 | Back-end | 0 | 4 | 3 |
 | Données | 5 | 3 | 0 |
 | Sécurité | 1 | 5 | 2 |
@@ -170,7 +171,7 @@ reprend les critères pour le verdict de release et se range à ses conclusions.
 | i18n | 3 | 2 | 1 |
 | Accessibilité | 6 | 0 | 1 |
 | Release et ops | 3 | 2 | 2 |
-| **Total** | **32** | **24** | **13** |
+| **Total** | **34** | **23** | **13** |
 
 (Mises à jour : TE-2 passé à ✅ avec le verdict beta.8 ; A11Y-4 ❌ et A11Y-5 ✅
 avec le passage clavier ; A11Y-7 ajouté ; DA-1, REL-1, REL-2 passés à ✅
@@ -444,6 +445,21 @@ Correctif proposé :
 | (5) Back | ✅ | Migration `20261120140000` : `card_champion` et `card_skin_num` avec une contrainte de format, `grant update` limité à ces 2 colonnes (déjà validé par CyberSecurity). API `collabSetMyCardChampion` / `collabListCardSkins`. Manifeste lu une seule fois, état hors ligne, Data Dragon indisponible : couverts par les tests. **Pas appliquée en production.** |
 
 **Non vérifié :** le rendu dans le harnais (revue de code et tests seulement).
+
+**Correction a posteriori (21/11) — trou de cette revue.** La CSP du renderer desktop n'autorisait pas l'hôte
+`ascend-cutouts` : les détourés étaient bloqués dans la beta.11. Cette revue ne l'a pas vu, parce qu'elle s'appuyait sur
+le code, les tests et le harnais, qui n'a pas de CSP. D'où le nouveau critère **FE-8**, désormais vérifié sur un build
+réel à chaque livraison qui ajoute une origine.
+
+**Contrôle du registre `docs/DECISIONS.md` (21/11) :**
+- « Lobby d'équipe avant Management » : ✅ (`Sidebar.tsx`).
+- « Cartes : détourés seulement, jamais l'art d'origine ; sinon le premier skin détouré, sinon un halo neutre » : ✅
+  dans l'état actuel de `CardChampionArt.tsx`. `cutoutCandidates` donne le skin choisi puis les skins hébergés, et un
+  halo neutre s'il n'y en a aucun ; test « no cut-out at all: nothing (the glow alone) ». La première version relue
+  pendant cette revue avait encore un repli sur l'art d'origine : il a été retiré depuis.
+- **P3 :** dans `CardSkinDialog`, le skin de base sans détouré reste proposé avec son **art d'origine**
+  (`loadingArtUrl`, test « base skin stays selectable (faded art) »), alors que la carte affichera le halo. Montrer le
+  halo dans la vignette, ou ne pas proposer ce skin.
 
 ### #49 Scrims dans le Planning — revue complète, front branché (20/11) — **OK avec une réserve P2 (ordre de mise en production)**
 
@@ -1112,6 +1128,16 @@ n'est pas redirigée.
    maintenant serait refusée, ce qui est le comportement voulu.
 
 ## Procédure de revue avant release
+
+**Registre des décisions :** chaque livraison et chaque maquette sont relues contre `docs/DECISIONS.md` (ordre des
+sections, contenu affiché, saison, coût, jargon…). Un écart est une réserve **P1** tant que l'utilisateur ne l'a pas
+levé. Une demande que l'utilisateur adresse directement à l'Audit est ajoutée au registre (ligne datée, en haut),
+puis signalée au Chief.
+
+**CSP (FE-8) :** pour toute livraison qui ajoute ou change une origine externe (image, fetch, média, iframe), lire
+la CSP **du build** (`out/renderer/index.html` après `npm run build`, `web/dist/_headers` après `npm run web:build`) et
+ouvrir l'écran dans l'app packagée ou `npm run preview`, et dans la web app. La console ne doit contenir aucun
+« Refused to load ». Le harnais, sans CSP, ne prouve rien sur ce point.
 
 **Fins de ligne :** le dépôt stocke en LF avec `core.autocrlf=true`.
 L'avertissement de git « LF will be replaced by CRLF » ne prouve rien. On ne
