@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2, Swords, Scale, Timer, Sun, Brain, Lightbulb, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
 import { wrBar, wrText } from '@/lib/winrate'
+import { useCachedQuery } from '@/hooks/useCachedQuery'
+import { HISTORY_KEY, fetchHistory } from '@/lib/pageQueries'
 import {
   championPool,
   winLossSplit,
@@ -28,13 +30,9 @@ const panel = 'rounded-2xl border border-hextech-border-dim/70 panel-surface p-5
  */
 export function StatsInsightsTab() {
   const { t } = useTranslation()
-  const [games, setGames] = useState<InsightGame[] | null>(null)
-
-  useEffect(() => {
-    window.api.getMatchHistoryWithStatus(50)
-      .then((rows: any[]) => setGames(rows ?? []))
-      .catch(() => setGames([]))
-  }, [])
+  // Perf gain 3: the History's cached list (its 50 latest games), shared with the History page and the warm-up.
+  const history = useCachedQuery(HISTORY_KEY, fetchHistory)
+  const games: InsightGame[] | null = history.data ? (history.data as InsightGame[]).slice(0, 50) : history.error ? [] : null
 
   if (games === null) {
     return (

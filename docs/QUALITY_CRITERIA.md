@@ -1193,6 +1193,41 @@ Vérifié :
   - Correction : écouter `.on('system', …)` et traiter `status === 'error'` comme `CHANNEL_ERROR` (repli et nouvel essai), avec un test.
   - Autre option : appliquer la migration 140000 avant la release, avec l'accord de l'utilisateur. Le repli resterait faux en cas de retour arrière.
 
+### Grouped review beta.19 (20/11/2026), uncommitted since `42c0d0c`: **not blocking, 3 P2**
+
+Reviewed: AUDIT_PERF_2 gains 0, 1, 2, 3, 4, 6, 7, 9 (`perfLog`, `detailedStatsStore`, `matchStore*`, `backupRotationCore`, `collabPersist`, `PageCacheWarmup`, `useCachedResource`, `pageQueries`/`groupQueries`/`staffQueries`), migration `20261120160000_match_summary_stats_memo`, `playerCard.ts` (best champions), `refreshUser()`.
+
+Checked:
+
+- **Migration on a fresh copy of the real DB**: applied by the compiled app (build 18:26, current with the diff), 2 launches without page errors. **Nothing lost**: same row counts before and after for every table (MatchCache 1 690, PlayerGameScore 531…). No semicolons in the SQL comments.
+- **FE-8 / CSP**: no new external host in the diff (desktop, web, main).
+- **Gzip timelines**: every reader goes through `matchStore` (`timelineFromRow` / `readTimeline` / `parseStoredTimeline`). Old plain format returned as is, then rewritten compressed. `ensureMatchCache` returns the decompressed string (`stats.ipc.ts:255`, `274`). Unit tests cover old + new reading.
+- **Region**: the stats loop and `ensureMatchCache` take the server from the matchId (`platformOfMatchId`).
+- **Perf log**: off without `NEXUSMIND_PERF_LOG=1`. The group list kept locally is tied to the uid (`collabPersist.ts`).
+- **Return within 30 s (e2e probe, copy of the real DB, cloud off)**:
+  - History, Stats (tabs) and Management do no cached reads again; only `nav:badges` (sidebar) runs.
+  - The cached Dashboard data are not re-read. The `stats:match-history` seen on return is the warm-up (`PageCacheWarmup`) of History.
+- typecheck ✅, Vitest **167 files / 2 034 tests ✅**.
+
+Gaps (not blocking):
+
+1. **P2: Realtime does not invalidate the page cache.**
+   - Nothing connects `onCloudRealtime` to `invalidateCached`: only `useRealtimeRefresh` (Planning, banners) reacts.
+   - Cached group data (staff dashboard, tasks, organisation week, announcements card, wellbeing, trials) stay as they are while the page is open, and up to 30 s on return after a change by someone else.
+   - Fix: one central listener, Realtime topic → `invalidateCached(groupKey(groupId, topic))`.
+2. **P2: deleting or importing a game does not invalidate `games:`.**
+   - Affected: `HistoryPage.tsx:1063` (delete a game) and `:662` (delete a session), `SessionPage.tsx:1267`, `MatchHistoryPicker.tsx:108` (import).
+   - Dashboard and History keep the old « imported / reviewed » flag for up to 30 s.
+   - Same for adding or removing an account (`SettingsPage.tsx:178`, `:194`): `games:` keeps the old set of accounts.
+3. **P2 (pre-existing since 29/03, `04280c7`): `stats:auto-snapshot` never creates a new snapshot once a first one exists.**
+   - `stats.ipc.ts:972-975` reads the number in the matchId (`EUW1_8051837730` → 8 051 837 730) as a date in ms. Every id is below `lastGameAtMs`, so `candidateIds` is empty.
+   - Observed on the copy: 12 snapshots, all created on 20/11, the last one at `lastGameAt` 22/06/2026, nothing since.
+   - Fix: filter on `gameEndAt` (MatchSummary or match body).
+4. **P3:**
+   - The Dashboard's uncached cards (patterns, report, progress, session stats, calibration, reassessment) re-read on every visit: local and cheap.
+   - `WeeklyCodex.tsx:24` (`mistake-stats:occurrences`) is not cached and can backfill analyses (`ensureGameAnalysis`) on every Dashboard visit.
+   - Going back to an older version would see `gz1:` timelines as unreadable. Some old readers had no `try` (`JSON.parse` in `stats.ipc.ts:90` in beta.18), so their handler would fail. Acceptable if downgrades are not supported.
+
 ## Procédure de revue avant release
 
 **Registre des décisions :** chaque livraison et chaque maquette sont relues contre `docs/DECISIONS.md` (ordre des

@@ -34,6 +34,8 @@ import { cn } from '@/lib/utils'
 import { EmptyState, ErrorState, SkeletonRows } from '@/components/ui/data-state'
 import { wrText } from '@/lib/winrate'
 import { useCachedQuery } from '@/hooks/useCachedQuery'
+import { HISTORY_KEY, fetchHistory } from '@/lib/pageQueries'
+import { invalidateCached } from '@/lib/queryCache'
 
 const NO_HISTORY: any[] = []
 
@@ -184,7 +186,7 @@ function GamesTab() {
   const navigateToReview = (gameId: string | null) => navigate(gameId ? `/review?gameId=${gameId}` : '/review')
   const user = useUserStore((s) => s.user)
   // Cached (useCachedQuery): back on the page, the list shows at once and refreshes behind.
-  const history = useCachedQuery<RiotGameEntry[]>('games:history-100', () => window.api.getMatchHistoryWithStatus(100))
+  const history = useCachedQuery<RiotGameEntry[]>(HISTORY_KEY, fetchHistory)
   const games = history.data ?? NO_HISTORY
   const loading = history.loading
   const error = history.error ? ((history.error as any)?.message || t('history.state.unknownCause')) as string : null
@@ -661,6 +663,7 @@ function SessionsTab() {
   const handleDelete = useCallback(async (id: string) => {
     try {
       await window.api.deleteSession(id)
+      invalidateCached('games:') // the game lists (History, Stats, Dashboard) refetch
       setSessions((prev) => prev.filter((s) => s.id !== id))
       setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next })
       if (expandedId === id) setExpandedId(null)
@@ -674,6 +677,7 @@ function SessionsTab() {
     setBulkDeleting(true)
     try {
       await window.api.bulkDeleteSessions(Array.from(selectedIds))
+      invalidateCached('games:') // the game lists (History, Stats, Dashboard) refetch
       setSessions((prev) => prev.filter((s) => !selectedIds.has(s.id)))
       if (expandedId && selectedIds.has(expandedId)) setExpandedId(null)
       setSelectedIds(new Set())
@@ -1060,6 +1064,7 @@ function GameRow({ game, index, hasRecording, onDelete }: { game: GameEntry; ind
     setDeleting(true)
     try {
       await window.api.deleteGame(game.id)
+      invalidateCached('games:') // the game lists (History, Stats, Dashboard) refetch
       onDelete?.(game.id)
       setConfirmDelete(false)
     } catch {

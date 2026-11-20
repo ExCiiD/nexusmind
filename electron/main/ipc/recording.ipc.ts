@@ -1,5 +1,6 @@
 import { ipcMain, dialog, app, BrowserWindow, shell } from 'electron'
 import { getPrisma } from '../database'
+import { saveTimeline } from '../matchStore'
 import { getOrCreateOffSessionSession } from '../offSessionGames'
 import { ignoredAmong } from '../ignoredMatches'
 import { z } from 'zod'
@@ -423,15 +424,7 @@ export async function backfillOrphanRecordings(opts: { recordingIds?: string[] }
       if (!hasTimeline) {
         const timelineData = await getMatchTimeline(bestMatch.matchId, bestMatch.region)
         if (timelineData) {
-          await prisma.matchCache.upsert({
-            where: { matchId: bestMatch.matchId },
-            create: {
-              matchId: bestMatch.matchId,
-              matchJson: JSON.stringify(bestMatch.matchData),
-              timelineJson: JSON.stringify(timelineData),
-            },
-            update: { timelineJson: JSON.stringify(timelineData) },
-          })
+          await saveTimeline(prisma, bestMatch.matchId, timelineData, JSON.stringify(bestMatch.matchData))
           const frameCount = timelineData?.info?.frames?.length ?? 0
           console.log(`[backfill] Cached timeline for ${bestMatch.matchId} (${frameCount} frames)`)
         }

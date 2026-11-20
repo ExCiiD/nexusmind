@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -23,31 +23,19 @@ import {
   GitCompare,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
+import { useCachedQuery } from '@/hooks/useCachedQuery'
+import { matchDetailKey } from '@/lib/pageQueries'
 
 export function DetailedStatsPage() {
   const { t } = useTranslation()
   const { matchId } = useParams<{ matchId: string }>()
   const navigate = useNavigate()
-  const [stats, setStats] = useState<DetailedGameStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [compareOpponent, setCompareOpponent] = useState(false)
-
-  useEffect(() => {
-    if (!matchId) return
-    setLoading(true)
-    setError(null)
-    window.api
-      .getDetailedStats(matchId)
-      .then((data) => {
-        setStats(data)
-        setLoading(false)
-      })
-      .catch((err) => {
-        setError(err.message ?? 'Failed to fetch stats')
-        setLoading(false)
-      })
-  }, [matchId])
+  // Perf gain 3: a match already opened shows at once (its stats never change).
+  const query = useCachedQuery<DetailedGameStats | null>(matchId ? matchDetailKey(matchId) : null, () => window.api.getDetailedStats(matchId!), { staleMs: 10 * 60_000 })
+  const stats = query.data ?? null
+  const loading = query.loading
+  const error = query.error ? ((query.error as Error).message ?? 'Failed to fetch stats') : null
 
   if (loading) {
     return (

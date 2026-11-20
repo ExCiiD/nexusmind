@@ -1,5 +1,7 @@
 import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
+import { readMatch, readTimeline, saveMatch, saveTimeline } from '../matchStore'
+import { platformOfMatchId } from '../gameCatchUpCore'
 import { tryUnlockBadge } from '../badgeUnlock'
 import { extractDetailedStats, getMatch, getMatchTimeline } from '../riotClient'
 export function registerReviewHandlers() {
@@ -127,38 +129,24 @@ export function registerReviewHandlers() {
 }
 
 async function getCachedMatchBundle(prisma: ReturnType<typeof getPrisma>, matchId: string, region: string) {
-  const cached = await prisma.matchCache.findUnique({ where: { matchId } })
-
-  let matchData: any
-  let timelineData: any = null
-
-  if (cached) {
-    matchData = JSON.parse(cached.matchJson)
-    timelineData = cached.timelineJson ? JSON.parse(cached.timelineJson) : null
-  } else {
-    matchData = await getMatch(matchId, region)
+  // AUDIT_PERF_2 gains 2 and 6: the match id names its server; timelines through matchStore (compressed).
+  const platform = platformOfMatchId(matchId) || region
+  let matchData: any = await readMatch(prisma, matchId)
+  let timelineData: any = matchData ? await readTimeline(prisma, matchId) : null
+  const hadTimeline = !!timelineData
+  if (!matchData) {
+    matchData = await getMatch(matchId, platform)
+    await saveMatch(prisma, matchId, matchData)
   }
 
   if (!timelineData) {
     try {
-      timelineData = await getMatchTimeline(matchId, region)
+      timelineData = await getMatchTimeline(matchId, platform)
     } catch {
       timelineData = null
     }
   }
-
-  await prisma.matchCache.upsert({
-    where: { matchId },
-    create: {
-      matchId,
-      matchJson: JSON.stringify(matchData),
-      timelineJson: timelineData ? JSON.stringify(timelineData) : null,
-    },
-    update: {
-      matchJson: JSON.stringify(matchData),
-      timelineJson: timelineData ? JSON.stringify(timelineData) : undefined,
-    },
-  })
+  if (timelineData && !hadTimeline) await saveTimeline(prisma, matchId, timelineData).catch(() => {})
 
   return { matchData, timelineData }
 }

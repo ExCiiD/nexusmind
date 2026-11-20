@@ -9,6 +9,8 @@ les mots de l'utilisateur quand c'est possible.
 
 | Date | Décision | Concerne |
 |---|---|---|
+| 20/11 | Sauvegarde du 19/11 04:44 (avant le reset) : **« Yes, copy it »**. Une copie est gardée dans `D:\Nexusmind\backups-manuels` (hors rotation). Pas de restauration, la décision du 20/11 tient toujours. | back |
+| 20/11 | **Vitesse : chargements quasi instantanés, une page déjà chargée ne se recharge pas au retour.** beta.19 = gains 0, 1, 2, 3, 4, 6, 7, 9 de docs/AUDIT_PERF_2.md (journal perf, mémo stats persistant, boucle parallèle + région du matchId, useCachedQuery partout, amorçage cloud, timelines gzip, résumé par match, sauvegardes allégées). **Plus tard** : 5 (RPC staff_dashboard) et 10 (routes lazy). | back, front, audit |
 | 20/11 | **« Lance-le »** : lot 1 de scalabilité (Supabase Realtime à la place du polling, auth vérifiée une fois, groupes chargés une fois, requêtes filtrées). **Chercher d’autres optimisations de charge et de vitesse.** | back, front, audit |
 | 20/11 | **Ne pas restaurer l’historique effacé le 19/11, et ne plus poser la question.** Rester sur la demande en cours. | toutes |
 | 20/11 | **« Yes, every game »** : l’app enregistre **toutes les parties**, même sans session active (historique, stats, enregistrement) ; la session reste un cadre en plus. | back, front |

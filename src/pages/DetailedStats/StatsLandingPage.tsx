@@ -30,6 +30,7 @@ import {
 import { StatsInsightsTab } from './StatsInsightsTab'
 import { useCachedQuery } from '@/hooks/useCachedQuery'
 import { invalidateCached } from '@/lib/queryCache'
+import { SNAPSHOTS_KEY, fetchSnapshots } from '@/lib/pageQueries'
 
 const NO_ACCOUNTS: any[] = []
 const NO_SNAPSHOTS: any[] = []
@@ -71,7 +72,7 @@ export function StatsLandingPage() {
   // Cached (useCachedQuery): back on the page, everything shows at once and refreshes behind. The page no longer
   // waits for the automatic snapshot (Riot reads): it runs after, and refreshes the snapshots when it adds one.
   const accountsQ = useCachedQuery<LinkedAccount[]>('accounts:list', () => window.api.listAccounts())
-  const snapshotsQ = useCachedQuery<any[]>('games:snapshots', () => window.api.getStatsSnapshots())
+  const snapshotsQ = useCachedQuery<any[]>(SNAPSHOTS_KEY, fetchSnapshots)
   const averagesQ = useCachedQuery<any>(
     user?.puuid || selectedAccountPuuid !== '__main__' ? `games:averages:${resolvedPuuid ?? 'all'}` : null,
     () => window.api.getAccountAverages(resolvedPuuid),
@@ -97,7 +98,7 @@ export function StatsLandingPage() {
       if (cancelled || !snapResult || snapResult.created <= 0) return
       setAutoSnapMsg(t('statsAvg.autoSnapshotDone', { count: snapResult.created }))
       setTimeout(() => setAutoSnapMsg(null), 5000)
-      invalidateCached('games:snapshots')
+      invalidateCached(SNAPSHOTS_KEY)
     }).catch(() => {})
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per visit

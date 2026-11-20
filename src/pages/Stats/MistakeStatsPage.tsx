@@ -26,6 +26,8 @@ import { useUserStore } from '@/store/useUserStore'
 import { cn } from '@/lib/utils'
 import { championLabel } from '@/lib/statsInsights'
 import { EmptyState, SkeletonKpiTiles } from '@/components/ui/data-state'
+import { useCachedQuery } from '@/hooks/useCachedQuery'
+import { mistakeOccurrencesKey } from '@/lib/pageQueries'
 import {
   rankMistakes,
   phaseBreakdown,
@@ -45,26 +47,23 @@ const WINDOWS: WindowDays[] = [7, 14, 30, 90]
 const ROLES = ['', 'TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'] as const
 const panel = 'panel-surface rounded-2xl border border-hextech-border-dim/70 shadow-lg backdrop-blur-sm'
 
+const NO_OCCURRENCES: MistakeOccurrence[] = []
+
 export function MistakeStatsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [windowDays, setWindowDays] = useState<WindowDays>(30)
   const [role, setRole] = useState<string>('')
   const [champion, setChampion] = useState('')
-  const [occ, setOcc] = useState<MistakeOccurrence[] | null>(null)
   const [family, setFamily] = useState<MistakeFamily | 'all'>('all')
   const [focus, setFocus] = useState<string | null>(null)
   const [experiment, setExperiment] = useState<'idle' | 'busy' | 'done' | 'error'>('idle')
   const mainRole = useUserStore((s) => s.user?.mainRole ?? '')
 
-  useEffect(() => {
-    let cancelled = false
-    setOcc(null)
-    window.api.getMistakeOccurrences({ days: windowDays, role: role || null, champion: champion.trim() || null })
-      .then((rows) => { if (!cancelled) setOcc(rows) })
-      .catch(() => { if (!cancelled) setOcc([]) })
-    return () => { cancelled = true }
-  }, [windowDays, role, champion])
+  // Perf gain 3: one cache entry per filter; coming back shows the last one at once.
+  const filter = { days: windowDays, role: role || null, champion: champion.trim() || null }
+  const occQuery = useCachedQuery<MistakeOccurrence[]>(mistakeOccurrencesKey(filter), () => window.api.getMistakeOccurrences(filter))
+  const occ: MistakeOccurrence[] | null = occQuery.data ?? (occQuery.error ? NO_OCCURRENCES : null)
 
   const ranking = useMemo(() => rankMistakes(occ ?? []), [occ])
   const visible = useMemo(() => (family === 'all' ? ranking : ranking.filter((r) => r.family === family)), [ranking, family])

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle, HeartPulse, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,8 +13,12 @@ import type { WellbeingCheckin } from '@/lib/wellbeing'
 import type { NameOf } from '@/hooks/useCollab'
 import { useWellbeingConsent } from '@/hooks/useWellbeingConsent'
 import { WellbeingConsentDialog } from '@/components/Wellbeing/WellbeingConsentDialog'
+import { useCachedResource } from '@/hooks/useCachedResource'
+import { groupKey, userKey } from '@/lib/groupQueries'
 
 const SCALE = [1, 2, 3, 4, 5]
+const NO_CHECKINS: WellbeingCheckin[] = []
+const NO_GAMES: Array<{ win: boolean; gameEndAt: number | string | null }> = []
 
 interface Props { groups: Group[]; myUserId: string; nameOf: NameOf }
 
@@ -49,28 +53,25 @@ export function MyCheckin({ myUserId }: { myUserId: string }) {
   const [sleep, setSleep] = useState('3')
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
-  const [checkins, setCheckins] = useState<WellbeingCheckin[] | null>(null)
   // Consent to storing check-ins (privacy policy v0.3 § 3 bis): asked before
   // the first one is saved, and from users who already have some without it.
   const { granted, loading: consentLoading, available: consentApi, set: setConsent } = useWellbeingConsent()
   const [consentAsk, setConsentAsk] = useState<'first' | 'existing' | null>(null)
-  const [games, setGames] = useState<Array<{ win: boolean; gameEndAt: number | string | null }>>([])
-
-  const load = useCallback(async () => {
-    try {
+  // Perf gain 3: my check-ins, cached per cloud account.
+  const mineQ = useCachedResource<{ checkins: WellbeingCheckin[]; games: Array<{ win: boolean; gameEndAt: number | string | null }> }>(
+    userKey(myUserId, 'wellbeing'),
+    async () => {
       const [mine, sessions] = await Promise.all([
         window.api.wellbeingListMine(60),
         window.api.collabPlayerSessions(myUserId).catch(() => []),
       ])
-      setCheckins(mine)
-      setGames(sessions.flatMap((s) => s.games.map((g) => ({ win: g.win, gameEndAt: g.gameEndAt }))))
-    } catch (err) {
-      setCheckins([])
-      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
-    }
-  }, [myUserId, t, toast])
-
-  useEffect(() => { load() }, [load])
+      return { checkins: mine, games: sessions.flatMap((s) => s.games.map((g) => ({ win: g.win, gameEndAt: g.gameEndAt }))) }
+    })
+  const checkins: WellbeingCheckin[] | null = mineQ.data?.checkins ?? (mineQ.failed ? NO_CHECKINS : null)
+  const games = mineQ.data?.games ?? NO_GAMES
+  const mineError = mineQ.error
+  useEffect(() => { if (mineError) toast({ title: t(collabErrorKey(mineError)), variant: 'destructive' }) }, [mineError]) // eslint-disable-line react-hooks/exhaustive-deps
+  const load = mineQ.load
 
   // Check-ins stored before consent existed: ask once on opening the tab.
   useEffect(() => {
@@ -179,23 +180,24 @@ function TeamWellbeing({ staffGroups, nameOf }: { staffGroups: Group[]; nameOf: 
   const { toast } = useToast()
   const groupId = staffGroups[0]?.id ?? null
   const group = staffGroups.find((g) => g.id === groupId)
-  const [byPlayer, setByPlayer] = useState<Map<string, WellbeingCheckin[]> | null>(null)
-  const [loadThreshold, setLoadThreshold] = useState<number | null>(null)
   const [savingThreshold, setSavingThreshold] = useState(false)
 
-  useEffect(() => {
-    if (!group) return
-    setByPlayer(null)
-    const playerIds = group.members.filter(playsInGroup).map((m) => m.userId)
-    window.api.wellbeingListForGroup(playerIds)
-      .then((rows) => {
-        const map = new Map<string, WellbeingCheckin[]>()
-        for (const r of rows) map.set(r.userId, [...(map.get(r.userId) ?? []), r])
-        setByPlayer(map)
-      })
-      .catch((err) => { setByPlayer(new Map()); toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) })
-    window.api.wellbeingGetLoadThreshold(group.id).then(setLoadThreshold).catch(() => setLoadThreshold(null))
-  }, [group, t, toast])
+  // Perf gain 3: the players' check-ins and the load threshold, cached per group (and its players).
+  const playerIds = (group?.members ?? []).filter(playsInGroup).map((m) => m.userId).sort().join(',')
+  const rowsQ = useCachedResource<WellbeingCheckin[]>(group ? groupKey(group.id, `wellbeing:${playerIds}`) : null,
+    () => window.api.wellbeingListForGroup(playerIds ? playerIds.split(',') : []))
+  const byPlayer = useMemo(() => {
+    if (!rowsQ.data) return rowsQ.failed ? new Map<string, WellbeingCheckin[]>() : null
+    const map = new Map<string, WellbeingCheckin[]>()
+    for (const r of rowsQ.data) map.set(r.userId, [...(map.get(r.userId) ?? []), r])
+    return map
+  }, [rowsQ.data, rowsQ.failed])
+  const rowsError = rowsQ.error
+  useEffect(() => { if (rowsError) toast({ title: t(collabErrorKey(rowsError)), variant: 'destructive' }) }, [rowsError]) // eslint-disable-line react-hooks/exhaustive-deps
+  const thresholdQ = useCachedResource<number | null>(group ? groupKey(group.id, 'wellbeing-threshold') : null,
+    () => window.api.wellbeingGetLoadThreshold(group!.id).catch(() => null))
+  const loadThreshold = thresholdQ.data ?? null
+  const setLoadThreshold = thresholdQ.set
 
   if (!group) return null
 

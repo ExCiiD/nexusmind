@@ -440,6 +440,8 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
 
   // Ascend cloud account & backups
   cloudStatus: () => Promise<CloudStatus>
+  /** Perf gain 4: the cloud status and my groups in one call at start-up (null groups: they could not be read). */
+  collabBootstrap?: () => Promise<{ status: CloudStatus; groups: import('./collab').Group[] | null }>
   /** `inviteCode` is required the first time an e-mail signs in (invite-only access). */
   cloudSendCode: (email: string, inviteCode?: string) => Promise<{ sent: boolean }>
   /** Opens the web app in the browser, already signed in. Desktop only. */

@@ -12,6 +12,7 @@
  * an "Auto" account then saves (accountRegions.ts).
  */
 import { getPrisma } from './database'
+import { saveMatch } from './matchStore'
 import { extractPlayerStats, getAnyQueueMatchIds, getMatch, regionResolver, RiotNotFoundError } from './riotClient'
 import { withRiotPriority } from './riotPriority'
 import { ignoredAmong, rememberNotFound } from './ignoredMatches'
@@ -33,11 +34,7 @@ async function loadMatch(matchId: string, region: string): Promise<CatchUpMatch[
     return null
   })
   if (data) {
-    await prisma.matchCache.upsert({
-      where: { matchId },
-      create: { matchId, matchJson: JSON.stringify(data) },
-      update: {},
-    }).catch(() => {})
+    await saveMatch(prisma, matchId, data, { overwrite: false }).catch(() => {})
   }
   return data
 }

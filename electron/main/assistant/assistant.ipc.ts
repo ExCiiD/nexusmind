@@ -8,6 +8,7 @@
 
 import { z } from 'zod'
 import { getPrisma } from '../database'
+import { timelineFromRow } from '../matchStore'
 import { id, validatedHandle } from '../ipc/validate'
 import { tryUnlockBadge } from '../badgeUnlock'
 import type { AdviceHistory } from './diagnosis'
@@ -83,7 +84,7 @@ async function loadInputs(userId: string, puuids: string[]): Promise<{ games: Ga
     for (const c of caches) {
       const g = games.find((x) => x.matchId === c.matchId)
       if (!g) continue
-      const facts = extractTimelineFacts(c.matchJson, c.timelineJson, { puuids, championName: g.champion, win: g.win }, {
+      const facts = extractTimelineFacts(c.matchJson, timelineFromRow(prisma, c.matchId, c.timelineJson), { puuids, championName: g.champion, win: g.win }, {
         computeLane: !g.lanePhaseReport,
       })
       if (factsCache.size > 300) factsCache.delete(factsCache.keys().next().value as string)

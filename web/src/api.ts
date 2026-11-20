@@ -253,6 +253,12 @@ export const webApi = {
 
   // ── collaboration (same semantics as electron/main/cloud/collab.ts) ──
   collabListGroups: async () => core.listMyGroups(sb, await currentUserId()),
+  // Perf gain 4: status and groups in one call (the same reads as cloudStatus and collabListGroups).
+  async collabBootstrap() {
+    const status = await webApi.cloudStatus()
+    const groups = status.user ? await core.listMyGroups(sb, status.user.id).catch(() => null) : []
+    return { status, groups }
+  },
   async collabCreateGroup(name: string, kind: 'team' | 'coaching') {
     const id = await core.createGroup(sb, name.trim(), kind)
     await core.updateMyMemberProfile(sb, await currentUserId(), id, await webIdentity()).catch(() => {})

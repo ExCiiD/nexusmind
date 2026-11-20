@@ -15,6 +15,8 @@ const objectiveId = z.string().min(1).max(64)
 
 export function registerCollabHandlers() {
   validatedHandle('collab:list-groups', z.tuple([]), () => collab.listMyGroups())
+  // Perf gain 4: status + groups in one call at start-up.
+  validatedHandle('collab:bootstrap', z.tuple([]), () => collab.bootstrap())
   validatedHandle('collab:create-group', z.tuple([z.string().trim().min(1).max(80), z.enum(['team', 'coaching'])]),
     (_e, name, kind) => collab.createGroup(name, kind).finally(() => { void refreshRealtimeGroups() }))
   validatedHandle('collab:create-invite', z.tuple([uuid, role, z.number().int().min(1).max(30)]),

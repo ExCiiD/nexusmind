@@ -1,4 +1,5 @@
 import { getPrisma } from './database'
+import { timelineFromRow } from './matchStore'
 import { detectMistakes, type MistakeCandidate } from './mistakeDetector'
 import { planAutoBookmarks, type AutoBookmarkCandidate } from './mistakeBookmarks'
 import { applySeverityDelta } from './mistakeTuning'
@@ -31,8 +32,9 @@ export async function autoDetectMistakes(gameId: string, parsed?: ParsedMatch | 
     source = parsed
   } else {
     const cache = await prisma.matchCache.findUnique({ where: { matchId: game.matchId } })
-    if (!cache?.matchJson || !cache.timelineJson) return { created: 0, skipped: 0, reason: 'no-cache' }
-    source = { match: cache.matchJson, timeline: cache.timelineJson }
+    const timeline = cache ? timelineFromRow(prisma, game.matchId, cache.timelineJson) : null
+    if (!cache?.matchJson || !timeline) return { created: 0, skipped: 0, reason: 'no-cache' }
+    source = { match: cache.matchJson, timeline }
   }
 
   const user = await prisma.user.findFirst({ where: { isActive: true } })

@@ -10,6 +10,7 @@ import { localDateKey } from '@/lib/planningView'
 import type { AvailabilityException, AvailabilityRule } from '@/lib/calendar'
 import { cn } from '@/lib/utils'
 import { TimeSelect, hmToMin, minToHm } from './TimeSelect'
+import { invalidateGroupCalendar } from '@/lib/groupQueries'
 
 type DayMode = 'usual' | 'available' | 'unavailable'
 interface DayState { mode: DayMode; start: number; end: number; note: string }
@@ -116,6 +117,7 @@ export function MyAvailabilityEditor({ groupId, days, myRules, myExceptions, onS
         }
       }
       toast({ title: t('planning.myAvailability.saved'), variant: 'gold' })
+      invalidateGroupCalendar(groupId) // perf gain 3: every cached copy of the availabilities refetches
       onSaved()
     } catch (err) {
       toast({ title: t(collabErrorKey(err)), variant: 'destructive' })

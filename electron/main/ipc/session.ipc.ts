@@ -1,5 +1,8 @@
 import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
+import { saveTimeline } from '../matchStore'
+import { parseStoredTimeline } from '../matchStoreCore'
+import { platformOfMatchId } from '../gameCatchUpCore'
 import { tryUnlockBadge } from '../badgeUnlock'
 import { getMatchIds, getMatch, getMatchTimeline, extractPlayerStats } from '../riotClient'
 import { forgetIgnoredMatches, rememberDeletedMatches } from '../ignoredMatches'
@@ -285,21 +288,12 @@ export function registerSessionHandlers() {
           continue
         }
 
-        let timelineData: any = cached?.timelineJson ? JSON.parse(cached.timelineJson) : null
+        // AUDIT_PERF_2 gains 2 and 6: compressed timelines (matchStore), the match id names its server.
+        let timelineData: any = cached ? parseStoredTimeline(cached.timelineJson) : null
         if (!timelineData) {
           try {
-            timelineData = await getMatchTimeline(matchId, user.region)
-            if (timelineData) {
-              await prisma.matchCache.upsert({
-                where: { matchId },
-                create: {
-                  matchId,
-                  matchJson: JSON.stringify(matchData),
-                  timelineJson: JSON.stringify(timelineData),
-                },
-                update: { timelineJson: JSON.stringify(timelineData) },
-              })
-            }
+            timelineData = await getMatchTimeline(matchId, platformOfMatchId(matchId) || user.region)
+            if (timelineData) await saveTimeline(prisma, matchId, timelineData, JSON.stringify(matchData))
           } catch {
             // Timeline is optional
           }

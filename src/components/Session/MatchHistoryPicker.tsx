@@ -9,6 +9,7 @@ import { PICKER_SLOW_MS, normalizeHistoryResult, pickerErrorKey } from '@/lib/ma
 import { riotErrorText, riotRateLimitSeconds } from '@/lib/riotErrors'
 import { useUserStore } from '@/store/useUserStore'
 import { AccountBadge } from '@/components/ui/AccountBadge'
+import { invalidateCached } from '@/lib/queryCache'
 
 const ROLE_LABELS: Record<string, string> = {
   TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Support',
@@ -106,6 +107,7 @@ export function MatchHistoryPicker({ onImported }: MatchHistoryPickerProps) {
     setImporting(true)
     try {
       const imported = await window.api.importGamesToSession([...selected])
+      invalidateCached('games:') // the game lists (History, Stats, Dashboard) refetch
       toast({
         title: t('history.picker.importedTitle'),
         description: t('history.picker.importedDesc', { count: imported.length }),

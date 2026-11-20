@@ -82,6 +82,21 @@ export function invalidateCached(prefix: string) {
   }
 }
 
+/**
+ * Another local profile or another cloud account (perf gain 3): every cached copy belongs to the one before, so all
+ * data goes. The pages showing a key are told, and refetch for the new one. Listeners stay (unlike clearQueryCache).
+ */
+export function dropCachedData() {
+  const keys = [...entries.keys()]
+  entries.clear()
+  for (const key of keys) notify(key)
+}
+
+/** A scope (a profile id, an account id) that had a value and now has another one, or none: drop the cache. */
+export function scopeChanged(prev: string | null | undefined, next: string | null | undefined): boolean {
+  return prev != null && prev !== (next ?? null)
+}
+
 /** Tests only. */
 export function clearQueryCache() {
   entries.clear()

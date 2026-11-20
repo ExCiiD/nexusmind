@@ -9,6 +9,8 @@ import { collabErrorKey } from '@/lib/collab'
 import { cn } from '@/lib/utils'
 import type { Announcement } from '@/lib/announcements'
 import type { NameOf } from '@/hooks/useCollab'
+import { invalidateCached } from '@/lib/queryCache'
+import { groupKey } from '@/lib/groupQueries'
 
 /** Phase 2 (Planning rework §9): announcements, now part of Planning and
  *  gated by canEditCalendar instead of the old is_group_staff — see
@@ -27,6 +29,8 @@ export function AnnouncementsCard({ groupId, canEdit, nameOf }: { groupId: strin
   const [expanded, setExpanded] = useState(false)
 
   const load = useCallback(async () => {
+    // Perf gain 3: the cached announcements (My space, Organisation) refetch after a change made here.
+    invalidateCached(groupKey(groupId, 'announcements'))
     try { setItems(await window.api.announcementsList(groupId)) }
     catch (err) { setItems([]); toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
   }, [groupId, t, toast])

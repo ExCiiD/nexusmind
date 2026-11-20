@@ -26,8 +26,8 @@ app.commandLine.appendSwitch(
 import { join } from 'path'
 import { createReadStream, statSync, readFileSync, existsSync } from 'fs'
 import { autoUpdater } from 'electron-updater'
-import { initDatabase, getPrisma } from './database'
-import { invalidateMatchIds } from './matchIdsCache'
+import { initDatabase, getPrisma, compressOldBackups } from './database'
+import { invalidateMatchIds, initMatchIdsPersistence } from './matchIdsCache'
 import { GameDetector } from './gameDetector'
 import { recordingManager, isFfmpegAvailable, generateThumbnailForRecording, mergeAudioIntoVideo, waitUntilReadable, probeReadable, type RecordingSettings } from './recorder'
 import { wgcRecorder } from './wgcRecorder'
@@ -39,10 +39,11 @@ import { registerSessionHandlers } from './ipc/session.ipc'
 import { registerReviewHandlers } from './ipc/review.ipc'
 import { registerAssessmentHandlers } from './ipc/assessment.ipc'
 import { registerAnalyticsHandlers } from './ipc/analytics.ipc'
-import { registerStatsHandlers, prefetchGameAnalysis } from './ipc/stats.ipc'
+import { registerStatsHandlers, prefetchGameAnalysis, backfillLanePhaseReports } from './ipc/stats.ipc'
 import { recoverStrandedGames } from './strandedGames'
 import { catchUpRecentGames } from './gameCatchUp'
 import { registerRealtimeHandlers } from './cloud/realtime'
+import { installPerfLog } from './perfLog'
 import { withRiotPriority } from './riotPriority'
 import { registerAccountHandlers } from './ipc/account.ipc'
 import { initAccountRegions, registerAccountRegionHandlers } from './accountRegions'
@@ -349,6 +350,8 @@ function createWindow() {
 
 async function bootstrap() {
   if (!isPrimaryInstance) return
+  // AUDIT_PERF_2 gain 0: NEXUSMIND_PERF_LOG=1 times every IPC handler and network call (off: nothing patched).
+  installPerfLog()
   // Serve local video files via nxm:// with proper Range/206 support for seeking.
   // net.fetch('file://') does NOT honour Range headers, so we read the file ourselves.
   protocol.handle('nxm', async (request) => {
@@ -442,6 +445,8 @@ async function bootstrap() {
   })
 
   await initDatabase()
+  // The last Riot match lists, so the first screens after a restart do not wait for Riot (matchIdsCache.ts).
+  initMatchIdsPersistence(join(app.getPath('userData'), 'match-ids-cache.json'))
 
   registerAuthHandlers()
   registerSessionHandlers()
@@ -854,12 +859,21 @@ async function bootstrap() {
   setTimeout(recover, 60_000)
   setInterval(recover, 20 * 60_000)
 
+  // AUDIT_PERF_2 gain 9: older snapshots compressed and rotated (2 per kind), in the background, well after start.
+  setTimeout(() => { compressOldBackups().then((r) => { if (r.compressed.length || r.removed.length) console.log(`[db] backups: ${r.compressed.length} compressed, ${r.removed.length} removed`) }).catch(() => {}) }, 3 * 60_000)
+
   // 20/11/2026, every game: the recent games missing locally (app closed, other server, transfer) are imported
   // once after the start, then the orphan recordings are linked to them (gameCatchUp.ts).
   setTimeout(() => {
     withRiotPriority('background', () => catchUpRecentGames(backfillOrphanRecordings))
-      .then((r) => { if (r.imported) console.log(`[catch-up] ${r.imported} game(s) imported`) })
+      .then((r) => { if (r.imported) { invalidateMatchIds(); console.log(`[catch-up] ${r.imported} game(s) imported`) } })
       .catch((err) => console.warn('[catch-up] failed:', (err as Error)?.message))
+      // Then the latest games with no lane phase report get one, so their page opens at once (stats.ipc.ts).
+      .finally(() => {
+        withRiotPriority('background', () => backfillLanePhaseReports())
+          .then((n) => { if (n) console.log(`[lane-phase] backfilled ${n} report(s)`) })
+          .catch((err) => console.warn('[lane-phase] backfill failed:', (err as Error)?.message))
+      })
   }, 90_000)
 
   // Weekly MVP / Grinder awards of the roster cards: ranks and games of the

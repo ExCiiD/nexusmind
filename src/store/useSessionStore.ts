@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useUserStore } from './useUserStore'
 
 interface Session {
   id: string
@@ -78,6 +79,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     if (session) {
       await window.api.endSession(session.id, undefined, sessionConclusion)
       set({ activeSession: null })
+      // Ending a session gives XP (main process): the sidebar level reads the user store.
+      void useUserStore.getState().refreshUser()
     }
   },
 

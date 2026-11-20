@@ -27,6 +27,8 @@ import { TeamSessionsPage } from '@/pages/TeamSessions/TeamSessionsPage'
 import { TeamSessionByIdPage } from '@/pages/TeamSessions/TeamSessionByIdPage'
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
 import { GameEndNav } from '@/components/GameEndNav'
+import { PageCacheWarmup } from '@/components/PageCacheWarmup'
+import { RealtimeCacheBridge } from '@/components/RealtimeCacheBridge'
 import { DevToolbar } from '@/components/Dev/DevToolbar'
 import { UpdateBanner } from '@/components/UpdateBanner'
 import { Toaster } from '@/components/ui/toaster'
@@ -35,7 +37,9 @@ import { AnnouncementBubbleStack } from '@/components/Announcements/Announcement
 import { SessionCheckinToast } from '@/components/TeamSession/SessionCheckinToast'
 import { TeamSessionBanner } from '@/components/TeamSession/TeamSessionBanner'
 import { EndOfGamePrompt } from '@/components/TeamSession/EndOfGamePrompt'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { startCollab, useCollab } from '@/hooks/useCollab'
+import { dropCachedData, scopeChanged } from '@/lib/queryCache'
 
 export function App() {
   const user = useUserStore((s) => s.user)
@@ -45,6 +49,20 @@ export function App() {
   useEffect(() => {
     loadUser()
   }, [loadUser])
+
+  // Perf gain 4: the cloud status and my groups are loaded at start, before Management / Lobby / Coaching ask.
+  useEffect(() => { startCollab() }, [])
+
+  // Perf gain 3: never another profile's or account's data. The cached pages are emptied when the local profile or
+  // the cloud account changes (not on their first value).
+  const localId = user?.id ?? null
+  const { myUserId: cloudId } = useCollab()
+  const scope = useRef<{ local: string | null; cloud: string | null }>({ local: null, cloud: null })
+  useEffect(() => {
+    const prev = scope.current
+    if (scopeChanged(prev.local, localId) || scopeChanged(prev.cloud, cloudId)) dropCachedData()
+    scope.current = { local: localId, cloud: cloudId }
+  }, [localId, cloudId])
 
   return (
     <>
@@ -96,6 +114,8 @@ export function App() {
           Rendered above the toaster so its pills don't get covered by
           stacked toasts. Hidden when no jobs are active. */}
       {user && <BackgroundJobsIndicator />}
+      {user && <PageCacheWarmup />}
+      {user && <RealtimeCacheBridge />}
       {user && <AnnouncementBubbleStack />}
       {user && <TeamSessionBanner />}
       {user && <EndOfGamePrompt />}

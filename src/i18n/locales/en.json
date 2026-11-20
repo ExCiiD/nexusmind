@@ -1400,7 +1400,7 @@
       },
       "card": {
         "best": "Best champions",
-        "bestHelp": "The {{n}} best win rates among their {{pool}} most-played champions ({{min}} games or more), from this season's games fetched from Riot. The number on each icon: games played.",
+        "bestHelp": "Their first {{n}} champions in the pool: Main, then Comfort, then Flex, most played first, from this season's games fetched from Riot. The number on each icon: games played; the percentage: their win rate.",
         "games_one": "From {{count}} game",
         "games_other": "From {{count}} games",
         "championLine_one": "{{count}} game · {{wins}} W / {{losses}} L · {{winRate}}% win rate",
@@ -1635,7 +1635,9 @@
       "dmgShare": "Damage share",
       "dmgTakenShare": "Damage taken share",
       "goldShare": "Gold share",
-      "kpShare": "Kill participation share",
+      "kpShare": "Kill participation (KP)",
+      "kpHint": "Share of the team's kills where the player got a kill or an assist. Several players share a kill: the total goes over 100%.",
+      "restOfTeam": "Rest of the team",
       "title": "Staff dashboard",
       "noPlayers": "No players in this group yet.",
       "col": {

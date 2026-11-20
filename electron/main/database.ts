@@ -1,15 +1,18 @@
 import type { PrismaClient } from '../../prisma-client'
 import { app } from 'electron'
 import { join, dirname } from 'path'
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync } from 'fs'
+import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync } from 'fs'
+import { pipeline } from 'stream/promises'
+import { createGzip } from 'zlib'
+import { planBackupRotation } from './backupRotationCore'
 import { ensureLocalSyncTables } from './sync/syncSchema'
 
 let prisma: PrismaClient | null = null
 /** The generated client's `Prisma` namespace (DMMF, error classes…). */
 let prismaNamespace: any = null
 
-/** Number of pre-migration snapshots kept in `<db dir>/backups`. */
-const MAX_MIGRATION_BACKUPS = 5
+/** Snapshots kept in `<db dir>/backups`, per kind (backupRotationCore.ts, AUDIT_PERF_2 gain 9: it was 5). */
+const MAX_MIGRATION_BACKUPS = 2
 
 export function getDbPath(): string {
   const userDataPath = app.getPath('userData')
@@ -118,14 +121,50 @@ export async function backupBeforeMigration(
   const target = join(backupDir, `nexusmind-${stamp}-before-${firstPending}.db`)
   await client.$executeRawUnsafe(`VACUUM INTO '${target.replace(/'/g, "''")}'`)
 
-  const snapshots = readdirSync(backupDir)
-    .filter((f) => f.startsWith('nexusmind-') && f.endsWith('.db'))
-    .map((f) => ({ f, t: statSync(join(backupDir, f)).mtimeMs }))
-    .sort((a, b) => b.t - a.t)
-  for (const old of snapshots.slice(MAX_MIGRATION_BACKUPS)) {
-    try { unlinkSync(join(backupDir, old.f)) } catch { /* best effort */ }
-  }
+  rotateBackups(backupDir)
   return target
+}
+
+function listSnapshots(backupDir: string): Array<{ name: string; mtimeMs: number }> {
+  return readdirSync(backupDir).map((name) => {
+    try { return { name, mtimeMs: statSync(join(backupDir, name)).mtimeMs } } catch { return { name, mtimeMs: 0 } }
+  })
+}
+
+/** Deletes the snapshots beyond the 2 newest of each kind (never a `-keep` one). */
+export function rotateBackups(backupDir: string): string[] {
+  if (!existsSync(backupDir)) return []
+  const { remove } = planBackupRotation(listSnapshots(backupDir), MAX_MIGRATION_BACKUPS)
+  for (const name of remove) {
+    try { unlinkSync(join(backupDir, name)) } catch { /* best effort */ }
+  }
+  return remove
+}
+
+/**
+ * Compresses the kept snapshots except the newest of each kind (gzip, in the background: zlib runs off the main
+ * thread). A snapshot is replaced only once its `.gz` is complete. Then rotates again (before-delete-* too).
+ */
+export async function compressOldBackups(dbPath: string = resolveDbPath()): Promise<{ compressed: string[]; removed: string[] }> {
+  const backupDir = join(dirname(dbPath), 'backups')
+  if (!existsSync(backupDir)) return { compressed: [], removed: [] }
+  const removed = rotateBackups(backupDir)
+  const { compress } = planBackupRotation(listSnapshots(backupDir), MAX_MIGRATION_BACKUPS)
+  const compressed: string[] = []
+  for (const name of compress) {
+    const src = join(backupDir, name)
+    const tmp = `${src}.gz.part`
+    try {
+      await pipeline(createReadStream(src), createGzip({ level: 6 }), createWriteStream(tmp))
+      renameSync(tmp, `${src}.gz`)
+      unlinkSync(src)
+      compressed.push(name)
+    } catch (err) {
+      try { unlinkSync(tmp) } catch { /* nothing written */ }
+      console.warn('[db] could not compress a backup:', (err as Error)?.message)
+    }
+  }
+  return { compressed, removed }
 }
 
 export async function runMigrations(client: PrismaClient, migrationsDir: string, dbPath?: string): Promise<void> {

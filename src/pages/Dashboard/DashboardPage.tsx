@@ -43,6 +43,7 @@ import { formatKDA, formatGameTime, cn } from '@/lib/utils'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
 import { wrText } from '@/lib/winrate'
 import { useCachedQuery } from '@/hooks/useCachedQuery'
+import { SNAPSHOTS_KEY, fetchSnapshots } from '@/lib/pageQueries'
 
 const NO_GAMES: RecentGame[] = []
 const NO_ROWS: any[] = []
@@ -151,7 +152,7 @@ export function DashboardPage() {
   const allFundamentals = useLocalizedFundamentalList()
   // Cached (useCachedQuery): back on the dashboard, the last data shows at once and refreshes behind.
   const { data: recentGames = NO_GAMES } = useCachedQuery<RecentGame[]>('games:dashboard-recent', loadDashboardRecentGames)
-  const { data: snapshots = NO_ROWS } = useCachedQuery<any[]>('games:snapshots', () => window.api.getStatsSnapshots())
+  const { data: snapshots = NO_ROWS } = useCachedQuery<any[]>(SNAPSHOTS_KEY, fetchSnapshots)
   const leftColumn = useRef<HTMLDivElement>(null)
   const rightColumn = useRef<HTMLDivElement>(null)
   const patternsBox = useRef<HTMLDivElement>(null)

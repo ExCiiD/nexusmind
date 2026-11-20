@@ -1,4 +1,7 @@
-import { getSupabase, getAccessToken, getSupabaseUrl, getSessionUserId, isCloudConfigured, requireSessionUserId } from './supabase'
+import { getSupabase, getAccessToken, getSupabaseUrl, getSessionUserId, isCloudConfigured, requireSessionUserId, toCloudUser } from './supabase'
+import { riotTransportMode } from '../riotTransport'
+import { getLastCloudBackupAt } from './cloudBackup'
+import * as access from '../../../src/lib/accessCore'
 import { getPrisma } from '../database'
 import { getAccountByPuuid, getAccountByRiotId } from '../riotClient'
 import { riotIdRename } from '../../../src/lib/teamIdentity'
@@ -188,6 +191,21 @@ export function startIdentityRefresh(delayMs = 30_000): void {
       await listMyGroups()
     })().catch((err) => console.warn('[collab] startup identity refresh skipped:', (err as Error)?.message))
   }, delayMs)
+}
+
+/**
+ * Perf gain 4 (docs/AUDIT_PERF_2.md): the cloud status and my groups in one call at start-up, instead of the
+ * renderer's cloud:status then collab:list-groups (2-3 round trips before Management, Lobby or Coaching can show).
+ * `groups` is null when they could not be read (the screen keeps the last list it had).
+ */
+export async function bootstrap() {
+  if (!isCloudConfigured()) return { status: { configured: false, user: null, riotMode: riotTransportMode(), lastBackupAt: null }, groups: [] }
+  // AUTH_UNREACHABLE when the auth server could not be reached (not "signed out"): the caller falls back.
+  const session = await access.sessionForStatus(getSupabase())
+  const user = toCloudUser(session)
+  const status = { configured: true, user, riotMode: riotTransportMode(), lastBackupAt: getLastCloudBackupAt() }
+  const groups = user ? await listMyGroups().catch(() => null) : []
+  return { status, groups }
 }
 
 export async function listMyGroups() {

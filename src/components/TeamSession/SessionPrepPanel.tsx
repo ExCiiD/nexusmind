@@ -17,6 +17,7 @@ import type { Group } from '@/lib/collab'
 import type { TeamSession } from '@/lib/teamSessions'
 import type { NameOf } from '@/hooks/useCollab'
 import type { PlayerSessionObjectives, SessionDraft, SessionPrep } from '@/lib/sessionPrep'
+import { invalidateGroupCalendar } from '@/lib/groupQueries'
 
 const panel = 'space-y-3 rounded-lg border border-hextech-border-dim bg-hextech-dark/50 p-4'
 const MAX_PLAYER_OBJECTIVES = 2
@@ -367,7 +368,7 @@ function PlayerPrep({ prep, event, myUserId, nameOf, objectiveLabel, previewing 
   const respond = async (status: 'confirmed' | 'declined') => {
     if (previewing) return
     setAnswer(status)
-    try { await window.api.calendarRespond(event.id, status) } catch { toast({ title: t('sessionPrep.errors.generic'), variant: 'destructive' }) }
+    try { await window.api.calendarRespond(event.id, status); invalidateGroupCalendar(event.groupId) } catch { toast({ title: t('sessionPrep.errors.generic'), variant: 'destructive' }) }
   }
 
   return (

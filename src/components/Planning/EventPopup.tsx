@@ -21,6 +21,7 @@ import {
 import type { HourRange } from './WeekGrid'
 import { TimeSelect, hmToMin, minToHm } from './TimeSelect'
 import { MatchEventFields } from './MatchEventFields'
+import { invalidateGroupCalendar } from '@/lib/groupQueries'
 
 /** The four big tiles (most frequent team activities), then the rest as chips. */
 const MAIN_KINDS: CalendarEventKind[] = ['scrim', 'team_review', 'tournament', 'warmup_draft']
@@ -271,6 +272,7 @@ export function EventPopup({ groupId, members, myUserId, roster = [], starterIds
       }
       if (editingEvent) await window.api.calendarUpdateEvent(editingEvent.id, payload)
       else await window.api.calendarCreateEvent(groupId, payload)
+      invalidateGroupCalendar(groupId) // perf gain 3: every cached copy of the group's calendar refetches
       onSaved()
       onClose()
     } catch (err) {
@@ -285,6 +287,7 @@ export function EventPopup({ groupId, members, myUserId, roster = [], starterIds
     setSaving(true)
     try {
       await window.api.calendarDeleteEvent(editingEvent.id)
+      invalidateGroupCalendar(groupId)
       onSaved()
       onClose()
     } catch (err) {

@@ -13,6 +13,10 @@ import { extractGameEvents, type GameEvent } from '../eventExtractor'
 import { analyzeLanePhase, type LanePhaseResult } from '../lanePhaseAnalyzer'
 import { autoDetectMistakesSilently, type ParsedMatch } from '../mistakeAutoDetect'
 import { getMemoDetailedStats, setMemoDetailedStats } from '../detailedStatsMemo'
+import { readMatch, readSummaries, readTimeline, saveMatch, saveTimeline, timelineFromRow, writeSummaries } from '../matchStore'
+import { pickStored, readStoredDetailedStats, storeDetailedStats } from '../detailedStatsStore'
+import { withRiotPriority, type RiotPriority } from '../riotPriority'
+import { platformOfMatchId } from '../gameCatchUpCore'
 import { buildPrefilledNotes } from '../reviewNotes'
 
 let autoSnapshotRunning = false
@@ -54,73 +58,97 @@ function resolvePuuid(matchData: any, puuids: string[]): string | null {
   return null
 }
 
+/** The role a player had in a match, read from the match body (same rule as extractDetailedStats' meta.role). */
+export function roleInMatch(matchData: any, puuid: string): string | null {
+  const p = (matchData?.info?.participants ?? []).find((x: any) => x.puuid === puuid)
+  return p ? (p.teamPosition || p.individualPosition || 'UNKNOWN') : null
+}
+
+/** Matches read at once by the detailed-stats loop (AUDIT_PERF_2 gain 2). */
+export const DETAILED_STATS_CONCURRENCY = 4
+
+/**
+ * The detailed stats of one match for whichever of `puuids` played it, or null (unreadable, nobody of ours in it,
+ * or another role than `mainRole`). AUDIT_PERF_2 gains 1, 2 and 6:
+ * - the RAM memo, then the stored one (`stored`, read in one query by the caller), before any MatchCache read;
+ * - the match body only, then the role checked BEFORE the timeline is read or downloaded;
+ * - the match id names its server: Riot is asked there, not on the main account's region;
+ * - timelines through matchStore (compressed).
+ */
+async function detailedStatsForMatch(
+  prisma: ReturnType<typeof getPrisma>,
+  matchId: string,
+  puuids: string[],
+  region: string,
+  mainRole: string | null,
+  stored: Map<string, any>,
+): Promise<any | null> {
+  const memoised = getMemoDetailedStats(matchId, puuids)
+  const kept = memoised ? { stats: memoised } : pickStored(stored, matchId, puuids)
+  if (kept) {
+    if (!memoised && 'puuid' in kept) setMemoDetailedStats(matchId, kept.puuid, kept.stats)
+    return mainRole && kept.stats.meta.role !== mainRole ? null : kept.stats
+  }
+
+  const platform = platformOfMatchId(matchId) || region
+  let matchData = await readMatch(prisma, matchId)
+  if (!matchData) {
+    try {
+      matchData = await getMatch(matchId, platform)
+      await saveMatch(prisma, matchId, matchData, { overwrite: false })
+    } catch { return null }
+  }
+  const resolvedPuuid = resolvePuuid(matchData, puuids)
+  if (!resolvedPuuid) return null
+  // Another role: skipped before its timeline (400-700 KB) is read or downloaded.
+  if (mainRole && roleInMatch(matchData, resolvedPuuid) !== mainRole) return null
+
+  let timelineData = await readTimeline(prisma, matchId)
+  if (!timelineData) {
+    try { timelineData = await getMatchTimeline(matchId, platform) } catch { /* optional */ }
+    if (timelineData) await saveTimeline(prisma, matchId, timelineData).catch(() => {})
+  }
+
+  const detailed = extractDetailedStats(matchData, timelineData, resolvedPuuid)
+  if (!detailed) return null
+  if (timelineData) {
+    setMemoDetailedStats(matchId, resolvedPuuid, detailed)
+    await storeDetailedStats(prisma, matchId, resolvedPuuid, detailed)
+  }
+  return mainRole && detailed.meta.role !== mainRole ? null : detailed
+}
+
 /**
  * Shared match-fetch-and-extract loop used by the fundamentals radar for
- * both the logged-in user's own games and a followed player's games: pulls
- * each match (cached in MatchCache when possible), resolves whichever of
- * `puuids` played in it, extracts detailed stats, and optionally filters to
- * `mainRole` for a fair lane-for-lane comparison. Stops once `limit` stats
- * are collected.
+ * both the logged-in user's own games and a followed player's games, the
+ * averages and autoSnapshot. Stops once `limit` stats are collected, in the
+ * order of `matchIds`. AUDIT_PERF_2 gain 2: 4 matches at a time (it was one
+ * by one), under `priority` (the proxy keeps its reserve for interactive
+ * calls).
  */
-async function fetchDetailedStatsForMatches(
+export async function fetchDetailedStatsForMatches(
   prisma: ReturnType<typeof getPrisma>,
   matchIds: string[],
   puuids: string[],
   region: string,
   mainRole: string | null,
   limit: number,
+  priority: RiotPriority = 'interactive',
 ): Promise<any[]> {
-  const allStats: any[] = []
-  for (const matchId of matchIds) {
-    // E02: a match already computed this run is not read nor parsed again.
-    const memoised = getMemoDetailedStats(matchId, puuids)
-    if (memoised) {
-      if (mainRole && memoised.meta.role !== mainRole) continue
-      allStats.push(memoised)
-      if (allStats.length >= limit) break
-      continue
-    }
-
-    let matchData: any
-    let timelineData: any = null
-
-    const cached = await prisma.matchCache.findUnique({ where: { matchId } })
-    if (cached) {
-      matchData = JSON.parse(cached.matchJson)
-      timelineData = cached.timelineJson ? JSON.parse(cached.timelineJson) : null
-    } else {
-      try {
-        matchData = await getMatch(matchId, region)
-        await prisma.matchCache.upsert({
-          where: { matchId },
-          create: { matchId, matchJson: JSON.stringify(matchData) },
-          update: {},
-        })
-      } catch { continue }
-    }
-
-    if (!timelineData) {
-      try { timelineData = await getMatchTimeline(matchId, region) } catch { /* optional */ }
-      if (timelineData) {
-        await prisma.matchCache.update({
-          where: { matchId },
-          data: { timelineJson: JSON.stringify(timelineData) },
-        }).catch(() => {})
+  return withRiotPriority(priority, async () => {
+    const stored = await readStoredDetailedStats(prisma, matchIds, puuids)
+    const allStats: any[] = []
+    for (let i = 0; i < matchIds.length && allStats.length < limit; i += DETAILED_STATS_CONCURRENCY) {
+      const chunk = matchIds.slice(i, i + DETAILED_STATS_CONCURRENCY)
+      const results = await Promise.all(chunk.map((id) => detailedStatsForMatch(prisma, id, puuids, region, mainRole, stored).catch(() => null)))
+      for (const r of results) {
+        if (!r) continue
+        allStats.push(r)
+        if (allStats.length >= limit) break
       }
     }
-
-    const resolvedPuuid = resolvePuuid(matchData, puuids)
-    if (!resolvedPuuid) continue
-
-    const detailed = extractDetailedStats(matchData, timelineData, resolvedPuuid)
-    if (!detailed) continue
-    if (timelineData) setMemoDetailedStats(matchId, resolvedPuuid, detailed)
-    if (mainRole && detailed.meta.role !== mainRole) continue
-
-    allStats.push(detailed)
-    if (allStats.length >= limit) break
-  }
-  return allStats
+    return allStats
+  })
 }
 
 /** Resolve display name + profile icon for an account by puuid. */
@@ -220,16 +248,18 @@ export async function ensureMatchCache(gameId: string, forceRefetch: boolean, lo
       .catch(() => { /* no row yet — fine */ })
   }
 
-  let cached = await prisma.matchCache.findUnique({ where: { matchId: game.matchId } })
+  // AUDIT_PERF_2 gains 2 and 6: the match id names its server, and the timeline comes back decompressed.
+  const platform = platformOfMatchId(game.matchId) || user.region
+  const row = await prisma.matchCache.findUnique({ where: { matchId: game.matchId } })
+  let cached: { matchJson: string; timelineJson: string | null } | null = row
+    ? { matchJson: row.matchJson, timelineJson: timelineFromRow(prisma, game.matchId, row.timelineJson) }
+    : null
 
   if (!cached?.matchJson) {
     try {
-      const matchData = await getMatch(game.matchId, user.region)
-      cached = await prisma.matchCache.upsert({
-        where: { matchId: game.matchId },
-        create: { matchId: game.matchId, matchJson: JSON.stringify(matchData) },
-        update: { matchJson: JSON.stringify(matchData) },
-      })
+      const matchData = await getMatch(game.matchId, platform)
+      await saveMatch(prisma, game.matchId, matchData)
+      cached = { matchJson: JSON.stringify(matchData), timelineJson: cached?.timelineJson ?? null }
       console.log(`[${logPrefix}] Cached match for ${game.matchId}`)
     } catch (err) {
       console.warn(`[${logPrefix}] Match fetch failed:`, (err as Error)?.message ?? err)
@@ -239,12 +269,9 @@ export async function ensureMatchCache(gameId: string, forceRefetch: boolean, lo
 
   if (!cached?.timelineJson) {
     try {
-      const timelineData = await getMatchTimeline(game.matchId, user.region)
-      await prisma.matchCache.update({
-        where: { matchId: game.matchId },
-        data: { timelineJson: JSON.stringify(timelineData) },
-      })
-      cached = { ...cached, timelineJson: JSON.stringify(timelineData) } as any
+      const timelineData = await getMatchTimeline(game.matchId, platform)
+      await saveTimeline(prisma, game.matchId, timelineData)
+      cached = { matchJson: cached!.matchJson, timelineJson: JSON.stringify(timelineData) }
       const fc = timelineData?.info?.frames?.length ?? 0
       console.log(`[${logPrefix}] Cached timeline for ${game.matchId} (${fc} frames)`)
     } catch (err) {
@@ -405,6 +432,116 @@ async function loadGameEventsParsed(gameId: string, forceRefetch: boolean): Prom
 export async function prefetchGameAnalysis(gameId: string): Promise<void> {
   const { result, parsed } = await loadGameEventsParsed(gameId, false)
   if (result.diag.reason === 'ok') await autoDetectMistakesSilently(gameId, parsed)
+  // 20/11/2026: the lane phase report too, from the timeline just cached, so its page opens at once.
+  if (result.diag.reason === 'ok') await loadLanePhase(gameId, false, parsed).catch(() => {})
+}
+
+/**
+ * Start-up backfill: the latest games with no lane phase report get one, so opening an older game is instant
+ * too. Games whose timeline is cached first (no Riot read), then at most `riotBudget` that need one, one at a time.
+ */
+export async function backfillLanePhaseReports(limit = 20, riotBudget = 5): Promise<number> {
+  const prisma = getPrisma()
+  const user = await prisma.user.findFirst({ where: { isActive: true }, select: { id: true } })
+  if (!user) return 0
+  const games = await prisma.game.findMany({
+    // No lane in ARAM / Arena: those never get a report, and would be retried at every start.
+    where: { lanePhaseReport: null, session: { userId: user.id }, queueType: { notIn: ['aram', 'arena'] }, duration: { gte: 300 } },
+    orderBy: { gameEndAt: 'desc' },
+    take: limit,
+    select: { id: true, matchId: true },
+  })
+  if (games.length === 0) return 0
+  const withTimeline = new Set((await prisma.matchCache.findMany({
+    where: { matchId: { in: games.map((g) => g.matchId) }, timelineJson: { not: null } },
+    select: { matchId: true },
+  })).map((c) => c.matchId))
+  let done = 0
+  let riotLeft = riotBudget
+  for (const g of [...games].sort((a, b) => Number(withTimeline.has(b.matchId)) - Number(withTimeline.has(a.matchId)))) {
+    if (!withTimeline.has(g.matchId)) {
+      if (riotLeft <= 0) break
+      riotLeft--
+    }
+    const r = await loadLanePhase(g.id, false).catch(() => null)
+    if (r?.report) done++
+  }
+  return done
+}
+
+/**
+ * Lazy-compute (and cache) a Lane Phase Comparator report.
+ *
+ * Stored as JSON on `Game.lanePhaseReport` so subsequent opens are
+ * instant — the only re-computation happens when the user explicitly
+ * hits "Refresh" (or the cache version mismatches in a future schema
+ * bump).
+ *
+ * Returns `{ report, diag }` so the renderer can display the same
+ * "player not resolved" / "no opponent" diagnostics surfaced by the
+ * game-events pipeline.
+ */
+export async function loadLanePhase(gameId: string, forceRefetch: boolean, parsed?: ParsedMatch | null): Promise<{
+  report: LanePhaseResult['report']
+  diag: {
+    reason: CacheLoadReason | 'no-player' | 'no-opponent' | 'no-frames' | 'bad-data'
+    message?: string
+    matchId?: string
+    frameCount?: number
+    playerResolvedVia?: 'puuid' | 'champion' | 'none'
+    cached?: boolean
+  }
+}> {
+  const prisma = getPrisma()
+
+  if (!forceRefetch) {
+    const game = await prisma.game.findUnique({ where: { id: gameId } })
+    if (game?.lanePhaseReport) {
+      try {
+        const parsed = JSON.parse(game.lanePhaseReport)
+        if (parsed?.schemaVersion === 2) {
+          return {
+            report: parsed,
+            diag: { reason: 'ok', matchId: game.matchId, cached: true },
+          }
+        }
+        // Schema mismatch — fall through to recompute and overwrite.
+      } catch { /* corrupted JSON — recompute */ }
+    }
+  }
+
+  const loaded = await ensureMatchCache(gameId, forceRefetch, 'lane-phase')
+  if (!loaded.ok) return { report: null, diag: { reason: loaded.reason, message: loaded.message, matchId: loaded.matchId } }
+  const { matchJson, timelineJson, game, userPuuids } = loaded
+
+  // Already parsed by the post-game analysis: not parsed again (E09).
+  const result = analyzeLanePhase({
+    matchJson: parsed?.match ?? matchJson,
+    timelineJson: parsed?.timeline ?? timelineJson,
+    selector: { puuids: userPuuids, championName: game.champion, win: game.win },
+  })
+
+  // Persist when we have a report, otherwise leave the previous one alone.
+  if (result.report) {
+    await prisma.game
+      .update({ where: { id: gameId }, data: { lanePhaseReport: JSON.stringify(result.report) } })
+      .catch((err) => console.warn('[lane-phase] Failed to cache report:', err))
+    console.log(`[lane-phase] Computed report for game ${gameId} — grade ${result.report.grade} (frames=${result.diag.frameCount})`)
+  } else {
+    console.warn(`[lane-phase] No report for game ${gameId} — reason=${result.diag.reason}`)
+  }
+
+  return {
+    report: result.report,
+    diag: {
+      reason: result.diag.reason,
+      message: result.diag.message,
+      matchId: game.matchId,
+      frameCount: result.diag.frameCount,
+      playerResolvedVia: result.diag.playerResolvedVia,
+      cached: false,
+    },
+  }
 }
 
 export function registerStatsHandlers() {
@@ -446,80 +583,6 @@ export function registerStatsHandlers() {
     return result
   })
 
-  /**
-   * Lazy-compute (and cache) a Lane Phase Comparator report.
-   *
-   * Stored as JSON on `Game.lanePhaseReport` so subsequent opens are
-   * instant — the only re-computation happens when the user explicitly
-   * hits "Refresh" (or the cache version mismatches in a future schema
-   * bump).
-   *
-   * Returns `{ report, diag }` so the renderer can display the same
-   * "player not resolved" / "no opponent" diagnostics surfaced by the
-   * game-events pipeline.
-   */
-  async function loadLanePhase(gameId: string, forceRefetch: boolean): Promise<{
-    report: LanePhaseResult['report']
-    diag: {
-      reason: CacheLoadReason | 'no-player' | 'no-opponent' | 'no-frames' | 'bad-data'
-      message?: string
-      matchId?: string
-      frameCount?: number
-      playerResolvedVia?: 'puuid' | 'champion' | 'none'
-      cached?: boolean
-    }
-  }> {
-    const prisma = getPrisma()
-
-    if (!forceRefetch) {
-      const game = await prisma.game.findUnique({ where: { id: gameId } })
-      if (game?.lanePhaseReport) {
-        try {
-          const parsed = JSON.parse(game.lanePhaseReport)
-          if (parsed?.schemaVersion === 2) {
-            return {
-              report: parsed,
-              diag: { reason: 'ok', matchId: game.matchId, cached: true },
-            }
-          }
-          // Schema mismatch — fall through to recompute and overwrite.
-        } catch { /* corrupted JSON — recompute */ }
-      }
-    }
-
-    const loaded = await ensureMatchCache(gameId, forceRefetch, 'lane-phase')
-    if (!loaded.ok) return { report: null, diag: { reason: loaded.reason, message: loaded.message, matchId: loaded.matchId } }
-    const { matchJson, timelineJson, game, userPuuids } = loaded
-
-    const result = analyzeLanePhase({
-      matchJson,
-      timelineJson,
-      selector: { puuids: userPuuids, championName: game.champion, win: game.win },
-    })
-
-    // Persist when we have a report, otherwise leave the previous one alone.
-    if (result.report) {
-      await prisma.game
-        .update({ where: { id: gameId }, data: { lanePhaseReport: JSON.stringify(result.report) } })
-        .catch((err) => console.warn('[lane-phase] Failed to cache report:', err))
-      console.log(`[lane-phase] Computed report for game ${gameId} — grade ${result.report.grade} (frames=${result.diag.frameCount})`)
-    } else {
-      console.warn(`[lane-phase] No report for game ${gameId} — reason=${result.diag.reason}`)
-    }
-
-    return {
-      report: result.report,
-      diag: {
-        reason: result.diag.reason,
-        message: result.diag.message,
-        matchId: game.matchId,
-        frameCount: result.diag.frameCount,
-        playerResolvedVia: result.diag.playerResolvedVia,
-        cached: false,
-      },
-    }
-  }
-
   // Read-through cache: returns the persisted report when present, computes
   // it on the fly otherwise. Cheap to call from the UI on mount.
   ipcMain.handle('stats:get-lane-phase', async (_event, gameId: string) => loadLanePhase(gameId, false))
@@ -537,32 +600,33 @@ export function registerStatsHandlers() {
       const { matchIds, allPuuids } = await getAggregatedMatchIds(user, accounts, Math.min(count, 50))
       if (matchIds.length === 0) return []
 
+      // AUDIT_PERF_2 gain 7: the stored summaries first (one query), a match body is parsed only when its summary
+      // is missing, and it is stored then. The local games and their reviews: one query too.
+      const summaries = await readSummaries(prisma, matchIds, allPuuids)
+      const dbGames = new Map((await prisma.game.findMany({
+        where: { matchId: { in: matchIds } },
+        include: { review: { select: { id: true } } },
+      })).map((g) => [g.matchId, g]))
+
       const results = await Promise.allSettled(
         matchIds.map(async (id: string) => {
-          let matchData: any
-
-          const cached = await prisma.matchCache.findUnique({ where: { matchId: id }, select: { matchJson: true } })
-          if (cached) {
-            matchData = JSON.parse(cached.matchJson)
-          } else {
-            const regionToTry = user.region
-            matchData = await getMatch(id, regionToTry)
-            await prisma.matchCache.upsert({
-              where: { matchId: id },
-              create: { matchId: id, matchJson: JSON.stringify(matchData) },
-              update: {},
-            })
+          let hit = summaries.get(id)
+          if (!hit) {
+            let matchData = await readMatch(prisma, id)
+            if (!matchData) {
+              // The match id names its server (AUDIT_PERF_2 gain 2), not the main account's region.
+              matchData = await getMatch(id, platformOfMatchId(id) || user.region)
+              await saveMatch(prisma, id, matchData, { overwrite: false })
+            }
+            const puuid = resolvePuuid(matchData, allPuuids)
+            if (!puuid) return null
+            const fresh = await writeSummaries(prisma, id, matchData, [puuid]).catch(() => new Map())
+            const stats = fresh.get(puuid) ?? extractPlayerStats(matchData, puuid)
+            if (!stats) return null
+            hit = { puuid, stats }
           }
-
-          const puuid = resolvePuuid(matchData, allPuuids)
-          if (!puuid) return null
-          const stats = extractPlayerStats(matchData, puuid)
-          if (!stats) return null
-
-          const dbGame = await prisma.game.findUnique({
-            where: { matchId: id },
-            include: { review: true },
-          })
+          const { puuid, stats } = hit
+          const dbGame = dbGames.get(id)
 
           return {
             gameId: dbGame?.id ?? null,
@@ -624,36 +688,23 @@ export function registerStatsHandlers() {
         await prisma.gameDetailedStats.delete({ where: { gameId: dbGame.id } }).catch(() => {})
       }
 
-      let matchData: any
-      let timelineData: any = null
-
-      const cached = await prisma.matchCache.findUnique({ where: { matchId } })
-      if (cached) {
-        matchData = JSON.parse(cached.matchJson)
-        timelineData = cached.timelineJson ? JSON.parse(cached.timelineJson) : null
-      } else {
-        matchData = await getMatch(matchId, user.region)
+      const platform = platformOfMatchId(matchId) || user.region
+      let matchData: any = await readMatch(prisma, matchId)
+      let timelineData: any = matchData ? await readTimeline(prisma, matchId) : null
+      const hadTimeline = !!timelineData
+      if (!matchData) {
+        matchData = await getMatch(matchId, platform)
+        await saveMatch(prisma, matchId, matchData, { overwrite: false })
       }
 
       if (!timelineData) {
         try {
-          timelineData = await getMatchTimeline(matchId, user.region)
+          timelineData = await getMatchTimeline(matchId, platform)
         } catch (err) {
           console.warn(`[stats] Timeline fetch failed for ${matchId}:`, err)
         }
       }
-
-      await prisma.matchCache.upsert({
-        where: { matchId },
-        create: {
-          matchId,
-          matchJson: JSON.stringify(matchData),
-          timelineJson: timelineData ? JSON.stringify(timelineData) : null,
-        },
-        update: {
-          timelineJson: timelineData ? JSON.stringify(timelineData) : undefined,
-        },
-      })
+      if (timelineData && !hadTimeline) await saveTimeline(prisma, matchId, timelineData).catch(() => {})
 
       const puuid = resolvePuuid(matchData, allPuuids) ?? user.puuid
       const detailed = extractDetailedStats(matchData, timelineData, puuid)
@@ -918,60 +969,17 @@ export function registerStatsHandlers() {
     })
     const lastGameAtMs = lastSnapshot?.lastGameAt.getTime() ?? 0
 
-    const candidateIds = matchIds.filter((id) => {
-      const ts = parseInt(id.split('_')[1] ?? '0', 10)
-      return ts > lastGameAtMs - 3_600_000
-    })
+    // The number in a match id is a game counter, not a date: read as one (1970), it filtered out every game once a
+    // first snapshot existed, so no snapshot was ever added after it (Audit, 20/11/2026). The real end date is
+    // checked below, on the stats (memoised, so the older games cost a lookup, not a parse).
+    const orderedIds = [...matchIds].reverse()
 
-    const orderedIds = [...candidateIds].reverse()
-
-    const gamesWithStats: { stats: any; ts: number }[] = []
-    for (const matchId of orderedIds) {
-      let matchData: any
-      let timelineData: any = null
-
-      const cached = await prisma.matchCache.findUnique({ where: { matchId } })
-      if (cached) {
-        matchData = JSON.parse(cached.matchJson)
-        timelineData = cached.timelineJson ? JSON.parse(cached.timelineJson) : null
-      } else {
-        try {
-          matchData = await getMatch(matchId, user.region)
-          await prisma.matchCache.upsert({
-            where: { matchId },
-            create: { matchId, matchJson: JSON.stringify(matchData) },
-            update: {},
-          })
-        } catch {
-          continue
-        }
-      }
-
-      if (!timelineData) {
-        try {
-          timelineData = await getMatchTimeline(matchId, user.region)
-          await prisma.matchCache.upsert({
-            where: { matchId },
-            create: {
-              matchId,
-              matchJson: JSON.stringify(matchData),
-              timelineJson: JSON.stringify(timelineData),
-            },
-            update: { timelineJson: JSON.stringify(timelineData) },
-          })
-        } catch { /* timeline optional */ }
-      }
-
-      const puuid = resolvePuuid(matchData, allPuuids) ?? user.puuid
-      const detailed = extractDetailedStats(matchData, timelineData, puuid)
-      if (!detailed) continue
-
-      if (mainRole && detailed.meta.role !== mainRole) continue
-
-      if (detailed.meta.gameEndAt > lastGameAtMs) {
-        gamesWithStats.push({ stats: detailed, ts: detailed.meta.gameEndAt })
-      }
-    }
+    // AUDIT_PERF_2 gains 1 and 2: the shared loop (memo, 4 at a time, role before timeline), in the background.
+    const gamesWithStats: { stats: any; ts: number }[] = (await fetchDetailedStatsForMatches(
+      prisma, orderedIds, allPuuids, user.region, mainRole ?? null, Number.POSITIVE_INFINITY, 'background',
+    ))
+      .filter((detailed) => detailed.meta.gameEndAt > lastGameAtMs)
+      .map((detailed) => ({ stats: detailed, ts: detailed.meta.gameEndAt }))
 
     // Sort oldest first
     gamesWithStats.sort((a, b) => a.ts - b.ts)

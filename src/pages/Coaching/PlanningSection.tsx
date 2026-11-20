@@ -28,6 +28,18 @@ import { hmToMin } from '@/components/Planning/TimeSelect'
 import type { NameOf } from '@/hooks/useCollab'
 import { playsInGroup } from '@/lib/permissions'
 
+interface PlanningWeek {
+  events: CalendarEvent[]
+  scrims: ScrimSummary[]
+  rules: AvailabilityRule[]
+  exceptions: AvailabilityException[]
+  rosterStarterIds: string[]
+  roster: Array<{ userId: string; displayName: string; role: string }>
+}
+const EMPTY_WEEK: PlanningWeek = { events: [], scrims: [], rules: [], exceptions: [], rosterStarterIds: [], roster: [] }
+import { useCachedResource } from '@/hooks/useCachedResource'
+import { groupKey, invalidateGroupCalendar } from '@/lib/groupQueries'
+
 function startOfWeek(d: Date): Date {
   const out = new Date(d)
   const day = out.getDay()
@@ -64,7 +76,37 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
   const canEdit = !!group && canEditCalendarRole(group.myRole, myMember?.isCaptain ?? false, group.myStaffRoles)
 
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
-  const [events, setEvents] = useState<CalendarEvent[] | null>(null)
+  const weekEnd = useMemo(() => { const d = new Date(weekStart); d.setDate(d.getDate() + 7); return d }, [weekStart])
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d }), [weekStart])
+
+  // Perf gain 3: the week through the shared cache, one entry per group and week; coming back shows it at once and
+  // refreshes behind. A change here (or a Realtime `calendar` event) invalidates the group's calendar everywhere.
+  const weekQ = useCachedResource<PlanningWeek>(groupId ? groupKey(groupId, `calendar:planning:${toDateKey(weekStart)}`) : null, async () => {
+    const gid = groupId!
+    const [ev, sc, r, ex, shared] = await Promise.all([
+      window.api.calendarListEvents(gid, weekStart.toISOString(), weekEnd.toISOString()),
+      window.api.scrimsListForGroup(gid).catch(() => []),
+      window.api.availabilityListRules(gid),
+      window.api.availabilityListExceptions(gid, toDateKey(weekStart), toDateKey(weekEnd)),
+      window.api.teamGetShared(gid).catch(() => ({ roster: [] as { userId: string | null; status: string; displayName: string; role: string }[] })),
+    ])
+    return {
+      events: ev,
+      // Only standalone scrims not yet linked to a calendar event — linked ones already render as their own event block.
+      scrims: sc.filter((s) => !ev.some((e) => e.linkedScrimId === s.id)),
+      rules: r,
+      exceptions: ex,
+      rosterStarterIds: shared.roster.filter((m) => m.status === 'starter' && m.userId).map((m) => m.userId as string),
+      roster: shared.roster.filter((m) => m.userId).map((m) => ({ userId: m.userId as string, displayName: m.displayName, role: m.role })),
+    }
+  })
+  const week = weekQ.data ?? (weekQ.failed ? EMPTY_WEEK : null)
+  const events: CalendarEvent[] | null = week?.events ?? null
+  const scrims = week?.scrims ?? EMPTY_WEEK.scrims
+  const rules = week?.rules ?? EMPTY_WEEK.rules
+  const exceptions = week?.exceptions ?? EMPTY_WEEK.exceptions
+  const rosterStarterIds = week?.rosterStarterIds ?? EMPTY_WEEK.rosterStarterIds
+  const roster = week?.roster ?? EMPTY_WEEK.roster
   // § 17: « Préparation prête » on the cards, one request for the week's events.
   const [prepReady, setPrepReady] = useState<Set<string>>(new Set())
   const eventIds = (events ?? []).map((e) => e.id).join(',')
@@ -76,10 +118,6 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
       .catch(() => { if (alive) setPrepReady(new Set()) })
     return () => { alive = false }
   }, [eventIds])
-  const [scrims, setScrims] = useState<ScrimSummary[]>([])
-  const [rules, setRules] = useState<AvailabilityRule[]>([])
-  const [exceptions, setExceptions] = useState<AvailabilityException[]>([])
-  const [rosterStarterIds, setRosterStarterIds] = useState<string[]>([])
   const [creatingRange, setCreatingRange] = useState<HourRange | null>(null)
   // #36 keyboard paths: "+ New event" and "My availability".
   const [newSlot, setNewSlot] = useState<{ day: Date; startMin: number; endMin: number } | null>(null)
@@ -101,39 +139,18 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
     })
     return () => { alive = false }
   }, [eventParam, setSearchParams])
-  const [roster, setRoster] = useState<Array<{ userId: string; displayName: string; role: string }>>([])
   const [mode, setModeState] = useState<GridMode>(() => { try { return localStorage.getItem(MODE_KEY) === 'day' ? 'day' : 'esport' } catch { return 'esport' } })
   const setMode = (m: GridMode) => { setModeState(m); try { localStorage.setItem(MODE_KEY, m) } catch { /* per-device preference */ } }
 
-  const weekEnd = useMemo(() => { const d = new Date(weekStart); d.setDate(d.getDate() + 7); return d }, [weekStart])
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d }), [weekStart])
-
+  // A failed read: the toast it always had (the week shows empty).
+  const weekError = weekQ.failed ? weekQ.error : null
+  useEffect(() => { if (weekError) toast({ title: t(collabErrorKey(weekError)), variant: 'destructive' }) }, [weekError]) // eslint-disable-line react-hooks/exhaustive-deps
+  const reloadWeek = weekQ.load
   const load = useCallback(async () => {
     if (!groupId) return
-    setEvents(null)
-    try {
-      const [ev, sc, r, ex, shared] = await Promise.all([
-        window.api.calendarListEvents(groupId, weekStart.toISOString(), weekEnd.toISOString()),
-        window.api.scrimsListForGroup(groupId).catch(() => []),
-        window.api.availabilityListRules(groupId),
-        window.api.availabilityListExceptions(groupId, toDateKey(weekStart), toDateKey(weekEnd)),
-        window.api.teamGetShared(groupId).catch(() => ({ roster: [] as { userId: string | null; status: string; displayName: string; role: string }[] })),
-      ])
-      setEvents(ev)
-      // Only standalone scrims not yet linked to a calendar event — linked
-      // ones already render as their own event block.
-      setScrims(sc.filter((s) => !ev.some((e) => e.linkedScrimId === s.id)))
-      setRules(r)
-      setExceptions(ex)
-      setRosterStarterIds(shared.roster.filter((m) => m.status === 'starter' && m.userId).map((m) => m.userId as string))
-      setRoster(shared.roster.filter((m) => m.userId).map((m) => ({ userId: m.userId as string, displayName: m.displayName, role: m.role })))
-    } catch (err) {
-      setEvents([])
-      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
-    }
-  }, [groupId, weekStart, weekEnd, t, toast])
-
-  useEffect(() => { load() }, [load])
+    invalidateGroupCalendar(groupId)
+    await reloadWeek()
+  }, [groupId, reloadWeek])
   // Realtime: an event or an answer of this group reloads the week while the Planning stays open (it used to reload
   // only on opening); a 10 min backup poll while Realtime is not live.
   useRealtimeRefresh(['calendar'], load, 10 * 60_000, { enabled: !!groupId, groupId, immediate: false })

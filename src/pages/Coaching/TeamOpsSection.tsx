@@ -10,6 +10,9 @@ import { collabErrorKey, type Group } from '@/lib/collab'
 import { isLegacyStaff } from '@/lib/permissions'
 import type { Task } from '@/lib/teamOps'
 import type { NameOf } from '@/hooks/useCollab'
+import { useCachedResource } from '@/hooks/useCachedResource'
+import { groupKey, invalidateGroupTasks } from '@/lib/groupQueries'
+const NO_TASKS: Task[] = []
 
 interface Props { groups: Group[]; myUserId: string; nameOf: NameOf }
 
@@ -46,18 +49,18 @@ function TasksPanel({ groupId, isStaff, myUserId, nameOf, members }: {
 }) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
-  const [items, setItems] = useState<Task[] | null>(null)
   const [title, setTitle] = useState('')
   const [assignee, setAssignee] = useState('')
   const [due, setDue] = useState('')
   const [creating, setCreating] = useState(false)
 
-  const load = useCallback(async () => {
-    try { setItems(await window.api.tasksList(groupId)) }
-    catch (err) { setItems([]); toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
-  }, [groupId, t, toast])
-
-  useEffect(() => { load() }, [load])
+  // Perf gain 3: the group's tasks, cached per group (shared with My space). A change here refetches every copy.
+  const tasksQ = useCachedResource<Task[]>(groupKey(groupId, 'tasks'), () => window.api.tasksList(groupId))
+  const items: Task[] | null = tasksQ.data ?? (tasksQ.failed ? NO_TASKS : null)
+  const tasksError = tasksQ.error
+  useEffect(() => { if (tasksError) toast({ title: t(collabErrorKey(tasksError)), variant: 'destructive' }) }, [tasksError]) // eslint-disable-line react-hooks/exhaustive-deps
+  const reloadTasks = tasksQ.load
+  const load = useCallback(async () => { invalidateGroupTasks(groupId); await reloadTasks() }, [groupId, reloadTasks])
 
   const create = async () => {
     if (!title.trim()) return

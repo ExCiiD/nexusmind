@@ -154,6 +154,31 @@ model Game {
   @@index([sessionId])
 }
 
+/// What the History and the Dashboard show of one match for one of the player's accounts (AUDIT_PERF_2 gain 7):
+/// extractPlayerStats, stored when the match is written. Local, not synced.
+model MatchSummary {
+  matchId   String
+  puuid     String
+  /// Version of the summary's formula: another version is computed again
+  version   Int
+  gameEndAt DateTime?
+  statsJson String
+  createdAt DateTime  @default(now())
+
+  @@id([matchId, puuid])
+}
+
+/// Detailed stats of a match for a player, kept across restarts (AUDIT_PERF_2 gain 1). Local, not synced.
+model DetailedStatsMemo {
+  matchId   String
+  puuid     String
+  version   Int
+  statsJson String
+  createdAt DateTime @default(now())
+
+  @@id([matchId, puuid])
+}
+
 /// Match ids the start-up catch-up must not import (20/11/2026, electron/main/ignoredMatches.ts):
 /// deleted by the player, or unknown to Riot (practice tool). Local to this PC, not synced.
 model IgnoredMatch {

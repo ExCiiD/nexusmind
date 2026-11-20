@@ -111,6 +111,7 @@ const api = {
 
   // Collaboration (groups, coach comments, assigned objectives)
   collabListGroups: () => ipcRenderer.invoke('collab:list-groups'),
+  collabBootstrap: () => ipcRenderer.invoke('collab:bootstrap'),
   collabCreateGroup: (name: string, kind: 'team' | 'coaching') => ipcRenderer.invoke('collab:create-group', name, kind),
   collabCreateInvite: (groupId: string, role: 'coach' | 'manager' | 'analyst' | 'player', days: number) =>
     ipcRenderer.invoke('collab:create-invite', groupId, role, days),

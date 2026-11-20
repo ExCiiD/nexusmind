@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import type { Group } from '@/lib/collab'
 import type { DashboardAlert, PlayerDashboardRow } from '@/lib/staffDashboard'
 import { useCachedQuery } from '@/hooks/useCachedQuery'
+import { fetchStaffDashboard, staffDashboardKey } from '@/lib/staffQueries'
 
 /** A column title whose computation is explained on hover (and on keyboard focus). */
 function HelpHeader({ label, help }: { label: string; help: string }) {
@@ -32,7 +33,7 @@ export function StaffDashboardSection({ staffGroups }: { staffGroups: Group[] })
   const { t } = useTranslation()
   const groupId = staffGroups[0]?.id ?? null
   // Cached (useCachedQuery): back on the dashboard, the rows show at once and refresh behind.
-  const q = useCachedQuery<PlayerDashboardRow[]>(groupId ? `staff:dashboard:${groupId}` : null, () => window.api.collabStaffDashboard(groupId!))
+  const q = useCachedQuery<PlayerDashboardRow[]>(groupId ? staffDashboardKey(groupId) : null, () => fetchStaffDashboard(groupId!))
   const rows: PlayerDashboardRow[] | null = q.data ?? (q.error ? [] : null)
 
   if (staffGroups.length === 0) return null

@@ -5,6 +5,7 @@
  */
 import { getSupabase, requireSessionUserId } from './supabase'
 import { getPrisma } from '../database'
+import { readTimeline, saveTimeline } from '../matchStore'
 import { getAccountByRiotId, getLeagueEntriesByPuuid, getMatch, getMatchIds, getMatchTimeline } from '../riotClient'
 import { getChampionIdToKey } from '../dataDragon'
 import { withRiotPriority } from '../riotPriority'
@@ -37,10 +38,12 @@ async function cachedMatch(matchId: string, region = FALLBACK_REGION): Promise<a
 /** A timeline from the local cache, else Riot (kept with the match for the other screens). */
 async function cachedTimeline(matchId: string): Promise<any> {
   const prisma = getPrisma()
-  const row = await prisma.matchCache.findUnique({ where: { matchId } }).catch(() => null)
-  if (row?.timelineJson) { try { return JSON.parse(row.timelineJson) } catch { /* fetched again */ } }
+  // AUDIT_PERF_2 gain 6: compressed timelines (matchStore); only the timeline column is read.
+  const kept = await readTimeline(prisma, matchId)
+  if (kept) return kept
   const data = await getMatchTimeline(matchId, FALLBACK_REGION)
-  if (row) await prisma.matchCache.update({ where: { matchId }, data: { timelineJson: JSON.stringify(data) } }).catch(() => {})
+  const exists = await prisma.matchCache.findUnique({ where: { matchId }, select: { id: true } }).catch(() => null)
+  if (exists) await saveTimeline(prisma, matchId, data).catch(() => {})
   return data
 }
 

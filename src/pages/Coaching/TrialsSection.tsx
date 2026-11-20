@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2, Plus, Trash2, UserPlus } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +10,10 @@ import { collabErrorKey, type Group } from '@/lib/collab'
 import type { SharedRosterMember } from '@/lib/team'
 import type { TrialCandidate, TrialRole, TrialStatus } from '@/lib/trials'
 import { ROLES } from '@/lib/championRoles'
+import { useCachedResource } from '@/hooks/useCachedResource'
+import { groupKey } from '@/lib/groupQueries'
+const NO_ROSTER: SharedRosterMember[] = []
+const NO_CANDIDATES: TrialCandidate[] = []
 
 
 /** E10 (docs/PLAN_GESTION_EQUIPE.md): trial candidates with a 1-5 evaluation grid, staff-only. */
@@ -17,26 +21,19 @@ export function TrialsSection({ staffGroups }: { staffGroups: Group[] }) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const groupId = staffGroups[0]?.id ?? null
-  const [candidates, setCandidates] = useState<TrialCandidate[] | null>(null)
-  const [roster, setRoster] = useState<SharedRosterMember[]>([])
-
-  const load = useCallback(async () => {
-    if (!groupId) return
-    setCandidates(null)
-    try {
-      const [list, shared] = await Promise.all([
-        window.api.trialsList(groupId),
-        window.api.teamGetShared(groupId).catch(() => ({ roster: [] as SharedRosterMember[] })),
-      ])
-      setCandidates(list)
-      setRoster(shared.roster)
-    } catch (err) {
-      setCandidates([])
-      toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
-    }
-  }, [groupId, t, toast])
-
-  useEffect(() => { load() }, [load])
+  // Perf gain 3: the candidates and the roster, cached per group.
+  const trialsQ = useCachedResource<{ list: TrialCandidate[]; roster: SharedRosterMember[] }>(groupId ? groupKey(groupId, 'trials') : null, async () => {
+    const [list, shared] = await Promise.all([
+      window.api.trialsList(groupId!),
+      window.api.teamGetShared(groupId!).catch(() => ({ roster: [] as SharedRosterMember[] })),
+    ])
+    return { list, roster: shared.roster }
+  })
+  const candidates: TrialCandidate[] | null = trialsQ.data?.list ?? (trialsQ.failed ? NO_CANDIDATES : null)
+  const roster = trialsQ.data?.roster ?? NO_ROSTER
+  const trialsError = trialsQ.error
+  useEffect(() => { if (trialsError) toast({ title: t(collabErrorKey(trialsError)), variant: 'destructive' }) }, [trialsError]) // eslint-disable-line react-hooks/exhaustive-deps
+  const load = trialsQ.load
 
   if (staffGroups.length === 0) return null
 

@@ -28,7 +28,7 @@ import { CardChampionArt } from './CardChampionArt'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
 import { bannerUrl, iconUrl } from '@/lib/profile'
 import {
-  CARD_CHAMPIONS, MIN_GAMES, MOST_PLAYED_POOL, cardSeed, initialsOf, verticalNameSize,
+  CARD_CHAMPIONS, MIN_GAMES, cardSeed, initialsOf, verticalNameSize,
   type CardChampion, type CardChampions, type Look,
 } from '@/lib/playerCard'
 import type { AwardHolder, TeamMember } from '@/lib/ipc'
@@ -342,7 +342,7 @@ function ChampionsSection({ data, nameOf, hasRiotId, fetching, onFetch, picker }
             </button>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-xs px-3 py-2 leading-relaxed">
-            {t('team.roster.card.bestHelp', { n: CARD_CHAMPIONS, pool: MOST_PLAYED_POOL, min: MIN_GAMES })}
+            {t('team.roster.card.bestHelp', { n: CARD_CHAMPIONS })}
           </TooltipContent>
         </Tooltip>
       </div>

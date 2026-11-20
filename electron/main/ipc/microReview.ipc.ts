@@ -16,6 +16,7 @@ import { z } from 'zod'
 import { randomUUID } from 'crypto'
 import type { Prisma } from '../../../prisma-client'
 import { getPrisma } from '../database'
+import { timelineFromRow } from '../matchStore'
 import { validatedHandle, id } from './validate'
 import { ensureMatchCache } from './stats.ipc'
 import { analyzeGame, isSupportedGame, type GameAnalysis } from '../../../src/lib/microReview/anomalyDetector'
@@ -63,9 +64,10 @@ export async function ensureGameAnalysis(gameId: string, fetch: boolean): Promis
     const game = await prisma.game.findUnique({ where: { id: gameId }, include: { session: { select: { userId: true } } } })
     if (!game) return { analysis: null, reason: 'no-game' }
     const cache = await prisma.matchCache.findUnique({ where: { matchId: game.matchId } })
-    if (!cache?.matchJson || !cache.timelineJson) return { analysis: null, reason: 'not-cached' }
+    const cachedTimeline = cache ? timelineFromRow(prisma, game.matchId, cache.timelineJson) : null
+    if (!cache?.matchJson || !cachedTimeline) return { analysis: null, reason: 'not-cached' }
     matchJson = cache.matchJson
-    timelineJson = cache.timelineJson
+    timelineJson = cachedTimeline
     selector = { puuids: await userPuuids(game.session.userId), championName: game.champion }
   }
   let analysis: GameAnalysis | null = null

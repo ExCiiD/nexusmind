@@ -11,18 +11,17 @@ import {
   riotIdKey,
   riotIdKeyOf,
   MIN_GAMES,
-  MOST_PLAYED_POOL,
 } from '../../src/lib/playerCard'
 import type { ChampionPoolEntry } from '../../src/lib/ipc'
 import type { MemberLook } from '../../src/lib/collab'
 
 let seq = 0
-const entry = (championKey: string, games: number | null, winRate: number | null, role = 'MID'): ChampionPoolEntry => ({
+const entry = (championKey: string, games: number | null, winRate: number | null, role = 'MID', tier = 'comfort'): ChampionPoolEntry => ({
   id: `e${++seq}`,
   memberId: 'm1',
   championKey,
   role,
-  tier: 'comfort',
+  tier,
   playRate: games,
   winRate,
   updatedAt: '2026-11-19T00:00:00.000Z',
@@ -36,10 +35,11 @@ describe('bestChampions', () => {
     expect(bestChampions([])).toEqual({ champions: [], games: 0 })
   })
 
-  it('adds up a champion played in several roles', () => {
-    const r = bestChampions([entry('Ahri', 10, 60, 'MID'), entry('Ahri', 5, 40, 'TOP')])
-    expect(r.champions).toEqual([{ championKey: 'Ahri', games: 15, wins: 8, winRate: 53, lowSample: false }])
-    expect(r.games).toBe(15)
+  it('adds up a champion played in several roles, in its best tier', () => {
+    const r = bestChampions([entry('Ahri', 10, 60, 'MID', 'flex'), entry('Ahri', 5, 40, 'TOP', 'main'), entry('Zed', 20, 50, 'MID', 'comfort')])
+    expect(r.champions[0]).toEqual({ championKey: 'Ahri', games: 15, wins: 8, winRate: 53, lowSample: false })
+    expect(keys(r)).toEqual(['Ahri', 'Zed'])
+    expect(r.games).toBe(35)
   })
 
   it('ignores manual entries, mastery-only entries and missing win rates', () => {
@@ -48,41 +48,35 @@ describe('bestChampions', () => {
     expect(r.games).toBe(8)
   })
 
-  it('sorts the qualified champions by win rate, then by games', () => {
+  it('follows the pool: Main, then Comfort, then Flex, the most played first in a tier', () => {
+    // The user's pool of 20/11: the card used to drop Jax (36 %) for a 3-game pick at 67 %.
     const r = bestChampions([
-      entry('Orianna', 40, 52),
-      entry('Azir', 30, 61),
-      entry('Ahri', 20, 61),
-      entry('Syndra', 10, 70),
-      entry('Taliyah', 5, 40),
-      entry('Akali', 4, 45),
+      entry('Jayce', 25, 72, 'TOP', 'main'),
+      entry('Jax', 14, 36, 'TOP', 'main'),
+      entry('Olaf', 6, 33, 'TOP', 'main'),
+      entry('Varus', 14, 64, 'TOP', 'comfort'),
+      entry('Yorick', 8, 63, 'TOP', 'comfort'),
+      entry('Renekton', 6, 67, 'TOP', 'comfort'),
+      entry('Nasus', 3, 67, 'TOP', 'learning'),
+      entry('XinZhao', 1, 0, 'TOP', 'flex'),
     ])
-    expect(keys(r)).toEqual(['Syndra', 'Azir', 'Ahri', 'Orianna', 'Akali'])
+    expect(keys(r)).toEqual(['Jayce', 'Jax', 'Olaf', 'Varus', 'Yorick'])
   })
 
-  it(`picks among the ${MOST_PLAYED_POOL} most-played champions only`, () => {
-    // 12 champions, 30 down to 19 games; the two least played have the best
-    // win rates. Steps of 5 points so rounding can't reorder the others.
-    const pool = Array.from({ length: 12 }, (_, i) => entry(`C${i}`, 30 - i, i >= 10 ? 95 : 10 + 5 * i))
-    const r = bestChampions(pool)
-    expect(keys(r)).toEqual(['C9', 'C8', 'C7', 'C6', 'C5'])
-    expect(keys(r)).not.toContain('C10')
-    expect(keys(r)).not.toContain('C11')
-  })
-
-  it(`needs ${MIN_GAMES} games to rank, and lists the smaller samples last`, () => {
+  it('fills the card from the lower tiers, and dims the small samples', () => {
     const r = bestChampions([
-      entry('Ahri', 2, 100),
-      entry('Orianna', 12, 50),
-      entry('Azir', 6, 67),
-      entry('Lux', 1, 0),
+      entry('Orianna', 12, 50, 'MID', 'main'),
+      entry('Lux', 1, 0, 'MID', 'learning'),
+      entry('Ahri', 2, 100, 'MID', 'flex'),
+      entry('Azir', 6, 67, 'MID', 'new'),
     ])
-    expect(keys(r)).toEqual(['Azir', 'Orianna', 'Ahri', 'Lux'])
-    expect(r.champions.map((c) => c.lowSample)).toEqual([false, false, true, true])
+    expect(keys(r)).toEqual(['Orianna', 'Ahri', 'Azir', 'Lux'])
+    expect(r.champions.map((c) => c.lowSample)).toEqual([false, true, false, true])
+    expect(MIN_GAMES).toBe(3)
   })
 
-  it('keeps the card to 5 champions even with many small samples', () => {
-    const pool = [entry('Orianna', 9, 55), ...Array.from({ length: 8 }, (_, i) => entry(`S${i}`, 2, 100))]
+  it('keeps the card to 5 champions', () => {
+    const pool = [entry('Orianna', 9, 55, 'MID', 'main'), ...Array.from({ length: 8 }, (_, i) => entry(`S${i}`, 2, 100))]
     const r = bestChampions(pool)
     expect(r.champions).toHaveLength(5)
     expect(r.champions[0].championKey).toBe('Orianna')

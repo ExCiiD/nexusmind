@@ -40,6 +40,8 @@ interface UserStore {
   loading: boolean
 
   loadUser: () => Promise<void>
+  /** Re-reads the user after the main process changed it (XP). A failed read keeps the current user. */
+  refreshUser: () => Promise<void>
   setUser: (user: User) => void
   clearUser: () => void
   addXp: (amount: number) => void
@@ -56,6 +58,13 @@ export const useUserStore = create<UserStore>((set, get) => ({
     } catch {
       set({ user: null, loading: false })
     }
+  },
+
+  refreshUser: async () => {
+    try {
+      const user = await window.api.getUser()
+      if (user) set({ user })
+    } catch { /* keep the user shown */ }
   },
 
   setUser: (user) => set({ user }),

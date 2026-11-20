@@ -9,7 +9,7 @@
  *
  * Entry points: button on the RecordPlayerPage MetaBar.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
@@ -26,6 +26,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
 import type { LanePhaseReport, LanePhaseDiag, LanePhaseGrade } from '@/lib/ipc'
 import { cn } from '@/lib/utils'
+import { useCachedQuery } from '@/hooks/useCachedQuery'
+import { setCached } from '@/lib/queryCache'
+import { lanePhaseKey } from '@/lib/pageQueries'
 
 // ── Grade color mapping ─────────────────────────────────────────────────────
 const GRADE_COLORS: Record<LanePhaseGrade, { text: string; bg: string; border: string }> = {
@@ -82,27 +85,19 @@ export function LanePhasePage() {
   const { gameId } = useParams<{ gameId: string }>()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [report, setReport] = useState<LanePhaseReport | null>(null)
-  const [diag, setDiag] = useState<LanePhaseDiag | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Perf gain 3: the report comes back at once when the page is opened again (a game's lane phase never changes).
+  const key = gameId ? lanePhaseKey(gameId) : null
+  const query = useCachedQuery(key, () => window.api.getLanePhase(gameId!), { staleMs: 10 * 60_000 })
+  const report: LanePhaseReport | null = query.data?.report ?? null
+  const diag: LanePhaseDiag | null = query.data?.diag ?? (query.error ? { reason: 'bad-data', message: String(query.error) } : null)
+  const loading = query.loading
   const [refreshing, setRefreshing] = useState(false)
 
-  useEffect(() => {
-    if (!gameId) return
-    setLoading(true)
-    window.api.getLanePhase(gameId)
-      .then((res) => { setReport(res.report); setDiag(res.diag) })
-      .catch((err) => setDiag({ reason: 'bad-data', message: String(err) }))
-      .finally(() => setLoading(false))
-  }, [gameId])
-
   async function handleRefresh() {
-    if (!gameId) return
+    if (!gameId || !key) return
     setRefreshing(true)
     try {
-      const res = await window.api.refreshLanePhase(gameId)
-      setReport(res.report)
-      setDiag(res.diag)
+      setCached(key, await window.api.refreshLanePhase(gameId))
     } finally {
       setRefreshing(false)
     }

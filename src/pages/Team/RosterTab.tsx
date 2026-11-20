@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,10 @@ import { useBackgroundJobsStore } from '@/store/useBackgroundJobsStore'
 import { EmptySlotCard, PlayerCard } from './PlayerCard'
 import { ROLES, type Role } from '@/lib/championRoles'
 import { cn } from '@/lib/utils'
+import { useCachedQuery } from '@/hooks/useCachedQuery'
+import { useCollab } from '@/hooks/useCollab'
+import { userKey } from '@/lib/groupQueries'
+const NO_LOOKS: MemberLook[] = []
 
 
 // No width here: each field sets its own (a shared w-full would beat w-14).
@@ -43,15 +47,13 @@ interface RosterTabProps {
 
 /** Looks the members of my cloud groups shared (empty when signed out). */
 function useMemberLooks(): MemberLook[] {
-  const [looks, setLooks] = useState<MemberLook[]>([])
-  useEffect(() => {
-    let alive = true
-    window.api.collabListMemberLooks?.()
-      .then((l) => { if (alive) setLooks(Array.isArray(l) ? l : []) })
-      .catch(() => { /* signed out or offline: initials and default banners */ })
-    return () => { alive = false }
-  }, [])
-  return looks
+  // Perf gain 3: cached per cloud account (signed out or offline: initials and default banners).
+  const { myUserId } = useCollab()
+  const q = useCachedQuery<MemberLook[]>(myUserId ? userKey(myUserId, 'member-looks') : null, async () => {
+    const l = await window.api.collabListMemberLooks?.()
+    return Array.isArray(l) ? l : []
+  })
+  return q.data ?? NO_LOOKS
 }
 
 export function RosterTab({ team, loading, onChange, logoUrl, actions, fill = false }: RosterTabProps) {

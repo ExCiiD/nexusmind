@@ -10,18 +10,22 @@ import type { MemberLook } from './collab'
 
 /** How many champions a card shows. */
 export const CARD_CHAMPIONS = 5
-/** The most-played champions the best win rates are picked from. */
-export const MOST_PLAYED_POOL = 10
-/** Under this many games a win rate says little: such a champion only
- *  fills an empty spot, after the others. */
+/** Under this many games a win rate says little: shown dimmed. */
 export const MIN_GAMES = 3
+
+/** Pool tiers in card order (20/11/2026: the card follows the pool). An unknown tier goes last. */
+export const CARD_TIER_ORDER = ['main', 'comfort', 'flex', 'new', 'learning'] as const
+const tierRank = (tier: string | null | undefined) => {
+  const i = CARD_TIER_ORDER.indexOf((tier ?? '') as (typeof CARD_TIER_ORDER)[number])
+  return i < 0 ? CARD_TIER_ORDER.length : i
+}
 
 export interface CardChampion {
   championKey: string
   games: number
   wins: number
   winRate: number
-  /** Fewer than MIN_GAMES games: listed last, its win rate only a hint. */
+  /** Fewer than MIN_GAMES games: its win rate only a hint. */
   lowSample: boolean
 }
 
@@ -32,14 +36,14 @@ export interface CardChampions {
 }
 
 /**
- * The 5 best win rates among the player's 10 most-played champions (3 games
- * or more), best first. A champion played in several roles counts once, its
- * games added up. Entries without games (added by hand, or mastery only)
- * are left out. When fewer than 5 champions qualify, the next most-played
- * ones fill the card, after the others.
+ * The card's champions follow the player's champion pool (20/11/2026, user: the card and the pool disagreed):
+ * Main first, then Comfort, Flex, New and Learning, the most played first within a tier. A tier picked by hand
+ * counts like an automatic one: the card shows the pool as the player sees it. A champion played in several roles
+ * counts once, its games added up, in its best tier. Entries without games (added by hand, or mastery only) are
+ * left out: the card shows games and a win rate.
  */
 export function bestChampions(pool: ChampionPoolEntry[] | null | undefined, count = CARD_CHAMPIONS): CardChampions {
-  const byKey = new Map<string, { championKey: string; games: number; wins: number }>()
+  const byKey = new Map<string, { championKey: string; games: number; wins: number; rank: number }>()
   let total = 0
   for (const e of pool ?? []) {
     const games = e.playRate ?? 0
@@ -47,29 +51,24 @@ export function bestChampions(pool: ChampionPoolEntry[] | null | undefined, coun
     // The pool stores a rounded percentage; this gives the wins back.
     const wins = Math.round((games * e.winRate) / 100)
     total += games
+    const rank = tierRank(e.tier)
     const c = byKey.get(e.championKey)
     if (c) {
       c.games += games
       c.wins += wins
+      c.rank = Math.min(c.rank, rank)
     } else {
-      byKey.set(e.championKey, { championKey: e.championKey, games, wins })
+      byKey.set(e.championKey, { championKey: e.championKey, games, wins, rank })
     }
   }
 
-  const played: CardChampion[] = [...byKey.values()]
-    .map((c) => ({ ...c, winRate: Math.round((c.wins / c.games) * 100), lowSample: c.games < MIN_GAMES }))
-    .sort((a, b) => b.games - a.games || a.championKey.localeCompare(b.championKey))
-
-  const best = played
-    .filter((c) => !c.lowSample)
-    .slice(0, MOST_PLAYED_POOL)
-    .sort((a, b) => b.winRate - a.winRate || b.games - a.games)
+  const champions: CardChampion[] = [...byKey.values()]
+    .sort((a, b) => a.rank - b.rank || b.games - a.games || a.championKey.localeCompare(b.championKey))
     .slice(0, count)
-  for (const c of played) {
-    if (best.length >= count) break
-    if (!best.includes(c)) best.push(c)
-  }
-  return { champions: best, games: total }
+    .map(({ championKey, games, wins }) => ({
+      championKey, games, wins, winRate: Math.round((wins / games) * 100), lowSample: games < MIN_GAMES,
+    }))
+  return { champions, games: total }
 }
 
 /**

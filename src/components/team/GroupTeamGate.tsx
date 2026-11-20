@@ -7,14 +7,18 @@ import type { Team } from '@/lib/ipc'
 import { isLegacyStaff } from '@/lib/permissions'
 import { riotIdKey } from '@/lib/playerCard'
 import { planGroupTeamSync } from '@/lib/groupTeamSyncCore'
+import { useCachedResource } from '@/hooks/useCachedResource'
+import { OWN_TEAMS_KEY } from '@/lib/groupQueries'
+const NO_TEAMS: Team[] = []
 
 /** This device's own teams, and the one that is the roster of `groupId`. */
 export function useGroupTeam(groupId: string | null) {
-  const [teams, setTeams] = useState<Team[] | null>(null)
-  const reload = useCallback(async () => {
-    try { setTeams(await window.api.listTeams({ isOpponent: false })) } catch { setTeams([]) }
-  }, [])
-  useEffect(() => { reload() }, [reload])
+  // Perf gain 3: this device's teams through the shared cache, so the Lobby shows the roster at once when it comes
+  // back (the gate below still syncs it with the group, then reloads). Local data: emptied on a profile change.
+  const q = useCachedResource<Team[]>(OWN_TEAMS_KEY, () => window.api.listTeams({ isOpponent: false }))
+  const teams = q.data ?? (q.failed ? NO_TEAMS : null)
+  const reloadTeams = q.load
+  const reload = useCallback(async () => { await reloadTeams() }, [reloadTeams])
   const team = groupId ? teams?.find((t) => t.groupId === groupId) ?? null : null
   return { teams, team, loading: teams === null, reload }
 }

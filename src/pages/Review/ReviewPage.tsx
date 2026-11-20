@@ -44,6 +44,9 @@ import { CoachFeedbackPanel } from '@/components/Coaching/CoachFeedbackPanel'
 import { MicroReviewPanel } from '@/components/MicroReview/MicroReviewPanel'
 import { ObjectiveAutoCheck } from '@/components/MicroReview/ObjectiveAutoCheck'
 import { Skeleton } from '@/components/ui/data-state'
+import { useCachedQuery } from '@/hooks/useCachedQuery'
+import { invalidateCached } from '@/lib/queryCache'
+import { gameContextKey } from '@/lib/pageQueries'
 
 export function ReviewPage() {
   const { t } = useTranslation()
@@ -60,24 +63,15 @@ export function ReviewPage() {
   const allFundamentals = useLocalizedFundamentalList()
 
   // When a gameId is provided but there's no active session, load the game's session from DB
-  const [historicContext, setHistoricContext] = useState<{ game: any; session: any } | null>(null)
-  const [loadingHistoric, setLoadingHistoric] = useState(false)
+  // Perf gain 3: a game's context comes back at once when the page is opened again (refreshed in the background).
+  // The form below is seeded on the game's id only, so a refresh never wipes what is being typed.
+  const contextKey = requestedGameId ? gameContextKey(requestedGameId) : null
+  const contextQuery = useCachedQuery<{ game: any; session: any } | null>(contextKey, () => window.api.getGameContext(requestedGameId!))
+  const historicContext = requestedGameId ? (contextQuery.data ?? null) : null
+  const loadingHistoric = contextQuery.loading
 
   useEffect(() => {
-    if (requestedGameId) {
-      refreshSession()
-      setLoadingHistoric(true)
-      window.api.getGameContext(requestedGameId)
-        .then((ctx) => {
-          setHistoricContext(ctx)
-        })
-        .catch(() => {
-          setHistoricContext(null)
-        })
-        .finally(() => setLoadingHistoric(false))
-    } else {
-      setHistoricContext(null)
-    }
+    if (requestedGameId) refreshSession()
   }, [requestedGameId, refreshSession])
 
   const isGameInActiveSession = useMemo(() => {
@@ -547,12 +541,16 @@ export function ReviewPage() {
       setSavedGameId(latestGame.id)
       setSaved(true)
       clearDraft()
+      // The review changes the game's status everywhere (History, Stats, this context).
+      invalidateCached('games:')
+      // +50 XP is written by the main process: the sidebar level reads the user store, reloaded here (20/11/2026:
+      // the level stayed at 1 / 0 XP until a restart).
+      void useUserStore.getState().refreshUser()
       // Refresh active session if it exists; otherwise reload the historic context
       if (activeSession) {
         await refreshSession()
       } else if (requestedGameId) {
-        const ctx = await window.api.getGameContext(requestedGameId).catch(() => null)
-        setHistoricContext(ctx)
+        await contextQuery.reload().catch(() => null)
       }
 
       toast({
@@ -573,6 +571,7 @@ export function ReviewPage() {
     setSaving(true)
     try {
       await window.api.setGameReviewStatus(latestGame.id, 'to_be_reviewed')
+      invalidateCached('games:')
       await refreshSession()
       toast({ title: t('review.toast.reviewLaterTitle'), variant: 'gold' })
       navigate('/session')
@@ -589,6 +588,7 @@ export function ReviewPage() {
     setRemovingGame(true)
     try {
       await window.api.deleteGame(latestGame.id)
+      invalidateCached('games:')
       await refreshSession()
       toast({ title: t('review.gameRemoved'), variant: 'gold' })
       navigate('/session')

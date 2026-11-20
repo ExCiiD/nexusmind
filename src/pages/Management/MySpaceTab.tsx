@@ -19,6 +19,8 @@ import type { AvailabilityException, AvailabilityRule, CalendarEvent, CalendarEv
 import type { Announcement } from '@/lib/announcements'
 import type { Task } from '@/lib/teamOps'
 import type { NameOf } from '@/hooks/useCollab'
+import { useCachedResource } from '@/hooks/useCachedResource'
+import { groupKey, invalidateGroupCalendar, invalidateGroupTasks } from '@/lib/groupQueries'
 
 const SESSION_KINDS: CalendarEventKind[] = ['scrim', 'flex', 'tournament', 'meeting']
 const DAY = 86_400_000
@@ -60,26 +62,23 @@ export function MySpaceTab({ group, myUserId, nameOf }: { group: Group; myUserId
   )
 }
 
+const NO_EXCEPTIONS: AvailabilityException[] = []
+
 /* ─── 1. This week, and the next session ─── */
 
 function ThisWeek({ group, myUserId }: { group: Group; myUserId: string }) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
-  const [events, setEvents] = useState<CalendarEvent[] | null>(null)
-  const [failed, setFailed] = useState(false)
   const [prepReady, setPrepReady] = useState<Set<string>>(new Set())
   const monday = useMemo(() => weekStart(new Date()), [])
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => new Date(monday.getTime() + i * DAY)), [monday])
 
-  const load = useCallback(async () => {
-    setFailed(false)
-    try {
-      // This week, and two weeks ahead for the next session.
-      const list = await window.api.calendarListEvents(group.id, monday.toISOString(), new Date(monday.getTime() + 21 * DAY).toISOString())
-      setEvents(list)
-    } catch { setFailed(true) }
-  }, [group.id, monday])
-  useEffect(() => { void load() }, [load])
+  // Perf gain 3: cached per group and week. This week, and two weeks ahead for the next session.
+  const eventsQ = useCachedResource<CalendarEvent[]>(groupKey(group.id, `calendar:myspace:${localDateKey(monday)}`),
+    () => window.api.calendarListEvents(group.id, monday.toISOString(), new Date(monday.getTime() + 21 * DAY).toISOString()))
+  const events = eventsQ.data ?? null
+  const failed = eventsQ.failed
+  const load = eventsQ.load
 
   const mine = useMemo(() => (events ?? []).filter((e) => resolveAttendeeScope(e.attendeeScope, group.members, e.attendeeUserIds).includes(myUserId)), [events, group.members, myUserId])
   const now = Date.now()
@@ -97,7 +96,7 @@ function ThisWeek({ group, myUserId }: { group: Group; myUserId: string }) {
   }, [sessionIds])
 
   const respond = async (e: CalendarEvent, status: 'confirmed' | 'declined') => {
-    try { await window.api.calendarRespond(e.id, status); await load() } catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
+    try { await window.api.calendarRespond(e.id, status); invalidateGroupCalendar(group.id) } catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }) }
   }
   const time = (iso: string) => new Date(iso).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
   const relative = (iso: string) => {
@@ -174,25 +173,26 @@ function ThisWeek({ group, myUserId }: { group: Group; myUserId: string }) {
 
 function MyAvailability({ groupId, myUserId }: { groupId: string; myUserId: string }) {
   const { t } = useTranslation()
-  const [rules, setRules] = useState<AvailabilityRule[] | null>(null)
-  const [exceptions, setExceptions] = useState<AvailabilityException[]>([])
-  const [failed, setFailed] = useState(false)
   const [editRules, setEditRules] = useState(false)
   const monday = useMemo(() => weekStart(new Date()), [])
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => new Date(monday.getTime() + i * DAY)), [monday])
 
-  const load = useCallback(async () => {
-    setFailed(false)
-    try {
+  // Perf gain 3: cached per group, user and week.
+  const availQ = useCachedResource<{ r: AvailabilityRule[]; ex: AvailabilityException[] }>(
+    groupKey(groupId, `availability:mine:${myUserId}:${localDateKey(days[0])}`),
+    async () => {
       const [r, ex] = await Promise.all([
         window.api.availabilityListRules(groupId),
         window.api.availabilityListExceptions(groupId, localDateKey(days[0]), localDateKey(days[6])),
       ])
-      setRules(r.filter((x) => x.userId === myUserId))
-      setExceptions(ex.filter((x) => x.userId === myUserId))
-    } catch { setFailed(true) }
-  }, [groupId, myUserId, days])
-  useEffect(() => { void load() }, [load])
+      return { r: r.filter((x) => x.userId === myUserId), ex: ex.filter((x) => x.userId === myUserId) }
+    })
+  const rules = availQ.data?.r ?? null
+  const exceptions = availQ.data?.ex ?? NO_EXCEPTIONS
+  const failed = availQ.failed
+  const reloadAvail = availQ.load
+  // After a save: every screen that shows the group's availabilities refetches (this one included).
+  const load = useCallback(async () => { invalidateGroupCalendar(groupId); await reloadAvail() }, [groupId, reloadAvail])
 
   return (
     <Panel title={t('mySpace.availability')} icon={<ClipboardCheck className="h-4 w-4 text-hextech-gold" />}
@@ -262,15 +262,13 @@ function UsualRulesEditor({ groupId, rules, onSaved }: { groupId: string; rules:
 /** § 16.3 (and § 18.1 with « + Publier une annonce »): the group's announcements, newest pinned first. */
 export function Announcements({ groupId, nameOf, action }: { groupId: string; nameOf: NameOf; action?: ReactNode }) {
   const { t, i18n } = useTranslation()
-  const [items, setItems] = useState<Announcement[] | null>(null)
-  const [failed, setFailed] = useState(false)
   const [all, setAll] = useState(false)
 
-  const load = useCallback(async () => {
-    setFailed(false)
-    try { setItems(sortAnnouncements(await window.api.announcementsList(groupId))) } catch { setFailed(true) }
-  }, [groupId])
-  useEffect(() => { void load() }, [load])
+  // Perf gain 3: cached per group.
+  const annQ = useCachedResource<Announcement[]>(groupKey(groupId, 'announcements'), async () => sortAnnouncements(await window.api.announcementsList(groupId)))
+  const items = annQ.data ?? null
+  const failed = annQ.failed
+  const load = annQ.load
 
   const shown = items ? (all ? items : items.slice(0, 1)) : []
   return (
@@ -328,20 +326,18 @@ function AnnouncementBody({ body }: { body: string }) {
 function MyTasks({ groupId, myUserId }: { groupId: string; myUserId: string }) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
-  const [items, setItems] = useState<Task[] | null>(null)
-  const [failed, setFailed] = useState(false)
   const [filter, setFilter] = useState<'open' | 'done'>('open')
 
-  const load = useCallback(async () => {
-    setFailed(false)
-    try { setItems((await window.api.tasksList(groupId)).filter((x) => x.assigneeId === myUserId)) } catch { setFailed(true) }
-  }, [groupId, myUserId])
-  useEffect(() => { void load() }, [load])
+  // Perf gain 3: the group's tasks, cached per group (shared with Team ops); mine are filtered here.
+  const tasksQ = useCachedResource<Task[]>(groupKey(groupId, 'tasks'), () => window.api.tasksList(groupId))
+  const items = useMemo(() => tasksQ.data?.filter((x) => x.assigneeId === myUserId) ?? null, [tasksQ.data, myUserId])
+  const failed = tasksQ.failed
+  const load = tasksQ.load
 
   const toggle = async (task: Task) => {
     const status = task.status === 'done' ? 'open' : 'done'
-    setItems((list) => list?.map((x) => (x.id === task.id ? { ...x, status } : x)) ?? null)
-    try { await window.api.tasksSetStatus(task.id, status) } catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }); void load() }
+    tasksQ.set((list) => (list ?? []).map((x) => (x.id === task.id ? { ...x, status } : x)))
+    try { await window.api.tasksSetStatus(task.id, status); invalidateGroupTasks(groupId) } catch (err) { toast({ title: t(collabErrorKey(err)), variant: 'destructive' }); void load() }
   }
   const today = localDateKey(new Date())
   const list = (items ?? []).filter((x) => x.status === filter).sort((a, b) => (a.dueDate ?? '9').localeCompare(b.dueDate ?? '9'))

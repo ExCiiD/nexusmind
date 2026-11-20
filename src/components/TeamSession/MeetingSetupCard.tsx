@@ -10,6 +10,7 @@ import type { CalendarEvent } from '@/lib/calendar'
 import type { TeamSession } from '@/lib/teamSessions'
 import { cn } from '@/lib/utils'
 import { playsInGroup } from '@/lib/permissions'
+import { invalidateGroupCalendar } from '@/lib/groupQueries'
 
 /** The people a meeting is for: its attendee list, else its quick-select
  *  scope resolved against the group (same rule as the Planning panel). */
@@ -63,6 +64,7 @@ export function MeetingSetupCard({ event, session, group, canManage, myUserId, o
         linkedScrimId: event.linkedScrimId, attendeeScope: 'custom', attendeeUserIds: people,
       })
       await window.api.teamSessionStart(session.id, [myUserId], null)
+      invalidateGroupCalendar(event.groupId)
       await onChanged()
       toast({ title: t('teamSession.meeting.started'), variant: 'gold' })
     } catch (err) { fail(err) } finally { setBusy(false) }

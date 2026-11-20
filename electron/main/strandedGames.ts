@@ -1,4 +1,5 @@
 import { getPrisma } from './database'
+import { saveMatch } from './matchStore'
 import { extractPlayerStats, getMatch, getMatchIdsBetween, isQueueSessionEligible } from './riotClient'
 import { GIVE_UP_AFTER_MS, pickMatchForProvisional, provisionalStartMs, type CandidateMatch } from './strandedGamesCore'
 import { isOffSessionSession } from './offSessionGames'
@@ -34,11 +35,7 @@ async function cachedMatch(matchId: string, region: string): Promise<any | null>
   }
   const data = await getMatch(matchId, region).catch(() => null)
   if (data) {
-    await prisma.matchCache.upsert({
-      where: { matchId },
-      create: { matchId, matchJson: JSON.stringify(data) },
-      update: { matchJson: JSON.stringify(data) },
-    }).catch(() => {})
+    await saveMatch(prisma, matchId, data).catch(() => {})
   }
   return data
 }

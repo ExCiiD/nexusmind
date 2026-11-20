@@ -30,15 +30,11 @@ export function DashboardLayout({ players, matchCount, basedOnLabel }: Props) {
     <div className="space-y-3">
       <StatsTable players={players} matchCount={matchCount} basedOnLabel={basedOnLabel} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <ShareDonut titleKey="team.dashboard.dmgShare" defaultTitle="Damage share" players={players} valueFn={(p) => p.averages.damage} />
-        <ShareDonut titleKey="team.dashboard.dmgTakenShare" defaultTitle="Damage taken share" players={players} valueFn={(p) => p.averages.damageTaken} />
-        <ShareDonut titleKey="team.dashboard.goldShare" defaultTitle="Gold share" players={players} valueFn={(p) => p.averages.gold} />
-        <ShareDonut
-          titleKey="team.dashboard.kpShare"
-          defaultTitle="Kill participation share"
-          players={players}
-          valueFn={(p) => p.averages.kills + p.averages.assists}
-        />
+        {/* 20/11/2026: the shares of the WHOLE team (as in the table), not re-split among the players shown. */}
+        <ShareDonut titleKey="team.dashboard.dmgShare" defaultTitle="Damage share" players={players} shareFn={(p) => p.shares.damagePct} />
+        <ShareDonut titleKey="team.dashboard.dmgTakenShare" defaultTitle="Damage taken share" players={players} shareFn={(p) => p.shares.damageTakenPct} />
+        <ShareDonut titleKey="team.dashboard.goldShare" defaultTitle="Gold share" players={players} shareFn={(p) => p.shares.goldPct} />
+        <KpBars players={players} />
       </div>
     </div>
   )
@@ -205,18 +201,32 @@ function isGroupStart(i: number): boolean {
   return false
 }
 
-function ShareDonut({ titleKey, defaultTitle, players, valueFn }: {
+/** Grey slice: the team's share held by players not in the list (fewer than 5 group members in the game). */
+const REST_COLOR = '#4b5563'
+
+/**
+ * A share of the whole team per player (percent, 0-100, the same figure as the table's % columns), and the rest
+ * of the team as a grey slice when the players listed hold less than 100 %. Re-splitting the total among the
+ * players shown made 3 players out of 5 look like 100 % of the team (20/11/2026).
+ */
+function ShareDonut({ titleKey, defaultTitle, players, shareFn }: {
   titleKey: string
   defaultTitle: string
   players: SynergyPlayerStats[]
-  valueFn: (p: SynergyPlayerStats) => number
+  shareFn: (p: SynergyPlayerStats) => number
 }) {
   const { t } = useTranslation()
-  const data = players.map((p, i) => ({
+  const shown = players.map((p, i) => ({
     name: p.displayName,
-    value: Math.max(0, valueFn(p)),
+    value: Math.max(0, shareFn(p) || 0),
     color: PLAYER_COLORS[i % PLAYER_COLORS.length],
+    rest: false,
   }))
+  const shownTotal = shown.reduce((s, d) => s + d.value, 0)
+  const rest = Math.max(0, 100 - shownTotal)
+  const data = rest >= 0.5
+    ? [...shown, { name: t('team.dashboard.restOfTeam'), value: rest, color: REST_COLOR, rest: true }]
+    : shown
   const total = data.reduce((s, d) => s + d.value, 0)
 
   return (
@@ -228,7 +238,7 @@ function ShareDonut({ titleKey, defaultTitle, players, valueFn }: {
         <div className="flex items-center gap-4">
           <div className="h-56 flex-1 min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+              <PieChart margin={{ top: 14, right: 8, bottom: 14, left: 8 }}>
                 <Pie
                   rootTabIndex={-1}
                   data={data}
@@ -254,7 +264,7 @@ function ShareDonut({ titleKey, defaultTitle, players, valueFn }: {
                   contentStyle={{ background: '#0a0e1a', border: '1px solid #2a3a55', borderRadius: 4, fontSize: 12 }}
                   formatter={(v: number, _name, ctx: any) => {
                     const pct = total > 0 ? ((v / total) * 100).toFixed(1) : '0.0'
-                    return [`${Math.round(v).toLocaleString()} (${pct}%)`, ctx?.payload?.name ?? '']
+                    return [`${pct}%`, ctx?.payload?.name ?? '']
                   }}
                 />
               </PieChart>
@@ -263,7 +273,7 @@ function ShareDonut({ titleKey, defaultTitle, players, valueFn }: {
           <ul className="flex flex-col gap-1.5 text-xs min-w-[120px] shrink-0">
             {[...data]
               .map((d) => ({ ...d, pct: total > 0 ? (d.value / total) * 100 : 0 }))
-              .sort((a, b) => b.pct - a.pct)
+              .sort((a, b) => Number(a.rest) - Number(b.rest) || b.pct - a.pct)
               .map((d) => (
                 <li key={d.name} className="flex items-center gap-2">
                   <span
@@ -278,6 +288,40 @@ function ShareDonut({ titleKey, defaultTitle, players, valueFn }: {
               ))}
           </ul>
         </div>
+      )}
+    </Card>
+  )
+}
+
+/**
+ * Kill participation per player: each one's share of the team's kills (kill or assist). These do not add up to
+ * 100 % (several players share a kill), so bars, not a donut (20/11/2026).
+ */
+function KpBars({ players }: { players: SynergyPlayerStats[] }) {
+  const { t } = useTranslation()
+  const rows = players
+    .map((p, i) => ({ name: p.displayName, kp: Math.max(0, Math.min(100, p.shares.kpPct || 0)), color: PLAYER_COLORS[i % PLAYER_COLORS.length] }))
+    .sort((a, b) => b.kp - a.kp)
+  return (
+    <Card className="p-4">
+      <h3 className="text-sm font-bold text-hextech-text-bright">{t('team.dashboard.kpShare')}</h3>
+      <p className="mb-3 text-[11px] text-hextech-text-dim">{t('team.dashboard.kpHint')}</p>
+      {rows.length === 0 ? (
+        <p className="text-xs text-hextech-text-dim italic text-center py-8">{t('team.statsTable.noData')}</p>
+      ) : (
+        <ul className="space-y-3">
+          {rows.map((r) => (
+            <li key={r.name} className="text-xs">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span className="truncate text-hextech-text" title={r.name}>{r.name}</span>
+                <span className="font-semibold tabular-nums text-hextech-text-bright">{Math.round(r.kp)}%</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-hextech-bg">
+                <div className="h-2.5 rounded-full" style={{ width: `${r.kp}%`, backgroundColor: r.color }} />
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </Card>
   )

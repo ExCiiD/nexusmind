@@ -1400,7 +1400,7 @@
       },
       "card": {
         "best": "Meilleurs champions",
-        "bestHelp": "Les {{n}} meilleurs winrates parmi ses {{pool}} champions les plus joués ({{min}} parties minimum), sur ses parties de la saison récupérées depuis Riot. Le chiffre sur chaque icône : parties jouées.",
+        "bestHelp": "Ses {{n}} premiers champions du pool : Main, puis Comfort, puis Flex, les plus joués d’abord, sur ses parties de la saison récupérées depuis Riot. Le chiffre sur chaque icône : parties jouées ; le pourcentage : son winrate.",
         "games_one": "Sur {{count}} partie",
         "games_other": "Sur {{count}} parties",
         "championLine_one": "{{count}} partie · {{wins}} V / {{losses}} D · {{winRate}} % de winrate",
@@ -1635,7 +1635,9 @@
       "dmgShare": "Part de dégâts",
       "dmgTakenShare": "Part de dégâts encaissés",
       "goldShare": "Part d'or",
-      "kpShare": "Part de KP",
+      "kpShare": "Participation aux kills (KP)",
+      "kpHint": "Part des kills de l'équipe où le joueur a un kill ou une assist. Plusieurs joueurs partagent un même kill : le total dépasse 100 %.",
+      "restOfTeam": "Reste de l'équipe",
       "title": "Tableau de bord staff",
       "noPlayers": "Aucun joueur dans ce groupe pour l'instant.",
       "col": {

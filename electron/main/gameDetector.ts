@@ -4,6 +4,7 @@ import { readGameLogRef } from './gameLog'
 import type { GameLogRef } from './gameLogCore'
 import { isOffSessionSession, sessionForNewGame } from './offSessionGames'
 import { getPrisma } from './database'
+import { saveMatch } from './matchStore'
 import { withRiotPriority } from './riotPriority'
 
 const LIVE_CLIENT_HOST = '127.0.0.1'
@@ -456,11 +457,8 @@ export class GameDetector {
     // Audit E09: the match body just downloaded is cached here, before onGameEnriched, so the post-game
     // analysis it starts reads it instead of asking Riot again (it used to be fetched up to 3 times).
     try {
-      await prisma.matchCache.upsert({
-        where: { matchId: latestMatchId },
-        create: { matchId: latestMatchId, matchJson: JSON.stringify(winningMatchData) },
-        update: { matchJson: JSON.stringify(winningMatchData) },
-      })
+      // With its History line (MatchSummary, AUDIT_PERF_2 gain 7).
+      await saveMatch(prisma, latestMatchId, winningMatchData)
     } catch (err) {
       console.warn('[detector] Enrich: could not cache the match:', (err as Error)?.message ?? err)
     }

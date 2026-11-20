@@ -28,6 +28,7 @@ import { MatchHistoryPicker } from '@/components/Session/MatchHistoryPicker'
 import { cn, formatKDA, formatGameTime } from '@/lib/utils'
 import { SESSION_TEMPLATES, type SessionTemplate } from '@/lib/constants/sessionTemplates'
 import { AssignedObjectivesCard } from '@/components/Coaching/AssignedObjectivesCard'
+import { invalidateCached } from '@/lib/queryCache'
 
 type CreationStep = 'objectives' | 'kpis'
 type SessionType = 'live' | 'retroactive'
@@ -1265,6 +1266,7 @@ function ActiveSessionGameList({
     setDeletingId(gameId)
     try {
       await window.api.deleteGame(gameId)
+      invalidateCached('games:') // the game lists (History, Stats, Dashboard) refetch
       onRefresh()
       setConfirmId(null)
     } catch (err: any) {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarDays, ChevronRight, Filter, Hourglass, Loader2 } from 'lucide-react'
@@ -13,6 +13,8 @@ import { isServerNotReadyError } from '@/lib/matchEventView'
 import { formatPlayed, groupByWeek, type WeekGroup } from '@/lib/teamSessionHistoryView'
 import { initialsOf } from '@/lib/playerCard'
 import { historyApi, type HistoryPeriod, type SessionKind, type TeamSessionHistoryPage, type TeamSessionHistoryRow } from './historyContract'
+import { useCachedResource } from '@/hooks/useCachedResource'
+import { groupKey } from '@/lib/groupQueries'
 
 export const SESSION_TYPES = ['all', 'flex', 'scrim', 'tournament', 'meeting'] as const
 export type SessionTypeFilter = (typeof SESSION_TYPES)[number]
@@ -56,23 +58,22 @@ export function TeamSessionsPage() {
   const [filters, setFilters] = useHistoryFilters()
   const groupId = group?.id ?? null
 
-  const [page, setPage] = useState<TeamSessionHistoryPage | null>(null)
-  const [state, setState] = useState<'loading' | 'ready' | 'error' | 'unavailable'>('loading')
   const [more, setMore] = useState(false)
-  const [attempt, setAttempt] = useState(0)
+  const [moreFailed, setMoreFailed] = useState(false)
 
-  useEffect(() => {
-    if (!groupId) return
-    // Read here, not as a dependency: window.api may hand out a new function on each read.
-    const list = historyApi().teamSessionHistoryList
-    if (!list) { setState('unavailable'); return }
-    let alive = true
-    setState('loading')
-    list(groupId, { kind: filters.type, period: filters.period })
-      .then((p) => { if (alive) { setPage(p); setState('ready') } })
-      .catch((err) => { if (alive) setState(isServerNotReadyError(err) ? 'unavailable' : 'error') })
-    return () => { alive = false }
-  }, [groupId, filters.type, filters.period, attempt])
+  // Perf gain 3: cached per group and filter; coming back shows the list at once and refreshes behind.
+  // The method is read inside the fetcher, not held: window.api may hand out a new function on each read.
+  const hasList = !!historyApi().teamSessionHistoryList
+  const pageQ = useCachedResource<TeamSessionHistoryPage>(
+    groupId && hasList ? groupKey(groupId, `sessions:${filters.type}:${filters.period}`) : null,
+    () => historyApi().teamSessionHistoryList!(groupId!, { kind: filters.type, period: filters.period }))
+  const page = pageQ.data ?? null
+  const state: 'loading' | 'ready' | 'error' | 'unavailable' = !hasList ? 'unavailable'
+    : moreFailed ? 'error'
+    : page ? 'ready'
+    : pageQ.failed ? (isServerNotReadyError(pageQ.error) ? 'unavailable' : 'error')
+    : 'loading'
+  const retry = () => { setMoreFailed(false); void pageQ.load() }
 
   const loadMore = async () => {
     const list = historyApi().teamSessionHistoryList
@@ -81,9 +82,9 @@ export function TeamSessionsPage() {
     try {
       const last = page.sessions[page.sessions.length - 1]
       const next = await list(groupId, { kind: filters.type, period: filters.period, before: last?.startsAt ?? null })
-      setPage({ ...page, sessions: [...page.sessions, ...next.sessions], hasMore: next.hasMore })
+      pageQ.set({ ...page, sessions: [...page.sessions, ...next.sessions], hasMore: next.hasMore })
     } catch {
-      setState('error')
+      setMoreFailed(true)
     } finally {
       setMore(false)
     }
@@ -125,7 +126,7 @@ export function TeamSessionsPage() {
           {state === 'unavailable' ? (
             <EmptyState icon={Hourglass} title={t('analyst.common.notDeployedTitle')} description={t('teamSessions.notDeployed')} />
           ) : state === 'error' ? (
-            <ErrorState title={t('teamSessions.loadFailed')} cause={t('teamSessions.loadFailedCause')} onRetry={() => setAttempt((a) => a + 1)} />
+            <ErrorState title={t('teamSessions.loadFailed')} cause={t('teamSessions.loadFailedCause')} onRetry={retry} />
           ) : state === 'loading' || !page || !s ? (
             <ListSkeleton />
           ) : s.sessions === 0 ? (

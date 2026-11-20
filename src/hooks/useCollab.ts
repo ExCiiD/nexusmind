@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { create } from 'zustand'
 import type { Group } from '@/lib/collab'
 import { isLegacyStaff } from '@/lib/permissions'
+import { forgetSavedGroups, readSavedGroups, saveGroups } from '@/lib/collabPersist'
+import type { CloudStatus } from '@/lib/ipc'
 
 /** A user's display name; a NULL or unknown id (former member) gets the
  *  translated "Former member" label. Author ids become nullable with #29/#33. */
@@ -22,8 +24,18 @@ interface CollabState {
  * state, so the app loads `cloudStatus` + `collabListGroups` once instead of
  * once per mounted hook (13 callers). `reload()` refreshes all of them;
  * concurrent calls share one in-flight request.
+ *
+ * Perf gain 4: the store starts from the last group list (saved per cloud account, src/lib/collabPersist.ts), so
+ * Management, Lobby and Coaching show at once; the start-up load (one collab:bootstrap call) then confirms the
+ * account and refreshes it. Another account or a sign-out drops the saved list.
  */
-const useCollabStore = create<CollabState>(() => ({ myUserId: null, groups: [], available: false, loading: true, started: false }))
+function initialState(): CollabState {
+  const saved = readSavedGroups()
+  return saved
+    ? { myUserId: saved.uid, groups: saved.groups, available: true, loading: false, started: false }
+    : { myUserId: null, groups: [], available: false, loading: true, started: false }
+}
+const useCollabStore = create<CollabState>(initialState)
 
 let inFlight: Promise<void> | null = null
 let authSubscribed = false
@@ -33,15 +45,36 @@ function loadCollab(): Promise<void> {
   useCollabStore.setState({ started: true })
   inFlight = (async () => {
     try {
-      const status = await window.api.cloudStatus()
+      // One call (status + groups) where the API has it; else the two reads in turn.
+      const boot = await window.api.collabBootstrap?.()
+      const status: CloudStatus = boot?.status ?? await window.api.cloudStatus()
       if (!status.configured || !status.user) {
+        forgetSavedGroups()
         useCollabStore.setState({ available: false, myUserId: null, groups: [] })
         return
       }
-      useCollabStore.setState({ myUserId: status.user.id, available: true })
-      useCollabStore.setState({ groups: await window.api.collabListGroups() })
+      const uid = status.user.id
+      const prev = useCollabStore.getState()
+      // Never another account's list, not even for a moment.
+      if (prev.myUserId !== uid) useCollabStore.setState({ groups: [] })
+      useCollabStore.setState({ myUserId: uid, available: true })
+      let groups: Group[] | null
+      try {
+        groups = boot ? boot.groups : await window.api.collabListGroups()
+      } catch {
+        groups = null
+      }
+      if (groups) {
+        saveGroups(uid, groups)
+        useCollabStore.setState({ groups })
+      } else if (prev.myUserId !== uid) {
+        // Unreadable now: this account's saved list is gone above; nothing to show.
+        useCollabStore.setState({ groups: [] })
+      }
+      // Unreadable (offline): the list already shown stays.
     } catch {
-      useCollabStore.setState({ groups: [] })
+      // The status itself failed (offline auth): keep what is shown; the saved list is this account's.
+      if (!useCollabStore.getState().myUserId) useCollabStore.setState({ groups: [] })
     } finally {
       useCollabStore.setState({ loading: false })
       inFlight = null
@@ -61,8 +94,18 @@ function subscribeAuthOnce() {
   authSubscribed = true
   window.api.onCloudAuthChanged((user) => {
     const current = useCollabStore.getState().myUserId
-    if ((user?.id ?? null) !== current) void loadCollab()
+    if ((user?.id ?? null) === current) return
+    // Signed out or another account: the shown and saved lists are not theirs.
+    forgetSavedGroups()
+    useCollabStore.setState({ myUserId: user?.id ?? null, groups: [], available: !!user })
+    void reloadCollab()
   })
+}
+
+/** Perf gain 4: starts the cloud load at app start (App.tsx), before any screen asks for it. */
+export function startCollab() {
+  subscribeAuthOnce()
+  if (!useCollabStore.getState().started) void loadCollab()
 }
 
 /**
@@ -76,10 +119,7 @@ export function useCollab() {
   const available = useCollabStore((s) => s.available)
   const loading = useCollabStore((s) => s.loading)
 
-  useEffect(() => {
-    subscribeAuthOnce()
-    if (!useCollabStore.getState().started) void loadCollab()
-  }, [])
+  useEffect(() => { startCollab() }, [])
 
   // #29/#33: content written by someone who left (account deleted, or no
   // longer in any of my groups) has a NULL / unknown author → "Former member".

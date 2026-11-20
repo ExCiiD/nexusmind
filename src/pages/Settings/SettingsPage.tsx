@@ -21,6 +21,10 @@ import type { AudioDevicesSummary } from '@/lib/ipc'
 import { PLATFORM_REGIONS } from '@/lib/regions'
 import { useYoutubeUploadAvailable } from '@/hooks/useYoutubeUploadAvailable'
 import { WellbeingPrivacyCard } from '@/components/Wellbeing/WellbeingPrivacyCard'
+import { useCachedResource } from '@/hooks/useCachedResource'
+import { ACCOUNTS_KEY } from '@/lib/pageQueries'
+const NO_ACCOUNTS: AccountEntry[] = []
+import { invalidateCached } from '@/lib/queryCache'
 
 interface AccountEntry {
   id: string
@@ -37,8 +41,11 @@ export function SettingsPage() {
   const loadUser = useUserStore((s) => s.loadUser)
   const { toast } = useToast()
 
-  const [accounts, setAccounts] = useState<AccountEntry[]>([])
-  const [loadingAccounts, setLoadingAccounts] = useState(true)
+  // Perf gain 3: the linked accounts through the shared cache (the key the Stats landing page uses).
+  const accountsQ = useCachedResource<AccountEntry[]>(ACCOUNTS_KEY, () => window.api.listAccounts() as Promise<AccountEntry[]>)
+  const accounts = accountsQ.data ?? NO_ACCOUNTS
+  const loadingAccounts = accountsQ.loading
+  const setAccounts = accountsQ.set
   // Each account's server (« Auto » or picked by hand), desktop (docs/contracts/account-region.md).
   const regions = useAccountRegions()
   const [ffmpegAvailable, setFfmpegAvailable] = useState<boolean | null>(null)
@@ -80,16 +87,7 @@ export function SettingsPage() {
     }
   }
 
-  const loadAccounts = async () => {
-    try {
-      const data = await window.api.listAccounts()
-      setAccounts(data)
-    } catch {
-      // non-critical
-    } finally {
-      setLoadingAccounts(false)
-    }
-  }
+  const loadAccounts = accountsQ.load
 
   /**
    * Fetches the current audio device list from the main process (native-audio-node).
@@ -109,7 +107,7 @@ export function SettingsPage() {
   }
 
   useEffect(() => {
-    loadAccounts()
+    // The accounts come from the cache (refreshed by the hook when stale).
     window.api.getCaptureStatus().then((s) => {
       setFfmpegAvailable(s.ffmpegAvailable)
       setIsRecording(s.isRecording)
@@ -179,6 +177,7 @@ export function SettingsPage() {
     setAdding(true)
     try {
       await window.api.addAccount(gameName.trim(), tagLine.trim(), region)
+      invalidateCached('games:') // the game lists (History, Stats, Dashboard) refetch
       toast({ title: t('settings.accounts.addedToast'), variant: 'success' })
       setGameName('')
       setTagLine('')
@@ -195,8 +194,9 @@ export function SettingsPage() {
     setRemovingId(id)
     try {
       await window.api.removeAccount(id)
+      invalidateCached('games:') // the game lists (History, Stats, Dashboard) refetch
       toast({ title: t('settings.accounts.removedToast'), variant: 'success' })
-      setAccounts((prev) => prev.filter((a) => a.id !== id))
+      setAccounts((prev) => (prev ?? []).filter((a) => a.id !== id))
       setConfirmRemoveId(null)
     } catch (err: any) {
       toast({ title: err.message ?? 'Error', variant: 'destructive' })

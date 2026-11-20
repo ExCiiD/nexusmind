@@ -21,6 +21,8 @@ import { useTranslation } from 'react-i18next'
 import { FundamentalFilter } from './FundamentalFilter'
 import { ProgressSummary } from './ProgressSummary'
 import { EmptyState, Skeleton, SkeletonKpiTiles } from '@/components/ui/data-state'
+import { useCachedQuery } from '@/hooks/useCachedQuery'
+import { ANALYTICS_KEY, BADGES_KEY } from '@/lib/pageQueries'
 
 const LS_TAB_KEY = 'analytics_tab'
 const LS_FILTER_KEY = 'analytics_filter_fundamentals'
@@ -99,8 +101,6 @@ export function AnalyticsPage() {
   const loadGameHistory = useGameStore((s) => s.loadGameHistory)
   const FUNDAMENTALS = useLocalizedFundamentals()
 
-  const [userBadges, setUserBadges] = useState<string[]>([])
-  const [dataLoaded, setDataLoaded] = useState(false)
   /** When true the comparison chart uses session KPI scores instead of the previous assessment. */
   const [trendShowLive, setTrendShowLive] = useState(false)
   const [sessionCount, setSessionCount] = useState<SessionCountOption>('all')
@@ -127,15 +127,15 @@ export function AnalyticsPage() {
   }
   const setTimePeriod = (p: TimePeriod) => { setTimePeriodRaw(p); localStorage.setItem(LS_PERIOD_KEY, p) }
 
-  useEffect(() => {
-    Promise.all([
-      loadStats(),
-      loadProgressData(),
-      loadKpiTimeline(),
-      loadGameHistory(20),
-      window.api.getBadges().then(setUserBadges).catch(() => {}),
-    ]).finally(() => setDataLoaded(true))
-  }, [loadStats, loadProgressData, loadKpiTimeline, loadGameHistory])
+  // Perf gain 3: the tabs' data lives in the game store; the cache entry only says when it was last loaded, so
+  // coming back within 30 s costs nothing, and a game's end (GameEndNav invalidates `games:`) reloads it.
+  const loaded = useCachedQuery(ANALYTICS_KEY, async () => {
+    await Promise.all([loadStats(), loadProgressData(), loadKpiTimeline(), loadGameHistory(20)])
+    return true
+  })
+  const dataLoaded = loaded.data !== undefined || !!loaded.error
+  const badges = useCachedQuery(BADGES_KEY, () => window.api.getBadges())
+  const userBadges: string[] = badges.data ?? []
 
   // KPI timeline mapped to the same shape as progressData points
   const kpiPoints = useMemo(
