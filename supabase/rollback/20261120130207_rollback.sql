@@ -1,4 +1,4 @@
--- Rollback of 20261120140000_realtime_publication: the six tables leave the supabase_realtime publication.
+-- Rollback of 20261120130207_realtime_publication: the six tables leave the supabase_realtime publication.
 -- The publication itself stays (Supabase owns it). The apps fall back to their slow polling on their own.
 
 do $$

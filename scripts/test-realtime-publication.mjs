@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Check of supabase/migrations/20261120140000_realtime_publication.sql (Realtime instead of polling) and its
+ * Check of supabase/migrations/20261120130207_realtime_publication.sql (Realtime instead of polling) and its
  * rollback, on a throw-away Postgres (PGlite 0.3, PostgreSQL 17) rebuilt from the migrations production has applied
  * (supabase/baseline/prod_migrations_20261120_beta14.txt).
  *
@@ -17,8 +17,8 @@ import { openPglite, replay, migrationFiles, repo, migDir } from './lib/pgliteSu
 const pgliteDir = process.argv[2]
 if (!pgliteDir) { console.error('Pass the folder that holds node_modules/@electric-sql/pglite.'); process.exit(2) }
 
-const migration = readFileSync(join(migDir, '20261120140000_realtime_publication.sql'), 'utf-8')
-const rollback = readFileSync(join(repo, 'supabase/rollback/20261120140000_rollback.sql'), 'utf-8')
+const migration = readFileSync(join(migDir, '20261120130207_realtime_publication.sql'), 'utf-8')
+const rollback = readFileSync(join(repo, 'supabase/rollback/20261120130207_rollback.sql'), 'utf-8')
 const inProduction = readFileSync(join(repo, 'supabase/baseline/prod_migrations_20261120_beta14.txt'), 'utf-8')
   .split(/\r?\n/).filter(Boolean).map((l) => l.split('|').slice(0, 2).join('_') + '.sql')
 

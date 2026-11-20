@@ -442,3 +442,5 @@ Pas de conflit : `AccountPage.tsx` sort du périmètre front pour la durée de #
 - 20/11 — audit : complément beta.15 **NON** (P1 : erreur system de Realtime prise pour « live » quand la publication est vide → jusqu’à 15 min de retard). Correctif confié au back, bloquant pour la release.
 - 20/11 — backend-dev : **P1 Realtime corrigé** (« live » seulement après confirmation postgres_changes, erreur system → polling de secours + nouvel essai ; boucle CLOSED corrigée ; 1 989 tests). Beta.15 prête : accord de l’utilisateur demandé (migration Realtime + proxy + app + web).
 - 20/11 — **accord de l’utilisateur (« Yes, go ») pour la beta.15** : commit, migration Realtime + proxy (back), publication + web (Chief).
+- 20/11 — **beta.15 publiée** (https://github.com/ExCiiD/nexusmind/releases/tag/v1.0.0-beta.15) ; web c28b79f0 (retour arrière 2ea9f486). Migration Realtime + proxy en cours (back).
+- 20/11 — backend-dev : **beta.15 en production** (Realtime 20261120130207, 6 tables publiées ; proxy 3b46bfaf, retour arrière 83d2421d). Baseline commitée par le Chief. Reste à confirmer : un vrai événement Realtime au premier lancement de la beta.15.

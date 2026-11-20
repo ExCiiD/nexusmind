@@ -1,0 +1,174 @@
+cron|dev-plan-period-check|4047917c
+cron|inactive-player-check|e675f6ff
+cron|objective-overdue-check|07d2efbe
+cron|review-pending-check|4cd8c476
+cron|scrim-availability-check|ff4a1de9
+cron|scrim-reminders|13d092e2
+cron|team-session-lifecycle|d9d6fa6f
+cron|weekly-load-check|b29038c8
+cron|wellbeing-alert-check|d44388d7
+function|private.before_auth_user_delete()|b4874adf ---
+function|private.can_edit_calendar(p_group uuid, p_user uuid)|995c88ef aus
+function|private.can_edit_group_logo(p_name text)|93999387 -u-
+function|private.can_manage_session(p_group uuid, p_user uuid)|995c88ef aus
+function|private.can_prepare_session(p_session uuid, p_user uuid)|3f380d44 -u-
+function|private.can_read_player_table(p_owner uuid, p_table text)|5126d79a -u-
+function|private.can_read_wellbeing(p_owner uuid)|5e7a7c6c -u-
+function|private.feedback_rate_limit()|5cf350d8 aus
+function|private.group_members_riot_id_resets_puuid()|0cf6723b ---
+function|private.group_role(p_group uuid, p_user uuid)|2c69fa4d -u-
+function|private.group_sharing_wellbeing_needs_consent()|848ce888 ---
+function|private.hand_over_groups_of(p_user uuid)|f91223bb ---
+function|private.has_group_role(p_group uuid, p_roles text[], p_user uuid)|2a5cd73f -u-
+function|private.has_wellbeing_consent()|9fc56b30 -u-
+function|private.is_app_admin(p_user uuid)|8e216f0c -u-
+function|private.is_champion_list(p jsonb, n integer)|fd5b0631 -u-
+function|private.is_discord_manager(p_group uuid)|b03e2857 -u-
+function|private.is_draft_slots(p jsonb)|b15216f6 -u-
+function|private.is_group_staff(p_group uuid, p_user uuid)|5bafdc3b -u-
+function|private.is_pick_list(p jsonb)|47644464 -u-
+function|private.match_kind_of(p_event_kind text)|0a76ea2d -u-
+function|private.micro_answer_player(p_answer uuid)|fedc2e4d -u-
+function|private.notify(p_user uuid, p_type text, p_data jsonb, p_link text)|d6bcb6b1 ---
+function|private.opponent_dossiers_touch()|ea153424 ---
+function|private.opponent_key_of(p_name text)|4231721b -u-
+function|private.random_code(p_len integer)|8e809890 ---
+function|private.recording_file_name_only()|3f1211a9 ---
+function|private.scrim_follows_its_event()|d660c167 ---
+function|private.scrim_group(p_scrim uuid)|5a893ebe -u-
+function|private.session_draft_same_group()|0c6d709f ---
+function|private.should_notify(p_user uuid, p_type text)|9921e2af -u-
+function|private.team_scouting_key()|389b4f34 ---
+function|private.team_scouting_key_moved()|df7c3a0a ---
+function|private.team_session_before_event_delete()|2c54e455 ---
+function|private.team_session_follows_event()|8b6f88af ---
+function|private.team_session_group(p_session uuid)|afd0b3f2 aus
+function|private.team_session_is_empty(p_session uuid)|09dc1691 ---
+function|private.team_session_scrim_cancelled()|afa52a60 ---
+function|private.text_array_is_distinct(p text[])|aff9ebf1 -u-
+function|private.text_items_within(p text[], p_max integer)|9bcb5ebb -u-
+function|private.touch_updated_at()|744bab3e ---
+function|private.vod_session_group(p_session uuid)|170255fb -u-
+function|public.auto_create_team_session()|22eb7866 --s
+function|public.can_prepare_team_session(p_session uuid)|c5d7fafa -us
+function|public.create_access_invite(p_email text, p_days integer, p_max_uses integer, p_note text)|2b7b5518 -us
+function|public.create_group(p_name text, p_kind text)|0bf96735 -us
+function|public.create_group_invite(p_group uuid, p_role text, p_days integer, p_max_uses integer)|cb5f86b1 -us
+function|public.join_group(p_code text, p_display_name text, p_riot_id text)|5a3dd742 -us
+function|public.link_roster_member(p_roster uuid, p_user uuid)|b5fe1d06 -us
+function|public.notify_announcement_mentions()|120f0b09 --s
+function|public.notify_calendar_event_request()|974a396e --s
+function|public.notify_objective_assigned()|66c0b27b --s
+function|public.notify_review_comment()|80395f57 --s
+function|public.notify_scrim_created()|52c6ad3a --s
+function|public.notify_scrim_members(p_scrim scrims, p_type text, p_actor uuid)|d314da34 --s
+function|public.notify_scrim_updated()|4b1eeb21 --s
+function|public.notify_task_assigned()|5c548750 --s
+function|public.remind_event_responses(p_event uuid, p_user_ids uuid[])|34c538a5 -us
+function|public.respond_to_calendar_event(p_event uuid, p_status text, p_note text)|8c5a18cb -us
+function|public.run_dev_plan_period_check()|8d3c8173 --s
+function|public.run_inactive_player_check()|331f4b33 --s
+function|public.run_objective_overdue_check()|b626797f --s
+function|public.run_review_pending_check()|e0bc45e0 --s
+function|public.run_scrim_availability_check()|0d9952c3 --s
+function|public.run_scrim_reminders()|a691ed73 --s
+function|public.run_team_session_lifecycle()|86d180b8 --s
+function|public.run_weekly_load_check()|b8a621b8 --s
+function|public.run_wellbeing_alert_check()|fea0ae2c --s
+function|public.save_match_event(p_group uuid, p_event jsonb, p_match jsonb)|89f3277b -us
+function|public.set_captain(p_group uuid, p_user uuid, p_value boolean)|abe0b087 -us
+function|public.set_group_logo(p_group uuid, p_url text)|ab8d0f8c -us
+function|public.set_member_role(p_group uuid, p_user uuid, p_role text)|f7fff6d3 -us
+function|public.set_member_staff_roles(p_group uuid, p_user uuid, p_roles text[])|baad4efb -us
+function|public.set_my_also_plays(p_group uuid, p_plays boolean)|e048936b -us
+function|public.set_opponent_dossier_status(p_id uuid, p_status text)|26bb754d -us
+function|public.set_team_game_timeline_summary(p_game uuid, p_summary jsonb)|a65d939a -us
+function|public.set_team_session_objective_result(p_session uuid, p_objective text, p_game uuid, p_met boolean)|9c563dce -us
+function|public.set_weekly_load_threshold(p_group uuid, p_hours integer)|7014ae46 -us
+function|public.set_wellbeing_consent(p_granted boolean, p_version text)|2adf084d -us
+function|public.sync_push(p_records jsonb)|0cfebebd -us
+function|public.sync_records_bump_seq()|084d8d03 aus
+function|public.touch_updated_at()|4e1274bc aus
+function|public.unlink_discord_guild(p_group uuid)|b604f749 -us
+function|public.update_match_detail(p_scrim uuid, p_patch jsonb)|78e04c8c -us
+sequence|public.access_invite_attempts_id_seq|aus
+sequence|public.sync_records_seq|aus
+storage|bucket backups|6f7c8016
+storage|bucket group-logos|14b327c3
+storage|policy backups_delete_own_folder|0266ea9c
+storage|policy backups_read_own_folder|63cfcec2
+storage|policy backups_upload_own_folder|4deec3ae
+storage|policy group_logos_delete|56eea8e2
+storage|policy group_logos_insert|c8315b50
+storage|policy group_logos_select|f5b8dcc4
+storage|policy group_logos_update|c515cf03
+table|public.access_invite_attempts|cd031d1 k7cab1f ic2c7f6 pd41d8c td41d8c g388594 r10
+table|public.access_invites|c541fb6 k9dc09b i59770d p165f9e td41d8c g388594 r10
+table|public.announcement_dismissals|c8e1a0b kca56c9 iaa55be pabbc55 td41d8c g388594 r10
+table|public.announcements|c83dead k21c52b icd29a1 p7719bb t1151cd g388594 r10
+table|public.app_admins|cd026fb k4a1e20 ic70599 p9180b6 td41d8c g388594 r10
+table|public.assigned_objectives|cf37062 kdd8407 i42be8c p22e6ec t66141b g388594 r10
+table|public.availability_exceptions|cf24ae8 k29b221 i0e7087 p478f7f td41d8c g388594 r10
+table|public.availability_rules|c32f351 kb799ee iac82c4 p16d3e4 td41d8c g388594 r10
+table|public.calendar_event_attendees|cdfa749 kd8b3ab i13484f pcfe6d1 td41d8c g388594 r10
+table|public.calendar_event_requests|c3639f1 k72745c i7b1dea p81eb56 tfbb60e g388594 r10
+table|public.calendar_event_responses|c179933 k78d1aa i504341 p6d1313 td41d8c g388594 r10
+table|public.calendar_events|c9b8821 k37173d i8ae22c p1c559f t738b42 g388594 r10
+table|public.calendar_subscriptions|c094491 ka7fdd3 i86f811 pb7bc0a td41d8c g388594 r10
+table|public.cloud_backups|ccf953a k77010e i6f6c38 pc7141e td41d8c g388594 r10
+table|public.dev_plan_axes|cd20512 k71b1f3 i62d2cc p2da025 tfce82b g388594 r10
+table|public.dev_plan_checkins|c6d0948 kc5eb34 ibb4e7a pae7c9c td41d8c g388594 r10
+table|public.dev_plan_progress|c860201 ke4b656 i8fad3d p581ba5 t99e479 g388594 r10
+table|public.dev_plans|c28fab0 k475ef1 icfe0a8 p7d5394 t75fcf7 g388594 r10
+table|public.discord_dm_sent|cc85628 k9733da icb57b3 pd41d8c td41d8c g388594 r10
+table|public.discord_guild_link_codes|c1c0cd4 k4fa95c i261374 pbcb868 td41d8c g388594 r10
+table|public.discord_guild_links|c7ad7fa k9892f0 i1e317b p9ac2b5 td41d8c g388594 r10
+table|public.discord_notifications_sent|c1df657 k8d37f9 i6d60c6 pd41d8c td41d8c g388594 r10
+table|public.discord_user_link_codes|c691b59 k1c150d iac083b pc112f4 td41d8c g388594 r10
+table|public.discord_user_links|c0854f6 k450166 iaa29a7 p32e47e td41d8c g388594 r10
+table|public.draft_log|cddc572 kad2457 ia55f6c p92a222 t0a4393 ge327a2 r10
+table|public.event_response_reminders|c7bbe4f kb21e18 i6cefb5 p64df60 td41d8c gcf28a4 r10
+table|public.feedback_reports|cfceeba k6e8e83 i666c53 p0bb4b9 t8a5c80 g388594 r10
+table|public.group_fundamentals|cbce998 k99fdfd i20c286 p58b245 td41d8c g388594 r10
+table|public.group_invites|c4cac5c k3496a5 i4394f9 p0a0a48 td41d8c g388594 r10
+table|public.group_members|c903e1e kebab43 ifa097a p450f98 t4ec3d8 g68e5e4 r10
+table|public.group_sharing|cc2c0e9 k4afdd5 i323d5f p601570 tbf288e g388594 r10
+table|public.groups|cc4cbca kd7522f i8d5d42 pcb93da td41d8c g388594 r10
+table|public.micro_review_answers|cc63924 k240f9c i7033ab pd9f89d tec8add g388594 r10
+table|public.micro_review_verdicts|c78282b k249f54 i4e2ddc p36649e t8e8506 g388594 r10
+table|public.notification_prefs|ceb912d kda3299 i430b99 pdcc09f t16b040 g388594 r10
+table|public.notifications|c3b2f2f k660108 i3068bc p491556 td41d8c g388594 r10
+table|public.opponent_dossiers|c1b5c04 kcfcb25 i1c1542 p3fa7d1 t893c7c ge327a2 r10
+table|public.report_shares|c13627f k8ed4e6 ic519ac p280364 td41d8c g388594 r10
+table|public.review_comments|c5b5694 k400170 i461421 p42889a t2a6a41 g388594 r10
+table|public.scrim_availability|cccb974 k879648 if61eac p286a55 t9aea9f g388594 r10
+table|public.scrim_availability_reminders|c15bbcb kb57b1a idb8272 pd41d8c td41d8c g388594 r10
+table|public.scrims|c323c8c k9dd70c i191e25 p7a2401 t2f87f5 g388594 r10
+table|public.staff_notes|c96a8c0 kf16825 i0bd575 pf4b129 td2c482 g388594 r10
+table|public.sync_records|ccdaefb kd7a913 i7d1aee p4629bb t39c2d0 g388594 r10
+table|public.tasks|c3e429a kba1917 i556a05 p31c8ff td84809 g388594 r10
+table|public.team_codex_rules|cbb5c88 kff8b36 i23e195 p9d82ad td41d8c g388594 r10
+table|public.team_custom_games|c902831 k3af3ba i027999 p8ae327 td41d8c ge799e0 r10
+table|public.team_discussion_comments|c947a64 k49d1ae i41eb5f pc965e5 td41d8c g388594 r10
+table|public.team_drafts|c34126a k5627bd ic5a643 p381e3d td7743f g388594 r10
+table|public.team_pool_entries|c5341d6 kf9e667 ibee6d6 pf86189 td41d8c g388594 r10
+table|public.team_rosters|cf2f6c5 k2cbcf4 i7935ef p2f9c8d t6cfd9e g388594 r10
+table|public.team_scouting|cbde82c kf63511 i37ec74 pa86ba2 t157bd5 g388594 r10
+table|public.team_session_attendance|c20b95b kbb7b34 i240d4d p7724d6 td41d8c g388594 r10
+table|public.team_session_drafts|c1a020f kd55e8c i9ecfe1 p8d77fd taed84e ge799e0 r10
+table|public.team_session_feedback|cb2ba15 kd40237 i6a78bb pf6df11 td41d8c g388594 r10
+table|public.team_session_games|c891636 k8724b8 i68e94c p274fd0 td41d8c g68e5e4 r10
+table|public.team_session_objective_results|c28cde1 k6023ac i2e0e9d p0e1cc2 td41d8c gcf28a4 r10
+table|public.team_session_objectives|c96bce1 k571fda i1e06b9 p192179 td41d8c g388594 r10
+table|public.team_session_player_objectives|ca3c8bf kd79db7 i9e5580 p2533cf td41d8c ge799e0 r10
+table|public.team_session_prep_notes|cdb2567 k1d4777 i64dcbf pfd2dba td41d8c ge799e0 r10
+table|public.team_session_reviews|c6701b5 k78904f i472c6c pa2d84a t908226 g388594 r10
+table|public.team_sessions|c1e343e kd8f2a3 ibd43f3 pd8ca70 td41d8c g68e5e4 r10
+table|public.trial_candidates|c82c493 k64a32f if8a90b p436898 t69c97a g388594 r10
+table|public.trial_evaluations|c94825c k028c38 i9d120e pee6326 td41d8c g388594 r10
+table|public.vod_review_action_items|cb601aa k7de777 i2a0912 pe09cc4 td41d8c g388594 r10
+table|public.vod_review_assignments|c5fd28b k5bad89 ic733ca p1e3a29 tde19e5 g388594 r10
+table|public.vod_review_comments|c3c3cf7 k21391f i9ec814 p9230b1 td41d8c g388594 r10
+table|public.vod_review_sessions|ca6f7ce k8adf36 i7716be p979713 t128a3d g388594 r10
+table|public.wellbeing_checkins|c48b632 k383448 i6755b0 p115f56 td41d8c g388594 r10
+table|public.wellbeing_consent_events|c3239d8 k94346d ibb3843 p5b5a9b td41d8c g687e22 r10

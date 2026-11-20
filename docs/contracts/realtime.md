@@ -9,7 +9,7 @@ Back-end, 20/11/2026. Validé par l'utilisateur (« lance-le »).
   `cloud:realtime-status` et le preload ;
 - web : `web/src/realtimeWeb.ts`. Le Front ajoute `...realtimeWebApi` à `web/src/api.ts` ;
 - hook pour les écrans : `src/hooks/useRealtimeRefresh.ts` ;
-- migration : `supabase/migrations/20261120140000_realtime_publication.sql`, avec son retour arrière et le test
+- migration : `supabase/migrations/20261120130207_realtime_publication.sql`, avec son retour arrière et le test
   `scripts/test-realtime-publication.mjs` (16 contrôles). **Elle n'est pas appliquée.**
 
 ## API (desktop et web, mêmes noms)
@@ -97,7 +97,7 @@ Le badge des sessions live (`team-session:live`) ne change pas pour le Front. Su
      donne les 6 tables.
    - Puis deux comptes, chacun dans un groupe différent. Une annonce créée dans le groupe A n'arrive qu'aux membres de
      A, et une notification n'arrive qu'à son destinataire.
-   - Retour arrière : `supabase/rollback/20261120140000_rollback.sql`. Les apps repassent d'elles-mêmes au polling.
+   - Retour arrière : `supabase/rollback/20261120130207_rollback.sql`. Les apps repassent d'elles-mêmes au polling.
 2. **Desktop** : le client Supabase du process principal reçoit le transport `ws`, parce qu'Electron 33 tourne sur
    Node 20, qui n'a pas de WebSocket. `ws` arrive aujourd'hui avec `@supabase/realtime-js`. Vérifier le build
    (`electron-vite build`) et, au besoin, l'ajouter aux dépendances directes.

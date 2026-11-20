@@ -45,7 +45,7 @@ export interface RealtimeTableSpec {
   column?: string
 }
 
-/** The tables in the `supabase_realtime` publication (migration 20261120140000_realtime_publication). */
+/** The tables in the `supabase_realtime` publication (migration 20261120130207_realtime_publication). */
 export const REALTIME_TABLES: RealtimeTableSpec[] = [
   { table: 'notifications', topic: 'notifications', scope: 'user', column: 'user_id' },
   { table: 'team_sessions', topic: 'team_sessions', scope: 'group', column: 'group_id' },
