@@ -34,6 +34,17 @@ describe('getDevPlanForPlayer / getMyDevPlan', () => {
     expect(plan?.checkins[0].note).toBe('1:1 note')
   })
 
+  it('names the plan\'s author ("plan donné par Coach X"), null when they left the group or are unknown', async () => {
+    const row = { id: 'plan1', group_id: 'g1', player_id: 'p1', title: 'Q1', period_start: null, period_end: null, created_by: 'coach1', created_at: 't', updated_at: 't' }
+    const empty = () => chain({ data: [], error: null })
+    const sbWith = (member: unknown, planRow: unknown = row) => ({
+      from: vi.fn((t: string) => (t === 'dev_plans' ? chain({ data: planRow, error: null }) : t === 'group_members' ? chain({ data: member, error: null }) : empty())),
+    }) as never
+    expect(await getMyDevPlan(sbWith({ display_name: 'Coach Rook' }), 'g1', 'p1')).toMatchObject({ createdBy: 'coach1', createdByName: 'Coach Rook' })
+    expect(await getMyDevPlan(sbWith(null), 'g1', 'p1')).toMatchObject({ createdBy: 'coach1', createdByName: null })
+    expect(await getMyDevPlan(sbWith(null, { ...row, created_by: null }), 'g1', 'p1')).toMatchObject({ createdBy: null, createdByName: null })
+  })
+
   it('throws on a read error', async () => {
     const sb = { from: vi.fn(() => chain({ data: null, error: { message: 'boom' } })) } as never
     await expect(getDevPlanForPlayer(sb, 'g1', 'p1')).rejects.toThrow('boom')

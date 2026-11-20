@@ -15,6 +15,9 @@ import { collabErrorKey } from '@/lib/collab'
 import { canManageSession } from '@/lib/permissions'
 import { FundamentalPickerDialog } from '@/components/Session/FundamentalPickerDialog'
 import { mergedFundamentalCategories, getAllFundamentalsForGroup } from '@/lib/fundamentals'
+import { TeamSessionHistoryView } from '@/pages/TeamSessions/TeamSessionHistoryView'
+import { SessionPrepPanel } from '@/components/TeamSession/SessionPrepPanel'
+import { historyApi } from '@/pages/TeamSessions/historyContract'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { countdownState } from '@/lib/teamSessionsCore'
 import { gamesNeedingReviewPrompt } from '@/lib/teamSessionReviewsCore'
@@ -64,6 +67,8 @@ export function TeamSessionPage() {
   const autoStart = params.get('start') === '1'
   const [focusGameDone, setFocusGameDone] = useState(false)
   const [recordGameId, setRecordGameId] = useState<string | null>(null)
+  // § 15: a finished session opens in history mode, unless its history has nothing for it (a meeting before the Back's meeting data).
+  const [historyOff, setHistoryOff] = useState(false)
 
   const load = useCallback(async () => {
     if (!calendarEventId) return
@@ -265,6 +270,21 @@ export function TeamSessionPage() {
   // people concerned and, once started, who is there (MeetingSetupCard).
   const isMeeting = event.kind === 'meeting'
 
+  // § 15.2: a finished session opens in history mode (results, stats, objectives, notes). The end-of-game flow
+  // (?review=<gameId>, ?final=1) keeps the page below, where the reviews are recorded.
+  if (session.status === 'ended' && !historyOff && !focusGameId && !finalMode && historyApi().teamSessionHistoryDetail) {
+    return (
+      <TeamSessionHistoryView
+        sessionId={session.id}
+        calendarEventId={event.id}
+        canManage={canManage}
+        nameOf={nameOf}
+        objectiveLabel={(id) => allFundamentals.find((f) => f.id === id)?.label ?? id}
+        onNotHistory={() => setHistoryOff(true)}
+      />
+    )
+  }
+
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between gap-2">
@@ -327,10 +347,18 @@ export function TeamSessionPage() {
         </Card>
       )}
 
-      {!canManage && session.status === 'scheduled' && (
-        <p className="text-sm text-hextech-text-dim">
-          {t('teamSession.waitingForResponsible', { defaultValue: 'Waiting for a responsible (coach/manager/captain) to start the session.' })}
-        </p>
+      {/* § 17: the prep — each player's objectives, the drafts, the message — or, for a player, what to know before it.
+          Sessions start on their own at the slot's time: no « waiting for a responsible » any more. */}
+      {!isMeeting && session.status !== 'ended' && myUserId && (
+        <SessionPrepPanel
+          session={session}
+          event={event}
+          group={group}
+          myUserId={myUserId}
+          nameOf={nameOf}
+          objectiveLabel={(id) => allFundamentals.find((f) => f.id === id)?.label ?? id}
+          fundamentals={allFundamentals.map((f) => ({ id: f.id, label: f.label }))}
+        />
       )}
 
       {isMeeting && (

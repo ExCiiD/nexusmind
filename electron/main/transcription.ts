@@ -108,11 +108,23 @@ export async function transcribeFile(sourcePath: string, language: string): Prom
   }
 }
 
-/** One line per Whisper segment (timestamps dropped), blank ones skipped. */
+/** "[mm:ss]" or "[h:mm:ss]" for a segment start in seconds (null when unknown). */
+export function clockPrefix(sec: unknown): string {
+  if (typeof sec !== 'number' || !Number.isFinite(sec) || sec < 0) return ''
+  const t = Math.floor(sec)
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), x = t % 60
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return h > 0 ? `[${h}:${pad(m)}:${pad(x)}] ` : `[${pad(m)}:${pad(x)}] `
+}
+
+/** One line per Whisper segment, prefixed with its start time when Whisper gave one
+ *  (the meeting history page makes it clickable); blank segments skipped. */
 export function joinTranscript(result: unknown): string {
   const one = (r: unknown) => {
-    const o = r as { text?: string; chunks?: Array<{ text?: string }> } | null
-    if (Array.isArray(o?.chunks) && o.chunks.length > 0) return o.chunks.map((c) => String(c.text ?? '').trim()).filter(Boolean).join('\n')
+    const o = r as { text?: string; chunks?: Array<{ text?: string; timestamp?: [number | null, number | null] }> } | null
+    if (Array.isArray(o?.chunks) && o.chunks.length > 0) {
+      return o.chunks.map((c) => { const text = String(c.text ?? '').trim(); return text ? clockPrefix(c.timestamp?.[0]) + text : '' }).filter(Boolean).join('\n')
+    }
     return String(o?.text ?? '').trim()
   }
   return (Array.isArray(result) ? result.map(one) : [one(result)]).filter(Boolean).join('\n').trim()

@@ -1,6 +1,6 @@
 import { app } from 'electron'
-import { realpathSync } from 'fs'
-import { join, resolve, sep } from 'path'
+import { existsSync, realpathSync } from 'fs'
+import { basename, join, resolve, sep } from 'path'
 import { getPrisma } from './database'
 
 /**
@@ -118,4 +118,20 @@ export async function isPersistablePath(filePath: string): Promise<boolean> {
 /** Call after the user changes recording folders so new roots apply at once. */
 export function invalidateMediaAccessCache(): void {
   cachedRoots = null
+}
+
+/**
+ * A recording kept in the cloud by its file name only (team session reviews, CyberSecurity 20/11/2026): the full path
+ * when that file sits in one of this PC's recordings folders, else the name unchanged (another PC's recording). A name
+ * with folders in it (an older row) is returned as it is when it is allowed, so nothing outside the roots opens.
+ */
+export async function resolveMediaFile(name: string | null): Promise<string | null> {
+  if (!name) return name
+  if (/[\\/]/.test(name)) return (await isMediaPathAllowed(name)) ? name : basename(name)
+  if (name === '.' || name === '..') return name
+  for (const root of await getAllowedRoots()) {
+    const candidate = join(root, name)
+    if (existsSync(candidate)) return candidate
+  }
+  return name
 }

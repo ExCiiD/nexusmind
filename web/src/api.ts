@@ -5,6 +5,8 @@ import { scoutMemberWeb, autoFillPoolWeb } from './scoutingWeb'
 import { computeCombinedStatsWeb, computeCustomStatsWeb, computeTeamSynergyStatsWeb, listCustomGamesWeb } from './teamStatsWeb'
 import { analystWebApi } from './analystWeb'
 import { cardChampionWebApi } from './cardChampionWeb'
+import { teamSessionHistoryWebApi } from './teamSessionHistoryWeb'
+import { sessionPrepWebApi } from './sessionPrepWeb'
 import * as matchEvents from '@/lib/matchEventCore'
 import * as dashboardCore from '@/lib/staffDashboardCore'
 import * as devPlanCore from '@/lib/devPlanCore'
@@ -153,6 +155,10 @@ export const webApi = {
   ...analystWebApi,
   // Team Lobby cards: the champion and skin each member shows (members' looks, my choice, hosted skins).
   ...cardChampionWebApi,
+  // Team sessions history (§ 15): list, detail, objective verdicts (teamSessionHistoryCore).
+  ...teamSessionHistoryWebApi,
+  // § 17: preparing a session ahead (each player's objectives, drafts, message).
+  ...sessionPrepWebApi,
   /** Invite code from an invite link, for the sign-in screen. */
   pendingInviteCode: (): string | null => pendingInvite,
   // ── account ──

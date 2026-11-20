@@ -18,6 +18,7 @@ import {
   ListTodo,
   Briefcase,
   Shield,
+  History as HistoryIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUserStore } from '@/store/useUserStore'
@@ -35,6 +36,7 @@ import { AscendMark } from '@/components/Brand/AscendMark'
 import { TierAvatar, useProfilePrefs } from '@/components/Profile/ProfileCard'
 import { tierForLevel } from '@/lib/profile'
 import { useShareProfileLook } from '@/hooks/useShareProfileLook'
+import { useSessionNavStore } from '@/store/useSessionNavStore'
 
 export function Sidebar() {
   const { t } = useTranslation()
@@ -137,6 +139,7 @@ export function Sidebar() {
   })()
 
   const path = location.pathname
+  const endedSessionOpen = useSessionNavStore((s) => s.endedSessionOpen)
   const navGroups: NavGroup[] = [
     {
       id: 'practice',
@@ -164,9 +167,12 @@ export function Sidebar() {
         // Team sessions are launched from Management's planning and return there.
         // The Team Lobby first (user request, 21/11/2026).
         { to: '/team-space', icon: Shield, label: t('nav.teamSpace') },
-        { to: '/management', icon: Briefcase, label: t('nav.management'), active: path.startsWith('/management') || path.startsWith('/team-session') },
+        // A finished session's page lights « Sessions d'équipe »; a scheduled or live one, Management.
+        { to: '/management', icon: Briefcase, label: t('nav.management'), active: path.startsWith('/management') || (path.startsWith('/team-session/') && !endedSessionOpen) },
         { to: '/coaching', icon: GraduationCap, label: t('nav.coaching') },
         { to: '/team', icon: Users, label: t('nav.team', { defaultValue: 'Team' }), active: path === '/team' },
+        // § 15: the history of the group's team sessions, under Stats collectives.
+        { to: '/team-sessions', icon: HistoryIcon, label: t('nav.teamSessions'), active: path.startsWith('/team-sessions') || (path.startsWith('/team-session/') && endedSessionOpen) },
       ],
     },
     {

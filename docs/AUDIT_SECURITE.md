@@ -291,6 +291,44 @@ Pourquoi cet ordre : la clé OpenAI est un secret **valide** qui ne demande qu'u
 
 ### Revues de livraisons
 
+#### beta.13 — `170000_team_session_prep`, `180000_team_sessions_hardening`, API de préparation et « Mon équipe », médias, dispos (20/11, lecture seule) : **OK, 4 remarques basses**
+*Registre `docs/DECISIONS.md` relu : « l'analyste peut fixer les objectifs de session » et « préparer les sessions à l'avance » sont bien respectés.*
+- **170000 :**
+  - `can_prepare_session` exige une session **`scheduled`** et que l'appelant soit gestionnaire **ou** staff, analyste compris, comme décidé. Elle est en definer avec `search_path` vide, et rien n'est accordé à `anon`.
+  - Les 3 nouvelles tables ont la RLS : lecture pour les membres du groupe de la session, écriture par `can_prepare_session`. Pour les objectifs individuels, le `player_id` doit **être membre de ce groupe** : un seul cible ne peut pas venir d'un autre groupe.
+  - Les longueurs et cardinalités sont bornées : 2 objectifs, une note de 140 caractères, un message de 280, 5 picks ou bans, des notes de 4 000.
+  - **Le rollback** remet la politique d'origine et supprime les 3 tables. Les préparations sont alors perdues, ce qui est attendu.
+- **180000 :**
+  - L'UPDATE de `team_sessions` est limité à `status`, `responsible_user_ids`, `queue_filter`, `started_at` et `ended_at`. Ma remarque 2 de la revue précédente est **levée**.
+  - Le trigger `recording_file_name_only` ne garde que le nom de fichier, à l'insertion comme à la mise à jour, et les lignes existantes sont nettoyées. Ma remarque 3 est **levée**.
+- **API :**
+  - Les IPC `session-prep:*` et `my-team:*` sont tous validés par zod (uuid, tailles maximales, `max(200)` et `max(100)` sur les listes).
+  - Les fonctions `myTeam*` sont filtrées par `uid` et les groupes de l'utilisateur, sous la RLS. `sessionPrep*` passe par la RLS et la RPC `can_prepare_team_session`.
+  - Le web reprend le même cœur.
+- **`resolveMediaFile` :** un nom contenant un séparateur n'est rendu complet que si `isMediaPathAllowed` l'accepte, sinon seul le nom du fichier est gardé. Un nom simple n'est cherché **que dans les dossiers autorisés** (`join(root, name)`), et `.` et `..` ne sont pas joints. Le lecteur `nxm:` revérifie l'extension et le dossier. Il n'y a pas de traversée de dossiers à partir d'un nom venu du cloud.
+- **`availability:set-rule` :** validé par zod (jour 0 à 6, heures). `user_id` prend `auth.uid()` par défaut, vérifié en production. Pas d'écriture pour le compte d'un autre via cette API.
+- **Remarques (basses, sans bloquer) :**
+  1. **`attachSharedDraft`** copie un `team_drafts` lisible par l'appelant sans vérifier qu'il appartient **au même groupe** que la session. Un staff membre de deux groupes peut ainsi copier une draft du groupe B dans une session du groupe A, et la rendre visible des membres de A. **Correctif :** comparer `team_drafts.group_id` au groupe de la session, ou faire vérifier ce point par la base.
+  2. **Politiques `availability_rules_write` et `availability_exceptions_write`** (antérieures à cette version) : `user_id = auth.uid() OR can_edit_calendar(group_id)` **ne vérifie pas que l'auteur est membre du groupe**. Un utilisateur connecté peut donc créer ses propres dispos dans un groupe dont il ne fait pas partie, ce qui pollue le planning. Cela ne donne aucun accès en lecture. **Correctif :** ajouter `private.group_role(group_id) is not null` au `with check` (migration de production, sur accord).
+  3. Les éléments de `kpi_ids` et le contenu de chaque pick ou ban (JSON) ne sont pas bornés en taille. Seul le staff peut écrire, donc le risque est un simple abus de stockage. Suggestion : un `check` sur la longueur des éléments.
+  4. **Rollback de la 180000 :** `grant update on team_sessions to anon, authenticated` rouvre aussi l'UPDATE au niveau de la table pour **`anon`**. La RLS le bloque, mais il vaut mieux limiter ce rollback à `authenticated`.
+
+#### `20261120150000_team_session_objective_results` et `20261120160000_team_session_auto_lifecycle`, rollbacks et API de l'historique (20/11, lecture seule) : **OK, 3 remarques basses**
+- **Verdicts des objectifs :**
+  - Table en RLS, lecture réservée aux membres du groupe de la session. **Aucune écriture directe** (`revoke all`, puis seulement `grant select`).
+  - L'écriture passe par la RPC `set_team_session_objective_result` : definer, `search_path` vide, `can_manage_session` sur le groupe **de la session**, et la partie doit appartenir **à cette session**. Rien pour `anon`.
+  - `unique nulls not distinct` est pris en charge par la production, en PostgreSQL 17.6.
+- **Cycle de vie automatique :**
+  - Toutes les nouvelles fonctions (`run_team_session_lifecycle`, triggers, `team_session_is_empty`) sont en definer avec `search_path` vide, et leur exécution est **retirée à `public`, `anon` et `authenticated`**. Le job `pg_cron` s'exécute en `postgres` et n'est pas appelable par l'API.
+  - Chaque mise à jour est **jointe sur `calendar_event_id`**. Le responsable est choisi parmi les membres **du groupe de la session** : soit le créateur de l'événement s'il est encore membre, soit les owners. Il n'y a **pas de fuite entre groupes**.
+  - Une session détachée garde son `group_id`, et `team_session_group()` lit `team_sessions.group_id`. La RLS de toutes les tables de session continue donc de s'appliquer.
+- **API de l'historique :** les IPC sont validés par zod (uuid, filtres, `objectiveId`, booléen nullable). Les lectures sont toutes filtrées par `group_id`, `session_id` ou `event_id` et passent par la RLS. Le web utilise le même cœur, et aucune clé service n'est utilisée.
+- **Remarques (basses) :**
+  1. **Rollback destructif :** `delete from team_sessions where calendar_event_id is null` supprime **les sessions détachées et, en cascade, leurs parties, reviews, feedbacks et présences**. Avant de l'exécuter, faire une sauvegarde de ces tables, ou rattacher ces sessions plutôt que de les supprimer.
+  2. **`team_sessions` est modifiable sur toutes ses colonnes par un gestionnaire** (politique `team_sessions_write`, UPDATE au niveau de la table). Un manager de deux groupes peut déplacer une session de l'un à l'autre en changeant `group_id`, ou réécrire les copies `event_*` d'une session détachée. C'est un problème d'intégrité, pas une fuite, et il est antérieur à cette migration. **Correctif :** un `grant update` par colonnes qui exclut `group_id`, `calendar_event_id` et `event_*` (Back-end, migration de production sur accord).
+  3. **`recording_local_path`** (dans `team_session_reviews`, lu par l'historique) contient le chemin local du PC qui a enregistré, par exemple `C:\Users\<nom>\…`. Il est visible des membres du groupe. Conseil : ne garder côté cloud que le nom du fichier, ou ne pas le lire dans l'historique (Back-end, basse).
+- `objective_id` n'est pas vérifié par rapport à `team_session_objectives` : c'est fonctionnel, sans enjeu de sécurité.
+
 #### `20261120140000_member_card_champion.sql`, son rollback et l'API des cartes (20/11, lecture seule) : **OK**
 - **Écriture limitée à soi :** `grant update (card_champion, card_skin_num)` donne l'accès **par colonnes**, à `authenticated` seulement. La politique existante `members_update_self_profile` limite déjà l'UPDATE à `user_id = auth.uid()` et interdit de changer de rôle. Un membre ne modifie donc que **ses** lignes, sans toucher à son rôle ni à ses droits.
 - **Valeurs bornées côté serveur :** le `check` exige les deux colonnes nulles ensemble, ou un `card_champion` de 1 à 40 caractères `[A-Za-z0-9]` avec `card_skin_num` entre 0 et 999. Il n'y a donc aucun moyen d'injecter un chemin ou une URL dans `cutoutUrl()` (hôte fixe, puis `${id}_${num}.webp`).

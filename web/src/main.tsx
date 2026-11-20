@@ -9,6 +9,8 @@ import { Toaster } from '@/components/ui/toaster'
 import { CoachingPage } from '@/pages/Coaching/CoachingPage'
 import { ManagementPage } from '@/pages/Management/ManagementPage'
 import { TeamSessionPage } from '@/pages/TeamSession/TeamSessionPage'
+import { TeamSessionsPage } from '@/pages/TeamSessions/TeamSessionsPage'
+import { TeamSessionByIdPage } from '@/pages/TeamSessions/TeamSessionByIdPage'
 import { WebLayout } from './WebLayout'
 import { HomePage } from './pages/HomePage'
 import { MyReviewsPage } from './pages/MyReviewsPage'
@@ -49,6 +51,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/scrims" element={<ScrimsRedirect />} />
             <Route path="/management" element={<ManagementPage />} />
             <Route path="/coaching" element={<CoachingPage />} />
+            <Route path="/team-sessions" element={<TeamSessionsPage />} />
+            <Route path="/team-sessions/:sessionId" element={<TeamSessionByIdPage />} />
             <Route path="/team-session/:calendarEventId" element={<TeamSessionPage />} />
             <Route path="/team" element={<TeamPage />} />
             <Route path="/team-stats" element={<TeamStatsPage />} />

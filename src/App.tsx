@@ -23,6 +23,8 @@ import { CoachingPage } from '@/pages/Coaching/CoachingPage'
 import { ManagementPage } from '@/pages/Management/ManagementPage'
 import { TeamSpacePage } from '@/pages/TeamSpace/TeamSpacePage'
 import { TeamSessionPage } from '@/pages/TeamSession/TeamSessionPage'
+import { TeamSessionsPage } from '@/pages/TeamSessions/TeamSessionsPage'
+import { TeamSessionByIdPage } from '@/pages/TeamSessions/TeamSessionByIdPage'
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
 import { GameEndNav } from '@/components/GameEndNav'
 import { DevToolbar } from '@/components/Dev/DevToolbar'
@@ -77,6 +79,8 @@ export function App() {
             <Route path="/management" element={<PanelErrorBoundary label="Management page"><ManagementPage /></PanelErrorBoundary>} />
             <Route path="/team-space" element={<PanelErrorBoundary label="Team Lobby page"><TeamSpacePage /></PanelErrorBoundary>} />
             <Route path="/coaching" element={<PanelErrorBoundary label="Coaching page"><CoachingPage /></PanelErrorBoundary>} />
+            <Route path="/team-sessions" element={<PanelErrorBoundary label="Team sessions"><TeamSessionsPage /></PanelErrorBoundary>} />
+            <Route path="/team-sessions/:sessionId" element={<PanelErrorBoundary label="Team session"><TeamSessionByIdPage /></PanelErrorBoundary>} />
             <Route path="/team-session/:calendarEventId" element={<PanelErrorBoundary label="Team session"><TeamSessionPage /></PanelErrorBoundary>} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

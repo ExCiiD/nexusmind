@@ -26,7 +26,190 @@
     "sessionLive": "Session en cours",
     "autoRecordTitle": "Enregistrement automatique activé",
     "management": "Management",
-    "teamSpace": "Lobby d'équipe"
+    "teamSpace": "Lobby d'équipe",
+    "teamSessions": "Sessions d'équipe"
+  },
+  "teamSessions": {
+    "title": "Sessions d’équipe",
+    "subtitle": "Les sessions terminées du groupe : résultats, stats, objectifs, notes et reviews.",
+    "filters": {
+      "type": "Type",
+      "period": "Période"
+    },
+    "type": {
+      "all": "Toutes",
+      "flex": "Flex",
+      "scrim": "Scrim",
+      "tournament": "Tournoi",
+      "other": "Autre",
+      "meeting": "Réunion"
+    },
+    "period": {
+      "30d": "30 jours",
+      "season": "Saison",
+      "all": "Tout"
+    },
+    "empty": {
+      "title": "Aucune session d’équipe sur la période",
+      "hint": "Les sessions se lancent depuis un événement du Planning.",
+      "openPlanning": "Ouvrir le Planning"
+    },
+    "emptyType": {
+      "title": "Aucune session de ce type",
+      "showAll": "Voir toutes les sessions"
+    },
+    "totals": "{{sessions}} sessions · {{games}} games · {{wins}} V – {{losses}} D",
+    "notDeployed": "L’historique des sessions d’équipe arrive avec la prochaine mise à jour du serveur.",
+    "loadFailed": "Les sessions d’équipe n’ont pas pu être chargées",
+    "loadFailedCause": "Vérifie ta connexion et réessaie.",
+    "showOlder": "Afficher les sessions plus anciennes",
+    "tiles": {
+      "sessions": "Sessions",
+      "including": "dont {{list}}",
+      "scrims_one": "{{count}} scrim",
+      "scrims_other": "{{count}} scrims",
+      "tournaments_one": "{{count}} tournoi",
+      "tournaments_other": "{{count}} tournois",
+      "winRate": "Winrate",
+      "record": "{{wins}} V – {{losses}} D",
+      "objectives": "Objectifs tenus",
+      "objectivesValue": "{{held}} sur {{total}}",
+      "noVerdict": "Pas encore de verdict",
+      "reviews": "Reviews faites",
+      "withoutReview_one": "{{count}} session sans review",
+      "withoutReview_other": "{{count}} sessions sans review"
+    },
+    "week": {
+      "this": "Cette semaine",
+      "last": "La semaine dernière",
+      "of": "Semaine"
+    },
+    "gameN": "Game {{n}}",
+    "winShort": "V",
+    "lossShort": "D",
+    "noGames": "Aucune game",
+    "played": "{{time}} de jeu",
+    "objectivesHeld": "{{held}} / {{total}} tenus",
+    "objectivesNotJudged_one": "{{count}} objectif, non jugé",
+    "objectivesNotJudged_other": "{{count}} objectifs, non jugés",
+    "badge": {
+      "notes": "Notes",
+      "reviewDone": "Review ✓",
+      "reviewPending": "Review à faire"
+    },
+    "detail": {
+      "loadFailed": "Cette session n’a pas pu être chargée",
+      "notFound": "Cette session n’existe plus, ou ne fait pas partie de ton groupe.",
+      "responsible": "Responsables : {{names}}",
+      "score": "{{wins}} victoires, {{losses}} défaites",
+      "openPlanning": "Revoir dans le Planning",
+      "export": "Exporter le résumé",
+      "exported": "Résumé copié",
+      "exportFailed": "Le résumé n’a pas pu être copié",
+      "noGames": "Aucune game enregistrée pour cette session.",
+      "gameFilter": "Game",
+      "whole": "Toute la session",
+      "wholeShort": "Session",
+      "statsLoading": "Chargement des stats de la G{{n}}…",
+      "statsNoSide": "Stats indisponibles pour la G{{n}} : notre équipe est introuvable dans la game.",
+      "statsError": "Stats indisponibles pour la G{{n}} : game non trouvée chez Riot.",
+      "teamStats": "Stats d’équipe",
+      "them": "eux {{value}}",
+      "gamesCounted_one": "{{count}} game",
+      "gamesCounted_other": "{{count}} games",
+      "gold": "Gold",
+      "goldAt15": "Écart de gold @15",
+      "damage": "Dégâts",
+      "vision": "Vision",
+      "duration": "Durée",
+      "avgDuration": "Durée moyenne",
+      "playerStats": "Stats individuelles",
+      "role": "Rôle",
+      "player": "Joueur",
+      "champion": "Champion",
+      "dmgShare": "DMG %",
+      "gamesCount_one": "{{count}} game",
+      "gamesCount_other": "{{count}} games",
+      "showDuel": "Afficher le duel de lane de {{name}}",
+      "objectives": "Objectifs de la session",
+      "held": "Tenu",
+      "notHeld": "Pas tenu",
+      "notJudged": "Non jugé",
+      "noVerdict": "Pas encore de verdict : le staff juge chaque objectif.",
+      "noVerdictStaff": "Pas encore de verdict : marque chaque objectif par game, ou pour toute la session.",
+      "setVerdict": "{{objective}}, {{game}} : changer le verdict",
+      "verdictNotAvailable": "Les verdicts d’objectifs arrivent avec la prochaine mise à jour du serveur.",
+      "verdictForbidden": "Seul le staff de la session peut juger les objectifs.",
+      "notes": "Notes et reviews",
+      "noReview": "Pas encore de review pour cette session",
+      "doReview": "Faire la review",
+      "sessionReview": "Review de session",
+      "meetingReview": "Review de réunion",
+      "gameReview": "Review de la G{{n}}",
+      "watchVod": "Voir la VOD",
+      "transcript": "Transcription",
+      "feedback": "Retours des joueurs",
+      "scrimNotes": "Notes du scrim",
+      "prep": "Préparation",
+      "after": "Après le match",
+      "attendance": "Présence"
+    },
+    "meeting": {
+      "tiles": {
+        "count": "Réunions",
+        "attendance": "Présence moyenne",
+        "summaries": "Résumés faits",
+        "recorded": "Temps enregistré",
+        "recordedSoon": "Pas encore mesuré"
+      },
+      "people_one": "{{count}} personne",
+      "people_other": "{{count}} personnes",
+      "scope": {
+        "whole_team": "Toute l’équipe",
+        "all_players": "Joueurs",
+        "all_staff": "Staff"
+      },
+      "present": "{{present}} / {{concerned}} présents",
+      "badge": {
+        "recorded": "Enregistrée",
+        "transcript": "Transcription",
+        "summaryDone": "Résumé ✓",
+        "summaryPending": "Résumé à faire"
+      },
+      "organizer": "Organisée par {{name}}",
+      "attendance": "Personnes et présence",
+      "nobody": "Personne n’est concerné.",
+      "status": {
+        "present": "Présent",
+        "absent": "Absent",
+        "no-answer": "Pas répondu"
+      },
+      "nothing": "Rien n’a été enregistré pour cette réunion.",
+      "recording": "Enregistrement",
+      "notRecorded": "Cette réunion n’a pas été enregistrée.",
+      "recordedBy": "Enregistrée par {{name}} · {{date}}",
+      "summary": "Résumé",
+      "noSummary": "Pas encore de résumé",
+      "writeSummary": "Rédiger le résumé",
+      "editSummary": "Modifier le résumé",
+      "saveSummary": "Enregistrer",
+      "summarySaved": "Résumé enregistré",
+      "summaryFailed": "Le résumé n’a pas pu être enregistré",
+      "transcript": "Transcription",
+      "transcribing": "Transcription en cours…",
+      "noTranscript": "Pas de transcription pour cette réunion.",
+      "showTranscript": "Afficher la transcription",
+      "showTranscriptLength": "Afficher la transcription · {{length}}",
+      "hideTranscript": "Replier",
+      "search": "Rechercher dans la transcription",
+      "clearSearch": "Vider la recherche",
+      "noMatch": "Aucun résultat",
+      "previous": "Résultat précédent",
+      "next": "Résultat suivant",
+      "seek": "Lire l’enregistrement à partir de {{time}}",
+      "copyTranscript": "Copier la transcription",
+      "copied": "Transcription copiée"
+    }
   },
   "settings": {
     "title": "Paramètres",
@@ -2566,7 +2749,8 @@
       "team": "Équipe",
       "account": "Compte",
       "management": "Management",
-      "teamStats": "Stats collectives"
+      "teamStats": "Stats collectives",
+      "teamSessions": "Sessions d'équipe"
     },
     "desktopHint": "L'enregistrement, les reviews et les données Riot restent dans l'app desktop.",
     "team": {
@@ -3359,6 +3543,13 @@
       "acquired": "Acquis",
       "progressing": "En progrès",
       "no_effect": "Sans effet"
+    },
+    "staff": {
+      "title": "Le plan de ton staff",
+      "fromGroup": "De {{group}}",
+      "updated": "mis à jour le {{date}}",
+      "lastNote": "dernière note de {{name}} le {{date}}",
+      "givenBy": "Plan donné par {{name}} ({{group}})"
     }
   },
   "notifications": {
@@ -5112,5 +5303,82 @@
       "copied": "Résumé copié pour Discord",
       "refreshing": "Lecture des données Riot des joueurs…"
     }
+  },
+  "mySpace": {
+    "title": "Mon espace",
+    "thisWeek": "Cette semaine",
+    "next": "Prochain",
+    "seePrep": "Voir la préparation",
+    "now": "maintenant",
+    "nothingThisWeek": "Rien pour toi cette semaine.",
+    "willBeThere": "Je serai là : {{title}}",
+    "cannot": "Je ne peux pas : {{title}}",
+    "loadFailed": "Cette carte n’a pas pu être chargée",
+    "availability": "Mes dispos",
+    "editUsual": "Modifier mes dispos habituelles",
+    "usualHint": "Ta plage habituelle pour chaque jour (le staff la voit dans le Planning).",
+    "saveUsual": "Enregistrer mes dispos habituelles",
+    "usualSaved": "Dispos habituelles enregistrées",
+    "announcements": "Annonces",
+    "noAnnouncement": "Aucune annonce dans ce groupe.",
+    "pinned": "Épinglée",
+    "seeAll": "Voir tout le message",
+    "collapse": "Réduire",
+    "allAnnouncements": "Voir toutes les annonces ({{count}})",
+    "fewerAnnouncements": "N’afficher que la dernière",
+    "tasks": "Mes tâches",
+    "taskFilter": {
+      "open": "À faire",
+      "done": "Faites"
+    },
+    "noTask": "Aucune tâche pour toi.",
+    "noDoneTask": "Aucune tâche faite pour l’instant.",
+    "markDone": "Marquer « {{title}} » comme faite",
+    "wellbeing": "Mon bien-être",
+    "seeInPlan": "Voir dans Mon plan"
+  },
+  "sessionPrep": {
+    "prepare": "Préparer la session",
+    "ready": "Préparation prête",
+    "notDeployed": "La préparation des sessions arrive avec la prochaine mise à jour du serveur.",
+    "errors": {
+      "forbidden": "Tu ne peux pas préparer cette session (ou elle a commencé).",
+      "invalid": "Cette préparation n’est pas valide : 2 objectifs par joueur au plus.",
+      "generic": "Une erreur est survenue. Réessaie."
+    },
+    "banner": "Session prévue · {{date}} · démarre automatiquement à l’heure",
+    "savedAgo": "Enregistré · il y a {{seconds}} s",
+    "liveReadOnly": "Session en cours : les objectifs ne se modifient plus.",
+    "individual": "Objectifs individuels",
+    "noPlayers": "Ajoute des personnes à l’événement pour leur donner des objectifs.",
+    "fromPlan": "de son plan",
+    "addObjective": "Ajouter un objectif",
+    "addObjectiveFor": "Ajouter un objectif à {{name}}",
+    "removeObjective": "Retirer {{name}}",
+    "copyToTeam": "Copier sur toute l’équipe",
+    "notePlaceholder": "Une consigne courte (facultatif)",
+    "noteFor": "Consigne pour {{name}}",
+    "drafts": "Drafts liées",
+    "noDraft": "Aucune draft liée pour l’instant.",
+    "createDraft": "Créer une draft",
+    "linkDraft": "Lier une draft existante",
+    "localDraft": "ce PC",
+    "openInDraftSim": "Ouvrir dans le Draft Sim",
+    "removeDraft": "Délier {{name}}",
+    "side": {
+      "blue": "Bleu",
+      "red": "Rouge"
+    },
+    "message": "Message aux joueurs",
+    "messagePlaceholder": "Ex. : Focus tempo Herald, on joue autour du bot.",
+    "preview": "Prévisualiser comme un joueur",
+    "backToPrep": "Revenir à la préparation",
+    "previewNote": "Aperçu : ce que voit un joueur (avec l’objectif du premier joueur).",
+    "playerView": "Avant la session",
+    "yourObjective": "Ton objectif",
+    "team": "Objectifs collectifs",
+    "others_one": "Objectif de {{count}} coéquipier",
+    "others_other": "Objectifs de {{count}} coéquipiers",
+    "nothingYet": "Rien n’a encore été préparé pour cette session."
   }
 }

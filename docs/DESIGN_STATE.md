@@ -838,6 +838,79 @@ pour le staff, « Faire la review ».
 (« Stats indisponibles pour la G3 : game non trouvée chez Riot ») ; session
 sans game (« Aucune game enregistrée ») ; erreur : gabarit § 7.
 
+### 2 bis. Réunions dans l'historique
+
+Demande de l'utilisateur du 20/11 (`docs/DECISIONS.md`) : les sessions de
+**réunion** apparaissent dans le même historique que les sessions de jeu, avec
+le même style. Pas de maquette Penpot pour cette partie (spec écrite).
+
+**Dans la liste (§ 1).**
+- Filtre **Type** : *Toutes · Flex · Scrim · Tournoi · Réunion*. En
+  « Toutes », réunions et sessions de jeu sont mêlées par date.
+- Tuiles de synthèse en type « Réunion » : *Réunions* (« 5 ce mois-ci »),
+  *Présence moyenne* (« 86 % »), *Résumés faits* (« 4 / 5 »), *Temps
+  enregistré* (« 3 h 20 »). En « Toutes », les tuiles restent celles du jeu.
+- **Ligne de réunion**, même gabarit que les sessions de jeu :
+  - liseré gauche couleur `KIND_STYLE.meeting` (`#D9823B`), badge
+    **RÉUNION** ;
+  - titre = la **raison** de la réunion (« Débrief du bloc de scrims »,
+    « 1:1 Rook ») ; dessous, en mono : jour, heures, durée ;
+  - à la place du résultat : **présence** « 5 / 6 présents », avec des
+    pastilles initiales (vert présent, rouge absent, gris sans réponse) ;
+  - à la place des objectifs : **personnes concernées** (« Toute l'équipe »,
+    « Staff », « 2 personnes ») ;
+  - badges de contenu : « ENREGISTRÉE », « TRANSCRIPTION », « RÉSUMÉ ✓ » (vert)
+    ou « RÉSUMÉ À FAIRE » (or) ;
+  - chevron et états de survol / focus identiques.
+
+**Page d'une réunion terminée** (même route `/team-session/:calendarEventId`,
+mode historique, fil d'Ariane « ← Sessions d'équipe »). Pas de filtre par
+game ni de stats.
+
+- **En-tête** : badge RÉUNION, raison en titre, jour, heures, durée,
+  organisateur. Boutons outline : « Revoir dans le Planning », « Exporter le
+  résumé ».
+- **Bloc 1 — Personnes et présence** : une ligne par personne concernée
+  (rôle, nom, statut Présent / Absent / Pas répondu, raison d'absence en
+  `text-dim` si donnée) ; en tête « 5 / 6 présents ». Source :
+  `team_session_attendance` et les réponses à l'événement.
+- **Bloc 2 — Enregistrement** : si la réunion a été enregistrée, lecteur
+  audio ou vidéo (fichier local de l'enregistreur, ou lien YouTube s'il
+  existe), durée, enregistré par. Sinon : « Cette réunion n'a pas été
+  enregistrée. »
+- **Bloc 3 — Résumé** : le résumé (`team_session_reviews.summary`, scope
+  `meeting`) en premier, carte pleine largeur, éditable par le staff.
+  Absent : « Pas encore de résumé » et, pour le staff, « Rédiger le résumé »
+  (ou « Générer depuis la transcription » si elle existe).
+- **Bloc 4 — Transcription** : repliée par défaut (« Afficher la
+  transcription · 42 min »). Dépliée :
+  - **champ de recherche** au-dessus (icône loupe, 320 px) : surligne les
+    occurrences en or, compteur « 3 / 12 » et flèches précédent / suivant ;
+    Entrée = suivant, Échap = vider ;
+  - texte par blocs horodatés (« 12:40 »), un clic sur l'horodatage place le
+    lecteur du bloc 2 à ce moment ;
+  - « Copier la transcription » en pied.
+- **Bloc 5 — Retours** : retours écrits des participants s'il y en a
+  (`team_session_feedback`), comme pour une session de jeu.
+
+**États.** Réunion sans rien (ni enregistrement, ni résumé, ni transcription) :
+blocs 2 à 4 remplacés par une ligne « Rien n'a été enregistré pour cette
+réunion. » ; transcription en cours : « Transcription en cours… » avec
+barre de progression ; erreur : gabarit § 7.
+
+**Données (pour le Back-end).** La raison de la réunion = le titre de
+l'événement (et ses notes) ; à confirmer si un champ dédié existe déjà. Les
+lignes de réunion de la liste viennent des `team_sessions` dont l'événement
+est de type `meeting`.
+
+**Textes FR / EN.** « Réunion » / « Meeting » ; « Présence moyenne » /
+« Average attendance » ; « Résumés faits » / « Summaries done » ; « Temps
+enregistré » / « Recorded time » ; « N / M présents » / « N / M present » ;
+« Résumé à faire » / « Summary pending » ; « Afficher la transcription » /
+« Show transcript » ; « Rechercher dans la transcription » / « Search the
+transcript » ; « Rien n'a été enregistré pour cette réunion. » / « Nothing
+was recorded for this meeting. »
+
 ### 3. Propositions à ajouter (à choisir)
 
 1. **Comparer deux sessions** : cocher deux sessions dans la liste →
@@ -863,3 +936,234 @@ tenus » / « Objectives met » ; « Reviews faites » / « Reviews done » ;
 « Review à faire » / « Review pending » ; « Toute la session » / « Whole
 session » ; « Stats d'équipe » / « Team stats » ; « Stats individuelles » /
 « Player stats » ; « Notes et reviews » / « Notes and reviews ».
+
+## 16. Spec Front-end — dashboard Management d'un joueur
+
+Décision du 20/11 (`docs/DECISIONS.md`) : un membre **sans rôle management
+ni coach** (joueur, capitaine compris) voit dans Management seulement ce à
+quoi il a accès. Maquette Penpot : page « Management — vue joueur » (faite le 20/11).
+
+**Onglets pour ce rôle.** Un seul écran, **« Mon espace »**, à la place de
+Vue d'ensemble / Planning / Bien-être / Tâches. Les onglets *Essais* et
+*Groupes* (gestion) n'apparaissent pas ; l'entrée *Groupes* garde son accès
+« quitter / voir le groupe » via le sélecteur de groupe. Le reste du
+masquage des onglets par rôle attend le rapport d'Audit
+(`docs/AUDIT_LIAISONS.md`).
+
+**Mise en page** (1120 px, deux colonnes 7 / 5) :
+
+*Colonne gauche*
+1. **Cette semaine** (Planning, lecture) : les 7 jours en rangée compacte ;
+   chaque événement qui me concerne en carte (type, heure, titre) avec mes
+   boutons de réponse « Je serai là / Je ne peux pas » en ligne ; clic → le
+   Planning sur l'événement. Prochaine session mise en avant en haut :
+   « Prochain : Scrim vs Karmine Academy · jeu. 20:00 · dans 2 h », bouton
+   « Voir la préparation » (§ 17).
+2. **Mes dispos** (directement dans la page, pas de pop-up) : la grille
+   de la semaine en lignes par jour (§ 8 « Mes dispos », même contrôle
+   segmenté Habituel / Dispo / Indispo, mêmes plages horaires), avec
+   enregistrement en place : bouton « Enregistrer mes dispos » activé dès
+   qu'une ligne change, toast « Dispos enregistrées ». Lien discret
+   « Modifier mes dispos habituelles » (la règle récurrente).
+3. **Annonces** : les annonces du groupe (épinglée d'abord), lecture seule.
+   La carte montre **la plus récente** (l'épinglée si elle existe) :
+   - message coupé à **3 lignes** (`line-clamp-3`) ; s'il est plus long, lien
+     `gold` **« Voir tout le message »** sous le texte, qui déplie le message
+     en place (devient « Réduire ») ;
+   - s'il y a **plus d'une** annonce, lien **« Voir toutes les annonces (4) »**
+     en pied de carte : ouvre la liste complète (la carte s'allonge, plus
+     récentes en haut, chacune avec son propre « Voir tout le message »).
+   (Demande de l'utilisateur du 20/11.)
+
+*Colonne droite*
+4. **Mes tâches** : les tâches qui me sont attribuées seulement, case à
+   cocher pour « Fait », échéance en mono (rouge si dépassée), filtre
+   « À faire / Faites ». Vide : « Aucune tâche pour toi. »
+5. **Mon bien-être** : le check-in du jour (énergie, humeur, sommeil, note)
+   si mon consentement est donné, sinon la carte de consentement (DECISIONS,
+   v0.3 § 3 bis) ; dessous, la courbe de mes 14 derniers jours et la ligne
+   « Partagé avec le staff de ce groupe : oui / non » avec le lien vers le
+   réglage.
+6. **Mes objectifs assignés** (si le coach m'en a donné) : liste courte avec
+   l'état, lien « Voir dans Mon plan » (DECISIONS : Mon plan relié).
+
+**Ce que le joueur ne voit pas** : tableau de bord staff, bien-être des
+autres, tâches des autres, essais, gestion des membres, notes privées du
+staff.
+
+**États.** Pas de groupe : « Rejoins un groupe pour voir ton espace
+d'équipe » + « Rejoindre avec un code ». Chargement par carte (squelettes).
+Erreur par carte (gabarit § 7) sans casser les autres.
+
+**Textes FR / EN.** « Mon espace » / « My space » ; « Cette semaine » /
+« This week » ; « Prochain » / « Next » ; « Voir la préparation » / « See the
+prep » ; « Mes dispos » / « My availability » ; « Mes tâches » / « My tasks » ;
+« Mon bien-être » / « My wellbeing » ; « Mes objectifs assignés » / « My
+assigned goals ».
+
+## 17. Spec Front-end — préparer une session à l'avance (coach)
+
+Décision du 20/11 (`docs/DECISIONS.md`) : le coach prépare une session avant
+qu'elle ne démarre. La session d'équipe est créée automatiquement à la
+création de l'événement scrim / flex / tournoi (décision du 20/11). Maquette
+Penpot : page « Session — préparation » (faite le 20/11 : vue staff à gauche, vue joueur à droite).
+
+**D'où on y accède.**
+- Panneau de détail d'un événement du Planning (§ 13) : bouton principal
+  **« Préparer la session »** pour le staff (coach, manager, analyste,
+  capitaine), en tête du panneau tant que la session n'a pas démarré.
+- Page de la session (`/team-session/:id`) en statut **prévue** : elle
+  s'ouvre directement sur la préparation (pour le staff), ou sur la vue
+  joueur (ci-dessous) pour les autres.
+
+**Page de préparation (staff)**, trois blocs empilés, enregistrement
+automatique (« Enregistré · il y a 5 s » en mono dans l'en-tête), bandeau
+« Session prévue · jeu. 20 nov. 20:00 · démarre automatiquement à l'heure ».
+
+1. **Objectifs collectifs** (jusqu'à 3, comme aujourd'hui) : choix dans les
+   fondamentaux d'équipe + « Ajouter un fondamental » ; chacun peut porter un
+   indicateur mesurable (§ 8 de la proposition analyste) ; ordre par
+   glisser-déposer.
+2. **Objectifs individuels** : une ligne par joueur concerné (rôle, joueur),
+   jusqu'à 2 objectifs chacun, pris dans ses fondamentaux ou son plan de
+   développement (Mon plan, proposé en premier avec la mention « de son
+   plan »), plus une note courte (140 caractères). Lien « Copier sur toute
+   l'équipe » pour un objectif commun.
+3. **Drafts liées** : la liste des drafts du Draft Sim rattachées à la
+   session (nom, côté, adversaire, 10 icônes), avec « Ouvrir dans le Draft
+   Sim » ; deux boutons : **« Créer une draft »** (ouvre le Draft Sim avec
+   l'adversaire et le côté pré-remplis, rattachée à la session) et **« Lier
+   une draft existante »** (select des drafts du groupe). Pour un scrim, les
+   drafts liées au scrim (§ 13) et à la session sont les mêmes.
+4. **Message aux joueurs** (facultatif) : texte court affiché en tête de la
+   vue joueur (« Focus tempo Herald, on joue autour du bot »).
+
+Pied : « Prévisualiser comme un joueur » (outline) bascule sur la vue joueur
+en lecture.
+
+**Ce que voient les joueurs avant la session** (vue joueur, lecture seule) :
+en-tête (type, adversaire, heure, compte à rebours « dans 2 h ») ; le message
+du coach ; les objectifs collectifs ; **son** objectif individuel mis en
+avant (« Ton objectif : 0 mort avant 4:00 »), ceux des autres repliés ; les
+drafts liées (consultables) ; sa présence (« Je serai là / Je ne peux pas »).
+Un badge « Préparation prête » apparaît sur l'événement du Planning et dans
+« Mon espace » (§ 16) quand au moins un objectif est posé.
+
+**Quand la session démarre**, la préparation devient les objectifs de la
+session (existant) ; les objectifs individuels s'affichent dans la page de
+session et l'historique (§ 15, bloc Objectifs, une ligne par joueur).
+
+**États.** Session déjà démarrée : préparation en lecture seule, bandeau
+« Session en cours : les objectifs ne se modifient plus ». Événement annulé :
+la session vide est supprimée (décision du 20/11), la page l'indique
+(« Événement annulé »). Pas de joueur concerné : bloc 2 remplacé par « Ajoute
+des personnes à l'événement pour leur donner des objectifs ».
+
+**Données (pour le Back-end).** Objectifs collectifs : `team_session_objectives`
+(existe). À ajouter : objectifs individuels par joueur et session, message du
+coach, liens session ↔ drafts (`team_drafts`).
+
+**Textes FR / EN.** « Préparer la session » / « Prepare the session » ;
+« Objectifs collectifs » / « Team objectives » ; « Objectifs individuels » /
+« Individual objectives » ; « de son plan » / « from their plan » ; « Copier
+sur toute l'équipe » / « Copy to the whole team » ; « Drafts liées » /
+« Linked drafts » ; « Créer une draft » / « Create a draft » ; « Lier une draft
+existante » / « Link an existing draft » ; « Message aux joueurs » / « Message
+to players » ; « Prévisualiser comme un joueur » / « Preview as a player » ;
+« Ton objectif » / « Your objective » ; « Préparation prête » / « Prep ready ».
+
+## 18. Spec Front-end — suites de l'audit des liaisons (rôles et liaisons)
+
+Décision du 20/11 « Yes, all » sur `docs/AUDIT_LIAISONS.md`
+(`docs/DECISIONS.md`). Maquettes Penpot : page « Rôles — manager, sans groupe,
+check-in » (les trois écrans nouveaux). Les liaisons L1-L6 réutilisent des
+blocs déjà vus (§ 16 « Mon espace », Mon plan), sans nouvel écran.
+
+### 18.1 Dashboard d'organisation du manager (Management)
+
+Pour un membre au rôle **manager** qui ne joue pas : l'onglet par défaut de
+Management devient **« Organisation »** (à la place de Vue d'ensemble, presque
+vide pour lui). Onglets gardés : Organisation, Planning, Tâches, Groupes ;
+**Bien-être masqué** s'il ne joue pas. Aucune donnée de jeu ni de bien-être
+des joueurs (fermées au manager).
+
+Mise en page, deux colonnes 7 / 5 :
+- **À venir (7 jours)** : une ligne par événement (type, jour, heure, titre),
+  avec la présence en pastilles « 4 / 5 · 1 absent · 0 sans réponse » ; une
+  absence ouvre en ligne le nom, la raison et **« Trouver un remplaçant »**
+  (liste des joueurs dispo sur ce créneau, d'après les dispos) ; bouton
+  « + Nouvel événement ».
+- **Présence à surveiller** : les réponses manquantes à moins de 48 h, avec
+  « Relancer » (notification + DM Discord si lié).
+- **Tâches ouvertes du groupe** : toutes les tâches non faites, triées par
+  échéance, filtre « Toutes / En retard / Sans responsable », « + Tâche ».
+- **Annonces** : même carte que § 16.3 (3 lignes, « Voir tout le message »,
+  « Voir toutes les annonces »), plus « + Publier une annonce ».
+- **Dispos de l'équipe** : la matrice de la semaine (joueurs × jours) déjà
+  présente dans le Planning, en lecture.
+
+### 18.2 Joueur sans groupe : une seule entrée « Équipe »
+
+Sans groupe, la section *Équipe & staff* de la barre latérale ne garde
+qu'**une** entrée, **« Équipe »** (icône groupe), à la place de Lobby,
+Management, Coaching, Stats collectives et Sessions d'équipe. Elle ouvre
+`/team` en mode **« Pas encore d'équipe »** :
+
+- titre « Rejoins une équipe » et une phrase : « Le Lobby, le Planning, le
+  Coaching et les stats d'équipe s'ouvrent dès que tu fais partie d'un
+  groupe. » ;
+- trois cartes côte à côte :
+  1. **Rejoindre avec un code** : champ code d'invitation + « Rejoindre »
+     (rappel : compte Riot lié obligatoire, lien vers le Profil s'il manque) ;
+  2. **Créer un groupe** : nom + type (équipe / coaching) + « Créer » ;
+  3. **Je cherche une équipe** : « Publier une annonce LFT » (l'export LFT
+     existant), avec un aperçu de sa carte joueur.
+- Dès qu'un groupe existe, les 5 entrées reviennent (Lobby d'équipe en
+  premier, décision du 20/11).
+
+Pratique et Analyse ne changent pas ; aucune carte d'équipe (L1-L6) ne
+s'affiche sans groupe.
+
+### 18.3 Check-in bien-être au lancement d'une session d'équipe (L7)
+
+Quand une session d'équipe démarre (automatiquement à l'heure, décision du
+20/11) et que le joueur a donné son **accord bien-être**, un **toast large**
+en bas à droite (pas une modale) : « Check-in avant la session ? » avec les
+trois échelles énergie / humeur / sommeil en pastilles 1-5 directement
+cliquables, et deux liens « Envoyer » / « Plus tard ». Il se ferme seul au
+bout de 60 s, ou si le joueur a déjà fait son check-in du jour. Jamais
+obligatoire, jamais bloquant ; sans accord bien-être, rien ne s'affiche. Une
+seule fois par session.
+
+### 18.4 Scouting d'un joueur : dossiers publiés seulement
+
+Pour un membre **non staff** (joueur, capitaine), Coaching › Scouting n'affiche
+plus la liste éditable des adversaires : il voit **les dossiers adverses
+publiés** par le staff (§ 12), en cartes (logo / tag, nom, « Publié le 19 nov.
+par Coach Sora », bilan contre nous). Clic → le dossier en lecture seule.
+Vide : « Ton staff n'a pas encore publié de dossier adverse. » Pas de bouton
+d'ajout, pas d'actualisation Riot.
+
+### 18.5 Liaisons L1-L6
+
+| Liaison | Où | Rendu |
+|---|---|---|
+| L1 plan du coach | **Mon plan** (en tête) + Dashboard | Carte « Plan de mon coach » : axe, période, notes du coach. Au Dashboard, une ligne compacte « Plan de Coach Sora : vision · jusqu'au 30 nov. → ». |
+| L2 objectifs attribués | **Mon plan** + Dashboard | Section « Objectifs de mon coach » dans Mon plan (liste + état) ; au Dashboard, compteur « 2 objectifs du coach » dans la carte d'équipe. |
+| L3 verdicts sur mes micro-reviews | **Revue** de la partie concernée + Labo d'erreurs | Sous chaque réponse de micro-review jugée : bandeau « Verdict de Coach Sora : justifié / à corriger » + commentaire. Au Dashboard : « 3 nouveaux verdicts → ». |
+| L4 tâches attribuées | **Dashboard** | Ligne « 2 tâches à faire → » (vers « Mon espace » § 16). |
+| L5 prochain événement | **Dashboard** | Bandeau « Prochain : Scrim vs KCA · mar. 19:00 · Je serai là ? » avec les deux boutons de présence (le même que § 16). |
+| L6 actions de review VOD | **Mon plan** | Section « À travailler (review VOD) » : actions avec la case « fait », lien vers le moment de la VOD. |
+
+**Carte « Mon équipe » du Dashboard** : L2, L3, L4 et L5 se regroupent dans
+une seule carte compacte du Dashboard (prochain événement en tête, puis trois
+lignes compteur), pour ne pas disperser le Dashboard. Sans groupe : carte
+absente.
+
+**Textes FR / EN.** « Organisation » / « Organization » ; « Trouver un
+remplaçant » / « Find a sub » ; « Relancer » / « Remind » ; « Rejoins une
+équipe » / « Join a team » ; « Je cherche une équipe » / « I'm looking for a
+team » ; « Check-in avant la session ? » / « Check in before the session? » ;
+« Plus tard » / « Later » ; « Plan de mon coach » / « My coach's plan » ;
+« Objectifs de mon coach » / « My coach's goals » ; « À travailler (review
+VOD) » / « To work on (VOD review) » ; « Mon équipe » / « My team ».

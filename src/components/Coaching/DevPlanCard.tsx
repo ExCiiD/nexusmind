@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipboardList, Loader2, Plus, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,10 +17,12 @@ interface Props {
   /** Plan owner. In staff mode this is the player being coached; in player mode it is always the signed-in user. */
   playerId: string
   mode: 'staff' | 'player'
+  /** A line under the description (« Mon plan »: the group, the plan's update, the last note's author). */
+  meta?: (plan: DevPlan) => ReactNode
 }
 
 /** E3 (docs/PLAN_GESTION_EQUIPE.md): one quarterly dev plan per (group, player), shared desktop/web. */
-export function DevPlanCard({ groupId, playerId, mode }: Props) {
+export function DevPlanCard({ groupId, playerId, mode, meta }: Props) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const fundamentals = useLocalizedFundamentals()
@@ -51,6 +53,7 @@ export function DevPlanCard({ groupId, playerId, mode }: Props) {
           <ClipboardList className="h-5 w-5 text-hextech-gold" />{t('devPlan.title', { defaultValue: 'Development plan' })}
         </CardTitle>
         <CardDescription>{t('devPlan.desc', { defaultValue: '2-3 focus axes for the quarter, with progress and 1:1 notes.' })}</CardDescription>
+        {plan && meta && <div className="text-xs text-hextech-text-dim">{meta(plan)}</div>}
       </CardHeader>
       <CardContent className="space-y-4">
         {plan === null ? (

@@ -40,6 +40,8 @@ interface Props {
   commonFree: CommonFreeWindow[]
   myAvailabilityExceptions: AvailabilityException[]
   canEditCalendar: boolean
+  /** § 17: the events whose session has a prep (« Préparation prête »). */
+  prepReady?: Set<string>
   onSelectEventRange: (range: HourRange) => void
   onSelectAvailabilityRange: (range: HourRange) => void
   onRemoveAvailabilityException: (id: string) => void
@@ -49,7 +51,7 @@ interface Props {
 }
 
 export function WeekGrid({
-  days, mode, events, scrims, rules, exceptions, starterIds, commonFree, myAvailabilityExceptions, canEditCalendar,
+  days, mode, events, scrims, rules, exceptions, starterIds, commonFree, myAvailabilityExceptions, canEditCalendar, prepReady,
   onSelectEventRange, onSelectAvailabilityRange, onRemoveAvailabilityException, onEventClick, selectedEventId,
 }: Props) {
   const { t, i18n } = useTranslation()
@@ -197,7 +199,12 @@ export function WeekGrid({
                     return (
                       <EventCard key={e.id} accent={(KIND_STYLE[e.kind] ?? KIND_STYLE.other).accent} tag={t(`planning.tag.${e.kind}`, { defaultValue: e.kind })}
                         time={`${shortH(startMin)}–${shortH(startMin + durMin)}`} title={e.title} notes={e.notes}
-                        badge={e.match ? <MatchBadge match={e.match} className="mt-0.5" /> : undefined}
+                        badge={(e.match || prepReady?.has(e.id)) ? (
+                          <>
+                            {e.match && <MatchBadge match={e.match} className="mt-0.5" />}
+                            {prepReady?.has(e.id) && <span className="mt-0.5 block font-mono text-[8px] font-bold uppercase text-hextech-green">{t('sessionPrep.ready')}</span>}
+                          </>
+                        ) : undefined}
                         attendance={count.total ? { free: count.present, total: count.total, declined: count.declined } : undefined}
                         declinedLabel={count.declined ? t('planning.grid.declined', { count: count.declined }) : undefined}
                         top={top(startMin)} height={(durMin / 60) * ROW} selected={selectedEventId === e.id} onClick={() => onEventClick(e)} />

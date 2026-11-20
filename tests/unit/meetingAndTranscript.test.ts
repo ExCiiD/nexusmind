@@ -18,6 +18,16 @@ describe('joinTranscript', () => {
   })
 })
 
+describe('joinTranscript timestamps', () => {
+  it('prefixes each segment with its start time', () => {
+    expect(joinTranscript({ chunks: [{ text: 'Salut', timestamp: [0, 2] }, { text: 'on parle des waves', timestamp: [760.4, 765] }, { text: 'fin', timestamp: [3725, 3730] }] }))
+      .toBe('[00:00] Salut\n[12:40] on parle des waves\n[1:02:05] fin')
+  })
+  it('leaves a segment without start time unprefixed', () => {
+    expect(joinTranscript({ chunks: [{ text: 'a', timestamp: [null, 1] }] })).toBe('a')
+  })
+})
+
 describe('meetingPeople', () => {
   const members = [
     { userId: 'c', role: 'coach' }, { userId: 'p1', role: 'player' }, { userId: 'p2', role: 'player' },

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { Check, Flag, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,7 +12,11 @@ import type { AssignedObjective } from '@/lib/collab'
  * Player side: objectives a coach assigned. Optional `onUse` lets the session
  * page pre-select them for the next session.
  */
-export function AssignedObjectivesCard({ onUse }: { onUse?: (objectiveIds: string[], note: string | null) => void }) {
+export function AssignedObjectivesCard({ onUse, planLink = false }: {
+  onUse?: (objectiveIds: string[], note: string | null) => void
+  /** « Mon espace » (§ 16): a « Voir dans Mon plan » link under the list. */
+  planLink?: boolean
+}) {
   const { t, i18n } = useTranslation()
   const { available, groups, nameOf } = useCollab()
   const fundamentals = useLocalizedFundamentals()
@@ -73,6 +78,7 @@ export function AssignedObjectivesCard({ onUse }: { onUse?: (objectiveIds: strin
             </div>
           </div>
         ))}
+        {planLink && <Link to="/plan" className="inline-block text-sm font-medium text-hextech-gold hover:text-hextech-gold-bright">{t('mySpace.seeInPlan')}</Link>}
       </CardContent>
     </Card>
   )

@@ -37,6 +37,10 @@ export interface DevPlan {
   periodEnd: string | null
   axes: DevPlanAxis[]
   checkins: DevPlanCheckin[]
+  /** Who made the plan ("plan donné par Coach X" in Mon plan); null once their account is deleted. */
+  createdBy?: string | null
+  /** Their name in the plan's group, null when they left it. */
+  createdByName?: string | null
   createdAt: string
   updatedAt: string
 }

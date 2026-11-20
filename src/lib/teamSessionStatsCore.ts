@@ -1,6 +1,6 @@
 import { normalizeRole } from './teamIdentity'
 import { normName, participantName } from './matchSide'
-import type { SynergyPlayerStats } from './ipc'
+import type { SynergyPlayerStats } from './synergyStats'
 
 /**
  * Per-game stats & duel comparison (Phase 4, Planning rework —

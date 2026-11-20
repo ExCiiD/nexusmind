@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { BarChart3, Briefcase, FileSearch, GraduationCap, Home, Swords, UserCircle } from 'lucide-react'
+import { BarChart3, Briefcase, FileSearch, GraduationCap, History, Home, Swords, UserCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FeedbackButton } from '@/components/Feedback/FeedbackDialog'
 import { NotificationBell } from '@/components/Notifications/NotificationBell'
@@ -17,6 +17,7 @@ const NAV = [
   { to: '/coaching', icon: GraduationCap, key: 'web.nav.coaching' },
   { to: '/team', icon: Swords, key: 'web.nav.team' },
   { to: '/team-stats', icon: BarChart3, key: 'web.nav.teamStats' },
+  { to: '/team-sessions', icon: History, key: 'web.nav.teamSessions' },
   { to: '/account', icon: UserCircle, key: 'web.nav.account' },
 ]
 

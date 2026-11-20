@@ -1,6 +1,14 @@
 import { getSupabase, requireSessionUserId } from './supabase'
 import { getMatch } from '../riotClient'
 import * as core from '../../../src/lib/teamSessionsCore'
+import * as history from '../../../src/lib/teamSessionHistoryCore'
+import type { TeamSessionHistoryFilters } from '../../../src/lib/teamSessionHistory'
+import * as prep from '../../../src/lib/sessionPrepCore'
+import * as myTeam from '../../../src/lib/myTeamCore'
+import type { PlayerObjectivesInput, SessionDraftInput } from '../../../src/lib/sessionPrep'
+import { getPrisma } from '../database'
+import { resolveMediaFile } from '../mediaAccess'
+import { withLocalRecording } from './teamSessionReviews'
 import type { NewGroupFundamentalInput, SessionQueueFilter } from '../../../src/lib/teamSessions'
 
 /** The Riot match-v5 route is derived from the matchId's own platform
@@ -42,4 +50,46 @@ export async function teamSessionFetchMatch(gameId: string): Promise<unknown> {
   const matchJson = await getMatch(game.matchId, FALLBACK_REGION)
   await core.cacheGameMatch(sb, gameId, matchJson)
   return matchJson
+}
+
+// ── Team session history (DESIGN_STATE.md § 15, docs/contracts/team-session-history.md) ──
+export const teamSessionHistoryList = (groupId: string, filters: TeamSessionHistoryFilters) =>
+  requireSessionUserId().then((uid) => history.listTeamSessionHistory(getSupabase(), uid, groupId, filters))
+export async function teamSessionHistoryDetail(sessionId: string) {
+  const detail = await history.getTeamSessionHistoryDetail(getSupabase(), sessionId)
+  // The cloud keeps recordings by file name: this PC's full path when the file is here.
+  const reviews = await Promise.all(detail.reviews.map(withLocalRecording))
+  const recording = detail.meeting?.recording
+  if (detail.meeting && recording?.localPath) {
+    detail.meeting = { ...detail.meeting, recording: { ...recording, localPath: await resolveMediaFile(recording.localPath) } }
+  }
+  return { ...detail, reviews }
+}
+export const teamSessionSetObjectiveResult = (sessionId: string, objectiveId: string, gameId: string | null, met: boolean | null) =>
+  history.setObjectiveResult(getSupabase(), sessionId, objectiveId, gameId, met)
+
+// ── Preparing a session ahead (docs/contracts/session-prep.md) ──
+// ── What my groups give me, across all of them (docs/AUDIT_LIAISONS.md L2-L6) ──
+export const myNextEvent = () => requireSessionUserId().then((uid) => myTeam.getMyNextEvent(getSupabase(), uid))
+export const myOpenTasks = () => requireSessionUserId().then((uid) => myTeam.listMyOpenTasks(getSupabase(), uid))
+export const mySessionObjectives = () => requireSessionUserId().then((uid) => myTeam.listMySessionObjectives(getSupabase(), uid))
+export const myVodActionItems = (all?: boolean) => requireSessionUserId().then((uid) => myTeam.listMyVodActionItems(getSupabase(), uid, all ?? false))
+
+export const sessionPrepGet = (sessionId: string) => prep.getSessionPrep(getSupabase(), sessionId)
+export const sessionPrepReadyForEvents = (calendarEventIds: string[]) => prep.prepReadyForEvents(getSupabase(), calendarEventIds)
+export const sessionPrepSetMessage = (sessionId: string, text: string | null) => prep.setPrepMessage(getSupabase(), sessionId, text)
+export const sessionPrepSetPlayerObjectives = (sessionId: string, playerId: string, value: PlayerObjectivesInput | null) =>
+  prep.setPlayerObjectives(getSupabase(), sessionId, playerId, value)
+export const sessionPrepAttachDraft = (sessionId: string, draft: SessionDraftInput) => prep.attachDraft(getSupabase(), sessionId, draft)
+export const sessionPrepAttachSharedDraft = (sessionId: string, teamDraftId: string) => prep.attachSharedDraft(getSupabase(), sessionId, teamDraftId)
+export const sessionPrepRemoveDraft = (draftId: string) => prep.removeDraft(getSupabase(), draftId)
+export const sessionPrepReorderDrafts = (sessionId: string, draftIds: string[]) => prep.reorderDrafts(getSupabase(), sessionId, draftIds)
+
+/** A draft of the local Draft Sim (the active user's DraftPrep), copied onto the session. */
+export async function sessionPrepAttachLocalDraft(sessionId: string, draftPrepId: string): Promise<string> {
+  const prisma = getPrisma()
+  const user = await prisma.user.findFirst({ where: { isActive: true } })
+  const draft = user ? await prisma.draftPrep.findFirst({ where: { id: draftPrepId, userId: user.id } }) : null
+  if (!draft) throw new Error('NOT_FOUND')
+  return prep.attachDraft(getSupabase(), sessionId, prep.draftInputFromLocal(draft))
 }

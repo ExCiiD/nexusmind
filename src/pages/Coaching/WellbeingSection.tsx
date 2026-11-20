@@ -40,7 +40,8 @@ export function WellbeingSection({ groups, myUserId, nameOf }: Props) {
   )
 }
 
-function MyCheckin({ myUserId }: { myUserId: string }) {
+/** My own check-in, consent and history (also in « Mon espace », § 16). */
+export function MyCheckin({ myUserId }: { myUserId: string }) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const [energy, setEnergy] = useState('3')

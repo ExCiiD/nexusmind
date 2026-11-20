@@ -4,6 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronUp, GraduationCap, ListChecks, Target } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ReassessmentBanner } from '@/components/Coaching/ReassessmentBanner'
+import { DevPlanCard } from '@/components/Coaching/DevPlanCard'
+import { useCollab } from '@/hooks/useCollab'
+import type { DevPlan } from '@/lib/devPlan'
 import { ExperimentPanel, criterionText } from '@/components/Assistant/ExperimentPanel'
 import { useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { cn } from '@/lib/utils'
@@ -68,6 +71,9 @@ export function MyPlanPage() {
       </div>
 
       <ReassessmentBanner />
+
+      {/* 20/11 (docs/DECISIONS.md): the axes and notes my staff gave me, read here too. Nothing without a group or a plan. */}
+      <StaffPlans />
 
       {!focus && others.length === 0 && (
         <Card><CardContent className="pt-6 text-sm text-hextech-text-dim">{t('plan.empty')}</CardContent></Card>
@@ -210,5 +216,51 @@ function InsightBlock({
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * The development plans the staff gave me (Coaching › Joueurs, the Management dashboard's DevPlanCard), one per group
+ * that has one: the axes, my progress on each, and the 1:1 notes. Shown only when a group has a plan for me.
+ */
+function StaffPlans() {
+  const { t, i18n } = useTranslation()
+  const { groups, myUserId, nameOf } = useCollab()
+  const [withPlan, setWithPlan] = useState<string[]>([])
+  const ids = groups.map((g) => g.id).join(',')
+
+  useEffect(() => {
+    if (!myUserId || !ids || !window.api.devPlanGetMine) { setWithPlan([]); return }
+    let alive = true
+    void Promise.all(ids.split(',').map((id) => window.api.devPlanGetMine(id).then((p) => (p ? id : null)).catch(() => null)))
+      .then((found) => { if (alive) setWithPlan(found.filter((x): x is string => !!x)) })
+    return () => { alive = false }
+  }, [ids, myUserId])
+
+  if (!myUserId || withPlan.length === 0) return null
+  const date = (iso: string) => new Date(iso).toLocaleDateString(i18n.language, { day: 'numeric', month: 'long' })
+  return (
+    <section aria-label={t('plan.staff.title')} className="space-y-3">
+      {withPlan.map((groupId) => {
+        const group = groups.find((g) => g.id === groupId)
+        return (
+          <DevPlanCard
+            key={groupId}
+            groupId={groupId}
+            playerId={myUserId}
+            mode="player"
+            meta={(plan: DevPlan) => {
+              const last = [...plan.checkins].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+              const author = plan.createdByName || (plan.createdBy ? nameOf(plan.createdBy) : null)
+              return [
+                author ? t('plan.staff.givenBy', { name: author, group: group?.name ?? '—' }) : t('plan.staff.fromGroup', { group: group?.name ?? '—' }),
+                t('plan.staff.updated', { date: date(plan.updatedAt) }),
+                last?.createdBy ? t('plan.staff.lastNote', { name: nameOf(last.createdBy), date: date(last.createdAt) }) : null,
+              ].filter(Boolean).join(' · ')
+            }}
+          />
+        )
+      })}
+    </section>
   )
 }

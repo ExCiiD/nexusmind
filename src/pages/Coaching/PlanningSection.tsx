@@ -64,6 +64,17 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
 
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()))
   const [events, setEvents] = useState<CalendarEvent[] | null>(null)
+  // § 17: « Préparation prête » on the cards, one request for the week's events.
+  const [prepReady, setPrepReady] = useState<Set<string>>(new Set())
+  const eventIds = (events ?? []).map((e) => e.id).join(',')
+  useEffect(() => {
+    if (!eventIds || !window.api.sessionPrepReadyForEvents) { setPrepReady(new Set()); return }
+    let alive = true
+    window.api.sessionPrepReadyForEvents(eventIds.split(','))
+      .then((ids) => { if (alive) setPrepReady(new Set(ids)) })
+      .catch(() => { if (alive) setPrepReady(new Set()) })
+    return () => { alive = false }
+  }, [eventIds])
   const [scrims, setScrims] = useState<ScrimSummary[]>([])
   const [rules, setRules] = useState<AvailabilityRule[]>([])
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([])
@@ -297,6 +308,7 @@ export function PlanningSection({ groups, myUserId, nameOf }: Props) {
               commonFree={commonFree}
               myAvailabilityExceptions={myExceptions}
               canEditCalendar={canEdit}
+              prepReady={prepReady}
               onSelectEventRange={setCreatingRange}
               onSelectAvailabilityRange={selectAvailabilityRange}
               onRemoveAvailabilityException={removeAvailabilityException}
@@ -502,7 +514,7 @@ function EventInspector({ event, roster, members, rules, exceptions, canEdit, my
       {event.notes && <p className="whitespace-pre-wrap rounded-md border border-hextech-border-dim bg-hextech-black/30 p-2 text-xs text-hextech-text">{event.notes}</p>}
       {SESSION_KINDS.includes(event.kind) && (
         <Button size="sm" className="w-full gap-1.5" onClick={() => navigate(`/team-session/${event.id}`)}>
-          <CalendarClock className="h-3.5 w-3.5" />{t('planning.openTeamSession')}
+          <CalendarClock className="h-3.5 w-3.5" />{canEdit && new Date(event.startsAt).getTime() > Date.now() ? t('sessionPrep.prepare') : t('planning.openTeamSession')}
         </Button>
       )}
       {answerable && (

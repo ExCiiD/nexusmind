@@ -8,10 +8,17 @@ import { fail } from './supabaseErrors'
  * desktop and web call these identically.
  */
 
-interface PlanRow { id: string; group_id: string; player_id: string; title: string; period_start: string | null; period_end: string | null; created_at: string; updated_at: string }
+interface PlanRow { id: string; group_id: string; player_id: string; title: string; period_start: string | null; period_end: string | null; created_by?: string | null; created_at: string; updated_at: string }
 interface AxisRow { id: string; plan_id: string; fundamental_id: string; target_text: string; position: 1 | 2 | 3; status: AxisStatus; created_at: string; updated_at: string }
 interface ProgressRow { axis_id: string; player_marked_done: boolean; player_note: string | null; updated_at: string }
 interface CheckinRow { id: string; plan_id: string; note: string; created_by: string | null; created_at: string }
+
+/** The plan author's name in the plan's group (null when unknown or gone). */
+async function authorName(sb: SupabaseClient, plan: PlanRow): Promise<string | null> {
+  if (!plan.created_by) return null
+  const { data } = await sb.from('group_members').select('display_name').eq('group_id', plan.group_id).eq('user_id', plan.created_by).maybeSingle()
+  return (data as { display_name?: string | null } | null)?.display_name ?? null
+}
 
 async function hydrate(sb: SupabaseClient, plan: PlanRow): Promise<DevPlan> {
   const [axesRes, progressRes, checkinsRes] = await Promise.all([
@@ -48,13 +55,14 @@ async function hydrate(sb: SupabaseClient, plan: PlanRow): Promise<DevPlan> {
   return {
     id: plan.id, groupId: plan.group_id, playerId: plan.player_id, title: plan.title,
     periodStart: plan.period_start, periodEnd: plan.period_end, axes, checkins,
+    createdBy: plan.created_by ?? null, createdByName: await authorName(sb, plan),
     createdAt: plan.created_at, updatedAt: plan.updated_at,
   }
 }
 
 async function getPlan(sb: SupabaseClient, groupId: string, playerId: string): Promise<DevPlan | null> {
   const { data, error } = await sb.from('dev_plans')
-    .select('id, group_id, player_id, title, period_start, period_end, created_at, updated_at')
+    .select('id, group_id, player_id, title, period_start, period_end, created_by, created_at, updated_at')
     .eq('group_id', groupId).eq('player_id', playerId)
     .order('created_at', { ascending: false }).limit(1).maybeSingle()
   if (error) fail(error, 'load plan')

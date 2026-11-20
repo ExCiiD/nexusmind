@@ -7,6 +7,9 @@ import type { TeamOpsApi } from './teamOps'
 import type { AnnouncementsApi } from './announcements'
 import type { TeamSessionApi } from './teamSessions'
 import type { TeamSessionReviewApi } from './teamSessionReviews'
+import type { TeamSessionHistoryApi } from './teamSessionHistory'
+import type { SessionPrepApi } from './sessionPrep'
+import type { MyTeamApi } from './myTeam'
 import type { ReportApi } from './report'
 import type { AnalystApi } from './analyst'
 import type { TrialsApi } from './trials'
@@ -248,43 +251,8 @@ export interface CustomGame {
   importedAt: string
 }
 
-export interface SynergyPlayerStats {
-  memberId: string
-  displayName: string
-  role: string
-  gamesPlayed: number
-  wins: number
-  winRate: number
-  averages: {
-    kda: number
-    kills: number
-    deaths: number
-    assists: number
-    cs: number
-    csPerMin: number
-    damage: number
-    damagePerMin: number
-    damageTaken: number
-    ccTime: number
-    visionScore: number
-    wardsPlaced: number
-    wardsKilled: number
-    controlWards: number
-    gold: number
-    goldPerMin: number
-    xpPerMin: number
-    damagePerGold: number
-  }
-  shares: {
-    damagePct: number
-    goldPct: number
-    visionPct: number
-    damageTakenPct: number
-    ccPct: number
-    kpPct: number
-  }
-  byChampion: Array<{ championKey: string; games: number; wins: number; winRate: number }>
-}
+import type { SynergyPlayerStats } from './synergyStats'
+export type { SynergyPlayerStats } from './synergyStats'
 
 export interface TeamSynergyStats {
   matchCount: number
@@ -327,7 +295,7 @@ export interface SavedAccount {
   _count: { sessions: number }
 }
 
-export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareApi & CalendarApi & VodReviewApi & WellbeingApi & TeamOpsApi & AnnouncementsApi & ReportApi & TrialsApi & ScrimsReadApi & DiscussionApi & TeamSessionApi & TeamSessionReviewApi & AnalystApi & {
+export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareApi & CalendarApi & VodReviewApi & WellbeingApi & TeamOpsApi & AnnouncementsApi & ReportApi & TrialsApi & ScrimsReadApi & DiscussionApi & TeamSessionApi & TeamSessionReviewApi & TeamSessionHistoryApi & SessionPrepApi & MyTeamApi & AnalystApi & {
   connectRiot: (gameName: string, tagLine: string, region: string, displayName?: string) => Promise<any>
   disconnectRiot: () => Promise<void>
   reactivateAccount: (userId: string) => Promise<any>
