@@ -52,6 +52,39 @@ transmet à toutes les sessions concernées.
 6. **Avant chaque release :** Audit et CyberSecurity rendent leur verdict
    (critères respectés ou non) au Chief, qui le transmet à l'utilisateur.
 
+## Économie de tokens (demande de l'utilisateur, 20/11)
+
+Chaque message entre sessions fait travailler la session qui le reçoit pendant
+un tour complet (lecture du contexte comprise), et chaque fin de tour renvoie
+une note au Chief. Les allers-retours inutiles sont donc la plus grosse
+dépense. Règles :
+
+1. **Pas de message sans action attendue.** Pas d'accusé de réception
+   (« noté », « prêt », « je relirai »), pas de « pas besoin de répondre »,
+   pas de diffusion d'information générale : elle va dans un fichier
+   (`docs/DECISIONS.md`, ce document, `docs/PLAN_CHIEF.md`), que chaque session
+   relit au début de sa prochaine tâche.
+2. **Un message = un lot complet.** Le Chief envoie à une session toutes ses
+   tâches d'un coup, avec fichiers, critère de fin et vérifications ; pas de
+   précision envoyée en second message quand elle peut être dans le premier.
+3. **Un seul compte rendu par tâche**, au Chief seulement, en 5 lignes au plus :
+   fait / vérifié / pas vérifié / ce qu'il attend. Pas de copie à une autre
+   session, pas de « je te le redonne ». Le compte rendu de fin de tour à
+   l'utilisateur reste court (2-3 phrases).
+4. **Le Chief fait lui-même les petites corrections** (quelques lignes,
+   commentaires, renommages, intégration) au lieu de déléguer.
+5. **Revues groupées** : Audit et CyberSecurity revoient un lot avant une
+   release, pas chaque petit changement ; une revue sécurité seulement si le
+   lot touche la base, l'authentification, la CSP, les IPC ou des secrets.
+6. **L'utilisateur parle aux sessions directement** quand il le souhaite ;
+   la session ajoute alors la décision au registre et ne prévient le Chief que
+   si une autre session doit agir.
+7. **Les sessions sans tâche restent au repos.** Pas de veille ni de
+   vérification « au cas où ».
+8. **Le Chief ne relaie pas** à l'utilisateur les comptes rendus des autres
+   sessions : il ne lui écrit que pour une décision, un résultat livré ou un
+   blocage, regroupés en un message.
+
 ## Règles communes
 
 Celles de `docs/SESSION_HANDOFF.md` § 4 : commit / push / release / base de
