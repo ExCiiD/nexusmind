@@ -239,7 +239,9 @@ export async function listRecentTeamNotifications(sb: SupabaseClient, groupId: s
 /** In-app notifications the bot also sends as a Discord direct message to
  *  their recipient: a player who can't come to an event (or who finally
  *  can), for the management — see respond_to_calendar_event. */
-export const DIRECT_MESSAGE_TYPES = ['event_declined', 'event_confirmed'] as const
+// event_response_reminder: "Relancer" from the manager's Organisation dashboard (migration 20261120190000), sent to the
+// member who has not answered.
+export const DIRECT_MESSAGE_TYPES = ['event_declined', 'event_confirmed', 'event_response_reminder'] as const
 export type DirectMessageType = (typeof DIRECT_MESSAGE_TYPES)[number]
 
 export interface DirectNotification {
@@ -289,15 +291,34 @@ export async function markDirectMessageSent(sb: SupabaseClient, notificationId: 
 }
 
 /** The direct message itself — English and UTC like the bot's other posts. */
+/**
+ * Text typed by a member (an event title, a name, a reason), made inert for a Discord message (CyberSecurity, beta.14,
+ * anti-phishing): one line, Markdown escaped (no bold, masked link, spoiler, heading or code), links broken so Discord
+ * does not turn them into clickable links or previews, mentions neutralised, and cut to `max` characters.
+ */
+export function plainDiscordText(value: unknown, max = 120): string {
+  let s = String(value ?? '').replace(/[\r\n\t]+/g, ' ').replace(/\s{2,}/g, ' ').trim()
+  if (s.length > max) s = `${s.slice(0, max - 1)}…`
+  s = s.replace(/([\\*_~`|>[\]()#:-])/g, '\\$1')
+  // Links: "https\://" is escaped above; also break bare domains Discord would still link (www., discord.gg).
+  s = s.replace(/\bwww\./gi, 'www․').replace(/\b(discord(?:app)?)\.(gg|com)\b/gi, '$1․$2')
+  // Mentions (@everyone, @here, <@id>) never ping: allowed_mentions is empty too, this only keeps them unreadable as such.
+  s = s.replace(/@/g, '@​').replace(/</g, '\\<')
+  return s
+}
+
 export function directMessageText(n: Pick<DirectNotification, 'type' | 'data'>): string {
-  const name = String(n.data.playerName ?? '?')
-  const title = String(n.data.eventTitle ?? '')
+  const name = plainDiscordText(n.data.playerName ?? '?', 40)
+  const title = plainDiscordText(n.data.eventTitle ?? '')
   const at = typeof n.data.scheduledAt === 'string' ? new Date(n.data.scheduledAt) : null
   const when = at && !Number.isNaN(at.getTime())
     ? ` — ${at.toLocaleString('en-US', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC`
     : ''
+  if (n.type === 'event_response_reminder') {
+    return `⏰ Will you be at "${title}"${when}? Your team is waiting for your answer: open the Planning in Ascend to reply.`
+  }
   if (n.type === 'event_declined') {
-    const reason = typeof n.data.note === 'string' && n.data.note ? `\nReason: ${n.data.note}` : ''
+    const reason = typeof n.data.note === 'string' && n.data.note ? `\nReason: ${plainDiscordText(n.data.note, 300)}` : ''
     return `❌ **${name}** can't make it to "${title}"${when}.${reason}`
   }
   return `✅ **${name}** will be at "${title}" after all${when}.`

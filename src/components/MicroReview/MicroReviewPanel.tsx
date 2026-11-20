@@ -9,6 +9,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { CoachVerdictsForGame } from './CoachVerdictsForGame'
 import { Check, ChevronRight, Loader2, MapPin, RotateCcw, ShieldCheck, Sparkles, Timer, ExternalLink } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -152,6 +153,8 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
   return (
     <section className={cn(panel, 'p-4')} data-testid="micro-review">
       <Header count={moments.length} done={doneCount} />
+      {/* § 18.5 L3: the coach's verdicts on my answers of this game. */}
+      {data.matchId && <CoachVerdictsForGame matchId={data.matchId} />}
 
       {/* Queue */}
       <ol className="mt-3 flex flex-wrap gap-2" aria-label={t('microReview.queue')}>

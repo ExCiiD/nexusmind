@@ -404,3 +404,51 @@ export function parseChampionSkins(json: unknown, championKey: string): Array<{ 
   if (!out.some((s) => s.num === 0)) out.unshift({ num: 0, name: 'default' })
   return out.sort((a, b) => a.num - b.num)
 }
+
+// ── Solo LFT for a player without a group (DESIGN_STATE § 18.2, "Je cherche une équipe") ──
+// The poster reads a roster member (TeamMember: Riot ID, role, champion pool). A player with no group has no roster:
+// their pool comes from their own recorded games instead, in the same shape (playRate = games, winRate in %).
+
+export interface SoloGame { champion: string; role: string | null; win: boolean }
+
+/** The roster member the poster reads (the fields of TeamMember in ipc.ts it uses), built for a player alone. */
+export interface SoloLftMember {
+  id: string
+  teamId: string
+  displayName: string
+  ign: string | null
+  tagLine: string | null
+  region: string | null
+  role: string
+  puuid: string | null
+  champPool: Array<LftPoolEntry & { id: string; memberId: string; tier: string }>
+}
+
+/** The champion pool of a player's own games: one entry per champion and role, the most played first. */
+export function soloPoolFromGames(games: SoloGame[], memberId = 'me'): Array<LftPoolEntry & { id: string; memberId: string; tier: string }> {
+  const byKey = new Map<string, { championKey: string; role: string; games: number; wins: number }>()
+  for (const g of games) {
+    const role = asLftRole(g.role)
+    if (!g.champion || !role) continue
+    const key = `${g.champion}|${role}`
+    const e = byKey.get(key) ?? { championKey: g.champion, role, games: 0, wins: 0 }
+    e.games++
+    if (g.win) e.wins++
+    byKey.set(key, e)
+  }
+  return [...byKey.values()]
+    .sort((a, b) => b.games - a.games || b.wins - a.wins)
+    .map((e) => ({
+      id: `${memberId}:${e.championKey}:${e.role}`, memberId, championKey: e.championKey, role: e.role, tier: 'comfort',
+      playRate: e.games, winRate: Math.round((e.wins / e.games) * 1000) / 10,
+    }))
+}
+
+/** The player's role: their main role when set, else the role of most of their games. */
+export function soloRole(mainRole: string | null | undefined, games: SoloGame[]): LftRole | null {
+  const own = asLftRole(mainRole)
+  if (own) return own
+  const counts = new Map<LftRole, number>()
+  for (const g of games) { const r = asLftRole(g.role); if (r) counts.set(r, (counts.get(r) ?? 0) + 1) }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+}

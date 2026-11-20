@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { CoachVerdictsLab } from '@/components/MicroReview/CoachVerdictsForGame'
 import { AlertTriangle, Play, FlaskConical, Check, Loader2, Search, Crosshair, Tags } from 'lucide-react'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip } from 'recharts'
 import { Button } from '@/components/ui/button'
@@ -123,6 +124,11 @@ export function MistakeStatsPage() {
           </div>
         </div>
       </div>
+
+      {/* § 18.5 L3: the coach's verdicts on the mistakes shown (the focused one alone when one is picked). */}
+      {occ && occ.length > 0 && (
+        <CoachVerdictsLab days={windowDays} tags={new Map(occ.filter((o) => !focus || o.tag.slug === focus).map((o) => [o.tag.slug, o.tag.label]))} />
+      )}
 
       {occ === null ? (
         <SkeletonKpiTiles />

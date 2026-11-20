@@ -37,6 +37,7 @@ import { TierAvatar, useProfilePrefs } from '@/components/Profile/ProfileCard'
 import { tierForLevel } from '@/lib/profile'
 import { useShareProfileLook } from '@/hooks/useShareProfileLook'
 import { useSessionNavStore } from '@/store/useSessionNavStore'
+import { useCollab } from '@/hooks/useCollab'
 
 export function Sidebar() {
   const { t } = useTranslation()
@@ -140,6 +141,9 @@ export function Sidebar() {
 
   const path = location.pathname
   const endedSessionOpen = useSessionNavStore((s) => s.endedSessionOpen)
+  // § 18.2: without a group, the team section is one « Équipe » entry (/team: « Rejoins une équipe »).
+  const collab = useCollab()
+  const noGroup = collab.available && !collab.loading && collab.groups.length === 0
   const navGroups: NavGroup[] = [
     {
       id: 'practice',
@@ -162,7 +166,9 @@ export function Sidebar() {
     },
     {
       id: 'team',
-      items: [
+      items: noGroup ? [
+        { to: '/team', icon: Users, label: t('nav.joinTeam'), active: path === '/team' },
+      ] : [
         // One group drives these four pages (the switcher in each header).
         // Team sessions are launched from Management's planning and return there.
         // The Team Lobby first (user request, 21/11/2026).

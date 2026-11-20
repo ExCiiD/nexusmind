@@ -427,6 +427,35 @@ Correctif proposé :
 
 **Non vérifié :** l'app réelle, côté utilisateur.
 
+### beta.14 — rôles, liaisons L2-L6, Organisation, « Rejoins une équipe » (21/11) — **non bloquant, une réserve P2**
+
+**Contrôles :**
+- `vitest` **1 935 / 1 935** ; `typecheck`, `lint` EXIT 0 ; `check:i18n` OK, 4 286 clés ;
+- `build`, `web:build` et `tsc` du bot EXIT 0 ;
+- migration `20261120190000` : `test-event-response-reminders` **19 / 19** (PGlite 17) ; baseline verte.
+
+| Point | Verdict | Preuve |
+|---|---|---|
+| **FE-8** | ✅ | Aucune nouvelle origine externe ; la CSP du build garde `ascend-cutouts` et `i.ytimg.com`. |
+| **Migration non appliquée** | ✅ | La contrainte `notifications_type_check` réécrite garde les 20 types précédents et en ajoute 1 (`event_response_reminder`) ; les 4 types présents en production y figurent (lecture seule). Rollback présent. |
+| **Avant la migration** | ✅ | « Relancer » affiche `organisation.remindNotDeployed` (`NOT_AVAILABLE` ou `isServerNotReadyError`) ; la liste des relances est vide (test « empty before the migration »). |
+| **Joueur** | ✅ | Management : « Mon espace » + **Groupes** (réserve de la beta.13 levée). Coaching : Pool, Draft, Scouting en **dossiers publiés seulement**, VOD. Stats collectives, Sessions, Lobby. |
+| **Capitaine** | ✅ | Comme le joueur (`myRole === 'player'`) ; il garde l'édition du Planning (`canEditCalendar`). |
+| **Manager** | ✅ / ⚠️ | Management : **Organisation** (au lieu de Vue d'ensemble), Planning, Tâches, Groupes ; Bien-être et Essais masqués. **Mais Scouting en dossiers publiés seulement**, voir la réserve. |
+| **Coach, owner, analyst** | ✅ | Tous les onglets (Essais, Joueurs, Rapports). |
+| **Sans groupe** | ✅ | Barre latérale : **une seule entrée** « Rejoins une équipe » (`Sidebar.tsx:169-170`) ; `/team` rend `NoTeamPage` : rejoindre (compte Riot requis), créer, LFT solo. |
+| **Liaisons L2-L6** | ✅ | Dashboard : `MyTeamCard` (objectifs, verdicts, tâches, prochain événement ; aucune carte sans groupe). Mon plan : objectifs attribués (L2) et actions de review VOD (L6). `CoachVerdictsForGame` dans le panneau de micro-review (L3). |
+| **Toast de check-in (L7)** | ✅ | Seulement si le consentement bien-être est `granted` ; non modal (`aria-modal="false"`), « Plus tard », radiogroups 1-5 nommés, demandé une seule fois par session. |
+| **DECISIONS.md** | ✅ sauf le manager | « Yes, all » sur `AUDIT_LIAISONS.md` (dossiers publiés pour un joueur, dashboard d'organisation pour le manager, une seule entrée sans groupe, L2-L7). |
+
+**Réserve P2 — le manager voit le Scouting en dossiers publiés seulement.**
+`ScoutingTab.tsx:281` limite **tout membre non `isLegacyStaff`** (owner, coach, analyst), donc le **manager** aussi.
+Le commentaire dit « player, captain ». Or :
+- `AUDIT_LIAISONS.md` § 3, accepté par l'utilisateur (« Yes, all »), garde le Scouting pour le manager ;
+- le contrat #49 lui donne le droit de **compléter** les adversaires.
+
+Correctif : condition `isLegacyStaff(...) || myRole === 'manager'` (ou un prédicat `canScout`).
+
 ### #51 Champion Pool, lobby, détouré hébergé, sélecteur champion / skin (21/11) — **OK**
 
 **Contrôles :**

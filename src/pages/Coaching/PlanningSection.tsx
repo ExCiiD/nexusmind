@@ -581,7 +581,8 @@ function EventInspector({ event, roster, members, rules, exceptions, canEdit, my
 
 /** Each followed player's week: free (with the hours on hover), marked
  *  unavailable, or nothing said. What the staff reads to plan. */
-function PlayersAvailability({ ids, fromRoster, days, rules, exceptions, nameOf }: {
+/** The week's players × days availability (also on the manager's Organisation dashboard, § 18.1). */
+export function PlayersAvailability({ ids, fromRoster, days, rules, exceptions, nameOf }: {
   ids: string[]
   fromRoster: boolean
   days: Date[]

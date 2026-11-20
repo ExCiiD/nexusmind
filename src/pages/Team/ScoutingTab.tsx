@@ -20,6 +20,9 @@ import { ScopeDialog, type FetchScope } from '@/components/team/ScopeDialog'
 import { useBackgroundJobsStore } from '@/store/useBackgroundJobsStore'
 import { wrText } from '@/lib/winrate'
 import { riotErrorText } from '@/lib/riotErrors'
+import { useCollab } from '@/hooks/useCollab'
+import { isLegacyStaff } from '@/lib/permissions'
+import type { PublishedDossier } from '@/lib/organisation'
 
 
 /** `groupId`: the group picked in the section header — only its opponents
@@ -29,6 +32,10 @@ import { riotErrorText } from '@/lib/riotErrors'
  *  `groupId` field and are all the group's. */
 export function ScoutingTab({ groupId }: { groupId?: string }) {
   const { t } = useTranslation()
+  const { groups } = useCollab()
+  const groupHere = groups.find((g) => g.id === groupId)
+  // The manager keeps the full Scouting (docs/AUDIT_LIAISONS.md, contract #49); only players and captains get the published dossiers.
+  const isStaffHere = !groupHere || isLegacyStaff(groupHere.myRole, groupHere.myStaffRoles) || groupHere.myRole === 'manager'
   const [searchParams, setSearchParams] = useSearchParams()
   const { toast } = useToast()
   const [opponents, setOpponents] = useState<Team[]>([])
@@ -269,6 +276,11 @@ export function ScoutingTab({ groupId }: { groupId?: string }) {
   if (groupId && dossierKey) {
     const name = groupOpponents.find((x) => opponentKeyOf(x.name) === dossierKey)?.name ?? dossierKey
     return <OpponentDossierPage key={dossierKey} groupId={groupId} opponentKey={dossierKey} opponentName={name} onBack={() => setDossier(null)} />
+  }
+
+  // § 18.4: a member who is not staff (player, captain) sees the published dossiers only, read only.
+  if (groupId && !isStaffHere) {
+    return <PublishedDossiers groupId={groupId} onOpen={setDossier} />
   }
 
   return (
@@ -934,6 +946,50 @@ function TinyChampIcon({ championKey, count, wins, role }: {
           {wr}
         </span>
       )}
+    </div>
+  )
+}
+
+/**
+ * § 18.4: the opponent dossiers the staff published (§ 12), newest first (opponentDossierListPublished) — name / tag,
+ * « Publié le 19 nov. par Coach Sora », the record against us. A click opens the dossier, read only
+ * (OpponentDossierPage, no refresh).
+ */
+function PublishedDossiers({ groupId, onOpen }: { groupId: string; onOpen: (key: string) => void }) {
+  const { t, i18n } = useTranslation()
+  const { nameOf } = useCollab()
+  const [list, setList] = useState<PublishedDossier[] | null>(null)
+  useEffect(() => {
+    let alive = true
+    setList(null)
+    window.api.opponentDossierListPublished(groupId)
+      .then((l) => { if (alive) setList(l) })
+      .catch(() => { if (alive) setList([]) })
+    return () => { alive = false }
+  }, [groupId])
+
+  if (!list) return <div className="h-24 animate-pulse rounded-lg bg-hextech-elevated/60" aria-busy />
+  if (list.length === 0) return <EmptyState icon={FileText} title={t('scoutingPlayer.empty')} />
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {list.map((d) => (
+        <button key={d.opponentKey} type="button" onClick={() => onOpen(d.opponentKey)}
+          className="space-y-1 rounded-lg border border-hextech-border-dim bg-hextech-dark/50 p-4 text-left transition-colors hover:border-hextech-border hover:bg-hextech-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold">
+          <p className="flex items-center gap-2">
+            {d.tag && <span className="rounded bg-hextech-gold/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-hextech-gold">{d.tag}</span>}
+            <span className="truncate text-sm font-semibold text-hextech-text-bright">{d.name}</span>
+          </p>
+          <p className="text-xs text-hextech-text-dim">
+            {t('scoutingPlayer.published', {
+              date: new Date(d.publishedAt).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' }),
+              name: d.publishedByName ?? (d.publishedBy ? nameOf(d.publishedBy) : '—'),
+            })}
+          </p>
+          {(d.record.wins + d.record.losses) > 0 && (
+            <p className="font-mono text-xs text-hextech-text">{t('scoutingPlayer.record', { wins: d.record.wins, losses: d.record.losses })}</p>
+          )}
+        </button>
+      ))}
     </div>
   )
 }

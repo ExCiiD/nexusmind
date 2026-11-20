@@ -5,6 +5,7 @@ import * as history from '../../../src/lib/teamSessionHistoryCore'
 import type { TeamSessionHistoryFilters } from '../../../src/lib/teamSessionHistory'
 import * as prep from '../../../src/lib/sessionPrepCore'
 import * as myTeam from '../../../src/lib/myTeamCore'
+import * as org from '../../../src/lib/organisationCore'
 import type { PlayerObjectivesInput, SessionDraftInput } from '../../../src/lib/sessionPrep'
 import { getPrisma } from '../database'
 import { resolveMediaFile } from '../mediaAccess'
@@ -69,6 +70,11 @@ export const teamSessionSetObjectiveResult = (sessionId: string, objectiveId: st
   history.setObjectiveResult(getSupabase(), sessionId, objectiveId, gameId, met)
 
 // ── Preparing a session ahead (docs/contracts/session-prep.md) ──
+// ── § 18: "Relancer" and the published dossiers (docs/contracts/organisation.md) ──
+export const calendarRemindResponses = (eventId: string, userIds?: string[]) => org.remindEventResponses(getSupabase(), eventId, userIds)
+export const calendarListReminders = (eventIds: string[]) => org.listEventReminders(getSupabase(), eventIds)
+export const opponentDossierListPublished = (groupId: string) => org.listPublishedDossiers(getSupabase(), groupId)
+
 // ── What my groups give me, across all of them (docs/AUDIT_LIAISONS.md L2-L6) ──
 export const myNextEvent = () => requireSessionUserId().then((uid) => myTeam.getMyNextEvent(getSupabase(), uid))
 export const myOpenTasks = () => requireSessionUserId().then((uid) => myTeam.listMyOpenTasks(getSupabase(), uid))

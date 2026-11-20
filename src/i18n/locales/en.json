@@ -27,7 +27,8 @@
     "autoRecordTitle": "Automatic recording on",
     "management": "Management",
     "teamSpace": "Team Lobby",
-    "teamSessions": "Team sessions"
+    "teamSessions": "Team sessions",
+    "joinTeam": "Team"
   },
   "teamSessions": {
     "title": "Team sessions",
@@ -3550,7 +3551,10 @@
       "updated": "updated {{date}}",
       "lastNote": "last note by {{name}} on {{date}}",
       "givenBy": "Plan given by {{name}} ({{group}})"
-    }
+    },
+    "coachGoals": "My coach’s goals",
+    "vodActions": "To work on (VOD review)",
+    "markActionDone": "Mark « {{text}} » as done"
   },
   "notifications": {
     "title": "Notifications",
@@ -3640,6 +3644,10 @@
       "member_staff_roles_changed": {
         "title": "New staff role in the team",
         "body": "{{memberName}} is now also {{addedText}}."
+      },
+      "event_response_reminder": {
+        "title": "Reply to {{eventTitle}}",
+        "body": "Your staff is waiting for your answer: will you be there?"
       }
     },
     "bellLabel_one": "Notifications, {{count}} unread",
@@ -5379,6 +5387,103 @@
     "team": "Team objectives",
     "others_one": "{{count}} teammate’s objective",
     "others_other": "{{count}} teammates’ objectives",
-    "nothingYet": "Nothing prepared for this session yet."
+    "nothingYet": "Nothing prepared for this session yet.",
+    "draftAttached": "Draft attached to the session",
+    "draftNotAttached": "It couldn’t be attached to the session: link it from the prep.",
+    "draftForSession": "New draft for the session « {{name}} »: saving it attaches it to the session.",
+    "draftForSessionAttached": "Attached to the session « {{name}} »: each save updates it."
+  },
+  "noTeam": {
+    "title": "Join a team",
+    "subtitle": "The Lobby, the Planning, Coaching and the team stats open as soon as you’re in a group.",
+    "join": "Join with a code",
+    "code": "Invite code",
+    "codePlaceholder": "Invite code",
+    "riotId": "Your Riot ID (Name#TAG)",
+    "riotRequired": "A linked Riot account is required to join.",
+    "linkRiot": "Link it",
+    "joinButton": "Join",
+    "create": "Create a group",
+    "name": "Group name",
+    "namePlaceholder": "Group name",
+    "kind": "Type",
+    "kinds": {
+      "team": "Team",
+      "coaching": "Coaching"
+    },
+    "createButton": "Create",
+    "lft": "I’m looking for a team",
+    "lftDesc": "Your player card (rank, champions, roles) is your LFT post: fill it in on your Profile to share it.",
+    "lftButton": "Prepare my player card",
+    "lftSoloDesc": "A poster from your last 100 games ({{name}}, {{role}}): rank, champions, what you’re looking for.",
+    "lftPublish": "Make my LFT post"
+  },
+  "checkinToast": {
+    "title": "Check in before the session?",
+    "later": "Later",
+    "send": "Send",
+    "failed": "Your check-in couldn’t be saved"
+  },
+  "organisation": {
+    "title": "Organization",
+    "upcoming": "Coming up (7 days)",
+    "newEvent": "New event",
+    "nothingUpcoming": "Nothing planned in the next 7 days.",
+    "toWatch": "Attendance to watch",
+    "allAnswered": "Everyone answered for the next 48 h.",
+    "publish": "Post an announcement",
+    "presence": "{{present}} / {{total}}",
+    "absent_one": "{{count}} absent",
+    "absent_other": "{{count}} absent",
+    "noAnswer_one": "{{count}} no answer",
+    "noAnswer_other": "{{count}} no answer",
+    "findSub": "Find a sub",
+    "noSub": "Nobody else is free on this slot.",
+    "subs": "Free on this slot: {{names}}",
+    "tasks": "Open tasks of the group",
+    "newTask": "Task",
+    "noTask": "No open task.",
+    "unassigned": "Unassigned",
+    "taskFilter": {
+      "all": "All",
+      "overdue": "Overdue",
+      "unassigned": "Unassigned"
+    },
+    "remind": "Remind",
+    "remindedAgo": "reminded {{when}}",
+    "reminded_one": "{{count}} person reminded",
+    "reminded_other": "{{count}} people reminded",
+    "nobodyReminded": "Nobody reminded",
+    "remindSkipped_one": "{{count}} already reminded under 6 h ago: next reminder at {{time}}.",
+    "remindSkipped_other": "{{count}} already reminded under 6 h ago: next reminder at {{time}}.",
+    "remindNotDeployed": "Reminders are coming with the next server update.",
+    "remindPast": "This event has already started.",
+    "remindForbidden": "Only the group’s managers can send reminders."
+  },
+  "scoutingPlayer": {
+    "empty": "Your staff hasn’t published an opponent dossier yet.",
+    "published": "Published {{date}} by {{name}}",
+    "record": "Against us: {{wins}} W – {{losses}} L"
+  },
+  "myTeam": {
+    "title": "My team",
+    "willYouCome": "Will you be there?",
+    "yourCoach": "your coach",
+    "plan": "{{name}}’s plan: {{axis}}",
+    "until": "until {{date}}",
+    "quiet": "Nothing new from your team.",
+    "goals_one": "{{count}} goal from your coach",
+    "goals_other": "{{count}} goals from your coach",
+    "verdicts_one": "{{count}} new verdict on your micro-reviews",
+    "verdicts_other": "{{count}} new verdicts on your micro-reviews",
+    "tasks_one": "{{count}} task to do",
+    "tasks_other": "{{count}} tasks to do"
+  },
+  "coachVerdicts": {
+    "title": "Your coach’s verdicts",
+    "line": "Verdict from {{name}}: {{verdict}}",
+    "justified": "justified",
+    "confirmed": "confirmed",
+    "toFix": "to correct"
   }
 }

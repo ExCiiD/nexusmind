@@ -23,7 +23,7 @@ import type { NameOf } from '@/hooks/useCollab'
 const SESSION_KINDS: CalendarEventKind[] = ['scrim', 'flex', 'tournament', 'meeting']
 const DAY = 86_400_000
 
-function Panel({ title, icon, right, children, className }: { title: string; icon: ReactNode; right?: ReactNode; children: ReactNode; className?: string }) {
+export function Panel({ title, icon, right, children, className }: { title: string; icon: ReactNode; right?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <section aria-label={title} className={cn('space-y-3 rounded-lg border border-hextech-border-dim bg-hextech-dark/50 p-4', className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -259,7 +259,8 @@ function UsualRulesEditor({ groupId, rules, onSaved }: { groupId: string; rules:
 
 /* ─── 3. Announcements ─── */
 
-function Announcements({ groupId, nameOf }: { groupId: string; nameOf: NameOf }) {
+/** § 16.3 (and § 18.1 with « + Publier une annonce »): the group's announcements, newest pinned first. */
+export function Announcements({ groupId, nameOf, action }: { groupId: string; nameOf: NameOf; action?: ReactNode }) {
   const { t, i18n } = useTranslation()
   const [items, setItems] = useState<Announcement[] | null>(null)
   const [failed, setFailed] = useState(false)
@@ -273,7 +274,7 @@ function Announcements({ groupId, nameOf }: { groupId: string; nameOf: NameOf })
 
   const shown = items ? (all ? items : items.slice(0, 1)) : []
   return (
-    <Panel title={t('mySpace.announcements')} icon={<Megaphone className="h-4 w-4 text-hextech-gold" />}>
+    <Panel title={t('mySpace.announcements')} icon={<Megaphone className="h-4 w-4 text-hextech-gold" />} right={action}>
       {failed ? <ErrorState title={t('mySpace.loadFailed')} cause={t('teamSessions.loadFailedCause')} onRetry={() => { void load() }} /> : !items ? <Skeleton /> : items.length === 0 ? (
         <p className="text-sm text-hextech-text-dim">{t('mySpace.noAnnouncement')}</p>
       ) : (

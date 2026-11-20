@@ -159,7 +159,7 @@ function StaffPrep({ prep, session, event, group, nameOf, objectiveLabel, fundam
       </section>
 
       {/* 3. Linked drafts */}
-      <DraftsBlock prep={prep} session={session} group={group} onChange={onChange} onSaved={markSaved} />
+      <DraftsBlock prep={prep} session={session} event={event} group={group} onChange={onChange} onSaved={markSaved} />
 
       {/* 4. Message to the players */}
       <MessageBlock sessionId={session.id} value={prep.message?.text ?? ''} onSaved={(text) => { onChange({ ...prep, message: text ? { text, setBy: null, setAt: new Date().toISOString() } : null }); markSaved() }} />
@@ -228,9 +228,13 @@ function PlayerRow({ groupId, playerId, name, value, fundamentals, objectiveLabe
   )
 }
 
-function DraftsBlock({ prep, session, group, onChange, onSaved }: {
+/** The Draft Sim: Coaching on the desktop, the Team page on the web. */
+const draftSimPath = () => (window.api.cloudOpenWeb ? '/coaching?tab=draft' : '/team?tab=draft')
+
+function DraftsBlock({ prep, session, event, group, onChange, onSaved }: {
   prep: SessionPrep
   session: TeamSession
+  event: CalendarEvent
   group: Group
   onChange: (p: SessionPrep) => void
   onSaved: () => void
@@ -275,7 +279,9 @@ function DraftsBlock({ prep, session, group, onChange, onSaved }: {
         <ul className="space-y-2">{prep.drafts.map((d) => <DraftLine key={d.id} draft={d} onRemove={() => { void remove(d) }} />)}</ul>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <Button asChild size="sm" variant="outline" className="gap-1.5"><Link to="/coaching?tab=draft"><Plus className="h-3.5 w-3.5" />{t('sessionPrep.createDraft')}</Link></Button>
+        <Button asChild size="sm" variant="outline" className="gap-1.5">
+          <Link to={`${draftSimPath()}&forSession=${encodeURIComponent(session.id)}&forName=${encodeURIComponent(event.title)}&back=${encodeURIComponent(event.id)}`}><Plus className="h-3.5 w-3.5" />{t('sessionPrep.createDraft')}</Link>
+        </Button>
         {choices.length > 0 && (
           <Select value="" onValueChange={(v) => { void attach(v) }} disabled={busy}>
             <SelectTrigger className="h-8 w-60 text-xs" aria-label={t('sessionPrep.linkDraft')}><SelectValue placeholder={t('sessionPrep.linkDraft')} /></SelectTrigger>
@@ -307,7 +313,7 @@ function DraftLine({ draft, onRemove }: { draft: SessionDraft; onRemove?: () => 
       <span className="flex gap-0.5">{first(draft.bluePicks).map((c, i) => <ChampIcon key={`b${i}`} id={c} />)}</span>
       <span className="text-hextech-text-dim">vs</span>
       <span className="flex gap-0.5">{first(draft.redPicks).map((c, i) => <ChampIcon key={`r${i}`} id={c} />)}</span>
-      <Link to="/coaching?tab=draft" className="text-xs text-hextech-gold hover:underline">{t('sessionPrep.openInDraftSim')}</Link>
+      <Link to={draftSimPath()} className="text-xs text-hextech-gold hover:underline">{t('sessionPrep.openInDraftSim')}</Link>
       {onRemove && <button type="button" onClick={onRemove} aria-label={t('sessionPrep.removeDraft', { name: draft.name })} className="text-hextech-text-dim hover:text-hextech-red"><Trash2 className="h-3.5 w-3.5" /></button>}
     </li>
   )

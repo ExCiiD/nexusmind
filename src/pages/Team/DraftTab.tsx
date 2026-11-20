@@ -6,6 +6,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useToast } from '@/hooks/useToast'
 import { Save, Copy, Plus, Trash2, Search, X, Ban, Users, Target, ChevronRight, AlertTriangle, Flame, Crown, Crosshair, MessageSquare, Sparkles } from 'lucide-react'
 import { DiscussionThread } from '@/components/team/DiscussionThread'
+import { Link, useSearchParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useAllChampions, type ChampionMeta } from '@/hooks/useAllChampions'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
@@ -198,6 +199,13 @@ export function DraftTab({ myTeam, groupId, opponentsGroupId, myUserId, nameOf, 
   const [vsTeamId, setVsTeamId] = useState<string | null>(null)
   // Which side YOUR team plays — drives role attribution for each pick.
   const [myTeamSide, setMyTeamSide] = useState<Side>('blue')
+  // « Nouvelle draft pour cette session » (§ 17, from the session prep): ?forSession=<sessionId>&forName=<title>&back=<eventId>.
+  // The draft starts empty under « vs X »; each save also attaches it to the session (the same source replaces the copy).
+  const [draftParams] = useSearchParams()
+  const forSession = draftParams.get('forSession')
+  const forName = draftParams.get('forName')
+  const backTo = draftParams.get('back')
+  const [attached, setAttached] = useState(false)
   const [draft, setDraft] = useState<DraftState>(emptyDraft())
   const [activeSlot, setActiveSlot] = useState<DraftSlot | null>(DRAFT_SEQUENCE[0])
   const [search, setSearch] = useState('')
@@ -256,8 +264,11 @@ export function DraftTab({ myTeam, groupId, opponentsGroupId, myUserId, nameOf, 
   }
 
   // Mount only: the parent remounts this tab when the group changes (key per group).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadDrafts(); loadOpponents() }, [])
+  useEffect(() => {
+    loadDrafts(); loadOpponents()
+    // « Nouvelle draft pour cette session »: an empty draft under « vs <opponent> » (the slot's « Scrim vs » dropped).
+    if (forSession) { newDraft(); setName(forName ? `vs ${forName.replace(/^(scrim|tournoi|tournament)\s+vs\s+/i, '')}` : 'New draft') }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadDraft = (d: DraftPrep) => {
     setActiveId(d.id)
@@ -288,13 +299,27 @@ export function DraftTab({ myTeam, groupId, opponentsGroupId, myUserId, nameOf, 
         redPicks: draft.redPicks,
         redBans: draft.redBans,
       }
+      let savedId = activeId
       if (activeId) {
         await window.api.updateDraft(activeId, payload)
       } else {
         const created = await window.api.createDraft(payload)
         setActiveId(created.id)
+        savedId = created.id
       }
       await loadDrafts()
+      if (forSession && savedId) {
+        // Desktop: the local Draft Sim draft; web: the group's draft.
+        try {
+          if (window.api.sessionPrepAttachLocalDraft) await window.api.sessionPrepAttachLocalDraft?.(forSession, savedId)
+          else await window.api.sessionPrepAttachSharedDraft(forSession, savedId)
+          setAttached(true)
+          toast({ title: t('sessionPrep.draftAttached') })
+        } catch {
+          toast({ title: t('team.draft.saved', { defaultValue: 'Draft saved' }), description: t('sessionPrep.draftNotAttached'), variant: 'destructive' })
+        }
+        return
+      }
       toast({ title: t('team.draft.saved', { defaultValue: 'Draft saved' }) })
     } catch (err) {
       toast({ title: t('team.draft.saveFailed'), description: (err as Error).message, variant: 'destructive' })
@@ -457,8 +482,17 @@ export function DraftTab({ myTeam, groupId, opponentsGroupId, myUserId, nameOf, 
     [draft.redPicks, myTeam, vsTeam, myTeamSide, champions],
   )
 
+  const sessionBanner = forSession && (
+    <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-hextech-gold/40 bg-hextech-gold/5 px-3 py-2 text-xs text-hextech-text">
+      <span>{attached ? t('sessionPrep.draftForSessionAttached', { name: forName ?? '' }) : t('sessionPrep.draftForSession', { name: forName ?? '' })}</span>
+      {backTo && <Link to={`/team-session/${encodeURIComponent(backTo)}`} className="font-medium text-hextech-gold hover:underline">{t('sessionPrep.backToPrep')}</Link>}
+    </div>
+  )
+
   return (
-    // Height is measured at runtime (see useLayoutEffect above) so the
+    <>
+    {sessionBanner}
+    {/* Height is measured at runtime (see useLayoutEffect above) so the */}
     // grid takes EXACTLY the space remaining below whatever chrome
     // (title, team selector, tabs, toolbar) sits above. Page never
     // scrolls; all 4 columns are exactly the same height.
@@ -690,6 +724,7 @@ export function DraftTab({ myTeam, groupId, opponentsGroupId, myUserId, nameOf, 
         usedChampions={usedAnywhere}
       />
     </div>
+    </>
   )
 }
 

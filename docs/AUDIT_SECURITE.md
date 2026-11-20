@@ -291,6 +291,23 @@ Pourquoi cet ordre : la clé OpenAI est un secret **valide** qui ne demande qu'u
 
 ### Revues de livraisons
 
+#### beta.14 — relances de réponse, DM du bot, dossiers publiés, LFT solo, API Organisation (20/11, lecture seule) : **OK, 2 remarques basses**
+*Registre `docs/DECISIONS.md` relu : dashboard « Organisation » du manager validé, objectif d'une app scalable, Supabase Pro conservé.*
+- **`remind_event_responses` :**
+  - definer avec `search_path` vide, rien pour `anon`. Elle exige `can_edit_calendar` sur le groupe **de l'événement**, et un événement à venir.
+  - Les destinataires sont pris **uniquement parmi les membres de ce groupe**. La liste `p_user_ids` n'est qu'un filtre posé **en plus** de cette contrainte : passer l'uuid de quelqu'un d'un autre groupe ne lui envoie rien.
+  - Elle exclut ceux qui ont déjà répondu et l'appelant lui-même, applique un délai de **6 h** par personne et par événement, et plafonne à **50 personnes**.
+  - `event_response_reminders` est en RLS, lisible seulement par les éditeurs du calendrier du groupe, sans aucune écriture directe.
+  - **Le rollback** supprime la fonction, la table et les notifications de ce type, puis remet la liste précédente. OK.
+  - **Un membre ne peut ni relancer un autre groupe, ni lire ses données.**
+- **DM `event_response_reminder` :** il est ajouté à `DIRECT_MESSAGE_TYPES`, dans le même circuit que les autres DM : chaque destinataire ne reçoit que sa notification, une seule fois. Le texte ne contient que le titre et l'heure de l'événement, sans donnée d'un tiers.
+- **`listPublishedDossiers` :** filtrée sur `group_id` **et** `status = 'published'`, en plus de la RLS de `opponent_dossiers` (brouillon visible du staff seulement). Un joueur ne voit donc que les dossiers **publiés de son groupe**, et même le staff n'y reçoit pas les brouillons. Les lectures annexes (scouting, auteurs, parties) sont toutes filtrées sur ce même `group_id`. L'IPC est validé par zod (uuid).
+- **`lft:my-solo` :** il ne lit que l'utilisateur local **actif** et son propre puuid. Le rang est demandé via le proxy, sur un endpoint de la liste blanche, avec la limite par compte. `force` passe outre le cache local, mais reste borné par cette limite (20 par minute). L'IPC est validé par zod.
+- **`organisationWeb.ts` et `myTeam` :** ils utilisent le même cœur que le desktop, sous la RLS, sans clé service.
+- **Remarques (basses) :**
+  1. **Titre d'événement relayé tel quel par le bot en DM.** Un éditeur du calendrier (capitaine compris) peut y mettre un lien, que le bot d'Ascend enverra en message privé à toute l'équipe. Cela peut servir à du hameçonnage, avec la confiance qu'on accorde au bot. **Correctif :** neutraliser les liens et la mise en forme du titre dans `directMessageText` (balises de code ou échappement), et envoyer avec `allowed_mentions: { parse: [] }`.
+  2. **Plafond de 50 appliqué avant le délai :** s'il y a plus de 50 non-répondants et que les 50 premiers ont déjà été relancés, les suivants ne le sont jamais. C'est fonctionnel, sans enjeu de sécurité (trier par `sent_at nulls first`).
+
 #### beta.13 — `170000_team_session_prep`, `180000_team_sessions_hardening`, API de préparation et « Mon équipe », médias, dispos (20/11, lecture seule) : **OK, 4 remarques basses**
 *Registre `docs/DECISIONS.md` relu : « l'analyste peut fixer les objectifs de session » et « préparer les sessions à l'avance » sont bien respectés.*
 - **170000 :**

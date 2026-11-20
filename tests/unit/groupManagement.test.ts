@@ -122,5 +122,31 @@ describe('Discord direct messages', () => {
     expect(text).toContain('UTC')
     expect(text).toContain('Reason: Exam')
     expect(directMessageText({ type: 'event_confirmed', data: { playerName: 'Nyra', eventTitle: 'Scrim' } })).toBe('✅ **Nyra** will be at "Scrim" after all.')
+    expect(directMessageText({ type: 'event_response_reminder', data: { eventTitle: 'Scrim vs KCA', scheduledAt: '2026-11-24T19:00:00Z' } }))
+      .toBe('⏰ Will you be at "Scrim vs KCA" — Tue, Nov 24, 07:00 PM UTC? Your team is waiting for your answer: open the Planning in Ascend to reply.')
+  })
+  it('makes what members typed inert: no link, no formatting, no mention, one line (CyberSecurity, beta.14)', () => {
+    const text = directMessageText({ type: 'event_response_reminder', data: {
+      eventTitle: '**Free RP** [claim here](https://evil.example/login)\n@everyone www.evil.example discord.gg/abc ||spoiler|| <@123>',
+    } })
+    expect(text).not.toMatch(/\*\*Free/)
+    expect(text).not.toMatch(/\]\(https/)
+    expect(text).not.toMatch(/https:\/\//)
+    expect(text).not.toMatch(/www\.evil/)
+    expect(text).not.toMatch(/discord\.gg/)
+    expect(text).not.toMatch(/@everyone/)
+    expect(text).not.toMatch(/<@123>/)
+    expect(text).not.toMatch(/\|\|spoiler/)
+    expect(text.split('\n')).toHaveLength(1)
+    // The words are still there to read.
+    expect(text).toContain('Free RP')
+    expect(text).toContain('claim here')
+    const declined = directMessageText({ type: 'event_declined', data: { playerName: '**Admin**', eventTitle: 'Scrim', note: 'see https://evil.example' } })
+    expect(declined).not.toMatch(/\*\*\*\*Admin/)
+    expect(declined).not.toMatch(/https:\/\//)
+  })
+  it('cuts a long title', () => {
+    const text = directMessageText({ type: 'event_response_reminder', data: { eventTitle: 'x'.repeat(500) } })
+    expect(text.length).toBeLessThan(250)
   })
 })

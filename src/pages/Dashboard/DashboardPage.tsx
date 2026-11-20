@@ -38,6 +38,7 @@ import type { MistakeTopTagEntry } from '@/lib/ipc'
 import { useLocalizedFundamentalList } from '@/lib/constants/useFundamentals'
 import { findFundamentalLabel } from '@/lib/fundamentals'
 import { useTranslation } from 'react-i18next'
+import { MyTeamCard } from '@/components/team/MyTeamCard'
 import { formatKDA, formatGameTime, cn } from '@/lib/utils'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
 import { wrText } from '@/lib/winrate'
@@ -283,6 +284,8 @@ export function DashboardPage() {
 
         {/* ── Right column ── (level and XP live in the sidebar: no card here) */}
         <div ref={rightColumn} className="space-y-6 xl:col-span-4">
+          {/* § 18.5: what the team gives me (next event, coach's plan, goals, verdicts, tasks). */}
+          <MyTeamCard />
           <FundamentalsRadarCard role={user.mainRole} />
           <AssistantCard moment="weekly" footer={<WeeklyCodex role={user.mainRole} />} />
           {patternsSide === 'right' && <div ref={patternsBox} className="empty:hidden"><CoachingPatternCard /></div>}

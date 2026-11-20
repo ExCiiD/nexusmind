@@ -20,6 +20,8 @@ export type NotificationType =
   | 'calendar_event_request'
   | 'event_declined'
   | 'event_confirmed'
+  /** § 18.1: a manager's « Relancer » (calendarRemindResponses). */
+  | 'event_response_reminder'
 
 /** Every type the server sends — kept in step with the `notifications_type_check`
  *  constraint (supabase/migrations/20261118185457_notification_types_fix.sql). */
@@ -28,7 +30,7 @@ export const NOTIFICATION_TYPES: NotificationType[] = [
   'scrim_reminder_24h', 'scrim_reminder_1h', 'player_inactive',
   'task_assigned', 'objective_overdue', 'wellbeing_alert', 'mention',
   'review_pending', 'scrim_low_availability', 'scrim_availability_missing', 'dev_plan_period_ending',
-  'weekly_load_alert', 'calendar_event_request', 'event_declined', 'event_confirmed',
+  'weekly_load_alert', 'calendar_event_request', 'event_declined', 'event_confirmed', 'event_response_reminder',
 ]
 
 export interface AppNotification {

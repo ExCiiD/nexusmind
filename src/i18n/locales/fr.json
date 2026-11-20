@@ -27,7 +27,8 @@
     "autoRecordTitle": "Enregistrement automatique activé",
     "management": "Management",
     "teamSpace": "Lobby d'équipe",
-    "teamSessions": "Sessions d'équipe"
+    "teamSessions": "Sessions d'équipe",
+    "joinTeam": "Équipe"
   },
   "teamSessions": {
     "title": "Sessions d’équipe",
@@ -3550,7 +3551,10 @@
       "updated": "mis à jour le {{date}}",
       "lastNote": "dernière note de {{name}} le {{date}}",
       "givenBy": "Plan donné par {{name}} ({{group}})"
-    }
+    },
+    "coachGoals": "Objectifs de mon coach",
+    "vodActions": "À travailler (review VOD)",
+    "markActionDone": "Marquer « {{text}} » comme fait"
   },
   "notifications": {
     "title": "Notifications",
@@ -3640,6 +3644,10 @@
       "member_staff_roles_changed": {
         "title": "Nouveau rôle de staff dans l’équipe",
         "body": "{{memberName}} est maintenant aussi {{addedText}}."
+      },
+      "event_response_reminder": {
+        "title": "Réponds à {{eventTitle}}",
+        "body": "Ton staff attend ta réponse : seras-tu là ?"
       }
     },
     "bellLabel_one": "Notifications, {{count}} non lue",
@@ -5379,6 +5387,103 @@
     "team": "Objectifs collectifs",
     "others_one": "Objectif de {{count}} coéquipier",
     "others_other": "Objectifs de {{count}} coéquipiers",
-    "nothingYet": "Rien n’a encore été préparé pour cette session."
+    "nothingYet": "Rien n’a encore été préparé pour cette session.",
+    "draftAttached": "Draft rattachée à la session",
+    "draftNotAttached": "Elle n’a pas pu être rattachée à la session : lie-la depuis la préparation.",
+    "draftForSession": "Nouvelle draft pour la session « {{name}} » : l’enregistrer la rattache à la session.",
+    "draftForSessionAttached": "Rattachée à la session « {{name}} » : chaque enregistrement la met à jour."
+  },
+  "noTeam": {
+    "title": "Rejoins une équipe",
+    "subtitle": "Le Lobby, le Planning, le Coaching et les stats d’équipe s’ouvrent dès que tu fais partie d’un groupe.",
+    "join": "Rejoindre avec un code",
+    "code": "Code d’invitation",
+    "codePlaceholder": "Code d’invitation",
+    "riotId": "Ton Riot ID (Nom#TAG)",
+    "riotRequired": "Un compte Riot lié est obligatoire pour rejoindre.",
+    "linkRiot": "Le lier",
+    "joinButton": "Rejoindre",
+    "create": "Créer un groupe",
+    "name": "Nom du groupe",
+    "namePlaceholder": "Nom du groupe",
+    "kind": "Type",
+    "kinds": {
+      "team": "Équipe",
+      "coaching": "Coaching"
+    },
+    "createButton": "Créer",
+    "lft": "Je cherche une équipe",
+    "lftDesc": "Ta carte joueur (rang, champions, rôles) sert d’annonce LFT : complète-la sur ton Profil pour la partager.",
+    "lftButton": "Préparer ma carte joueur",
+    "lftSoloDesc": "Une affiche tirée de tes 100 dernières games ({{name}}, {{role}}) : rang, champions, ce que tu cherches.",
+    "lftPublish": "Faire mon annonce LFT"
+  },
+  "checkinToast": {
+    "title": "Check-in avant la session ?",
+    "later": "Plus tard",
+    "send": "Envoyer",
+    "failed": "Ton check-in n’a pas pu être enregistré"
+  },
+  "organisation": {
+    "title": "Organisation",
+    "upcoming": "À venir (7 jours)",
+    "newEvent": "Nouvel événement",
+    "nothingUpcoming": "Rien de prévu dans les 7 prochains jours.",
+    "toWatch": "Présence à surveiller",
+    "allAnswered": "Tout le monde a répondu pour les 48 prochaines heures.",
+    "publish": "Publier une annonce",
+    "presence": "{{present}} / {{total}}",
+    "absent_one": "{{count}} absent",
+    "absent_other": "{{count}} absents",
+    "noAnswer_one": "{{count}} sans réponse",
+    "noAnswer_other": "{{count}} sans réponse",
+    "findSub": "Trouver un remplaçant",
+    "noSub": "Personne d’autre n’est dispo sur ce créneau.",
+    "subs": "Dispo sur ce créneau : {{names}}",
+    "tasks": "Tâches ouvertes du groupe",
+    "newTask": "Tâche",
+    "noTask": "Aucune tâche ouverte.",
+    "unassigned": "Sans responsable",
+    "taskFilter": {
+      "all": "Toutes",
+      "overdue": "En retard",
+      "unassigned": "Sans responsable"
+    },
+    "remind": "Relancer",
+    "remindedAgo": "relancé {{when}}",
+    "reminded_one": "{{count}} personne relancée",
+    "reminded_other": "{{count}} personnes relancées",
+    "nobodyReminded": "Personne n’a été relancé",
+    "remindSkipped_one": "{{count}} déjà relancée il y a moins de 6 h : prochaine relance à {{time}}.",
+    "remindSkipped_other": "{{count}} déjà relancées il y a moins de 6 h : prochaine relance à {{time}}.",
+    "remindNotDeployed": "Les relances arrivent avec la prochaine mise à jour du serveur.",
+    "remindPast": "Cet événement a déjà commencé.",
+    "remindForbidden": "Seuls les gestionnaires du groupe peuvent relancer."
+  },
+  "scoutingPlayer": {
+    "empty": "Ton staff n’a pas encore publié de dossier adverse.",
+    "published": "Publié le {{date}} par {{name}}",
+    "record": "Contre nous : {{wins}} V – {{losses}} D"
+  },
+  "myTeam": {
+    "title": "Mon équipe",
+    "willYouCome": "Je serai là ?",
+    "yourCoach": "ton coach",
+    "plan": "Plan de {{name}} : {{axis}}",
+    "until": "jusqu’au {{date}}",
+    "quiet": "Rien de neuf du côté de ton équipe.",
+    "goals_one": "{{count}} objectif du coach",
+    "goals_other": "{{count}} objectifs du coach",
+    "verdicts_one": "{{count}} nouveau verdict sur tes micro-reviews",
+    "verdicts_other": "{{count}} nouveaux verdicts sur tes micro-reviews",
+    "tasks_one": "{{count}} tâche à faire",
+    "tasks_other": "{{count}} tâches à faire"
+  },
+  "coachVerdicts": {
+    "title": "Verdicts de ton coach",
+    "line": "Verdict de {{name}} : {{verdict}}",
+    "justified": "justifié",
+    "confirmed": "confirmé",
+    "toFix": "à corriger"
   }
 }

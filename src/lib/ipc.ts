@@ -10,6 +10,7 @@ import type { TeamSessionReviewApi } from './teamSessionReviews'
 import type { TeamSessionHistoryApi } from './teamSessionHistory'
 import type { SessionPrepApi } from './sessionPrep'
 import type { MyTeamApi } from './myTeam'
+import type { OrganisationApi } from './organisation'
 import type { ReportApi } from './report'
 import type { AnalystApi } from './analyst'
 import type { TrialsApi } from './trials'
@@ -295,7 +296,7 @@ export interface SavedAccount {
   _count: { sessions: number }
 }
 
-export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareApi & CalendarApi & VodReviewApi & WellbeingApi & TeamOpsApi & AnnouncementsApi & ReportApi & TrialsApi & ScrimsReadApi & DiscussionApi & TeamSessionApi & TeamSessionReviewApi & TeamSessionHistoryApi & SessionPrepApi & MyTeamApi & AnalystApi & {
+export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareApi & CalendarApi & VodReviewApi & WellbeingApi & TeamOpsApi & AnnouncementsApi & ReportApi & TrialsApi & ScrimsReadApi & DiscussionApi & TeamSessionApi & TeamSessionReviewApi & TeamSessionHistoryApi & SessionPrepApi & MyTeamApi & OrganisationApi & AnalystApi & {
   connectRiot: (gameName: string, tagLine: string, region: string, displayName?: string) => Promise<any>
   disconnectRiot: () => Promise<void>
   reactivateAccount: (userId: string) => Promise<any>

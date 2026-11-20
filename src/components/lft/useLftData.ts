@@ -22,7 +22,7 @@ export function useMemberRanks(teamId: string, enabled: boolean) {
     setLoading(true)
     setFailure(null)
     try {
-      const list = await window.api.teamMemberRanks(teamId, { force })
+      const list = await window.api.teamMemberRanks?.(teamId, { force })
       setResults(Object.fromEntries((Array.isArray(list) ? list : []).map((r) => [r.memberId, r])))
     } catch (err) {
       setFailure((err as Error).message)

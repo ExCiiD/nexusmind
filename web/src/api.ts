@@ -7,6 +7,8 @@ import { analystWebApi } from './analystWeb'
 import { cardChampionWebApi } from './cardChampionWeb'
 import { teamSessionHistoryWebApi } from './teamSessionHistoryWeb'
 import { sessionPrepWebApi } from './sessionPrepWeb'
+import { myTeamWebApi } from './myTeamWeb'
+import { organisationWebApi } from './organisationWeb'
 import * as matchEvents from '@/lib/matchEventCore'
 import * as dashboardCore from '@/lib/staffDashboardCore'
 import * as devPlanCore from '@/lib/devPlanCore'
@@ -159,6 +161,10 @@ export const webApi = {
   ...teamSessionHistoryWebApi,
   // § 17: preparing a session ahead (each player's objectives, drafts, message).
   ...sessionPrepWebApi,
+  // § 18.5: what the team gives a player (next event, open tasks, session objectives, VOD actions).
+  ...myTeamWebApi,
+  // § 18: « Relancer », the published opponent dossiers.
+  ...organisationWebApi,
   /** Invite code from an invite link, for the sign-in screen. */
   pendingInviteCode: (): string | null => pendingInvite,
   // ── account ──

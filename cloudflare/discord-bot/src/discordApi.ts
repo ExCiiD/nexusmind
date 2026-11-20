@@ -39,18 +39,19 @@ export async function sendDirectMessage(botToken: string, discordUserId: string,
   }
   const channel = (await res.json().catch(() => null)) as { id?: string } | null
   if (!channel?.id) return false
-  await postChannelMessage(botToken, channel.id, content)
+  // A DM never pings anyone, whatever its text (CyberSecurity, beta.14).
+  await postChannelMessage(botToken, channel.id, content, { noMentions: true })
   return true
 }
 
 /** Posts a message to a channel using the bot token — used by the
  *  reminder cron (not a reply to an interaction, so it needs the full
  *  REST API rather than an interaction response). */
-export async function postChannelMessage(botToken: string, channelId: string, content: string): Promise<void> {
+export async function postChannelMessage(botToken: string, channelId: string, content: string, opts: { noMentions?: boolean } = {}): Promise<void> {
   const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
     method: 'POST',
     headers: { Authorization: `Bot ${botToken}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify(opts.noMentions ? { content, allowed_mentions: { parse: [] } } : { content }),
   })
   if (!res.ok) {
     console.error('[discord-bot] postChannelMessage failed', res.status, await res.text().catch(() => ''))

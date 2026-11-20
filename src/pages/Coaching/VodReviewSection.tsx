@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import { CheckSquare, Film, Loader2, Plus, Square, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,9 @@ export function VodReviewSection({ groups, myUserId, nameOf }: Props) {
 
   const [sessions, setSessions] = useState<VodReviewSession[] | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // ?vod=<id>: open that review (from Mon plan's « À travailler »).
+  const [vodSearch] = useSearchParams()
+  const vodParam = vodSearch.get('vod')
   const [scrims, setScrims] = useState<ScrimSummary[]>([])
 
   const load = useCallback(async () => {
@@ -42,12 +46,13 @@ export function VodReviewSection({ groups, myUserId, nameOf }: Props) {
       const [s, sc] = await Promise.all([window.api.vodReviewListSessions(groupId), window.api.scrimsListForGroup(groupId).catch(() => [])])
       setSessions(s)
       setScrims(sc)
-      setSelectedId((prev) => (prev && s.some((x) => x.id === prev)) ? prev : (s[0]?.id ?? null))
+      const wanted = vodParam && s.some((x) => x.id === vodParam) ? vodParam : null
+      setSelectedId((prev) => wanted ?? ((prev && s.some((x) => x.id === prev)) ? prev : (s[0]?.id ?? null)))
     } catch (err) {
       setSessions([])
       toast({ title: t(collabErrorKey(err)), variant: 'destructive' })
     }
-  }, [groupId, t, toast])
+  }, [groupId, t, toast, vodParam])
 
   useEffect(() => { load() }, [load])
 

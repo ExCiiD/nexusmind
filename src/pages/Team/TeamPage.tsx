@@ -8,6 +8,7 @@ import { DashboardTab } from './DashboardTab'
 import { CustomGamesStatsTab } from './CustomGamesStatsTab'
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
 import { TeamObjectivesTab } from '@/components/analyst/TeamObjectivesTab'
+import { NoTeamPage } from '@/components/team/NoTeamPage'
 
 /**
  * Stats collectives (the Team page until 18 November 2026): the stats of the
@@ -34,6 +35,9 @@ export function TeamPage() {
     { id: 'objectives' as const, label: t('team.tabs.objectives'), icon: Target },
   ]
   const [tab, setTab] = useTabParam(tabs.map((x) => x.id), 'dashboard')
+
+  // § 18.2: without any group, /team is « Rejoins une équipe ».
+  if (!loading && available && section.groups.length === 0) return <NoTeamPage />
 
   const content = (team: Team) => (
     <PanelErrorBoundary key={`${tab}-${team.id}`} label={tab}>

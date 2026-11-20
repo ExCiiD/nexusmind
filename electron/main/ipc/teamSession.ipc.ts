@@ -74,6 +74,10 @@ export function registerTeamSessionHandlers() {
     notes: z.string().max(4000).nullable(),
   }).strict()
   const recordId = z.string().min(1).max(64)
+  // § 18: "Relancer" and the published dossiers.
+  validatedHandle('organisation:remind', z.tuple([uuid, z.array(uuid).max(50).optional()]), (_e, eventId, ids) => teamSessions.calendarRemindResponses(eventId, ids))
+  validatedHandle('organisation:reminders', z.tuple([z.array(uuid).max(200)]), (_e, ids) => teamSessions.calendarListReminders(ids))
+  validatedHandle('organisation:published-dossiers', z.tuple([uuid]), (_e, groupId) => teamSessions.opponentDossierListPublished(groupId))
   // What my groups give me (docs/AUDIT_LIAISONS.md L2-L6).
   validatedHandle('my-team:next-event', z.tuple([]), () => teamSessions.myNextEvent())
   validatedHandle('my-team:open-tasks', z.tuple([]), () => teamSessions.myOpenTasks())

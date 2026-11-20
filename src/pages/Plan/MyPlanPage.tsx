@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronUp, GraduationCap, ListChecks, Target } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ReassessmentBanner } from '@/components/Coaching/ReassessmentBanner'
 import { DevPlanCard } from '@/components/Coaching/DevPlanCard'
+import { AssignedObjectivesCard } from '@/components/Coaching/AssignedObjectivesCard'
+import type { MySessionObjectives, MyVodActionItem } from '@/lib/myTeam'
 import { useCollab } from '@/hooks/useCollab'
 import type { DevPlan } from '@/lib/devPlan'
 import { ExperimentPanel, criterionText } from '@/components/Assistant/ExperimentPanel'
@@ -74,6 +76,8 @@ export function MyPlanPage() {
 
       {/* 20/11 (docs/DECISIONS.md): the axes and notes my staff gave me, read here too. Nothing without a group or a plan. */}
       <StaffPlans />
+      <CoachGoals />
+      <VodActions />
 
       {!focus && others.length === 0 && (
         <Card><CardContent className="pt-6 text-sm text-hextech-text-dim">{t('plan.empty')}</CardContent></Card>
@@ -262,5 +266,68 @@ function StaffPlans() {
         )
       })}
     </section>
+  )
+}
+
+/** § 18.5 L2: the objectives my coach gave me — assigned ones, and mine for the coming team sessions. */
+function CoachGoals() {
+  const { t, i18n } = useTranslation()
+  const fundamentals = useLocalizedFundamentals()
+  const label = (id: string) => fundamentals.flatMap((c) => c.fundamentals).find((f) => f.id === id)?.label ?? id
+  const [sessions, setSessions] = useState<MySessionObjectives[]>([])
+  useEffect(() => {
+    let alive = true
+    window.api.mySessionObjectives?.().then((s) => { if (alive) setSessions(s) }).catch(() => {})
+    return () => { alive = false }
+  }, [])
+  return (
+    <section aria-label={t('plan.coachGoals')} className="space-y-3">
+      <AssignedObjectivesCard />
+      {sessions.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-base">{t('plan.coachGoals')}</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {sessions.map((s) => (
+              <div key={s.sessionId} className="rounded-lg border border-hextech-border-dim p-3 text-sm">
+                <p className="text-xs text-hextech-text-dim">
+                  {s.title}{s.startsAt && ` · ${new Date(s.startsAt).toLocaleString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+                </p>
+                <p className="mt-0.5 font-semibold text-hextech-text-bright">{s.objectiveIds.map(label).join(' · ')}</p>
+                {s.note && <p className="mt-0.5 text-hextech-text">{s.note}</p>}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+    </section>
+  )
+}
+
+/** § 18.5 L6: the actions of the VOD reviews I am assigned to, with « fait » and a link to the review. */
+function VodActions() {
+  const { t } = useTranslation()
+  const [items, setItems] = useState<MyVodActionItem[]>([])
+  const load = useCallback(() => {
+    window.api.myVodActionItems?.().then(setItems).catch(() => setItems([]))
+  }, [])
+  useEffect(() => { load() }, [load])
+  if (items.length === 0) return null
+  const toggle = async (item: MyVodActionItem) => {
+    setItems((list) => list.map((x) => (x.id === item.id ? { ...x, done: !x.done } : x)))
+    await window.api.vodReviewSetActionItemDone(item.id, !item.done).catch(load)
+  }
+  return (
+    <Card>
+      <CardHeader className="pb-2"><CardTitle className="text-base">{t('plan.vodActions')}</CardTitle></CardHeader>
+      <CardContent className="space-y-1.5">
+        {items.map((x) => (
+          <div key={x.id} className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={x.done} onChange={() => { void toggle(x) }} aria-label={t('plan.markActionDone', { text: x.text })} className="accent-hextech-gold" />
+            <span className={cn('min-w-0 flex-1', x.done ? 'text-hextech-text-dim line-through' : 'text-hextech-text-bright')}>{x.text}</span>
+            <Link to={`/coaching?tab=vod&vod=${encodeURIComponent(x.vodSessionId)}`} className="shrink-0 text-xs text-hextech-gold hover:underline">{x.vodTitle}</Link>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   )
 }

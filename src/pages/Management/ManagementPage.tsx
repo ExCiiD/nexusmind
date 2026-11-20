@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2, LayoutDashboard, CalendarDays, HeartPulse, ListTodo, UserPlus, Users, UserRound } from 'lucide-react'
+import { Loader2, LayoutDashboard, CalendarDays, HeartPulse, ListTodo, UserPlus, Users, UserRound, Building2 } from 'lucide-react'
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary'
 import { AssignedObjectivesCard } from '@/components/Coaching/AssignedObjectivesCard'
 import { DevPlanCard } from '@/components/Coaching/DevPlanCard'
@@ -15,8 +15,9 @@ import { WellbeingSection } from '@/pages/Coaching/WellbeingSection'
 import { TeamOpsSection } from '@/pages/Coaching/TeamOpsSection'
 import { TrialsSection } from '@/pages/Coaching/TrialsSection'
 import { MySpaceTab } from './MySpaceTab'
+import { OrganisationTab } from './OrganisationTab'
 
-type TabId = 'mySpace' | 'overview' | 'planning' | 'wellbeing' | 'teamOps' | 'trials' | 'groups'
+type TabId = 'mySpace' | 'organisation' | 'overview' | 'planning' | 'wellbeing' | 'teamOps' | 'trials' | 'groups'
 
 /**
  * Management: running the group day to day — the overview (assigned
@@ -36,6 +37,8 @@ export function ManagementPage() {
   // § 16 (decision of 20/11): a player without a management or coach role — a captain included — gets one screen,
   // « Mon espace », instead of the tabs. The other sections' tabs by role wait for the audit's choices.
   const mySpaceOnly = !!group && group.myRole === 'player' && (group.myStaffRoles ?? []).length === 0
+  // § 18.1: a manager (who does not play) gets « Organisation » first; no Overview, no Wellbeing (closed to them).
+  const managerView = !!group && group.myRole === 'manager'
   // The sections take a list of groups (a leftover of their own pickers):
   // they get the active group alone, and the `key` remounts them per group.
   const groupsHere = useMemo(() => (group ? [group] : []), [group])
@@ -43,14 +46,15 @@ export function ManagementPage() {
 
   const tabs = useMemo(() => ([
     { id: 'mySpace' as const, label: t('mySpace.title'), icon: UserRound, show: mySpaceOnly },
-    { id: 'overview' as const, label: t('coaching.tabs.overview'), icon: LayoutDashboard, show: true },
+    { id: 'organisation' as const, label: t('organisation.title'), icon: Building2, show: managerView },
+    { id: 'overview' as const, label: t('coaching.tabs.overview'), icon: LayoutDashboard, show: !managerView },
     { id: 'planning' as const, label: t('coaching.tabs.planning'), icon: CalendarDays, show: hasGroup },
-    { id: 'wellbeing' as const, label: t('coaching.tabs.wellbeing'), icon: HeartPulse, show: hasGroup },
+    { id: 'wellbeing' as const, label: t('coaching.tabs.wellbeing'), icon: HeartPulse, show: hasGroup && !managerView },
     { id: 'teamOps' as const, label: t('coaching.tabs.teamOps'), icon: ListTodo, show: hasGroup },
     { id: 'trials' as const, label: t('coaching.tabs.trials'), icon: UserPlus, show: isStaff },
     { id: 'groups' as const, label: t('coaching.tabs.groups'), icon: Users, show: true },
-  ] satisfies Array<SectionTab<TabId> & { show: boolean }>).filter((x) => x.show && (!mySpaceOnly || x.id === 'mySpace' || x.id === 'groups')), [t, hasGroup, isStaff, mySpaceOnly])
-  const [tab, setTab] = useTabParam(tabs.map((x) => x.id), mySpaceOnly ? 'mySpace' : 'overview')
+  ] satisfies Array<SectionTab<TabId> & { show: boolean }>).filter((x) => x.show && (!mySpaceOnly || x.id === 'mySpace' || x.id === 'groups')), [t, hasGroup, isStaff, mySpaceOnly, managerView])
+  const [tab, setTab] = useTabParam(tabs.map((x) => x.id), mySpaceOnly ? 'mySpace' : managerView ? 'organisation' : 'overview')
 
   const k = group?.id ?? 'none'
 
@@ -65,6 +69,11 @@ export function ManagementPage() {
         <>
           {tabs.length > 1 && <SectionTabs tabs={tabs} active={tab} onChange={setTab} />}
           <div>
+            {tab === 'organisation' && group && (
+              <PanelErrorBoundary key={`organisation-${k}`} label="Organisation">
+                <OrganisationTab group={group} nameOf={nameOf} onTab={setTab} />
+              </PanelErrorBoundary>
+            )}
             {tab === 'mySpace' && group && (
               <PanelErrorBoundary key={`mySpace-${k}`} label="My space">
                 <MySpaceTab group={group} myUserId={myUserId} nameOf={nameOf} />

@@ -53,7 +53,7 @@ export function posterMarkup(node: HTMLElement): string {
 export async function exportPoster(node: HTMLElement, opts: { format: LftFormat; names: string[]; action: 'save' | 'copy' }) {
   if (!window.api.lftExportPng) throw new Error('Export is only available in the desktop app')
   const { width, height } = LFT_FORMATS[opts.format]
-  return window.api.lftExportPng({
+  return window.api.lftExportPng?.({
     markup: posterMarkup(node),
     css: appStylesheet(),
     width,

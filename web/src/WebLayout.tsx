@@ -1,10 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { BarChart3, Briefcase, FileSearch, GraduationCap, History, Home, Swords, UserCircle } from 'lucide-react'
+import { useCollab } from '@/hooks/useCollab'
 import { cn } from '@/lib/utils'
 import { FeedbackButton } from '@/components/Feedback/FeedbackDialog'
 import { NotificationBell } from '@/components/Notifications/NotificationBell'
 import { AnnouncementBubbleStack } from '@/components/Announcements/AnnouncementBubbleStack'
+import { SessionCheckinToast } from '@/components/TeamSession/SessionCheckinToast'
 import { TeamSessionBanner } from '@/components/TeamSession/TeamSessionBanner'
 import { DownloadButton } from './DownloadButton'
 import { AscendMark } from '@/components/Brand/AscendMark'
@@ -22,7 +24,13 @@ const NAV = [
 ]
 
 /** Sidebar on wide screens, bottom tab bar on phones. */
+/** § 18.2: the team entries hidden without a group (/team then shows « Rejoins une équipe »). */
+const TEAM_ONLY = new Set(['/management', '/coaching', '/team-stats', '/team-sessions'])
+
 export function WebLayout() {
+  const collab = useCollab()
+  const noGroup = collab.available && !collab.loading && collab.groups.length === 0
+  const nav = noGroup ? NAV.filter((x) => !TEAM_ONLY.has(x.to)) : NAV
   const { t } = useTranslation()
   return (
     <div className="ascend-texture-bg min-h-screen text-hextech-text">
@@ -34,7 +42,7 @@ export function WebLayout() {
           <NotificationBell />
         </div>
         <nav className="space-y-1">
-          {NAV.map(({ to, icon: Icon, key, end }) => (
+          {nav.map(({ to, icon: Icon, key, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -65,7 +73,7 @@ export function WebLayout() {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-hextech-border-dim bg-hextech-dark pb-[env(safe-area-inset-bottom)] md:hidden">
-        {NAV.map(({ to, icon: Icon, key, end }) => (
+        {nav.map(({ to, icon: Icon, key, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -80,6 +88,7 @@ export function WebLayout() {
       </nav>
       <AnnouncementBubbleStack />
       <TeamSessionBanner />
+      <SessionCheckinToast />
     </div>
   )
 }

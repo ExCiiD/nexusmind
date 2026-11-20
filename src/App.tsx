@@ -32,6 +32,7 @@ import { UpdateBanner } from '@/components/UpdateBanner'
 import { Toaster } from '@/components/ui/toaster'
 import { BackgroundJobsIndicator } from '@/components/BackgroundJobsIndicator'
 import { AnnouncementBubbleStack } from '@/components/Announcements/AnnouncementBubbleStack'
+import { SessionCheckinToast } from '@/components/TeamSession/SessionCheckinToast'
 import { TeamSessionBanner } from '@/components/TeamSession/TeamSessionBanner'
 import { EndOfGamePrompt } from '@/components/TeamSession/EndOfGamePrompt'
 import { useEffect } from 'react'
@@ -98,6 +99,7 @@ export function App() {
       {user && <AnnouncementBubbleStack />}
       {user && <TeamSessionBanner />}
       {user && <EndOfGamePrompt />}
+      {user && <SessionCheckinToast />}
       <Toaster />
     </>
   )

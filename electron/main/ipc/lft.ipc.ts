@@ -9,7 +9,7 @@ import { renderPoster } from '../lftPoster'
 import { recordRankSnapshots } from '../weeklyAwards'
 import { validatedHandle, id } from './validate'
 import { parseLeagueEntries, type MemberRankResult, type PlayerRanks } from '../../../src/lib/rankCore'
-import { isLftSize } from '../../../src/lib/lftCore'
+import { isLftSize, soloPoolFromGames, soloRole, type SoloLftMember } from '../../../src/lib/lftCore'
 
 /**
  * Looking-for-team announcements (Espace d'équipe):
@@ -105,7 +105,42 @@ const exportInput = z.object({
   action: z.enum(['save', 'copy']),
 }).refine((v) => isLftSize(v.width, v.height), 'unknown announcement size')
 
+/** How many of the player's latest games make their solo pool (same order of size as a scouted pool). */
+const SOLO_GAMES = 100
+
+/**
+ * Solo LFT for a player without a group (§ 18.2): the poster's roster member built from the active user (Riot ID,
+ * role, pool from their own games) and their rank, read like a roster member's.
+ */
+export async function readMySoloLft(force: boolean): Promise<{ member: SoloLftMember; rank: MemberRankResult } | null> {
+  const prisma = getPrisma()
+  const user = await prisma.user.findFirst({ where: { isActive: true } })
+  if (!user) return null
+  const games = await prisma.game.findMany({
+    where: { session: { userId: user.id } },
+    orderBy: { gameEndAt: 'desc' },
+    take: SOLO_GAMES,
+    select: { champion: true, role: true, win: true },
+  })
+  const role = soloRole(user.mainRole, games) ?? 'MID'
+  const member: SoloLftMember = {
+    id: 'me', teamId: '', displayName: user.summonerName, ign: user.summonerName, tagLine: user.tagLine || null,
+    region: user.region, role, puuid: user.puuid,
+    champPool: soloPoolFromGames(games, 'me'),
+  }
+  const ign = user.summonerName?.trim()
+  if (!ign || !user.tagLine || !user.region) return { member, rank: { memberId: 'me', status: 'no-riot-id' } }
+  try {
+    const { ranks, at } = await ranksOf(user.puuid, user.region, force)
+    return { member, rank: { memberId: 'me', status: 'ok', ranks, fetchedAt: at } }
+  } catch (err) {
+    return { member, rank: errorResult('me', err) }
+  }
+}
+
 export function registerLftHandlers(): void {
+  validatedHandle('lft:my-solo', z.tuple([z.object({ force: z.boolean().optional() }).optional()]), (_e, opts) => readMySoloLft(!!opts?.force))
+
   validatedHandle(
     'team:member-ranks',
     z.tuple([id, z.object({ force: z.boolean().optional() }).optional()]),

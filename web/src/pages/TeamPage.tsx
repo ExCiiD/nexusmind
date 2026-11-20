@@ -14,6 +14,7 @@ import { DraftTab } from '@/pages/Team/DraftTab'
 import { ScoutingTab } from '@/pages/Team/ScoutingTab'
 import { DraftSimSection } from '@/components/analyst/DraftJournalSection'
 import { useTabParam } from '@/components/team/TeamSection'
+import { NoTeamPage } from '@/components/team/NoTeamPage'
 
 type TabId = 'roster' | 'pool' | 'draft' | 'scouting'
 const TAB_IDS: readonly TabId[] = ['roster', 'pool', 'draft', 'scouting']
@@ -70,6 +71,9 @@ export function TeamPage() {
   if (collabLoading) {
     return <Loader2 className="h-6 w-6 animate-spin text-hextech-gold" />
   }
+
+  // § 18.2: without any group, « Rejoins une équipe ».
+  if (groups.length === 0) return <NoTeamPage />
 
   if (teamGroups.length === 0) {
     return (

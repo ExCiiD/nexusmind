@@ -163,15 +163,21 @@ interface LftDialogProps {
   team: Team
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** § 18.2, a player without a group (lftMySolo): their rank, read by the main process — no roster ranks request. */
+  soloRank?: MemberRankResult
+  /** Pre-fills « Looking for » (the player's role). */
+  lookingFor?: string
 }
 
-export function LftDialog({ team, open, onOpenChange }: LftDialogProps) {
+export function LftDialog({ team, open, onOpenChange, soloRank, lookingFor }: LftDialogProps) {
   const { t, i18n } = useTranslation()
   const { toast } = useToast()
   const version = useDdragonVersion()
   const nameOf = useChampionNames()
   const looks = useLookSources(open)
-  const ranks = useMemberRanks(team.id, open)
+  const fetchedRanks = useMemberRanks(team.id, open && !soloRank)
+  const soloId = team.members?.[0]?.id
+  const ranks = soloRank && soloId ? { ...fetchedRanks, results: { [soloId]: soloRank }, loading: false, available: false } : fetchedRanks
 
   const members = useMemo(
     () => [...(team.members ?? [])].sort((a, b) => roleRank(a) - roleRank(b) || a.displayName.localeCompare(b.displayName)),
@@ -183,7 +189,7 @@ export function LftDialog({ team, open, onOpenChange }: LftDialogProps) {
     const lang: PosterLang = i18n.language?.startsWith('fr') ? 'fr' : 'en'
     const fallback: Draft = {
       mode: 'solo', format: 'banner', accent: 'gold', lang, soloId: members[0]?.id ?? null, seats: {}, unwanted: [], skins: {}, traits: {}, profile: { strengths: [], required: [] }, design: DEFAULT_DESIGN,
-      lookingFor: '', languages: lang === 'fr' ? 'Français' : 'English', discord: '', tags: [], message: '',
+      lookingFor: lookingFor ?? '', languages: lang === 'fr' ? 'Français' : 'English', discord: '', tags: [], message: '',
     }
     const d = loadDraft(team.id, fallback)
     // Players that left the roster since.
