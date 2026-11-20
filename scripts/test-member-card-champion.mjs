@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * End-to-end check of supabase/migrations/20261120140000_member_card_champion.sql (Team Lobby card champion and
+ * End-to-end check of supabase/migrations/20261120080011_member_card_champion.sql (Team Lobby card champion and
  * skin) and its rollback, on a throw-away Postgres (PGlite 0.3, PostgreSQL 17) rebuilt from the migrations
- * production has applied (supabase/baseline/prod_migrations_20261120_beta10.txt).
+ * production had applied before it (supabase/baseline/prod_migrations_20261120_beta10.txt, the beta.10 baseline).
  *
  * Usage: node scripts/test-member-card-champion.mjs <folder where @electric-sql/pglite is installed>
  */
@@ -13,9 +13,9 @@ import { openPglite, replay, migrationFiles, repo, migDir } from './lib/pgliteSu
 const pgliteDir = process.argv[2]
 if (!pgliteDir) { console.error('Pass the folder that holds node_modules/@electric-sql/pglite.'); process.exit(2) }
 
-const MIGRATION = '20261120140000_member_card_champion.sql'
+const MIGRATION = '20261120080011_member_card_champion.sql'
 const migration = readFileSync(join(migDir, MIGRATION), 'utf-8')
-const rollback = readFileSync(join(repo, 'supabase/rollback/20261120140000_rollback.sql'), 'utf-8')
+const rollback = readFileSync(join(repo, 'supabase/rollback/20261120080011_rollback.sql'), 'utf-8')
 const BASELINE = 'supabase/baseline/prod_schema_20261120_beta10.txt'
 const inProduction = readFileSync(join(repo, 'supabase/baseline/prod_migrations_20261120_beta10.txt'), 'utf-8')
   .split(/\r?\n/).filter(Boolean).map((l) => l.split('|').slice(0, 2).join('_') + '.sql')

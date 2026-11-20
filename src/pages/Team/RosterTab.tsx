@@ -153,7 +153,7 @@ export function RosterTab({ team, loading, onChange, logoUrl, actions, fill = fa
       toast({ title: t('team.roster.card.pick.saved') })
       return true
     }
-    // Signed out, refused, or the database without the card columns yet (migration 20261120140000).
+    // Signed out, refused, or the database without the card columns yet (migration 20261120080011).
     toast({ title: t('team.roster.card.pick.saveFailed'), description: t('team.roster.card.pick.saveFailedHint'), variant: 'destructive' })
     return false
   }

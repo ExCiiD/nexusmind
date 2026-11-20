@@ -7,7 +7,7 @@
  * the version the pack was built from (`manifest.ddragon`). A name that cannot be read is null, and the base skin
  * (number 0) has no name either: the screen shows the champion's name for it.
  *
- * The choice is stored in group_members.card_champion / card_skin_num (migration 20261120140000_member_card_champion),
+ * The choice is stored in group_members.card_champion / card_skin_num (migration 20261120080011_member_card_champion),
  * written and read in collabCore (setMyCardChampion, listMemberLooks).
  */
 

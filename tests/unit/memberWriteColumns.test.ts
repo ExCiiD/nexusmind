@@ -8,10 +8,10 @@ import { setMyCardChampion, setMyLook, updateMyMemberProfile } from '../../src/l
 // go through SECURITY DEFINER RPCs). A direct write from the app to any other
 // column would be refused by Postgres, so the app's payloads must stay
 // inside that grant.
-// 20261120140000_member_card_champion adds the Team Lobby card's two columns to that grant.
+// 20261120080011_member_card_champion adds the Team Lobby card's two columns to that grant.
 const MIGRATIONS = [
   join(__dirname, '../../supabase/migrations/20261118202150_captain_roles_presence.sql'),
-  join(__dirname, '../../supabase/migrations/20261120140000_member_card_champion.sql'),
+  join(__dirname, '../../supabase/migrations/20261120080011_member_card_champion.sql'),
 ]
 
 function grantedUpdateColumns(): string[] {

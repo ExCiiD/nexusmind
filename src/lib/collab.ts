@@ -52,7 +52,7 @@ export interface MemberLook {
   riotId: string | null
   iconId: string | null
   bannerId: string | null
-  /** Team Lobby card: the champion and skin the member picked (20261120140000_member_card_champion), null for the
+  /** Team Lobby card: the champion and skin the member picked (20261120080011_member_card_champion), null for the
    *  card's default champion. Absent on a build or a database without it. */
   card?: CardChampion | null
 }

@@ -263,7 +263,7 @@ export async function listMemberLooks(sb: SupabaseClient, uid: string): Promise<
   const { data: memberships, error } = await sb.from('group_members').select('group_id').eq('user_id', uid)
   if (error || !memberships?.length) return []
   const groupIds = memberships.map((m) => m.group_id)
-  // The card columns come with 20261120140000_member_card_champion: before it the select is refused (42703), and
+  // The card columns come with 20261120080011_member_card_champion: before it the select is refused (42703), and
   // the looks are read without them.
   type LooksRead = { data: Array<Record<string, unknown>> | null; error: { code?: string } | null }
   let res: LooksRead = await sb.from('group_members').select(`${LOOK_COLUMNS}, ${CARD_COLUMNS}`).in('group_id', groupIds)
