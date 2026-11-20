@@ -43,7 +43,7 @@ export interface SoloLft {
 export interface OrganisationApi {
   /**
    * "Relancer": reminds the members who have not answered an event (all of them, or `userIds`). The group's calendar
-   * managers only. Errors: FORBIDDEN, NOT_FOUND, EVENT_PAST, NOT_AVAILABLE (before migration 20261120190000).
+   * managers only. Errors: FORBIDDEN, NOT_FOUND, EVENT_PAST, NOT_AVAILABLE (before migration 20261120115200).
    */
   calendarRemindResponses: (eventId: string, userIds?: string[]) => Promise<RemindResult>
   /** The last reminder per person of these events ("relancé il y a 2 h"); the calendar managers only, empty for others. */

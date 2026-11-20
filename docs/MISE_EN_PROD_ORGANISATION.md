@@ -13,7 +13,7 @@ node scripts/test-schema-baseline.mjs          <dossier PGlite 0.3.16>
 
 En lecture seule sur la prod : la dernière migration doit être `20261120110540 team_sessions_hardening`.
 
-## 1. Migration `20261120190000_event_response_reminders`
+## 1. Migration `20261120115200_event_response_reminders`
 
 - **Ce qu'elle fait** :
   - ajoute le type de notification `event_response_reminder` à la liste complète ;
@@ -25,7 +25,7 @@ En lecture seule sur la prod : la dernière migration doit être `20261120110540
   - `has_function_privilege('anon', 'public.remind_event_responses(uuid,uuid[])', 'execute')` vaut false ;
   - test de fumée dans une transaction annulée : relancer un événement à venir en tant qu'owner, puis lire la
     notification créée.
-- **Retour arrière** : `supabase/rollback/20261120190000_rollback.sql`. Il supprime aussi les notifications de relance déjà
+- **Retour arrière** : `supabase/rollback/20261120115200_rollback.sql`. Il supprime aussi les notifications de relance déjà
   envoyées, sans quoi la liste des types ne pourrait pas revenir à l'ancienne.
 
 ## 2. Bot Discord (DM des relances)

@@ -2,14 +2,14 @@
 /**
  * WSC-05 / DA-4: the repository's migrations must rebuild the production schema exactly.
  *
- * 1. History: every migration production recorded (supabase/baseline/prod_migrations_20261120_beta13.txt, md5 of the SQL
+ * 1. History: every migration production recorded (supabase/baseline/prod_migrations_20261120_beta14.txt, md5 of the SQL
  *    production ran) has a file in supabase/migrations under the same version and name (since 20/11/2026 every
  *    file carries its production version), and the file's SQL is the one production ran (the restore header of
  *    the 15 files restored on 20/11/2026 is set aside).
  * 2. Schema: the files production applied, replayed in order on a throw-away Postgres (PGlite, in memory) with a
  *    stand-in for what the Supabase platform provides (auth, storage, pg_cron, pgcrypto, roles, default grants),
  *    give the same fingerprint as production (scripts/schema-snapshot.sql, saved in
- *    supabase/baseline/prod_schema_20261120_beta13.txt). Migrations production has not applied yet are left out.
+ *    supabase/baseline/prod_schema_20261120_beta14.txt). Migrations production has not applied yet are left out.
  *
  * Usage: node scripts/test-schema-baseline.mjs <folder where @electric-sql/pglite is installed>
  * Read-only: never touches production. Refresh the two baseline files with read-only queries only.
@@ -33,7 +33,7 @@ const check = (label, ok, detail = '') => {
 const md5 = (s) => createHash('md5').update(s).digest('hex')
 
 // ── 1. History ─────────────────────────────────────────────────────────────
-const prodMigrations = readFileSync(join(repo, 'supabase/baseline/prod_migrations_20261120_beta13.txt'), 'utf-8')
+const prodMigrations = readFileSync(join(repo, 'supabase/baseline/prod_migrations_20261120_beta14.txt'), 'utf-8')
   .split(/\r?\n/).filter(Boolean).map((l) => { const [version, name, hash] = l.split('|'); return { version, name, hash } })
 const files = readdirSync(migDir).filter((f) => f.endsWith('.sql')).sort()
   .map((f) => { const m = /^(\d+)_(.+)\.sql$/.exec(f); return { file: f, version: m[1], name: m[2] } })
@@ -94,7 +94,7 @@ check(`history: the ${restored.length} restored files are byte for byte what pro
 // The Supabase stand-in (roles, default grants read on production, auth, storage, pg_cron, extensions) lives in
 // scripts/lib/pgliteSupabase.mjs, shared with the other migration tests.
 const snapshotSql = readFileSync(join(repo, 'scripts/schema-snapshot.sql'), 'utf-8')
-const prod = readFileSync(join(repo, 'supabase/baseline/prod_schema_20261120_beta13.txt'), 'utf-8').split(/\r?\n/).filter(Boolean)
+const prod = readFileSync(join(repo, 'supabase/baseline/prod_schema_20261120_beta14.txt'), 'utf-8').split(/\r?\n/).filter(Boolean)
 const key = (l) => l.split('|').slice(0, 2).join('|')
 
 /** Replays `list` on a fresh database: the database, or null after reporting the file that failed. */

@@ -1,4 +1,4 @@
--- Rollback of 20261120190000_event_response_reminders ("Relancer"). Run it as one transaction.
+-- Rollback of 20261120115200_event_response_reminders ("Relancer"). Run it as one transaction.
 -- Lost: the reminder notifications already sent (the type leaves the list) and the anti-spam record.
 
 drop function if exists public.remind_event_responses(uuid, uuid[]);

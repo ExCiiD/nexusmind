@@ -239,7 +239,7 @@ export async function listRecentTeamNotifications(sb: SupabaseClient, groupId: s
 /** In-app notifications the bot also sends as a Discord direct message to
  *  their recipient: a player who can't come to an event (or who finally
  *  can), for the management — see respond_to_calendar_event. */
-// event_response_reminder: "Relancer" from the manager's Organisation dashboard (migration 20261120190000), sent to the
+// event_response_reminder: "Relancer" from the manager's Organisation dashboard (migration 20261120115200), sent to the
 // member who has not answered.
 export const DIRECT_MESSAGE_TYPES = ['event_declined', 'event_confirmed', 'event_response_reminder'] as const
 export type DirectMessageType = (typeof DIRECT_MESSAGE_TYPES)[number]
