@@ -8,7 +8,7 @@ import {
 import { fail } from './supabaseErrors'
 
 /**
- * #49, scrims planned from the Planning (supabase/migrations/20261120120000_scrims_in_planning.sql). Server-side
+ * #49, scrims planned from the Planning (supabase/migrations/20261119224007_scrims_in_planning.sql). Server-side
  * only, desktop (IPC), web and bot call these the same way. Writes go through the two RPCs, which check the rights
  * (save_match_event: the calendar's editors, update_match_detail: those plus the analyst). Reads go through RLS
  * (any member of the group).

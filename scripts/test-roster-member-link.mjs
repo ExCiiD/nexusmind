@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * End-to-end check of supabase/migrations/20261120130000_roster_member_link.sql (#46 point 4) and its rollback, on
+ * End-to-end check of supabase/migrations/20261120060647_roster_member_link.sql (#46 point 4) and its rollback, on
  * a throw-away Postgres (PGlite 0.3, PostgreSQL 17) rebuilt from the migrations production has applied.
  *
  * Usage: node scripts/test-roster-member-link.mjs <folder where @electric-sql/pglite is installed>
@@ -12,9 +12,9 @@ import { openPglite, replay, migrationFiles, repo, migDir } from './lib/pgliteSu
 const pgliteDir = process.argv[2]
 if (!pgliteDir) { console.error('Pass the folder that holds node_modules/@electric-sql/pglite.'); process.exit(2) }
 
-const MIGRATION = '20261120130000_roster_member_link.sql'
+const MIGRATION = '20261120060647_roster_member_link.sql'
 const migration = readFileSync(join(migDir, MIGRATION), 'utf-8')
-const rollback = readFileSync(join(repo, 'supabase/rollback/20261120130000_rollback.sql'), 'utf-8')
+const rollback = readFileSync(join(repo, 'supabase/rollback/20261120060647_rollback.sql'), 'utf-8')
 
 let failures = 0
 const check = (label, ok, detail = '') => {
@@ -23,7 +23,7 @@ const check = (label, ok, detail = '') => {
 }
 
 const db = await openPglite(pgliteDir)
-await replay(db, migrationFiles().filter((f) => f < MIGRATION && !f.startsWith('20261119290000')))
+await replay(db, migrationFiles().filter((f) => f < MIGRATION && !f.startsWith('20261119223819')))
 const one = async (sql, params) => (await db.query(sql, params)).rows[0]
 const u = (n) => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`
 const COACH = u(1), MANAGER = u(2), AYURA = u(3), MID = u(4), OUTSIDER = u(5)

@@ -2,7 +2,7 @@
 /**
  * Rehearsal of the beta.10 database release (docs/MISE_EN_PROD_BETA10.md), on a throw-away Postgres (PGlite 0.3,
  * PostgreSQL 17) rebuilt from every migration production has applied, never on the project's database:
- *   1. the three migrations in release order: 20261119290000 (analyst), 20261120120000 (#49), 20261120130000 (#46)
+ *   1. the three migrations in release order: 20261119223819 (analyst), 20261119224007 (#49), 20261120060647 (#46)
  *   2. their three rollbacks in reverse order: the schema is production's again (scripts/schema-snapshot.sql
  *      against supabase/baseline/prod_schema_20261120.txt)
  *   3. the three migrations once more (the release can be retried after a rollback)
@@ -16,7 +16,7 @@ import { openPglite, replay, migrationFiles, repo, migDir, forPglite } from './l
 const pgliteDir = process.argv[2]
 if (!pgliteDir) { console.error('Pass the folder that holds node_modules/@electric-sql/pglite.'); process.exit(2) }
 
-const RELEASE = ['20261119290000_analyst_draft_log_dossiers', '20261120120000_scrims_in_planning', '20261120130000_roster_member_link']
+const RELEASE = ['20261119223819_analyst_draft_log_dossiers', '20261119224007_scrims_in_planning', '20261120060647_roster_member_link']
 let failures = 0
 const check = (label, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${ok ? '' : `\n      ${detail}`}`)

@@ -1,5 +1,5 @@
 /**
- * #49, scrims planned from the Planning (supabase/migrations/20261120120000_scrims_in_planning.sql,
+ * #49, scrims planned from the Planning (supabase/migrations/20261119224007_scrims_in_planning.sql,
  * docs/PROPOSITION_SCRIMS_PLANNING.md, mockup docs/DESIGN_STATE.md section 13). The contract shared by the desktop
  * (IPC), the web adapter and the screens: types, the API surface, and small pure helpers.
  *

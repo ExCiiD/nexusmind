@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * End-to-end check of supabase/migrations/20261119290000_analyst_draft_log_dossiers.sql (#40) on a throw-away
+ * End-to-end check of supabase/migrations/20261119223819_analyst_draft_log_dossiers.sql (#40) on a throw-away
  * Postgres (PGlite, in memory), never on the project's database: real RLS, the production grants, a stand-in for the
  * tables created outside this folder (team_sessions, team_session_games, as read in production).
  *
@@ -16,7 +16,7 @@ if (!pgliteDir) { console.error('Pass the folder that holds node_modules/@electr
 const require = createRequire(join(pgliteDir, 'package.json'))
 const { PGlite } = await import(pathToFileURL(require.resolve('@electric-sql/pglite')).href)
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..')
-const migration = readFileSync(join(repo, 'supabase/migrations/20261119290000_analyst_draft_log_dossiers.sql'), 'utf-8')
+const migration = readFileSync(join(repo, 'supabase/migrations/20261119223819_analyst_draft_log_dossiers.sql'), 'utf-8')
 
 const db = new PGlite()
 let failures = 0
@@ -218,9 +218,9 @@ const list280 = readFileSync(join(repo, 'supabase/migrations/20261119211601_memb
 const typesOf = (sql) => { const m = sql.match(/notifications_type_check check \(type = any \(array\[([\s\S]*?)\]\)\)/); return m ? [...m[1].matchAll(/'([a-z_0-9]+)'/g)].map((x) => x[1]).sort().join(',') : null }
 check('#39 (280000) and this migration carry the same full list, so either can go first', typesOf(list280) !== null && typesOf(list280) === typesOf(migration))
 
-// ── Rollback (supabase/rollback/20261119290000_rollback.sql) ─────────────
+// ── Rollback (supabase/rollback/20261119223819_rollback.sql) ─────────────
 {
-  const rollback = readFileSync(join(repo, 'supabase/rollback/20261119290000_rollback.sql'), 'utf-8')
+  const rollback = readFileSync(join(repo, 'supabase/rollback/20261119223819_rollback.sql'), 'utf-8')
   await db.exec(rollback)
   await db.exec(rollback)
   check('the rollback applies twice', true)

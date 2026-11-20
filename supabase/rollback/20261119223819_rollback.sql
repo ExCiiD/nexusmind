@@ -1,4 +1,4 @@
--- Rollback of 20261119290000_analyst_draft_log_dossiers (#40 analyst features). Run it as one transaction.
+-- Rollback of 20261119223819_analyst_draft_log_dossiers (#40 analyst features). Run it as one transaction.
 -- It removes what the migration added:
 --   1. the two tables (draft_log, opponent_dossiers) with their triggers and policies, and the publishing RPC
 --   2. the helper functions only these tables use

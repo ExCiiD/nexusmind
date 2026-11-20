@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * End-to-end check of supabase/migrations/20261120120000_scrims_in_planning.sql (#49) and its rollback, on a
+ * End-to-end check of supabase/migrations/20261119224007_scrims_in_planning.sql (#49) and its rollback, on a
  * throw-away Postgres (PGlite, in memory) rebuilt from every migration production has applied (the schema the
  * baseline test proves identical to production), never on the project's database.
  *
@@ -13,9 +13,9 @@ import { openPglite, replay, migrationFiles, repo, migDir } from './lib/pgliteSu
 const pgliteDir = process.argv[2]
 if (!pgliteDir) { console.error('Pass the folder that holds node_modules/@electric-sql/pglite.'); process.exit(2) }
 
-const MIGRATION = '20261120120000_scrims_in_planning.sql'
+const MIGRATION = '20261119224007_scrims_in_planning.sql'
 const migration = readFileSync(join(migDir, MIGRATION), 'utf-8')
-const rollback = readFileSync(join(repo, 'supabase/rollback/20261120120000_rollback.sql'), 'utf-8')
+const rollback = readFileSync(join(repo, 'supabase/rollback/20261119224007_rollback.sql'), 'utf-8')
 
 let failures = 0
 const check = (label, ok, detail = '') => {
@@ -25,7 +25,7 @@ const check = (label, ok, detail = '') => {
 
 const db = await openPglite(pgliteDir)
 // Everything production has: the files before this one, without the analyst tables (not in production yet).
-await replay(db, migrationFiles().filter((f) => f < MIGRATION && !f.startsWith('20261119290000')))
+await replay(db, migrationFiles().filter((f) => f < MIGRATION && !f.startsWith('20261119223819')))
 
 const one = async (sql, params) => (await db.query(sql, params)).rows[0]
 const all = async (sql, params) => (await db.query(sql, params)).rows

@@ -1,4 +1,4 @@
--- Rollback of 20261120120000_scrims_in_planning (#49). Run it as one transaction. It undoes, in order:
+-- Rollback of 20261119224007_scrims_in_planning (#49). Run it as one transaction. It undoes, in order:
 --   1. the two RPCs and the trigger that makes a scrim follow its slot
 --   2. run_scrim_availability_check, back to its body of 20261119211601_member_staff_roles
 --   3. the new columns, constraints and indexes, and the helper functions

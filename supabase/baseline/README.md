@@ -3,9 +3,9 @@
 Read-only exports of production, taken on 20/11/2026, that `scripts/test-schema-baseline.mjs` checks the
 repository against:
 
-- `prod_migrations_20261120.txt`: every migration production recorded (`supabase_migrations.schema_migrations`),
+- `prod_migrations_20261120_beta10.txt`: every migration production recorded (`supabase_migrations.schema_migrations`),
   with the md5 of the SQL it ran (CRs removed, trimmed).
-- `prod_schema_20261120.txt`: the fingerprint of every app object in production (tables with their columns,
+- `prod_schema_20261120_beta10.txt`: the fingerprint of every app object in production (tables with their columns,
   constraints, indexes, policies, triggers and grants; functions with their body and who may execute them;
   sequences; storage policies and buckets; pg_cron jobs), produced by `scripts/schema-snapshot.sql`.
 

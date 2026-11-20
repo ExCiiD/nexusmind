@@ -2,7 +2,7 @@
  * #40 analyst features: storage and orchestration, shared by the desktop (electron/main/cloud/analyst.ts) and the
  * web (web/src/api.ts). Everything that is not a Riot call lives here; the platform passes its Riot fetchers in.
  * Pure computations: teamTimelineCore.ts (§ 10), draftLogCore.ts (§ 11), opponentDossierCore.ts (§ 12).
- * Tables: team_session_games.timeline_summary, draft_log, opponent_dossiers (20261119290000).
+ * Tables: team_session_games.timeline_summary, draft_log, opponent_dossiers (20261119223819).
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
