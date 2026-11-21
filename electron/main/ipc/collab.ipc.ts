@@ -1,4 +1,5 @@
 import { refreshRealtimeGroups } from '../cloud/realtime'
+import { availabilityExceptionInput, availabilityRuleInput } from '../availabilityTime'
 import { z } from 'zod'
 import { validatedHandle } from './validate'
 import * as collab from '../cloud/collab'
@@ -106,7 +107,6 @@ export function registerCollabHandlers() {
 
   const isoDate = z.string().datetime()
   const dateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
-  const timeOnly = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
   const eventKind = z.enum(['tournament', 'team_review', 'one_on_one', 'soloq_block', 'rest', 'other', 'scrim', 'flex', 'meeting', 'warmup_draft'])
   const attendeeScope = z.enum(['whole_team', 'all_players', 'all_staff', 'custom'])
   const eventInput = z.object({
@@ -164,15 +164,13 @@ export function registerCollabHandlers() {
   validatedHandle('calendar:set-request-status', z.tuple([uuid, z.enum(['accepted', 'declined'])]), (_e, id, status) => collab.calendarSetRequestStatus(id, status))
   validatedHandle('calendar:delete-request', z.tuple([uuid]), (_e, id) => collab.calendarDeleteRequest(id))
 
-  const ruleInput = z.object({ weekday: z.number().int().min(0).max(6), startTime: timeOnly, endTime: timeOnly })
+  // "24:00" accepted as an end time only (21/11/2026, electron/main/availabilityTime.ts).
+  const ruleInput = availabilityRuleInput
   validatedHandle('availability:list-rules', z.tuple([uuid]), (_e, groupId) => collab.availabilityListRules(groupId))
   validatedHandle('availability:set-rule', z.tuple([uuid, ruleInput]), (_e, groupId, input) => collab.availabilitySetRule(groupId, input))
   validatedHandle('availability:delete-rule', z.tuple([uuid]), (_e, id) => collab.availabilityDeleteRule(id))
 
-  const exceptionInput = z.object({
-    date: dateOnly, available: z.boolean(), startTime: timeOnly.nullable().optional(), endTime: timeOnly.nullable().optional(),
-    note: z.string().max(500).nullable().optional(),
-  })
+  const exceptionInput = availabilityExceptionInput
   validatedHandle('availability:list-exceptions', z.tuple([uuid, dateOnly, dateOnly]), (_e, groupId, from, to) => collab.availabilityListExceptions(groupId, from, to))
   validatedHandle('availability:set-exception', z.tuple([uuid, exceptionInput]), (_e, groupId, input) => collab.availabilitySetException(groupId, input))
   validatedHandle('availability:delete-exception', z.tuple([uuid]), (_e, id) => collab.availabilityDeleteException(id))

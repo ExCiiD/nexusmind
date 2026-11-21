@@ -4,6 +4,7 @@ import { join } from 'path'
 import { existsSync, mkdirSync, statSync, writeFileSync, unlinkSync, renameSync } from 'fs'
 import os from 'os'
 import { getPrisma } from './database'
+import { clipFfmpegTimeoutMs } from './clipCore'
 
 /**
  * Resolves which ffmpeg binary to use, in priority order:
@@ -661,7 +662,7 @@ export async function createClip(options: ClipOptions): Promise<string | null> {
     '-avoid_negative_ts', 'make_zero',
     '-y',
     outputPath,
-  ])
+  ], clipFfmpegTimeoutMs(options.endMs - options.startMs, false))
   if (copyAttempt.code === 0 && existsSync(outputPath) && getFileSize(outputPath) > 0) {
     return outputPath
   }
@@ -682,7 +683,7 @@ export async function createClip(options: ClipOptions): Promise<string | null> {
     '-movflags', '+faststart',
     '-y',
     outputPath,
-  ], 300_000)
+  ], clipFfmpegTimeoutMs(options.endMs - options.startMs, true))
   if (reAttempt.code === 0 && existsSync(outputPath) && getFileSize(outputPath) > 0) {
     return outputPath
   }

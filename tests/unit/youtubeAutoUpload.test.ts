@@ -144,3 +144,22 @@ describe('the queue screen (Front-End\'s YoutubeQueueItem)', () => {
     ])
   })
 })
+
+describe('a video too long for an unverified channel (21/11/2026)', () => {
+  it('YouTube\'s answers map to YOUTUBE_CHANNEL_UNVERIFIED; other refusals to YOUTUBE_REJECTED; accepted is null', async () => {
+    const { uploadVerdict, youtubeErrorCode, YOUTUBE_VERIFY_URL } = await import('../../electron/main/youtubeCore')
+    expect(uploadVerdict({ id: 'x', status: { uploadStatus: 'rejected', rejectionReason: 'length' } })).toBe('YOUTUBE_CHANNEL_UNVERIFIED')
+    expect(uploadVerdict({ id: 'x', status: { uploadStatus: 'rejected', rejectionReason: 'duplicate' } })).toBe('YOUTUBE_REJECTED')
+    expect(uploadVerdict({ id: 'x', status: { uploadStatus: 'uploaded' } })).toBeNull()
+    expect(uploadVerdict({ id: 'x' })).toBeNull()
+    expect(youtubeErrorCode(400, '{"error":{"message":"The video exceeds the maximum duration for this account"}}')).toBe('YOUTUBE_CHANNEL_UNVERIFIED')
+    expect(youtubeErrorCode(403, '{"status":{"rejectionReason":"length"}}')).toBe('YOUTUBE_CHANNEL_UNVERIFIED')
+    // The daily upload count stays a quota wait (next day), not a verification.
+    expect(youtubeErrorCode(403, '{"error":{"errors":[{"reason":"uploadLimitExceeded"}]}}')).toBe('QUOTA_EXCEEDED')
+    expect(YOUTUBE_VERIFY_URL).toBe('https://www.youtube.com/verify')
+  })
+  it('the queue does not retry it: the row ends as an error with the code, « Réessayer » once verified', () => {
+    expect(onFailure(item({ attempts: 0 }), 'YOUTUBE_CHANNEL_UNVERIFIED', T0)).toEqual({ action: 'drop', item: { ...item(), lastError: 'YOUTUBE_CHANNEL_UNVERIFIED' } })
+    expect(onFailure(item(), 'YOUTUBE_REJECTED', T0).action).toBe('drop')
+  })
+})

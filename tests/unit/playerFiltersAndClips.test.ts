@@ -1,7 +1,7 @@
 /** 21/11/2026: the player's timeline filters (saved, synced, never reset) and the clip mode rules. */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DEFAULT_PLAYER_FILTERS, normalizePlayerFilters, PLAYER_FILTERS_KEY } from '../../src/lib/playerFilters'
-import { assertClipRange, isInsideDirs, CLIP_MAX_MS } from '../../electron/main/clipCore'
+import { assertClipRange, isInsideDirs, clipFfmpegTimeoutMs } from '../../electron/main/clipCore'
 import { SYNC_TABLES } from '../../electron/main/sync/syncSchema'
 
 const h = vi.hoisted(() => ({ rows: new Map<string, string>() }))
@@ -45,8 +45,16 @@ describe('player filters', () => {
 describe('clip mode', () => {
   it('1 s to 2 min, start before end', () => {
     expect(() => assertClipRange(9 * 60_000, 9 * 60_000 + 30_000)).not.toThrow()
-    expect(() => assertClipRange(0, CLIP_MAX_MS)).not.toThrow()
-    expect(() => assertClipRange(0, CLIP_MAX_MS + 1)).toThrow('CLIP_TOO_LONG')
+    // No length limit (21/11/2026): the whole 35-min recording is a valid clip, never past its end.
+    expect(() => assertClipRange(0, 35 * 60_000)).not.toThrow()
+    expect(() => assertClipRange(0, 35 * 60_000, 35 * 60_000)).not.toThrow()
+    expect(() => assertClipRange(0, 35 * 60_000 + 500, 35 * 60_000)).not.toThrow()
+    expect(() => assertClipRange(0, 36 * 60_000, 35 * 60_000)).toThrow('BAD_CLIP_RANGE')
+    expect(() => assertClipRange(35 * 60_000, 36 * 60_000, 35 * 60_000)).toThrow('BAD_CLIP_RANGE')
+    // ffmpeg's time limit grows with the clip (a long re-encode is not killed at 5 min).
+    expect(clipFfmpegTimeoutMs(30_000, false)).toBe(120_000)
+    expect(clipFfmpegTimeoutMs(30_000, true)).toBe(300_000)
+    expect(clipFfmpegTimeoutMs(40 * 60_000, true)).toBe(60 * 60_000)
     expect(() => assertClipRange(5000, 5000)).toThrow('BAD_CLIP_RANGE')
     expect(() => assertClipRange(-1, 5000)).toThrow('BAD_CLIP_RANGE')
   })

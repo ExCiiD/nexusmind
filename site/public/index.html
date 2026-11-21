@@ -25,7 +25,7 @@
 <link rel="preload" href="/assets/fonts/big-shoulders-display.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css?v=3f1155e973">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Ascend","applicationCategory":"GameApplication","operatingSystem":"Windows 10, Windows 11","softwareVersion":"1.0.0-beta.9","downloadUrl":"https://github.com/ExCiiD/nexusmind/releases/download/v1.0.0-beta.9/Ascend-Setup-1.0.0-beta.9.exe","inLanguage":"fr","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"description":"Outil de progression pour League of Legends : enregistrement, micro-revue guidée, statistiques d'erreurs, coaching et gestion d'équipe."}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Ascend","applicationCategory":"GameApplication","operatingSystem":"Windows 10, Windows 11","softwareVersion":"1.0.0-beta.22","downloadUrl":"https://github.com/ExCiiD/nexusmind/releases/download/v1.0.0-beta.22/Ascend-Setup-1.0.0-beta.22.exe","inLanguage":"fr","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"description":"Outil de progression pour League of Legends : enregistrement, micro-revue guidée, statistiques d'erreurs, coaching et gestion d'équipe."}</script>
 <script src="/assets/site.js?v=33487096c7" defer></script>
 </head>
 <body>
@@ -71,7 +71,7 @@
         <div class="row-text">
           <p class="label"><span class="mono">01</span>Enregistrement</p>
           <h3>Tes parties s’enregistrent toutes seules.</h3>
-          <p>Lance ta game : Ascend capture la vidéo et la chronologie du match. Rien à régler avant chaque partie.</p>
+          <p>Lance ta game : Ascend capture la vidéo et la chronologie du match. Découpe un clip en deux poignées, puis garde-le, ou partage-le sur YouTube, Discord ou par lien. Si tu l’actives, chaque partie part toute seule sur ta chaîne YouTube.</p>
         </div>
         <div class="shot"><img class="shot-media" src="/media/home-record.webp" alt="Le Record Hub d’Ascend : les parties enregistrées, avec champion, KDA, durée et review, et les clips." width="1440" height="900" loading="lazy" decoding="async"></div>
       </li>
@@ -79,7 +79,7 @@
         <div class="row-text">
           <p class="label"><span class="mono">02</span>Micro-revue</p>
           <h3>Trois moments, quarante-cinq secondes.</h3>
-          <p>Juste après la game, Ascend te montre les trois moments qui t’ont coûté le plus cher. Un clic par moment pour dire ce qui s’est passé.</p>
+          <p>Juste après la game, Ascend te montre les trois moments qui t’ont coûté le plus cher, dans le lecteur de ta VOD. Un clic par moment pour dire ce qui s’est passé, ou « Pas une erreur » s’il se trompe.</p>
         </div>
         <div class="shot"><video class="shot-media" src="/media/home-microreview.mp4" poster="/media/home-microreview.webp" width="1088" height="680" muted loop playsinline preload="none" aria-label="Une micro-revue : trois moments sur la carte, une réponse par moment, puis la fiche du Codex qui correspond." data-clip></video></div>
       </li>
@@ -87,7 +87,7 @@
         <div class="row-text">
           <p class="label"><span class="mono">03</span>Revue post-partie</p>
           <h3>Ta VOD, annotée.</h3>
-          <p>Revois les passages clés, tag tes erreurs sur la timeline et note ce que tu retiens pour la prochaine game.</p>
+          <p>Un seul lecteur, avec la micro-revue à côté : filtre les événements de la timeline, prends une note (N), tague une erreur (E) à la seconde près, et corrige les erreurs détectées par Ascend.</p>
         </div>
         <div class="shot"><video class="shot-media" src="/media/home-review.mp4" poster="/media/home-review.webp" width="1088" height="680" muted loop playsinline preload="none" aria-label="La revue post-partie : le résultat, les statistiques de la partie et la micro-revue." data-clip></video></div>
       </li>
@@ -103,7 +103,7 @@
         <div class="row-text">
           <p class="label"><span class="mono">05</span>Labo d’erreurs</p>
           <h3>Tes erreurs récurrentes, triées.</h3>
-          <p>Chaque erreur taguée rejoint le labo. Tu vois lesquelles reviennent, ce qu’elles coûtent, et laquelle attaquer en premier.</p>
+          <p>Chaque erreur taguée rejoint le labo, et tu corriges celles qu’Ascend a mal vues. Tu vois lesquelles reviennent, ce qu’elles coûtent, et laquelle attaquer en premier.</p>
         </div>
         <div class="shot"><img class="shot-media" src="/media/home-lab.webp" alt="Le Labo d’erreurs : les erreurs classées par fréquence, avec ce qu’elles coûtent et la règle de l’équipe qui s’y applique." width="1440" height="900" loading="lazy" decoding="async"></div>
       </li>
@@ -133,7 +133,7 @@
       </li>
       <li class="card">
         <div class="shot"><img class="shot-media" src="/media/home-team-stats.webp" alt="La fiche de statistiques d’un joueur : moyennes, part dans l’équipe et champions." width="920" height="880" loading="lazy" decoding="async"></div>
-        <p class="label">Statistiques d’équipe</p>
+        <p class="label">Stats collectives</p>
         <h3>Scrims et tournois, en chiffres.</h3>
         <p>Les stats de chaque joueur et de l’équipe sur les scrims, la flex et les tournois, côte à côte.</p>
       </li>
@@ -145,7 +145,7 @@
       </li>
     </ul>
     <div class="also">
-      <p>Aussi : draft, champion pools, scouting, rapport hebdo, suivi des joueurs à l’essai.</p>
+      <p>Aussi : simulateur de draft, champion pools, scouting, annonces LFT, rapport hebdo, suivi des joueurs à l’essai.</p>
       <p class="more"><a href="/environnement-equipe">Tout le détail dans Environnement d’équipe<span aria-hidden="true"> →</span></a></p>
     </div>
   </div>
@@ -168,7 +168,7 @@
       <a class="btn btn-primary" href="mailto:exciid501@gmail.com?subject=Demande%20d'acc%C3%A8s%20%C3%A0%20la%20b%C3%AAta%20d'Ascend&amp;body=Bonjour%2C%0A%0AJe%20voudrais%20un%20code%20d'invitation%20pour%20la%20b%C3%AAta%20d'Ascend.%0A%0AMon%20Riot%20ID%20%3A%20%0AJe%20suis%20%3A%20joueur%20%2F%20coach%20%2F%20%C3%A9quipe%0AComment%20j'ai%20connu%20Ascend%20%3A%20%0A">Demander l’accès</a>
       <span class="cta-note mono">Gratuit pendant la bêta · Windows 10 et 11</span>
     </div>
-    <p class="cta-code">Tu as déjà un code ? <a data-download href="https://github.com/ExCiiD/nexusmind/releases/download/v1.0.0-beta.9/Ascend-Setup-1.0.0-beta.9.exe">Télécharger pour Windows</a> <span class="mono">v<span data-version>1.0.0-beta.9</span> · <span data-size>255 Mo</span></span></p>
+    <p class="cta-code">Tu as déjà un code ? <a data-download href="https://github.com/ExCiiD/nexusmind/releases/download/v1.0.0-beta.22/Ascend-Setup-1.0.0-beta.22.exe">Télécharger pour Windows</a> <span class="mono">v<span data-version>1.0.0-beta.22</span> · <span data-size>255 Mo</span></span></p>
   </div>
 </section>
 </main>
@@ -196,6 +196,6 @@
     <p class="riot-notice">Ascend n’est pas approuvé par Riot Games et ne reflète pas les opinions de Riot Games ni de quiconque officiellement impliqué dans la production ou la gestion des propriétés de Riot Games. Riot Games et toutes les propriétés associées sont des marques commerciales ou des marques déposées de Riot Games, Inc.</p>
   </div>
 </footer>
-<script type="application/json" id="data-release">{"version":"1.0.0-beta.9","api":"https://api.github.com/repos/ExCiiD/nexusmind/releases?per_page=5","sizeUnit":"Mo","locale":"fr-FR"}</script>
+<script type="application/json" id="data-release">{"version":"1.0.0-beta.22","api":"https://api.github.com/repos/ExCiiD/nexusmind/releases?per_page=5","sizeUnit":"Mo","locale":"fr-FR"}</script>
 </body>
 </html>

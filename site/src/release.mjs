@@ -20,11 +20,11 @@ import { existsSync, readFileSync } from 'node:fs'
 const REPO = 'ExCiiD/nexusmind'
 const root = new URL('../../', import.meta.url)
 
-/** Last release published on GitHub (beta.9, from its latest.yml, 19/11/2026). */
+/** Last release published on GitHub (beta.22, from its latest.yml, 21/11/2026). */
 const PUBLISHED = {
-  version: '1.0.0-beta.9',
-  bytes: 266933392,
-  sha512: '+xe83gVkI6/yOU5Vm3AIlUJC/Mqw8xbwJQK782M3DEa26oswXrAcCKEuenXpqMctCbC9R+b4lcf0CI9YkVZCFg==',
+  version: '1.0.0-beta.22',
+  bytes: 267076867,
+  sha512: 'pDxoNITVTcJdNHLf+o4GjAGrtAeuBASgPbKM0FccGdnnXzI/wXte+j8Xp7oPzWEhCnPpg9gO0zaaXfTKqGlnfA==',
 }
 
 const appVersion = JSON.parse(readFileSync(new URL('package.json', root), 'utf8')).version

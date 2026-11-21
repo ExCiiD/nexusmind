@@ -72,7 +72,6 @@ import { registerDataHandlers } from './ipc/data.ipc'
 import { registerCloudHandlers } from './ipc/cloud.ipc'
 import { isCloudConfigured, getSupabase, retryPendingSecretDeletes } from './cloud/supabase'
 import { listMyLiveSessions, reportSessionGame } from '../../src/lib/teamSessionsCore'
-import { startAutoCloudBackup } from './cloud/cloudBackup'
 import { startSessionAutoClose } from './sessionAutoClose'
 import { startMatchCachePurge } from './matchCachePurge'
 import { registerSyncHandlers } from './ipc/sync.ipc'
@@ -490,7 +489,8 @@ async function bootstrap() {
   registerRealtimeHandlers()
   registerPreferencesHandlers()
   if (isCloudConfigured()) {
-    startAutoCloudBackup()
+    // 21/11/2026 (user): the cloud backup is MANUAL only (Settings > Ascend account > "Back up now"). The sync below
+    // (sync_records) stays automatic: it also feeds the web app, the staff dashboard and the shared team data.
     startSyncService()
   }
   // S3: closes a session with no game for 45 min, local-only, no cloud needed.

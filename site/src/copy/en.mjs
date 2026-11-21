@@ -124,12 +124,12 @@ export default {
     solo: {
       path: '/en/solo-training',
       title: 'Solo training — Ascend, for League of Legends',
-      description: 'Objective-driven sessions, automatic recording, a 45-second micro-review, VOD review, statistics, the Mistake Lab and the fundamentals fingerprint: everything Ascend does between two games.',
+      description: 'Objective-driven sessions, automatic recording, clips and sharing, a 45-second micro-review in your VOD’s player, statistics, the Mistake Lab and the fundamentals fingerprint: everything Ascend does between two games.',
     },
     team: {
       path: '/en/team-environment',
       title: 'Team environment — Ascend, for League of Legends',
-      description: 'Team dashboard, schedule, VOD reviews, scrim and tournament statistics, player follow-up, draft and scouting: staff and players on the same tool.',
+      description: 'Team dashboard, schedule, VOD reviews, collective stats from scrims and tournaments, player follow-up, draft, scouting and LFT posts: staff and players on the same tool.',
     },
   },
   access: {
@@ -151,11 +151,11 @@ export default {
       title: 'Everything that happens between two games.',
       lead: 'Ascend runs in the background while you play. Between two games, it gives you what you need to understand what happened, and what to work on in the next one.',
       items: [
-        ['Recording', 'Your games record themselves.', 'Launch your game: Ascend captures the video and the match timeline. Nothing to set up before each game.', 'The Ascend Record Hub: recorded games with champion, KDA, duration and review, and the clips.'],
-        ['Micro-review', 'Three moments, forty-five seconds.', 'Right after the game, Ascend shows you the three moments that cost you the most. One click per moment to say what happened.', 'A micro-review: three moments on the map, one answer per moment, then the matching Codex entry.'],
-        ['Post-game review', 'Your VOD, annotated.', 'Rewatch the key passages, tag your mistakes on the timeline and write down what you take into the next game.', 'The post-game review: the result, the game’s statistics and the micro-review.'],
+        ['Recording', 'Your games record themselves.', 'Launch your game: Ascend captures the video and the match timeline. Cut a clip with two handles, then keep it, or share it on YouTube, Discord or by link. If you turn it on, every game goes to your YouTube channel by itself.', 'The Ascend Record Hub: recorded games with champion, KDA, duration and review, and the clips.'],
+        ['Micro-review', 'Three moments, forty-five seconds.', 'Right after the game, Ascend shows you the three moments that cost you the most, in your VOD’s player. One click per moment to say what happened, or “Not a mistake” when it got it wrong.', 'A micro-review: three moments on the map, one answer per moment, then the matching Codex entry.'],
+        ['Post-game review', 'Your VOD, annotated.', 'One player, with the micro-review beside it: filter the timeline’s events, take a note (N), tag a mistake (E) to the second, and correct the mistakes Ascend detected.', 'The post-game review: the result, the game’s statistics and the micro-review.'],
         ['Statistics', 'What makes you win, in numbers.', 'CS, vision, trades, objectives: your stats compared with your own averages, to see what really changes when you win.', 'Detailed statistics: key takeaways, champion pool, wins and losses compared.'],
-        ['Mistake Lab', 'Your recurring mistakes, sorted.', 'Every tagged mistake joins the lab. You see which ones come back, what they cost, and which one to tackle first.', 'The Mistake Lab: mistakes ranked by frequency, with what they cost and the team rule that applies.'],
+        ['Mistake Lab', 'Your recurring mistakes, sorted.', 'Every tagged mistake joins the lab, and you correct the ones Ascend got wrong. You see which ones come back, what they cost, and which one to tackle first.', 'The Mistake Lab: mistakes ranked by frequency, with what they cost and the team rule that applies.'],
       ],
       more: 'All the details in Solo training',
     },
@@ -166,10 +166,10 @@ export default {
       items: [
         ['Schedule', 'The team’s week, without a spreadsheet.', 'Scrims, reviews and 1:1s in one calendar, with the slots when every starter is free.', 'The team schedule: the week as a grid, the common slots and the details of a scrim.'],
         ['Team dashboard', 'The whole team on one page.', 'Each player’s form, playing volume and alerts, with what deserves a talk this week.', 'The staff dashboard: each player’s form, mood, performance index, reviews and main mistake.'],
-        ['Team statistics', 'Scrims and tournaments, in numbers.', 'Each player’s and the team’s stats across scrims, flex and tournaments, side by side.', 'A player’s statistics card: averages, share of the team and champions.'],
+        ['Collective stats', 'Scrims and tournaments, in numbers.', 'Each player’s and the team’s stats across scrims, flex and tournaments, side by side.', 'A player’s statistics card: averages, share of the team and champions.'],
         ['Team reviews', 'VOD reviews that leave a trace.', 'Timestamped comments, tags, actions to keep: the review lives on after the meeting.', 'A team VOD review: timestamped comments, a new comment and the actions to keep.'],
       ],
-      also: 'Also: draft, champion pools, scouting, weekly report, trial players.',
+      also: 'Also: draft simulator, champion pools, scouting, LFT posts, weekly report, trial players.',
       more: 'All the details in Team environment',
     },
   },
@@ -193,7 +193,7 @@ export default {
       title: 'One game, four moves.',
       lead: 'What makes you improve happens between two games, where people usually give up. Ascend shrinks each move to a few seconds.',
       steps: [
-        ['Choose an objective', 'Ascend suggests 1 to 3 fundamentals out of {{fundamentals}}, based on your recent games and your mistakes. You accept, or pick your own.', '30 s'],
+        ['Choose an objective', 'Ascend suggests 1 to 3 fundamentals out of {{fundamentals}}, based on your recent games and your mistakes. You accept, pick your own, or just write your objective.', '30 s'],
         ['Play', 'The game is detected and recorded. Nothing shows up while you play.', 'the game'],
         ['Review', 'At most {{maxMoments}} critical moments, the VOD cued 12 seconds before each. One click per moment.', '45 s'],
         ['Measure', 'The objective is checked for you, and your last {{recent}} games are compared with your last {{snapshot}}.', '10 s'],
@@ -207,29 +207,29 @@ export default {
         {
           label: 'Objective sessions',
           title: 'Play with an objective, not on autopilot.',
-          text: 'Before you queue, pick 1 to 3 fundamentals to work on. Ascend follows them game after game and gives a verdict at the end of the session.',
-          points: ['{{fundamentals}} fundamentals, suggested from your recent games and your mistakes', 'Objective checked automatically after every game', 'A flash calibration every {{calibration}} games: which fundamental cost you the most?', 'My plan: your current objectives, and the ones your coach assigns you'],
+          text: 'Before you queue, pick 1 to 3 fundamentals to work on, or write your own objective. Ascend follows them game after game and gives a verdict at the end of the session.',
+          points: ['{{fundamentals}} fundamentals, suggested from your recent games and your mistakes', 'A session without fundamentals: only your written objectives, or your coach’s', 'Objective checked automatically after every game', 'A flash calibration every {{calibration}} games: which fundamental cost you the most?', 'My plan: your current objectives, and the ones your coach assigns you'],
           alt: 'The active session, then My plan: the current priority, why, and what to keep an eye on.',
         },
         {
           label: 'Recording',
           title: 'Every game filmed, hands off.',
           text: 'Recording starts and stops with the game. Each video is linked to its match: champion, KDA, result, duration.',
-          points: ['Built-in capture, or your OBS, Outplayed and Insight folders', 'A library sorted by day, filters by queue, result and review', 'Clips: in and out points, mp4 export', 'Videos stay on your PC'],
+          points: ['Built-in capture, or your OBS, Outplayed and Insight folders', 'A library sorted by day, filters by queue, result and review', 'Clips: two Start and End handles on the player’s bar, from 1 s to 2 min', 'One-click sharing: YouTube (unlisted), Discord or a temporary link', 'Automatic YouTube upload, if you turn it on, with the visibility you choose'],
           alt: 'The Record Hub: today’s and yesterday’s games, then the clips.',
         },
         {
           label: 'Micro-review',
           title: 'Three moments. Forty-five seconds.',
-          text: 'A full review takes twenty minutes, and most players never do one. The micro-review only shows what weighed on the result, and ends before the next queue.',
-          points: ['At most {{maxMoments}} moments, at least {{spacing}} seconds apart', '{{patterns}} recognised patterns: gank on a timer, desynced recall, first shutdown given away…', 'Garbage time is set aside: it would teach you nothing', 'A “justified” way out: a decision you stand by is not a mistake', '{{codex}} Codex entries, each with a precise training goal'],
+          text: 'A full review takes twenty minutes, and most players never do one. The micro-review only shows what weighed on the result, in your VOD’s player, and ends before the next queue.',
+          points: ['At most {{maxMoments}} moments, at least {{spacing}} seconds apart', '{{patterns}} recognised patterns: gank on a timer, desynced recall, first shutdown given away…', 'A “justified” way out, and “Not a mistake” when the moment isn’t one', 'Your reasons, other mistakes in the same moment, and the ones the micro-review missed', '{{codex}} Codex entries, each with a precise training goal'],
           alt: 'A full micro-review: three moments, one answer each, and the Codex entry after every answer.',
         },
         {
           label: 'Post-game review',
           title: 'Your VOD, annotated to the second.',
-          text: 'For the games that deserve more than 45 seconds: the video, the match timeline and your notes in one place.',
-          points: ['Tag a mistake (X key) with its severity and a note', 'Bookmarks (B) and timestamped notes', 'Mistakes detected automatically on the match timeline', 'Laning phase 0–14 min compared with your lane opponent'],
+          text: 'For the games that deserve more than 45 seconds: one player, the match timeline and your notes in one place, with the micro-review beside it.',
+          points: ['Take a note (N) and tag a mistake (E) at the player’s second', 'Timeline events filtered in one click: kills, deaths, objectives, your notes', 'Detected mistakes: remove a wrong one or change its tag, with your “why”', 'Laning phase analysis: your first 14 minutes compared with your lane opponent'],
           alt: 'The post-game review: the session objective, the game’s statistics and the micro-review.',
         },
         {
@@ -243,7 +243,7 @@ export default {
           label: 'Mistake Lab',
           title: 'Your recurring mistakes, sorted by what they cost.',
           text: 'Every tagged mistake lands here, whether it comes from you, the micro-review or the automatic detector. Which one comes back the most, how much it costs you, when it happens.',
-          points: ['{{tags}} mistakes in the catalogue, in four families', '{{auto}} spotted without you, on the official match timeline', 'Occurrences, share of the total, win-rate gap', 'A mistake can become your objective; Ascend tells you whether it goes down'],
+          points: ['{{tags}} mistakes in the catalogue, in four families', '{{auto}} spotted without you, on the official match timeline', 'Your corrections (removed, retagged) make the Lab more accurate', 'Occurrences, share of the total, win-rate gap', 'A mistake can become your objective; Ascend tells you whether it goes down'],
           alt: 'The Mistake Lab: ranking by frequency, a mistake in detail and the team rule.',
         },
         {
@@ -263,6 +263,7 @@ export default {
         ['Assistant', 'Advice drawn from coaching rules written in advance, which you can read. No paid AI.'],
         ['Themes', 'Eight colour themes, your own, and your background image. Everything applies live.'],
         ['Web app', 'Reread your reviews and follow your plan from any device.'],
+        ['Your way', 'Rather trust your own judgement? “I review my games myself” and “I tag my mistakes myself” turn off the micro-review and the automatic detection.'],
       ],
     },
     privacy: {
@@ -271,7 +272,7 @@ export default {
       lead: 'Ascend runs on your PC first. The account is for backups, syncing your devices and working with your coach or team.',
       rows: [
         ['After the game, never during', 'Nothing shows up in game: no overlay, no information about opponents, no live advantage.'],
-        ['Videos never uploaded', 'Recordings stay on your disk. You choose what you publish.'],
+        ['Your videos, your call', 'Recordings stay on your disk. Nothing leaves without you: a clip you share, or the automatic YouTube upload if you turn it on.'],
         ['Local first', 'Sessions, reviews, notes and statistics live in the application, which works offline.'],
         ['No AI at the core', 'The micro-review applies rules written in advance, on your PC, offline.'],
       ],
@@ -331,7 +332,7 @@ export default {
           alt: 'A VOD review: timestamped comments, tags and actions to keep.',
         },
         {
-          label: 'Team statistics',
+          label: 'Collective stats',
           title: 'Scrims, flex and tournaments, in numbers.',
           text: 'Each player’s and the team’s stats, computed on flex games played together and on scrim and tournament exports.',
           points: ['One table per player: combat, economy, impact, vision', 'Import of Replaybook scrim and tournament exports', 'Synergy cards per player and per champion'],
@@ -359,6 +360,7 @@ export default {
       rows: [
         ['Team sessions', 'Play together with a shared objective, and an end-of-game review for the whole team.'],
         ['Trial players', 'An evaluation grid per criterion, the position’s starter as the reference, and a status: on trial, kept, declined.'],
+        ['LFT post', 'An image ready to post on Discord or X: rank, roles and mains of one player or several, with the champion and background of your choice.'],
         ['Tasks', 'To-dos you can assign to members of the group.'],
         ['Web app and Discord bot', 'The schedule, reviews and coaching from a phone, and reminders on your Discord server.'],
       ],

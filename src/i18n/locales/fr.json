@@ -1540,7 +1540,6 @@
       "buttonHint": "Créer un clip (C)",
       "escKey": "Échap",
       "errors": {
-        "tooLong": "Un clip dure 2 min au plus.",
         "badRange": "Le début du clip doit venir avant sa fin.",
         "saveFailed": "Le clip n’a pas pu être enregistré."
       },
@@ -1558,7 +1557,9 @@
         "YOUTUBE_UNAVAILABLE": "L’envoi sur YouTube n’est pas disponible dans cette version.",
         "generic": "L’envoi sur YouTube a échoué.",
         "UPLOAD_IN_PROGRESS": "Ce clip est déjà en cours d’envoi par l’upload automatique.",
-        "ENCRYPTION_UNAVAILABLE": "Le chiffrement de Windows n’est pas disponible : Ascend ne peut pas garder la connexion YouTube."
+        "ENCRYPTION_UNAVAILABLE": "Le chiffrement de Windows n’est pas disponible : Ascend ne peut pas garder la connexion YouTube.",
+        "YOUTUBE_CHANNEL_UNVERIFIED": "Vérifie ta chaîne YouTube par téléphone pour envoyer des vidéos de plus de 15 min.",
+        "YOUTUBE_REJECTED": "YouTube a refusé la vidéo (doublon, droits…) : elle ne sera pas renvoyée."
       },
       "discord": "Envoyer sur Discord",
       "discordSend": "Envoyer",
@@ -1578,7 +1579,8 @@
         "discord": "Discord",
         "tempLink": "Lien temporaire",
         "linkLabel": "Lien temporaire :",
-        "back": "Retour"
+        "back": "Retour",
+        "youtubeLong": "YouTube refuse plus de 15 min si ta chaîne n’est pas vérifiée par téléphone :"
       },
       "createLink": "Créer le lien"
     },
@@ -1599,7 +1601,9 @@
       "mistake": "Erreur",
       "mistakeHint": "Ajouter une erreur à l’heure courante (E)",
       "panel": "Afficher ou masquer le panneau",
-      "fullscreen": "Plein écran"
+      "fullscreen": "Plein écran",
+      "hideBar": "Masquer la barre (H)",
+      "showBar": "Afficher la barre (H)"
     },
     "note": {
       "button": "Prise de note",
@@ -2377,7 +2381,41 @@
   "mistakes": {
     "deleteFailed": "Impossible de supprimer l'erreur",
     "tagFailed": "Impossible d'enregistrer l'erreur",
-    "tagged": "Erreur enregistrée"
+    "tagged": "Erreur enregistrée",
+    "detected": {
+      "recallUnspent": "Recall avec {{gold}} gold non dépensés (~{{minutes}} min depuis le dernier achat)",
+      "diedUnspent": "Mort avec {{gold}} gold non dépensés",
+      "diedNearTurret": "Mort à {{distance}} unités d’une tourelle ennemie",
+      "greed": "Greed : {{reasons}}",
+      "diedBeforeObjective": "Mort {{seconds}} s avant que l’ennemi prenne {{objective}}",
+      "stillDead": "Encore mort ({{seconds}} s restantes) quand l’ennemi a pris {{objective}} à {{time}}",
+      "noWardBeforeTaken": "Aucune ward posée dans les 90 s avant {{objective}} ({{time}}, pris par ton équipe)",
+      "noWardBeforeLost": "Aucune ward posée dans les 90 s avant {{objective}} ({{time}}, perdu)",
+      "noWardFor": "Aucune ward posée pendant {{minutes}} min (depuis {{time}})",
+      "pitDeathNoAlly": "Mort au pit du haut sans allié proche",
+      "pitDeathOneAlly": "Mort au pit du haut avec un seul allié proche",
+      "caughtAlone": "Attrapé seul par {{count}} ennemis, aucun allié à portée",
+      "soloKilled": "Solo kill par ton adversaire de lane ({{champion}})",
+      "firstToDie": "Premier mort dans un fight à {{kills}} kills",
+      "roughLane": "Début de lane difficile contre {{champion}} : {{reasons}}",
+      "csBehind": "{{gap}} CS de retard sur {{champion}} à 10:00 ({{mine}} contre {{theirs}})",
+      "levelBehind": "Niveau {{mine}} contre niveau {{theirs}} pour {{champion}} à {{minute}}:00",
+      "levelRaceDeath": "Mort niveau {{mine}} face à {{champion}} niveau {{theirs}} pendant la course aux niveaux du début",
+      "part": {
+        "tookPlate": "plate prise juste avant",
+        "deepDeath": "mort à {{percent}} % dans le territoire ennemi",
+        "diedAt": "mort à {{time}}",
+        "csAt5": "{{value}} CS à 5:00",
+        "goldAt5": "{{value}} gold à 5:00"
+      },
+      "objective": {
+        "dragon": "le Dragon",
+        "elder": "le Dragon ancestral",
+        "baron": "le Baron",
+        "herald": "le Héraut de la Faille",
+        "grubs": "les Larves du Néant"
+      }
+    }
   },
   "cloud": {
     "title": "Compte Ascend",
@@ -2441,7 +2479,7 @@
       "done": "Sauvegarde envoyée dans le cloud",
       "last": "Dernière sauvegarde : {{date}}",
       "never": "Aucune sauvegarde cloud pour l'instant",
-      "auto": "automatique chaque jour, 10 dernières conservées",
+      "auto": "manuelle (bouton ci-dessus), 10 dernières conservées",
       "counts": "{{games}} games, {{reviews}} reviews",
       "restore": "Restaurer",
       "restoreTitle": "Restaurer cette sauvegarde ?",

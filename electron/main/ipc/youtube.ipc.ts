@@ -23,7 +23,7 @@ import { join } from 'path'
 import { createReadStream, statSync } from 'fs'
 import { z } from 'zod'
 import { validatedHandle, localPath, id } from './validate'
-import { youtubeErrorCode, clipVideoText, pkcePair, YOUTUBE_SCOPE } from '../youtubeCore'
+import { youtubeErrorCode, clipVideoText, pkcePair, uploadVerdict, YOUTUBE_SCOPE } from '../youtubeCore'
 import { recordingVideoText } from '../youtubeQueueCore'
 import { isInsideDirs } from '../clipCore'
 import { getPrisma } from '../database'
@@ -501,6 +501,9 @@ async function uploadVideo(sender: Electron.WebContents | null, opts: { filePath
 
       if (chunkRes.ok) {
         const data = await chunkRes.json() as any
+        // Refused at once (too long for an unverified channel, duplicate…): no link is kept, the caller gets the code.
+        const verdict = uploadVerdict(data)
+        if (verdict) throw new Error(verdict)
         const videoId: string = data.id
         const videoUrl = `https://www.youtube.com/watch?v=${videoId}`
         progress(100)

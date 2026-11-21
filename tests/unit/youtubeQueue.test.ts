@@ -2,6 +2,17 @@ import { describe, it, expect } from 'vitest'
 import { DEFAULT_AUTO_YOUTUBE, applyAutoUploadEvent, parseAutoYoutube, parseQueue, queueEntryFor, queueSummary } from '../../src/lib/youtubeQueue'
 
 // DECISIONS 21/11 « Upload YouTube automatique »; Back-end's youtube:auto-queue / youtube:auto-upload.
+describe('YouTube error codes', () => {
+  it('reads the code inside a message, the new beta.23 ones included, else generic', async () => {
+    const { youtubeErrorCode } = await import('../../src/lib/youtubeQueue')
+    expect(youtubeErrorCode('Error invoking remote method: Error: YOUTUBE_CHANNEL_UNVERIFIED')).toBe('YOUTUBE_CHANNEL_UNVERIFIED')
+    expect(youtubeErrorCode('YOUTUBE_REJECTED')).toBe('YOUTUBE_REJECTED')
+    expect(youtubeErrorCode('QUOTA_EXCEEDED')).toBe('QUOTA_EXCEEDED')
+    expect(youtubeErrorCode('boom')).toBe('generic')
+    expect(youtubeErrorCode(null)).toBe('generic')
+  })
+})
+
 describe('automatic YouTube upload', () => {
   it('reads the setting, off and unlisted by default', () => {
     expect(parseAutoYoutube(null)).toEqual(DEFAULT_AUTO_YOUTUBE)

@@ -11,10 +11,10 @@ import type { ClipRange } from '@/lib/clipEdit'
 import type { DiscordWebhook } from '@/lib/ipc'
 import { YoutubeTermsNote, markYoutubeTermsSeen } from './YoutubeTermsNote'
 import { DiscordLinkDialog } from './DiscordLinkDialog'
+import { YOUTUBE_VERIFY_URL, youtubeErrorCode } from '@/lib/youtubeQueue'
 
 /** Discord takes a file up to 8 MB; above, the clip goes through a temporary link. */
 const MAX_DISCORD_BYTES = 8 * 1024 * 1024
-const YT_ERRORS = ['NOT_AUTHENTICATED', 'AUTH_EXPIRED', 'QUOTA_EXCEEDED', 'YOUTUBE_UNAVAILABLE', 'UPLOAD_IN_PROGRESS', 'ENCRYPTION_UNAVAILABLE']
 
 type Step = 'choose' | 'share' | 'discord' | 'link'
 
@@ -47,6 +47,8 @@ export function ClipSaveDialog({ recordingId, range, onClose, onSaved }: {
   const [result, setResult] = useState<{ kind: 'youtube' | 'link'; url: string } | null>(null)
   // The YouTube link sent to a Discord webhook (the existing « Envoyer sur Discord »).
   const [ytDiscord, setYtDiscord] = useState(false)
+  // YouTube refused a long video from an unverified channel: the verify link stays under the choices.
+  const [ytUnverified, setYtUnverified] = useState(false)
 
   const clipTitle = () => title.trim() || t('recording.clip.defaultTitle')
 
@@ -73,7 +75,7 @@ export function ClipSaveDialog({ recordingId, range, onClose, onSaved }: {
       return created.id
     } catch (err) {
       const msg = (err as Error)?.message ?? ''
-      const key = msg.includes('CLIP_TOO_LONG') ? 'tooLong' : msg.includes('BAD_CLIP_RANGE') ? 'badRange' : 'saveFailed'
+      const key = msg.includes('BAD_CLIP_RANGE') ? 'badRange' : 'saveFailed'
       toast({ title: t(`recording.clip.errors.${key}`), variant: 'destructive' })
       return null
     }
@@ -91,9 +93,10 @@ export function ClipSaveDialog({ recordingId, range, onClose, onSaved }: {
     try { await fn() } catch (err) {
       const msg = (err as Error)?.message ?? ''
       if (kind === 'youtube') {
-        const code = YT_ERRORS.find((c) => msg.includes(c))
+        const code = youtubeErrorCode(msg)
         if (code === 'NOT_AUTHENTICATED' || code === 'AUTH_EXPIRED') setYtConnected(false)
-        toast({ title: t(`recording.clip.youtubeErrors.${code ?? 'generic'}`), variant: 'destructive' })
+        if (code === 'YOUTUBE_CHANNEL_UNVERIFIED') setYtUnverified(true)
+        toast({ title: t(`recording.clip.youtubeErrors.${code}`), variant: 'destructive' })
       } else toast({ title: t(kind === 'discord' ? 'recording.clip.discordFailed' : 'recording.clip.actionFailed'), variant: 'destructive' })
     } finally { setBusy(null); setYtProgress(null) }
   }
@@ -175,6 +178,13 @@ export function ClipSaveDialog({ recordingId, range, onClose, onSaved }: {
               {choice('link', Link2, t('recording.clip.dialog.tempLink'), () => setStep('link'))}
             </div>
             {ytAvailable && ytConnected && <YoutubeTermsNote />}
+            {/* No length limit since beta.23; YouTube takes more than 15 min only from a phone-verified channel. */}
+            {ytAvailable && (ytUnverified || range.endMs - range.startMs > 15 * 60_000) && (
+              <p className="text-[11px] text-hextech-text-dim" data-testid="youtube-15min">
+                {t('recording.clip.dialog.youtubeLong')}{' '}
+                <a href={YOUTUBE_VERIFY_URL} target="_blank" rel="noreferrer" className="text-hextech-gold hover:underline">youtube.com/verify</a>
+              </p>
+            )}
           </div>
         )}
 

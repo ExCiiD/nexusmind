@@ -29,6 +29,7 @@ import { EmptyState, SkeletonKpiTiles } from '@/components/ui/data-state'
 import { useCachedQuery } from '@/hooks/useCachedQuery'
 import { mistakeOccurrencesKey } from '@/lib/pageQueries'
 import { mistakePlayFromSec } from '@/lib/microReview/playbackWindow'
+import { localizeDetectedNote, type Translate } from '@/lib/detectedMistakeNote'
 import {
   rankMistakes,
   phaseBreakdown,
@@ -332,7 +333,7 @@ function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay
                   {championLabel(o.game.champion)}{o.game.opponentChampion ? ` vs ${championLabel(o.game.opponentChampion)}` : ''}
                   <span className={cn('ml-1.5 text-[10px] font-semibold', o.game.win ? 'text-hextech-green' : 'text-hextech-red')}>{o.game.win ? t('mistakeLab.win') : t('mistakeLab.loss')}</span>
                 </span>
-                <span className="block truncate text-[10px] text-hextech-text-dim">{new Date(o.game.gameEndAt).toLocaleDateString()}{o.note ? ` · ${o.note}` : ''}</span>
+                <span className="block truncate text-[10px] text-hextech-text-dim">{new Date(o.game.gameEndAt).toLocaleDateString()}{o.note ? ` · ${localizeDetectedNote(o.note, t as Translate)}` : ''}</span>
               </span>
               {o.recordingId ? (
                 <Button size="sm" variant="outline" className="h-8 shrink-0 gap-1 text-[11px]" onClick={() => onReplay(o)}>

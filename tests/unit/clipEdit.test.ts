@@ -11,12 +11,13 @@ describe('clip mode', () => {
     expect(defaultClipRange(D - 1_000, D)).toEqual({ startMs: D - 11_000, endMs: D })
   })
 
-  it('a dragged handle keeps the clip between 1 s and 2 min, inside the video, the other handle still', () => {
+  it('a dragged handle keeps the clip at least 1 s long, inside the video, the other handle still (no 2-min limit)', () => {
     const r = { startMs: 100_000, endMs: 130_000 }
     expect(dragClipHandle(r, 'start', 90_000, D)).toEqual({ startMs: 90_000, endMs: 130_000 })
     expect(dragClipHandle(r, 'start', 129_800, D)).toEqual({ startMs: 129_000, endMs: 130_000 })
-    expect(dragClipHandle(r, 'start', 0, D)).toEqual({ startMs: 10_000, endMs: 130_000 })
-    expect(dragClipHandle(r, 'end', 400_000, D)).toEqual({ startMs: 100_000, endMs: 220_000 })
+    expect(dragClipHandle(r, 'start', 0, D)).toEqual({ startMs: 0, endMs: 130_000 })
+    expect(dragClipHandle(r, 'end', 400_000, D)).toEqual({ startMs: 100_000, endMs: 400_000 })
+    expect(dragClipHandle({ startMs: 0, endMs: 30_000 }, 'end', D, D)).toEqual({ startMs: 0, endMs: D })
     expect(dragClipHandle(r, 'end', 50_000, D)).toEqual({ startMs: 100_000, endMs: 101_000 })
     expect(dragClipHandle({ startMs: D - 20_000, endMs: D - 10_000 }, 'end', D + 5_000, D)).toEqual({ startMs: D - 20_000, endMs: D })
     expect(dragClipHandle({ startMs: 5_000, endMs: 30_000 }, 'start', -3_000, D)).toEqual({ startMs: 0, endMs: 30_000 })
@@ -39,8 +40,9 @@ describe('clip mode', () => {
     expect(clipFromGameWindow({ startSec: 925, endSec: 1030 }, 15, D)).toEqual({ startMs: 910_000, endMs: 1_015_000 })
   })
 
-  it('never longer than 2 min (Back-end refuses it)', () => {
-    expect(clipFromGameWindow({ startSec: 100, endSec: 400 }, 0, D)).toEqual({ startMs: 100_000, endMs: 220_000 })
+  it('as long as the window asks (beta.23: no 2-minute limit), inside the video', () => {
+    expect(clipFromGameWindow({ startSec: 100, endSec: 400 }, 0, D)).toEqual({ startMs: 100_000, endMs: 400_000 })
+    expect(clipFromGameWindow({ startSec: 0, endSec: 4000 }, 0, D)).toEqual({ startMs: 0, endMs: D })
   })
 
   it('the preview loops on the selection', () => {

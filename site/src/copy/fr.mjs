@@ -127,12 +127,12 @@ export default {
     solo: {
       path: '/entrainement-solo',
       title: 'Entraînement solo — Ascend, pour League of Legends',
-      description: "Sessions à objectif, enregistrement automatique, micro-revue en 45 secondes, revue de VOD, statistiques, Labo d'erreurs et empreinte des fondamentaux : tout ce qu'Ascend fait entre deux games.",
+      description: "Sessions à objectif, enregistrement automatique, clips et partage, micro-revue en 45 secondes dans le lecteur de ta VOD, statistiques, Labo d'erreurs et empreinte des fondamentaux : tout ce qu'Ascend fait entre deux games.",
     },
     team: {
       path: '/environnement-equipe',
       title: "Environnement d'équipe — Ascend, pour League of Legends",
-      description: "Dashboard d'équipe, planning, reviews VOD, statistiques de scrims et de tournois, suivi des joueurs, draft et scouting : le staff et les joueurs sur le même outil.",
+      description: "Dashboard d'équipe, planning, reviews VOD, stats collectives de scrims et de tournois, suivi des joueurs, draft, scouting et annonces LFT : le staff et les joueurs sur le même outil.",
     },
   },
   access: {
@@ -154,11 +154,11 @@ export default {
       title: 'Tout ce qui se passe entre deux games.',
       lead: "Ascend tourne en arrière-plan pendant que tu joues. Entre deux parties, il te donne de quoi comprendre ce qui s'est passé, et quoi travailler à la suivante.",
       items: [
-        ['Enregistrement', "Tes parties s'enregistrent toutes seules.", 'Lance ta game : Ascend capture la vidéo et la chronologie du match. Rien à régler avant chaque partie.', "Le Record Hub d'Ascend : les parties enregistrées, avec champion, KDA, durée et review, et les clips."],
-        ['Micro-revue', 'Trois moments, quarante-cinq secondes.', "Juste après la game, Ascend te montre les trois moments qui t'ont coûté le plus cher. Un clic par moment pour dire ce qui s'est passé.", "Une micro-revue : trois moments sur la carte, une réponse par moment, puis la fiche du Codex qui correspond."],
-        ['Revue post-partie', 'Ta VOD, annotée.', 'Revois les passages clés, tag tes erreurs sur la timeline et note ce que tu retiens pour la prochaine game.', "La revue post-partie : le résultat, les statistiques de la partie et la micro-revue."],
+        ['Enregistrement', "Tes parties s'enregistrent toutes seules.", "Lance ta game : Ascend capture la vidéo et la chronologie du match. Découpe un clip en deux poignées, puis garde-le, ou partage-le sur YouTube, Discord ou par lien. Si tu l'actives, chaque partie part toute seule sur ta chaîne YouTube.", "Le Record Hub d'Ascend : les parties enregistrées, avec champion, KDA, durée et review, et les clips."],
+        ['Micro-revue', 'Trois moments, quarante-cinq secondes.', "Juste après la game, Ascend te montre les trois moments qui t'ont coûté le plus cher, dans le lecteur de ta VOD. Un clic par moment pour dire ce qui s'est passé, ou « Pas une erreur » s'il se trompe.", "Une micro-revue : trois moments sur la carte, une réponse par moment, puis la fiche du Codex qui correspond."],
+        ['Revue post-partie', 'Ta VOD, annotée.', 'Un seul lecteur, avec la micro-revue à côté : filtre les événements de la timeline, prends une note (N), tague une erreur (E) à la seconde près, et corrige les erreurs détectées par Ascend.', "La revue post-partie : le résultat, les statistiques de la partie et la micro-revue."],
         ['Statistiques', 'Ce qui te fait gagner, en chiffres.', 'CS, vision, trades, objectifs : tes stats comparées à tes propres moyennes, pour voir ce qui change vraiment quand tu gagnes.', 'Les statistiques détaillées : à retenir, pool de champions, victoires et défaites comparées.'],
-        ["Labo d'erreurs", 'Tes erreurs récurrentes, triées.', "Chaque erreur taguée rejoint le labo. Tu vois lesquelles reviennent, ce qu'elles coûtent, et laquelle attaquer en premier.", "Le Labo d'erreurs : les erreurs classées par fréquence, avec ce qu'elles coûtent et la règle de l'équipe qui s'y applique."],
+        ["Labo d'erreurs", 'Tes erreurs récurrentes, triées.', "Chaque erreur taguée rejoint le labo, et tu corriges celles qu'Ascend a mal vues. Tu vois lesquelles reviennent, ce qu'elles coûtent, et laquelle attaquer en premier.", "Le Labo d'erreurs : les erreurs classées par fréquence, avec ce qu'elles coûtent et la règle de l'équipe qui s'y applique."],
       ],
       more: 'Tout le détail dans Entraînement solo',
     },
@@ -169,10 +169,10 @@ export default {
       items: [
         ['Planning', "La semaine de l'équipe, sans tableur.", 'Scrims, reviews et 1:1 dans un même calendrier, avec les créneaux où tous les titulaires sont libres.', "Le planning d'équipe : la semaine en grille, les créneaux communs et le détail d'un scrim."],
         ["Dashboard d'équipe", "Toute l'équipe sur une page.", 'Forme, volume de jeu et alertes de chaque joueur, avec ce qui mérite une discussion cette semaine.', 'Le tableau de bord du staff : forme, humeur, indice de performance, reviews et erreur dominante de chaque joueur.'],
-        ["Statistiques d'équipe", 'Scrims et tournois, en chiffres.', "Les stats de chaque joueur et de l'équipe sur les scrims, la flex et les tournois, côte à côte.", "La fiche de statistiques d'un joueur : moyennes, part dans l'équipe et champions."],
+        ['Stats collectives', 'Scrims et tournois, en chiffres.', "Les stats de chaque joueur et de l'équipe sur les scrims, la flex et les tournois, côte à côte.", "La fiche de statistiques d'un joueur : moyennes, part dans l'équipe et champions."],
         ["Reviews d'équipe", 'Des VOD reviews qui laissent une trace.', "Commentaires horodatés, tags, actions à garder : la review continue d'exister après la réunion.", "Une review VOD d'équipe : les commentaires horodatés, un nouveau commentaire et les actions à retenir."],
       ],
-      also: "Aussi : draft, champion pools, scouting, rapport hebdo, suivi des joueurs à l'essai.",
+      also: "Aussi : simulateur de draft, champion pools, scouting, annonces LFT, rapport hebdo, suivi des joueurs à l'essai.",
       more: "Tout le détail dans Environnement d'équipe",
     },
   },
@@ -196,7 +196,7 @@ export default {
       title: 'Une partie, quatre gestes.',
       lead: "Ce qui fait progresser se passe entre deux games, là où on abandonne d'habitude. Ascend réduit chaque geste à quelques secondes.",
       steps: [
-        ['Choisir un objectif', "Ascend propose 1 à 3 fondamentaux parmi {{fundamentals}}, d'après tes dernières parties et tes erreurs. Tu acceptes, ou tu choisis les tiens.", '30 s'],
+        ['Choisir un objectif', "Ascend propose 1 à 3 fondamentaux parmi {{fundamentals}}, d'après tes dernières parties et tes erreurs. Tu acceptes, tu choisis les tiens, ou tu écris simplement ton objectif.", '30 s'],
         ['Jouer', "La partie est détectée et enregistrée. Rien ne s'affiche pendant que tu joues.", 'la partie'],
         ['Se revoir', 'Au plus {{maxMoments}} moments critiques, la VOD calée 12 secondes avant chacun. Un clic par moment.', '45 s'],
         ['Mesurer', "L'objectif est vérifié à ta place, et tes {{recent}} dernières parties sont comparées à tes {{snapshot}} dernières.", '10 s'],
@@ -210,29 +210,29 @@ export default {
         {
           label: 'Sessions à objectif',
           title: 'Joue avec un objectif, pas en autopilot.',
-          text: 'Avant de lancer la file, choisis 1 à 3 fondamentaux à travailler. Ascend les suit partie après partie et rend un verdict en fin de session.',
-          points: ["{{fundamentals}} fondamentaux, proposés d'après tes dernières parties et tes erreurs", 'Objectif vérifié automatiquement à chaque partie', "Calibration flash toutes les {{calibration}} parties : quel fondamental t'a le plus coûté ?", "Mon plan : tes objectifs en cours, et ceux que ton coach t'assigne"],
+          text: 'Avant de lancer la file, choisis 1 à 3 fondamentaux à travailler, ou écris ton propre objectif. Ascend les suit partie après partie et rend un verdict en fin de session.',
+          points: ["{{fundamentals}} fondamentaux, proposés d'après tes dernières parties et tes erreurs", "Une session sans fondamental : seulement tes objectifs écrits, ou ceux de ton coach", 'Objectif vérifié automatiquement à chaque partie', "Calibration flash toutes les {{calibration}} parties : quel fondamental t'a le plus coûté ?", "Mon plan : tes objectifs en cours, et ceux que ton coach t'assigne"],
           alt: 'La session active, puis Mon plan : la priorité du moment, pourquoi, et ce qui est à surveiller.',
         },
         {
           label: 'Enregistrement',
           title: 'Chaque partie filmée, sans rien toucher.',
           text: "L'enregistrement démarre et s'arrête avec la partie. Chaque vidéo est reliée à son match : champion, KDA, résultat, durée.",
-          points: ['Capture intégrée, ou tes dossiers OBS, Outplayed et Insight', 'Bibliothèque triée par jour, filtres par file, résultat et review', "Clips : points d'entrée et de sortie, export en mp4", 'Les vidéos restent sur ton PC'],
+          points: ['Capture intégrée, ou tes dossiers OBS, Outplayed et Insight', 'Bibliothèque triée par jour, filtres par file, résultat et review', 'Clips : deux poignées Début et Fin sur la barre du lecteur, de 1 s à 2 min', 'Partage en un clic : YouTube (non répertorié), Discord ou lien temporaire', "Upload YouTube automatique, si tu l'actives, avec la visibilité de ton choix"],
           alt: 'Le Record Hub : les parties du jour et de la veille, puis les clips.',
         },
         {
           label: 'Micro-revue',
           title: 'Trois moments. Quarante-cinq secondes.',
-          text: "Une review complète prend vingt minutes, et la plupart des joueurs n'en font aucune. La micro-revue ne montre que ce qui a pesé sur le résultat, et se termine avant la file suivante.",
-          points: ["Au plus {{maxMoments}} moments, espacés d'au moins {{spacing}} secondes", '{{patterns}} schémas reconnus : gank sur timer, recall désynchronisé, shutdown donné en premier…', "Le garbage time est écarté : il ne t'apprendrait rien", "Une sortie « justifié » : une décision assumée n'est pas une erreur", "{{codex}} fiches au Codex, chacune avec un objectif d'entraînement précis"],
+          text: "Une review complète prend vingt minutes, et la plupart des joueurs n'en font aucune. La micro-revue ne montre que ce qui a pesé sur le résultat, dans le lecteur de ta VOD, et se termine avant la file suivante.",
+          points: ["Au plus {{maxMoments}} moments, espacés d'au moins {{spacing}} secondes", '{{patterns}} schémas reconnus : gank sur timer, recall désynchronisé, shutdown donné en premier…', "Une sortie « justifié », et « Pas une erreur » quand le moment n'en est pas une", "Tes raisons, d'autres erreurs du même moment, et les erreurs que la micro-revue n'a pas vues", "{{codex}} fiches au Codex, chacune avec un objectif d'entraînement précis"],
           alt: 'Une micro-revue complète : trois moments, une réponse chacun, et la fiche du Codex après chaque réponse.',
         },
         {
           label: 'Revue post-partie',
           title: 'Ta VOD, annotée à la seconde.',
-          text: 'Pour les parties qui méritent plus de 45 secondes : la vidéo, la timeline du match et tes annotations au même endroit.',
-          points: ['Tag une erreur (touche X) avec sa gravité et une note', 'Marque-pages (B) et notes horodatées', 'Erreurs détectées automatiquement sur la chronologie du match', 'Laning phase 0–14 min comparée à ton vis-à-vis'],
+          text: 'Pour les parties qui méritent plus de 45 secondes : un seul lecteur, la timeline du match et tes notes au même endroit, avec la micro-revue à côté.',
+          points: ['Prise de note (N) et erreur taguée (E) à la seconde du lecteur', 'Les événements de la timeline filtrés en un clic : kills, morts, objectifs, tes notes', "Erreurs détectées : retire une erreur fausse ou change son tag, avec ton « pourquoi »", 'Laning phase analysis : tes 14 premières minutes comparées à ton vis-à-vis'],
           alt: 'La revue post-partie : objectif de la session, statistiques de la partie et micro-revue.',
         },
         {
@@ -246,7 +246,7 @@ export default {
           label: "Labo d'erreurs",
           title: "Tes erreurs récurrentes, triées par ce qu'elles coûtent.",
           text: "Chaque erreur taguée arrive ici, qu'elle vienne de toi, de la micro-revue ou du détecteur automatique. Laquelle revient le plus, combien elle te coûte, à quel moment elle arrive.",
-          points: ['{{tags}} erreurs au catalogue, en quatre familles', '{{auto}} repérées sans toi, sur la chronologie officielle du match', 'Occurrences, part du total, écart de taux de victoire', 'Une erreur peut devenir ton objectif ; Ascend te dit si elle recule'],
+          points: ['{{tags}} erreurs au catalogue, en quatre familles', '{{auto}} repérées sans toi, sur la chronologie officielle du match', 'Tes corrections (retirée, retaguée) rendent le Labo plus juste', 'Occurrences, part du total, écart de taux de victoire', 'Une erreur peut devenir ton objectif ; Ascend te dit si elle recule'],
           alt: "Le Labo d'erreurs : classement par fréquence, détail d'une erreur et règle de l'équipe.",
         },
         {
@@ -266,6 +266,7 @@ export default {
         ['Assistant', 'Des conseils tirés de règles de coaching écrites à l’avance, que tu peux lire. Pas d’IA payante.'],
         ['Thèmes', 'Huit thèmes de couleurs, le tien, et ton image de fond. Tout s’applique en direct.'],
         ['App web', 'Relis tes reviews et suis ton plan depuis n’importe quel appareil.'],
+        ['À ta façon', 'Tu préfères ton propre jugement ? « Je fais mes reviews moi-même » et « Je tague mes erreurs moi-même » coupent la micro-revue et la détection automatique.'],
       ],
     },
     privacy: {
@@ -274,7 +275,7 @@ export default {
       lead: "Ascend fonctionne d'abord sur ton PC. Le compte sert à sauvegarder, à synchroniser tes appareils et à travailler avec ton coach ou ton équipe.",
       rows: [
         ['Après la partie, jamais pendant', "Rien ne s'affiche en jeu : pas d'overlay, aucune information sur les adversaires, aucun avantage en direct."],
-        ['Vidéos jamais envoyées', 'Les enregistrements restent sur ton disque. Tu choisis ce que tu publies.'],
+        ['Tes vidéos, ton choix', "Les enregistrements restent sur ton disque. Rien ne part sans toi : un clip que tu partages, ou l'upload YouTube automatique si tu l'actives."],
         ["Local d'abord", "Sessions, reviews, notes et statistiques vivent dans l'application, utilisable hors ligne."],
         ['Aucune IA dans le cœur', 'La micro-revue applique des règles écrites à l’avance, sur ton PC, sans connexion.'],
       ],
@@ -334,7 +335,7 @@ export default {
           alt: 'Une review VOD : commentaires horodatés, tags et actions à retenir.',
         },
         {
-          label: "Statistiques d'équipe",
+          label: 'Stats collectives',
           title: 'Scrims, flex et tournois, en chiffres.',
           text: "Les stats de chaque joueur et de l'équipe, calculées sur les flex joués ensemble et sur les exports de scrims et de tournois.",
           points: ['Un tableau par joueur : combat, économie, impact, vision', 'Import des exports Replaybook de scrims et de tournois', 'Cartes de synergie par joueur et par champion'],
@@ -362,6 +363,7 @@ export default {
       rows: [
         ["Sessions d'équipe", "Jouez ensemble avec un objectif commun, et une review de fin de partie pour toute l'équipe."],
         ["Joueurs à l'essai", "Une grille d'évaluation par critère, le titulaire du poste comme référence, et un statut : à l'essai, retenu, refusé."],
+        ['Annonce LFT', "Une image prête à poster sur Discord ou X : rang, rôles et mains d'un joueur ou de plusieurs, avec le champion et le fond de ton choix."],
         ['Tâches', 'Des to-do assignables aux membres du groupe.'],
         ['App web et bot Discord', 'Le planning, les reviews et le coaching depuis un téléphone, et les rappels sur votre serveur Discord.'],
       ],

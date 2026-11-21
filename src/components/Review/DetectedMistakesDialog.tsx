@@ -10,6 +10,7 @@ import { invalidateCached } from '@/lib/queryCache'
 import { tagLabel } from '@/components/MicroReview/text'
 import type { DetectedMistake, MistakeCorrectionReason, MistakeTag } from '@/lib/ipc'
 import { TagAutocomplete } from '@/components/MicroReview/TagAutocomplete'
+import { localizeDetectedNote, type Translate } from '@/lib/detectedMistakeNote'
 
 const REASONS: MistakeCorrectionReason[] = ['not_a_mistake', 'wrong_tag', 'wrong_time', 'team_context', 'other']
 const NOTE_MAX = 300
@@ -139,7 +140,7 @@ export function DetectedMistakesButton({ gameId }: { gameId: string }) {
                           <span className="block font-mono text-[10px] text-hextech-text-dim">{t('review.detected.removedAs', { reason: d.reason ? t(`review.detected.reasons.${d.reason}`) : t('review.detected.noReason') })}</span>
                         ) : d?.kind === 'retagged' ? (
                           <span className="block font-mono text-[10px] text-hextech-text-dim">{t('review.detected.retaggedFrom', { tag: tagLabel(t, m.tagSlug, m.tagLabel) })}</span>
-                        ) : m.note ? <span className="block font-mono text-[10px] text-hextech-text-dim">{m.note}</span> : null}
+                        ) : m.note ? <span className="block font-mono text-[10px] text-hextech-text-dim">{localizeDetectedNote(m.note, t as Translate)}</span> : null}
                       </span>
                       {d && window.api.undoMistakeCorrection && !noUndo.has(m.id) && (
                         <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs text-hextech-gold opacity-100" disabled={undoing === m.id}

@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import { deriveOffsetSec, gameTimeToVideoTime } from '@/lib/eventSync'
 import { useTranslation } from 'react-i18next'
 import i18n from '@/i18n/config'
-import { Bookmark, Play, Pause, Volume2, VolumeX, Maximize2, Minimize2, Check, X, RotateCcw, RotateCw, PanelRight, PanelLeft, PanelRightClose, ZoomIn, ZoomOut, StepBack, StepForward, Trash2, Loader2, Sword, Skull, Handshake, Flame, Crown, Eye, Bug, RadioTower, ShieldOff, Shield, Target, AlertTriangle, MessageSquare, EyeOff, Scissors, ArrowLeftRight, PanelLeftDashed, PanelRightDashed, Crosshair } from 'lucide-react'
+import { ChevronDown, ChevronUp, Bookmark, Play, Pause, Volume2, VolumeX, Maximize2, Minimize2, Check, X, RotateCcw, RotateCw, PanelRight, PanelLeft, PanelRightClose, ZoomIn, ZoomOut, StepBack, StepForward, Trash2, Loader2, Sword, Skull, Handshake, Flame, Crown, Eye, Bug, RadioTower, ShieldOff, Shield, Target, AlertTriangle, MessageSquare, EyeOff, Scissors, ArrowLeftRight, PanelLeftDashed, PanelRightDashed, Crosshair } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
@@ -16,6 +16,7 @@ import { NotePopover } from './NotePopover'
 import { TagAutocomplete } from '@/components/MicroReview/TagAutocomplete'
 import { PlayerFilterChips, type EventFilterMode, type FilterChip } from './PlayerFilterChips'
 import { ClipSaveDialog } from './ClipSaveDialog'
+import { localizeDetectedNote, type Translate } from '@/lib/detectedMistakeNote'
 
 // Visual styling per event category. Saturated colors for the most
 // important events (player K/D/A, objectives), muted for buildings so
@@ -299,6 +300,25 @@ export function VideoReviewPlayer({
   // True while the mouse has been idle long enough in fullscreen — used to
   // auto-hide the floating controls overlay (YouTube-style).
   const [controlsHidden, setControlsHidden] = useState(false)
+  // Single player (DECISIONS 21/11 « Plein écran du lecteur »): the bar never hides by itself; the player hides it
+  // (arrow button, H) and the video then takes the full height. Kept for the session.
+  const [barHidden, setBarHiddenState] = useState<boolean>(() => { try { return sessionStorage.getItem('nm.player.barHidden') === '1' } catch { return false } })
+  const setBarHidden = useCallback((next: boolean | ((v: boolean) => boolean)) => {
+    setBarHiddenState((cur) => {
+      const v = typeof next === 'function' ? next(cur) : next
+      try { sessionStorage.setItem('nm.player.barHidden', v ? '1' : '0') } catch { /* per-session convenience */ }
+      return v
+    })
+  }, [])
+  // Bar hidden: an arrow shows while the mouse moves over the video, and fades after 2.5 s of stillness.
+  const [barArrow, setBarArrow] = useState(false)
+  const barArrowTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const revealBarArrow = useCallback(() => {
+    setBarArrow(true)
+    if (barArrowTimer.current) clearTimeout(barArrowTimer.current)
+    barArrowTimer.current = setTimeout(() => setBarArrow(false), 2500)
+  }, [])
+  useEffect(() => () => { if (barArrowTimer.current) clearTimeout(barArrowTimer.current) }, [])
   const controlsHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Inline note edit state — works in both fullscreen sidebar and inline notes list
   const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null)
@@ -877,9 +897,9 @@ export function VideoReviewPlayer({
   const showControlsTemporarily = useCallback(() => {
     setControlsHidden(false)
     if (controlsHideTimerRef.current) clearTimeout(controlsHideTimerRef.current)
-    if (!isFullscreen) return
+    if (!isFullscreen || layers) return
     controlsHideTimerRef.current = setTimeout(() => setControlsHidden(true), 2500)
-  }, [isFullscreen])
+  }, [isFullscreen, layers])
 
   useEffect(() => {
     if (!isFullscreen) {
@@ -956,6 +976,7 @@ export function VideoReviewPlayer({
           if (layers && onAddMistake && gameMeta) { e.preventDefault(); openMistakeDialog() }
           break
         case 'h':
+          if (layers) { e.preventDefault(); setBarHidden((b) => !b); break }
           // Shortcut to directly TOGGLE the sidebar visibility (hide ↔ show on right).
           // Different from N (cycle right→left→hidden→right) — H is the one-shot
           // "give me back screen space NOW" key. Works in both windowed and
@@ -1363,7 +1384,7 @@ export function VideoReviewPlayer({
                 {m.tag.label}
                 {m.autoDetected && <span className="ml-1.5 text-[9px] text-white/40 uppercase tracking-wider">{i18n.t('record.player.auto')}</span>}
               </p>
-              {m.note && <p className="text-[10px] text-white/40 break-words">{m.note}</p>}
+              {m.note && <p className="text-[10px] text-white/40 break-words">{localizeDetectedNote(m.note, i18n.t as Translate)}</p>}
             </div>
             {onDeleteMistake && (
               <button
@@ -1536,7 +1557,7 @@ export function VideoReviewPlayer({
   return (
     <div
       ref={containerRef}
-      onMouseMove={isFullscreen ? showControlsTemporarily : undefined}
+      onMouseMove={layers ? (barHidden ? revealBarArrow : undefined) : isFullscreen ? showControlsTemporarily : undefined}
       // Section-bounded fullscreen: `fixed` with left:16rem (sidebar
       // width) and top:36px (the app's drag region). Keeps the nav
       // visible — replaces the native Fullscreen API which used to cover
@@ -1586,6 +1607,15 @@ export function VideoReviewPlayer({
           )}
           onClick={togglePlay}
         >
+          {v2 && barHidden && (
+            <button type="button" data-testid="bar-show" aria-label={i18n.t('recording.bar.showBar')} title={i18n.t('recording.bar.showBar')}
+              onClick={(e) => { e.stopPropagation(); setBarHidden(false) }}
+              onFocus={revealBarArrow}
+              className={cn('absolute bottom-3 left-1/2 z-20 flex h-9 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-black/70 text-white shadow transition-opacity duration-300 hover:bg-black/85 focus:opacity-100',
+                barArrow ? 'opacity-100' : 'pointer-events-none opacity-0')}>
+              <ChevronUp className="h-5 w-5" />
+            </button>
+          )}
           {/* eslint-disable-next-line jsx-a11y/media-has-caption -- game recordings have no caption track; the debrief transcription is shown separately. */}
           <video
             ref={videoRef}
@@ -1663,9 +1693,11 @@ export function VideoReviewPlayer({
             the video keeps the entire screen. Auto-hides after 2.5s of
             mouse idle (see useEffect above). */}
         <div
-          onMouseEnter={isFullscreen ? showControlsTemporarily : undefined}
+          onMouseEnter={isFullscreen && !v2 ? showControlsTemporarily : undefined}
           className={cn(
-            isFullscreen
+            v2
+              ? cn('shrink-0', barHidden && 'hidden')
+              : isFullscreen
               ? cn(
                   'absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/95 via-black/80 to-transparent pt-6 pointer-events-auto transition-opacity duration-200',
                   controlsHidden ? 'opacity-0 pointer-events-none' : 'opacity-100',
@@ -1744,6 +1776,9 @@ export function VideoReviewPlayer({
                 )}
                 <IconBtn label={i18n.t('recording.bar.fullscreen')} onClick={toggleFullscreen} pressed={isFullscreen}>
                   {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </IconBtn>
+                <IconBtn label={i18n.t('recording.bar.hideBar')} onClick={() => setBarHidden(true)}>
+                  <ChevronDown className="h-4 w-4" />
                 </IconBtn>
               </>
             )}
@@ -1964,7 +1999,7 @@ export function VideoReviewPlayer({
               return (
                 <button
                   key={`mistake-${m.id}`}
-                  title={`${fmt(m.videoTime)} — ${m.tag.label}${isAuto ? ` · ${i18n.t('record.player.auto').toUpperCase()}` : ''}${m.note ? `\n${m.note}` : ''}`}
+                  title={`${fmt(m.videoTime)} — ${m.tag.label}${isAuto ? ` · ${i18n.t('record.player.auto').toUpperCase()}` : ''}${m.note ? `\n${localizeDetectedNote(m.note, i18n.t as Translate)}` : ''}`}
                   onClick={(e) => { e.stopPropagation(); seekTo(m.playFrom) }}
                   style={{ left: `${pct}%`, top: 'calc(50% - 72px)', backgroundColor: bg, opacity: markerOpacity(m.videoTime, clipVideo) }}
                   className={cn(

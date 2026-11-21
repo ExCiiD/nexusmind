@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle, Check, Clock, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { YoutubeQueueItem } from '@/lib/youtubeQueue'
+import { YOUTUBE_VERIFY_URL, youtubeErrorCode, type YoutubeQueueItem } from '@/lib/youtubeQueue'
 
 /**
  * The state of one automatic YouTube upload (DECISIONS 21/11): in progress (with its %), waiting for the quota
@@ -23,7 +23,10 @@ export function YoutubeQueueStatus({ item, onRetry, compact = false }: { item: Y
       return (
         <span className={cn(base, 'text-hextech-red')} data-testid="yt-queue-status">
           <AlertTriangle className="h-3 w-3" />
-          {t(`recording.clip.youtubeErrors.${item.error && ['NOT_AUTHENTICATED', 'AUTH_EXPIRED', 'QUOTA_EXCEEDED', 'YOUTUBE_UNAVAILABLE', 'ENCRYPTION_UNAVAILABLE'].includes(item.error) ? item.error : 'generic'}`)}
+          {t(`recording.clip.youtubeErrors.${youtubeErrorCode(item.error)}`)}
+          {youtubeErrorCode(item.error) === 'YOUTUBE_CHANNEL_UNVERIFIED' && (
+            <a href={YOUTUBE_VERIFY_URL} target="_blank" rel="noreferrer" className="text-hextech-gold hover:underline" data-testid="yt-verify-link">youtube.com/verify</a>
+          )}
           {onRetry && <button type="button" onClick={onRetry} className="text-hextech-gold hover:underline">{t('settings.youtube.queue.retry')}</button>}
         </span>
       )

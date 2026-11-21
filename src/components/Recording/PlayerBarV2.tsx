@@ -128,8 +128,10 @@ export function PlayerBarV2(p: {
   return (
     <div className="relative bg-hextech-black p-3" data-testid="player-bar-v2">
       {p.overlay}
-      {/* Clip mode: the handles' zone covers the markers and the track, their lines go down to the bar. */}
-      <div className={cn('relative', p.clipEdit && 'pt-10')} data-testid={p.clipEdit ? 'clip-zone' : undefined}>
+      {/* Clip mode: the handles' zone covers the markers and the track, their lines go down to the bar. Three levels
+          (beta.23, « the flags overlap »): « Fin » on top, « Début » just under it, the duration below both. Each flag
+          opens outwards (Début left of its line, Fin right): nothing overlaps, even on a 1-second clip. */}
+      <div className={cn('relative', p.clipEdit && 'pt-[72px]')} data-testid={p.clipEdit ? 'clip-zone' : undefined}>
       {p.clipEdit && (() => {
         const c = p.clipEdit
         const secAt = (clientX: number) => {
@@ -140,8 +142,8 @@ export function PlayerBarV2(p: {
           <div key={which} className="absolute top-0 bottom-2 z-20 w-0" style={{ left: `${pct(sec)}%` }}>
             <button type="button" data-testid={`clip-handle-${which}`} aria-label={t(which === 'start' ? 'recording.clip.handleStart' : 'recording.clip.handleEnd')}
               title={`${t(which === 'start' ? 'recording.clip.handleStart' : 'recording.clip.handleEnd')} · ${fmt(sec)}`}
-              className={cn('absolute top-0 flex h-6 cursor-ew-resize touch-none items-center gap-1 whitespace-nowrap rounded px-1.5 text-[10px] font-bold uppercase tracking-wider shadow',
-                which === 'start' ? 'left-0 rounded-bl-none' : 'right-0 rounded-br-none',
+              className={cn('absolute flex h-6 cursor-ew-resize touch-none items-center gap-1 whitespace-nowrap rounded px-1.5 text-[10px] font-bold uppercase tracking-wider shadow',
+                which === 'start' ? 'top-[26px] right-0 rounded-br-none' : 'top-0 left-0 rounded-bl-none',
                 c.hold ? 'bg-hextech-gold/35 text-hextech-black/70' : 'bg-hextech-gold text-hextech-black')}
               onPointerDown={(e) => { e.stopPropagation(); e.currentTarget.setPointerCapture?.(e.pointerId); c.onGrab() }}
               onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture?.(e.pointerId)) c.onDrag(which, secAt(e.clientX)) }}
@@ -154,10 +156,11 @@ export function PlayerBarV2(p: {
         )
         return (
           <>
-            {/* The bracket between the handles, with the duration. */}
-            <div aria-hidden data-testid="clip-bracket" className={cn('pointer-events-none absolute top-7 z-10 h-2 border-x-2 border-t-2', c.hold ? 'border-hextech-gold/35' : 'border-hextech-gold')}
+            {/* The bracket between the handles, its duration in a bubble under the two flags. */}
+            <div aria-hidden data-testid="clip-bracket" className={cn('pointer-events-none absolute top-[58px] z-10 h-2 border-x-2 border-t-2', c.hold ? 'border-hextech-gold/35' : 'border-hextech-gold')}
               style={{ left: `${pct(c.start)}%`, width: `${Math.max(0, pct(c.end) - pct(c.start))}%` }}>
-              <span className={cn('absolute -top-2.5 left-1/2 -translate-x-1/2 rounded bg-hextech-black px-1 font-mono text-[10px] font-semibold', c.hold ? 'text-hextech-gold/50' : 'text-hextech-gold-bright')}>{c.label}</span>
+              <span data-testid="clip-duration" className={cn('absolute -top-[7px] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border bg-hextech-black px-1.5 font-mono text-[10px] font-semibold leading-[14px]',
+                c.hold ? 'border-hextech-gold/35 text-hextech-gold/50' : 'border-hextech-gold text-hextech-gold-bright')}>{c.label}</span>
             </div>
             <div aria-hidden className={cn('pointer-events-none absolute bottom-[3px] z-[5] h-[11px] rounded-sm', c.hold ? 'bg-hextech-gold/10' : 'bg-hextech-gold/25')}
               style={{ left: `${pct(c.start)}%`, width: `${Math.max(0, pct(c.end) - pct(c.start))}%` }} />

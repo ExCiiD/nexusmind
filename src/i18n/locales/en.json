@@ -1540,7 +1540,6 @@
       "buttonHint": "Create a clip (C)",
       "escKey": "Esc",
       "errors": {
-        "tooLong": "A clip lasts 2 min at most.",
         "badRange": "The clip’s start must come before its end.",
         "saveFailed": "The clip couldn’t be saved."
       },
@@ -1558,7 +1557,9 @@
         "YOUTUBE_UNAVAILABLE": "YouTube upload isn’t available in this version.",
         "generic": "The YouTube upload failed.",
         "UPLOAD_IN_PROGRESS": "This clip is already being uploaded by the automatic upload.",
-        "ENCRYPTION_UNAVAILABLE": "Windows encryption isn’t available: Ascend can’t keep the YouTube connection."
+        "ENCRYPTION_UNAVAILABLE": "Windows encryption isn’t available: Ascend can’t keep the YouTube connection.",
+        "YOUTUBE_CHANNEL_UNVERIFIED": "Verify your YouTube channel by phone to upload videos longer than 15 min.",
+        "YOUTUBE_REJECTED": "YouTube refused the video (duplicate, rights…): it won’t be sent again."
       },
       "discord": "Send to Discord",
       "discordSend": "Send",
@@ -1578,7 +1579,8 @@
         "discord": "Discord",
         "tempLink": "Temporary link",
         "linkLabel": "Temporary link:",
-        "back": "Back"
+        "back": "Back",
+        "youtubeLong": "YouTube refuses more than 15 min unless your channel is phone-verified:"
       },
       "createLink": "Create the link"
     },
@@ -1599,7 +1601,9 @@
       "mistake": "Mistake",
       "mistakeHint": "Add a mistake at the current time (E)",
       "panel": "Show or hide the panel",
-      "fullscreen": "Fullscreen"
+      "fullscreen": "Fullscreen",
+      "hideBar": "Hide the bar (H)",
+      "showBar": "Show the bar (H)"
     },
     "note": {
       "button": "Take a note",
@@ -2377,7 +2381,41 @@
   "mistakes": {
     "deleteFailed": "Failed to delete mistake",
     "tagFailed": "Failed to tag mistake",
-    "tagged": "Mistake tagged"
+    "tagged": "Mistake tagged",
+    "detected": {
+      "recallUnspent": "Recall with {{gold}}g unspent (~{{minutes}} min since the last purchase)",
+      "diedUnspent": "Died with {{gold}}g unspent",
+      "diedNearTurret": "Died {{distance}} units from an enemy turret",
+      "greed": "Greed: {{reasons}}",
+      "diedBeforeObjective": "Died {{seconds}} s before the enemy took {{objective}}",
+      "stillDead": "Still dead ({{seconds}} s left) when the enemy took {{objective}} at {{time}}",
+      "noWardBeforeTaken": "No ward placed in the 90 s before {{objective}} ({{time}}, taken by your team)",
+      "noWardBeforeLost": "No ward placed in the 90 s before {{objective}} ({{time}}, lost)",
+      "noWardFor": "No ward placed for {{minutes}} min (from {{time}})",
+      "pitDeathNoAlly": "Died at the top-side pit with no ally nearby",
+      "pitDeathOneAlly": "Died at the top-side pit with only one ally nearby",
+      "caughtAlone": "Caught alone by {{count}} enemies, no ally within reach",
+      "soloKilled": "Solo-killed by your lane opponent ({{champion}})",
+      "firstToDie": "First to die in a {{kills}}-kill fight",
+      "roughLane": "Rough lane opening vs {{champion}}: {{reasons}}",
+      "csBehind": "{{gap}} CS behind {{champion}} at 10:00 ({{mine}} vs {{theirs}})",
+      "levelBehind": "Level {{mine}} vs level {{theirs}} for {{champion}} at {{minute}}:00",
+      "levelRaceDeath": "Died at level {{mine}} to a level {{theirs}} {{champion}} during the early level race",
+      "part": {
+        "tookPlate": "took a plate just before",
+        "deepDeath": "died {{percent}}% into enemy territory",
+        "diedAt": "died at {{time}}",
+        "csAt5": "{{value}} CS at 5:00",
+        "goldAt5": "{{value}} gold at 5:00"
+      },
+      "objective": {
+        "dragon": "the Dragon",
+        "elder": "the Elder Dragon",
+        "baron": "Baron",
+        "herald": "the Rift Herald",
+        "grubs": "the Void Grubs"
+      }
+    }
   },
   "cloud": {
     "title": "Ascend account",
@@ -2441,7 +2479,7 @@
       "done": "Backup saved to the cloud",
       "last": "Last backup: {{date}}",
       "never": "No cloud backup yet",
-      "auto": "automatic every day, last 10 kept",
+      "auto": "manual (button above), last 10 kept",
       "counts": "{{games}} games, {{reviews}} reviews",
       "restore": "Restore",
       "restoreTitle": "Restore this backup?",

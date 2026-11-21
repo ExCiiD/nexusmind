@@ -67,7 +67,8 @@ export type FailureOutcome =
 /** What a failed upload does to its item (and to the queue). */
 export function onFailure(item: AutoUploadItem, code: string, now: number): FailureOutcome {
   const c = code as YoutubeErrorCode | 'NOT_FOUND' | 'ENCRYPTION_UNAVAILABLE'
-  if (c === 'FILE_NOT_FOUND' || c === 'FILE_NOT_ALLOWED' || c === 'NOT_FOUND') {
+  // Action needed from the player, never retried in a loop: the row shows the code (and « Réessayer » once fixed).
+  if (c === 'FILE_NOT_FOUND' || c === 'FILE_NOT_ALLOWED' || c === 'NOT_FOUND' || c === 'YOUTUBE_CHANNEL_UNVERIFIED' || c === 'YOUTUBE_REJECTED') {
     return { action: 'drop', item: { ...item, lastError: c } }
   }
   if (c === 'QUOTA_EXCEEDED') {

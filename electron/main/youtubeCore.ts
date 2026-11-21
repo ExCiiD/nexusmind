@@ -22,11 +22,20 @@ export type YoutubeErrorCode =
   | 'QUOTA_EXCEEDED' // YouTube's daily upload quota is used up: try again tomorrow
   | 'FILE_NOT_FOUND'
   | 'FILE_NOT_ALLOWED'
+  // 21/11/2026: over 15 min on a channel not verified by phone: the player verifies it (youtube.com/verify), then retries.
+  | 'YOUTUBE_CHANNEL_UNVERIFIED'
+  // YouTube refused the video for another reason (duplicate, rights…): not retried.
+  | 'YOUTUBE_REJECTED'
   | 'YOUTUBE_ERROR'
+
+/** Where the player verifies their channel to upload videos longer than 15 min. */
+export const YOUTUBE_VERIFY_URL = 'https://www.youtube.com/verify'
 
 /** The code for a failed YouTube API answer (status and body). */
 export function youtubeErrorCode(status: number, body: string): YoutubeErrorCode {
   const b = body.toLowerCase()
+  // A video too long for the channel (not verified by phone): YouTube's "length" rejection, or its long-upload wording.
+  if (/rejectionreason"?\s*:\s*"length"|longuploads|exceeds the maximum (duration|length)|video is too long|verify your account|account verification/.test(b)) return 'YOUTUBE_CHANNEL_UNVERIFIED'
   if (status === 401 || b.includes('invalid_grant') || b.includes('autherror') || b.includes('invalid credentials')) return 'AUTH_EXPIRED'
   if (status === 403 || status === 429) {
     if (/quotaexceeded|dailylimitexceeded|uploadlimitexceeded|ratelimitexceeded|userratelimitexceeded/.test(b)) return 'QUOTA_EXCEEDED'
@@ -50,4 +59,17 @@ export function clipVideoText(clip: { title: string | null; startMs: number; end
     'Uploaded by Ascend',
   ]
   return { title, description: lines.join('\n').slice(0, 5000) }
+}
+
+/**
+ * The verdict carried by the upload's final answer (videos.insert's resource): YouTube may refuse the video right away
+ * (status.uploadStatus 'rejected'). Length → YOUTUBE_CHANNEL_UNVERIFIED (more than 15 min on an unverified channel),
+ * anything else → YOUTUBE_REJECTED; null when accepted.
+ */
+export function uploadVerdict(resource: unknown): YoutubeErrorCode | null {
+  const status = (resource as { status?: { uploadStatus?: unknown; rejectionReason?: unknown; failureReason?: unknown } } | null)?.status
+  if (!status) return null
+  if (status.uploadStatus === 'rejected') return status.rejectionReason === 'length' ? 'YOUTUBE_CHANNEL_UNVERIFIED' : 'YOUTUBE_REJECTED'
+  if (status.uploadStatus === 'failed') return 'YOUTUBE_REJECTED'
+  return null
 }

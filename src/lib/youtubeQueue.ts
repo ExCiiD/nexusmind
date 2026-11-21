@@ -5,6 +5,16 @@
  * progress, waiting for the quota, error). Pure, tested.
  */
 
+/** The YouTube error codes the screens translate (recording.clip.youtubeErrors.*); any other one shows « generic ». */
+export const YOUTUBE_ERROR_CODES = ['NOT_AUTHENTICATED', 'AUTH_EXPIRED', 'QUOTA_EXCEEDED', 'YOUTUBE_UNAVAILABLE', 'UPLOAD_IN_PROGRESS', 'ENCRYPTION_UNAVAILABLE', 'YOUTUBE_CHANNEL_UNVERIFIED', 'YOUTUBE_REJECTED'] as const
+/** Beta.23: videos over 15 min need a phone-verified channel (YOUTUBE_CHANNEL_UNVERIFIED); Back-end's youtubeCore has the same. */
+export const YOUTUBE_VERIFY_URL = 'https://www.youtube.com/verify'
+
+/** The translated code of an error (its message may carry it among other words), else 'generic'. */
+export function youtubeErrorCode(message: string | null | undefined): string {
+  return YOUTUBE_ERROR_CODES.find((c) => (message ?? '').includes(c)) ?? 'generic'
+}
+
 export type YoutubeVisibility = 'public' | 'unlisted' | 'private'
 export const YOUTUBE_VISIBILITIES: YoutubeVisibility[] = ['public', 'unlisted', 'private']
 

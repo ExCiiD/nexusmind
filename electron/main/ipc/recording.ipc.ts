@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { validatedHandle, id, youtubeUrl as youtubeUrlSchema } from './validate'
 import { queueAutoUpload } from '../youtubeAutoUpload'
 import { assertClipRange, isInsideDirs, CLIP_NOTE_MAX, CLIP_TITLE_MAX } from '../clipCore'
+import { probeDuration } from '../recorder'
 import { getActiveRecorder } from '../recorderBackend'
 import { enterRecordingBackground, leaveRecordingBackground } from '../windowFocus'
 import {
@@ -1143,7 +1144,15 @@ export function registerRecordingHandlers() {
     linkedNoteText: z.string().max(CLIP_NOTE_MAX).nullish().transform((v) => v ?? undefined),
   }).strict()
 
-  // 21/11/2026 (mode clip): validated input, 2 minutes at most, written in the recordings folder.
+  /** The recording's length in ms (stored, else probed), or null when unknown. */
+  const recordingLengthMs = async (rec: { duration: number | null; filePath: string }): Promise<number | null> => {
+    if (typeof rec.duration === 'number' && rec.duration > 0) return rec.duration * 1000
+    const sec = await probeDuration(rec.filePath).catch(() => 0)
+    return sec > 0 ? Math.round(sec * 1000) : null
+  }
+
+  // 21/11/2026 (mode clip): validated input, written in the recordings folder. No length limit (user decision
+  // 21/11/2026): any [start, end] within the recording.
   validatedHandle('clip:create', z.tuple([clipInput]), async (_e, opts) => {
     assertClipRange(opts.startMs, opts.endMs)
     const prisma = getPrisma()
@@ -1151,6 +1160,7 @@ export function registerRecordingHandlers() {
     if (!rec?.filePath || !existsSync(rec.filePath)) {
       throw new Error('Source recording file not found')
     }
+    assertClipRange(opts.startMs, opts.endMs, await recordingLengthMs({ duration: rec.duration, filePath: rec.filePath }))
 
     const user = await prisma.user.findFirst({ where: { isActive: true } })
     const outputDir = recordingManager.getRecordingsDir(user?.recordingPath)
@@ -1216,6 +1226,7 @@ export function registerRecordingHandlers() {
     if (!rec?.filePath || !existsSync(rec.filePath)) {
       throw new Error('Source recording file not found')
     }
+    assertClipRange(opts.startMs, opts.endMs, await recordingLengthMs({ duration: rec.duration, filePath: rec.filePath }))
 
     const user = await prisma.user.findFirst({ where: { isActive: true } })
     const outputDir = recordingManager.getRecordingsDir(user?.recordingPath)

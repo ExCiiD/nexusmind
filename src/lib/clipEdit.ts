@@ -1,14 +1,13 @@
 /**
  * Clip mode of the single player (DECISIONS 21/11 « Mode clip, nouvelle interface »): the selection, in video
  * milliseconds, between two handles « Début » / « Fin » above the timeline. Default: current time − 10 s → + 20 s;
- * dragging a handle keeps the clip between 1 s and 2 min; I / O set a bound at the current time. Pure, tested.
+ * dragging a handle keeps the clip at least 1 s long, up to the whole game (beta.23: no 2-minute limit any more); I / O
+ * set a bound at the current time. Pure, tested.
  */
 
 export interface ClipRange { startMs: number; endMs: number }
 
 export const MIN_CLIP_MS = 1_000
-/** Back-end refuses longer clips (CLIP_TOO_LONG). */
-export const MAX_CLIP_MS = 120_000
 const DEFAULT_BEFORE_MS = 10_000
 const DEFAULT_AFTER_MS = 20_000
 
@@ -16,7 +15,6 @@ function clamp(r: ClipRange, durationMs: number): ClipRange {
   const max = durationMs > 0 ? durationMs : Number.POSITIVE_INFINITY
   let startMs = Math.max(0, Math.min(r.startMs, max))
   let endMs = Math.max(0, Math.min(r.endMs, max))
-  if (endMs - startMs > MAX_CLIP_MS) endMs = startMs + MAX_CLIP_MS
   if (endMs - startMs < MIN_CLIP_MS) {
     endMs = Math.min(max, startMs + MIN_CLIP_MS)
     startMs = Math.max(0, endMs - MIN_CLIP_MS)
@@ -30,17 +28,17 @@ export function defaultClipRange(currentMs: number, durationMs: number): ClipRan
 }
 
 /**
- * A handle dragged to `ms`: « Début » stays at least 1 s before the end and at most 2 min before it; « Fin » the same
+ * A handle dragged to `ms`: « Début » stays at least 1 s before the end; « Fin » at least 1 s after the start
  * after the start; both inside the video. The other handle never moves.
  */
 export function dragClipHandle(r: ClipRange, which: 'start' | 'end', ms: number, durationMs: number): ClipRange {
   const max = durationMs > 0 ? durationMs : Number.POSITIVE_INFINITY
   if (which === 'start') {
-    const lo = Math.max(0, r.endMs - MAX_CLIP_MS), hi = Math.max(0, r.endMs - MIN_CLIP_MS)
-    return { startMs: Math.round(Math.max(lo, Math.min(hi, ms))), endMs: r.endMs }
+    const hi = Math.max(0, r.endMs - MIN_CLIP_MS)
+    return { startMs: Math.round(Math.max(0, Math.min(hi, ms))), endMs: r.endMs }
   }
-  const lo = Math.min(max, r.startMs + MIN_CLIP_MS), hi = Math.min(max, r.startMs + MAX_CLIP_MS)
-  return { startMs: r.startMs, endMs: Math.round(Math.max(lo, Math.min(hi, ms))) }
+  const lo = Math.min(max, r.startMs + MIN_CLIP_MS)
+  return { startMs: r.startMs, endMs: Math.round(Math.max(lo, Math.min(max, ms))) }
 }
 
 /** The bracket's label: « 0:30 », « 1:05 ». */
