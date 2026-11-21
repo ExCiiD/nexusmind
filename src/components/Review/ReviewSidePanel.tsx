@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { formatMs } from '@/lib/mediaCore'
+import { fmtClock } from '@/lib/mistakeInsights'
 import { isMicroReviewBookmark } from '@/lib/playerLayers'
 import { MicroReviewPanel } from '@/components/MicroReview/MicroReviewPanel'
 import { useReviewPlayerStore, type ReviewPanelTab } from '@/store/useReviewPlayerStore'
@@ -17,6 +18,12 @@ export function ReviewSidePanel({ gameId, selfReview, onAnswered }: { gameId: st
   const bookmarks = useReviewPlayerStore((s) => s.bookmarks)
   const count = useReviewPlayerStore((s) => s.microReviewCount)
   const tab = useReviewPlayerStore((s) => s.panelTab)
+  const playerHeight = useReviewPlayerStore((s) => s.playerHeight)
+  // « AUTO » on: the detected mistakes come after the notes.
+  const autoOn = useReviewPlayerStore((s) => s.layers.mistakes)
+  const detected = useReviewPlayerStore((s) => s.detectedMistakes)
+  const requestSeek = useReviewPlayerStore((s) => s.requestSeek)
+  const shownDetected = autoOn ? detected : []
   const setTab = useReviewPlayerStore((s) => s.setPanelTab)
   const requestVideoSeek = useReviewPlayerStore((s) => s.requestVideoSeek)
   const reloadBookmarks = useReviewPlayerStore((s) => s.reloadBookmarks)
@@ -40,7 +47,10 @@ export function ReviewSidePanel({ gameId, selfReview, onAnswered }: { gameId: st
 
   return (
     <aside data-testid="review-side-panel"
+      // Beta.20: the same height as the player beside it (lg, side by side); stacked under it, at most 80 % of the screen.
+      style={playerHeight ? ({ '--player-h': `${playerHeight}px` } as React.CSSProperties) : undefined}
       className={cn('flex max-h-[80vh] min-h-0 flex-col gap-3 overflow-y-auto rounded-lg border bg-hextech-dark p-4',
+        playerHeight && 'lg:h-[var(--player-h)] lg:max-h-none',
         current === 'microReview' ? 'border-hextech-gold' : 'border-hextech-border-dim')}>
       {!selfReview && (
         <div role="tablist" aria-label={t('review.panel.label')} className="flex w-full max-w-[328px] gap-1 rounded-lg border border-hextech-border-dim bg-hextech-black p-1">
@@ -54,7 +64,7 @@ export function ReviewSidePanel({ gameId, selfReview, onAnswered }: { gameId: st
           <MicroReviewPanel gameId={gameId} sharedPlayer onAnswered={() => { reloadBookmarks(); onAnswered() }} onFinish={() => setTab('notes')} />
         </div>
       )}
-      {current === 'notes' && (
+      {current === 'notes' && shownDetected.length > 0 && notes.length === 0 ? null : current === 'notes' && (
         notes.length === 0 ? (
           <p className="text-sm text-hextech-text-dim" data-testid="marked-notes-empty">{t('review.panel.notesEmpty')}</p>
         ) : (
@@ -79,6 +89,25 @@ export function ReviewSidePanel({ gameId, selfReview, onAnswered }: { gameId: st
             })}
           </ul>
         )
+      )}
+      {current === 'notes' && shownDetected.length > 0 && (
+        <div className="space-y-1" data-testid="panel-detected">
+          <p className="px-2 font-mono text-[10px] uppercase tracking-wider text-hextech-text-dim">{t('review.panel.detectedTitle')}</p>
+          <ul className="space-y-1">
+            {shownDetected.map((m) => (
+              <li key={m.id}>
+                <button type="button" onClick={() => (m.videoTimeMs != null ? requestVideoSeek(m.videoTimeMs) : requestSeek(m.gameTimeSec))}
+                  className="w-full rounded-md px-2 py-2 text-left transition-colors hover:bg-white/5">
+                  <span className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-amber-400">{fmtClock(m.gameTimeSec)}</span>
+                    <span className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider text-amber-400">{t('review.panel.sourceAuto')}</span>
+                  </span>
+                  <span className="mt-0.5 block break-words text-sm text-hextech-text-bright">{m.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </aside>
   )

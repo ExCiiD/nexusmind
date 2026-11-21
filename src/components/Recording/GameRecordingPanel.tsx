@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { Video, Youtube, Link2, Trash2, Loader2, ExternalLink, RefreshCw, Unlink, FileX2 } from 'lucide-react'
+import { Video, Youtube, Link2, Trash2, Loader2, ExternalLink, RefreshCw, Unlink, FileX2, Target } from 'lucide-react'
 import { VideoReviewPlayer } from './VideoReviewPlayer'
 import { RecordingMediaPanel } from './RecordingMediaPanel'
 import { useToast } from '@/hooks/useToast'
@@ -185,6 +185,17 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
   }, [shared, recording?.id, bookmarksNonce, setBookmarks])
   // A marked note clicked in the right panel: the player jumps there.
   useEffect(() => { if (videoSeek) setSeekVideo({ ms: videoSeek.ms, nonce: Date.now() }) }, [videoSeek])
+  // Beta.20 « AUTO »: the detected mistakes, for the side panel.
+  useEffect(() => {
+    if (!shared) return
+    useReviewPlayerStore.setState({
+      detectedMistakes: mistakes.filter((m) => m.autoDetected).sort((a, b) => a.gameTimeSec - b.gameTimeSec)
+        .map((m) => ({ id: m.id, gameTimeSec: m.gameTimeSec, videoTimeMs: m.videoTimeMs ?? null, label: m.tag?.label ?? '' })),
+    })
+    return () => useReviewPlayerStore.setState({ detectedMistakes: [] })
+  }, [shared, mistakes])
+  // Beta.20: no resume at an older position; the one-shot requests die with this player (or its game).
+  useEffect(() => () => { if (shared) useReviewPlayerStore.getState().clearRequests() }, [shared, gameId])
 
   const reloadMistakes = useCallback(async () => {
     try {
@@ -375,6 +386,13 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
     recordingCreatedAt: new Date(recording.createdAt), videoDurationSec: timeRef.current.durationSec || gameMeta.gameDurationSec,
     startOffsetSec: recording.startOffsetSec,
   }) : 0)
+  // The player's time as game time (gameT = videoT + offset), for « à l'heure du lecteur » in the micro-review box.
+  useEffect(() => {
+    if (!shared || !recording?.filePath || fileNotFound) { if (shared) useReviewPlayerStore.setState({ playerGameTime: null }); return }
+    useReviewPlayerStore.setState({ playerGameTime: () => Math.max(0, Math.round(timeRef.current.sec + offsetSec())) })
+    return () => useReviewPlayerStore.setState({ playerGameTime: null })
+  }, [shared, recording?.filePath, fileNotFound]) // eslint-disable-line react-hooks/exhaustive-deps -- offsetSec reads the recording
+
   // « Clipper ce moment » (micro-review panel): the clip mode on the moment's window.
   useEffect(() => {
     if (!clipRequest) return
@@ -569,6 +587,13 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
                 panelSide={panelSide}
                 onToggleSide={shared ? toggleSide : undefined}
                 panelTabLabel={panelTabLabel}
+                barExtra={shared ? (
+                  <button type="button" onClick={() => navigate(`/lane-phase/${gameId}?rec=${recording.id}`)} data-testid="laning-phase-button"
+                    title={t('record.player.lanePhaseHint')}
+                    className="mr-1 flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-hextech-border-dim px-2.5 text-xs text-hextech-text hover:border-hextech-gold/60 hover:text-hextech-gold-bright">
+                    <Target className="h-3.5 w-3.5" />{t('recording.bar.laningPhase')}
+                  </button>
+                ) : undefined}
                 onTimeChange={(sec, durationSec) => { timeRef.current = { sec, durationSec }; if (creatingClip) setPlayheadMs(Math.round(sec * 1000)) }}
                 seekVideo={seekVideo}
                 onClip={shared ? () => openClipEditor() : undefined}

@@ -1,12 +1,14 @@
 /** IPC / cloud shapes of the micro-review (docs/PLAN_MICRO_REVIEW.md). */
 
 import type { GameAnalysis, MomentTrigger } from './anomalyDetector'
+export type { MomentTrigger } from './anomalyDetector'
 import type { PastAnswer, QcmSummary } from './smartQcm'
 import type { VerificationResult } from './objectiveVerification'
 import type { CalibrationGap, FamilyShare } from './calibration'
 import type { MistakeFamily } from '../mistakeInsights'
 
-export type AnswerOutcome = 'mistake' | 'justified' | 'custom'
+/** 'dismissed' (21/11/2026, « Not a mistake »): the moment's detected mistake was erased; the moment is no longer offered. */
+export type AnswerOutcome = 'mistake' | 'justified' | 'custom' | 'dismissed'
 
 export interface MicroReviewAnswerView {
   id: string
@@ -20,6 +22,9 @@ export interface MicroReviewAnswerView {
   note: string | null
   mistakeId: string | null
   createdAt: string
+  /** 21/11/2026 « Repères de la micro-review »: the precise timestamps the player set (game seconds), when any. */
+  errorAtSec?: number | null
+  consequenceAtSec?: number | null
 }
 
 export interface MicroReviewRecording {
@@ -42,6 +47,8 @@ export interface MicroReviewPayload {
   /** Why `analysis` is null (no timeline, no user…). */
   reason?: string
   answers: MicroReviewAnswerView[]
+  /** 21/11/2026 « Not a mistake »: the moments the player dismissed (also in `answers`, outcome 'dismissed'). */
+  dismissedMomentKeys?: string[]
   /** The player's past answers for this role (local learning). */
   pastAnswers: PastAnswer[]
   recording: MicroReviewRecording | null

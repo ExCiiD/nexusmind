@@ -11,9 +11,36 @@ const MAX_TAG_NOTE = 280
 const MAX_BOOKMARK_LABEL = 80
 
 export interface ExtraTag { key: string; tagSlug: string; note: string }
-export interface AnswerExtras { reasons: string; extraTags: ExtraTag[] }
+export interface AnswerExtras {
+  reasons: string
+  extraTags: ExtraTag[]
+  /** « Définir les timestamps précis » (beta.20): the error's and the consequence's game time, each optional. */
+  errorAtSec: number | null
+  consequenceAtSec: number | null
+}
 
-export const EMPTY_EXTRAS: AnswerExtras = { reasons: '', extraTags: [] }
+export const EMPTY_EXTRAS: AnswerExtras = { reasons: '', extraTags: [], errorAtSec: null, consequenceAtSec: null }
+
+/** Back refuses a consequence before the error (BAD_TIMESTAMPS): both set, the consequence must not come first. */
+export function preciseTimesOk(extras: AnswerExtras): boolean {
+  return extras.errorAtSec == null || extras.consequenceAtSec == null || extras.consequenceAtSec >= extras.errorAtSec
+}
+
+/** A reopened card: its saved precise timestamps (MicroReviewAnswerView), nothing else. */
+export function extrasOfAnswer(a: { errorAtSec?: number | null; consequenceAtSec?: number | null } | null | undefined): AnswerExtras {
+  if (a?.errorAtSec == null && a?.consequenceAtSec == null) return EMPTY_EXTRAS
+  return { ...EMPTY_EXTRAS, errorAtSec: a?.errorAtSec ?? null, consequenceAtSec: a?.consequenceAtSec ?? null }
+}
+
+/** The precise timestamps sent (whole game seconds, 0-36000), only the ones the player set. */
+export function preciseTimesPayload(extras: AnswerExtras): { errorAtSec?: number; consequenceAtSec?: number } {
+  const ok = (s: number | null | undefined) => (s != null && Number.isFinite(s) ? Math.min(36000, Math.max(0, Math.round(s))) : undefined)
+  const out: { errorAtSec?: number; consequenceAtSec?: number } = {}
+  const e = ok(extras.errorAtSec), c = ok(extras.consequenceAtSec)
+  if (e !== undefined) out.errorAtSec = e
+  if (c !== undefined) out.consequenceAtSec = c
+  return out
+}
 
 /** The answer's `note`: the « autre cause » note and the player's reasons, both kept. */
 export function answerNote(otherNote: string | null | undefined, extras: AnswerExtras): string | null {

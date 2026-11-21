@@ -163,6 +163,9 @@ export interface DetectedMistake {
 export interface MicroReviewAnswerExtras {
   extraTags?: Array<{ tagSlug?: string | null; customLabel?: string | null; note?: string | null }>
   bookmarkLabel?: string | null
+  /** Beta.20 « Définir les timestamps précis »: optional game seconds, one or both. */
+  errorAtSec?: number | null
+  consequenceAtSec?: number | null
 }
 
 export interface Mistake {
@@ -567,6 +570,10 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
 
   // Micro-review (docs/PLAN_MICRO_REVIEW.md)
   microReviewGet: (gameId: string) => Promise<import('./microReview/types').MicroReviewPayload | null>
+  /** « Not a mistake » (DECISIONS 21/11): erases the moment's critical mistake; restore within the « Annuler » window. */
+  microReviewDismissMoment?: (input: { gameId: string; momentKey: string; trigger: import('./microReview/anomalyDetector').MomentTrigger; gameTimeSec: number }) => Promise<{ success: boolean; dismissedMistakeIds: string[] }>
+  /** `microreview:restore-moment`: « Annuler » / « Restaurer » (NOT_UNDOABLE once it can't be). */
+  microReviewRestoreMoment?: (input: { gameId: string; momentKey: string }) => Promise<{ success: boolean }>
   microReviewAnswer: (input: import('./microReview/types').MicroReviewAnswerInput & MicroReviewAnswerExtras) => Promise<import('./microReview/types').MicroReviewAnswerResult>
   /** 21/11: the next key moments, once the first ones are answered. Desktop only. */
   microReviewMoreMoments?: (gameId: string) => Promise<import('./microReview/anomalyDetector').CriticalMoment[]>

@@ -8,7 +8,9 @@ import { useToast } from '@/hooks/useToast'
 import { invalidateCached } from '@/lib/queryCache'
 import type { MistakeTag } from '@/lib/ipc'
 import { parseClock } from './answerExtras'
-import { tagLabel } from './text'
+import { useReviewPlayerStore } from '@/store/useReviewPlayerStore'
+import { fmtClock } from '@/lib/mistakeInsights'
+import { TagAutocomplete } from './TagAutocomplete'
 
 /**
  * « Ajouter une erreur non détectée » (DECISIONS 21/11): the player adds a critical mistake the micro-review missed,
@@ -22,7 +24,10 @@ export function UndetectedMistakeButton({ gameId, tags, durationSec }: { gameId:
   const [clock, setClock] = useState('')
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
-  const at = parseClock(clock)
+  // Beta.20: the player's current time, read when the dialog opens (no typed time when the video plays).
+  const playerGameTime = useReviewPlayerStore((s) => s.playerGameTime)
+  const [playerAt, setPlayerAt] = useState<number | null>(null)
+  const at = playerAt ?? parseClock(clock)
   const valid = !!tagId && at != null && at <= durationSec
 
   const save = async () => {
@@ -42,7 +47,7 @@ export function UndetectedMistakeButton({ gameId, tags, durationSec }: { gameId:
 
   return (
     <>
-      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setOpen(true)} data-testid="undetected-mistake-button">
+      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setPlayerAt(playerGameTime ? playerGameTime() : null); setOpen(true) }} data-testid="undetected-mistake-button">
         <PlusCircle className="h-4 w-4" />{t('microReview.undetected.button')}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -52,14 +57,19 @@ export function UndetectedMistakeButton({ gameId, tags, durationSec }: { gameId:
             <DialogDescription>{t('microReview.undetected.desc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <select value={tagId} onChange={(e) => setTagId(e.target.value)} aria-label={t('microReview.extras.tag')}
-              className="w-full rounded-md border border-hextech-border-dim bg-hextech-elevated px-2 py-2 text-sm text-hextech-text">
-              <option value="">{t('microReview.extras.pickTag')}</option>
-              {tags.filter((x) => !x.archivedAt).map((tg) => <option key={tg.id} value={tg.id}>{tagLabel(t, tg.slug, tg.label)}</option>)}
-            </select>
-            <Input value={clock} onChange={(e) => setClock(e.target.value)} placeholder={t('microReview.undetected.timePlaceholder')}
-              aria-label={t('microReview.undetected.time')} className="font-mono" />
-            {clock && at == null && <p className="text-xs text-hextech-red">{t('microReview.undetected.badTime')}</p>}
+            <TagAutocomplete tags={tags} placeholder={t('microReview.extras.pickTag')}
+              value={tags.find((x) => x.id === tagId) ?? null} onPick={(x) => setTagId(x.id)} />
+            {playerAt != null ? (
+              <p className="text-sm text-hextech-text" data-testid="undetected-player-time">
+                {t('microReview.undetected.atPlayer')} <span className="font-mono text-hextech-gold">{fmtClock(playerAt)}</span>
+              </p>
+            ) : (
+              <>
+                <Input value={clock} onChange={(e) => setClock(e.target.value)} placeholder={t('microReview.undetected.timePlaceholder')}
+                  aria-label={t('microReview.undetected.time')} className="font-mono" />
+                {clock && at == null && <p className="text-xs text-hextech-red">{t('microReview.undetected.badTime')}</p>}
+              </>
+            )}
             <Input value={note} onChange={(e) => setNote(e.target.value)} maxLength={280} placeholder={t('microReview.extras.tagNote')}
               aria-label={t('microReview.extras.tagNote')} />
           </div>

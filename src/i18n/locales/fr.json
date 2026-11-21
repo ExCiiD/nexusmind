@@ -361,7 +361,7 @@
       "title": "Zone de danger",
       "desc": "Supprime des données définitivement. Ces actions sont irréversibles : exportez une sauvegarde avant, en cas de doute.",
       "clearStats": "Effacer stats et erreurs",
-      "clearStatsDesc": "Supprime toutes les erreurs taguées et détectées, les instantanés de progression, le cache des stats détaillées et les rapports de phase de lane. Vos games, enregistrements, reviews et notes sont conservés.",
+      "clearStatsDesc": "Supprime toutes les erreurs taguées et détectées, les instantanés de progression, le cache des stats détaillées et les rapports de laning phase. Vos games, enregistrements, reviews et notes sont conservés.",
       "confirmClear": "Confirmer l’effacement",
       "clearRecent": "Effacer les données récentes",
       "clearRecentDesc": "Supprime games, stats, erreurs et enregistrements (fichiers compris) des derniers jours seulement ; l’historique plus ancien est conservé. Pratique pour retirer une mauvaise session de test.",
@@ -889,7 +889,7 @@
         "lowCarryOutput": "Vous avez bien noté cet objectif, mais votre production de carry a été faible au vu de la partie (part des dégâts d'équipe {{dmg}}%, morts {{deaths}}).",
         "lowTeamfightPresence": "Vous avez bien noté cet objectif, mais votre présence en teamfight semble faible sur cette partie (participation aux kills {{kp}}%).",
         "lowTempoEfficiency": "Vous avez bien noté cet objectif, mais votre conversion du tempo semble faible (CS/min {{cs}}, dégâts aux objectifs {{objective}}, dégâts aux structures {{building}}).",
-        "highDangerZoneTime": "Vous avez bien noté cet objectif, mais vous avez passé {{pct}}% de votre phase de lane dans la zone de danger et êtes mort {{deaths}} fois avant 15 minutes.",
+        "highDangerZoneTime": "Vous avez bien noté cet objectif, mais vous avez passé {{pct}}% de votre laning phase dans la zone de danger et êtes mort {{deaths}} fois avant 15 minutes.",
         "deathsInDangerZone": "Vous avez bien noté cet objectif, mais {{danger}} de vos {{total}} morts early ont eu lieu dans la zone de danger (près de la tour ennemie).",
         "highDangerZoneTrading": "Vous avez bien noté cet objectif, mais {{pct}}% de vos dégâts en lane venaient de la zone de danger et vous y êtes mort {{deaths}} fois — ce qui suggère un positionnement trop agressif.",
         "jungleDangerQuadrantDeaths": "Vous avez bien noté cet objectif, mais vous êtes mort {{deaths}} fois dans des quadrants jungle sans priorité de lane avant 15 minutes."
@@ -957,6 +957,8 @@
       "notes": "Notes marquées",
       "notesEmpty": "Pas encore de note marquée : utilise « Prise de note » (N) pendant la vidéo.",
       "sourceMicroReview": "MICRO-REVIEW",
+      "detectedTitle": "Erreurs détectées",
+      "sourceAuto": "AUTO",
       "sourceNote": "PRISE DE NOTE"
     }
   },
@@ -1187,7 +1189,7 @@
       "general": "Général",
       "economy": "Économie",
       "combat": "Combat",
-      "laning": "Phase de lane",
+      "laning": "Laning phase",
       "vision": "Vision",
       "objectives": "Objectifs"
     },
@@ -1208,7 +1210,7 @@
       "note": "Les différences de lane comparent vos stats à celles de votre adversaire direct à 15 minutes."
     },
     "laning": {
-      "title": "Phase de lane (@15 min)",
+      "title": "Laning phase (@15 min)",
       "shortGame": "La partie s'est terminée avant 15 minutes — stats de lane indisponibles.",
       "gold15": "Or @ 15",
       "xp15": "XP @ 15",
@@ -1569,6 +1571,7 @@
     "bar": {
       "timeline": "Timeline de la vidéo",
       "microReview": "Micro-review · {{from}} → {{to}}",
+      "laningPhase": "Laning phase analysis",
       "prevMoment": "Moment précédent",
       "nextMoment": "Moment suivant",
       "back10": "Reculer de 10 s",
@@ -2804,8 +2807,8 @@
     "actions": {
       "objective": "Objectif suggéré : {{objective}}",
       "rewatch": "À revoir :",
-      "noRecording": "Pas d'enregistrement pour cette partie — ouvre la phase de lane à la place",
-      "lanePhase": "Ouvrir l'analyse de la phase de lane",
+      "noRecording": "Pas d'enregistrement pour cette partie — ouvre la laning phase à la place",
+      "lanePhase": "Ouvrir l'analyse de la laning phase",
       "break": "Faites une pause de {{minutes}} minutes loin de l'écran avant la prochaine partie.",
       "review": "Faire les reviews en attente"
     },
@@ -2831,7 +2834,7 @@
       "deathsBefore10": "Morts avant 10 min",
       "kp": "Participation aux kills",
       "goldDiff10": "Écart d'or à 10 min",
-      "laneScore": "Score de phase de lane",
+      "laneScore": "Score de laning phase",
       "objectiveRespected": "Objectif respecté",
       "kda": "KDA",
       "goldDiff14": "Écart d'or à 14 min",
@@ -2840,7 +2843,7 @@
     },
     "rules": {
       "early_deaths_pattern": {
-        "v1": "Votre phase de lane vous coûte des parties : {{count}} de vos {{n}} dernières parties avec 2 morts ou plus avant 10 minutes. Privilégiez les trades sûrs et revoyez ces morts.",
+        "v1": "Votre laning phase vous coûte des parties : {{count}} de vos {{n}} dernières parties avec 2 morts ou plus avant 10 minutes. Privilégiez les trades sûrs et revoyez ces morts.",
         "v2": "Les morts précoces sont récurrentes — {{count}} parties sur {{n}} avec au moins 2 morts avant 10:00. Ne tradez que lorsque votre sort clé est disponible.",
         "v3": "{{name}}, les 10 premières minutes tournent mal : {{count}}/{{n}} parties récentes avec 2 morts précoces ou plus. Regardons-les ensemble."
       },
@@ -2858,17 +2861,17 @@
         "v2": "Nombre de morts inhabituel ({{deaths}} contre {{avg}} en moyenne). Tilt, matchup difficile ou excès d'agressivité ?"
       },
       "lane_weak_pattern": {
-        "v1": "Votre phase de lane a été notée C ou moins dans {{count}} de vos {{n}} dernières parties. Travaillez vos schémas de trade.",
-        "v2": "La phase de lane est un point faible en ce moment ({{count}}/{{n}} notes faibles). Cherchez à gagner les trades, pas seulement à survivre."
+        "v1": "Votre laning phase a été notée C ou moins dans {{count}} de vos {{n}} dernières parties. Travaillez vos schémas de trade.",
+        "v2": "La laning phase est un point faible en ce moment ({{count}}/{{n}} notes faibles). Cherchez à gagner les trades, pas seulement à survivre."
       },
       "pg_lane_weak": {
-        "v1": "Phase de lane difficile. Ouvrez l'analyse pour voir où l'écart d'or et de CS s'est creusé.",
+        "v1": "Laning phase difficile. Ouvrez l'analyse pour voir où l'écart d'or et de CS s'est creusé.",
         "v2": "Vous avez pris du retard en lane cette partie — l'analyse minute par minute montre à quel moment."
       },
       "pg_lane_strong": {
-        "v1": "Belle phase de lane — vous êtes sorti devant votre adversaire. C'est la base sur laquelle construire.",
+        "v1": "Belle laning phase — vous êtes sorti devant votre adversaire. C'est la base sur laquelle construire.",
         "v2": "Lane gagnée. Regardez ce que vous avez bien fait pour pouvoir le reproduire.",
-        "v3": "Excellente phase de lane, {{name}}. Gardez cette même discipline."
+        "v3": "Excellente laning phase, {{name}}. Gardez cette même discipline."
       },
       "cs_trend_down": {
         "v1": "Votre farm baisse : {{recent}} CS/min récemment contre {{base}} avant.",
@@ -3754,7 +3757,7 @@
   },
   "coach": {
     "problems": {
-      "laning": "Phase de lane",
+      "laning": "Laning phase",
       "deaths": "Morts évitables",
       "farming": "Farm",
       "vision": "Vision",
@@ -4584,8 +4587,8 @@
       "loadFailed": "Impossible de charger l’enregistrement",
       "fullRecording": "Partie complète",
       "noVideo": "Aucun fichier vidéo lié",
-      "lanePhase": "Phase de lane",
-      "lanePhaseHint": "Compare ta phase de lane à ton adversaire direct (0-14 min)",
+      "lanePhase": "Laning phase",
+      "lanePhaseHint": "Compare ta laning phase à ton adversaire direct (0-14 min)",
       "autoDetectHint": "Lancer la détection auto des erreurs pour cette partie",
       "mistakes": "Erreurs ({{count}})",
       "openReview": "Ouvrir la review",
@@ -5017,11 +5020,6 @@
       "openFull": "Lecteur complet",
       "noRecording": "Pas de VOD pour cette partie : le lieu du moment est écrit au-dessus.",
       "mapLabel": "Position sur la carte au moment clé",
-      "markers": {
-        "error": "Erreur",
-        "consequence": "Conséquence",
-        "conclusion": "Conclusion"
-      },
       "watch": "Voir le moment ({{from}} → {{to}})",
       "inPlayer": "La vidéo se lit dans le lecteur de la partie, avec ses repères.",
       "browse": "Parcourir dans le lecteur"
@@ -5105,8 +5103,17 @@
       "pitIn": "dans la fosse {{objectiveOf}}",
       "baseIn": "dans la base {{side}}"
     },
+    "dismiss": {
+      "button": "Pas une erreur",
+      "hint": "Ce moment n’est pas une erreur : il est retiré de ta review, avec son erreur critique.",
+      "done": "Retirée",
+      "undo": "Annuler",
+      "restore": "Restaurer",
+      "pill": "Retiré : pas une erreur"
+    },
+    "codexAdvice": "Conseil Codex",
     "extras": {
-      "toggle": "Raisons d’après moi · autres tags d’erreur",
+      "toggle": "Mes raisons · autres erreurs",
       "reasons": "Raisons de l’erreur d’après moi (facultatif)",
       "reasonsPlaceholder": "Ce que j’ai mal lu, ce que je voulais faire…",
       "moreTags": "Autres erreurs dans ce moment",
@@ -5116,7 +5123,17 @@
       "tagNote": "Description (facultatif)",
       "addTag": "Ajouter un tag d’erreur",
       "save": "Enregistrer mes ajouts",
-      "sentWithAnswer": "Envoyé avec ta réponse."
+      "sentWithAnswer": "Envoyé avec ta réponse.",
+      "precise": {
+        "toggle": "Définir les timestamps précis",
+        "hint": "Facultatif : l’un, l’autre ou les deux, pris à l’heure du lecteur.",
+        "error": "Erreur",
+        "consequence": "Conséquence",
+        "atPlayer": "à l’heure du lecteur",
+        "clear": "Retirer",
+        "order": "La conséquence ne peut pas venir avant l’erreur.",
+        "notSet": "non défini"
+      }
     },
     "more": {
       "button": "Continuer sur d’autres moments clés",
@@ -5133,7 +5150,8 @@
       "saved": "Erreur ajoutée",
       "failed": "L’erreur n’a pas pu être ajoutée.",
       "encourage": "Une erreur critique que l’app n’a pas vue ? Ajoute-la : c’est ce qui rend ton Labo d’erreurs juste.",
-      "question": "Une erreur critique que l’app n’a pas vue ?"
+      "question": "Une erreur critique que l’app n’a pas vue ?",
+      "atPlayer": "À l’heure du lecteur :"
     },
     "badge": {
       "objective": "OBJECTIF",
@@ -5266,10 +5284,10 @@
   },
   "lanePhase": {
     "back": "Retour",
-    "title": "Comparateur de phase de lane",
+    "title": "Comparateur de laning phase",
     "refresh": "Actualiser",
     "loading": "Analyse de la timeline Riot…",
-    "noReport": "Aucun rapport de phase de lane disponible",
+    "noReport": "Aucun rapport de laning phase disponible",
     "framesAvailable": "Frames de timeline disponibles : {{count}}",
     "vs": "vs",
     "opponent": "adversaire",
@@ -5277,11 +5295,11 @@
     "score": "score {{score}}/100",
     "kpi": {
       "dmgHint": "Dégâts aux champions @14 — vous {{you}} contre {{them}} pour l’adversaire",
-      "kpHint": "Kill participation pendant la phase de lane (0–14 min) : vos kills + assists / les kills de votre équipe, contre ceux de l’adversaire",
+      "kpHint": "Kill participation pendant la laning phase (0–14 min) : vos kills + assists / les kills de votre équipe, contre ceux de l’adversaire",
       "objDmg": "Dégâts obj.",
       "objDmgHint": "Dégâts aux objectifs (tours, drakes, baron…) sur toute la partie — vous contre l’adversaire de lane"
     },
-    "noFrames": "Aucune frame de timeline pendant la phase de lane.",
+    "noFrames": "Aucune frame de timeline pendant la laning phase.",
     "chartTip": "Astuce : cliquez sur un point d’une courbe pour aller à cette minute dans le replay.",
     "chart": {
       "cs": "Écart de CS",
@@ -5293,7 +5311,7 @@
     },
     "strip": {
       "title": "Plates et trades en solo",
-      "empty": "Aucune plate prise ou perdue, ni de trade en solo entre vous et votre adversaire pendant la phase de lane.",
+      "empty": "Aucune plate prise ou perdue, ni de trade en solo entre vous et votre adversaire pendant la laning phase.",
       "markerHint": "{{event}} à {{m}} min — cliquez pour aller au replay"
     },
     "event": {
@@ -5304,7 +5322,7 @@
     },
     "diag": {
       "unknownDetail": "erreur inconnue",
-      "noGame": "Partie introuvable — impossible de générer ce rapport de phase de lane.",
+      "noGame": "Partie introuvable — impossible de générer ce rapport de laning phase.",
       "noMatchId": "Aucun identifiant de partie Riot lié à cette game. Essayez d’abord de lier l’enregistrement.",
       "noUser": "Aucun utilisateur actif.",
       "timelineFetchFailed": "Échec du chargement de la timeline Riot : {{detail}}",
@@ -5333,7 +5351,7 @@
     },
     "custom": {
       "title": "Titre de la review",
-      "titlePlaceholder": "ex. Focus phase de lane — Yone TOP",
+      "titlePlaceholder": "ex. Focus laning phase — Yone TOP",
       "create": "Créer la review"
     },
     "player": {

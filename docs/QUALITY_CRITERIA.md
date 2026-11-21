@@ -1263,6 +1263,24 @@ Remaining, not blocking (pre-existing):
 - **P3**: when a v13 recompute is impossible (timeline missing with `fetch=false`, Riot unreachable), `ensureGameAnalysis` returns null instead of the old analysis. A game whose timeline was purged loses its cards.
 - The 3rd P2 from beta.19 (`stats:auto-snapshot`) is **fixed**: the matchId filter is gone, and the filter is now on `meta.gameEndAt` (`stats.ipc.ts:985`).
 
+### Short review beta.21 (21/11/2026), uncommitted since `820a0e4`: **not blocking**
+
+- **Migration `20261121020000_micro_review_timestamps`**
+  - Test: my build of 21/11, on a fresh copy of the real database.
+  - Result: applied (`before-…` backup), same row counts before and after, no semicolons in the comments.
+  - e2e on Home, Record, Review, History, Mistake Lab and Settings: 2 launches, 0 page errors, 0 console errors.
+- **ANALYSIS_VERSION 14**: old analyses are recomputed because of the version (`microReview.ipc.ts:54`).
+- **`mistake:create` validated with zod**
+  - Ids follow the shared `id` schema, which accepts cuids.
+  - The time is kept, or worked out from the video and a plausible offset.
+  - Otherwise `BAD_GAME_TIME` is returned: no more silent 0:00.
+- **Requests from the review player**: they are cleared when the player is closed or switches game (`clearRequests`).
+- **Not covered**: the screens with a game and a recording (single player, fullscreen, lane phase on Review), because the copy has no local `Game`.
+- **P3: notes taken in the VOD after the end of the game** (end screen, offset off by a few seconds)
+  - `gameTimeSec` > `duration` gives `BAD_GAME_TIME`, after the bookmark is already created (`GameRecordingPanel.tsx:229-236`, `RecordPlayerPage.tsx:419-426`).
+  - The player then gets a "note failed" toast for a note that is half saved.
+  - Fix: clamp to the duration (a few seconds of tolerance) rather than refusing.
+
 ## Procédure de revue avant release
 
 **Registre des décisions :** chaque livraison et chaque maquette sont relues contre `docs/DECISIONS.md` (ordre des

@@ -15,6 +15,8 @@
  *   mistake-stats:heatmap     → Array<{ date, tagId, count }>
  */
 
+import { isPlausibleOffset } from '../mistakeBookmarks'
+import { resolveMistakeGameTime } from '../mistakeWindowCore'
 import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
 import { CORRECTION_NOTE_MAX, CORRECTION_REASONS, removeMistake, retagMistake, undoMistakeCorrection, type CorrectionInput, type CorrectionReason } from '../mistakeCorrections'
@@ -139,23 +141,28 @@ export function registerMistakeHandlers() {
     })
   })
 
-  ipcMain.handle('mistake:create', async (_e, args: {
-    gameId: string
-    tagId: string
-    gameTimeSec: number
-    videoTimeMs?: number
-    note?: string
-    severity?: number
-    recordingId?: string
-    autoDetected?: boolean
-  }) => {
-    if (!args.gameId || !args.tagId) throw new Error('gameId + tagId required')
+  // 21/11/2026: validated. The time the screen sends is kept (never a silent 0:00): an integer within the game, or
+  // computed from the video time and a plausible recording offset when missing. BAD_GAME_TIME otherwise.
+  validatedHandle('mistake:create', z.tuple([z.object({
+    gameId: id,
+    tagId: id,
+    gameTimeSec: z.number().finite().nullable().optional(),
+    videoTimeMs: z.number().finite().min(0).max(36_000_000).nullable().optional(),
+    note: z.string().max(10_000).nullable().optional(),
+    severity: z.number().int().min(1).max(3).nullable().optional(),
+    recordingId: id.nullable().optional(),
+    autoDetected: z.boolean().optional(),
+  }).strip()]), async (_e, args) => {
     const prisma = getPrisma()
+    const game = await prisma.game.findUnique({ where: { id: args.gameId }, select: { duration: true, recording: { select: { startOffsetSec: true } } } })
+    if (!game) throw new Error('NOT_FOUND')
+    const offset = game.recording?.startOffsetSec
+    const gameTimeSec = resolveMistakeGameTime(args.gameTimeSec, args.videoTimeMs, isPlausibleOffset(offset) ? offset : null, game.duration)
     return prisma.mistake.create({
       data: {
         gameId: args.gameId,
         tagId: args.tagId,
-        gameTimeSec: Math.max(0, Math.floor(args.gameTimeSec ?? 0)),
+        gameTimeSec,
         videoTimeMs: typeof args.videoTimeMs === 'number' ? Math.max(0, Math.floor(args.videoTimeMs)) : null,
         note: args.note?.slice(0, 1000) || null,
         severity: Math.min(3, Math.max(1, args.severity ?? 2)),

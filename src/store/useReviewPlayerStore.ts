@@ -2,12 +2,14 @@ import { create } from 'zustand'
 import { parseLayers, parsePanelPrefs, readLayers, readPanelPrefs, sameLayers, saveLayers, savePanelPrefs, type PlayerLayer, type PlayerLayers } from '@/lib/playerLayers'
 import { useUserStore } from '@/store/useUserStore'
 
+/** A detected mistake as the side panel lists it. */
+export interface DetectedMarker { id: string; gameTimeSec: number; videoTimeMs: number | null; label: string }
+
 /** A micro-review moment's clip, in game time (vodTiming.clipWindow). */
 export interface ReviewClip {
   momentKey: string
   startSec: number
   endSec: number
-  markers: { error: number; consequence: number | null; conclusion: number }
 }
 
 /** The right panel of the Review player (spec § 19): micro-review or the marked notes. */
@@ -32,6 +34,12 @@ interface ReviewPlayerState {
   activeTab: ReviewPanelTab | null
   togglePanel: () => void
   setPanelTab: (tab: ReviewPanelTab) => void
+  /** The Review player's current time as game time (seconds), null without a playable recording. */
+  playerGameTime: (() => number) | null
+  /** Beta.20: the Review player's height in px (the side panel takes the same height), null when unknown. */
+  playerHeight: number | null
+  /** Beta.20 « AUTO »: the game's detected mistakes, listed in the side panel while the AUTO chip is on. */
+  detectedMistakes: DetectedMarker[]
   /** The micro-review's progress, for the selector « Micro-review 2 / 3 ». */
   microReviewCount: { done: number; total: number } | null
   setMicroReviewCount: (c: { done: number; total: number } | null) => void
@@ -42,6 +50,12 @@ interface ReviewPlayerState {
   /** « Clipper ce moment »: the player opens its clip mode on this window (game time). */
   clipRequest: { startSec: number; endSec: number; nonce: number } | null
   requestClip: (win: { startSec: number; endSec: number }) => void
+  /**
+   * Beta.20 (« it comes back at a random older time »): the seek / note / clip requests are one-shot. They lived on
+   * in this store after the player left, and the next player re-applied the last one when it opened. Cleared when
+   * the Review player closes or changes game: opening a recording starts at 0, or at the moment asked for.
+   */
+  clearRequests: () => void
   layers: PlayerLayers
   requestSeek: (gameSec: number) => void
   setClip: (clip: ReviewClip | null) => void
@@ -74,9 +88,13 @@ export const useReviewPlayerStore = create<ReviewPlayerState>((set, get) => ({
   togglePanel: () => { set({ panelOpen: !get().panelOpen }); persistPanel() },
   setPanelTab: (panelTab) => { const reopen = !get().panelOpen; set({ panelTab, panelOpen: true }); if (reopen) persistPanel() },
   microReviewCount: null,
+  playerGameTime: null,
+  playerHeight: null,
+  detectedMistakes: [],
   setMicroReviewCount: (microReviewCount) => set({ microReviewCount }),
   clipRequest: null,
   requestClip: (win) => set({ clipRequest: { ...win, nonce: (get().clipRequest?.nonce ?? 0) + 1 } }),
+  clearRequests: () => set({ seek: null, videoSeek: null, clipRequest: null }),
   layers: readLayers(),
   requestSeek: (gameSec) => set({ seek: { gameSec: Math.max(0, gameSec), nonce: (get().seek?.nonce ?? 0) + 1 } }),
   setClip: (clip) => set({ clip }),

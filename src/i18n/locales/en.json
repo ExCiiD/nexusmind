@@ -361,7 +361,7 @@
       "title": "Danger Zone",
       "desc": "Permanently delete data. These actions cannot be undone — export a backup first if unsure.",
       "clearStats": "Clear stats & mistakes",
-      "clearStatsDesc": "Removes all tagged & auto-detected mistakes, progression snapshots, the detailed-stats cache and lane-phase reports. Your games, recordings, reviews and notes are kept.",
+      "clearStatsDesc": "Removes all tagged & auto-detected mistakes, progression snapshots, the detailed-stats cache and laning phase reports. Your games, recordings, reviews and notes are kept.",
       "confirmClear": "Confirm clear",
       "clearRecent": "Clear recent data",
       "clearRecentDesc": "Deletes games, stats, mistakes and recordings (files included) from the last few days only — older history is kept. Useful to drop a bad test session.",
@@ -957,6 +957,8 @@
       "notes": "Marked notes",
       "notesEmpty": "No marked note yet: use « Take a note » (N) while watching.",
       "sourceMicroReview": "MICRO-REVIEW",
+      "detectedTitle": "Detected mistakes",
+      "sourceAuto": "AUTO",
       "sourceNote": "NOTE"
     }
   },
@@ -1569,6 +1571,7 @@
     "bar": {
       "timeline": "Video timeline",
       "microReview": "Micro-review · {{from}} → {{to}}",
+      "laningPhase": "Laning phase analysis",
       "prevMoment": "Previous moment",
       "nextMoment": "Next moment",
       "back10": "Back 10 s",
@@ -2804,8 +2807,8 @@
     "actions": {
       "objective": "Suggested objective: {{objective}}",
       "rewatch": "Re-watch:",
-      "noRecording": "No recording for this game — opens the lane phase instead",
-      "lanePhase": "Open the lane phase breakdown",
+      "noRecording": "No recording for this game — opens the laning phase instead",
+      "lanePhase": "Open the laning phase breakdown",
       "break": "Take a {{minutes}}-minute break away from the screen before the next game.",
       "review": "Review your pending games"
     },
@@ -2831,7 +2834,7 @@
       "deathsBefore10": "Deaths before 10 min",
       "kp": "Kill participation",
       "goldDiff10": "Gold diff @10",
-      "laneScore": "Lane phase score",
+      "laneScore": "Laning phase score",
       "objectiveRespected": "Objective respected",
       "kda": "KDA",
       "goldDiff14": "Gold diff at 14 min",
@@ -2858,15 +2861,15 @@
         "v2": "Unusual number of deaths ({{deaths}} vs {{avg}} on average). Was it tilt, a hard matchup, or over-aggression?"
       },
       "lane_weak_pattern": {
-        "v1": "Your lane phase was graded C or below in {{count}} of your last {{n}} games. Work on trading patterns.",
-        "v2": "Lane phase is a weak spot right now ({{count}}/{{n}} weak grades). Focus on winning trades, not just surviving."
+        "v1": "Your laning phase was graded C or below in {{count}} of your last {{n}} games. Work on trading patterns.",
+        "v2": "Laning phase is a weak spot right now ({{count}}/{{n}} weak grades). Focus on winning trades, not just surviving."
       },
       "pg_lane_weak": {
-        "v1": "Tough lane phase. Open the breakdown to see where the gold and CS gap opened.",
+        "v1": "Tough laning phase. Open the breakdown to see where the gold and CS gap opened.",
         "v2": "You fell behind in lane this game — the minute-by-minute breakdown shows when."
       },
       "pg_lane_strong": {
-        "v1": "Strong lane phase — you came out ahead of your opponent. That's the foundation to build on.",
+        "v1": "Strong laning phase — you came out ahead of your opponent. That's the foundation to build on.",
         "v2": "Lane won. Look at what you did right so you can repeat it.",
         "v3": "Excellent laning this game, {{name}}. Keep that same discipline."
       },
@@ -4584,7 +4587,7 @@
       "loadFailed": "Failed to load recording",
       "fullRecording": "Full recording",
       "noVideo": "No video file linked",
-      "lanePhase": "Lane phase",
+      "lanePhase": "Laning phase",
       "lanePhaseHint": "Compare your laning phase to your direct opponent (0-14 min)",
       "autoDetectHint": "Run the mistake auto-detector for this game",
       "mistakes": "Mistakes ({{count}})",
@@ -5017,11 +5020,6 @@
       "openFull": "Full player",
       "noRecording": "No VOD for this game: the moment’s place is written above.",
       "mapLabel": "Position on the map at the key moment",
-      "markers": {
-        "error": "Error",
-        "consequence": "Consequence",
-        "conclusion": "Conclusion"
-      },
       "watch": "Watch the moment ({{from}} → {{to}})",
       "inPlayer": "The video plays in the game’s player, with its markers.",
       "browse": "Browse in the player"
@@ -5105,8 +5103,17 @@
       "pitIn": "in the {{objectiveOf}} pit",
       "baseIn": "in the {{side}} base"
     },
+    "dismiss": {
+      "button": "Not a mistake",
+      "hint": "This moment isn’t a mistake: it leaves your review, with its critical mistake.",
+      "done": "Removed",
+      "undo": "Undo",
+      "restore": "Restore",
+      "pill": "Removed: not a mistake"
+    },
+    "codexAdvice": "Codex advice",
     "extras": {
-      "toggle": "My reasons · other mistake tags",
+      "toggle": "My reasons · other mistakes",
       "reasons": "Why I think it happened (optional)",
       "reasonsPlaceholder": "What I misread, what I meant to do…",
       "moreTags": "Other mistakes in this moment",
@@ -5116,7 +5123,17 @@
       "tagNote": "Description (optional)",
       "addTag": "Add a mistake tag",
       "save": "Save my additions",
-      "sentWithAnswer": "Sent with your answer."
+      "sentWithAnswer": "Sent with your answer.",
+      "precise": {
+        "toggle": "Set precise timestamps",
+        "hint": "Optional: one, the other or both, taken at the player’s time.",
+        "error": "Mistake",
+        "consequence": "Consequence",
+        "atPlayer": "at the player’s time",
+        "clear": "Remove",
+        "order": "The consequence can’t come before the mistake.",
+        "notSet": "not set"
+      }
     },
     "more": {
       "button": "Go on with other key moments",
@@ -5133,7 +5150,8 @@
       "saved": "Mistake added",
       "failed": "The mistake couldn’t be added.",
       "encourage": "A critical mistake the app didn’t see? Add it: that’s what keeps your Mistake Lab accurate.",
-      "question": "A critical mistake the app didn’t see?"
+      "question": "A critical mistake the app didn’t see?",
+      "atPlayer": "At the player’s time:"
     },
     "badge": {
       "objective": "OBJECTIVE",
@@ -5266,10 +5284,10 @@
   },
   "lanePhase": {
     "back": "Back",
-    "title": "Lane Phase Comparator",
+    "title": "Laning Phase Comparator",
     "refresh": "Refresh",
     "loading": "Crunching the Riot timeline…",
-    "noReport": "No lane phase report available",
+    "noReport": "No laning phase report available",
     "framesAvailable": "Timeline frames available: {{count}}",
     "vs": "vs",
     "opponent": "opponent",
@@ -5304,7 +5322,7 @@
     },
     "diag": {
       "unknownDetail": "unknown error",
-      "noGame": "Game record not found — this lane phase report cannot be generated.",
+      "noGame": "Game record not found — this laning phase report cannot be generated.",
       "noMatchId": "No Riot match ID linked to this game. Try linking the recording first.",
       "noUser": "No active user.",
       "timelineFetchFailed": "Riot timeline fetch failed: {{detail}}",

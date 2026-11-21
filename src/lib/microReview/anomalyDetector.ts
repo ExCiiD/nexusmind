@@ -143,8 +143,6 @@ export const DETECTOR_SPEC = {
    * ADC is never blamed for an enemy objective unless they left their lane for it and arrived too late.
    */
   soloQLaning: { untilSec: 840, roles: ['TOP', 'MIDDLE', 'BOTTOM'] as readonly string[] },
-  /** The three markers of a card (erreur > conséquence > conclusion): after an objective, after a death. */
-  markers: { afterObjectiveSec: 45, afterDeathSec: 30 },
   /**
    * Jungle, from the end of the first clear to 8:00. Passive clear: in our half at every homeSamplesSec, no takedown
    * until quietUntilSec, read at passiveAtSec. Counter-tempo: a river play on the riverPlaySec samples (every 15 s),
@@ -335,7 +333,10 @@ export interface MomentFacts {
   crossMapApplies?: boolean
   /** The game was played in a team context (team session, custom, tournament). */
   teamContext?: boolean
-  /** The objective's time (= killSec) and the error's time (= markers.errorSec), for the clip (vodTiming). */
+  /**
+   * The objective's time (= killSec) and the error's estimated time, used only to place the clip (vodTiming): never
+   * shown (21/11/2026, « Repères de la micro-review »: the engine cannot place error and consequence precisely).
+   */
   objectiveAtSec?: number
   errorAtSec?: number
   /** jungle patterns: XP vs the enemy jungler after the play. */
@@ -425,13 +426,6 @@ export interface PlacedPoint {
   between?: [number, number]
 }
 
-/** The card's three markers: the error, its consequence, how it ends (null when the card has none). */
-export interface MomentMarkers {
-  errorSec: number
-  consequenceSec: number | null
-  conclusionSec: number | null
-}
-
 export interface CriticalMoment {
   /** Stable id within the game: `${trigger}@${gameTimeSec}`. */
   key: string
@@ -441,7 +435,6 @@ export interface CriticalMoment {
   // Set on every moment from ANALYSIS_VERSION 12 (20/11/2026); absent in analyses stored before.
   /** The time of the facts: when the objective fell for an objective card, else gameTimeSec. */
   headerSec?: number
-  markers?: MomentMarkers
   /** Where the moment's position is, in words (no distance is ever shown). */
   place?: Place | null
   positionKind?: PositionKind | null
@@ -711,7 +704,6 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       positionKind: k.kind, atSec: Math.round(ms / 1000), ...(k.kind === 'estimated' && 'between' in k && k.between ? { between: k.between } : {}),
     }
   }
-  const gameEndSec = Math.round(clock.ts(clock.last) / 1000)
   /** Team context (team session, custom, tournament): absent = soloQ. */
   const teamContext = selector.teamContext === true
   /** In soloQ, before 14:00, a top / mid / ADC is never expected to answer an enemy objective. */
@@ -822,12 +814,8 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       return false
     }
     const sec = Math.round(ms / 1000)
-    const M = S.markers
-    const markers: MomentMarkers = facts.killSec != null
-      ? { errorSec: facts.towerAtSec ?? Math.max(0, facts.killSec - S.hesitation.notInPitSec), consequenceSec: facts.killSec, conclusionSec: Math.min(gameEndSec, facts.killSec + M.afterObjectiveSec) }
-      : trigger === 'critical-death'
-        ? { errorSec: sec, consequenceSec: facts.objectiveLostAfterSec != null ? sec + facts.objectiveLostAfterSec : null, conclusionSec: Math.min(gameEndSec, sec + M.afterDeathSec) }
-        : { errorSec: sec, consequenceSec: null, conclusionSec: null }
+    // No markers on the card any more (21/11/2026): only the clip's placement uses the estimated error time.
+    const errorAtSec = facts.killSec != null ? facts.towerAtSec ?? Math.max(0, facts.killSec - S.hesitation.notInPitSec) : sec
     // The pit of a card about an objective is named by that objective.
     const objective = facts.objective && PIT_OBJECTIVES.includes(facts.objective) ? facts.objective as PitObjective : null
     const pitObjective = objective && pos && nearestPit(pos).pit === pitOfObjective(objective) ? objective : undefined
@@ -837,7 +825,6 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       trigger,
       gameTimeSec: sec,
       headerSec: facts.killSec ?? sec,
-      markers,
       deathDated: trigger === 'critical-death',
       place: pos ? placeOf(pos, sec, pitObjective !== undefined ? { pitObjective } : {}) : null,
       positionKind: kind ? kind.kind : null,
@@ -848,7 +835,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       territory: pos ? territoryOf(pos, team) : null,
       winProbBefore: before != null ? round(before) : null,
       winProbAfter: winProbAfter != null ? round(winProbAfter) : null,
-      facts: { ...facts, ...(facts.killSec != null ? { objectiveAtSec: facts.killSec } : {}), errorAtSec: markers.errorSec },
+      facts: { ...facts, ...(facts.killSec != null ? { objectiveAtSec: facts.killSec } : {}), errorAtSec },
     })
     return true
   }

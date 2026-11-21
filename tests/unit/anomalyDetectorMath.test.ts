@@ -56,7 +56,6 @@ describe('spec constants', () => {
       early: { atSec: 600, csDiff: -15, xpDiff: -400, takedowns: 2 },
       hesitation: { notInPitSec: 30, moveFromSec: 25, approachMin: 1200, crossMapBeforeSec: 40, crossMapAfterSec: 15, towerGreedSec: 75, inPositionRadius: 4500, estimatedFarSec: 20 },
       soloQLaning: { untilSec: 840, roles: ['TOP', 'MIDDLE', 'BOTTOM'] },
-      markers: { afterObjectiveSec: 45, afterDeathSec: 30 },
       jungle: {
         fromSec: 115, toSec: 480, overchaseSec: 20, sampleSec: 5, counterTempoXp: 150, riverPlaySec: [160, 220], backAtSec: 265, passiveBotLead: 250,
         homeSamplesSec: [85, 145, 175, 205], quietUntilSec: 205, passiveAtSec: 160, startAtSec: 85, counterTempoAtSec: 235,

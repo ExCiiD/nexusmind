@@ -1211,9 +1211,17 @@ détectées ».
         ennemi »). Clic → saute au premier.
      3. **Timeline** 5 px, rayon 2,5 : non lue `border-dim`, lue or ; tête
         de lecture rond 12 px `#E4C285` + fin trait vertical jusqu'aux repères.
-     4. **Ligne des heures** : « 0:00 » à gauche, durée à droite, puis le
-        bouton **« Filtres »** (pilule contour `border`, icône entonnoir,
-        compteur de filtres actifs sur fond or 20 %, ▾).
+     4. **Ligne des heures** : « 0:00 » à gauche, durée à droite. Survol de
+        la timeline : l'heure sous le pointeur.
+     4 bis. **Rangée de pastilles** (décision du 21/11 « retour à la rangée
+        de pastilles », dite à Front, **déjà codée**, tous les lecteurs) :
+        groupe segmenté **MINE / ALL / OBJECTIVES**, puis **une pastille
+        colorée par type d'événement avec son compte** (KILL, DEATH, ASSIST,
+        TOWER, PLATE, DRAKE, NASHOR, HERALD, VOIDGRUB, INHIB…), puis **Mes
+        notes**, **Micro-review** et **AUTO** (erreurs détectées, aussi dans
+        l'onglet « Notes marquées »). Un clic masque le type, un second le
+        réaffiche. Le code fait foi pour les couleurs et l'ordre ; la règle de
+        sauvegarde ci-dessous s'applique à cette rangée.
      5. **Contrôles** : moment précédent, −10, **lecture** (rond or 36 px),
         +10, moment suivant, volume (curseur au survol), heure « 9:12 /
         26:10 » (courante en `gold-bright`). À droite : vitesse « 1× ▾ »
@@ -1242,7 +1250,11 @@ détectées ».
      de l'utilisateur, synchronisés au compte, comme les filtres : ils
      restent tels quels à chaque ouverture et sur toutes les reviews, jusqu'à
      ce que le joueur les change. Fermeture automatique : jamais.
-   - **Menu « Filtres »** (pop-over 300 px au-dessus du bouton, `elevated`,
+   - ~~Menu « Filtres »~~ **REMPLACÉ** (décision du 21/11 « retour à la rangée
+     de pastilles », voir 4 bis) : ne pas coder le pop-over ci-dessous. Seule
+     la règle de **sauvegarde** reste valable, appliquée à la rangée de
+     pastilles. Ancien texte pour mémoire : pop-over 300 px au-dessus du
+     bouton, `elevated`,
      contour `border`, ombre) : titre « Afficher sur la timeline » +
      « Réinitialiser » ; section **TOI** : Mes notes, Micro-review, Erreurs
      détectées (absente si « Je tague mes erreurs moi-même »), Morts ;

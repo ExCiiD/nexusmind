@@ -6,9 +6,9 @@ import { Badge } from '@/components/ui/badge'
 import { VideoReviewPlayer } from '@/components/Recording/VideoReviewPlayer'
 import { formatGameTime } from '@/lib/utils'
 import {
-  ArrowLeft, Scissors, Trash2, Loader2, ClipboardCheck,
+  ArrowLeft, Scissors, Trash2, Loader2,
   Clock, Calendar, Video, ExternalLink, Youtube, Share2,
-  Check, Copy, Save, Square, Play, Unlink, Link2, RefreshCw, Target,
+  Check, Copy, Play, Unlink, Link2, RefreshCw, Target,
   AlertTriangle,
 } from 'lucide-react'
 import type { Mistake, MistakeTag, Bookmark } from '@/lib/ipc'
@@ -18,6 +18,11 @@ import { useToast } from '@/hooks/useToast'
 import { formatFileSize, formatMs, toNxmUrl } from '@/lib/mediaCore'
 import { useYoutubeUploadAvailable } from '@/hooks/useYoutubeUploadAvailable'
 import { useShortReviewWatch } from '@/hooks/useShortReviewWatch'
+import { ClipModePanel } from '@/components/Recording/ClipModePanel'
+import { useReviewPlayerStore } from '@/store/useReviewPlayerStore'
+import { defaultClipRange } from '@/lib/clipEdit'
+import { deriveOffsetSec } from '@/lib/eventSync'
+import { NOTE_BOOKMARK_COLOR } from '@/lib/playerLayers'
 
 type YoutubeUploadState = 'idle' | 'uploading' | 'done' | 'error'
 type BottomTab = 'clips' | 'share'
@@ -55,16 +60,6 @@ interface ClipEntry {
   endMs: number
   createdAt: string
   fileSize: number
-}
-
-function parseMmSs(v: string): number | null {
-  const p = v.split(':')
-  if (p.length === 2) {
-    const m = parseInt(p[0], 10), s = parseInt(p[1], 10)
-    if (!isNaN(m) && !isNaN(s)) return (m * 60 + s) * 1000
-  }
-  const sec = parseFloat(v)
-  return isNaN(sec) ? null : Math.round(sec * 1000)
 }
 
 function sourceLabel(s: string) {
@@ -128,8 +123,6 @@ export function RecordPlayerPage() {
   const [creatingClip, setCreatingClip] = useState(false)
   const [clipRange, setClipRange] = useState({ startMs: 0, endMs: 30_000 })
   const [clipTitle, setClipTitle] = useState('')
-  const [startInput, setStartInput] = useState('0:00')
-  const [endInput, setEndInput] = useState('0:30')
   const [savingClip, setSavingClip] = useState(false)
 
   // External review creation
@@ -406,24 +399,50 @@ export function RecordPlayerPage() {
     }
   }, [recording, loadData, toast, t])
 
+  // One player in the whole app (DECISIONS 21/11): the Review's v2 player, its bar, filters, clip mode, note and mistake.
+  const layers = useReviewPlayerStore((s) => s.layers)
+  const setLayers = useReviewPlayerStore((s) => s.setLayers)
+  const timeRef = useRef({ sec: 0, durationSec: 0 })
+  const [playheadMs, setPlayheadMs] = useState(0)
+  const [previewing, setPreviewing] = useState(false)
+  const [seekVideo, setSeekVideo] = useState<{ ms: number; nonce: number } | null>(null)
+  const offsetSec = () => (recording?.createdAt && recording.gameEndAt && recording.gameDuration ? deriveOffsetSec({
+    gameEndAt: new Date(recording.gameEndAt), gameDurationSec: recording.gameDuration, recordingCreatedAt: new Date(recording.createdAt),
+    videoDurationSec: timeRef.current.durationSec || recording.gameDuration, startOffsetSec: recordingStartOffsetSec,
+  }) : 0)
+  // « Prise de note » (N): a marked note, its tags saved as mistakes when the recording has its game.
+  const takeNote = async (n: { videoTimeMs: number; text: string; tagSlugs: string[] }) => {
+    if (!recording) return
+    const labels = n.tagSlugs.map((slug) => mistakeTags.find((x) => x.slug === slug)?.label ?? slug)
+    const label = [n.text, labels.join(', ')].filter(Boolean).join(' · ').slice(0, 200)
+    try {
+      await window.api.createBookmark({ recordingId: recording.id, videoTimeMs: n.videoTimeMs, label, color: NOTE_BOOKMARK_COLOR })
+      if (recording.gameId && !recording.isOrphaned) {
+        const off = offsetSec()
+        const gameTimeSec = Math.max(0, Math.round(n.videoTimeMs / 1000 + (Number.isFinite(off) ? off : 0)))
+        for (const slug of n.tagSlugs) {
+          const tag = mistakeTags.find((x) => x.slug === slug)
+          if (tag) await window.api.createMistake({ gameId: recording.gameId, tagId: tag.id, gameTimeSec, videoTimeMs: n.videoTimeMs, recordingId: recording.id })
+        }
+        if (n.tagSlugs.length) await reloadMistakes()
+      }
+      await reloadBookmarks()
+      toast({ title: t('recording.note.saved'), variant: 'gold' })
+    } catch {
+      toast({ title: t('recording.note.failed'), variant: 'destructive' })
+      throw new Error('NOTE_NOT_SAVED')
+    }
+  }
+
   const handleClipRangeChange = useCallback((range: { startMs: number; endMs: number }) => {
     setClipRange(range)
-    setStartInput(formatMs(range.startMs))
-    setEndInput(formatMs(range.endMs))
   }, [])
 
-  const applyStart = () => {
-    const ms = parseMmSs(startInput)
-    if (ms !== null) handleClipRangeChange({ startMs: Math.min(ms, clipRange.endMs - 500), endMs: clipRange.endMs })
-  }
-  const applyEnd = () => {
-    const ms = parseMmSs(endInput)
-    if (ms !== null) handleClipRangeChange({ startMs: clipRange.startMs, endMs: Math.max(ms, clipRange.startMs + 500) })
-  }
-
   const openClipEditor = () => {
-    setClipRange({ startMs: 0, endMs: 30_000 })
-    setStartInput('0:00'); setEndInput('0:30'); setClipTitle('')
+    handleClipRangeChange(defaultClipRange(timeRef.current.sec * 1000, Math.round(timeRef.current.durationSec * 1000)))
+    setClipTitle('')
+    setPlayheadMs(Math.round(timeRef.current.sec * 1000))
+    setPreviewing(false)
     setCreatingClip(true)
   }
 
@@ -587,7 +606,13 @@ export function RecordPlayerPage() {
           key={activeClipId ?? 'full'}
           src={videoSrc}
           notes={[]}
-          readonly
+          layers={layers}
+          onLayersChange={setLayers}
+          onClip={activeClip ? undefined : openClipEditor}
+          onTakeNote={activeClip ? undefined : takeNote}
+          onTimeChange={(sec, durationSec) => { timeRef.current = { sec, durationSec }; if (creatingClip) setPlayheadMs(Math.round(sec * 1000)) }}
+          seekVideo={seekVideo}
+          loopRange={creatingClip && previewing ? clipRange : null}
           // Account for everything stacked below the <video>: progress
           // bar with up to 3 lanes of event markers ABOVE it (pt-14 ≈
           // 3.5rem), the legend chips row (~2rem), the transport button
@@ -606,9 +631,6 @@ export function RecordPlayerPage() {
                 ? 'max-h-[calc(100vh-30rem)]'
                 : 'max-h-[calc(100vh-26rem)]'
           }
-          clipping={creatingClip && !activeClip}
-          clipRange={creatingClip && !activeClip ? clipRange : undefined}
-          onClipRangeChange={creatingClip && !activeClip ? handleClipRangeChange : undefined}
           // Don't pass events when playing a clip — the gameTimeMs values
           // would be misaligned against the trimmed file.
           gameEvents={activeClip ? [] : gameEvents}
@@ -645,38 +667,32 @@ export function RecordPlayerPage() {
         </div>
       )}
 
-      {/* Clip controls bar */}
-      {creatingClip && (
-        <div className="flex items-center gap-2 rounded-lg bg-[#090e17] border border-hextech-gold/30 px-3 py-1.5 shrink-0">
-          <div className="flex items-center gap-1 rounded bg-white/5 border border-white/10 px-1.5 py-1">
-            <span className="text-[9px] text-hextech-text-dim/60 uppercase">{t('record.clipEditor.in')}</span>
-            <input type="text" value={startInput} onChange={(e) => setStartInput(e.target.value)} onBlur={applyStart} onKeyDown={(e) => e.key === 'Enter' && applyStart()}
-              className="w-11 bg-transparent text-[11px] font-mono text-hextech-text text-center focus:outline-none" />
+      {/* Clip mode — the same panel as the Review (one player in the whole app), with Record's « Exporter » beside it. */}
+      {creatingClip && !activeClip && (
+        <div className="space-y-1.5 shrink-0">
+          <ClipModePanel
+            range={clipRange}
+            onChange={handleClipRangeChange}
+            durationMs={Math.round(timeRef.current.durationSec * 1000)}
+            playheadMs={playheadMs}
+            title={clipTitle}
+            onTitle={setClipTitle}
+            previewing={previewing}
+            onTogglePreview={() => setPreviewing((v) => !v)}
+            momentRange={null}
+            onSeek={(ms) => setSeekVideo((cur) => ({ ms, nonce: (cur?.nonce ?? 0) + 1 }))}
+            onCancel={() => { setCreatingClip(false); setPreviewing(false) }}
+            onSave={() => { void handleSaveClip() }}
+            saving={savingClip}
+          />
+          <div className="flex justify-end">
+            <Button size="sm" variant="outline"
+              className="h-7 gap-1 text-xs border-hextech-cyan/40 text-hextech-cyan hover:bg-hextech-cyan/10 px-2.5"
+              onClick={handleExportClip} disabled={savingClip || exportingClip || clipRange.endMs <= clipRange.startMs}
+              title={t('record.clipEditor.exportHint')}>
+              {exportingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}{t('record.clipEditor.export')}
+            </Button>
           </div>
-          <span className="text-[10px] font-mono text-hextech-text-dim/50">{formatMs(Math.max(0, clipRange.endMs - clipRange.startMs))}</span>
-          <div className="flex items-center gap-1 rounded bg-white/5 border border-white/10 px-1.5 py-1">
-            <span className="text-[9px] text-hextech-text-dim/60 uppercase">{t('record.clipEditor.out')}</span>
-            <input type="text" value={endInput} onChange={(e) => setEndInput(e.target.value)} onBlur={applyEnd} onKeyDown={(e) => e.key === 'Enter' && applyEnd()}
-              className="w-11 bg-transparent text-[11px] font-mono text-hextech-text text-center focus:outline-none" />
-          </div>
-          <div className="flex-1" />
-          <input type="text" value={clipTitle} onChange={(e) => setClipTitle(e.target.value)} placeholder={t('record.clipEditor.titlePlaceholder', { champion: recording.champion })}
-            className="w-40 rounded bg-white/5 border border-white/10 px-2 py-1 text-[11px] text-hextech-text placeholder:text-hextech-text-dim/40 focus:outline-none focus:border-hextech-gold/50" />
-          <Button size="sm" className="h-7 gap-1 text-xs bg-hextech-gold text-hextech-dark hover:bg-hextech-gold-bright px-2.5"
-            onClick={handleSaveClip} disabled={savingClip || exportingClip || clipRange.endMs <= clipRange.startMs}
-            title={t('record.clipEditor.saveHint')}>
-            {savingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}{t('record.clipEditor.save')}
-          </Button>
-          <Button size="sm" variant="outline"
-            className="h-7 gap-1 text-xs border-hextech-cyan/40 text-hextech-cyan hover:bg-hextech-cyan/10 px-2.5"
-            onClick={handleExportClip} disabled={savingClip || exportingClip || clipRange.endMs <= clipRange.startMs}
-            title={t('record.clipEditor.exportHint')}>
-            {exportingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}{t('record.clipEditor.export')}
-          </Button>
-          <button onClick={() => setCreatingClip(false)}
-            className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-[#E24C3A] border border-[#E24C3A]/30 hover:bg-[#E24C3A]/10 transition-colors">
-            <Square className="h-3 w-3" />{t('common.cancel')}
-          </button>
         </div>
       )}
 
@@ -833,14 +849,6 @@ function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink, onT
           </Button>
           <Button
             variant="outline" size="sm"
-            className={`gap-2 h-7 text-xs shrink-0 ${recording.hasReview ? 'text-hextech-cyan border-hextech-cyan/30 hover:bg-hextech-cyan/10' : ''}`}
-            onClick={() => onNavigate(`/review?gameId=${recording.gameId}`)}
-          >
-            <ClipboardCheck className="h-3.5 w-3.5" />
-            {recording.hasReview ? t('record.player.openReview') : t('record.player.startReview')}
-          </Button>
-          <Button
-            variant="outline" size="sm"
             className="gap-1.5 h-7 text-xs shrink-0 text-hextech-text-dim hover:text-hextech-gold hover:border-hextech-gold/40"
             onClick={onUnlink}
             title={t('record.player.unlinkHint')}
@@ -857,12 +865,13 @@ function MetaBar({ recording, onNavigate, onReview, reviewLoading, onUnlink, onT
         </Button>
       )}
 
-      {/* External review — always available when there is a video file */}
-      {recording.filePath && (
+      {/* ONE « Review » button (DECISIONS 21/11): the game's Review; a recording with no game opens the external review. */}
+      {(recording.filePath || (!recording.isOrphaned && recording.gameId)) && (
         <Button
           size="sm"
           disabled={reviewLoading}
-          onClick={onReview}
+          data-testid="record-review-button"
+          onClick={!recording.isOrphaned && recording.gameId ? () => onNavigate(`/review?gameId=${recording.gameId}`) : onReview}
           className="gap-2 h-7 text-xs shrink-0 bg-hextech-gold hover:bg-hextech-gold/90 text-hextech-dark font-semibold border-0"
         >
           {reviewLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}

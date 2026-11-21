@@ -1,18 +1,20 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
-import { gameTimeToVideoTime } from '@/lib/eventSync'
+import { deriveOffsetSec, gameTimeToVideoTime } from '@/lib/eventSync'
 import { useTranslation } from 'react-i18next'
 import i18n from '@/i18n/config'
-import { Bookmark, Play, Pause, Volume2, VolumeX, Maximize2, Minimize2, Check, X, RotateCcw, RotateCw, PanelRight, PanelLeft, PanelRightClose, ZoomIn, ZoomOut, StepBack, StepForward, Trash2, Loader2, Sword, Skull, Handshake, Flame, Crown, Eye, Bug, RadioTower, ShieldOff, Shield, User, Users, Target, AlertTriangle, MessageSquare, EyeOff, Scissors, ArrowLeftRight, PanelLeftDashed, PanelRightDashed, Crosshair } from 'lucide-react'
+import { Bookmark, Play, Pause, Volume2, VolumeX, Maximize2, Minimize2, Check, X, RotateCcw, RotateCw, PanelRight, PanelLeft, PanelRightClose, ZoomIn, ZoomOut, StepBack, StepForward, Trash2, Loader2, Sword, Skull, Handshake, Flame, Crown, Eye, Bug, RadioTower, ShieldOff, Shield, Target, AlertTriangle, MessageSquare, EyeOff, Scissors, ArrowLeftRight, PanelLeftDashed, PanelRightDashed, Crosshair } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
 import type { GameEvent, GameEventType, Mistake, MistakeTag, Bookmark as BookmarkData } from '@/lib/ipc'
 import { mistakePlayFromSec } from '@/lib/microReview/playbackWindow'
-import { isMicroReviewBookmark, layerOfEvent, layerOfMistake, markerOpacity, type PlayerLayers } from '@/lib/playerLayers'
-import type { ReviewClip } from '@/store/useReviewPlayerStore'
+import { isMicroReviewBookmark, layerOfEvent, layerOfMistake, markerOpacity, readHiddenEvents, saveHiddenEvents, toggleHidden, type PlayerLayers } from '@/lib/playerLayers'
+import { useReviewPlayerStore, type ReviewClip } from '@/store/useReviewPlayerStore'
 import { loopTarget } from '@/lib/clipEdit'
-import { PlayerBarV2, type BarMarker } from './PlayerBarV2'
+import { IconBtn, PlayerBarV2, type BarMarker } from './PlayerBarV2'
 import { NotePopover } from './NotePopover'
+import { TagAutocomplete } from '@/components/MicroReview/TagAutocomplete'
+import { PlayerFilterChips, type EventFilterMode, type FilterChip } from './PlayerFilterChips'
 
 // Visual styling per event category. Saturated colors for the most
 // important events (player K/D/A, objectives), muted for buildings so
@@ -95,7 +97,6 @@ const COLLISION_BUMP_PX = 22
  *  - objectives: dragons / baron / herald / voidgrub / turrets /
  *    inhibitors regardless of player involvement (drops K/D/A and plates)
  */
-type EventFilterMode = 'mine' | 'all' | 'objectives'
 const OBJECTIVE_TYPES = new Set<GameEventType>([
   'dragon', 'baron', 'herald', 'voidgrub', 'turret', 'inhibitor',
 ])
@@ -159,7 +160,7 @@ interface VideoReviewPlayerProps {
   seekNonce?: number
   /**
    * The Review's single player (DECISIONS 21/11): the micro-review moment shown (game time): its window is drawn on
-   * the timeline with its 3 markers (Error · Consequence · Conclusion) and playback stops at its end.
+   * the timeline and playback stops at its end.
    */
   clip?: ReviewClip | null
   /** The Review's layer toggles (notes, micro-review, detected mistakes, deaths, objectives, fights); none: as before. */
@@ -182,6 +183,8 @@ interface VideoReviewPlayerProps {
   panelSide?: 'left' | 'right'
   onToggleSide?: () => void
   panelTabLabel?: string
+  /** Extra buttons at the right of the bar, before ⇄ / panel / fullscreen (Review: « Laning phase analysis »). */
+  barExtra?: React.ReactNode
   // ── Mistake Library integration ────────────────────────────────────
   /** Mistakes attached to this recording's game. Rendered as a separate
    *  marker lane above game events and as a collapsible side list. */
@@ -205,7 +208,7 @@ export function VideoReviewPlayer({
   clipping, clipRange, onClipRangeChange,
   videoMaxHeight = 'max-h-[480px]',
   gameEvents, gameMeta, seekToGameTimeSec, seekNonce, clip, layers, onTimeChange, loopRange, seekVideo, onClip,
-  onLayersChange, hideMistakes, onTakeNote, onTogglePanel, panelOpen, panelSide = 'right', onToggleSide, panelTabLabel,
+  onLayersChange, hideMistakes, onTakeNote, onTogglePanel, panelOpen, panelSide = 'right', onToggleSide, panelTabLabel, barExtra,
   mistakes, mistakeTags, onAddMistake, onDeleteMistake,
   bookmarks, onAddBookmark, onDeleteBookmark,
 }: VideoReviewPlayerProps) {
@@ -261,27 +264,9 @@ export function VideoReviewPlayer({
   }, [visibleSections])
   // Show/hide the game-event markers (kills/dragons/etc) layer.
   const [showEvents, setShowEvents] = useState(true)
-  // Per-category filter. null = all visible. A Set of types means show ONLY
-  // those types. Persisted to localStorage so the user's last chip
-  // selection auto-applies when they open the next recording — no need to
-  // re-click "Deaths only" every time.
-  const [eventFilter, setEventFilter] = useState<Set<GameEventType> | null>(() => {
-    try {
-      const raw = localStorage.getItem('nm.player.eventFilter')
-      if (!raw) return null
-      const parsed = JSON.parse(raw)
-      if (!Array.isArray(parsed) || parsed.length === 0) return null
-      const valid = new Set(EVENT_ORDER)
-      const filtered = (parsed as string[]).filter((t): t is GameEventType => valid.has(t as GameEventType))
-      return filtered.length > 0 ? new Set<GameEventType>(filtered) : null
-    } catch { return null }
-  })
-  useEffect(() => {
-    try {
-      if (eventFilter === null) localStorage.removeItem('nm.player.eventFilter')
-      else localStorage.setItem('nm.player.eventFilter', JSON.stringify([...eventFilter]))
-    } catch { /* ignore */ }
-  }, [eventFilter])
+  // The event types hidden by their chip (beta.20: a pressed chip clicked again hides its events). Kept per device.
+  const [hiddenTypes, setHiddenTypes] = useState<Set<GameEventType>>(() => readHiddenEvents(EVENT_ORDER))
+  useEffect(() => { saveHiddenEvents(hiddenTypes) }, [hiddenTypes])
   // High-level filter mode — switches which events the renderer considers
   // before applying per-category chips. Persisted to localStorage so
   // jumping between recordings keeps the same view.
@@ -335,7 +320,6 @@ export function VideoReviewPlayer({
   const [mistakeTagId, setMistakeTagId] = useState<string>('')
   const [mistakeNote, setMistakeNote] = useState('')
   const [mistakeSeverity, setMistakeSeverity] = useState<1 | 2 | 3>(2)
-  const [mistakeTagQuery, setMistakeTagQuery] = useState('')
   const [savingMistake, setSavingMistake] = useState(false)
 
   // Bookmark inline-add dialog: triggered by `b`. Single-line label.
@@ -357,7 +341,7 @@ export function VideoReviewPlayer({
   // Filter mode is applied here so it ripples through clustering / lanes
   // automatically; recomputing from scratch on toggle is fine because the
   // input list is tiny (<200 events) and computation is microseconds.
-  const mappedEvents = useMemo(() => {
+  const modeEvents = useMemo(() => {
     if (!gameEvents || gameEvents.length === 0 || !gameMeta || duration <= 0) return []
     const gameEndAt = typeof gameMeta.gameEndAt === 'string' ? new Date(gameMeta.gameEndAt) : gameMeta.gameEndAt
     const recordingCreatedAt = typeof gameMeta.recordingCreatedAt === 'string'
@@ -368,13 +352,8 @@ export function VideoReviewPlayer({
       // Filter mode gate. "mine" only takes isPlayer=true events.
       // "objectives" only takes OBJECTIVE_TYPES (regardless of isPlayer).
       // "all" lets everything through.
-      if (layers) {
-        // The Review's layers replace the filter modes.
-        if (!layers[layerOfEvent(ev)]) continue
-      } else {
-        if (filterMode === 'mine' && !ev.isPlayer) continue
-        if (filterMode === 'objectives' && !OBJECTIVE_TYPES.has(ev.type)) continue
-      }
+      if (filterMode === 'mine' && !ev.isPlayer) continue
+      if (filterMode === 'objectives' && !OBJECTIVE_TYPES.has(ev.type)) continue
       const t = gameTimeToVideoTime({
         eventGameTimeMs: ev.gameTimeMs,
         gameEndAt,
@@ -386,7 +365,8 @@ export function VideoReviewPlayer({
       if (t !== null) out.push({ ...ev, videoTime: t })
     }
     return out
-  }, [gameEvents, gameMeta, duration, filterMode, layers])
+  }, [gameEvents, gameMeta, duration, filterMode])
+  const mappedEvents = useMemo(() => modeEvents.filter((ev) => !hiddenTypes.has(ev.type)), [modeEvents, hiddenTypes])
 
   /**
    * Cluster same-type adjacent events into a single marker with a count
@@ -566,7 +546,20 @@ export function VideoReviewPlayer({
   // Phase Comparator jumping to the 12-min dip), map it to video time via the
   // same offset pipeline the event markers use, then seek + play. Applied
   // once per distinct value, and only after metadata is ready (duration>0).
-  /** Game time → video time (the event markers' offset pipeline, else game time + offset). Null before metadata. */
+  /** The recording's offset (eventSync.deriveOffsetSec: videoT = gameT − offset), 0 without metadata. */
+  const currentOffsetSec = (): number => {
+    if (!gameMeta) return 0
+    const off = deriveOffsetSec({
+      gameEndAt: typeof gameMeta.gameEndAt === 'string' ? new Date(gameMeta.gameEndAt) : gameMeta.gameEndAt,
+      gameDurationSec: gameMeta.gameDurationSec,
+      recordingCreatedAt: typeof gameMeta.recordingCreatedAt === 'string' ? new Date(gameMeta.recordingCreatedAt) : gameMeta.recordingCreatedAt,
+      videoDurationSec: videoRef.current?.duration || duration,
+      startOffsetSec: gameMeta.startOffsetSec,
+    })
+    return Number.isFinite(off) ? off : 0
+  }
+
+  /** Game time → video time (the event markers' offset pipeline, else clamped). Null before metadata. */
   const gameToVideo = useCallback((gameSec: number): number | null => {
     if (!gameMeta || duration <= 0) return null
     const gameEndAt = typeof gameMeta.gameEndAt === 'string' ? new Date(gameMeta.gameEndAt) : gameMeta.gameEndAt
@@ -580,23 +573,18 @@ export function VideoReviewPlayer({
       startOffsetSec: gameMeta.startOffsetSec,
     })
     if (vt === null) {
-      // Fallback: video time = game time + offset (mirror of openMistakeDialog).
-      let offsetSec = typeof gameMeta.startOffsetSec === 'number' && Number.isFinite(gameMeta.startOffsetSec)
-        ? gameMeta.startOffsetSec
-        : (recordingCreatedAt.getTime() - (gameEndAt.getTime() - gameMeta.gameDurationSec * 1000)) / 1000
-      if (!Number.isFinite(offsetSec)) offsetSec = 0
-      vt = gameSec + offsetSec
+      // Outside the recording: clamp the same mapping (videoT = gameT − offset) to the video's ends.
+      vt = gameSec - currentOffsetSec()
     }
     return Math.max(0, Math.min(duration, vt))
-  }, [gameMeta, duration])
+  }, [gameMeta, duration]) // eslint-disable-line react-hooks/exhaustive-deps -- currentOffsetSec reads gameMeta and duration
 
   // The micro-review moment's window in video time; playback stops at its end once, after a seek into it.
   const clipVideo = useMemo(() => {
     if (!clip) return null
     const start = gameToVideo(clip.startSec), end = gameToVideo(clip.endSec)
     if (start == null || end == null) return null
-    const m = (s: number | null) => (s == null ? null : gameToVideo(s))
-    return { start, end, error: m(clip.markers.error), consequence: m(clip.markers.consequence), conclusion: m(clip.markers.conclusion) }
+    return { start, end }
   }, [clip, gameToVideo])
   const stopAtRef = useRef<number | null>(null)
   useEffect(() => {
@@ -610,6 +598,21 @@ export function VideoReviewPlayer({
     videoRef.current.currentTime = loopRange.startMs / 1000
     videoRef.current.play().catch(() => {})
   }, [loopRange?.startMs, loopRange?.endMs]) // eslint-disable-line react-hooks/exhaustive-deps -- once per selection
+  useEffect(() => {
+    if (!layers) return
+    const sync = () => setIsFullscreen(!!document.fullscreenElement && document.fullscreenElement === containerRef.current)
+    document.addEventListener('fullscreenchange', sync)
+    return () => document.removeEventListener('fullscreenchange', sync)
+  }, [layers])
+  // Beta.20: the side panel takes the player's height (video + bar).
+  useEffect(() => {
+    const el = containerRef.current
+    if (!layers || !el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => { if (el.offsetHeight > 0) useReviewPlayerStore.setState({ playerHeight: el.offsetHeight }) })
+    ro.observe(el)
+    return () => { ro.disconnect(); useReviewPlayerStore.setState({ playerHeight: null }) }
+  }, [layers])
+
   // « Prise de note » (N) is defined further down; the hotkey calls it through this ref.
   const markRef = useRef<(() => void) | null>(null)
   // Review v2 « Prise de note » pop-over (spec § 21): open at a time, the video paused.
@@ -760,6 +763,13 @@ export function VideoReviewPlayer({
   // (no playback reset on toggle).
 
   const toggleFullscreen = () => {
+    // Review player (beta.20 bug « the image stays inside the window »): the real fullscreen of the player's container
+    // (Fullscreen API; Electron takes the whole screen), with its bar and pop-overs inside; Esc leaves it.
+    if (layers) {
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+      else void containerRef.current?.requestFullscreen?.().catch(() => {})
+      return
+    }
     setIsFullscreen((prev) => !prev)
   }
 
@@ -794,13 +804,13 @@ export function VideoReviewPlayer({
   // ESC exits our custom section-fullscreen mode (mirrors the native API
   // UX so the user's muscle memory still works).
   useEffect(() => {
-    if (!isFullscreen) return
+    if (!isFullscreen || layers) return // the real fullscreen handles Esc itself
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsFullscreen(false)
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [isFullscreen])
+  }, [isFullscreen, layers])
 
   // Auto-hide controls in fullscreen after 2.5s of mouse idle. Any mouse
   // move re-shows them and resets the timer. Hover over the controls bar
@@ -838,24 +848,16 @@ export function VideoReviewPlayer({
     const v = videoRef.current
     if (!v || !gameMeta) return
     v.pause()
-    const vt = v.currentTime
-    // Reverse-map videoTime → game time by subtracting the same offset
-    // gameTimeToVideoTime would have added. Falls back to 0 if metadata is missing.
-    const gameEndAt = typeof gameMeta.gameEndAt === 'string' ? new Date(gameMeta.gameEndAt) : gameMeta.gameEndAt
-    const recordingCreatedAt = typeof gameMeta.recordingCreatedAt === 'string' ? new Date(gameMeta.recordingCreatedAt) : gameMeta.recordingCreatedAt
-    let offsetSec = typeof gameMeta.startOffsetSec === 'number' && Number.isFinite(gameMeta.startOffsetSec)
-      ? gameMeta.startOffsetSec
-      : (recordingCreatedAt.getTime() - (gameEndAt.getTime() - gameMeta.gameDurationSec * 1000)) / 1000
-    if (!Number.isFinite(offsetSec)) offsetSec = 0
-    const gameSec = Math.max(0, Math.floor(vt - offsetSec))
+    // The player's CURRENT time, as game time (beta.20 bug: it opened at 0:00). videoT = gameT − offset (eventSync), so
+    // gameT = videoT + offset, with the same plausibility rules as the markers (a bad stored offset is ignored).
+    const gameSec = Math.max(0, Math.floor(v.currentTime + currentOffsetSec()))
     setMistakeAtSec(gameSec)
     setMistakeTagId('')
-    setMistakeTagQuery('')
     setMistakeNote('')
     setMistakeSeverity(2)
     setMistakeDialogOpen(true)
     revealSidebar('mistakes')
-  }, [gameMeta, revealSidebar])
+  }, [gameMeta, revealSidebar]) // eslint-disable-line react-hooks/exhaustive-deps -- currentOffsetSec reads gameMeta and the video
 
   const openBookmarkDialog = useCallback(() => {
     const v = videoRef.current
@@ -933,7 +935,7 @@ export function VideoReviewPlayer({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [togglePlay, skip, seekBy, speed, changeSpeed, isFullscreen, cycleSidebar, onAddMistake, gameMeta, onAddBookmark, toggleMute, openMistakeDialog, openBookmarkDialog, layers, readonly, onTakeNote, onTogglePanel])
+  }, [togglePlay, skip, seekBy, speed, changeSpeed, isFullscreen, cycleSidebar, onAddMistake, gameMeta, onAddBookmark, toggleMute, openMistakeDialog, openBookmarkDialog, layers, readonly, onTakeNote, onTogglePanel]) // eslint-disable-line react-hooks/exhaustive-deps -- toggleFullscreen only reads layers and the container
 
   // ── Mark moment ──────────────────────────────────────────────────────────────
 
@@ -1181,39 +1183,13 @@ export function VideoReviewPlayer({
         </button>
       </div>
 
-      {/* Tag picker — simple search filter over a chip cloud. */}
-      <input
-        autoFocus
-        type="text"
-        value={mistakeTagQuery}
-        onChange={(e) => setMistakeTagQuery(e.target.value)}
-        placeholder={i18n.t('record.player.filterTags')}
-        className="w-full bg-transparent border-b border-white/10 text-xs text-white py-1 focus:outline-none focus:border-amber-400/60"
-      />
-      <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
-        {(mistakeTags ?? [])
-          .filter((t) => !mistakeTagQuery || t.label.toLowerCase().includes(mistakeTagQuery.toLowerCase()) || t.slug.includes(mistakeTagQuery.toLowerCase()))
-          .map((t) => {
-            const active = mistakeTagId === t.id
-            return (
-              <button
-                key={t.id}
-                onClick={() => setMistakeTagId(t.id)}
-                style={active ? { borderColor: t.color ?? '#FFB454', backgroundColor: `${t.color ?? '#FFB454'}25` } : undefined}
-                className={cn(
-                  'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors',
-                  active ? 'text-white' : 'border-white/15 text-white/50 hover:text-white hover:border-white/30',
-                )}
-              >
-                {t.label}
-                <span className="ml-1 opacity-50 capitalize">· {t.category}</span>
-              </button>
-            )
-          })}
-        {(mistakeTags?.length ?? 0) === 0 && (
-          <span className="text-[10px] text-white/40">{i18n.t('record.player.noTags')}</span>
-        )}
-      </div>
+      {/* Tag search with auto-completion (beta.20): type, ↑ ↓, Entrée. */}
+      {(mistakeTags?.length ?? 0) === 0 ? (
+        <span className="text-[10px] text-white/40">{i18n.t('record.player.noTags')}</span>
+      ) : (
+        <TagAutocomplete tags={mistakeTags ?? []} autoFocus placeholder={i18n.t('record.player.filterTags')}
+          value={(mistakeTags ?? []).find((t) => t.id === mistakeTagId) ?? null} onPick={(t) => setMistakeTagId(t.id)} />
+      )}
 
       <textarea
         value={mistakeNote}
@@ -1470,7 +1446,8 @@ export function VideoReviewPlayer({
   // Whether to render the video as a full-cover layer (controls overlay
   // on top, sidebar absent). True only when in fullscreen AND no sidebar.
   // Otherwise the sidebar would get covered by the absolute inset-0 layer.
-  const videoCoversScreen = isFullscreen && sidebarPosition === 'hidden'
+  // The Review player has no sidebar of its own (its right panel is the page's): in fullscreen the video fills it.
+  const videoCoversScreen = isFullscreen && (sidebarPosition === 'hidden' || !!layers)
   const sidebarVisible = sidebarPosition !== 'hidden' && sidebarHasAnyContent
 
   // Review v2 (DECISIONS 21/11, spec § 19): the v2 bar, its markers by layer (bookmarks: a micro-review moment or a
@@ -1479,8 +1456,23 @@ export function VideoReviewPlayer({
   const barMarkers: BarMarker[] = !layers ? [] : [
     ...(bookmarks ?? []).map((b): BarMarker => ({ time: b.videoTimeMs / 1000, layer: isMicroReviewBookmark(b) ? 'microReview' : 'notes', label: b.label ?? i18n.t('record.player.bookmark') })),
     ...mappedMistakes.map((m): BarMarker => ({ time: m.videoTime, layer: layerOfMistake(m), label: m.tag.label })),
-    ...mappedEvents.map((ev): BarMarker => ({ time: ev.videoTime, layer: layerOfEvent(ev), label: ev.label })),
-  ].filter((m) => layers[m.layer])
+  ].filter((m) => layers[m.layer]).concat(
+    mappedEvents.map((ev): BarMarker => ({ time: ev.videoTime, layer: layerOfEvent(ev), label: ev.label })),
+  )
+  // The filter chips (beta.20, in place of the « Filtres » menu): the scope, each event type with its count, then
+  // the player's own markers — Notes, Micro-review, AUTO (the detected mistakes, on the bar and in the side panel).
+  const eventCounts = modeEvents.reduce<Partial<Record<GameEventType, number>>>((acc, ev) => { acc[ev.type] = (acc[ev.type] ?? 0) + 1; return acc }, {})
+  const layerChip = (key: 'notes' | 'microReview' | 'mistakes', label: string, count: number, Icon: LucideIcon, colorClass: string): FilterChip[] =>
+    !layers || count === 0 ? [] : [{ key, label, count, on: layers[key], Icon, colorClass, onToggle: () => onLayersChange?.({ ...layers, [key]: !layers[key] }) }]
+  const filterChips: FilterChip[] = [
+    ...EVENT_ORDER.filter((t) => (eventCounts[t] ?? 0) > 0).map((t): FilterChip => ({
+      key: t, label: EVENT_LABELS[t], count: eventCounts[t] ?? 0, on: !hiddenTypes.has(t), Icon: EVENT_ICONS[t], colorClass: EVENT_COLORS[t],
+      onToggle: () => setHiddenTypes((h) => toggleHidden(h, t)),
+    })),
+    ...layerChip('notes', i18n.t('recording.layers.notes'), (bookmarks ?? []).filter((b) => !isMicroReviewBookmark(b)).length + (mistakes ?? []).filter((m) => !m.autoDetected).length, MessageSquare, 'bg-hextech-gold text-black'),
+    ...layerChip('microReview', i18n.t('recording.layers.microReview'), (bookmarks ?? []).filter(isMicroReviewBookmark).length, Target, 'bg-[#E66556] text-white'),
+    ...(hideMistakes ? [] : layerChip('mistakes', i18n.t('record.player.auto'), (mistakes ?? []).filter((m) => m.autoDetected).length, AlertTriangle, 'bg-amber-500 text-black')),
+  ]
 
   return (
     <div
@@ -1491,7 +1483,7 @@ export function VideoReviewPlayer({
       // visible — replaces the native Fullscreen API which used to cover
       // the entire window and broke the user's navigation.
       style={
-        isFullscreen
+        isFullscreen && !v2
           ? { position: 'fixed', left: '16rem', top: '36px', right: 0, bottom: 0, zIndex: 40 }
           : undefined
       }
@@ -1562,27 +1554,10 @@ export function VideoReviewPlayer({
               onFileNotFound?.()
             }}
           />
-          {/* The video's corner (spec § 19): ⇄ side, panel, fullscreen; the panel hidden: a tab to reopen it. */}
-          {v2 && (
-            // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- only stops the click-to-play; the buttons inside take the keyboard
+          {/* The panel hidden: a tab in the video's corner reopens it (its ⇄ / panel / fullscreen icons are in the bar since beta.20). */}
+          {v2 && !panelOpen && onTogglePanel && panelTabLabel && (
+            // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- only stops the click-to-play; the button inside takes the keyboard
             <div className="absolute right-2 top-2 z-10 flex flex-col items-end gap-1.5" onClick={(e) => e.stopPropagation()} data-testid="video-corner">
-              <div className="flex gap-1 rounded-md bg-black/55 p-1">
-                {onToggleSide && (
-                  <CornerBtn label={i18n.t(panelSide === 'left' ? 'recording.corner.sideLeft' : 'recording.corner.sideRight')} onClick={onToggleSide} disabled={!panelOpen}>
-                    <ArrowLeftRight className="h-[18px] w-[18px]" />
-                  </CornerBtn>
-                )}
-                {onTogglePanel && (
-                  <CornerBtn label={i18n.t(panelOpen ? 'recording.corner.hidePanel' : 'recording.corner.showPanel')} onClick={onTogglePanel} pressed={panelOpen}>
-                    {panelOpen
-                      ? (panelSide === 'left' ? <PanelLeft className="h-[18px] w-[18px] text-hextech-gold" /> : <PanelRight className="h-[18px] w-[18px] text-hextech-gold" />)
-                      : (panelSide === 'left' ? <PanelLeftDashed className="h-[18px] w-[18px]" /> : <PanelRightDashed className="h-[18px] w-[18px]" />)}
-                  </CornerBtn>
-                )}
-                <CornerBtn label={i18n.t('recording.bar.fullscreen')} onClick={toggleFullscreen}>
-                  {isFullscreen ? <Minimize2 className="h-[18px] w-[18px]" /> : <Maximize2 className="h-[18px] w-[18px]" />}
-                </CornerBtn>
-              </div>
               {!panelOpen && onTogglePanel && panelTabLabel && (
                 <button type="button" onClick={onTogglePanel} data-testid="panel-reopen-tab"
                   className="flex items-center gap-1.5 rounded-md border border-hextech-gold bg-black/55 px-2.5 py-1 text-xs text-hextech-gold-bright hover:bg-black/70">
@@ -1659,10 +1634,31 @@ export function VideoReviewPlayer({
             clipWindow={clipVideo}
             layers={layers!}
             onLayersChange={onLayersChange ?? (() => {})}
+            filters={filterChips.length > 0 || (gameEvents?.length ?? 0) > 0 ? <PlayerFilterChips mode={filterMode} onMode={setFilterMode} chips={filterChips} /> : null}
             hideMistakes={hideMistakes}
             onClip={onClip}
             onMistake={onAddMistake && gameMeta ? openMistakeDialog : undefined}
             onNote={onTakeNote ? () => openNoteRef.current?.() : undefined}
+            trailing={(
+              <>
+                {barExtra}
+                {onToggleSide && (
+                  <IconBtn label={i18n.t(panelSide === 'left' ? 'recording.corner.sideLeft' : 'recording.corner.sideRight')} onClick={onToggleSide} disabled={!panelOpen}>
+                    <ArrowLeftRight className="h-4 w-4" />
+                  </IconBtn>
+                )}
+                {onTogglePanel && (
+                  <IconBtn label={i18n.t(panelOpen ? 'recording.corner.hidePanel' : 'recording.corner.showPanel')} onClick={onTogglePanel} pressed={panelOpen}>
+                    {panelOpen
+                      ? (panelSide === 'left' ? <PanelLeft className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />)
+                      : (panelSide === 'left' ? <PanelLeftDashed className="h-4 w-4" /> : <PanelRightDashed className="h-4 w-4" />)}
+                  </IconBtn>
+                )}
+                <IconBtn label={i18n.t('recording.bar.fullscreen')} onClick={toggleFullscreen} pressed={isFullscreen}>
+                  {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </IconBtn>
+              </>
+            )}
             overlay={(
               <>
                 {noteAt != null && onTakeNote && (
@@ -1765,24 +1761,13 @@ export function VideoReviewPlayer({
               </>
             )}
 
-            {/* The micro-review moment's window and its 3 markers (the Review's single player, 21/11). */}
+            {/* The micro-review moment's window (the Review's single player, 21/11; no automatic markers since beta.20). */}
             {duration > 0 && clipVideo && (() => {
               const from = timeToPercent(clipVideo.start), to = timeToPercent(clipVideo.end)
               if (to < 0 || from > 100) return null
-              const marks = ([['error', clipVideo.error], ['consequence', clipVideo.consequence], ['conclusion', clipVideo.conclusion]] as const)
-                .filter(([, v]) => v != null) as ReadonlyArray<readonly ['error' | 'consequence' | 'conclusion', number]>
               return (
-                <>
-                  <div aria-hidden data-testid="clip-window" className="pointer-events-none absolute top-1/2 z-[4] h-3 -translate-y-1/2 rounded-sm bg-hextech-gold/25 ring-1 ring-hextech-gold/60"
-                    style={{ left: `${Math.max(0, from)}%`, width: `${Math.min(100, to) - Math.max(0, from)}%` }} />
-                  {marks.map(([k, v]) => (
-                    <button key={`clip-${k}`} type="button" data-testid={`clip-marker-${k}`}
-                      title={`${i18n.t(`microReview.vod.markers.${k}`)} — ${fmt(v)}`}
-                      onClick={(e) => { e.stopPropagation(); seekTo(v); stopAtRef.current = clipVideo.end }}
-                      style={{ left: `${timeToPercent(v)}%`, top: 'calc(50% - 20px)' }}
-                      className="absolute z-[7] h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[2px] border border-black/70 bg-hextech-gold shadow hover:scale-125" />
-                  ))}
-                </>
+                <div aria-hidden data-testid="clip-window" className="pointer-events-none absolute top-1/2 z-[4] h-3 -translate-y-1/2 rounded-sm bg-hextech-gold/25 ring-1 ring-hextech-gold/60"
+                  style={{ left: `${Math.max(0, from)}%`, width: `${Math.min(100, to) - Math.max(0, from)}%` }} />
               )
             })()}
 
@@ -1808,7 +1793,6 @@ export function VideoReviewPlayer({
                 icons never overlap. Cluster badges keep teamfights from
                 spamming the bar (4 deaths → one Skull · 4). */}
             {showEvents && duration > 0 && positionedClusters.map((c, idx) => {
-              if (eventFilter && !eventFilter.has(c.type)) return null
               const pct = timeToPercent(c.videoTime)
               if (pct < 0 || pct > 100) return null
               const lane = EVENT_LANE[c.type] ?? 0
@@ -1921,7 +1905,7 @@ export function VideoReviewPlayer({
               recording's startOffsetSec is wrong (or the game/recording
               don't actually correspond). Surfaces this loudly instead of
               silently showing an empty timeline. */}
-          {gameEvents && gameEvents.length > 0 && mappedEvents.length === 0 && duration > 0 && gameMeta && (() => {
+          {gameEvents && gameEvents.length > 0 && modeEvents.length === 0 && filterMode === 'all' && duration > 0 && gameMeta && (() => {
             const offsetSec = (() => {
               const ge = typeof gameMeta.gameEndAt === 'string' ? new Date(gameMeta.gameEndAt) : gameMeta.gameEndAt
               const rc = typeof gameMeta.recordingCreatedAt === 'string' ? new Date(gameMeta.recordingCreatedAt) : gameMeta.recordingCreatedAt
@@ -1939,104 +1923,10 @@ export function VideoReviewPlayer({
             )
           })()}
 
-          {/* Top-level filter mode pills + per-category legend. The mode
-              pills (Mine / All / Objectives) gate which events even
-              reach the renderer; the category chips below let the user
-              hide a specific type within that mode. */}
-          {showEvents && (gameEvents?.length ?? 0) > 0 && (() => {
-            const counts = mappedEvents.reduce<Record<string, number>>((acc, ev) => {
-              acc[ev.type] = (acc[ev.type] ?? 0) + 1
-              return acc
-            }, {})
-            const visibleTypes = EVENT_ORDER.filter((t) => counts[t] > 0)
-            return (
-              <div className="flex flex-wrap items-center gap-1 mt-2 px-0.5">
-                {/* Mode pills */}
-                <div className="flex items-center rounded-md border border-white/10 bg-white/5 p-0.5 mr-1">
-                  {([
-                    { id: 'mine' as const, label: i18n.t('record.player.modeMine'), Icon: User, title: i18n.t('record.player.modeMineHint') },
-                    { id: 'all' as const, label: i18n.t('record.player.modeAll'), Icon: Users, title: i18n.t('record.player.modeAllHint') },
-                    { id: 'objectives' as const, label: i18n.t('record.player.modeObjectives'), Icon: Target, title: i18n.t('record.player.modeObjectivesHint') },
-                  ]).map(({ id, label, Icon, title }) => {
-                    const active = filterMode === id
-                    return (
-                      <button
-                        key={id}
-                        onClick={() => { setFilterMode(id); setEventFilter(null) }}
-                        title={title}
-                        className={cn(
-                          'flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors',
-                          active
-                            ? 'bg-hextech-gold/25 text-hextech-gold'
-                            : 'text-white/40 hover:text-white/70 hover:bg-white/5',
-                        )}
-                      >
-                        <Icon className="h-2.5 w-2.5" strokeWidth={2.5} />
-                        <span>{label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-                {visibleTypes.map((t) => {
-                  const Icon = EVENT_ICONS[t]
-                  const on = !eventFilter || eventFilter.has(t)
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => {
-                        setEventFilter((prev) => {
-                          // First click on any chip from "all visible": start
-                          // filtering with this single type selected.
-                          if (!prev) {
-                            return new Set(visibleTypes.filter((x) => x === t))
-                          }
-                          const next = new Set(prev)
-                          if (next.has(t)) next.delete(t)
-                          else next.add(t)
-                          // If user re-enabled everything, drop the filter
-                          // entirely so future categories show by default.
-                          if (next.size === visibleTypes.length) return null
-                          if (next.size === 0) return null
-                          return next
-                        })
-                      }}
-                      title={on ? i18n.t('record.player.hideX', { x: EVENT_LABELS[t] }) : i18n.t('record.player.showX', { x: EVENT_LABELS[t] })}
-                      className={cn(
-                        'flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider border transition-all',
-                        on
-                          ? cn(EVENT_COLORS[t], 'border-white/20 hover:brightness-110')
-                          : 'bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/60',
-                      )}
-                    >
-                      <Icon className="h-2.5 w-2.5" strokeWidth={2.5} />
-                      <span>{EVENT_LABELS[t]}</span>
-                      <span className="opacity-60">{counts[t]}</span>
-                    </button>
-                  )
-                })}
-                {eventFilter && (
-                  <>
-                    <button
-                      onClick={() => setEventFilter(null)}
-                      title={i18n.t('record.player.resetHint')}
-                      className="text-[10px] text-white/40 hover:text-white/80 underline underline-offset-2 px-1"
-                    >
-                      {i18n.t('record.player.reset')}
-                    </button>
-                    {/* Subtle hint that the current chip selection is the
-                        new default for future recordings — answers the
-                        question "is this sticky?" without a settings menu. */}
-                    <span
-                      title={i18n.t('record.player.savedDefaultHint')}
-                      className="text-[9px] text-hextech-gold/50 px-1 italic"
-                    >
-                      {i18n.t('record.player.savedDefault')}
-                    </span>
-                  </>
-                )}
-              </div>
-            )
-          })()}
+          {/* The filter chips (beta.20): the same row as the v2 bar's. */}
+          {showEvents && filterChips.length > 0 && (
+            <div className="mt-2 px-0.5"><PlayerFilterChips mode={filterMode} onMode={setFilterMode} chips={filterChips} /></div>
+          )}
         </div>
 
         {/* Controls */}
@@ -2231,12 +2121,3 @@ export function VideoReviewPlayer({
   )
 }
 
-/** An icon of the video's corner (spec § 19), 20 px. */
-function CornerBtn({ label, onClick, disabled, pressed, children }: { label: string; onClick: () => void; disabled?: boolean; pressed?: boolean; children: React.ReactNode }) {
-  return (
-    <button type="button" title={label} aria-label={label} aria-pressed={pressed} onClick={onClick} disabled={disabled}
-      className="flex h-7 w-7 items-center justify-center rounded text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-35">
-      {children}
-    </button>
-  )
-}

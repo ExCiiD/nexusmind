@@ -9,6 +9,7 @@ import { fmtClock } from '@/lib/mistakeInsights'
 import { invalidateCached } from '@/lib/queryCache'
 import { tagLabel } from '@/components/MicroReview/text'
 import type { DetectedMistake, MistakeCorrectionReason, MistakeTag } from '@/lib/ipc'
+import { TagAutocomplete } from '@/components/MicroReview/TagAutocomplete'
 
 const REASONS: MistakeCorrectionReason[] = ['not_a_mistake', 'wrong_tag', 'wrong_time', 'team_context', 'other']
 const NOTE_MAX = 300
@@ -30,7 +31,6 @@ export function DetectedMistakesButton({ gameId }: { gameId: string }) {
   const [tags, setTags] = useState<MistakeTag[]>([])
   const [editing, setEditing] = useState<{ id: string; mode: 'remove' | 'retag' } | null>(null)
   const [newTag, setNewTag] = useState('')
-  const [query, setQuery] = useState('')
   const [reason, setReason] = useState<MistakeCorrectionReason | null>(null)
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -69,7 +69,7 @@ export function DetectedMistakesButton({ gameId }: { gameId: string }) {
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps -- on open / close
 
   const start = (id: string, mode: 'remove' | 'retag') => {
-    setEditing({ id, mode }); setNewTag(''); setQuery(''); setNote('')
+    setEditing({ id, mode }); setNewTag(''); setNote('')
     setReason(mode === 'remove' ? 'not_a_mistake' : 'wrong_tag')
   }
 
@@ -163,17 +163,8 @@ export function DetectedMistakesButton({ gameId }: { gameId: string }) {
                         {editing.mode === 'retag' && (
                           <div className="space-y-1.5">
                             <p className="font-mono text-[10px] uppercase tracking-wider text-hextech-text-dim">{t('review.detected.newTag')}</p>
-                            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('review.detected.searchTag')} aria-label={t('review.detected.searchTag')}
-                              className="w-full rounded-md border border-hextech-border-dim bg-hextech-black px-2.5 py-1.5 text-sm text-hextech-text focus:border-hextech-gold focus:outline-none" />
-                            <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto" role="radiogroup" aria-label={t('review.detected.newTag')}>
-                              {active.filter((x) => x.slug !== m.tagSlug && tagLabel(t, x.slug, x.label).toLowerCase().includes(query.trim().toLowerCase())).slice(0, 24).map((x) => (
-                                <button key={x.id} type="button" role="radio" aria-checked={newTag === x.slug} onClick={() => setNewTag(x.slug)}
-                                  className={cn('rounded-full border px-2.5 py-0.5 text-[11px] transition-colors',
-                                    newTag === x.slug ? 'border-hextech-red bg-hextech-red/[0.14] text-hextech-text-bright' : 'border-hextech-border-dim text-hextech-text hover:border-hextech-gold/50')}>
-                                  {tagLabel(t, x.slug, x.label)}
-                                </button>
-                              ))}
-                            </div>
+                            <TagAutocomplete tags={active} autoFocus exclude={new Set([m.tagSlug])}
+                              value={active.find((x) => x.slug === newTag) ?? null} onPick={(x) => setNewTag(x.slug)} />
                           </div>
                         )}
                         {/* « Pourquoi ? (facultatif) » — never blocking: « Passer » does the action without a reason. */}

@@ -563,7 +563,8 @@ export function registerStatsHandlers() {
   ipcMain.handle('review:prefilled-notes', async (_event, gameId: string) => {
     const prisma = getPrisma()
     const answers = await prisma.microReviewAnswer.findMany({
-      where: { gameId }, select: { momentKey: true, trigger: true, gameTimeSec: true, outcome: true, tagSlug: true },
+      // « Not a mistake » moments leave no note (21/11/2026).
+      where: { gameId, outcome: { not: 'dismissed' } }, select: { momentKey: true, trigger: true, gameTimeSec: true, outcome: true, tagSlug: true },
     })
     if (answers.length === 0) return []
     const slugs = [...new Set(answers.map((a) => a.tagSlug).filter((x): x is string => !!x))]

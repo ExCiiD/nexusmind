@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2, Pencil, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import { formatMs } from '@/lib/mediaCore'
 import { tagLabel } from '@/components/MicroReview/text'
 import type { MistakeTag } from '@/lib/ipc'
+import { TagAutocomplete } from '@/components/MicroReview/TagAutocomplete'
 
 /**
  * « Prise de note » pop-over (DECISIONS 21/11, spec § 21): opens above the bar on the right, the video paused; the
@@ -21,7 +21,6 @@ export function NotePopover({ timeSec, tags, onSave, onCancel }: {
   const [text, setText] = useState('')
   const [picked, setPicked] = useState<string[]>([])
   const [picking, setPicking] = useState(false)
-  const [query, setQuery] = useState('')
   const [saving, setSaving] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   useEffect(() => { ref.current?.focus() }, [])
@@ -39,7 +38,6 @@ export function NotePopover({ timeSec, tags, onSave, onCancel }: {
     try { await onSave({ text: text.trim(), tagSlugs: picked }) } finally { setSaving(false) }
   }
   const active = tags.filter((x) => !x.archivedAt)
-  const matches = active.filter((x) => !picked.includes(x.slug) && tagLabel(t, x.slug, x.label).toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8)
 
   return (
     <div role="dialog" aria-label={t('recording.note.button')} data-testid="note-popover"
@@ -66,16 +64,8 @@ export function NotePopover({ timeSec, tags, onSave, onCancel }: {
       </div>
       {picking && (
         <div className="space-y-1.5">
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('recording.note.searchTag')} aria-label={t('recording.note.searchTag')}
-            className="w-full rounded-md border border-hextech-border-dim bg-hextech-black px-2 py-1 text-xs text-hextech-text focus:border-hextech-gold focus:outline-none" />
-          <div className="flex flex-wrap gap-1">
-            {matches.map((x) => (
-              <button key={x.id} type="button" onClick={() => { setPicked([...picked, x.slug]); setQuery('') }}
-                className={cn('rounded-full border border-hextech-border-dim px-2 py-0.5 text-[11px] text-hextech-text hover:border-hextech-gold/60')}>
-                {tagLabel(t, x.slug, x.label)}
-              </button>
-            ))}
-          </div>
+          <TagAutocomplete tags={active} autoFocus placeholder={t('recording.note.searchTag')} exclude={new Set(picked)}
+            onPick={(x) => setPicked([...picked, x.slug])} />
         </div>
       )}
       <div className="flex items-center justify-between gap-2 pt-1">

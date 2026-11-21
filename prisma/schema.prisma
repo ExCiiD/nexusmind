@@ -576,6 +576,9 @@ model Mistake {
   // True when the row was created by mistakeDetector.ts heuristics rather
   // than by the user. Lets the UI hide them behind a toggle until trusted.
   autoDetected Boolean  @default(false)
+  /// 21/11/2026 « Repères de la micro-review »: the window the player set (error − 5 s .. consequence + 5 s); null = usual window.
+  startSec     Int?
+  endSec       Int?
   createdAt    DateTime @default(now())
 
   @@index([gameId])
@@ -742,6 +745,9 @@ model MicroReviewAnswer {
   /// Manual mistakes the answer added for its extra tags, and its bookmark: undone on re-answer (21/11/2026)
   extraMistakeIds String  @default("[]")
   bookmarkId      String?
+  /// 21/11/2026: the precise timestamps the player set on the moment (optional, one or both).
+  errorAtSec       Int?
+  consequenceAtSec Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CoachVerdictsForGame } from './CoachVerdictsForGame'
-import { Check, ChevronRight, Loader2, MapPin, RotateCcw, ShieldCheck, Sparkles, Timer, ExternalLink } from 'lucide-react'
+import { BookOpen, X, Check, ChevronRight, Loader2, MapPin, RotateCcw, ShieldCheck, Sparkles, Timer, ExternalLink } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -34,7 +34,7 @@ import { invalidateCached } from '@/lib/queryCache'
 import { placeText, positionKindText, type Place, type PositionKind } from './placeText'
 import { AnswerExtrasEditor } from './AnswerExtrasEditor'
 import { UndetectedMistakeButton } from './UndetectedMistakeDialog'
-import { EMPTY_EXTRAS, answerNote, bookmarkLabelOf, extraTagsPayload, type AnswerExtras } from './answerExtras'
+import { answerNote, bookmarkLabelOf, extrasOfAnswer, extraTagsPayload, preciseTimesOk, preciseTimesPayload, type AnswerExtras } from './answerExtras'
 import { SharedExcerpt } from './SharedExcerpt'
 import { useReviewPlayerStore } from '@/store/useReviewPlayerStore'
 
@@ -56,6 +56,8 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
   const [answers, setAnswers] = useState<Record<string, MicroReviewAnswerView>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [picking, setPicking] = useState(false)
+  // Beta.20, the Review's box: the Codex card stays folded until « Conseil Codex » is clicked (per moment).
+  const [codexShownFor, setCodexShownFor] = useState<string | null>(null)
   const [xp, setXp] = useState(0)
   const [error, setError] = useState<string | null>(null)
   // Post-game: the analysis could not load because Riot is rate-limiting (shown with its wait instead of "unavailable").
@@ -64,6 +66,13 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
   const [extrasByKey, setExtrasByKey] = useState<Record<string, AnswerExtras>>({})
   const [more, setMore] = useState<CriticalMoment[]>([])
   const [loadingMore, setLoadingMore] = useState(false)
+  // « Not a mistake » (DECISIONS 21/11): the moments the player dismissed, and the one whose « Annuler » is still shown.
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const [undoKey, setUndoKey] = useState<string | null>(null)
+  // Back can undo a dismissal only while the app runs (NOT_UNDOABLE after a restart): « Restaurer » for those only.
+  const [undoable, setUndoable] = useState<Set<string>>(new Set())
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (undoTimer.current) clearTimeout(undoTimer.current) }, [])
   const [noMore, setNoMore] = useState(false)
 
   useEffect(() => {
@@ -75,9 +84,13 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
       .then((d) => {
         if (!alive) return
         setData(d)
-        const byKey = Object.fromEntries((d?.answers ?? []).map((a) => [a.momentKey, a]))
+        const isDismissed = (a: { outcome: string }) => a.outcome === 'dismissed'
+        const byKey = Object.fromEntries((d?.answers ?? []).filter((a) => !isDismissed(a)).map((a) => [a.momentKey, a]))
         setAnswers(byKey)
-        const firstOpen = (d?.analysis?.moments ?? []).findIndex((m) => !byKey[m.key])
+        const gone = new Set((d?.answers ?? []).filter(isDismissed).map((a) => a.momentKey))
+        setDismissed(gone)
+        setUndoKey(null)
+        const firstOpen = (d?.analysis?.moments ?? []).findIndex((m) => !byKey[m.key] && !gone.has(m.key))
         setIndex(firstOpen < 0 ? 0 : firstOpen)
       })
       .catch((err) => {
@@ -104,23 +117,67 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
   // An answer given with a diagnosis since withdrawn is shown back as it was recorded, after the card's own options.
   const legacy = card ? retiredOption(card.options, answer) : null
   const options = card ? (legacy ? [...card.options, legacy] : card.options) : []
-  const allDone = moments.length > 0 && moments.every((m) => answers[m.key])
-  const answeredCount = moments.filter((m) => answers[m.key]).length
+  // A dismissed moment counts as handled.
+  const handled = (k: string) => !!answers[k] || dismissed.has(k)
+  const allDone = moments.length > 0 && moments.every((m) => handled(m.key))
+  const answeredCount = moments.filter((m) => handled(m.key)).length
   useEffect(() => {
     if (!v2) return
     setMicroReviewCount(data?.analysis ? { done: answeredCount, total: moments.length } : null)
   }, [v2, data, answeredCount, moments.length, setMicroReviewCount])
   // Next unanswered moment after the current one, wrapping around (-1 when all are answered).
-  const nextOpen = moments.map((_, i) => (index + 1 + i) % moments.length).find((i) => i !== index && !answers[moments[i].key]) ?? -1
+  const nextOpen = moments.map((_, i) => (index + 1 + i) % moments.length).find((i) => i !== index && !handled(moments[i].key)) ?? -1
+
+  // « Not a mistake »: the moment's critical mistake is erased (Back), « Retirée · Annuler » for 5 s, then the next moment.
+  const [dismissBusy, setDismissBusy] = useState(false)
+  const dismissMoment = async (m: CriticalMoment) => {
+    if (!window.api.microReviewDismissMoment) { setError('unavailable'); return }
+    setDismissBusy(true)
+    setError(null)
+    try {
+      await window.api.microReviewDismissMoment({ gameId, momentKey: m.key, trigger: m.trigger, gameTimeSec: m.gameTimeSec })
+      setDismissed((prev) => new Set(prev).add(m.key))
+      setUndoable((prev) => new Set(prev).add(m.key))
+      setAnswers((prev) => { const next = { ...prev }; delete next[m.key]; return next })
+      setPicking(false)
+      setUndoKey(m.key)
+      if (undoTimer.current) clearTimeout(undoTimer.current)
+      const next = nextOpen
+      undoTimer.current = setTimeout(() => {
+        setUndoKey(null)
+        if (next >= 0) setIndex(next)
+      }, 5000)
+      useReviewPlayerStore.getState().reloadBookmarks()
+      onAnswered?.()
+    } catch (err) {
+      setError((err as Error)?.message ?? 'error')
+    } finally {
+      setDismissBusy(false)
+    }
+  }
+  const restoreMoment = async (key: string) => {
+    if (undoTimer.current) clearTimeout(undoTimer.current)
+    setUndoKey(null)
+    try {
+      await window.api.microReviewRestoreMoment?.({ gameId, momentKey: key })
+      setDismissed((prev) => { const next = new Set(prev); next.delete(key); return next })
+      setUndoable((prev) => { const next = new Set(prev); next.delete(key); return next })
+      onAnswered?.()
+    } catch (err) {
+      setError((err as Error)?.message ?? 'error')
+    }
+  }
 
   const submit = useCallback(async (m: CriticalMoment, c: QcmCard, choice: { option?: QcmOption; other?: OtherChoice; again?: MicroReviewAnswerView }) => {
     if (!data) return
     const option = choice.option
     const other = choice.other
     const again = choice.again
+    const extras = extrasByKey[m.key] ?? extrasOfAnswer(answers[m.key])
+    // A consequence before the error: the box says so under the fields, nothing is sent.
+    if (!preciseTimesOk(extras)) return
     setBusy(option?.id ?? (again ? 'again' : 'other'))
     setError(null)
-    const extras = extrasByKey[m.key] ?? EMPTY_EXTRAS
     const outcome = again ? again.outcome : other ? (other.justified ? 'justified' : other.customLabel ? 'custom' : 'mistake') : option!.outcome
     const tagSlug = again ? again.tagSlug : other ? (other.justified ? null : other.tagSlug ?? null) : option!.tagSlug
     const customLabel = !again && other && !other.justified ? other.customLabel ?? null : null
@@ -140,6 +197,7 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
         viaOther: again ? again.viaOther : !!other,
         note: answerNote(again ? again.note : other?.note, extras),
         extraTags: extraTagsPayload(extras, tagSlug),
+        ...preciseTimesPayload(extras),
         bookmarkLabel: bookmarkLabelOf(`${fmtClock(clipWindow(m).headerSec)} ${title}`, tagText),
         summary: c.summary,
         // Excerpt start in the VOD, so the coach can jump to it.
@@ -150,7 +208,8 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
       })
       setAnswers((prev) => ({ ...prev, [m.key]: res.answer }))
       // Sent: the reasons are now in the answer's note, the extra tags saved as mistakes.
-      setExtrasByKey((prev) => ({ ...prev, [m.key]: EMPTY_EXTRAS }))
+      // The precise timestamps come back with the answer (MicroReviewAnswerView).
+      setExtrasByKey((prev) => { const next = { ...prev }; delete next[m.key]; return next })
       // « Review courte » (20/11): one answered moment is enough (idempotent; never over a full review).
       window.api.gameMarkShortReview?.(gameId, 'microReview').then(() => invalidateCached('games:')).catch(() => {})
       setPicking(false)
@@ -161,7 +220,7 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
     } finally {
       setBusy(null)
     }
-  }, [data, gameId, addXp, onAnswered, extrasByKey, t, tags])
+  }, [data, gameId, addXp, onAnswered, extrasByKey, answers, t, tags])
 
   /** « Continuer sur d'autres moments clés » (21/11): the next moments the engine kept aside. */
   const loadMore = useCallback(async () => {
@@ -216,14 +275,17 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
       <ol className="mt-3 flex flex-wrap gap-2" aria-label={t('microReview.queue')}>
         {moments.map((m, i) => {
           const a = answers[m.key]
+          const gone = dismissed.has(m.key)
           return (
             <li key={m.key}>
-              <button onClick={() => { setIndex(i); setPicking(false) }} aria-current={i === index}
+              <button onClick={() => { setIndex(i); setPicking(false) }} aria-current={i === index} data-dismissed={gone || undefined}
+                title={gone ? t('microReview.dismiss.pill') : undefined}
                 className={cn('flex items-center gap-2 rounded-lg border px-3 py-1.5 text-left text-xs transition-colors',
-                  i === index ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright' : 'border-hextech-border-dim text-hextech-text hover:border-hextech-border')}>
+                  i === index ? 'border-hextech-gold bg-hextech-gold/10 text-hextech-gold-bright' : 'border-hextech-border-dim text-hextech-text hover:border-hextech-border',
+                  gone && 'opacity-40 line-through')}>
                 <span className={cn('flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold',
-                  a ? 'bg-hextech-green/20 text-hextech-green' : 'bg-hextech-elevated text-hextech-text-bright')}>
-                  {a ? <Check className="h-3 w-3" /> : i + 1}
+                  gone ? 'bg-hextech-elevated text-hextech-text-dim' : a ? 'bg-hextech-green/20 text-hextech-green' : 'bg-hextech-elevated text-hextech-text-bright')}>
+                  {gone ? <X className="h-3 w-3" /> : a ? <Check className="h-3 w-3" /> : i + 1}
                 </span>
                 <span className="font-mono font-semibold">{fmtClock(clipWindow(m).headerSec)}</span>
                 {!v2 && <span className="hidden sm:inline">{m.facts.pattern ? t(`microReview.pattern.${m.facts.pattern}`) : t(`microReview.trigger.${m.trigger}`)}</span>}
@@ -256,7 +318,16 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
 
           <div className={cn('space-y-3', !v2 && 'lg:col-span-5')}>
             {!v2 && <QcmHead card={card} headerSec={clipWindow(moment).headerSec} place={moment.place ?? null} positionKind={moment.positionKind ?? null} />}
-            {picking ? (
+            {dismissed.has(moment.key) ? (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-hextech-border-dim bg-hextech-black px-3 py-2.5 text-sm" role="status" data-testid="moment-dismissed">
+                <span className="text-hextech-text-dim">{t('microReview.dismiss.done')}</span>
+                {undoable.has(moment.key) && (
+                  <button type="button" onClick={() => void restoreMoment(moment.key)} className="text-xs font-semibold text-hextech-gold hover:underline" data-testid="moment-dismiss-undo">
+                    {t(undoKey === moment.key ? 'microReview.dismiss.undo' : 'microReview.dismiss.restore')}
+                  </button>
+                )}
+              </div>
+            ) : picking ? (
               <OtherCausePicker tags={tags} busy={busy === 'other'} onCancel={() => setPicking(false)}
                 onConfirm={(other) => submit(moment, card, { other })} />
             ) : (
@@ -289,11 +360,16 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
                   <span>{!answer?.viaOther ? t('microReview.other') : answer.outcome === 'justified' ? t('microReview.reason.assumed') : tagLabel(t, answer.tagSlug, tags.find((x) => x.slug === answer.tagSlug)?.label)}</span>
                   <ChevronRight className="h-4 w-4" />
                 </button>
+                <button type="button" disabled={!!busy || dismissBusy} onClick={() => void dismissMoment(moment)} data-testid="not-a-mistake"
+                  title={t('microReview.dismiss.hint')}
+                  className="flex items-center gap-1.5 px-1 pt-1 text-xs text-hextech-text-dim hover:text-hextech-gold disabled:opacity-50">
+                  {dismissBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}{t('microReview.dismiss.button')}
+                </button>
               </div>
             )}
             {/* 21/11: under « autre cause »: my reasons, and more error tags. */}
             {!picking && (
-              <AnswerExtrasEditor key={moment.key} value={extrasByKey[moment.key] ?? EMPTY_EXTRAS} tags={tags}
+              <AnswerExtrasEditor key={moment.key} value={extrasByKey[moment.key] ?? extrasOfAnswer(answer)} tags={tags}
                 onChange={(next) => setExtrasByKey((prev) => ({ ...prev, [moment.key]: next }))}
                 answered={!!answer && answer.outcome !== 'custom'} busy={!!busy}
                 onSaveAnswered={() => answer && submit(moment, card, { again: answer })} />
@@ -317,6 +393,11 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
                   <p className="flex items-start gap-2 rounded-lg border border-hextech-green/30 bg-hextech-green/10 px-3 py-2 text-xs text-hextech-text-bright">
                     <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-hextech-green" />{t('microReview.justifiedDone')}
                   </p>
+                ) : chosenEntry && v2 && codexShownFor !== moment.key ? (
+                  <button type="button" onClick={() => setCodexShownFor(moment.key)} data-testid="codex-advice-toggle"
+                    className="flex items-center gap-1.5 self-start text-xs text-hextech-gold hover:underline">
+                    <BookOpen className="h-3.5 w-3.5" />{t('microReview.codexAdvice')}
+                  </button>
                 ) : chosenEntry ? (
                   <CodexCard entry={chosenEntry} onPrepare={isRetiredCodex(chosenEntry.id) ? undefined : () => prepare(chosenEntry)} />
                 ) : (
@@ -413,7 +494,7 @@ function QcmHead({ card, headerSec, place, positionKind }: { card: QcmCard; head
   )
 }
 
-/** The clip around the moment (vodTiming.clipWindow: error > consequence > conclusion); schematic map when there is no VOD. */
+/** The clip around the moment (vodTiming.clipWindow); its place in words when there is no VOD. */
 function Excerpt({ data, moment }: { data: MicroReviewPayload; moment: CriticalMoment }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -437,31 +518,7 @@ function Excerpt({ data, moment }: { data: MicroReviewPayload; moment: CriticalM
     v.currentTime = start
     v.play().catch(() => {})
   }, [start])
-  // Error · Consequence · Conclusion (20/11): a click jumps the clip there (YouTube: the embed restarts there).
-  const [ytFrom, setYtFrom] = useState<number | null>(null)
-  useEffect(() => { setYtFrom(null) }, [moment.key])
-  const seek = (gameSec: number) => {
-    const at = Math.max(start, Math.min(end, gameSec - offset))
-    const v = ref.current
-    if (v) { v.currentTime = at; v.play().catch(() => {}) } else setYtFrom(Math.round(at))
-  }
-  const markers = (
-    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]" data-testid="micro-review-markers">
-      {/* A death that cost nothing after it has no consequence marker. */}
-      {(['error', 'consequence', 'conclusion'] as const).flatMap((k) => {
-        const sec = win.markers[k]
-        return sec == null ? [] : [{ k, sec }]
-      }).map(({ k, sec }, i) => (
-        <span key={k} className="flex items-center gap-1.5">
-          {i > 0 && <span className="text-hextech-text-dim">·</span>}
-          <button type="button" onClick={() => seek(sec)}
-            className="rounded-md border border-hextech-border-dim px-2 py-0.5 text-hextech-text hover:border-hextech-gold/60 hover:text-hextech-gold">
-            {t(`microReview.vod.markers.${k}`)} <span className="font-mono">{fmtClock(sec)}</span>
-          </button>
-        </span>
-      ))}
-    </div>
-  )
+  // Beta.20: no automatic Erreur · Conséquence · Conclusion markers any more (the player sets precise times if they want).
   useEffect(() => { if (duration > 0) replay() }, [duration, replay, moment.key])
 
   const frame = 'relative aspect-video w-full overflow-hidden rounded-xl border border-hextech-border-dim bg-hextech-black'
@@ -473,7 +530,6 @@ function Excerpt({ data, moment }: { data: MicroReviewPayload; moment: CriticalM
             onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
             onTimeUpdate={(e) => { if (e.currentTarget.currentTime >= end) e.currentTarget.pause() }} />
         </div>
-        {markers}
         <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-hextech-text-dim">
           <span>{t('microReview.vod.excerpt', { from: fmtClock(win.startSec), to: fmtClock(win.endSec) })}</span>
           <span className="flex gap-1.5">
@@ -486,14 +542,13 @@ function Excerpt({ data, moment }: { data: MicroReviewPayload; moment: CriticalM
   }
   const yt = rec?.youtubeUrl ? youtubeId(rec.youtubeUrl) : null
   if (yt) {
-    const s = ytFrom ?? Math.round(start)
+    const s = Math.round(start)
     return (
       <div>
         <div className={frame}>
           <iframe key={`${moment.key}@${s}`} title={t('microReview.vod.title')} src={`https://www.youtube.com/embed/${yt}?start=${s}&end=${Math.round(end)}&autoplay=1&mute=1`}
             className="h-full w-full" allow="autoplay; encrypted-media" allowFullScreen />
         </div>
-        {markers}
       </div>
     )
   }

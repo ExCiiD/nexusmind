@@ -19,6 +19,8 @@ import type { Prisma } from '../../../prisma-client'
 import { getPrisma } from '../database'
 import { markShortReview } from '../shortReview'
 import { isPlausibleOffset, mistakeVideoTimeMs } from '../mistakeBookmarks'
+import { mistakeWindow } from '../mistakeWindowCore'
+import { removeMistake, undoMistakeCorrection } from '../mistakeCorrections'
 import { teamContextForMatch } from '../teamContext'
 import { timelineFromRow } from '../matchStore'
 import { validatedHandle, id } from './validate'
@@ -35,8 +37,8 @@ import { microReviewPushAnswer } from '../cloud/collab'
 import { momentWindow } from '../mistakeDedupe'
 import { mistakeSlug } from '../../../src/lib/mistakeSlug'
 
-/** Bump when the detector's output changes, to recompute cached analyses. 6: V5 laning + V6 role patterns; 7: V7–V10 jungle, mid and support patterns; 8: season-2026 clock (16.x games 35 s earlier, wiki respawn timers); 9: plates stay up after 14:00 (dive, mid roam on plates, side-lane T1); 10: #45 game data (Herald eye 15:00-22:00, pit fights from 15:00, M8 Baron deaths only once the Baron is up); 11: current season only (15.x games not analysed, Atakhan removed); 12: 20/11 cards (no cross-map blame for laners in soloQ before 14:00, greed only after the spawn, setup in mid / river, places in words, exact / estimated positions, header and markers); 13: extraMoments (21/11, the next key moments offered after the 3). */
-export const ANALYSIS_VERSION = 13
+/** Bump when the detector's output changes, to recompute cached analyses. 6: V5 laning + V6 role patterns; 7: V7–V10 jungle, mid and support patterns; 8: season-2026 clock (16.x games 35 s earlier, wiki respawn timers); 9: plates stay up after 14:00 (dive, mid roam on plates, side-lane T1); 10: #45 game data (Herald eye 15:00-22:00, pit fights from 15:00, M8 Baron deaths only once the Baron is up); 11: current season only (15.x games not analysed, Atakhan removed); 12: 20/11 cards (no cross-map blame for laners in soloQ before 14:00, greed only after the spawn, setup in mid / river, places in words, exact / estimated positions, header and markers); 13: extraMoments (21/11, the next key moments offered after the 3); 14: no engine markers (21/11, « Repères de la micro-review »: error / consequence / conclusion removed, the player sets precise timestamps). */
+export const ANALYSIS_VERSION = 14
 export const MICRO_REVIEW_XP = 30
 
 async function userPuuids(userId: string): Promise<string[]> {
@@ -126,10 +128,12 @@ async function recomputeGameAnalysis(gameId: string, fetch: boolean): Promise<{ 
 const toView = (a: {
   id: string; momentKey: string; trigger: string; gameTimeSec: number; outcome: string; tagSlug: string | null
   reason: string | null; viaOther: boolean; note: string | null; mistakeId: string | null; createdAt: Date
+  errorAtSec?: number | null; consequenceAtSec?: number | null
 }): MicroReviewAnswerView => ({
   id: a.id, momentKey: a.momentKey, trigger: a.trigger as MicroReviewAnswerView['trigger'], gameTimeSec: a.gameTimeSec,
   outcome: a.outcome as MicroReviewAnswerView['outcome'], tagSlug: a.tagSlug, reason: a.reason, viaOther: a.viaOther,
   note: a.note, mistakeId: a.mistakeId, createdAt: a.createdAt.toISOString(),
+  errorAtSec: a.errorAtSec ?? null, consequenceAtSec: a.consequenceAtSec ?? null,
 })
 
 function parseIdList(raw: string | null | undefined): string[] {
@@ -154,6 +158,14 @@ export async function resolveTag(slug: string | null | undefined, customLabel: s
 const triggerSchema = z.enum(['critical-death', 'absent-objective', 'early-deficit'])
 const slugSchema = z.string().max(64).regex(/^[a-z0-9-]+$/)
 const summaryPart = z.object({ key: z.string().max(40), params: z.record(z.union([z.string().max(60), z.number()])).optional() })
+const momentKeySchema = z.string().min(1).max(64).regex(/^[a-z-]+@[0-9]+$/)
+/** « Not a mistake » (Front's shape): the trigger and the time are read from the key; when sent, they must match it. */
+const dismissInput = z.object({
+  gameId: id,
+  momentKey: momentKeySchema,
+  trigger: triggerSchema.optional(),
+  gameTimeSec: z.number().int().min(0).max(36000).optional(),
+}).strip().refine((v) => (v.trigger === undefined || v.momentKey.startsWith(`${v.trigger}@`)) && (v.gameTimeSec === undefined || v.momentKey.endsWith(`@${v.gameTimeSec}`)), 'momentKey does not match')
 const answerSchema = z.object({
   gameId: id,
   momentKey: z.string().min(1).max(64).regex(/^[a-z-]+@\d+$/),
@@ -182,6 +194,9 @@ const answerSchema = z.object({
     extras: z.array(summaryPart).max(4),
   }).nullable().optional(),
   videoTimeSec: z.number().int().min(0).max(36000).nullable().optional(),
+  /** 21/11/2026 « Repères de la micro-review »: optional precise timestamps (game seconds), one or both. */
+  errorAtSec: z.number().int().min(0).max(36000).nullable().optional(),
+  consequenceAtSec: z.number().int().min(0).max(36000).nullable().optional(),
 })
 
 export function registerMicroReviewHandlers(): void {
@@ -204,9 +219,72 @@ export function registerMicroReviewHandlers(): void {
       gameEndAt: game.gameEndAt.toISOString(), durationSec: game.duration,
       analysis, reason,
       answers: answers.map(toView),
+      // « Not a mistake » moments (21/11/2026): greyed out when the review is reopened.
+      dismissedMomentKeys: answers.filter((a) => a.outcome === 'dismissed').map((a) => a.momentKey),
       pastAnswers: past,
       recording: rec ? { id: rec.id, filePath: rec.filePath, youtubeUrl: rec.youtubeUrl, startOffsetSec: rec.startOffsetSec, createdAt: rec.createdAt.toISOString() } : null,
     }
+  })
+
+  /**
+   * « Not a mistake » (21/11/2026, DECISIONS): erases the moment's auto-detected mistake(s), those of the game within
+   * the moment's window (mistakeDedupe.momentWindow), through the usual dismiss path: IgnoredMistake (never created
+   * again) and a MistakeCorrection 'not_a_mistake'. What a previous answer to that moment added is undone first. The
+   * moment is stored as answered 'dismissed': no longer offered, no short review, no prefilled note, nothing sent to
+   * the coach. Returns the erased mistakes' ids. Undo (« Annuler »): microreview:restore-moment.
+   */
+  validatedHandle('microreview:dismiss-moment', z.tuple([dismissInput]), async (_e, { gameId, momentKey }) => {
+    const prisma = getPrisma()
+    const game = await prisma.game.findUnique({ where: { id: gameId }, include: { session: { select: { userId: true } } } })
+    if (!game) throw new Error('NOT_FOUND')
+    const owner = await prisma.user.findUnique({ where: { id: game.session.userId }, select: { selfReview: true } })
+    if (owner?.selfReview) throw new Error('SELF_REVIEW')
+    const [trigger, secText] = momentKey.split('@')
+    const gameTimeSec = Number(secText)
+    const answerKey = { gameId_momentKey: { gameId, momentKey } }
+
+    // Undo what a previous answer to this moment did (its own mistake, extra tags, bookmark).
+    const previous = await prisma.microReviewAnswer.findUnique({ where: answerKey })
+    if (previous?.outcome === 'dismissed') return { success: true, dismissedMistakeIds: parseIdList(previous.extraMistakeIds) }
+    if (previous) {
+      const undo: any[] = []
+      if (previous.mistakeId && previous.mistakeOrigin === 'created') undo.push(prisma.mistake.deleteMany({ where: { id: previous.mistakeId } }))
+      // A detected mistake this answer had confirmed is a detected one again, erased just below.
+      if (previous.mistakeId && previous.mistakeOrigin === 'confirmed-auto') undo.push(prisma.mistake.updateMany({ where: { id: previous.mistakeId }, data: { autoDetected: true, startSec: null, endSec: null } }))
+      const extras = parseIdList(previous.extraMistakeIds)
+      if (extras.length) undo.push(prisma.mistake.deleteMany({ where: { id: { in: extras }, autoDetected: false } }))
+      if (previous.bookmarkId) undo.push(prisma.bookmark.deleteMany({ where: { id: previous.bookmarkId } }))
+      if (undo.length) await prisma.$transaction(undo)
+    }
+
+    const span = momentWindow(trigger)
+    const detected = await prisma.mistake.findMany({
+      where: { gameId, autoDetected: true, gameTimeSec: { gte: gameTimeSec - span.before, lte: gameTimeSec + span.after } },
+      select: { id: true },
+    })
+    const dismissedMistakeIds: string[] = []
+    for (const m of detected) {
+      await removeMistake(m.id, { reason: 'not_a_mistake' })
+      dismissedMistakeIds.push(m.id)
+    }
+    const role = game.role ?? ''
+    const data = {
+      userId: game.session.userId, trigger, gameTimeSec, outcome: 'dismissed', tagSlug: null, reason: null, viaOther: false, note: null,
+      role, champion: game.champion, mistakeId: null, mistakeOrigin: null,
+      extraMistakeIds: JSON.stringify(dismissedMistakeIds), bookmarkId: null, errorAtSec: null, consequenceAtSec: null,
+    }
+    await prisma.microReviewAnswer.upsert({ where: answerKey, create: { gameId, momentKey, ...data }, update: data })
+    return { success: true, dismissedMistakeIds }
+  })
+
+  /** Undoes « Not a mistake » while the app runs: the erased mistakes come back, the moment is offered again. */
+  validatedHandle('microreview:restore-moment', z.tuple([dismissInput]), async (_e, { gameId, momentKey }) => {
+    const prisma = getPrisma()
+    const row = await prisma.microReviewAnswer.findUnique({ where: { gameId_momentKey: { gameId, momentKey } } })
+    if (!row || row.outcome !== 'dismissed') throw new Error('NOT_UNDOABLE')
+    for (const mistakeId of parseIdList(row.extraMistakeIds)) await undoMistakeCorrection(mistakeId).catch(() => {})
+    await prisma.microReviewAnswer.delete({ where: { id: row.id } })
+    return { success: true }
   })
 
   validatedHandle('microreview:answer', z.tuple([answerSchema]), async (_e, input): Promise<MicroReviewAnswerResult> => {
@@ -215,6 +293,10 @@ export function registerMicroReviewHandlers(): void {
     if (!game) throw new Error('Game not found')
     const userId = game.session.userId
     if (input.myReasons !== undefined) input.note = input.myReasons
+    // The player's precise timestamps: the mistake covers [error − 5 s, consequence + 5 s] (BAD_TIMESTAMPS if outside the game).
+    const win = mistakeWindow(input.errorAtSec, input.consequenceAtSec, game.duration)
+    const mistakeTime = win?.gameTimeSec ?? input.gameTimeSec
+    const windowData = win ? { startSec: win.startSec, endSec: win.endSec } : {}
     // "I do my reviews myself" (21/11/2026): nothing of the micro-review is saved for this player.
     const owner = await prisma.user.findUnique({ where: { id: userId }, select: { selfReview: true } })
     if (owner?.selfReview) throw new Error('SELF_REVIEW')
@@ -244,7 +326,7 @@ export function registerMicroReviewHandlers(): void {
     // Rows written before `mistakeOrigin` existed marked their own mistakes with a note prefix.
     const oldOrigin = old ? previous?.mistakeOrigin ?? (old.note?.startsWith('[micro-review]') ? 'created' : 'existing') : null
     if (old && oldOrigin === 'created') writes.push(prisma.mistake.delete({ where: { id: old.id } }))
-    else if (old && oldOrigin === 'confirmed-auto') writes.push(prisma.mistake.update({ where: { id: old.id }, data: { autoDetected: true } }))
+    else if (old && oldOrigin === 'confirmed-auto') writes.push(prisma.mistake.update({ where: { id: old.id }, data: { autoDetected: true, startSec: null, endSec: null } }))
     // …and its extra tags and its bookmark (21/11/2026).
     const oldExtras = parseIdList(previous?.extraMistakeIds)
     if (oldExtras.length) writes.push(prisma.mistake.deleteMany({ where: { id: { in: oldExtras }, autoDetected: false } }))
@@ -272,14 +354,15 @@ export function registerMicroReviewHandlers(): void {
         // Auto-detected as stored — or as the undo above is about to make it again.
         const auto = near.autoDetected || (near.id === old?.id && oldOrigin === 'confirmed-auto')
         mistakeOrigin = orphan ? 'created' : auto ? 'confirmed-auto' : 'existing'
-        if (auto) writes.push(prisma.mistake.update({ where: { id: near.id }, data: { autoDetected: false } }))
+        if (auto) writes.push(prisma.mistake.update({ where: { id: near.id }, data: { autoDetected: false, ...windowData } }))
+        else if (win) writes.push(prisma.mistake.update({ where: { id: near.id }, data: windowData }))
         mistakeId = near.id
       } else {
         mistakeId = randomUUID()
         mistakeOrigin = 'created'
         writes.push(prisma.mistake.create({
           data: {
-            id: mistakeId, gameId: input.gameId, tagId: tag.id, gameTimeSec: input.gameTimeSec,
+            id: mistakeId, gameId: input.gameId, tagId: tag.id, gameTimeSec: mistakeTime, ...windowData,
             severity: input.trigger === 'critical-death' ? 3 : 2,
             note: input.note?.trim().slice(0, 1000) || null,
             recordingId: game.recording?.id ?? null, autoDetected: false,
@@ -299,7 +382,7 @@ export function registerMicroReviewHandlers(): void {
       extraMistakeIds.push(eid)
       writes.push(prisma.mistake.create({
         data: {
-          id: eid, gameId: input.gameId, tagId: t.id, gameTimeSec: input.gameTimeSec,
+          id: eid, gameId: input.gameId, tagId: t.id, gameTimeSec: mistakeTime, ...windowData,
           severity: input.trigger === 'critical-death' ? 3 : 2, note: extra.note?.trim().slice(0, 280) || null,
           recordingId: game.recording?.id ?? null, autoDetected: false,
         },
@@ -312,7 +395,7 @@ export function registerMicroReviewHandlers(): void {
       bookmarkId = randomUUID()
       writes.push(prisma.bookmark.create({
         data: {
-          id: bookmarkId, recordingId: game.recording.id, videoTimeMs: Math.max(0, mistakeVideoTimeMs(input.gameTimeSec, offset)),
+          id: bookmarkId, recordingId: game.recording.id, videoTimeMs: Math.max(0, mistakeVideoTimeMs(win?.startSec ?? input.gameTimeSec, offset)),
           label: input.bookmarkLabel?.trim().slice(0, 80) || null, color: '#E66556',
         },
       }))
@@ -323,6 +406,7 @@ export function registerMicroReviewHandlers(): void {
       reason: input.reason ?? null, viaOther: input.viaOther, note: input.note?.trim() || null,
       role, champion: game.champion, mistakeId, mistakeOrigin,
       extraMistakeIds: JSON.stringify(extraMistakeIds), bookmarkId,
+      errorAtSec: input.errorAtSec ?? null, consequenceAtSec: input.consequenceAtSec ?? null,
     }
     const upsert = prisma.microReviewAnswer.upsert({ where: answerKey, create: { gameId: input.gameId, momentKey: input.momentKey, ...data }, update: data })
     const results = await prisma.$transaction([...writes, upsert])
@@ -375,7 +459,7 @@ export function registerMicroReviewHandlers(): void {
     if (!objectiveIds.length && game.session.objectiveId) objectiveIds = [game.session.objectiveId]
     if (!objectiveIds.length) return null
     const { analysis } = await ensureGameAnalysis(gameId, false)
-    const answers = await prisma.microReviewAnswer.count({ where: { gameId } })
+    const answers = await prisma.microReviewAnswer.count({ where: { gameId, outcome: { not: 'dismissed' } } })
     return verifySessionObjectives(objectiveIds, {
       tags: game.mistakes.map((m) => m.tag.slug),
       contested: analysis?.contested ?? null,

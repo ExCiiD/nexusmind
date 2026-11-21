@@ -37,10 +37,13 @@ export interface AutoBookmarkCandidate {
   severity: number
   /** Dated from a death (src/lib/mistakeDeathDated.ts): the bookmark starts at the death window, 45 s before. */
   deathDated?: boolean
+  /** 21/11/2026: the window the player set (Mistake.startSec): the bookmark starts there. */
+  startSec?: number | null
 }
 
 /** Seconds before the mistake a bookmark starts: the death window of vodTiming for a death, else LEAD_SEC. */
-export function bookmarkLeadFor(c: Pick<AutoBookmarkCandidate, 'gameTimeSec' | 'deathDated'>): number {
+export function bookmarkLeadFor(c: Pick<AutoBookmarkCandidate, 'gameTimeSec' | 'deathDated' | 'startSec'>): number {
+  if (typeof c.startSec === 'number' && c.startSec <= c.gameTimeSec) return c.gameTimeSec - c.startSec
   return c.deathDated ? bookmarkLeadSec({ trigger: DEATH_TRIGGER, gameTimeSec: c.gameTimeSec }) : LEAD_SEC
 }
 

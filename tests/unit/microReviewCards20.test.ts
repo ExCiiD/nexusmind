@@ -161,7 +161,9 @@ describe('hesitation: what the card reads', () => {
       spawnSec: 935, killSec: 985,
     })
     expect(m.headerSec).toBe(985)
-    expect(m.markers).toEqual({ errorSec: 950, consequenceSec: 985, conclusionSec: 1030 })
+    // 21/11/2026: no markers on the card; the estimated error time only places the clip.
+    expect('markers' in m).toBe(false)
+    expect(m.facts.errorAtSec).toBe(950)
     expect(m.facts.placeAtError).toMatchObject({ place: { kind: 'lane', lane: 'top' }, positionKind: 'exact', atSec: 950 })
     expect(m.facts.placeAtObjective).toMatchObject({ place: { kind: 'lane', lane: 'top' }, positionKind: 'estimated', between: [960, 1020] })
   })
@@ -171,15 +173,16 @@ describe('hesitation: what the card reads', () => {
   })
 })
 
-describe('every moment carries its place, position kind, header and markers', () => {
-  it('a death: exact position, markers death → +30 s', () => {
+describe('every moment carries its place, position kind and header (no markers since 21/11/2026)', () => {
+  it('a death: exact position, the clip placed from the death', () => {
     const death = { type: 'CHAMPION_KILL', timestamp: at(12, 10), victimId: 2, killerId: 7, assistingParticipantIds: [8, 9], position: JUNGLE_CAMPS.red.raptors }
     const a = run(buildGame({ minutes: 25, me: 2, events: [death] }))
     const m = a.moments.find((x) => x.trigger === 'critical-death')
     if (!m) return // a death that does not cost enough is not a moment: nothing to check then
     expect(m.place).toEqual({ kind: 'camp', camp: 'raptors', side: 'red' })
     expect(m.positionKind).toBe('exact')
-    expect(m.markers).toMatchObject({ errorSec: m.gameTimeSec, conclusionSec: m.gameTimeSec + 30 })
+    expect('markers' in m).toBe(false)
+    expect(m.facts.errorAtSec).toBe(m.gameTimeSec)
     expect(m.headerSec).toBe(m.gameTimeSec)
   })
 })

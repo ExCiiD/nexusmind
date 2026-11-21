@@ -6,7 +6,6 @@ import {
 import { cn } from '@/lib/utils'
 import { formatMs } from '@/lib/mediaCore'
 import { groupMarkers, markerOpacity, rowOfLayer, type PlayerLayer, type PlayerLayers } from '@/lib/playerLayers'
-import { PlayerFiltersMenu } from './PlayerFiltersMenu'
 
 /** Colours and glyphs of the markers (spec § 19). */
 export const LAYER_STYLE: Record<PlayerLayer, { color: string; Icon: LucideIcon }> = {
@@ -24,7 +23,7 @@ export const LAYER_STYLE: Record<PlayerLayer, { color: string; Icon: LucideIcon 
 }
 
 export interface BarMarker { time: number; layer: PlayerLayer; label: string }
-export interface BarClipWindow { start: number; end: number; error: number | null; consequence: number | null; conclusion: number | null }
+export interface BarClipWindow { start: number; end: number }
 
 const fmt = (sec: number) => formatMs(Math.max(0, sec) * 1000)
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2]
@@ -54,16 +53,21 @@ export function PlayerBarV2(p: {
   layers: PlayerLayers
   onLayersChange: (next: PlayerLayers) => void
   hideMistakes?: boolean
+  /** The filter chips (beta.20), under the timeline, in place of the « Filtres » menu. */
+  filters?: ReactNode
   onClip?: () => void
   onMistake?: () => void
   onNote?: () => void
   /** Pop-overs anchored above the bar (Prise de note, Erreur). */
   overlay?: ReactNode
+  /** Right end of the controls (beta.20): switch side, hide panel, fullscreen. */
+  trailing?: ReactNode
 }) {
   const { t } = useTranslation()
   const trackRef = useRef<HTMLDivElement>(null)
   // The track's width for the 26 px grouping (a hidden pane renders no frames: 680 px until measured).
   const [width, setWidth] = useState(680)
+  const [hover, setHover] = useState<{ x: number; sec: number } | null>(null)
   useLayoutEffect(() => {
     const el = trackRef.current
     if (!el) return
@@ -125,7 +129,15 @@ export function PlayerBarV2(p: {
       </div>
 
       {/* Timeline 5 px: played in gold, the playhead with its thin line up to the markers. */}
-      <div ref={trackRef} className="relative mt-1 h-4 cursor-pointer" onClick={(e) => seekFromEvent(e.clientX)}
+      <div ref={trackRef} className="relative mt-1 h-4 cursor-pointer touch-none"
+        onPointerDown={(e) => { e.currentTarget.setPointerCapture?.(e.pointerId); seekFromEvent(e.clientX) }}
+        onPointerMove={(e) => {
+          if (e.currentTarget.hasPointerCapture?.(e.pointerId)) seekFromEvent(e.clientX)
+          // Beta.20: the time under the pointer, in a small label above the track.
+          const r = e.currentTarget.getBoundingClientRect()
+          if (r.width > 0) setHover({ x: Math.max(0, Math.min(r.width, e.clientX - r.left)), sec: Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * d })
+        }}
+        onPointerLeave={() => setHover(null)}
         role="slider" tabIndex={0} aria-label={t('recording.bar.timeline')} aria-valuemin={0} aria-valuemax={Math.round(d)} aria-valuenow={Math.round(p.currentTime)} aria-valuetext={fmt(p.currentTime)}
         onKeyDown={(e) => {
           if (e.key === 'ArrowLeft') { e.preventDefault(); p.onSkip(-5) }
@@ -137,13 +149,11 @@ export function PlayerBarV2(p: {
           <>
             <div aria-hidden data-testid="clip-window" className="absolute top-1/2 h-[11px] -translate-y-1/2 rounded-sm border border-hextech-gold-bright bg-hextech-gold/[0.18]"
               style={{ left: `${pct(p.clipWindow.start)}%`, width: `${pct(p.clipWindow.end) - pct(p.clipWindow.start)}%` }} />
-            {([['error', '#E3A35B'], ['consequence', 'var(--hextech-red)'], ['conclusion', 'var(--hextech-text-bright)']] as const).map(([k, color]) => {
-              const s = p.clipWindow![k]
-              return s == null ? null : (
-                <span key={k} aria-hidden data-testid={`clip-marker-${k}`} className="absolute top-1/2 h-5 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded" style={{ left: `${pct(s)}%`, backgroundColor: color }} />
-              )
-            })}
           </>
+        )}
+        {hover && (
+          <span aria-hidden data-testid="bar-hover-time" className="pointer-events-none absolute bottom-full z-30 mb-1.5 -translate-x-1/2 rounded bg-black/90 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-white shadow"
+            style={{ left: hover.x }}>{fmt(hover.sec)}</span>
         )}
         <span aria-hidden className="pointer-events-none absolute bottom-1/2 w-px bg-[#E4C285]/70" style={{ left: `${pct(p.currentTime)}%`, height: 56 }} />
         <span aria-hidden className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#E4C285] shadow" style={{ left: `${pct(p.currentTime)}%` }} />
@@ -154,14 +164,14 @@ export function PlayerBarV2(p: {
 
       {/* Hours line + Filtres. */}
       <div className="mt-1 flex items-center gap-2 font-mono text-[10px] text-hextech-text-dim">
-        <span>0:00</span>
+        <span className="text-xs" data-testid="bar-time" aria-live="off"><span className="text-hextech-gold-bright">{fmt(p.currentTime)}</span> / {fmt(p.duration)}</span>
         <span className="flex-1" />
-        <span>{fmt(p.duration)}</span>
-        <PlayerFiltersMenu layers={p.layers} onChange={p.onLayersChange} hideMistakes={p.hideMistakes} />
+        {p.filters && <div className="min-w-0 font-sans">{p.filters}</div>}
       </div>
 
       {/* Controls. */}
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <div className="flex min-w-0 flex-1 basis-0 items-center gap-1.5" data-testid="bar-transport">
         <IconBtn label={t('recording.bar.prevMoment')} disabled={!prevMoment} onClick={() => prevMoment && p.onSeek(prevMoment.time)}><SkipBack className="h-4 w-4" /></IconBtn>
         <IconBtn label={t('recording.bar.back10')} onClick={() => p.onSkip(-10)}><RotateCcw className="h-4 w-4" /></IconBtn>
         <button type="button" onClick={p.onTogglePlay} aria-label={p.playing ? t('recording.bar.pause') : t('recording.bar.play')}
@@ -177,9 +187,9 @@ export function PlayerBarV2(p: {
           <input type="range" min={0} max={1} step={0.05} value={p.muted ? 0 : p.volume} onChange={(e) => p.onVolume(Number(e.target.value))}
             aria-label={t('recording.bar.volume')} className="w-0 opacity-0 transition-all group-hover:w-20 group-hover:opacity-100 focus:w-20 focus:opacity-100 accent-[var(--hextech-gold)]" />
         </div>
-        <span className="ml-1 font-mono text-xs"><span className="text-hextech-gold-bright">{fmt(p.currentTime)}</span><span className="text-hextech-text-dim"> / {fmt(p.duration)}</span></span>
+        </div>
 
-        <span className="flex-1" />
+        <div className="flex shrink-0 items-center gap-1.5" data-testid="bar-actions">
         <div ref={speedRef} className="relative">
           <button type="button" onClick={() => setSpeedOpen((v) => !v)} aria-expanded={speedOpen} aria-label={t('recording.bar.speed')}
             className="flex items-center gap-0.5 rounded-md border border-hextech-border-dim px-2 py-1.5 font-mono text-xs text-hextech-text hover:border-hextech-gold/50">
@@ -216,12 +226,15 @@ export function PlayerBarV2(p: {
             <kbd className="rounded bg-black/25 px-1 font-mono text-[10px]">N</kbd>
           </button>
         )}
+        </div>
+
+        <div className="flex flex-1 basis-0 items-center justify-end gap-1" data-testid="bar-trailing">{p.trailing}</div>
       </div>
     </div>
   )
 }
 
-function IconBtn({ label, onClick, disabled, pressed, children }: { label: string; onClick: () => void; disabled?: boolean; pressed?: boolean; children: ReactNode }) {
+export function IconBtn({ label, onClick, disabled, pressed, children }: { label: string; onClick: () => void; disabled?: boolean; pressed?: boolean; children: ReactNode }) {
   return (
     <button type="button" title={label} aria-label={label} onClick={onClick} disabled={disabled} aria-pressed={pressed}
       className={cn('flex h-8 w-8 items-center justify-center rounded-md text-hextech-text transition-colors hover:bg-white/5 hover:text-hextech-gold-bright disabled:opacity-30',

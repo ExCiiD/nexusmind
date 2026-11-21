@@ -4,7 +4,8 @@
  * without pulling the panel and the Codex into their bundle.
  *
  * 20/11/2026 (docs/engine-reports/2026-11-20-lieux-et-extraits-video-des-cartes.md § 3, DECISIONS 20/11): the clip
- * shows error > consequence > conclusion.
+ * window. Beta.20 (ANALYSIS_VERSION 14): no automatic Erreur · Conséquence · Conclusion markers any more; the player
+ * sets precise timestamps on the answer if they want.
  * - A card tied to an objective: from objective − 60 s to objective + 45 s, the header at the objective's time. An
  *   error dated earlier than T − 60 s starts the clip 10 s before it, never before T − 90 s.
  * - A death or late card with no objective: from 45 s before to 30 s after.
@@ -20,8 +21,6 @@ export const OBJECTIVE_MAX_PRE_SEC = 90
 /** Before / after a death or a late move with no objective. */
 export const PLAIN_PRE_SEC = 45
 export const PLAIN_POST_SEC = 30
-/** The Conclusion marker: what follows the consequence starts this long after it. */
-export const CONCLUSION_AFTER_SEC = 15
 /**
  * Where the engine anchors an absent-objective moment before the objective falls (20 to 25 s), used only while a
  * moment carries no objective time of its own.
@@ -42,9 +41,8 @@ export interface ClipMoment {
     /** ANALYSIS_VERSION 12: the objective's fall. */
     killSec?: number | null
   } | null
-  /** ANALYSIS_VERSION 12 (Back-end, 20/11): the header time and the three markers, when the engine gives them. */
+  /** ANALYSIS_VERSION 12 (Back-end, 20/11): the header time, when the engine gives it. */
   headerSec?: number | null
-  markers?: { errorSec: number; consequenceSec: number | null; conclusionSec: number | null } | null
 }
 
 export interface ClipWindow {
@@ -55,8 +53,6 @@ export interface ClipWindow {
   headerSec: number
   /** The objective's time, null for a card with no objective. */
   objectiveSec: number | null
-  /** Error · Consequence · Conclusion, in game time (consequence null: a death that cost nothing after it). */
-  markers: { error: number; consequence: number | null; conclusion: number }
 }
 
 /** The objective's time of a moment, or null when it is not tied to an objective. */
@@ -71,36 +67,19 @@ export function objectiveTimeOf(m: ClipMoment): number | null {
 
 export function clipWindow(m: ClipMoment): ClipWindow {
   const w = computedWindow(m)
-  const k = m.markers
-  if (!k) return w
-  // The engine's markers, kept inside the clip.
-  const inside = (s: number) => Math.max(w.startSec, Math.min(w.endSec, s))
-  return {
-    ...w,
-    headerSec: typeof m.headerSec === 'number' ? m.headerSec : w.headerSec,
-    markers: {
-      error: inside(k.errorSec),
-      consequence: k.consequenceSec == null ? null : inside(k.consequenceSec),
-      conclusion: k.conclusionSec == null ? w.markers.conclusion : inside(k.conclusionSec),
-    },
-  }
+  return typeof m.headerSec === 'number' ? { ...w, headerSec: m.headerSec } : w
 }
 
 function computedWindow(m: ClipMoment): ClipWindow {
   const t = objectiveTimeOf(m)
-  const errorAt = typeof m.facts?.errorAtSec === 'number' ? m.facts.errorAtSec : typeof m.markers?.errorSec === 'number' ? m.markers.errorSec : null
+  const errorAt = typeof m.facts?.errorAtSec === 'number' ? m.facts.errorAtSec : null
   if (t != null) {
     let start = t - OBJECTIVE_PRE_SEC
     if (errorAt != null && errorAt < start) start = Math.max(errorAt - ERROR_LEAD_SEC, t - OBJECTIVE_MAX_PRE_SEC)
     start = Math.max(0, start)
-    const end = t + OBJECTIVE_POST_SEC
-    const error = Math.max(start, Math.min(errorAt ?? m.gameTimeSec, t))
-    return { startSec: start, endSec: end, headerSec: t, objectiveSec: t, markers: { error, consequence: t, conclusion: Math.min(end, t + CONCLUSION_AFTER_SEC) } }
+    return { startSec: start, endSec: t + OBJECTIVE_POST_SEC, headerSec: t, objectiveSec: t }
   }
-  const start = Math.max(0, m.gameTimeSec - PLAIN_PRE_SEC)
-  const end = m.gameTimeSec + PLAIN_POST_SEC
-  const error = Math.max(start, errorAt ?? start)
-  return { startSec: start, endSec: end, headerSec: m.gameTimeSec, objectiveSec: null, markers: { error, consequence: m.gameTimeSec, conclusion: Math.min(end, m.gameTimeSec + CONCLUSION_AFTER_SEC) } }
+  return { startSec: Math.max(0, m.gameTimeSec - PLAIN_PRE_SEC), endSec: m.gameTimeSec + PLAIN_POST_SEC, headerSec: m.gameTimeSec, objectiveSec: null }
 }
 
 /** Seconds before a moment a Lab bookmark starts: the clip's start. */

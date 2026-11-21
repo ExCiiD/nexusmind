@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, X } from 'lucide-react'
+import { Clock, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { MistakeTag } from '@/lib/ipc'
-import { MAX_EXTRA_TAGS, type AnswerExtras } from './answerExtras'
+import { MAX_EXTRA_TAGS, preciseTimesOk, type AnswerExtras } from './answerExtras'
 import { tagLabel } from './text'
+import { TagAutocomplete } from './TagAutocomplete'
+import { useReviewPlayerStore } from '@/store/useReviewPlayerStore'
+import { fmtClock } from '@/lib/mistakeInsights'
 
 let seq = 0
 const REASONS_MAX = 300
@@ -15,8 +18,54 @@ const TAG_NOTE_MAX = 140
  * Under « autre cause » (DECISIONS 21/11, spec § 20 points 3-4): folded by default in the narrow panel behind a dotted
  * line « ▸ Raisons d'après moi · autres tags d'erreur ». « Raisons de l'erreur d'après moi (facultatif) » (300) and
  * « Autres erreurs dans ce moment »: each added tag as a red pill with its optional description (140), « + Ajouter un
- * tag d'erreur » opening a search among the player's tags and the Codex's. Sent with the answer.
+ * tag d'erreur » opening a search among the player's tags and the Codex's. Sent with the answer. Beta.20: open by
+ * default, and « Définir les timestamps précis » in place of the automatic Erreur · Conséquence · Conclusion markers.
  */
+/**
+ * « Définir les timestamps précis » (beta.20): a discreet link revealing two optional fields, Erreur and Conséquence,
+ * each set with one click at the Review player's current game time; one, the other or both. Without a player on the
+ * page (no VOD), the link is not shown.
+ */
+function PreciseTimes({ value, onChange }: { value: AnswerExtras; onChange: (next: AnswerExtras) => void }) {
+  const { t } = useTranslation()
+  const playerGameTime = useReviewPlayerStore((s) => s.playerGameTime)
+  const [shown, setShown] = useState(value.errorAtSec != null || value.consequenceAtSec != null)
+  if (!playerGameTime) return null
+  if (!shown) {
+    return (
+      <button type="button" onClick={() => setShown(true)} data-testid="precise-times-toggle"
+        className="flex items-center gap-1 text-[11px] text-hextech-text-dim hover:text-hextech-gold">
+        <Clock className="h-3 w-3" />{t('microReview.extras.precise.toggle')}
+      </button>
+    )
+  }
+  const row = (k: 'errorAtSec' | 'consequenceAtSec', label: string) => {
+    const sec = value[k]
+    return (
+      <div className="flex items-center gap-2 text-xs" data-testid={`precise-${k}`}>
+        <span className="w-24 shrink-0 font-medium text-hextech-text-bright">{label}</span>
+        <span className={cn('w-12 shrink-0 font-mono', sec != null ? 'text-hextech-gold' : 'text-hextech-text-dim')}>{sec != null ? fmtClock(sec) : '—'}</span>
+        <button type="button" onClick={() => onChange({ ...value, [k]: Math.max(0, Math.round(playerGameTime())) })}
+          className="rounded-md border border-hextech-border-dim px-2 py-0.5 text-[11px] text-hextech-text hover:border-hextech-gold/60 hover:text-hextech-gold">
+          {t('microReview.extras.precise.atPlayer')}
+        </button>
+        {sec != null && (
+          <button type="button" onClick={() => onChange({ ...value, [k]: null })} aria-label={t('microReview.extras.precise.clear')}
+            className="rounded p-0.5 text-hextech-text-dim hover:text-hextech-red"><X className="h-3 w-3" /></button>
+        )}
+      </div>
+    )
+  }
+  return (
+    <div className="space-y-1.5 rounded-md border border-hextech-border-dim/60 p-2" data-testid="precise-times">
+      <p className="text-[11px] text-hextech-text-dim">{t('microReview.extras.precise.hint')}</p>
+      {row('errorAtSec', t('microReview.extras.precise.error'))}
+      {row('consequenceAtSec', t('microReview.extras.precise.consequence'))}
+      {!preciseTimesOk(value) && <p className="text-[11px] text-hextech-red" role="alert" data-testid="precise-order">{t('microReview.extras.precise.order')}</p>}
+    </div>
+  )
+}
+
 export function AnswerExtrasEditor({ value, onChange, tags, answered, onSaveAnswered, busy }: {
   value: AnswerExtras
   onChange: (next: AnswerExtras) => void
@@ -27,17 +76,14 @@ export function AnswerExtrasEditor({ value, onChange, tags, answered, onSaveAnsw
   busy: boolean
 }) {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(value.reasons !== '' || value.extraTags.length > 0)
+  const [open, setOpen] = useState(true)
   const [picking, setPicking] = useState(false)
-  const [query, setQuery] = useState('')
   const active = tags.filter((x) => !x.archivedAt)
   const chosen = new Set(value.extraTags.map((x) => x.tagSlug))
-  const matches = active.filter((x) => !chosen.has(x.slug) && tagLabel(t, x.slug, x.label).toLowerCase().includes(query.trim().toLowerCase())).slice(0, 12)
   const labelOf = (slug: string) => tagLabel(t, slug, active.find((x) => x.slug === slug)?.label)
   const add = (slug: string) => {
     if (value.extraTags.length >= MAX_EXTRA_TAGS) return
     onChange({ ...value, extraTags: [...value.extraTags, { key: `x${++seq}`, tagSlug: slug, note: '' }] })
-    setQuery('')
   }
 
   return (
@@ -75,19 +121,11 @@ export function AnswerExtrasEditor({ value, onChange, tags, answered, onSaveAnsw
             )}
             {picking && (
               <div className="space-y-1.5 rounded-md border border-hextech-border-dim bg-hextech-black p-2" data-testid="extras-tag-picker">
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('review.detected.searchTag')} aria-label={t('review.detected.searchTag')}
-                  className="w-full rounded border border-hextech-border-dim bg-hextech-elevated px-2 py-1 text-xs text-hextech-text focus:border-hextech-gold focus:outline-none" />
-                <div className="flex flex-wrap gap-1">
-                  {matches.map((x) => (
-                    <button key={x.id} type="button" onClick={() => add(x.slug)}
-                      className="rounded-full border border-hextech-border-dim px-2 py-0.5 text-[11px] text-hextech-text hover:border-hextech-gold/60">
-                      {tagLabel(t, x.slug, x.label)}
-                    </button>
-                  ))}
-                </div>
+                <TagAutocomplete tags={active} autoFocus exclude={chosen} onPick={(x) => add(x.slug)} />
               </div>
             )}
           </div>
+          <PreciseTimes value={value} onChange={onChange} />
           {answered ? (
             <Button size="sm" className="w-full" disabled={busy} onClick={onSaveAnswered}>{t('microReview.extras.save')}</Button>
           ) : (

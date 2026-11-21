@@ -232,7 +232,7 @@ export default {
           label: 'Revue post-partie',
           title: 'Ta VOD, annotée à la seconde.',
           text: 'Pour les parties qui méritent plus de 45 secondes : la vidéo, la timeline du match et tes annotations au même endroit.',
-          points: ['Tag une erreur (touche X) avec sa gravité et une note', 'Marque-pages (B) et notes horodatées', 'Erreurs détectées automatiquement sur la chronologie du match', 'Phase de lane 0–14 min comparée à ton vis-à-vis'],
+          points: ['Tag une erreur (touche X) avec sa gravité et une note', 'Marque-pages (B) et notes horodatées', 'Erreurs détectées automatiquement sur la chronologie du match', 'Laning phase 0–14 min comparée à ton vis-à-vis'],
           alt: 'La revue post-partie : objectif de la session, statistiques de la partie et micro-revue.',
         },
         {

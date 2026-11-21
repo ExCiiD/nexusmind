@@ -557,3 +557,82 @@ describe('older analysis kept when the recompute is impossible (21/11/2026, audi
     expect(mayFallBack('player-not-resolved')).toBe(true)
   })
 })
+
+describe('precise timestamps on a moment (21/11/2026, « Repères de la micro-review »)', () => {
+  const answerOn = (gid: string, over: Record<string, unknown> = {}) => invoke('microreview:answer', {
+    gameId: gid, momentKey: DEATH_KEY, trigger: 'critical-death', gameTimeSec: 1528,
+    outcome: 'mistake', tagSlug: 'no-ward-pre-obj', reason: 'setupFail', viaOther: false, ...over,
+  })
+  it('error and consequence: the mistake covers error − 5 s .. consequence + 5 s, at the error\'s time; kept on the answer', async () => {
+    const g = await addGame({ sessionId, gameEndAt: new Date(2026, 10, 7, 15, 0) })
+    const res = await answerOn(g.id, { errorAtSec: 1500, consequenceAtSec: 1540, extraTags: [{ tagSlug: 'bad-positioning' }] })
+    const rows = await getPrisma().mistake.findMany({ where: { gameId: g.id }, orderBy: { createdAt: 'asc' } })
+    expect(rows.map((m) => [m.gameTimeSec, m.startSec, m.endSec])).toEqual([[1500, 1495, 1545], [1500, 1495, 1545]])
+    expect(res.answer).toMatchObject({ errorAtSec: 1500, consequenceAtSec: 1540 })
+  })
+  it('a single timestamp: ± 5 s around it; none: the usual mistake at the moment', async () => {
+    const g = await addGame({ sessionId, gameEndAt: new Date(2026, 10, 6, 15, 0) })
+    await answerOn(g.id, { consequenceAtSec: 1530 })
+    expect(await getPrisma().mistake.findFirst({ where: { gameId: g.id } })).toMatchObject({ gameTimeSec: 1530, startSec: 1525, endSec: 1535 })
+    await answerOn(g.id, {})
+    expect(await getPrisma().mistake.findFirst({ where: { gameId: g.id } })).toMatchObject({ gameTimeSec: 1528, startSec: null, endSec: null })
+  })
+  it('outside the game, or a consequence before the error: refused, nothing saved', async () => {
+    const g = await addGame({ sessionId, gameEndAt: new Date(2026, 10, 5, 15, 0) })
+    await expect(answerOn(g.id, { errorAtSec: 1900 })).rejects.toThrow('BAD_TIMESTAMPS')
+    await expect(answerOn(g.id, { errorAtSec: 1500, consequenceAtSec: 1400 })).rejects.toThrow('BAD_TIMESTAMPS')
+    expect(await getPrisma().mistake.count({ where: { gameId: g.id } })).toBe(0)
+  })
+  it('mistake:create keeps the time sent, and refuses a time outside the game (never a silent 0:00)', async () => {
+    const g = await addGame({ sessionId, gameEndAt: new Date(2026, 10, 4, 15, 0), fixture: null })
+    const tag = await getPrisma().mistakeTag.findFirst({ where: { slug: 'bad-positioning' } })
+    const m = await invoke('mistake:create', { gameId: g.id, tagId: tag!.id, gameTimeSec: 742 })
+    expect(m.gameTimeSec).toBe(742)
+    await expect(invoke('mistake:create', { gameId: g.id, tagId: tag!.id, gameTimeSec: 99999 })).rejects.toThrow('BAD_GAME_TIME')
+    await expect(invoke('mistake:create', { gameId: g.id, tagId: tag!.id, gameTimeSec: -3 })).rejects.toThrow('BAD_GAME_TIME')
+    await expect(invoke('mistake:create', { gameId: g.id, tagId: tag!.id })).rejects.toThrow('BAD_GAME_TIME')
+  })
+  it('the window rules', async () => {
+    const { mistakeWindow, resolveMistakeGameTime } = await import('../../electron/main/mistakeWindowCore')
+    expect(mistakeWindow(null, null, 1800)).toBeNull()
+    expect(mistakeWindow(3, null, 1800)).toEqual({ gameTimeSec: 3, startSec: 0, endSec: 8 })
+    expect(mistakeWindow(1790, 1798, 1800)).toEqual({ gameTimeSec: 1790, startSec: 1785, endSec: 1800 })
+    expect(resolveMistakeGameTime(null, 120_000, 30, 1800)).toBe(150)
+    expect(() => resolveMistakeGameTime(null, 120_000, null, 1800)).toThrow('BAD_GAME_TIME')
+  })
+})
+
+describe('« Not a mistake » on a moment (21/11/2026)', () => {
+  it('erases the moment\'s detected mistake (never recreated, logged), marks the moment dismissed, no note; undo brings it back', async () => {
+    const prisma = getPrisma()
+    const g = await addGame({ sessionId, gameEndAt: new Date(2026, 10, 3, 15, 0) })
+    const tag = await prisma.mistakeTag.findFirst({ where: { slug: 'bad-positioning' } })
+    const far = await prisma.mistakeTag.findFirst({ where: { slug: 'no-ward-pre-obj' } })
+    // Detected near the death moment (1528 s), and another one far from it.
+    await prisma.mistake.create({ data: { id: 'auto-near', gameId: g.id, tagId: tag!.id, gameTimeSec: 1520, severity: 3, autoDetected: true } })
+    await prisma.mistake.create({ data: { id: 'auto-far', gameId: g.id, tagId: far!.id, gameTimeSec: 600, severity: 2, autoDetected: true } })
+    // A previous answer to that moment is undone first.
+    await invoke('microreview:answer', { gameId: g.id, momentKey: DEATH_KEY, trigger: 'critical-death', gameTimeSec: 1528, outcome: 'mistake', tagSlug: 'no-ward-pre-obj', viaOther: false })
+
+    const res = await invoke('microreview:dismiss-moment', { gameId: g.id, momentKey: DEATH_KEY, trigger: 'critical-death', gameTimeSec: 1528 })
+    expect(res).toEqual({ success: true, dismissedMistakeIds: ['auto-near'] })
+    const left = await prisma.mistake.findMany({ where: { gameId: g.id } })
+    expect(left.map((m) => m.id)).toEqual(['auto-far'])
+    expect(await prisma.ignoredMistake.count({ where: { gameId: g.id, tagSlug: 'bad-positioning', gameTimeSec: 1520 } })).toBe(1)
+    expect(await prisma.mistakeCorrection.findFirst({ where: { mistakeId: 'auto-near' } })).toMatchObject({ action: 'removed', reason: 'not_a_mistake' })
+    expect(await prisma.microReviewAnswer.findUnique({ where: { gameId_momentKey: { gameId: g.id, momentKey: DEATH_KEY } } })).toMatchObject({ outcome: 'dismissed', mistakeId: null })
+    // review:prefilled-notes reads the answers that are not 'dismissed': none here.
+    expect(await prisma.microReviewAnswer.count({ where: { gameId: g.id, outcome: { not: 'dismissed' } } })).toBe(0)
+
+    expect((await invoke('microreview:get', g.id)).dismissedMomentKeys).toEqual([DEATH_KEY])
+    await invoke('microreview:restore-moment', { gameId: g.id, momentKey: DEATH_KEY })
+    expect((await prisma.mistake.findMany({ where: { gameId: g.id }, orderBy: { gameTimeSec: 'asc' } })).map((m) => [m.id, m.autoDetected])).toEqual([['auto-far', true], ['auto-near', true]])
+    expect(await prisma.ignoredMistake.count({ where: { gameId: g.id } })).toBe(0)
+    expect(await prisma.microReviewAnswer.count({ where: { gameId: g.id } })).toBe(0)
+    await expect(invoke('microreview:restore-moment', { gameId: g.id, momentKey: DEATH_KEY })).rejects.toThrow('NOT_UNDOABLE')
+  })
+  it('a key that does not match the trigger or time sent is refused', async () => {
+    await expect(invoke('microreview:dismiss-moment', { gameId, momentKey: DEATH_KEY, trigger: 'early-deficit' })).rejects.toThrow()
+    await expect(invoke('microreview:dismiss-moment', { gameId, momentKey: DEATH_KEY, gameTimeSec: 12 })).rejects.toThrow()
+  })
+})

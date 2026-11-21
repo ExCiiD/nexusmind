@@ -52,7 +52,8 @@ describe('micro-review moments carry what the clip needs', () => {
     const a = analyzeGame(...Object.values((() => { const g = buildGame({ minutes: 25, me: 2, events: [death] }); return { m: g.match, t: g.timeline, s: g.selector } })()) as [any, any, any])
     for (const m of a?.moments ?? []) {
       expect(m.deathDated).toBe(m.trigger === 'critical-death')
-      expect(m.facts.errorAtSec).toBe(m.markers?.errorSec)
+      expect(m.facts.errorAtSec).toBe(m.facts.killSec != null ? m.facts.errorAtSec : m.gameTimeSec)
+      expect('markers' in m).toBe(false)
       if (m.facts.killSec != null) expect(m.facts.objectiveAtSec).toBe(m.facts.killSec)
     }
   })

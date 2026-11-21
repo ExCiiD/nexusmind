@@ -69,6 +69,45 @@ export function saveLayers(layers: PlayerLayers, store: Storage | null = storage
   try { store?.setItem(LAYERS_STORAGE_KEY, JSON.stringify(layers)) } catch { /* per-device convenience */ }
 }
 
+/**
+ * The player's filter chips (beta.20 feedback): each event type is shown until its chip is clicked, a second click
+ * shows it again. Kept per device. The old « only these types » list (`nm.player.eventFilter`) is turned into the
+ * hidden types once, then removed.
+ */
+export const HIDDEN_EVENTS_KEY = 'nm.player.hiddenEventTypes'
+const OLD_EVENT_FILTER_KEY = 'nm.player.eventFilter'
+
+export function toggleHidden<T extends string>(hidden: ReadonlySet<T>, type: T): Set<T> {
+  const next = new Set(hidden)
+  if (next.has(type)) next.delete(type)
+  else next.add(type)
+  return next
+}
+
+export function readHiddenEvents<T extends string>(all: readonly T[], store: Pick<globalThis.Storage, 'getItem' | 'setItem' | 'removeItem'> | null = storage() as never): Set<T> {
+  const valid = new Set<string>(all)
+  try {
+    const raw = store?.getItem(HIDDEN_EVENTS_KEY)
+    if (raw) {
+      const v = JSON.parse(raw)
+      return new Set(Array.isArray(v) ? (v as string[]).filter((x): x is T => valid.has(x)) : [])
+    }
+    const old = store?.getItem(OLD_EVENT_FILTER_KEY)
+    if (old) {
+      const shown = new Set(Array.isArray(JSON.parse(old)) ? (JSON.parse(old) as string[]) : all)
+      const hidden = new Set(all.filter((x) => !shown.has(x)))
+      store?.setItem(HIDDEN_EVENTS_KEY, JSON.stringify([...hidden]))
+      store?.removeItem(OLD_EVENT_FILTER_KEY)
+      return hidden
+    }
+  } catch { /* per-device convenience */ }
+  return new Set()
+}
+
+export function saveHiddenEvents(hidden: ReadonlySet<string>, store: Pick<globalThis.Storage, 'setItem'> | null = storage()) {
+  try { store?.setItem(HIDDEN_EVENTS_KEY, JSON.stringify([...hidden])) } catch { /* per-device convenience */ }
+}
+
 /** « Objectifs · tous »: every objective type shown, none, or some (the tri-state box). */
 export function objectivesState(layers: PlayerLayers): 'all' | 'none' | 'some' {
   const on = OBJECTIVE_LAYERS.filter((k) => layers[k]).length
