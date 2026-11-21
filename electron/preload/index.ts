@@ -496,6 +496,7 @@ const api = {
   microReviewGet: (gameId: string) => ipcRenderer.invoke('microreview:get', gameId),
   microReviewAnswer: (input: unknown) => ipcRenderer.invoke('microreview:answer', input),
   microReviewDismissMoment: (input: unknown) => ipcRenderer.invoke('microreview:dismiss-moment', input),
+  microReviewRestoreMoment: (input: unknown) => ipcRenderer.invoke('microreview:restore-moment', input),
   microReviewVerifyObjectives: (gameId: string) => ipcRenderer.invoke('microreview:verify-objectives', gameId),
   calibrationStatus: () => ipcRenderer.invoke('microreview:calibration-status'),
   calibrationSubmit: (family: string) => ipcRenderer.invoke('microreview:calibration-submit', family),
