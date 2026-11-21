@@ -1566,6 +1566,20 @@
       "noWebhook": "No Discord webhook: add one in Settings.",
       "discordSent": "Link sent to {{name}}",
       "discordFailed": "The Discord send failed.",
+      "handleStart": "Start",
+      "handleEnd": "End",
+      "validate": "Confirm",
+      "onHold": "On hold: grab a handle to resume the clip",
+      "dialog": {
+        "title": "Confirm the clip",
+        "save": "Save",
+        "share": "Share",
+        "saved": "Clip saved in My clips",
+        "discord": "Discord",
+        "tempLink": "Temporary link",
+        "linkLabel": "Temporary link:",
+        "back": "Back"
+      },
       "createLink": "Create the link"
     },
     "bar": {

@@ -10,11 +10,12 @@ import type { GameEvent, GameEventType, Mistake, MistakeTag, Bookmark as Bookmar
 import { mistakePlayFromSec } from '@/lib/microReview/playbackWindow'
 import { isMicroReviewBookmark, layerOfEvent, layerOfMistake, markerOpacity, readHiddenEvents, saveHiddenEvents, toggleHidden, type PlayerLayers } from '@/lib/playerLayers'
 import { useReviewPlayerStore, type ReviewClip } from '@/store/useReviewPlayerStore'
-import { loopTarget } from '@/lib/clipEdit'
+import { clipLengthLabel, defaultClipRange, dragClipHandle, loopTarget, setClipIn, setClipOut, type ClipRange } from '@/lib/clipEdit'
 import { IconBtn, PlayerBarV2, type BarMarker } from './PlayerBarV2'
 import { NotePopover } from './NotePopover'
 import { TagAutocomplete } from '@/components/MicroReview/TagAutocomplete'
 import { PlayerFilterChips, type EventFilterMode, type FilterChip } from './PlayerFilterChips'
+import { ClipSaveDialog } from './ClipSaveDialog'
 
 // Visual styling per event category. Saturated colors for the most
 // important events (player K/D/A, objectives), muted for buildings so
@@ -173,6 +174,16 @@ interface VideoReviewPlayerProps {
   seekVideo?: { ms: number; nonce: number } | null
   /** The « Clip » button of the bar (key C, spec § 19): opens the clip mode. */
   onClip?: () => void
+  /**
+   * The clip mode of the single player (DECISIONS 21/11 « Mode clip, nouvelle interface »): with a recording id, the
+   * player runs it itself — handles Début / Fin above the timeline, the compact block, the « Valider » pop-up.
+   */
+  clipRecordingId?: string
+  /** Opens the clip mode from outside: on a video range (ms), on a game window (seconds), else around the playhead. */
+  clipOpen?: { nonce: number; range?: ClipRange | null; gameWindow?: { startSec: number; endSec: number } | null } | null
+  onClipModeChange?: (on: boolean) => void
+  /** A clip was saved in Mes clips (lists to refresh). */
+  onClipSaved?: (clip: { id: string; title: string }) => void
   /** Review v2 (spec § 19, § 21): the filters menu, the « Prise de note » pop-over and the right panel's toggle. */
   onLayersChange?: (next: PlayerLayers) => void
   hideMistakes?: boolean
@@ -207,7 +218,7 @@ export function VideoReviewPlayer({
   src, notes, onAddNote, onEditNote, onDeleteNote, onFileNotFound, readonly,
   clipping, clipRange, onClipRangeChange,
   videoMaxHeight = 'max-h-[480px]',
-  gameEvents, gameMeta, seekToGameTimeSec, seekNonce, clip, layers, onTimeChange, loopRange, seekVideo, onClip,
+  gameEvents, gameMeta, seekToGameTimeSec, seekNonce, clip, layers, onTimeChange, loopRange, seekVideo, onClip, clipRecordingId, clipOpen, onClipModeChange, onClipSaved,
   onLayersChange, hideMistakes, onTakeNote, onTogglePanel, panelOpen, panelSide = 'right', onToggleSide, panelTabLabel, barExtra,
   mistakes, mistakeTags, onAddMistake, onDeleteMistake,
   bookmarks, onAddBookmark, onDeleteBookmark,
@@ -592,6 +603,54 @@ export function VideoReviewPlayer({
     videoRef.current.currentTime = seekVideo.ms / 1000
     setCurrentTime(seekVideo.ms / 1000)
   }, [seekVideo?.nonce]) // eslint-disable-line react-hooks/exhaustive-deps -- once per request
+  // ── Clip mode of the single player (DECISIONS 21/11 « Mode clip, nouvelle interface ») ──
+  const clipMode = !!layers && !!clipRecordingId
+  const [clipOn, setClipOn] = useState(false)
+  const [clipSel, setClipSel] = useState<ClipRange>({ startMs: 0, endMs: 30_000 })
+  // On hold: the playhead was used; the handles stay in place, dimmed, until one is grabbed again.
+  const [clipHold, setClipHold] = useState(false)
+  const [clipDialog, setClipDialog] = useState(false)
+  const clipDragging = useRef(false)
+  const clipSavedRef = useRef(false)
+  const clipDurMs = () => Math.round((videoRef.current?.duration || duration) * 1000)
+  const openClip = (r?: ClipRange | null) => {
+    const sel = r ?? defaultClipRange((videoRef.current?.currentTime ?? currentTime) * 1000, clipDurMs())
+    setClipSel(sel)
+    setClipHold(false)
+    setClipDialog(false)
+    clipSavedRef.current = false
+    setClipOn(true)
+    if (videoRef.current && r) { videoRef.current.currentTime = sel.startMs / 1000; setCurrentTime(sel.startMs / 1000) }
+  }
+  const closeClip = () => { setClipOn(false); setClipDialog(false); setClipHold(false) }
+  useEffect(() => { onClipModeChange?.(clipOn) }, [clipOn]) // eslint-disable-line react-hooks/exhaustive-deps -- reports the mode only
+  useEffect(() => {
+    if (!clipOpen || !clipMode) return
+    const w = clipOpen.gameWindow
+    if (w) {
+      const s = gameToVideo(w.startSec), e = gameToVideo(w.endSec)
+      openClip(s != null && e != null ? dragClipHandle({ startMs: Math.round(s * 1000), endMs: Math.round(s * 1000) + 1000 }, 'end', e * 1000, clipDurMs()) : null)
+    } else openClip(clipOpen.range ?? null)
+  }, [clipOpen?.nonce]) // eslint-disable-line react-hooks/exhaustive-deps -- once per request
+  // Keys: C opens / closes; in it, I / O set a bound at the current time, Entrée validates, Échap cancels.
+  useEffect(() => {
+    if (!clipMode) return
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement)?.isContentEditable) return
+      if (clipDialog || e.ctrlKey || e.metaKey || e.altKey) return
+      const k = e.key.toLowerCase()
+      if (!clipOn) { if (k === 'c') { e.preventDefault(); openClip() } return }
+      const now = (videoRef.current?.currentTime ?? 0) * 1000
+      if (k === 'c' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeClip() }
+      else if (e.key === 'Enter') { e.preventDefault(); setClipDialog(true) }
+      else if (k === 'i') { e.preventDefault(); setClipSel((r) => setClipIn(r, now, clipDurMs())); setClipHold(false) }
+      else if (k === 'o') { e.preventDefault(); setClipSel((r) => setClipOut(r, now, clipDurMs())); setClipHold(false) }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }) // re-bound each render: it reads the current selection
+
   // « ↻ Aperçu »: starts the loop at the selection's start.
   useEffect(() => {
     if (!loopRange || !videoRef.current) return
@@ -1540,8 +1599,9 @@ export function VideoReviewPlayer({
               setCurrentTime(now)
               onTimeChange?.(now, videoRef.current?.duration ?? 0)
               if (stopAtRef.current != null && now >= stopAtRef.current) { stopAtRef.current = null; videoRef.current?.pause() }
-              if (loopRange && videoRef.current) {
-                const back = loopTarget(now * 1000, loopRange)
+              const loop = loopRange ?? (clipOn && !clipHold && !clipDragging.current ? clipSel : null)
+              if (loop && videoRef.current) {
+                const back = loopTarget(now * 1000, loop)
                 if (back != null) videoRef.current.currentTime = back / 1000
               }
             }}
@@ -1619,8 +1679,8 @@ export function VideoReviewPlayer({
             duration={duration}
             playing={playing}
             onTogglePlay={togglePlay}
-            onSkip={skip}
-            onSeek={(s) => seekTo(s)}
+            onSkip={(dx) => { if (clipOn) setClipHold(true); skip(dx) }}
+            onSeek={(s) => { if (clipOn) setClipHold(true); seekTo(s) }}
             volume={volume}
             muted={muted}
             onVolume={(x) => {
@@ -1636,7 +1696,35 @@ export function VideoReviewPlayer({
             onLayersChange={onLayersChange ?? (() => {})}
             filters={filterChips.length > 0 || (gameEvents?.length ?? 0) > 0 ? <PlayerFilterChips mode={filterMode} onMode={setFilterMode} chips={filterChips} /> : null}
             hideMistakes={hideMistakes}
-            onClip={onClip}
+            onClip={clipMode ? () => (clipOn ? closeClip() : openClip()) : onClip}
+            clipEdit={clipMode && clipOn ? {
+              start: clipSel.startMs / 1000, end: clipSel.endMs / 1000, label: clipLengthLabel(clipSel), hold: clipHold,
+              onGrab: () => { clipDragging.current = true; setClipHold(false); videoRef.current?.pause() },
+              onDrag: (which, sec) => {
+                const next = dragClipHandle(clipSel, which, sec * 1000, clipDurMs())
+                setClipSel(next)
+                // The player follows the handle live (its frame on screen).
+                const at = (which === 'start' ? next.startMs : next.endMs) / 1000
+                if (videoRef.current) videoRef.current.currentTime = at
+                setCurrentTime(at)
+              },
+              onDrop: () => { clipDragging.current = false },
+            } : undefined}
+            clipBlock={clipMode && clipOn ? (
+              <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2 text-xs" data-testid="clip-block">
+                <span className="flex items-center gap-1 font-mono text-hextech-gold-bright"><Scissors className="h-3.5 w-3.5" />{clipLengthLabel(clipSel)}</span>
+                {clipHold && <span className="text-[11px] text-hextech-text-dim" data-testid="clip-on-hold">{i18n.t('recording.clip.onHold')}</span>}
+                <button type="button" onClick={() => setClipDialog(true)} data-testid="clip-validate"
+                  className="flex h-7 items-center gap-1.5 rounded-md bg-hextech-gold px-2.5 font-semibold text-hextech-black hover:bg-hextech-gold-bright">
+                  <Check className="h-3.5 w-3.5" />{i18n.t('recording.clip.validate')}<kbd className="rounded bg-black/20 px-1 font-mono text-[10px]">⏎</kbd>
+                </button>
+                <button type="button" onClick={closeClip} data-testid="clip-cancel"
+                  className="flex h-7 items-center gap-1.5 rounded-md border border-hextech-border px-2.5 text-hextech-text hover:border-hextech-red/60 hover:text-hextech-red">
+                  {i18n.t('common.cancel')}<kbd className="rounded bg-white/10 px-1 font-mono text-[10px]">{i18n.t('recording.clip.escKey')}</kbd>
+                </button>
+                <span className="font-mono text-[10px] text-hextech-text-dim">I / O</span>
+              </div>
+            ) : undefined}
             onMistake={onAddMistake && gameMeta ? openMistakeDialog : undefined}
             onNote={onTakeNote ? () => openNoteRef.current?.() : undefined}
             trailing={(
@@ -1661,6 +1749,11 @@ export function VideoReviewPlayer({
             )}
             overlay={(
               <>
+                {clipDialog && clipRecordingId && (
+                  <ClipSaveDialog recordingId={clipRecordingId} range={clipSel}
+                    onSaved={(c) => { clipSavedRef.current = true; onClipSaved?.(c) }}
+                    onClose={() => { setClipDialog(false); if (clipSavedRef.current) closeClip() }} />
+                )}
                 {noteAt != null && onTakeNote && (
                   <NotePopover timeSec={noteAt} tags={mistakeTags ?? []} onCancel={() => setNoteAt(null)}
                     onSave={async (n) => { await onTakeNote({ videoTimeMs: Math.round(noteAt * 1000), ...n }); setNoteAt(null) }} />

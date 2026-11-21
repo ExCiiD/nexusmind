@@ -18,9 +18,7 @@ import { useToast } from '@/hooks/useToast'
 import { formatFileSize, formatMs, toNxmUrl } from '@/lib/mediaCore'
 import { useYoutubeUploadAvailable } from '@/hooks/useYoutubeUploadAvailable'
 import { useShortReviewWatch } from '@/hooks/useShortReviewWatch'
-import { ClipModePanel } from '@/components/Recording/ClipModePanel'
 import { useReviewPlayerStore } from '@/store/useReviewPlayerStore'
-import { defaultClipRange } from '@/lib/clipEdit'
 import { deriveOffsetSec } from '@/lib/eventSync'
 import { NOTE_BOOKMARK_COLOR } from '@/lib/playerLayers'
 
@@ -119,11 +117,10 @@ export function RecordPlayerPage() {
   // Bookmarks — recording-scoped (works on orphans too)
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
 
-  // Clip creation
+  // Clip mode: run by the single player (DECISIONS 21/11 « Mode clip, nouvelle interface »); here, its triggers.
+  const [clipOpen, setClipOpen] = useState<{ nonce: number } | null>(null)
   const [creatingClip, setCreatingClip] = useState(false)
-  const [clipRange, setClipRange] = useState({ startMs: 0, endMs: 30_000 })
-  const [clipTitle, setClipTitle] = useState('')
-  const [savingClip, setSavingClip] = useState(false)
+  const openClipEditor = () => setClipOpen((c) => ({ nonce: (c?.nonce ?? 0) + 1 }))
 
   // External review creation
   const [creatingReview, setCreatingReview] = useState(false)
@@ -403,9 +400,6 @@ export function RecordPlayerPage() {
   const layers = useReviewPlayerStore((s) => s.layers)
   const setLayers = useReviewPlayerStore((s) => s.setLayers)
   const timeRef = useRef({ sec: 0, durationSec: 0 })
-  const [playheadMs, setPlayheadMs] = useState(0)
-  const [previewing, setPreviewing] = useState(false)
-  const [seekVideo, setSeekVideo] = useState<{ ms: number; nonce: number } | null>(null)
   const offsetSec = () => (recording?.createdAt && recording.gameEndAt && recording.gameDuration ? deriveOffsetSec({
     gameEndAt: new Date(recording.gameEndAt), gameDurationSec: recording.gameDuration, recordingCreatedAt: new Date(recording.createdAt),
     videoDurationSec: timeRef.current.durationSec || recording.gameDuration, startOffsetSec: recordingStartOffsetSec,
@@ -431,60 +425,6 @@ export function RecordPlayerPage() {
     } catch {
       toast({ title: t('recording.note.failed'), variant: 'destructive' })
       throw new Error('NOTE_NOT_SAVED')
-    }
-  }
-
-  const handleClipRangeChange = useCallback((range: { startMs: number; endMs: number }) => {
-    setClipRange(range)
-  }, [])
-
-  const openClipEditor = () => {
-    handleClipRangeChange(defaultClipRange(timeRef.current.sec * 1000, Math.round(timeRef.current.durationSec * 1000)))
-    setClipTitle('')
-    setPlayheadMs(Math.round(timeRef.current.sec * 1000))
-    setPreviewing(false)
-    setCreatingClip(true)
-  }
-
-  const handleSaveClip = async () => {
-    if (!recordingId) return
-    setSavingClip(true)
-    try {
-      await window.api.createClip({ recordingId, startMs: clipRange.startMs, endMs: clipRange.endMs, title: clipTitle || undefined })
-      setCreatingClip(false)
-      await loadData()
-    } catch (err) { console.error('[RecordPlayerPage] Clip save failed:', err) }
-    finally { setSavingClip(false) }
-  }
-
-  // "Export" is the same operation as Save but additionally reveals the
-  // produced mp4 in the OS file browser and surfaces a richer toast.
-  // Useful when the user wants to share the file outside the app.
-  const [exportingClip, setExportingClip] = useState(false)
-  const handleExportClip = async () => {
-    if (!recordingId) return
-    setExportingClip(true)
-    try {
-      const result = await window.api.exportClip({
-        recordingId,
-        startMs: clipRange.startMs,
-        endMs: clipRange.endMs,
-        title: clipTitle || undefined,
-      })
-      setCreatingClip(false)
-      await loadData()
-      toast({
-        title: t('record.toast.clipExported'),
-        description: result.revealedInFolder ? t('record.toast.clipExportedRevealed', { path: result.filePath }) : t('record.toast.clipExportedTo', { path: result.filePath }),
-      })
-    } catch (err) {
-      toast({
-        title: t('record.toast.clipExportFailed'),
-        description: (err as Error)?.message ?? t('record.toast.unknownError'),
-        variant: 'destructive',
-      })
-    } finally {
-      setExportingClip(false)
     }
   }
 
@@ -608,11 +548,12 @@ export function RecordPlayerPage() {
           notes={[]}
           layers={layers}
           onLayersChange={setLayers}
-          onClip={activeClip ? undefined : openClipEditor}
+          clipRecordingId={activeClip ? undefined : recording.id}
+          clipOpen={clipOpen}
+          onClipModeChange={setCreatingClip}
+          onClipSaved={() => { void loadData() }}
           onTakeNote={activeClip ? undefined : takeNote}
-          onTimeChange={(sec, durationSec) => { timeRef.current = { sec, durationSec }; if (creatingClip) setPlayheadMs(Math.round(sec * 1000)) }}
-          seekVideo={seekVideo}
-          loopRange={creatingClip && previewing ? clipRange : null}
+          onTimeChange={(sec, durationSec) => { timeRef.current = { sec, durationSec } }}
           // Account for everything stacked below the <video>: progress
           // bar with up to 3 lanes of event markers ABOVE it (pt-14 ≈
           // 3.5rem), the legend chips row (~2rem), the transport button
@@ -664,35 +605,6 @@ export function RecordPlayerPage() {
       ) : (
         <div className="rounded-xl bg-[#050A10] border border-white/10 aspect-video flex items-center justify-center">
           <p className="text-hextech-text-dim text-sm">{t('record.player.noVideo')}</p>
-        </div>
-      )}
-
-      {/* Clip mode — the same panel as the Review (one player in the whole app), with Record's « Exporter » beside it. */}
-      {creatingClip && !activeClip && (
-        <div className="space-y-1.5 shrink-0">
-          <ClipModePanel
-            range={clipRange}
-            onChange={handleClipRangeChange}
-            durationMs={Math.round(timeRef.current.durationSec * 1000)}
-            playheadMs={playheadMs}
-            title={clipTitle}
-            onTitle={setClipTitle}
-            previewing={previewing}
-            onTogglePreview={() => setPreviewing((v) => !v)}
-            momentRange={null}
-            onSeek={(ms) => setSeekVideo((cur) => ({ ms, nonce: (cur?.nonce ?? 0) + 1 }))}
-            onCancel={() => { setCreatingClip(false); setPreviewing(false) }}
-            onSave={() => { void handleSaveClip() }}
-            saving={savingClip}
-          />
-          <div className="flex justify-end">
-            <Button size="sm" variant="outline"
-              className="h-7 gap-1 text-xs border-hextech-cyan/40 text-hextech-cyan hover:bg-hextech-cyan/10 px-2.5"
-              onClick={handleExportClip} disabled={savingClip || exportingClip || clipRange.endMs <= clipRange.startMs}
-              title={t('record.clipEditor.exportHint')}>
-              {exportingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}{t('record.clipEditor.export')}
-            </Button>
-          </div>
         </div>
       )}
 

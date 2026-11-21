@@ -55,6 +55,13 @@ export function PlayerBarV2(p: {
   hideMistakes?: boolean
   /** The filter chips (beta.20), under the timeline, in place of the « Filtres » menu. */
   filters?: ReactNode
+  /**
+   * Clip mode (DECISIONS 21/11 « Mode clip, nouvelle interface »): the handles « Début » / « Fin » above the timeline
+   * (seconds), joined by a bracket with the duration; dimmed while the clip is on hold (the playhead was used).
+   */
+  clipEdit?: { start: number; end: number; label: string; hold: boolean; onGrab: () => void; onDrag: (which: 'start' | 'end', sec: number) => void; onDrop: () => void }
+  /** The compact clip block (duration, Valider, Annuler), under the timeline while clipping. */
+  clipBlock?: ReactNode
   onClip?: () => void
   onMistake?: () => void
   onNote?: () => void
@@ -121,6 +128,44 @@ export function PlayerBarV2(p: {
   return (
     <div className="relative bg-hextech-black p-3" data-testid="player-bar-v2">
       {p.overlay}
+      {/* Clip mode: the handles' zone covers the markers and the track, their lines go down to the bar. */}
+      <div className={cn('relative', p.clipEdit && 'pt-10')} data-testid={p.clipEdit ? 'clip-zone' : undefined}>
+      {p.clipEdit && (() => {
+        const c = p.clipEdit
+        const secAt = (clientX: number) => {
+          const box = trackRef.current?.getBoundingClientRect()
+          return box && box.width > 0 ? Math.min(1, Math.max(0, (clientX - box.left) / box.width)) * d : 0
+        }
+        const handle = (which: 'start' | 'end', sec: number) => (
+          <div key={which} className="absolute top-0 bottom-2 z-20 w-0" style={{ left: `${pct(sec)}%` }}>
+            <button type="button" data-testid={`clip-handle-${which}`} aria-label={t(which === 'start' ? 'recording.clip.handleStart' : 'recording.clip.handleEnd')}
+              title={`${t(which === 'start' ? 'recording.clip.handleStart' : 'recording.clip.handleEnd')} · ${fmt(sec)}`}
+              className={cn('absolute top-0 flex h-6 cursor-ew-resize touch-none items-center gap-1 whitespace-nowrap rounded px-1.5 text-[10px] font-bold uppercase tracking-wider shadow',
+                which === 'start' ? 'left-0 rounded-bl-none' : 'right-0 rounded-br-none',
+                c.hold ? 'bg-hextech-gold/35 text-hextech-black/70' : 'bg-hextech-gold text-hextech-black')}
+              onPointerDown={(e) => { e.stopPropagation(); e.currentTarget.setPointerCapture?.(e.pointerId); c.onGrab() }}
+              onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture?.(e.pointerId)) c.onDrag(which, secAt(e.clientX)) }}
+              onPointerUp={() => c.onDrop()}>
+              {t(which === 'start' ? 'recording.clip.handleStart' : 'recording.clip.handleEnd')}
+              <span className="font-mono font-semibold normal-case opacity-70">{fmt(sec)}</span>
+            </button>
+            <span aria-hidden className={cn('pointer-events-none absolute bottom-0 top-0 w-[2px] -translate-x-1/2', c.hold ? 'bg-hextech-gold/35' : 'bg-hextech-gold')} />
+          </div>
+        )
+        return (
+          <>
+            {/* The bracket between the handles, with the duration. */}
+            <div aria-hidden data-testid="clip-bracket" className={cn('pointer-events-none absolute top-7 z-10 h-2 border-x-2 border-t-2', c.hold ? 'border-hextech-gold/35' : 'border-hextech-gold')}
+              style={{ left: `${pct(c.start)}%`, width: `${Math.max(0, pct(c.end) - pct(c.start))}%` }}>
+              <span className={cn('absolute -top-2.5 left-1/2 -translate-x-1/2 rounded bg-hextech-black px-1 font-mono text-[10px] font-semibold', c.hold ? 'text-hextech-gold/50' : 'text-hextech-gold-bright')}>{c.label}</span>
+            </div>
+            <div aria-hidden className={cn('pointer-events-none absolute bottom-[3px] z-[5] h-[11px] rounded-sm', c.hold ? 'bg-hextech-gold/10' : 'bg-hextech-gold/25')}
+              style={{ left: `${pct(c.start)}%`, width: `${Math.max(0, pct(c.end) - pct(c.start))}%` }} />
+            {handle('start', c.start)}
+            {handle('end', c.end)}
+          </>
+        )
+      })()}
       {/* Markers: you on top, the game below a dotted line; the micro-review window as a gold band. */}
       <div className="relative">
         {win && <div aria-hidden className="absolute inset-y-0 rounded bg-hextech-gold/[0.08]" style={{ left: `${pct(win.start)}%`, width: `${pct(win.end) - pct(win.start)}%` }} />}
@@ -158,7 +203,9 @@ export function PlayerBarV2(p: {
         <span aria-hidden className="pointer-events-none absolute bottom-1/2 w-px bg-[#E4C285]/70" style={{ left: `${pct(p.currentTime)}%`, height: 56 }} />
         <span aria-hidden className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#E4C285] shadow" style={{ left: `${pct(p.currentTime)}%` }} />
       </div>
-      {p.clipWindow && (
+      </div>
+      {p.clipBlock}
+      {p.clipWindow && !p.clipEdit && (
         <p className="mt-0.5 text-center font-mono text-[10px] text-hextech-gold">{t('recording.bar.microReview', { from: fmt(p.clipWindow.start), to: fmt(p.clipWindow.end) })}</p>
       )}
 

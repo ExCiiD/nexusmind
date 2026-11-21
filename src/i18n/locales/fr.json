@@ -1566,6 +1566,20 @@
       "noWebhook": "Aucun webhook Discord : ajoute-en un dans les Réglages.",
       "discordSent": "Lien envoyé sur {{name}}",
       "discordFailed": "L’envoi sur Discord a échoué.",
+      "handleStart": "Début",
+      "handleEnd": "Fin",
+      "validate": "Valider",
+      "onHold": "En pause : reprends une poignée pour continuer le clip",
+      "dialog": {
+        "title": "Valider le clip",
+        "save": "Sauvegarder",
+        "share": "Partager",
+        "saved": "Clip sauvegardé dans Mes clips",
+        "discord": "Discord",
+        "tempLink": "Lien temporaire",
+        "linkLabel": "Lien temporaire :",
+        "back": "Retour"
+      },
       "createLink": "Créer le lien"
     },
     "bar": {

@@ -7,22 +7,12 @@ import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 import type { TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
 import type { GameEvent, Mistake, MistakeTag } from '@/lib/ipc'
-import { formatMs, toNxmUrl } from '@/lib/mediaCore'
+import { toNxmUrl } from '@/lib/mediaCore'
 import { useReviewPlayerStore } from '@/store/useReviewPlayerStore'
 import { useUserStore } from '@/store/useUserStore'
-import { clipFromGameWindow, defaultClipRange, setClipIn, setClipOut } from '@/lib/clipEdit'
 import { deriveOffsetSec } from '@/lib/eventSync'
-import { ClipSharePanel } from '@/components/Share/ClipSharePanel'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ClipModePanel } from './ClipModePanel'
-import { useYoutubeUploadAvailable } from '@/hooks/useYoutubeUploadAvailable'
 import { useNavigate } from 'react-router-dom'
 import { NOTE_BOOKMARK_COLOR } from '@/lib/playerLayers'
-import { DiscordLinkDialog } from './DiscordLinkDialog'
-import { YoutubeTermsNote, markYoutubeTermsSeen } from './YoutubeTermsNote'
-import { YoutubeQueueStatus } from '@/components/Settings/YoutubeQueueStatus'
-import { useYoutubeQueue } from '@/hooks/useYoutubeQueue'
-import { queueEntryFor } from '@/lib/youtubeQueue'
 
 // ── Types & helpers ───────────────────────────────────────────────────────────
 
@@ -108,30 +98,14 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
   const [mistakes, setMistakes] = useState<Mistake[]>([])
   const [mistakeTags, setMistakeTags] = useState<MistakeTag[]>([])
 
-  // Clip creation
-  const [creatingClip, setCreatingClip] = useState(false)
-  const [clipRange, setClipRange] = useState({ startMs: 0, endMs: 30_000 })
-  const [clipTitle, setClipTitle] = useState('')
-  const [savingClip, setSavingClip] = useState(false)
+  // Clip mode: run by the single player (DECISIONS 21/11 « Mode clip, nouvelle interface »); here, its triggers.
   const [clipSaveKey, setClipSaveKey] = useState(0)
-  // Clip mode (21/11, spec § 19): the player's time for the bounds, the preview loop, the saved clip's 8 s band.
+  const [clipOpen, setClipOpen] = useState<{ nonce: number; gameWindow?: { startSec: number; endSec: number } | null } | null>(null)
+  const [clipModeOn, setClipModeOn] = useState(false)
+  const openClipMode = (gameWindow?: { startSec: number; endSec: number } | null) => setClipOpen((c) => ({ nonce: (c?.nonce ?? 0) + 1, gameWindow }))
   const timeRef = useRef({ sec: 0, durationSec: 0 })
-  const [previewing, setPreviewing] = useState(false)
-  const [playheadMs, setPlayheadMs] = useState(0)
   const [seekVideo, setSeekVideo] = useState<{ ms: number; nonce: number } | null>(null)
-  const [savedClip, setSavedClip] = useState<{ id: string; range: { startMs: number; endMs: number }; title: string; exported: { filePath: string; fileSize: number } | null } | null>(null)
-  const [clipBusy, setClipBusy] = useState<'export' | 'link' | 'share' | 'youtube' | null>(null)
-  // 21/11 « Partage des clips »: YouTube when connected (unlisted, no extra dialog), its progress in the band.
-  const ytAvailable = useYoutubeUploadAvailable()
-  const [ytConnected, setYtConnected] = useState(false)
-  const [ytProgress, setYtProgress] = useState<number | null>(null)
-  const [clipYtUrl, setClipYtUrl] = useState<string | null>(null)
-  // « Envoyer sur Discord » once the YouTube link is there (never automatic).
-  const [discordOpen, setDiscordOpen] = useState(false)
   const navigate = useNavigate()
-  // « Upload YouTube automatique »: the saved clip's place in the queue.
-  const ytQueue = useYoutubeQueue()
-  const [sharing, setSharing] = useState<{ filePath: string; fileSize: number } | null>(null)
   const clipRequest = useReviewPlayerStore((s) => (shared ? s.clipRequest : null))
 
   const load = useCallback(async () => {
@@ -364,22 +338,6 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
     toast({ title: t('recording.panel.unlinked'), description: t('recording.panel.unlinkedDesc') })
   }
 
-  // Clip editing
-  const handleClipRangeChange = useCallback((range: { startMs: number; endMs: number }) => {
-    setClipRange(range)
-  }, [])
-
-  const durationMs = () => Math.round(timeRef.current.durationSec * 1000)
-  /** Opens the clip mode: on `range`, else current time − 10 s → + 20 s. */
-  const openClipEditor = (range?: { startMs: number; endMs: number }) => {
-    const r = range ?? defaultClipRange(timeRef.current.sec * 1000, durationMs())
-    handleClipRangeChange(r)
-    setPlayheadMs(Math.round(timeRef.current.sec * 1000))
-    setClipTitle('')
-    setPreviewing(false)
-    setSavedClip(null)
-    setCreatingClip(true)
-  }
   /** The recording's offset: video time = game time − offset (the micro-review moment as a clip). */
   const offsetSec = () => (recording?.createdAt && gameMeta ? deriveOffsetSec({
     gameEndAt: new Date(gameMeta.gameEndAt), gameDurationSec: gameMeta.gameDurationSec,
@@ -393,126 +351,13 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
     return () => useReviewPlayerStore.setState({ playerGameTime: null })
   }, [shared, recording?.filePath, fileNotFound]) // eslint-disable-line react-hooks/exhaustive-deps -- offsetSec reads the recording
 
-  // « Clipper ce moment » (micro-review panel): the clip mode on the moment's window.
+  // « Clipper ce moment » (micro-review panel): the player's clip mode on the moment's window (game seconds).
   useEffect(() => {
     if (!clipRequest) return
     setOpen(true)
-    openClipEditor(clipFromGameWindow(clipRequest, offsetSec(), durationMs()))
+    openClipMode({ startSec: clipRequest.startSec, endSec: clipRequest.endSec })
     rootRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [clipRequest?.nonce]) // eslint-disable-line react-hooks/exhaustive-deps -- once per request
-
-  // Keys (spec § 19): C opens the clip mode; in it, I / O set a bound at the current time, Échap cancels, Entrée saves.
-  useEffect(() => {
-    if (!shared || !recording?.filePath) return
-    const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName
-      const typing = tag === 'INPUT' || tag === 'TEXTAREA'
-      if (!creatingClip) {
-        if (!typing && (e.key === 'c' || e.key === 'C')) { e.preventDefault(); openClipEditor() }
-        return
-      }
-      if (e.key === 'Escape') { e.preventDefault(); setCreatingClip(false); setPreviewing(false); return }
-      if (e.key === 'Enter') { e.preventDefault(); void handleSaveClip(); return }
-      if (typing) return
-      if (e.key === 'i' || e.key === 'I') { e.preventDefault(); handleClipRangeChange(setClipIn(clipRange, timeRef.current.sec * 1000, durationMs())) }
-      if (e.key === 'o' || e.key === 'O') { e.preventDefault(); handleClipRangeChange(setClipOut(clipRange, timeRef.current.sec * 1000, durationMs())) }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }) // re-bound each render: it reads the current selection
-
-  // After saving: the band stays 8 s (counted again once an action, e.g. a YouTube upload, is over).
-  useEffect(() => {
-    if (!savedClip || clipBusy) return
-    const timer = setTimeout(() => setSavedClip((cur) => (cur === savedClip ? null : cur)), 8_000)
-    return () => clearTimeout(timer)
-  }, [savedClip, clipBusy])
-  // YouTube: connected? (asked when the band shows); the upload's progress while it runs.
-  useEffect(() => {
-    if (!savedClip || !ytAvailable) return
-    window.api.youtubeGetStatus?.().then((s) => setYtConnected(!!s?.connected)).catch(() => setYtConnected(false))
-  }, [!!savedClip, ytAvailable]) // eslint-disable-line react-hooks/exhaustive-deps -- once per band
-  useEffect(() => {
-    if (clipBusy !== 'youtube') return
-    return window.api.onYoutubeUploadProgress?.((d: { percent: number }) => setYtProgress(d.percent))
-  }, [clipBusy])
-
-  /** The saved clip as an MP4 (exported once, then reused for the link and the team share). */
-  const ensureExported = async () => {
-    if (!recording || !savedClip) return null
-    if (savedClip.exported) return savedClip.exported
-    const res = await window.api.exportClip({ recordingId: recording.id, startMs: savedClip.range.startMs, endMs: savedClip.range.endMs, title: savedClip.title || undefined })
-    const exported = { filePath: res.filePath, fileSize: res.fileSize }
-    setSavedClip((cur) => (cur ? { ...cur, exported } : cur))
-    return exported
-  }
-  // CyberSecurity audit 21/11: a temporary link is created only after its one-line warning.
-  const [linkAsk, setLinkAsk] = useState(false)
-  const clipAction = async (kind: 'export' | 'link' | 'share' | 'youtube') => {
-    if (kind === 'link' && !linkAsk) { setLinkAsk(true); return }
-    if (kind === 'link') setLinkAsk(false)
-    if (kind === 'youtube' && !ytConnected) { navigate('/settings'); return } // « Connecter YouTube »: the existing Settings
-    setClipBusy(kind)
-    try {
-      if (kind === 'youtube') {
-        // Back-end uploads the saved clip (unlisted), titles and describes it, and keeps its link for a second share.
-        if (!savedClip) return
-        setYtProgress(0)
-        const res = await window.api.youtubeUploadClip?.(savedClip.id, { visibility: 'unlisted' })
-        if (!res) throw new Error('YOUTUBE_UNAVAILABLE')
-        setClipYtUrl(res.url)
-        markYoutubeTermsSeen()
-        await navigator.clipboard.writeText(res.url).catch(() => {})
-        toast({ title: t('recording.clip.youtubeDone'), variant: 'gold' })
-        return
-      }
-      const file = await ensureExported()
-      if (!file) return
-      if (kind === 'export') toast({ title: t('recording.clip.exported'), variant: 'gold' })
-      if (kind === 'link') {
-        const { url } = await window.api.uploadToTemp(file.filePath, 24)
-        await navigator.clipboard.writeText(url)
-        toast({ title: t('recording.clip.linkCopied'), variant: 'gold' })
-      }
-      if (kind === 'share') setSharing(file)
-    } catch (err) {
-      const msg = (err as Error)?.message ?? ''
-      if (kind === 'youtube') {
-        // Not connected any more / expired: back to « Connecter YouTube »; the other errors are translated.
-        const code = ['NOT_AUTHENTICATED', 'AUTH_EXPIRED', 'QUOTA_EXCEEDED', 'YOUTUBE_UNAVAILABLE', 'UPLOAD_IN_PROGRESS'].find((c) => msg.includes(c))
-        if (code === 'NOT_AUTHENTICATED' || code === 'AUTH_EXPIRED') setYtConnected(false)
-        toast({ title: t(`recording.clip.youtubeErrors.${code ?? 'generic'}`), variant: 'destructive' })
-      } else {
-        toast({ title: t('recording.clip.actionFailed'), variant: 'destructive' })
-      }
-    } finally {
-      setClipBusy(null)
-      setYtProgress(null)
-    }
-  }
-
-  const handleSaveClip = async () => {
-    if (!recording) return
-    setSavingClip(true)
-    try {
-      const created = await window.api.createClip({
-        recordingId: recording.id,
-        startMs: clipRange.startMs,
-        endMs: clipRange.endMs,
-        title: clipTitle || undefined,
-      })
-      setCreatingClip(false)
-      setPreviewing(false)
-      setClipSaveKey((k) => k + 1)
-      setSavedClip({ id: created.id, range: clipRange, title: clipTitle, exported: null })
-      setClipYtUrl(null)
-    } catch (err) {
-      // Back-end checks the range (1 s – 2 min): CLIP_TOO_LONG / BAD_CLIP_RANGE.
-      const msg = (err as Error)?.message ?? ''
-      const key = msg.includes('CLIP_TOO_LONG') ? 'tooLong' : msg.includes('BAD_CLIP_RANGE') ? 'badRange' : 'saveFailed'
-      toast({ title: t(`recording.clip.errors.${key}`), variant: 'destructive' })
-    } finally { setSavingClip(false) }
-  }
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -594,19 +439,18 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
                     <Target className="h-3.5 w-3.5" />{t('recording.bar.laningPhase')}
                   </button>
                 ) : undefined}
-                onTimeChange={(sec, durationSec) => { timeRef.current = { sec, durationSec }; if (creatingClip) setPlayheadMs(Math.round(sec * 1000)) }}
+                onTimeChange={(sec, durationSec) => { timeRef.current = { sec, durationSec } }}
                 seekVideo={seekVideo}
-                onClip={shared ? () => openClipEditor() : undefined}
-                loopRange={creatingClip && previewing ? clipRange : null}
+                clipRecordingId={shared && !readonly ? recording.id : undefined}
+                clipOpen={clipOpen}
+                onClipModeChange={setClipModeOn}
+                onClipSaved={() => setClipSaveKey((k) => k + 1)}
                 notes={timelineNotes}
                 onAddNote={onAddNote}
                 onEditNote={onEditNote}
                 onDeleteNote={onDeleteNote}
                 onFileNotFound={() => setFileNotFound(true)}
                 readonly={readonly}
-                clipping={creatingClip}
-                clipRange={creatingClip ? clipRange : undefined}
-                onClipRangeChange={creatingClip ? handleClipRangeChange : undefined}
                 videoMaxHeight="max-h-[62vh] min-h-[300px]"
                 gameEvents={gameEvents}
                 gameMeta={gameMeta && recording.createdAt ? {
@@ -620,77 +464,6 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
                 onAddMistake={handleAddMistake}
                 onDeleteMistake={handleDeleteMistake}
               />
-
-              {/* Clip mode (21/11, approved; spec § 19): overview, zoomed timeline with handles, « Nouveau clip ». */}
-              {creatingClip && (
-                <ClipModePanel
-                  range={clipRange}
-                  onChange={handleClipRangeChange}
-                  durationMs={durationMs()}
-                  playheadMs={playheadMs}
-                  title={clipTitle}
-                  onTitle={setClipTitle}
-                  previewing={previewing}
-                  onTogglePreview={() => setPreviewing((v) => !v)}
-                  momentRange={clip ? clipFromGameWindow(clip, offsetSec(), durationMs()) : null}
-                  onSeek={(ms) => setSeekVideo((cur) => ({ ms, nonce: (cur?.nonce ?? 0) + 1 }))}
-                  onCancel={() => { setCreatingClip(false); setPreviewing(false) }}
-                  onSave={() => { void handleSaveClip() }}
-                  saving={savingClip}
-                />
-              )}
-
-              {/* After saving (8 s): Exporter MP4, Copier le lien, Partager à l'équipe (existing flows). */}
-              {savedClip && !creatingClip && (
-                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-hextech-border bg-hextech-elevated px-3 py-2 text-xs" data-testid="clip-saved">
-                  <span className="text-hextech-green">✓ {t('recording.clip.saved', { from: formatMs(savedClip.range.startMs), to: formatMs(savedClip.range.endMs) })}</span>
-                  <span className="text-hextech-gold">{t('recording.clip.inMyClips')}</span>
-                  <span className="ml-auto flex gap-1.5">
-                    {(['export', 'link', 'share'] as const).map((k) => (
-                      <Button key={k} size="sm" variant="outline" className="h-6 px-2 text-[11px]" disabled={!!clipBusy} onClick={() => clipAction(k)}>
-                        {clipBusy === k ? <Loader2 className="h-3 w-3 animate-spin" /> : t(`recording.clip.${k}`)}
-                      </Button>
-                    ))}
-                    {ytAvailable && (
-                      <Button size="sm" variant="outline" className="h-6 gap-1 px-2 text-[11px]" disabled={!!clipBusy} onClick={() => clipAction('youtube')} data-testid="clip-youtube">
-                        <Youtube className="h-3 w-3" />
-                        {clipBusy === 'youtube' ? t('recording.clip.youtubeProgress', { percent: Math.round(ytProgress ?? 0) })
-                          : ytConnected ? t('recording.clip.youtube') : t('recording.clip.youtubeConnect')}
-                      </Button>
-                    )}
-                  </span>
-                  {linkAsk && (
-                    <span className="flex w-full flex-wrap items-center gap-2 text-[11px] text-hextech-gold" data-testid="temp-link-warning">
-                      {t('share.tempLinkWarning')}
-                      <Button size="sm" variant="outline" className="h-6 px-2 text-[11px]" disabled={!!clipBusy} onClick={() => void clipAction('link')}>{t('recording.clip.createLink')}</Button>
-                      <button type="button" className="text-hextech-text-dim hover:underline" onClick={() => setLinkAsk(false)}>{t('common.cancel')}</button>
-                    </span>
-                  )}
-                  {ytAvailable && ytConnected && !clipYtUrl && <YoutubeTermsNote />}
-                  {(() => { const q = queueEntryFor(ytQueue.items, 'clip', savedClip.id); return q && !clipYtUrl ? <YoutubeQueueStatus item={q} compact onRetry={() => void ytQueue.retry(q.id)} /> : null })()}
-                  {clipYtUrl && (
-                    <span className="flex w-full items-center gap-2">
-                      <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-hextech-text-dim">
-                        {t('recording.clip.youtubeLink')} <a href={clipYtUrl} target="_blank" rel="noreferrer" className="text-hextech-gold hover:underline">{clipYtUrl}</a>
-                      </span>
-                      <Button size="sm" variant="outline" className="h-6 shrink-0 px-2 text-[11px]" onClick={() => setDiscordOpen(true)} data-testid="clip-discord">
-                        {t('recording.clip.discord')}
-                      </Button>
-                    </span>
-                  )}
-                  {discordOpen && clipYtUrl && (
-                    <DiscordLinkDialog url={clipYtUrl} title={savedClip?.title || t('recording.clip.defaultTitle')} onClose={() => setDiscordOpen(false)} />
-                  )}
-                </div>
-              )}
-              {sharing && (
-                <Dialog open onOpenChange={(o) => { if (!o) setSharing(null) }}>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader><DialogTitle>{t('recording.clip.share')}</DialogTitle></DialogHeader>
-                    <ClipSharePanel filePath={sharing.filePath} fileSize={sharing.fileSize} title={savedClip?.title || undefined} onShared={() => setSharing(null)} />
-                  </DialogContent>
-                </Dialog>
-              )}
 
               {fileNotFound && !readonly ? (
                 <div className="flex flex-wrap gap-2 pt-1">
@@ -737,8 +510,8 @@ export function GameRecordingPanel({ gameId, readonly, hasReview, onReviewDelete
                     recordingId={recording.id}
                     filePath={recording.filePath}
                     title={t('recording.panel.title')}
-                    creatingClip={creatingClip}
-                    onNewClip={() => openClipEditor()}
+                    creatingClip={clipModeOn}
+                    onNewClip={() => openClipMode()}
                     clipSaveKey={clipSaveKey}
                   />
                 </>
