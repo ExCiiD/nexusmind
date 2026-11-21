@@ -69,8 +69,8 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
   // « Not a mistake » (DECISIONS 21/11): the moments the player dismissed, and the one whose « Annuler » is still shown.
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const [undoKey, setUndoKey] = useState<string | null>(null)
-  // Back can undo a dismissal only while the app runs (NOT_UNDOABLE after a restart): « Restaurer » for those only.
-  const [undoable, setUndoable] = useState<Set<string>>(new Set())
+  // Back can undo a dismissal while the app runs (NOT_UNDOABLE after a restart): then « Restaurer » goes away.
+  const [notUndoable, setNotUndoable] = useState<Set<string>>(new Set())
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (undoTimer.current) clearTimeout(undoTimer.current) }, [])
   const [noMore, setNoMore] = useState(false)
@@ -87,7 +87,7 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
         const isDismissed = (a: { outcome: string }) => a.outcome === 'dismissed'
         const byKey = Object.fromEntries((d?.answers ?? []).filter((a) => !isDismissed(a)).map((a) => [a.momentKey, a]))
         setAnswers(byKey)
-        const gone = new Set((d?.answers ?? []).filter(isDismissed).map((a) => a.momentKey))
+        const gone = new Set([...(d?.dismissedMomentKeys ?? []), ...(d?.answers ?? []).filter(isDismissed).map((a) => a.momentKey)])
         setDismissed(gone)
         setUndoKey(null)
         const firstOpen = (d?.analysis?.moments ?? []).findIndex((m) => !byKey[m.key] && !gone.has(m.key))
@@ -137,7 +137,6 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
     try {
       await window.api.microReviewDismissMoment({ gameId, momentKey: m.key, trigger: m.trigger, gameTimeSec: m.gameTimeSec })
       setDismissed((prev) => new Set(prev).add(m.key))
-      setUndoable((prev) => new Set(prev).add(m.key))
       setAnswers((prev) => { const next = { ...prev }; delete next[m.key]; return next })
       setPicking(false)
       setUndoKey(m.key)
@@ -161,10 +160,10 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
     try {
       await window.api.microReviewRestoreMoment?.({ gameId, momentKey: key })
       setDismissed((prev) => { const next = new Set(prev); next.delete(key); return next })
-      setUndoable((prev) => { const next = new Set(prev); next.delete(key); return next })
       onAnswered?.()
     } catch (err) {
-      setError((err as Error)?.message ?? 'error')
+      if (String((err as Error)?.message).includes('NOT_UNDOABLE')) setNotUndoable((prev) => new Set(prev).add(key))
+      else setError((err as Error)?.message ?? 'error')
     }
   }
 
@@ -321,7 +320,7 @@ export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onF
             {dismissed.has(moment.key) ? (
               <div className="flex items-center justify-between gap-2 rounded-lg border border-hextech-border-dim bg-hextech-black px-3 py-2.5 text-sm" role="status" data-testid="moment-dismissed">
                 <span className="text-hextech-text-dim">{t('microReview.dismiss.done')}</span>
-                {undoable.has(moment.key) && (
+                {!notUndoable.has(moment.key) && (
                   <button type="button" onClick={() => void restoreMoment(moment.key)} className="text-xs font-semibold text-hextech-gold hover:underline" data-testid="moment-dismiss-undo">
                     {t(undoKey === moment.key ? 'microReview.dismiss.undo' : 'microReview.dismiss.restore')}
                   </button>
