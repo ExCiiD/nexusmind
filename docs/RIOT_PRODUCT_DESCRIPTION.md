@@ -4,6 +4,25 @@ To paste into the Riot Developer Portal (product registration → description). 
 NexusMind). Website: https://asc3nd.app · Web companion: https://app.asc3nd.app · Privacy: https://asc3nd.app/en/privacy ·
 Terms: https://asc3nd.app/en/terms.
 
+## Short version (portal field, ~1,600 characters) — 21/11/2026, after the forum post of 19/08/2026
+
+Replace `<PERSONAL_APP_ID>` with the App ID of the current personal app (Developer Portal → Apps).
+
+```
+Ascend is a free Windows app (with a web companion) that helps League of Legends players and teams improve through structured post-game review. Players link their Riot ID; Ascend records each game locally and opens a guided review of its key moments, where the player tags mistakes, adds notes and corrects anything the app detected. A Mistake Lab tracks recurring mistakes, sessions set objectives, and statistics show role trends and laning-phase analysis. Teams get collective stats from games played together, team reviews, planning, draft preparation and opponent scouting from public ranked history.
+
+Riot data: account-v1, summoner-v4, match-v5 (matches, timelines), league-v4, champion-mastery-v4. No hidden MMR, no gameplay automation, no data on players outside a user's games, group or scouting request. The key never ships in the app: all calls go through our server proxy with one global budget, a shared cache of finished matches and incremental match lists.
+
+Requests:
+1. Please link this app's PUUID encryption to our existing personal app (App ID <PERSONAL_APP_ID>): we already store PUUIDs for our users, groups and rosters.
+2. Rate limit increase to 500 requests / 10 s and 30,000 / 10 min per region: each user needs 3-5 calls per game, a team scout ~1,500 calls, and the default 100 / 2 min is shared by all users.
+
+Public beta, free, https://asc3nd.app. Not endorsed by Riot Games.
+```
+
+If the portal no longer lets you edit the description of the application already sent, open a ticket right after
+(https://support-developer.riotgames.com/) with the two "Requests" above, quoting the new app's ID.
+
 ---
 
 Ascend is a free Windows desktop application (with a web companion) for League of Legends players and teams who want to
