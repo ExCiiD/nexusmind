@@ -83,8 +83,8 @@
 
 import {
   ALLY_RADIUS, FOUNTAIN, OBJECTIVE_RADIUS, OUTER_TURRETS, WARD_RADIUS, PIT_FIGHT_RADIUS, PIT_INSIDE_RADIUS,
-  dist, inBaseBox, laneOf, nearestPit, pitCenter, tempoLineD, territoryOf, zoneOf,
-  type LaneBucket, type Pit, type Point, type TeamId, type Territory, type Zone,
+  dist, inBaseBox, laneOf, nearestPit, pitCenter, placeOf, tempoLineD, territoryOf, zoneOf,
+  type LaneBucket, type Pit, type PitObjective, type Place, type Point, type TeamId, type Territory, type Zone,
 } from './geometry'
 import {
   GARBAGE_HIGH, OBJECTIVE_WEIGHT, frameClock, isGarbageTime, objectiveKindOf, winProbabilityTrack,
@@ -131,7 +131,20 @@ export const DETECTOR_SPEC = {
   death: { windowSec: 90, wpDrop: 0.05, allyRadius: ALLY_RADIUS, sameFightSec: 10, wardLookbackSec: 60, ownPlaySec: 35, hpSnapshotMinAgeSec: 10 },
   absent: { wardRadius: WARD_RADIUS, wardLookbackSec: 90, crossMapSec: 60, deadBeforeSec: 110, accountableFromSec: 300 },
   early: { atSec: 600, csDiff: -15, xpDiff: -400, takedowns: 2 },
-  hesitation: { notInPitSec: 30, moveFromSec: 25, approachMin: 1200, crossMapBeforeSec: 40, crossMapAfterSec: 15, towerGreedSec: 75 },
+  /**
+   * 20/11/2026 (docs/engine-reports/2026-11-20-hesitation-lecture-erronee.md): a tower or plate is greed only once the
+   * objective is up, taken more than inPositionRadius from its pit; alive in the mid lane or the objective's river within
+   * inPositionRadius at T−30 s is a setup. A blame never rests only on a position estimated more than estimatedFarSec
+   * from a snapshot.
+   */
+  hesitation: { notInPitSec: 30, moveFromSec: 25, approachMin: 1200, crossMapBeforeSec: 40, crossMapAfterSec: 15, towerGreedSec: 75, inPositionRadius: 4500, estimatedFarSec: 20 },
+  /**
+   * 20/11/2026 (docs/engine-reports/2026-11-20-cross-map-soloq-phase-de-lane.md): in soloQ, before 14:00, a top, mid or
+   * ADC is never blamed for an enemy objective unless they left their lane for it and arrived too late.
+   */
+  soloQLaning: { untilSec: 840, roles: ['TOP', 'MIDDLE', 'BOTTOM'] as readonly string[] },
+  /** The three markers of a card (erreur > conséquence > conclusion): after an objective, after a death. */
+  markers: { afterObjectiveSec: 45, afterDeathSec: 30 },
   /**
    * Jungle, from the end of the first clear to 8:00. Passive clear: in our half at every homeSamplesSec, no takedown
    * until quietUntilSec, read at passiveAtSec. Counter-tempo: a river play on the riverPlaySec samples (every 15 s),
@@ -193,7 +206,7 @@ export const DETECTOR_SPEC = {
   /** Jungler killed in the enemy base within 15 s after an enemy inhibitor falls. */
   inhibDive: { withinSec: 15 },
   /** Spawn timers of the patches analysed (15.20–16.22, checked on cached games): dragon at 5:00 then 5:00 after each kill, one Voidgrub camp at 8:00. */
-  spawns: { firstDragonSec: 300, dragonRespawnSec: 300, grubsSec: 480 },
+  spawns: { firstDragonSec: 300, dragonRespawnSec: 300, grubsSec: 480, heraldSec: 900, baronSec: 1200, baronRespawnSec: 360, elderAfterSoulSec: 360, elderRespawnSec: 360, soulDragons: 4 },
   // V7–V10 — jungle, mid, engage support.
   /** Jungler still on the map at 3:30 (1st camp back up, so the T-25 s recall was missed): no back after 1:00, no takedown, no death. */
   jungleFirstBack: { bySec: 210, startSec: 60 },
@@ -303,8 +316,28 @@ export interface MomentFacts {
   pattern?: MomentPattern
   /** tempo-hesitation: units walked toward the pit in the last 25 s. */
   approachedBy?: number
-  /** tempo-hesitation: the player took a side-lane tower / plate in the 75 s before instead of setting up. */
+  /** tempo-hesitation: the player took a tower / plate after the objective spawned, away from its pit, instead of setting up. */
   towerGreed?: boolean
+  // 20/11/2026 cards (places in words, the facts cited with their times).
+  /** Objective cards: when the objective spawned and when it fell (s). */
+  spawnSec?: number
+  killSec?: number
+  /** The tower or plate the card cites: when, which lane, and whether it fell before the objective spawned (a trade-off, not greed). */
+  towerAtSec?: number
+  towerLane?: 'TOP' | 'MID' | 'BOT'
+  towerBeforeSpawn?: boolean
+  /** Where the player was at the error and when the objective fell, in words. */
+  placeAtError?: PlacedPoint
+  placeAtObjective?: PlacedPoint
+  /** tempo-hesitation: the player left their lane for the objective and arrived too late (never called a cross-map). */
+  leftLaneLate?: boolean
+  /** false: "no cross-map in return" must not be said (a laner in soloQ before 14:00). */
+  crossMapApplies?: boolean
+  /** The game was played in a team context (team session, custom, tournament). */
+  teamContext?: boolean
+  /** The objective's time (= killSec) and the error's time (= markers.errorSec), for the clip (vodTiming). */
+  objectiveAtSec?: number
+  errorAtSec?: number
   /** jungle patterns: XP vs the enemy jungler after the play. */
   xpDiffJungle?: number
   /** jungle-passive-clear: bot duo gold lead at 3:00. */
@@ -381,11 +414,39 @@ export interface MomentFacts {
   kpPct?: number
 }
 
+/** Exact: a snapshot or the place of a death. Estimated: walked between two snapshots. */
+export type PositionKind = 'exact' | 'estimated'
+
+export interface PlacedPoint {
+  place: Place
+  positionKind: PositionKind
+  atSec: number
+  /** The snapshots (s) an estimated position lies between. */
+  between?: [number, number]
+}
+
+/** The card's three markers: the error, its consequence, how it ends (null when the card has none). */
+export interface MomentMarkers {
+  errorSec: number
+  consequenceSec: number | null
+  conclusionSec: number | null
+}
+
 export interface CriticalMoment {
   /** Stable id within the game: `${trigger}@${gameTimeSec}`. */
   key: string
   trigger: MomentTrigger
+  /** The VOD anchor (unchanged). Shown in the header: `headerSec`. */
   gameTimeSec: number
+  // Set on every moment from ANALYSIS_VERSION 12 (20/11/2026); absent in analyses stored before.
+  /** The time of the facts: when the objective fell for an objective card, else gameTimeSec. */
+  headerSec?: number
+  markers?: MomentMarkers
+  /** Where the moment's position is, in words (no distance is ever shown). */
+  place?: Place | null
+  positionKind?: PositionKind | null
+  /** Dated from a death: the clip plays from 45 s before to 30 s after (src/lib/mistakeDeathDated.ts). */
+  deathDated?: boolean
   /** Ranking score (bigger = costlier). */
   severity: number
   position: Point | null
@@ -423,6 +484,12 @@ export interface GameAnalysis {
   winProb: number[]
   /** ≤ 3 moments, chronological. */
   moments: CriticalMoment[]
+  /**
+   * 21/11/2026: the next key moments, offered once the 3 are answered. The candidates the detector already found and the
+   * 3-moment limit cut (same rules, same garbage filter, 25 s apart from each other and from the 3), at most 5, chronological.
+   * No new rule, so no new kind of card. Absent in analyses stored before ANALYSIS_VERSION 13.
+   */
+  extraMoments?: CriticalMoment[]
   /** Every epic monster of the game (dragon, Baron, Herald, grubs), for objective checks. */
   contested: ContestedObjective[]
   /** Candidates discarded as garbage time (kept out of the Mistake Lab ratios). */
@@ -434,7 +501,52 @@ export interface GameAnalysis {
 export interface DetectorSelector {
   puuids?: string[]
   championName?: string
+  /** The game was played in a team context (src/lib/microReview/teamContext.ts). Absent: soloQ, the safe side. */
+  teamContext?: boolean
 }
+
+/**
+ * When an epic objective that fell at `killMs` had spawned (ms), with the 2026 timers: Dragon at 5:00 then 5:00 after
+ * the previous one; Elder 6:00 after a team's soul (4th dragon) then 6:00 after the previous Elder; Voidgrubs 8:00;
+ * Herald 15:00; Baron 20:00 then 6:00 after the previous one. null for another kind.
+ */
+export function spawnOf(kind: ObjectiveKind, killMs: number, objectives: Array<{ ts: number; kind: ObjectiveKind; ours: boolean }>): number | null {
+  const P = DETECTOR_SPEC.spawns
+  const before = objectives.filter((o) => o.ts < killMs)
+  const lastOf = (k: ObjectiveKind) => before.filter((o) => o.kind === k).at(-1)?.ts
+  switch (kind) {
+    case 'dragon': {
+      const last = lastOf('dragon')
+      return last != null ? last + P.dragonRespawnSec * 1000 : P.firstDragonSec * 1000
+    }
+    case 'elder': {
+      const last = lastOf('elder')
+      if (last != null) return last + P.elderRespawnSec * 1000
+      const counts = { ours: 0, theirs: 0 }
+      for (const o of before) {
+        if (o.kind !== 'dragon') continue
+        const side = o.ours ? 'ours' : 'theirs'
+        counts[side]++
+        if (counts[side] === P.soulDragons) return o.ts + P.elderAfterSoulSec * 1000
+      }
+      return null
+    }
+    case 'grubs': return P.grubsSec * 1000
+    case 'herald': return P.heraldSec * 1000
+    case 'baron': {
+      const last = lastOf('baron')
+      return last != null ? last + P.baronRespawnSec * 1000 : P.baronSec * 1000
+    }
+    default: return null
+  }
+}
+
+/** The pit an objective lives in. */
+export const pitOfObjective = (kind: ObjectiveKind): Pit => (kind === 'dragon' || kind === 'elder' ? 'dragon' : 'baron')
+const PIT_OBJECTIVES: readonly string[] = ['dragon', 'elder', 'grubs', 'herald', 'baron']
+/** Riot's laneType of a building or plate event. */
+const laneOfEvent = (e: any): 'TOP' | 'MID' | 'BOT' | undefined =>
+  e?.laneType === 'TOP_LANE' ? 'TOP' : e?.laneType === 'MID_LANE' ? 'MID' : e?.laneType === 'BOT_LANE' ? 'BOT' : undefined
 
 export const MAX_MOMENTS = DETECTOR_SPEC.maxMoments
 export const SUMMONERS_RIFT_MAP_ID = 11
@@ -576,6 +688,35 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
   }
   const tempoD = (p: Point | null): number | null => (p ? tempoLineD(p, team) : null)
 
+  /**
+   * Whether `posAt(id, ms)` is a fact or an estimate: exact on a snapshot (within 2 s) or where the champion lies
+   * dead; otherwise estimated between the two snapshots around it. `far`: more than estimatedFarSec from both.
+   */
+  const posKindAt = (id: number, ms: number): { kind: PositionKind; between?: [number, number]; far: boolean } => {
+    if (lives.get(id)?.some((d) => d.ts <= ms + 1000 && ms < d.respawn)) return { kind: 'exact', far: false }
+    const i = clock.indexAt(ms)
+    const t0 = clock.ts(i)
+    const t1 = i < clock.last ? clock.ts(i + 1) : t0
+    if (Math.abs(ms - t0) <= 2000 || Math.abs(t1 - ms) <= 2000) return { kind: 'exact', far: false }
+    const gap = Math.min(Math.abs(ms - t0), Math.abs(t1 - ms))
+    return { kind: 'estimated', between: [Math.round(t0 / 1000), Math.round(t1 / 1000)], far: gap > S.hesitation.estimatedFarSec * 1000 }
+  }
+  /** The player's place at `ms`, in words (an objective card names the pit by its objective). */
+  const placedAt = (ms: number, pitObjective?: PitObjective | null, at?: Point | null): PlacedPoint | null => {
+    const pos = at ?? posAt(pid, ms)
+    if (!pos) return null
+    const k = at ? { kind: 'exact' as const } : posKindAt(pid, ms)
+    return {
+      place: placeOf(pos, ms / 1000, pitObjective !== undefined ? { pitObjective } : {}),
+      positionKind: k.kind, atSec: Math.round(ms / 1000), ...(k.kind === 'estimated' && 'between' in k && k.between ? { between: k.between } : {}),
+    }
+  }
+  const gameEndSec = Math.round(clock.ts(clock.last) / 1000)
+  /** Team context (team session, custom, tournament): absent = soloQ. */
+  const teamContext = selector.teamContext === true
+  /** In soloQ, before 14:00, a top / mid / ADC is never expected to answer an enemy objective. */
+  const soloQLaningAt = (ms: number): boolean => !teamContext && S.soloQLaning.roles.includes(role) && ms < S.soloQLaning.untilSec * 1000
+
   const myWards = events.filter((e) => e.type === 'WARD_PLACED' && e.creatorId === pid && e.wardType !== 'UNDEFINED')
     .map((e) => ({ ts: e.timestamp as number, pos: posAt(pid, e.timestamp) }))
   const myDeaths = kills.filter((e) => e.victimId === pid)
@@ -680,10 +821,26 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       garbageDiscarded++
       return false
     }
+    const sec = Math.round(ms / 1000)
+    const M = S.markers
+    const markers: MomentMarkers = facts.killSec != null
+      ? { errorSec: facts.towerAtSec ?? Math.max(0, facts.killSec - S.hesitation.notInPitSec), consequenceSec: facts.killSec, conclusionSec: Math.min(gameEndSec, facts.killSec + M.afterObjectiveSec) }
+      : trigger === 'critical-death'
+        ? { errorSec: sec, consequenceSec: facts.objectiveLostAfterSec != null ? sec + facts.objectiveLostAfterSec : null, conclusionSec: Math.min(gameEndSec, sec + M.afterDeathSec) }
+        : { errorSec: sec, consequenceSec: null, conclusionSec: null }
+    // The pit of a card about an objective is named by that objective.
+    const objective = facts.objective && PIT_OBJECTIVES.includes(facts.objective) ? facts.objective as PitObjective : null
+    const pitObjective = objective && pos && nearestPit(pos).pit === pitOfObjective(objective) ? objective : undefined
+    const kind = pos ? posKindAt(pid, ms) : null
     candidates.push({
-      key: `${trigger}@${Math.round(ms / 1000)}`,
+      key: `${trigger}@${sec}`,
       trigger,
-      gameTimeSec: Math.round(ms / 1000),
+      gameTimeSec: sec,
+      headerSec: facts.killSec ?? sec,
+      markers,
+      deathDated: trigger === 'critical-death',
+      place: pos ? placeOf(pos, sec, pitObjective !== undefined ? { pitObjective } : {}) : null,
+      positionKind: kind ? kind.kind : null,
       severity: round(severity),
       position: pos ? { x: Math.round(pos.x), y: Math.round(pos.y) } : null,
       zone: pos ? zoneOf(pos, team) : null,
@@ -691,7 +848,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       territory: pos ? territoryOf(pos, team) : null,
       winProbBefore: before != null ? round(before) : null,
       winProbAfter: winProbAfter != null ? round(winProbAfter) : null,
-      facts,
+      facts: { ...facts, ...(facts.killSec != null ? { objectiveAtSec: facts.killSec } : {}), errorAtSec: markers.errorSec },
     })
     return true
   }
@@ -1114,9 +1271,11 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     const lookback = S.absent.wardLookbackSec * 1000
     const wardsNear = myWards.filter((w) => w.ts <= o.ts && o.ts - w.ts <= lookback && w.pos != null && dist(w.pos, pitPos) <= S.absent.wardRadius).length
     const diedBefore = (sec: number) => deadAt(pid, o.ts) || myDeaths.some((d) => d.timestamp <= o.ts && o.ts - d.timestamp <= sec * 1000)
+    const soloQLaner = soloQLaningAt(o.ts)
     contested.push({
       gameTimeSec: Math.round(o.ts / 1000), kind: o.kind, takenBy: o.ours ? 'ally' : 'enemy', playerWarded: wardsNear > 0,
-      accountable: (visionRole || !o.ours) && !diedBefore(S.absent.deadBeforeSec) && o.ts >= S.absent.accountableFromSec * 1000 && o.kind !== 'grubs',
+      // A laner in soloQ before 14:00 is not accountable for the vision of an objective (20/11/2026).
+      accountable: (visionRole || !o.ours) && !diedBefore(S.absent.deadBeforeSec) && o.ts >= S.absent.accountableFromSec * 1000 && o.kind !== 'grubs' && !soloQLaner,
     })
     if (o.ours) continue
 
@@ -1143,30 +1302,71 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       continue
     }
 
-    // Tempo hesitation: out of tempo at T−30 s, yet neither set up nor cross-mapped (the player lived the whole window).
+    // 20/11/2026: what the cards cite. The objective's spawn and fall, the player's tower or plate around it, places.
     const H = S.hesitation
+    const killSec = Math.round(o.ts / 1000)
+    const spawnMs = spawnOf(o.kind, o.ts, objectives)
+    const pitObjective = PIT_OBJECTIVES.includes(o.kind) ? o.kind as PitObjective : null
+    const myTowers = events.filter((e) => e.timestamp >= o.ts - H.towerGreedSec * 1000 && e.timestamp <= o.ts &&
+      ((e.type === 'TURRET_PLATE_DESTROYED' && e.killerId === pid) || (e.type === 'BUILDING_KILL' && e.teamId !== team && involves(e, pid))))
+    const lastTower = myTowers.at(-1)
+    const objectiveFacts: MomentFacts = {
+      objective: o.kind, killSec, ...(spawnMs != null ? { spawnSec: Math.round(spawnMs / 1000) } : {}),
+      teamContext, crossMapApplies: !soloQLaner,
+      ...(lastTower ? {
+        towerAtSec: Math.round(lastTower.timestamp / 1000),
+        ...(laneOfEvent(lastTower) ? { towerLane: laneOfEvent(lastTower) } : {}),
+        towerBeforeSpawn: spawnMs != null && lastTower.timestamp < spawnMs,
+      } : {}),
+    }
+    const placeAtObjective = placedAt(o.ts, pitObjective)
+
+    // Setup (B): alive in the mid lane, the objective's river or its pit, near enough at T−30 s. Neither absent nor hesitating.
+    const p30 = posAt(pid, o.ts - H.notInPitSec * 1000)
+    const objSide = pitName === 'dragon' ? 'bot' : 'top'
+    const place30 = p30 ? placeOf(p30, (o.ts - H.notInPitSec * 1000) / 1000) : null
+    const inPosition = p30 != null && dist(p30, pitPos) <= H.inPositionRadius && place30 != null &&
+      (laneOf(p30) === 'MID' || (place30.kind === 'river' && place30.side === objSide) || (place30.kind === 'pit' && place30.pit === pitName))
+    if (inPosition) continue
+
+    // Tempo hesitation: out of tempo at T−30 s, yet neither set up nor cross-mapped (the player lived the whole window).
     if (HESITATION_KINDS.includes(o.kind) && !downIn(pid, o.ts - H.crossMapBeforeSec * 1000, o.ts)) {
-      const p30 = posAt(pid, o.ts - H.notInPitSec * 1000)
       const p25 = posAt(pid, o.ts - H.moveFromSec * 1000)
       const from = o.ts - H.crossMapBeforeSec * 1000
       const to = o.ts + H.crossMapAfterSec * 1000
-      // The player's own side-lane tower / plate right before the objective is greed, not a team cross-map…
-      const towerGreed = events.some((e) => e.timestamp >= o.ts - H.towerGreedSec * 1000 && e.timestamp <= o.ts &&
-        ((e.type === 'TURRET_PLATE_DESTROYED' && e.killerId === pid) || (e.type === 'BUILDING_KILL' && e.teamId !== team && involves(e, pid))))
+      // Greed (A): a tower or plate of the player once the objective is up, taken away from its pit. Before the spawn
+      // it is a trade-off (gold, plates, quest); a laner in soloQ before 14:00 is never told it is greed.
+      const towerGreed = !soloQLaner && spawnMs != null && myTowers.some((e) => e.timestamp >= spawnMs &&
+        dist((e.position as Point | undefined) ?? posAt(pid, e.timestamp) ?? pitPos, pitPos) > H.inPositionRadius)
       // …a cross-map is the team taking something else (an epic monster, or a building without the player).
       const teamCrossMap = objectives.some((x) => x.ours && EPIC.includes(x.kind) && x.ts >= from && x.ts <= to) ||
         events.some((e) => e.type === 'BUILDING_KILL' && e.teamId !== team && !involves(e, pid) && e.timestamp >= from && e.timestamp <= to)
-      if (p30 && p25 && pAtKill && dist(p30, pitPos) > OBJECTIVE_RADIUS && !teamCrossMap) {
+      // A blame never rests only on positions estimated far from a snapshot (I).
+      const solid = (ms: number) => !posKindAt(pid, ms).far
+      if (p30 && p25 && pAtKill && (!teamCrossMap || soloQLaner)) {
+        const farAt30 = dist(p30, pitPos) > OBJECTIVE_RADIUS
         const approachedBy = dist(p25, pitPos) - dist(pAtKill, pitPos)
+        // E: walked toward the pit and arrived after it fell.
+        const lateArrival = farAt30 && approachedBy >= H.approachMin && dist(pAtKill, pitPos) > OBJECTIVE_RADIUS &&
+          (solid(o.ts - H.moveFromSec * 1000) || solid(o.ts))
         // "Stays in neutral ground": in the river and off the lanes from T−25 s to T, without ever reaching the pit.
         const neutral = (p: Point | null) => p != null && territoryOf(p, team) === 'river' && laneOf(p) === 'JUNGLE'
-        const idleInRiver = [p25, posAt(pid, o.ts - H.moveFromSec * 500), pAtKill].every(neutral) && dist(pAtKill, pitPos) > OBJECTIVE_RADIUS
-        if (towerGreed || approachedBy >= H.approachMin || idleInRiver) {
+        const idleInRiver = farAt30 && [p25, posAt(pid, o.ts - H.moveFromSec * 500), pAtKill].every(neutral) && dist(pAtKill, pitPos) > OBJECTIVE_RADIUS &&
+          (solid(o.ts - H.moveFromSec * 1000) || solid(o.ts))
+        // Greed too needs the player out of the objective zone at T−30 s (in it, they did set up).
+        const blame = soloQLaner ? lateArrival : (towerGreed && farAt30) || lateArrival || idleInRiver
+        if (blame) {
           claimed.add(o.ts)
+          const errorAt = lastTower && (towerGreed || !lateArrival) ? lastTower : null
           add('absent-objective', o.ts - H.moveFromSec * 1000, p25, 0.06 * OBJECTIVE_WEIGHT[o.kind] + drop + 0.05, {
-            objective: o.kind, pattern: 'tempo-hesitation', approachedBy: Math.round(Math.max(0, approachedBy)),
+            ...objectiveFacts, pattern: 'tempo-hesitation', approachedBy: Math.round(Math.max(0, approachedBy)),
             ...(towerGreed ? { towerGreed: true } : {}),
+            ...(soloQLaner ? { leftLaneLate: true } : {}),
             ...(wardsNear > 0 ? { playerWarded: true } : {}),
+            ...(errorAt
+              ? { placeAtError: placedAt(errorAt.timestamp, pitObjective, (errorAt.position as Point | undefined) ?? null) ?? undefined }
+              : { placeAtError: placedAt(o.ts - H.notInPitSec * 1000, pitObjective) ?? undefined }),
+            ...(placeAtObjective ? { placeAtObjective } : {}),
             playerDistance: Math.round(dist(pAtKill, pitPos)), nearestPit: pitName, nearObjective: false,
           }, after, o.ts)
           continue
@@ -1174,17 +1374,20 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       }
     }
 
+    // A laner in soloQ before 14:00 who stayed on their lane: that is the default play, not an absence (20/11/2026).
+    if (soloQLaner) continue
     // Absent: no ward of the player near the pit, and no cross-map trade by the team.
     if (wardsNear > 0) continue
     if (objectives.some((x) => x.ours && Math.abs(x.ts - o.ts) <= S.absent.crossMapSec * 1000)) continue
     claimed.add(o.ts)
     // Anchor the VOD on the player, 20 s before the objective falls.
     add('absent-objective', o.ts - 20_000, pAtKill, 0.06 * OBJECTIVE_WEIGHT[o.kind] + drop + 0.02, {
-      objective: o.kind,
+      ...objectiveFacts,
       playerDistance: pAtKill ? Math.round(dist(pAtKill, pitPos)) : null,
       wardsElsewhere: myWards.filter((w) => w.ts <= o.ts && o.ts - w.ts <= lookback).length,
       nearestPit: pitName,
       nearObjective: pAtKill ? dist(pAtKill, pitPos) <= OBJECTIVE_RADIUS : false,
+      ...(placeAtObjective ? { placeAtObjective } : {}),
     }, after, o.ts)
   }
 
@@ -1594,17 +1797,27 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     }
   }
 
+  const picked = pickMoments(candidates)
   return {
     participantId: pid,
     teamId: team,
     champion: me.championName ?? '',
     position: role,
     winProb: track.curve,
-    moments: pickMoments(candidates),
+    moments: picked,
+    extraMoments: pickExtraMoments(candidates, picked),
     contested,
     garbageDiscarded,
     laneAt10,
   }
+}
+
+/** The next costliest candidates, 25 s apart from each other and from the moments already picked, in game order. */
+export const MAX_EXTRA_MOMENTS = 5
+export function pickExtraMoments(candidates: CriticalMoment[], kept: CriticalMoment[], max: number = MAX_EXTRA_MOMENTS): CriticalMoment[] {
+  const keys = new Set(kept.map((k) => k.key))
+  const rest = candidates.filter((c) => !keys.has(c.key) && !kept.some((k) => Math.abs(k.gameTimeSec - c.gameTimeSec) < DETECTOR_SPEC.minSpacingSec))
+  return pickMoments(rest, max)
 }
 
 /** The costliest moments, at least 25 s apart, then in game order. */

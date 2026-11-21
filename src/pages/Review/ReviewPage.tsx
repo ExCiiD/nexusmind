@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ChampionMatchup } from '@/components/ChampionMatchup'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { useSessionStore } from '@/store/useSessionStore'
 import { useUserStore } from '@/store/useUserStore'
-import { TimelineNoteInput, type TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
+import { TimelineNotesGuide, type TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
 import { DynamicKPIForm } from '@/components/ReviewForm/DynamicKPIForm'
 import { ReviewInsightPanel } from '@/components/Coaching/ReviewInsightPanel'
 import { AssistantCard } from '@/components/Assistant/AssistantCard'
@@ -41,12 +40,17 @@ import { useToast } from '@/hooks/useToast'
 import { formatGameTime, formatKDA, formatCSPerMin, cn } from '@/lib/utils'
 import { GameRecordingPanel } from '@/components/Recording/GameRecordingPanel'
 import { CoachFeedbackPanel } from '@/components/Coaching/CoachFeedbackPanel'
-import { MicroReviewPanel } from '@/components/MicroReview/MicroReviewPanel'
 import { ObjectiveAutoCheck } from '@/components/MicroReview/ObjectiveAutoCheck'
 import { Skeleton } from '@/components/ui/data-state'
 import { useCachedQuery } from '@/hooks/useCachedQuery'
 import { invalidateCached } from '@/lib/queryCache'
 import { gameContextKey } from '@/lib/pageQueries'
+import { CustomObjectiveResults } from '@/components/Session/CustomObjectiveResults'
+import { DetectedMistakesButton } from '@/components/Review/DetectedMistakesDialog'
+import { allObjectivesAnswered, parseObjectives, parseResults, type CustomObjectiveResult } from '@/lib/customObjectives'
+import { ReviewSidePanel } from '@/components/Review/ReviewSidePanel'
+import { useReviewPlayerStore } from '@/store/useReviewPlayerStore'
+import { NotepadCard } from '@/components/Review/NotepadCard'
 
 export function ReviewPage() {
   const { t } = useTranslation()
@@ -110,6 +114,8 @@ export function ReviewPage() {
   const [kpiNotes, setKpiNotes] = useState<Record<string, string>>({})
   const [freeText, setFreeText] = useState('')
   const [objectiveRespected, setObjectiveRespected] = useState<boolean | null>(null)
+  // 20/11: one result per written objective of the session.
+  const [customResults, setCustomResults] = useState<CustomObjectiveResult[]>([])
   // R2: the running experiment already knows whether this game met its criterion.
   const [autoCheck, setAutoCheck] = useState<CoachObjectiveCheck | null>(null)
   // Micro-review answers change the automatic objective verification.
@@ -125,6 +131,8 @@ export function ReviewPage() {
   const [savedGameId, setSavedGameId] = useState<string | null>(null)
   const [biasSignals, setBiasSignals] = useState<ReviewBiasSignal[]>([])
   const [draftAutoSaved, setDraftAutoSaved] = useState(false)
+  // The notepad's « Enregistré · il y a 3 s » (spec § 19 point 5).
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null)
   const warnedBiasKeysRef = useRef<Set<string>>(new Set())
   const [offRoleDismissed, setOffRoleDismissed] = useState(false)
   const [removingGame, setRemovingGame] = useState(false)
@@ -151,8 +159,8 @@ export function ReviewPage() {
 
   const saveDraft = useCallback(() => {
     if (!draftKey || saved) return
-    sessionStorage.setItem(draftKey, JSON.stringify({ timelineNotes, kpiScores, kpiNotes, freeText, objectiveRespected }))
-  }, [draftKey, timelineNotes, kpiScores, kpiNotes, freeText, objectiveRespected, saved])
+    sessionStorage.setItem(draftKey, JSON.stringify({ timelineNotes, kpiScores, kpiNotes, freeText, objectiveRespected, customResults }))
+  }, [draftKey, timelineNotes, kpiScores, kpiNotes, freeText, objectiveRespected, customResults, saved])
 
   const clearDraft = useCallback(() => {
     if (draftKey) sessionStorage.removeItem(draftKey)
@@ -161,8 +169,8 @@ export function ReviewPage() {
   const hasDraft = draftAutoSaved
 
   const isDirty = useMemo(() => {
-    return timelineNotes.length > 0 || Object.keys(kpiScores).length > 0 || freeText.trim().length > 0 || objectiveRespected !== null
-  }, [timelineNotes, kpiScores, freeText, objectiveRespected])
+    return timelineNotes.length > 0 || Object.keys(kpiScores).length > 0 || freeText.trim().length > 0 || objectiveRespected !== null || customResults.length > 0
+  }, [timelineNotes, kpiScores, freeText, objectiveRespected, customResults])
 
   useEffect(() => {
     loadActiveSession()
@@ -214,6 +222,7 @@ export function ReviewPage() {
       }
       setFreeText(review.freeText ?? '')
       setObjectiveRespected(review.objectiveRespected ?? null)
+      setCustomResults(parseResults(review.customObjectiveResults, parseObjectives((session as { customObjectives?: unknown } | null)?.customObjectives)))
       return
     }
 
@@ -228,6 +237,7 @@ export function ReviewPage() {
           setKpiNotes(draft.kpiNotes && typeof draft.kpiNotes === 'object' ? draft.kpiNotes : {})
           setFreeText(draft.freeText ?? '')
           setObjectiveRespected(draft.objectiveRespected ?? null)
+          setCustomResults(Array.isArray(draft.customResults) ? draft.customResults : [])
           return
         } catch { /* ignore bad draft */ }
       }
@@ -238,6 +248,7 @@ export function ReviewPage() {
     setKpiNotes({})
     setFreeText('')
     setObjectiveRespected(null)
+    setCustomResults([])
 
     // R1: nothing saved and no draft — offer timestamped notes built from
     // this game's own events + severity-3 mistakes. Never overwrites
@@ -281,6 +292,7 @@ export function ReviewPage() {
     const timer = setTimeout(() => {
       saveDraft()
       setDraftAutoSaved(true)
+      setDraftSavedAt(Date.now())
     }, 500)
     return () => clearTimeout(timer)
   }, [draftKey, saveDraft, saved])
@@ -294,7 +306,14 @@ export function ReviewPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [isDirty, saved])
 
-  const objectiveLabel = objectiveLabelsStr || objectiveFundamental?.label || activeSession?.objectiveId || ''
+  // 20/11: a session may have written objectives, alone or with fundamentals.
+  const writtenObjectives = useMemo(() => parseObjectives((session as { customObjectives?: unknown } | null)?.customObjectives), [session])
+  const hasFundamentals = objectiveIds.filter(Boolean).length > 0
+  const objectiveLabel = [hasFundamentals ? (objectiveLabelsStr || objectiveFundamental?.label || activeSession?.objectiveId || '') : '', ...writtenObjectives.map((o) => o.text)].filter(Boolean).join(', ')
+  // 21/11: « Je fais mes reviews moi-même »: no micro-review box, the recording first.
+  const selfReview = !!user?.selfReview
+  const panelOpen = useReviewPlayerStore((s) => s.panelOpen)
+  const panelSide = useReviewPlayerStore((s) => s.panelSide)
 
   const biasWarningsByObjective = useMemo(() => {
     const warnings: Record<string, string[]> = {}
@@ -432,7 +451,7 @@ export function ReviewPage() {
         <AssistantCard moment="post_game" gameId={savedGameId} />
 
         <div className="flex gap-3">
-          <Button onClick={() => { setSaved(false); setTimelineNotes([]); setKpiScores({}); setFreeText(''); setObjectiveRespected(null) }}>
+          <Button onClick={() => { setSaved(false); setTimelineNotes([]); setKpiScores({}); setFreeText(''); setObjectiveRespected(null); setCustomResults([]) }}>
             <Play className="h-4 w-4 mr-2" />
             {t('review.playAnother')}
           </Button>
@@ -521,8 +540,12 @@ export function ReviewPage() {
   }
 
   const handleSave = async () => {
-    if (objectiveRespected === null) {
+    if (hasFundamentals && objectiveRespected === null) {
       toast({ title: t('review.toast.validationError'), variant: 'destructive' })
+      return
+    }
+    if (!allObjectivesAnswered(writtenObjectives, customResults)) {
+      toast({ title: t('session.customObjectives.missing'), variant: 'destructive' })
       return
     }
 
@@ -532,10 +555,12 @@ export function ReviewPage() {
       await window.api.saveReview({
         gameId: latestGame.id,
         timelineNotes,
-        kpiScores,
-        kpiNotes: Object.keys(kpiNotes).length > 0 ? kpiNotes : undefined,
+        // No fundamental (20/11): no KPI score and no « objective respected ».
+        kpiScores: hasFundamentals ? kpiScores : {},
+        kpiNotes: hasFundamentals && Object.keys(kpiNotes).length > 0 ? kpiNotes : undefined,
         freeText: freeText || undefined,
-        objectiveRespected,
+        objectiveRespected: hasFundamentals ? objectiveRespected : null,
+        customObjectiveResults: writtenObjectives.length ? customResults.filter((r) => writtenObjectives.some((o) => o.id === r.objectiveId)) : undefined,
       })
 
       setSavedGameId(latestGame.id)
@@ -618,6 +643,8 @@ export function ReviewPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Hidden for « Je tague mes erreurs moi-même » (spec § 19 point 1). */}
+          {!user?.selfTagMistakes && <DetectedMistakesButton gameId={latestGame.id} />}
           <ShareButton
             data={{
               title: latestGame.champion
@@ -702,11 +729,14 @@ export function ReviewPage() {
         <StatPill icon={Clock} label={t('review.stats.duration')} value={formatGameTime(latestGame.duration)} />
       </div>
 
-      {/* 45-second guided micro-review: critical moments → QCM → Codex */}
-      <MicroReviewPanel gameId={latestGame.id} onAnswered={() => setVerifyKey((k) => k + 1)} />
 
       {/* Recording panel — passes notes for video markers + receives new video-timestamped notes */}
+      {/* The single player + its right panel « Micro-review · Notes marquées » (DECISIONS 21/11, spec § 19 point 3). */}
+      <div className={cn('grid items-start gap-4', panelOpen && (panelSide === 'left' ? 'lg:grid-cols-[360px_minmax(0,1fr)]' : 'lg:grid-cols-[minmax(0,1fr)_360px]'))}
+        data-testid="review-player-row" data-panel-side={panelSide}>
+      {panelOpen && panelSide === 'left' && <ReviewSidePanel gameId={latestGame.id} selfReview={selfReview} onAnswered={() => setVerifyKey((k) => k + 1)} />}
       <GameRecordingPanel
+        shared
         gameId={latestGame.id}
         hasReview={!!latestGame.review}
         onReviewDeleted={refreshSession}
@@ -723,6 +753,8 @@ export function ReviewPage() {
           setTimelineNotes((prev) => prev.filter((_, i) => i !== index))
         }
       />
+      {panelOpen && panelSide === 'right' && <ReviewSidePanel gameId={latestGame.id} selfReview={selfReview} onAnswered={() => setVerifyKey((k) => k + 1)} />}
+      </div>
 
       {/* Coach feedback on this review (hidden when not in a group / no comments) */}
       {latestGame.review?.id && <CoachFeedbackPanel reviewId={latestGame.review.id} gameId={latestGame.id} />}
@@ -739,9 +771,8 @@ export function ReviewPage() {
         </Card>
       )}
 
-      <TimelineNoteInput notes={timelineNotes} onChange={setTimelineNotes} objectiveLabel={session?.objectiveId ?? ''} />
-
-      <DynamicKPIForm
+      {/* 21/11: no timeline notes here any more (notes are taken with the recorder's « Prise de note »). */}
+      {hasFundamentals && <DynamicKPIForm
         objectiveIds={objectiveIds}
         subObjectiveId={activeSubObjective ?? undefined}
         scores={kpiScores}
@@ -750,25 +781,15 @@ export function ReviewPage() {
         onNoteChange={(kpiId, note) => setKpiNotes((prev) => ({ ...prev, [kpiId]: note }))}
         biasWarningsByObjective={biasWarningsByObjective}
         selectedKpiIds={selectedKpiIds.length > 0 ? selectedKpiIds : undefined}
-      />
+      />}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t('review.freeText.label')}</CardTitle>
-          <CardDescription>{t('review.freeText.hint')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            aria-label={t('review.freeText.label')}
-            placeholder={t('review.freeText.placeholder')}
-            value={freeText}
-            onChange={(e) => setFreeText(e.target.value)}
-            rows={3}
-          />
-        </CardContent>
-      </Card>
+      {/* 21/11: the free notepad, where the player writes everything; the timeline-notes guide, collapsed. */}
+      <NotepadCard value={freeText} onChange={setFreeText} savedAt={draftSavedAt}
+        guide={<TimelineNotesGuide objectiveLabel={session?.objectiveId ?? ''} />} />
 
-      <Card className="border-hextech-gold/30">
+      <CustomObjectiveResults objectives={writtenObjectives} value={customResults} onChange={setCustomResults} />
+
+      {hasFundamentals && <Card className="border-hextech-gold/30">
         <CardContent className="p-4">
           <div className="text-sm font-medium text-hextech-gold-bright mb-3">
             {t('review.objectiveQuestion')}
@@ -794,7 +815,7 @@ export function ReviewPage() {
             </p>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
       {hasDraft && !saved && (
         <p className="text-[10px] text-hextech-text-dim text-right -mb-2">

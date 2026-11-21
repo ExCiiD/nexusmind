@@ -13,7 +13,7 @@ import type { AssignedObjective } from '@/lib/collab'
  * page pre-select them for the next session.
  */
 export function AssignedObjectivesCard({ onUse, planLink = false }: {
-  onUse?: (objectiveIds: string[], note: string | null) => void
+  onUse?: (objectiveIds: string[], note: string | null, assignmentId: string) => void
   /** « Mon espace » (§ 16): a « Voir dans Mon plan » link under the list. */
   planLink?: boolean
 }) {
@@ -67,7 +67,7 @@ export function AssignedObjectivesCard({ onUse, planLink = false }: {
             {a.note && <p className="mt-2 whitespace-pre-wrap text-hextech-text">{a.note}</p>}
             <div className="mt-2 flex flex-wrap gap-2">
               {onUse && (
-                <Button size="sm" onClick={() => onUse(a.objectiveIds, a.note)}>{t('coaching.assigned.use')}</Button>
+                <Button size="sm" onClick={() => onUse(a.objectiveIds, a.note, a.id)}>{t('coaching.assigned.use')}</Button>
               )}
               <Button size="sm" variant="outline" className="gap-1" onClick={() => setStatus(a, 'done')}>
                 <Check className="h-3.5 w-3.5" />{t('coaching.assigned.done')}

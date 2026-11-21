@@ -291,6 +291,82 @@ Pourquoi cet ordre : la clé OpenAI est un secret **valide** qui ne demande qu'u
 
 ### Revues de livraisons
 
+#### beta.20 — revue groupée (21/11, arbre non commité, lecture seule) : **non bloquant, 2 correctifs de textes légaux avant de publier le site**
+*`docs/DECISIONS.md` du 20 et du 21/11 relu.*
+1. **YouTube :** déjà revu (section suivante), et rien n'a changé depuis. Le secret n'est jamais journalisé, il n'y a pas de repli en clair, la file d'envoi est vidée quand on désactive ou se déconnecte, et `youtube:upload-clip` passe par `isMediaPathAllowed`.
+2. **Politique de confidentialité du site (non déployée) :** le § 4 bis (une seule autorisation, l'upload automatique, ce qui est gardé et où), le § 6 (conditions et règles de Google, cache R2) et le § 8 (révocation) correspondent au code.
+   - **Manque 1 :** la phrase sur **la voix de tiers** dans les parties publiées automatiquement, avec le micro activé par défaut et le vocal capté. C'est ma remarque moyenne du lot YouTube : à ajouter au § 4 bis et aux conditions d'utilisation, à côté de la phrase sur les réunions.
+   - **Manque 2 :** **litterbox.catbox.moe** n'est cité nulle part (voir le point 3).
+3. **Clips :**
+   - **`clip:delete`** ne supprime que des fichiers situés **dans** les dossiers d'enregistrement de l'utilisateur ou dans le dossier de l'enregistrement d'origine (`isInsideDirs`, qui normalise le chemin). Un chemin enregistré ailleurs est ignoré, et l'identifiant est validé par zod. OK.
+   - **Lien temporaire (`share:upload-temp`)** : extension vidéo, existence du fichier et `isMediaPathAllowed` sont vérifiés, la durée est limitée à 1, 12, 24 ou 72 h, et l'URL renvoyée doit être en `https`. Mais **le clip est envoyé à un hébergeur tiers anonyme** : il devient lisible par **quiconque a le lien**, jusqu'à 72 h, et **il ne peut pas être supprimé avant l'échéance**. **Correctifs :**
+     - ajouter catbox/litterbox au § 6 de la politique (destinataires), avec ce qu'il advient du fichier ;
+     - afficher un avertissement d'une ligne dans l'app au moment de créer le lien (« lien public, actif jusqu'à X h, impossible à retirer avant »).
+   - **Discord en un clic :** il passe par `share:send-file-to-discord`, qui exige une URL de webhook validée (`discordWebhookUrl`) et un fichier autorisé. OK.
+4. **Nouvelles tables et IPC :**
+   - `UserPreference` est synchronisée, avec `userId` réécrit en local et une clé naturelle `(userId, key)`. Elle n'est **pas** dans les tables lisibles par d'autres membres (`can_read_player_table`), donc elle reste privée.
+   - `prefs:set-player-filters` est validé par zod.
+   - `mistake:retag`, `mistake:dismiss-detected` et `mistake:undo-correction` passent tous par zod : identifiants, `reason` dans une liste fermée, `note` limitée à `CORRECTION_NOTE_MAX`, `strict()`.
+   - Micro-review : `customLabel` de 60 caractères, `reason` en regex, `note` et `myReasons` de 1 000 au plus.
+   - Objectifs personnalisés : un tableau validé par zod, avec un nombre maximum.
+   - Review courte : `game:mark-short-review`, avec un id et une source dans une liste fermée.
+   - La migration Prisma `20261121010000` n'a pas de point-virgule dans ses commentaires. OK.
+5. **`site/worker.ts` :** le fichier de vérification Google n'est servi **qu'à ce chemin exact**, avec un contenu fixe et sans autre logique. C'est sans risque. Il ne reçoit pas les en-têtes de sécurité du site, ce qui est sans enjeu pour un texte statique. Le site répond bien en 200.
+
+#### Lot YouTube : client « Desktop app » + PKCE et upload automatique (21/11, non commité, lecture seule) : **OK, 1 remarque moyenne (vie privée) et 2 basses**
+*`docs/DECISIONS.md` du 21/11 relu : client « Desktop app » et secret livré dans le build (remplace l'option A), upload automatique au choix du joueur, lancement de la vérification Google. La revue s'y conforme.*
+- **Identifiants au build :** seules `MAIN_VITE_GOOGLE_CLIENT_ID` et `_SECRET` sont nouvellement inlinées. Vérifié : le code ne lit `import.meta.env` que propriété par propriété (`SUPABASE_URL`, `ANON_KEY`, `RIOT_PROXY_URL`, `WEB_URL`, `GOOGLE_CLIENT_ID` et `_SECRET`), jamais l'objet entier. La clé OpenAI encore présente dans `.env` **n'est donc pas embarquée**. `release.ps1` n'affiche que « on » ou les **noms** manquants, et l'erreur devient `YOUTUBE_UNAVAILABLE`, sans nom de variable. Pour un client « Desktop app », le secret n'est pas confidentiel pour Google, et PKCE et `state` sont en place : c'est conforme à la décision.
+  - **Règle de revue mise à jour :** la recherche de secrets dans `out/` et `app.asar` doit maintenant **tolérer `GOCSPX-`** (attendu) et continuer à refuser `sk-`, `RGAPI-`, `ghp_` et `github_pat_`.
+- **Écarts de la revue précédente :** tous levés.
+  - le repli en clair des jetons est supprimé (`ENCRYPTION_UNAVAILABLE`) et un ancien fichier `.plain` est effacé sans être lu ;
+  - les textes décrivent maintenant les trois envois et l'endroit où chaque lien est gardé ;
+  - le § 2.2 ajoute l'accord des participants à une réunion.
+- **Upload automatique :**
+  - désactivé par défaut, non répertorié par défaut ;
+  - la file ne contient que des identifiants et est relue de façon stricte (`parseQueue`), avec une écriture atomique (`.tmp` puis `rename`) ;
+  - un envoi à la fois, avec revérification de l'URL déjà présente, donc pas de double envoi ;
+  - `isMediaPathAllowed` est appliqué à chaque fichier ;
+  - désactiver ou se déconnecter coupe l'envoi en cours (`AbortController`) et vide la file ;
+  - les réunions ne sont jamais envoyées automatiquement ;
+  - le quota est respecté (attente de la remise à zéro du Pacifique) avec un backoff plafonné. C'est conforme.
+- **Remarque moyenne (vie privée) : le son des parties enregistrées.** Le micro est **activé par défaut** depuis le 19/11, et la capture peut inclure le son du bureau, donc la voix des coéquipiers sur Discord. Avec l'upload automatique, **chaque partie part sans relecture**, éventuellement en **public**. La voix de tiers peut donc être publiée sans leur accord.
+  - **Correctifs proposés :**
+    1. à l'activation, un avertissement clair : « tes parties partent avec leur son, ta voix et celle de ton vocal si elles sont captées » ;
+    2. si le joueur choisit **public**, une confirmation supplémentaire ;
+    3. une option « envoyer sans le son du micro » ou « sans audio », si c'est faisable (Front-end et Back-end).
+  - Côté textes : ajouter aux conditions d'utilisation (§ 2.2) la même phrase que pour les réunions : le joueur est responsable des voix d'autres personnes présentes dans ses parties publiées.
+- **Remarques basses :**
+  1. Le réglage est une **UserPreference synchronisée** : l'activer sur un PC l'active sur tous les PC du compte, y compris pour les parties enregistrées ailleurs. À dire dans l'écran des réglages (« s'applique à tous tes PC »), ou à garder local.
+  2. Le client OAuth étant public, n'importe qui peut s'en servir **avec ton quota** YouTube. Risque accepté par la décision ; à surveiller dans la console Google, dont les alertes de quota sont gratuites.
+
+#### `docs/GOOGLE_YOUTUBE_VERIFICATION.md` § 2 et § 3 face au code (21/11, lecture seule) : **4 écarts, dont 2 bloquants pour la vérification Google**
+**Conforme au code :**
+- scope unique `youtube.upload` (`YOUTUBE_SCOPE`) ;
+- PKCE `S256` avec `state` vérifié au retour ;
+- révocation `oauth2.googleapis.com/revoke` à la déconnexion, puis effacement des jetons ;
+- aucune lecture de la chaîne (`channelName = null`) ;
+- envoi direct du PC vers YouTube, `unlisted` par défaut ;
+- seuls des fichiers sous les dossiers autorisés peuvent être envoyés (`isMediaPathAllowed`).
+
+**Écarts :**
+1. **Bloquant : la fonction est désactivée dans l'app installée.** `youtubeUploadAvailable()` renvoie `!app.isPackaged && …` (décision « option A » du 19/11 : pas de secret OAuth dans un build). Les § 3.1 à 3.5 décrivent une fonction **publique** que les testeurs de Google ne pourront pas utiliser. Il faut d'abord trancher **comment** l'activer, ce qui est une décision de l'utilisateur :
+   - soit un client OAuth Google de type « Application de bureau », pour lequel Google considère le secret comme non confidentiel quand PKCE est en place (c'est le cas maintenant), ce qui revient à revoir l'option A ;
+   - soit l'échange de jetons par une Edge Function.
+   Tant que ce n'est pas tranché, la demande de vérification n'a pas d'objet.
+2. **Bloquant : « rien côté serveur » et « seulement l'adresse du clip, sur le PC » sont faux.** Il existe **3** chemins d'envoi, et non un seul :
+   - `youtube:upload-clip` : l'URL est gardée sur `Clip`, qui est local et non synchronisé. C'est conforme au texte ;
+   - `youtube:upload` depuis `RecordPlayerPage` : la **partie entière** est envoyée, pas un clip de 2 min au plus, et l'URL est enregistrée sur `Recording.youtubeUrl`. Or `Recording` est **synchronisé** (`SYNC_TABLES`, seuls `filePath` et `thumbnailPath` restent locaux) : l'URL part donc dans `sync_records` et devient lisible par le staff quand les reviews sont partagées ;
+   - `youtube:upload` depuis `ReviewRecorder` (session d'équipe) : l'URL va dans **`team_session_reviews.youtube_url`, dans le cloud**, et elle est visible de tout le groupe. Cette vidéo de réunion contient aussi **la voix et l'image d'autres membres**.
+   Il faut donc soit corriger le code (ne garder les URL qu'en local et ne pas les synchroniser), soit **corriger les textes**. Les textes justes sont proposés ci-dessous.
+3. **Jetons chiffrés : pas toujours.** Si `safeStorage` n'est pas disponible, les jetons sont écrits **en clair** (`youtube-tokens.json.plain`). **Correctif recommandé :** supprimer ce repli et refuser de connecter YouTube avec un message clair. Sinon, ajouter au texte « chiffrée quand Windows le permet ».
+4. **§ 3.1 « clips de 2 minutes au plus, un clip à la fois » :** c'est inexact tant que l'envoi de la partie entière et celui de la réunion d'équipe existent. Il faut décrire les trois usages, ou retirer les deux autres.
+
+**Textes corrigés si les trois envois sont gardés tels quels** (à reporter dans le § 2.1 et le § 3.3 et 3.4, FR et EN) :
+- FR : « Ascend garde l'adresse de la vidéo publiée. Pour un clip, elle reste sur votre PC. Pour la vidéo d'une partie, elle est synchronisée avec votre compte Ascend et visible du staff de vos groupes si vous partagez vos reviews. Pour l'enregistrement d'une réunion d'équipe, elle est visible des membres du groupe. Ascend ne garde aucune autre donnée YouTube. »
+- EN : « Ascend keeps the link of the published video. For a clip, it stays on your PC. For a full game video, it is synced with your Ascend account and visible to your groups' staff if you share your reviews. For a team meeting recording, it is visible to the group's members. Ascend stores no other YouTube data. »
+- § 3.3 et 3.4 : remplacer « No YouTube data is stored on Ascend servers » par « Only the uploaded video's link is stored, as described in the privacy policy; no other YouTube data is stored on Ascend servers ». Remplacer aussi « Ascend servers never hold YouTube data » par la même précision.
+- **Réunions d'équipe :** ajouter que la personne qui publie doit avoir l'accord des participants, enregistrés en voix et en image (§ 2.2, conditions d'utilisation).
+
 #### beta.19 — lot de performances (`docs/AUDIT_PERF_2.md`, gains 0 à 4, 6, 7 et 9 ; arbre non commité, lecture seule) : **non bloquant, 1 correctif bas**
 1. **`perfLog.ts` :** inactif sauf si `NEXUSMIND_PERF_LOG=1` (`perfLogEnabled`). Il écrit dans `userData/logs/perf.log` : **le nom du canal IPC seulement** (aucun argument), et pour le réseau un **libellé** tiré de `labelForUrl`.
    - Supabase : 3 ou 4 segments, du genre `/rest/v1/<table>`, `/functions/v1/<nom>`, `/storage/v1/object/<bucket>`. Le jeton de `team-report` et le chemin `<uid>/…` du stockage sont coupés.

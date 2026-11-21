@@ -30,7 +30,8 @@ describe('pattern — tempo hesitation / missed cross-map', () => {
     frame: (i, pid) => (pid === 1 ? { position: { x: i >= 16 ? 5866 : 5866 - step, y: 4414 } } : undefined),
     events: [epic(T, 200), ...extra] })
   const still = (pos: P, extra: any[] = []) => buildGame({ minutes: 20, me: 1, frame: (_i, pid) => (pid === 1 ? { position: pos } : undefined), events: [epic(T, 200), ...extra] })
-  const plate = (ts: number) => ({ type: 'TURRET_PLATE_DESTROYED', timestamp: ts, killerId: 1, laneType: 'TOP_LANE' })
+  // 20/11/2026: greed is a plate taken away from the objective's pit (more than 4500), here the red top T1.
+  const plate = (ts: number) => ({ type: 'TURRET_PLATE_DESTROYED', timestamp: ts, killerId: 1, laneType: 'TOP_LANE', position: { x: 4318, y: 13875 } })
 
   it('moving 1200+ units toward the pit in the last 25 s = arriving late', () => {
     // step·25/60 units closer between T−25 s and T: 2916 → 1215 (flagged), 2850 → 1187.5 (not).
@@ -43,11 +44,14 @@ describe('pattern — tempo hesitation / missed cross-map', () => {
   it('staying in the river, off the lanes and outside the objective zone, also counts', () => {
     // Top river: x+y = 15000, 3800 units off the mid diagonal, 6500 units from the dragon pit.
     expect(withPattern(still({ x: 5600, y: 9400 }), 'tempo-hesitation')!.facts.approachedBy).toBe(0)
-    // The same standstill on the player's own side is a plain "absent".
-    expect(patterns(still({ x: 6000, y: 5000 }))).toEqual([undefined])
-    // A mid laner on the lane is in the river band too, but farming a wave is not hesitating in neutral ground.
+    // The same standstill on the player's own side, away from the mid lane, is a plain "absent".
+    expect(patterns(still({ x: 4000, y: 7000 }))).toEqual([undefined])
+    // A mid laner on the lane is in the river band too, but farming a wave is not hesitating in neutral ground:
+    // a plain "absent" when far from the pit…
     expect(patterns(still({ x: 7000, y: 8000 }))).toEqual([undefined])
-    expect(patterns(still({ x: 7500, y: 7500 }))).toEqual([undefined])
+    // …and no card at all when within 4500 of it: that is the mid setup before the Dragon (20/11/2026, rule B).
+    expect(patterns(still({ x: 7500, y: 7500 }))).toEqual([])
+    expect(patterns(still({ x: 6000, y: 5000 }))).toEqual([])
   })
   it('"staying" means the whole 25 s: crossing the river on the way elsewhere is not', () => {
     // In the river at T, but still in the own jungle 25 s earlier (and not walking toward the pit).
@@ -69,9 +73,10 @@ describe('pattern — tempo hesitation / missed cross-map', () => {
     // Walking in late along y = 4414: a ward dropped 5 s before T is placed 4243 units from the pit — not "near" (3500).
     const late = withPattern(walk(2916, [ward(T - 5_000, 1)]), 'tempo-hesitation')!
     expect(late.facts.playerWarded).toBeUndefined()
-    // Same walk ending 3000 units from the pit: the ward dropped 1 s before T lands 3049 units away.
+    // Same walk ending 3000 units from the pit (3100 a minute: 4550 away at T−30 s, out of the mid setup range of 4500):
+    // the ward dropped 1 s before T lands about 3050 units away.
     const close = buildGame({ minutes: 20, me: 1,
-      frame: (i, pid) => (pid === 1 ? { position: { x: i >= 16 ? DRAGON_PIT.x - 3000 : DRAGON_PIT.x - 3000 - 2916, y: 4414 } } : undefined),
+      frame: (i, pid) => (pid === 1 ? { position: { x: i >= 16 ? DRAGON_PIT.x - 3000 : DRAGON_PIT.x - 3000 - 3100, y: 4414 } } : undefined),
       events: [epic(T, 200), ward(T - 1_000, 1)] })
     expect(withPattern(close, 'tempo-hesitation')!.facts).toMatchObject({ playerWarded: true, playerDistance: 3000 })
   })

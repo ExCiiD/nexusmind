@@ -50,8 +50,8 @@ interface SessionStore {
   activeSession: Session | null
 
   loadActiveSession: () => Promise<void>
-  createSession: (data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) => Promise<void>
-  endSession: (sessionConclusion?: string) => Promise<void>
+  createSession: (data: Parameters<typeof window.api.createSession>[0]) => Promise<void>
+  endSession: (sessionConclusion?: string, opts?: { completedAssignmentIds?: string[] }) => Promise<void>
   cancelSession: () => Promise<void>
   updateSession: (data: { objectiveIds?: string[]; selectedKpiIds?: string[]; customNote?: string }) => Promise<void>
   refreshSession: () => Promise<void>
@@ -74,10 +74,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ activeSession: session })
   },
 
-  endSession: async (sessionConclusion?: string) => {
+  endSession: async (sessionConclusion?: string, opts?: { completedAssignmentIds?: string[] }) => {
     const session = get().activeSession
     if (session) {
-      await window.api.endSession(session.id, undefined, sessionConclusion)
+      await window.api.endSession(session.id, undefined, sessionConclusion, opts?.completedAssignmentIds?.length ? opts : undefined)
       set({ activeSession: null })
       // Ending a session gives XP (main process): the sidebar level reads the user store.
       void useUserStore.getState().refreshUser()

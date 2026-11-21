@@ -44,6 +44,7 @@ import { recoverStrandedGames } from './strandedGames'
 import { catchUpRecentGames } from './gameCatchUp'
 import { registerRealtimeHandlers } from './cloud/realtime'
 import { installPerfLog } from './perfLog'
+import { registerPreferencesHandlers } from './ipc/preferences.ipc'
 import { withRiotPriority } from './riotPriority'
 import { registerAccountHandlers } from './ipc/account.ipc'
 import { initAccountRegions, registerAccountRegionHandlers } from './accountRegions'
@@ -53,6 +54,7 @@ import { registerExternalReviewHandlers } from './ipc/externalReview.ipc'
 import { registerShareHandlers } from './ipc/share.ipc'
 import { registerCoachingHandlers } from './ipc/coaching.ipc'
 import { registerYoutubeHandlers } from './ipc/youtube.ipc'
+import { queueAutoUpload, registerYoutubeAutoUpload } from './youtubeAutoUpload'
 import { registerBackupHandlers } from './ipc/backup.ipc'
 import { registerTeamHandlers, refreshAutoTiers } from './ipc/team.ipc'
 import { registerWeeklyAwardsHandlers } from './ipc/weeklyAwards.ipc'
@@ -463,6 +465,7 @@ async function bootstrap() {
   registerShareHandlers()
   registerCoachingHandlers()
   registerYoutubeHandlers()
+  registerYoutubeAutoUpload()
   registerBackupHandlers()
   registerTeamHandlers()
   registerWeeklyAwardsHandlers()
@@ -485,6 +488,7 @@ async function bootstrap() {
   registerChampionCutoutHandlers()
   registerAnalystHandlers()
   registerRealtimeHandlers()
+  registerPreferencesHandlers()
   if (isCloudConfigured()) {
     startAutoCloudBackup()
     startSyncService()
@@ -587,6 +591,8 @@ async function bootstrap() {
               filePath: pendingRecording,
             })
             console.log(`[main] Auto-linked recording to game ${matchData.game.id}`)
+            // « Upload YouTube automatique » (21/11/2026): the finished game goes up if the player turned it on.
+            void queueAutoUpload('recording', rec.id)
             generateThumbnailForRecording(rec.id, pendingRecording).catch((err) =>
               console.warn('[main] Thumbnail generation failed:', err),
             )

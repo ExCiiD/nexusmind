@@ -36,6 +36,9 @@ import { wrText } from '@/lib/winrate'
 import { useCachedQuery } from '@/hooks/useCachedQuery'
 import { HISTORY_KEY, fetchHistory } from '@/lib/pageQueries'
 import { invalidateCached } from '@/lib/queryCache'
+import { isShortReview } from '@/lib/shortReview'
+import { parseObjectives } from '@/lib/customObjectives'
+import { CustomObjectivesList } from '@/components/Session/CustomObjectivesList'
 
 const NO_HISTORY: any[] = []
 
@@ -44,13 +47,17 @@ const GAMES_PAGE_SIZE = 20
 /** The container of the games played outside a session (electron/main/offSessionGames.ts, contract account-region.md). */
 const OFF_SESSION_OBJECTIVE_ID = '__review_only__'
 /** An entry of games played outside a session: flagged by the server, or the off-session container. */
-const isOffSession = (s: { offSession?: boolean; objectiveId: string | null }) => s.offSession === true || s.objectiveId === OFF_SESSION_OBJECTIVE_ID || !s.objectiveId
+// 20/11: a session with written objectives and no fundamental has no objectiveId either: it is a real session.
+const isOffSession = (s: { offSession?: boolean; objectiveId: string | null; customObjectives?: unknown }) =>
+  s.offSession === true || s.objectiveId === OFF_SESSION_OBJECTIVE_ID || (!s.objectiveId && parseObjectives(s.customObjectives).length === 0)
 
 interface SessionSummary {
   id: string
   /** Games recorded without an active session (decision of 20/11/2026): one entry per day, no objective. */
   offSession?: boolean
   objectiveId: string
+  /** 20/11: the written objectives (JSON or array, Back-end). */
+  customObjectives?: unknown
   subObjective: string | null
   customNote: string | null
   status: string
@@ -468,6 +475,15 @@ function GamesTab() {
                   >
                     <CheckCircle className="h-3 w-3" />
                     {t('history.gamesTab.reviewed')}
+                  </button>
+                ) : isShortReview({ reviewStatus: game.reviewStatus, hasFullReview: !!game.reviewed }) ? (
+                  <button
+                    onClick={() => navigateToReview(game.gameId)}
+                    className="flex items-center gap-1 rounded-full border border-hextech-cyan/50 bg-hextech-cyan/5 px-2 py-0.5 text-[10px] text-hextech-cyan hover:bg-hextech-cyan/15 transition-colors cursor-pointer"
+                    title={t('history.gamesTab.shortReviewHint')}
+                  >
+                    <CheckCircle className="h-3 w-3" />
+                    {t('history.gamesTab.shortReview')}
                   </button>
                 ) : game.imported && game.reviewStatus === 'to_be_reviewed' ? (
                   <button
@@ -901,6 +917,7 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
   const { t } = useTranslation()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const fundamental = useLocalizedFundamental(session.objectiveId)
+  const written = parseObjectives(session.customObjectives)
   const dateStr = new Date(session.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
   const winRate = session.gamesPlayed > 0 ? Math.round((session.wins / session.gamesPlayed) * 100) : 0
 
@@ -917,7 +934,7 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
             <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-hextech-text-bright truncate">
-                {isOffSession(session) ? t('history.offSession.title') : fundamental?.label || session.objectiveId}
+                {isOffSession(session) ? t('history.offSession.title') : fundamental?.label || session.objectiveId || written.map((o) => o.text).join(' · ')}
               </span>
               {isOffSession(session) && <Badge variant="outline" className="shrink-0 text-xs text-hextech-text-dim">{t('history.offSession.badge')}</Badge>}
               {session.subObjective && (
@@ -1013,6 +1030,8 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
           </div>
         </div>
 
+        {/* 20/11: the written objectives, under the fundamental (alone, they are the card's title). */}
+        {written.length > 0 && (session.objectiveId || written.length > 1) && <CustomObjectivesList objectives={written} className="mt-2" />}
         {session.customNote && (
           <p className="text-xs text-hextech-text italic mt-2">"{session.customNote}"</p>
         )}
@@ -1128,6 +1147,15 @@ function GameRow({ game, index, hasRecording, onDelete }: { game: GameEntry; ind
               <CheckCircle className="h-3 w-3" />
               {t('history.gamesTab.reviewed')}
             </button>
+          ) : isShortReview({ reviewStatus: game.reviewStatus, hasFullReview: !!game.review }) ? (
+            <button
+                    onClick={() => navigate(`/review?gameId=${game.id}`)}
+                    className="flex items-center gap-1 rounded-full border border-hextech-cyan/50 bg-hextech-cyan/5 px-2 py-0.5 text-[10px] text-hextech-cyan hover:bg-hextech-cyan/15 transition-colors cursor-pointer"
+                    title={t('history.gamesTab.shortReviewHint')}
+                  >
+                    <CheckCircle className="h-3 w-3" />
+                    {t('history.gamesTab.shortReview')}
+                  </button>
           ) : game.reviewStatus === 'to_be_reviewed' ? (
             <button
               onClick={() => navigate(`/review?gameId=${game.id}`)}

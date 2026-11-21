@@ -416,7 +416,48 @@
       "setupTitle": "Configuration requise",
       "setupDesc": "Ajoutez <code>MAIN_VITE_GOOGLE_CLIENT_ID</code> et <code>MAIN_VITE_GOOGLE_CLIENT_SECRET</code> à votre fichier <code>.env</code> pour activer l’envoi sur YouTube.",
       "connecting": "Connexion…",
-      "connect": "Connecter YouTube"
+      "connect": "Connecter YouTube",
+      "auto": {
+        "title": "Upload YouTube automatique",
+        "desc": "Publie tout seul sur ta chaîne chaque partie enregistrée et chaque clip.",
+        "visibility": "Visibilité",
+        "visibilities": {
+          "public": "Publique",
+          "unlisted": "Non répertoriée",
+          "private": "Privée"
+        },
+        "onLine": "Activé : chaque partie enregistrée et chaque clip sera publié automatiquement sur YouTube ({{visibility}}).",
+        "saveFailed": "Le réglage n’a pas pu être enregistré.",
+        "audio": "Son",
+        "audios": {
+          "none": "Sans son (recommandé)",
+          "all": "Avec le son"
+        },
+        "allPcs": "S’applique à tous tes PC connectés à ce compte.",
+        "warnTitle": "Upload YouTube automatique",
+        "warnDesc": "Chaque partie et chaque clip seront publiés sans relecture.",
+        "warnConfirm": "Activer",
+        "publicTitle": "Visibilité publique",
+        "publicDesc": "Tes parties seront visibles de tout le monde sur YouTube. Continuer ?",
+        "publicConfirm": "Continuer",
+        "audioWarning": "Ta voix et celle de ton vocal partent avec chaque partie.",
+        "terms": {
+          "before": "Tes parties et tes clips seront publiés sur ta chaîne avec la visibilité choisie. En publiant, tu acceptes les ",
+          "after": ". Ascend ne lit rien de ta chaîne."
+        }
+      },
+      "queue": {
+        "queued": "En attente d’envoi",
+        "uploading": "Envoi sur YouTube · {{percent}} %",
+        "waitingQuota": "En attente du quota YouTube",
+        "waitingQuotaUntil": "En attente du quota YouTube (jusqu’à {{when}})",
+        "done": "Sur YouTube",
+        "open": "Ouvrir",
+        "retry": "Réessayer",
+        "summary": "Envois : {{active}} en cours · {{waiting}} en attente du quota · {{errors}} en erreur",
+        "aClip": "Un clip",
+        "aGame": "Une partie"
+      }
     },
     "region": {
       "label": "Serveur de {{account}}",
@@ -432,6 +473,24 @@
         "notFound": "Ce compte n’existe plus.",
         "generic": "Le serveur n’a pas pu être enregistré."
       }
+    },
+    "selfJudgement": {
+      "title": "Mon propre jugement",
+      "subtitle": "Pour les joueurs qui préfèrent se fier à leur lecture plutôt qu’à celle de l’app.",
+      "selfReview": {
+        "title": "Je fais mes reviews moi-même",
+        "desc": "Pas de micro-review : la page Review ouvre directement l’enregistrement.",
+        "warn": "L’app ne te proposera plus de micro-review et n’enregistrera plus tes réponses."
+      },
+      "selfTagMistakes": {
+        "title": "Je tague mes erreurs moi-même",
+        "desc": "Le Labo d’erreurs ne montre que tes propres tags ; plus d’erreur détectée automatiquement.",
+        "warn": "L’app n’enregistrera plus d’erreur détectée automatiquement pour toi."
+      },
+      "warnTitle": "Tu es sûr ?",
+      "warnProgress": "Ta progression personnelle reposera uniquement sur ton propre jugement.",
+      "confirm": "Activer",
+      "saveFailed": "Le réglage n’a pas pu être enregistré."
     }
   },
   "sidebar": {
@@ -649,7 +708,9 @@
       "cancel": "Annuler",
       "skip": "Passer",
       "confirm": "Terminer & sauvegarder",
-      "confirmAndShare": "Terminer & partager"
+      "confirmAndShare": "Terminer & partager",
+      "coachObjectives": "Objectifs de ton coach",
+      "reached": "Coche si l’objectif est atteint"
     },
     "shareDialog": {
       "title": "Partager la session",
@@ -747,6 +808,25 @@
       "all": "Tous les fondamentaux",
       "allCategories": "Tout",
       "confirm": "Confirmer"
+    },
+    "customObjectives": {
+      "title": "Mes objectifs",
+      "hint": "Écris 1 à 5 objectifs pour cette session, seuls ou en plus des fondamentaux.",
+      "placeholder": "Ex : ward la river avant chaque drake",
+      "itemLabel": "Objectif {{n}}",
+      "add": "Ajouter un objectif",
+      "remove": "Retirer l’objectif",
+      "fromCoach": "Objectif donné par ton coach",
+      "start": "Démarrer la session",
+      "activeTitle": "Objectifs de la session",
+      "reviewTitle": "Tes objectifs",
+      "result": {
+        "yes": "Respecté",
+        "partial": "En partie",
+        "no": "Pas respecté"
+      },
+      "resultNote": "Note (facultatif)",
+      "missing": "Indique pour chaque objectif s’il a été respecté."
     }
   },
   "review": {
@@ -831,7 +911,54 @@
     },
     "draftSaved": "Brouillon enregistré automatiquement",
     "gameRemoved": "Game retirée de la session",
-    "gameRemoveFailed": "Impossible de retirer la game"
+    "gameRemoveFailed": "Impossible de retirer la game",
+    "detected": {
+      "button": "Erreurs détectées",
+      "title": "Erreurs détectées par l’app",
+      "desc": "Ce que l’app a repéré dans cette partie. Supprime celles qui sont fausses : le Labo d’erreurs en devient plus juste.",
+      "empty": "L’app n’a rien détecté dans cette partie.",
+      "wrong": "Supprimer",
+      "confirm": "Supprimer",
+      "deleted": "Erreur supprimée",
+      "deleteFailed": "L’erreur n’a pas pu être supprimée.",
+      "retag": "Modifier l’erreur",
+      "newTag": "Nouveau tag",
+      "confirmRetag": "Enregistrer",
+      "retagged": "Erreur modifiée",
+      "retagFailed": "L’erreur n’a pas pu être modifiée.",
+      "why": "Pourquoi ? (facultatif)",
+      "whyNote": "Précision (facultatif)",
+      "reasons": {
+        "not_a_mistake": "Pas une erreur",
+        "wrong_tag": "Mauvais tag",
+        "wrong_time": "Mal daté",
+        "team_context": "Contexte d’équipe",
+        "other": "Autre"
+      },
+      "searchTag": "Chercher un tag (les tiens + Codex)",
+      "skip": "Passer",
+      "removedAs": "Supprimée · {{reason}}",
+      "noReason": "sans raison",
+      "retaggedFrom": "Avant : {{tag}}",
+      "footer": "{{removed}} supprimée(s) · {{retagged}} modifiée(s) · le Labo en tient compte",
+      "undo": "Annuler",
+      "undoFailed": "L’annulation a échoué."
+    },
+    "notepad": {
+      "title": "Bloc-notes",
+      "hint": "Écris tout ce que tu retiens de la partie. Pour une note à un moment précis, utilise « Prise de note » pendant l’enregistrement.",
+      "placeholder": "Ce qui a marché, ce qui a coûté la partie, ce que tu veux travailler…",
+      "savedSec": "Enregistré · il y a {{n}} s",
+      "savedMin": "Enregistré · il y a {{n}} min"
+    },
+    "panel": {
+      "label": "Panneau du lecteur",
+      "microReview": "Micro-review",
+      "notes": "Notes marquées",
+      "notesEmpty": "Pas encore de note marquée : utilise « Prise de note » (N) pendant la vidéo.",
+      "sourceMicroReview": "MICRO-REVIEW",
+      "sourceNote": "PRISE DE NOTE"
+    }
   },
   "analytics": {
     "title": "Statistiques",
@@ -939,7 +1066,9 @@
       "unreviewed": "Non révisée",
       "toBeReviewed": "À revoir",
       "notImported": "Non importée",
-      "details": "Stats"
+      "details": "Stats",
+      "shortReview": "Review courte",
+      "shortReviewHint": "Revue en vidéo ou en micro-review, sans notes. Clique pour la compléter."
     },
     "status": {
       "active": "Active",
@@ -1195,7 +1324,8 @@
       "autoBadge": "Pré-rempli",
       "timeLabel": "Note {{n}} — moment",
       "noteLabel": "Note {{n}} — texte",
-      "deleteNote": "Supprimer la note {{n}}"
+      "deleteNote": "Supprimer la note {{n}}",
+      "guideLine": "Guide : quoi noter pendant une review"
     }
   },
   "fundamentalsGrid": {
@@ -1364,6 +1494,118 @@
       "scan": "Chercher l’enregistrement",
       "linkFile": "Lier un fichier local",
       "addYoutube": "Ajouter un lien YouTube"
+    },
+    "layers": {
+      "title": "Afficher sur la timeline",
+      "notes": "Mes notes",
+      "microReview": "Micro-review",
+      "mistakes": "Erreurs détectées",
+      "deaths": "Morts",
+      "fights": "Fights",
+      "filters": "Filtres",
+      "reset": "Réinitialiser",
+      "self": "Toi",
+      "game": "Partie",
+      "allObjectives": "Objectifs · tous",
+      "remembered": "Mémorisé pour toutes tes parties.",
+      "dragon": "Drakes",
+      "baron": "Nashor",
+      "herald": "Héraut",
+      "grubs": "Larves",
+      "turrets": "Tours",
+      "inhibs": "Inhibs"
+    },
+    "clip": {
+      "thisMoment": "Clipper ce moment",
+      "duration": "Durée",
+      "moment": "Moment de micro-review",
+      "preview": "Aperçu",
+      "saved": "Clip enregistré {{from}} → {{to}}",
+      "inMyClips": "Rangé dans Mes clips",
+      "export": "Exporter MP4",
+      "link": "Copier le lien",
+      "share": "Partager à l’équipe",
+      "exported": "Clip exporté en MP4",
+      "linkCopied": "Lien copié (valable 24 h)",
+      "actionFailed": "L’action sur le clip a échoué.",
+      "new": "Nouveau clip",
+      "start": "Début",
+      "end": "Fin",
+      "title": "Titre du clip (facultatif)",
+      "save": "Enregistrer le clip",
+      "zoomHint": "Zoom auto autour du clip · glisse les poignées",
+      "button": "Clip",
+      "buttonHint": "Créer un clip (C)",
+      "escKey": "Échap",
+      "errors": {
+        "tooLong": "Un clip dure 2 min au plus.",
+        "badRange": "Le début du clip doit venir avant sa fin.",
+        "saveFailed": "Le clip n’a pas pu être enregistré."
+      },
+      "track": "Timeline du clip",
+      "youtube": "YouTube",
+      "youtubeConnect": "Connecter YouTube",
+      "youtubeProgress": "YouTube {{percent}} %",
+      "youtubeDone": "Clip mis sur YouTube (non répertorié), lien copié",
+      "youtubeLink": "Lien YouTube :",
+      "defaultTitle": "Clip Ascend",
+      "youtubeErrors": {
+        "NOT_AUTHENTICATED": "YouTube n’est pas connecté : connecte-le dans les Réglages.",
+        "AUTH_EXPIRED": "La connexion YouTube a expiré : reconnecte-la dans les Réglages.",
+        "QUOTA_EXCEEDED": "Le quota YouTube du jour est épuisé : réessaie demain.",
+        "YOUTUBE_UNAVAILABLE": "L’envoi sur YouTube n’est pas disponible dans cette version.",
+        "generic": "L’envoi sur YouTube a échoué.",
+        "UPLOAD_IN_PROGRESS": "Ce clip est déjà en cours d’envoi par l’upload automatique.",
+        "ENCRYPTION_UNAVAILABLE": "Le chiffrement de Windows n’est pas disponible : Ascend ne peut pas garder la connexion YouTube."
+      },
+      "discord": "Envoyer sur Discord",
+      "discordSend": "Envoyer",
+      "webhook": "Webhook Discord",
+      "noWebhook": "Aucun webhook Discord : ajoute-en un dans les Réglages.",
+      "discordSent": "Lien envoyé sur {{name}}",
+      "discordFailed": "L’envoi sur Discord a échoué.",
+      "createLink": "Créer le lien"
+    },
+    "bar": {
+      "timeline": "Timeline de la vidéo",
+      "microReview": "Micro-review · {{from}} → {{to}}",
+      "prevMoment": "Moment précédent",
+      "nextMoment": "Moment suivant",
+      "back10": "Reculer de 10 s",
+      "fwd10": "Avancer de 10 s",
+      "play": "Lecture",
+      "pause": "Pause",
+      "mute": "Couper le son",
+      "unmute": "Remettre le son",
+      "volume": "Volume",
+      "speed": "Vitesse de lecture",
+      "mistake": "Erreur",
+      "mistakeHint": "Ajouter une erreur à l’heure courante (E)",
+      "panel": "Afficher ou masquer le panneau",
+      "fullscreen": "Plein écran"
+    },
+    "note": {
+      "button": "Prise de note",
+      "hint": "Prendre une note à l’heure courante (N)",
+      "text": "Texte de la note",
+      "placeholder": "Ce que tu remarques à ce moment…",
+      "tag": "tag",
+      "searchTag": "Chercher un tag",
+      "keys": "Entrée enregistre · Échap annule",
+      "save": "Noter",
+      "saved": "Note marquée",
+      "failed": "La note n’a pas pu être enregistrée."
+    },
+    "corner": {
+      "sideLeft": "Panneau à gauche · mémorisé",
+      "sideRight": "Panneau à droite · mémorisé",
+      "hidePanel": "Masquer le panneau (P)",
+      "showPanel": "Afficher le panneau (P)"
+    },
+    "youtubeTerms": {
+      "before": "En publiant, tu acceptes les ",
+      "link": "Conditions d’utilisation de YouTube",
+      "after": ". Ascend ne lit rien de ta chaîne."
     }
   },
   "jobs": {
@@ -1983,6 +2225,12 @@
         "strengthsShort": "Forts",
         "wantedStrengths": "Points forts recherchés",
         "required": "Minimum requis"
+      },
+      "card": {
+        "champion": "Champion · parmi ton top",
+        "auto": "Auto",
+        "skin": "Skin · avec détouré seulement",
+        "cutoutOnly": "Seuls les skins avec un détouré sont proposés."
       }
     },
     "rosterLink": {
@@ -4365,7 +4613,7 @@
       "marks": "Repères",
       "noMoments": "Aucun moment noté pour l’instant.",
       "press": "Appuie sur",
-      "mark": "Noter",
+      "mark": "Prise de note",
       "hideAuto": "Masquer les erreurs détectées auto",
       "showAuto": "Afficher les erreurs détectées auto",
       "noMistakes": "Aucune erreur taguée pour l’instant.",
@@ -4465,7 +4713,8 @@
       "addInSettings": "Ajoutes-en un dans les Paramètres.",
       "copyAsText": "Copier en texte",
       "copyAsTextHint": "Markdown — à coller où tu veux"
-    }
+    },
+    "tempLinkWarning": "Lien temporaire hébergé par litterbox.catbox.moe (service anonyme) : lisible par toute personne qui a le lien, pendant 72 h au plus, et impossible à supprimer avant."
   },
   "microReview": {
     "title": "Micro-review 45 s",
@@ -4485,11 +4734,11 @@
     "zone": {
       "own-base": "Ta base",
       "enemy-base": "Base ennemie",
-      "top-lane": "Lane top",
-      "mid-lane": "Lane mid",
-      "bot-lane": "Lane bot",
-      "top-river": "Rivière haute",
-      "bot-river": "Rivière basse",
+      "top-lane": "top",
+      "mid-lane": "mid",
+      "bot-lane": "bot",
+      "top-river": "river top",
+      "bot-river": "river bot",
       "own-jungle": "Ta jungle",
       "enemy-jungle": "Jungle ennemie"
     },
@@ -4519,7 +4768,7 @@
       "outnumbered": "seul contre {{n}}",
       "noWard": "sans ward dans les 60 s",
       "absent": "l'ennemi prend {{objectiveThe}}",
-      "distance": "tu étais à {{distance}} unités",
+      "distance": "tu n’étais pas sur place",
       "wardsElsewhere_one": "{{count}} ward posée ailleurs",
       "wardsElsewhere_other": "{{count}} wards posées ailleurs",
       "noWardAtAll": "aucune ward de ta part",
@@ -4528,7 +4777,7 @@
       "csDiff": "{{n}} CS",
       "xpDiff": "{{n}} XP",
       "hesitation": "l'ennemi prend {{objectiveThe}} pendant que tu arrives en retard",
-      "lateMove": "{{distance}} unités parcourues vers la fosse dans les 25 dernières secondes",
+      "lateMove": "déplacement tardif vers l’objectif dans les 25 dernières secondes",
       "noCrossMap": "aucun cross-map en contrepartie",
       "overchase": "chase en territoire ennemi sans kill ni camp",
       "counterTempo": "retour dans ton quadrant de départ après un play river",
@@ -4548,7 +4797,7 @@
       "fedCarryFirst": "premier mort du fight alors que tu étais le carry",
       "goldShare": "{{pct}} % de l'or de ta team",
       "streak": "série de {{n}} kills (shutdown)",
-      "junglerFar": "à {{distance}} unités de toi",
+      "junglerFar": "loin de toi",
       "badRotation": "roam sans kill ni assist",
       "rotationLoss": "−{{cs}} CS et −{{xp}} XP vs ton vis-à-vis",
       "tempoWindowUnpunished": "le jungler adverse se montre à l'opposé, aucune punition",
@@ -4597,7 +4846,7 @@
       "sideT1": "T1 {{lane}} détruite, la 1re tour déjà tombée",
       "heraldUnused": "mort {{sec}} s après la prise du Héraut, l'œil encore en poche",
       "fledInvade": "à {{pct}} % PV dans ta jungle face au jungler adverse à {{theirs}} %",
-      "outsmited": "l'ennemi prend {{objectiveThe}} alors que tu étais dans la fosse",
+      "outsmited": "l’ennemi prend {{objectiveThe}} alors que tu étais dans la fosse {{objectiveOf}}",
       "aheadOfWave": "mort en lane {{sec}} s après ta sortie de base",
       "resetTrapHp": "resté en lane à {{pct}} % PV après le back adverse, mort {{sec}} s plus tard",
       "resetTrapMana": "resté en lane à {{pct}} % de mana après le back adverse, mort {{sec}} s plus tard",
@@ -4606,7 +4855,11 @@
       "botLeech": "collé à ton ADC en botlane sur {{n}} relevés sur 7 entre 9:00 et 15:00",
       "killParticipation": "{{pct}} % de participation aux kills à 15:00",
       "absentScuttle": "ton jungler meurt au Carapateur du bas sans toi",
-      "weakSideUnwarded": "{{cs}} CS pris dans votre jungle bot, sans ward de ta part"
+      "weakSideUnwarded": "{{cs}} CS pris dans votre jungle bot, sans ward de ta part",
+      "towerBeforeSpawn": "tu as pris la tour {{towerLane}} à {{towerAt}}, avant l’apparition {{objectiveOf}} ({{spawn}})",
+      "objectiveFell": "l’ennemi prend {{objectiveThe}} à {{kill}} dans la fosse {{objectiveOf}}",
+      "placeAt": "tu étais {{place}}{{posNote}}",
+      "leftLaneLate": "tu as quitté ta lane pour {{objectiveThe}} trop tard"
     },
     "reason": {
       "noWard": "Pas de ward avant l'objectif",
@@ -4657,7 +4910,7 @@
       "doubleSpend": "Double dépense de tempo : j'ai voulu enchaîner deux actions (objectif + wave ou camp) sans reset et l'ennemi m'a puni à son respawn",
       "tempoWindowUnused": "Fenêtre de tempo perdue : le jungler adverse s'est montré à l'opposé et je n'ai rien puni (farm passif de mes camps)",
       "noTempoWindow": "Pas de fenêtre réelle : mes lanes n'avaient pas la prio pour punir",
-      "chokePoint": "Erreur de choke point : je suis resté collé dans la fosse de l'objectif au lieu de verrouiller le goulet d'étranglement en amont",
+      "chokePoint": "Erreur de choke point : je suis resté collé à l’objectif au lieu de verrouiller le goulet d’étranglement en amont",
       "pitRole": "Rôle assumé : je devais tanker ou burst l'objectif",
       "ecoTempo": "Déficit de tempo économique réel : j'ai combattu avec un niveau d'XP de retard, trop peu de PV/mana, ou j'ai gardé ma Barrière/Heal trop tard",
       "summonerLate": "Summoner défensif utilisé trop tard (ou pas du tout)",
@@ -4762,8 +5015,16 @@
       "excerpt": "Extrait {{from}} → {{to}}",
       "replay": "Revoir",
       "openFull": "Lecteur complet",
-      "noRecording": "Pas de VOD pour cette partie : position sur la carte au moment clé.",
-      "mapLabel": "Position sur la carte au moment clé"
+      "noRecording": "Pas de VOD pour cette partie : le lieu du moment est écrit au-dessus.",
+      "mapLabel": "Position sur la carte au moment clé",
+      "markers": {
+        "error": "Erreur",
+        "consequence": "Conséquence",
+        "conclusion": "Conclusion"
+      },
+      "watch": "Voir le moment ({{from}} → {{to}})",
+      "inPlayer": "La vidéo se lit dans le lecteur de la partie, avec ses repères.",
+      "browse": "Parcourir dans le lecteur"
     },
     "pattern": {
       "tempo-hesitation": "Cross-map manqué",
@@ -4810,7 +5071,78 @@
     },
     "otherJustified": "Ce n'était pas une erreur : décision assumée",
     "unsupported": "La micro-review ne couvre que les parties classiques sur la Faille de l'invocateur.",
-    "previousSeason": "Saison précédente : la micro-review n'analyse que les parties de cette saison."
+    "previousSeason": "Saison précédente : la micro-review n'analyse que les parties de cette saison.",
+    "position": {
+      "estimated": "position estimée",
+      "exact": "position exacte",
+      "estimatedBetween": "position estimée (entre {{from}} et {{to}})"
+    },
+    "place": {
+      "lane": {
+        "top": "top",
+        "mid": "mid",
+        "bot": "bot"
+      },
+      "river": {
+        "top": "river top",
+        "bot": "river bot"
+      },
+      "pit": "fosse {{objectiveOf}}",
+      "camp": "près {{camp}}, {{side}}",
+      "camps": {
+        "blue": "du blue",
+        "gromp": "du gromp",
+        "wolves": "des loups",
+        "raptors": "des wraiths",
+        "red": "du red",
+        "krugs": "des krugs"
+      },
+      "side": {
+        "blue": "blue side",
+        "red": "red side"
+      },
+      "base": "base {{side}}",
+      "pitIn": "dans la fosse {{objectiveOf}}",
+      "baseIn": "dans la base {{side}}"
+    },
+    "extras": {
+      "toggle": "Raisons d’après moi · autres tags d’erreur",
+      "reasons": "Raisons de l’erreur d’après moi (facultatif)",
+      "reasonsPlaceholder": "Ce que j’ai mal lu, ce que je voulais faire…",
+      "moreTags": "Autres erreurs dans ce moment",
+      "tag": "Tag d’erreur",
+      "pickTag": "Choisir un tag",
+      "removeTag": "Retirer ce tag",
+      "tagNote": "Description (facultatif)",
+      "addTag": "Ajouter un tag d’erreur",
+      "save": "Enregistrer mes ajouts",
+      "sentWithAnswer": "Envoyé avec ta réponse."
+    },
+    "more": {
+      "button": "Continuer sur d’autres moments clés",
+      "none": "Pas d’autre moment clé dans cette partie."
+    },
+    "undetected": {
+      "button": "Ajouter une erreur non détectée",
+      "title": "Une erreur que la micro-review a ratée",
+      "desc": "Ajoute les erreurs critiques que l’app n’a pas vues : ton Labo d’erreurs sera plus juste.",
+      "time": "Heure de jeu",
+      "timePlaceholder": "Heure de jeu (ex. 12:34)",
+      "badTime": "Écris l’heure comme 12:34.",
+      "save": "Ajouter",
+      "saved": "Erreur ajoutée",
+      "failed": "L’erreur n’a pas pu être ajoutée.",
+      "encourage": "Une erreur critique que l’app n’a pas vue ? Ajoute-la : c’est ce qui rend ton Labo d’erreurs juste.",
+      "question": "Une erreur critique que l’app n’a pas vue ?"
+    },
+    "badge": {
+      "objective": "OBJECTIF",
+      "death": "MORT"
+    },
+    "savedAsNote": "Enregistré comme note marquée à {{time}}",
+    "doneTitle_one": "Micro-review terminée · {{count}} moment",
+    "doneTitle_other": "Micro-review terminée · {{count}} moments",
+    "finish": "Terminer"
   },
   "codex": {
     "title": "Conseil Codex",

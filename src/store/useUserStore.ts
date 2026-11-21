@@ -26,6 +26,16 @@ interface User {
   recordScope: string
   recordAllowCustom: boolean
   allowDesktopFallback: boolean
+  /** 21/11: « Je fais mes reviews moi-même » (no micro-review). */
+  selfReview?: boolean
+  /** 21/11: « Je tague mes erreurs moi-même » (no auto-detected mistake). */
+  selfTagMistakes?: boolean
+  /** 21/11: the Review player's filters (src/lib/playerLayers.ts), the same on every device. */
+  playerFilters?: unknown
+  /** 21/11: the Review player's panel layout { hidden, side }, the same on every device. */
+  reviewPanel?: unknown
+  /** 21/11: « Upload YouTube automatique » { enabled, visibility } (src/lib/youtubeQueue.ts), synced. */
+  autoYoutubeUpload?: unknown
   recordAudioDesktop: boolean
   recordAudioDesktopDevice: string | null
   recordAudioMic: boolean

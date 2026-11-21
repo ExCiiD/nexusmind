@@ -33,7 +33,7 @@ const roleName = (t: LftPosterProps['t'], role: LftRole) => t(`team.roster.roles
  * lobby seat), else a card pattern over the colour's glow; the design's
  * filter, blur and light apply to it, never to the text.
  */
-function ArtLayer({ design, accent, src, position, coverStyle, width }: {
+function ArtLayer({ design, accent, src, position, coverStyle, width, cutout }: {
   design: LftDesign
   accent: LftAccent
   src: string | null
@@ -41,13 +41,21 @@ function ArtLayer({ design, accent, src, position, coverStyle, width }: {
   coverStyle?: CSSProperties
   /** Width drawn, to scale the blur from card pixels. */
   width: number
+  /** 21/11 (spec § 22): the champion's cut-out, drawn over the card background like the Lobby card. */
+  cutout?: string | null
 }) {
   const look = cardLookStyle(design.look, width / 320)
   const id = design.look.background
   return (
     <>
       <div style={abs({ inset: design.look.blur > 0 ? '-3%' : 0, filter: look.filter })}>
-        {design.art === 'splash' && src ? (
+        {cutout ? (
+          <>
+            <Shade style={{ background: `radial-gradient(130% 85% at 50% 0%, ${alpha(accent.main, 0.32)} 0%, ${accent.deep} 48%, ${INK} 100%)` }} />
+            <Shade style={{ opacity: Math.min(0.5, CARD_PATTERN_OPACITY[id] * 1.7), backgroundImage: `url(${CARD_PATTERN_URLS[id]})`, backgroundSize: `${Math.max(400, Math.round(width * 0.42))}px auto`, backgroundRepeat: 'repeat' }} />
+            <img src={cutout} alt="" style={abs({ left: 0, right: 0, bottom: 0, margin: '0 auto', height: '92%', width: '100%', objectFit: 'contain', objectPosition: 'center bottom' })} />
+          </>
+        ) : design.art === 'splash' && src ? (
           <Cover src={src} position={position} style={coverStyle} />
         ) : design.art === 'pattern' ? (
           <>
@@ -111,7 +119,7 @@ function SoloBanner({ player, region, content, accent, version, t, design }: Sol
   const title = rankTitle(rank, player.rankState, t)
   return (
     <PosterRoot width={width} height={height}>
-      <ArtLayer design={design} accent={accent} src={main ? championArtUrl('splash', main.key, version, player.skin) : null} position="center 20%" width={width} />
+      <ArtLayer design={design} accent={accent} src={player.artKey || main ? championArtUrl('splash', player.artKey ?? main!.key, version, player.skin) : null} position="center 20%" width={width} cutout={player.artCutoutUrl} />
       <Shade style={{ background: 'linear-gradient(90deg, rgba(11,8,5,0.94) 0%, rgba(11,8,5,0.5) 26%, rgba(11,8,5,0.4) 50%, rgba(11,8,5,0.62) 74%, rgba(11,8,5,0.95) 100%)' }} />
       <Shade style={{ background: 'linear-gradient(180deg, rgba(11,8,5,0.85) 0%, rgba(11,8,5,0) 25%, rgba(11,8,5,0) 55%, rgba(11,8,5,0.96) 100%)' }} />
       <Shade style={{ background: `radial-gradient(ellipse 30% 42% at 50% 48%, ${alpha(accent.main, 0.16)}, transparent 72%)` }} />
@@ -203,7 +211,7 @@ function SoloCard({ player, region, content, accent, version, t, design }: SoloP
   ].filter(Boolean) as Array<{ label: string; value: string }>
   return (
     <PosterRoot width={width} height={height}>
-      <ArtLayer design={design} accent={accent} src={main ? championArtUrl('splash', main.key, version, player.skin) : null} position="center 20%" coverStyle={{ opacity: 0.4 }} width={width} />
+      <ArtLayer design={design} accent={accent} src={player.artKey || main ? championArtUrl('splash', player.artKey ?? main!.key, version, player.skin) : null} position="center 20%" coverStyle={{ opacity: 0.4 }} width={width} cutout={player.artCutoutUrl} />
       <Shade style={{ background: `linear-gradient(100deg, rgba(11,8,5,0.96) 0%, rgba(11,8,5,0.78) 45%, rgba(11,8,5,0.7) 70%, rgba(11,8,5,0.9) 100%)` }} />
       <Shade style={{ background: `radial-gradient(ellipse 40% 55% at 12% 15%, ${alpha(accent.main, 0.2)}, transparent 70%), radial-gradient(ellipse 30% 45% at 88% 18%, ${alpha(accent.main, 0.14)}, transparent 70%)` }} />
       {design.show.frame && <Frame accent={accent} inset={16} gap={6} diamond={9} />}
@@ -342,7 +350,7 @@ function SeatPlayer({ player, accent, version, t, s, design }: { player: LftPlay
   const rank = player.rank
   return (
     <div style={{ position: 'relative', width: s.w, height: s.h, borderRadius: 10, overflow: 'hidden', border: `2px solid ${alpha(accent.main, 0.75)}`, background: accent.deep, boxShadow: `0 18px 40px rgba(0,0,0,0.55), 0 0 0 1px ${INK}` }}>
-      <ArtLayer design={design} accent={accent} src={main ? championArtUrl('loading', main.key, version, player.skin) : null} position="center 18%" width={s.w * 2} />
+      <ArtLayer design={design} accent={accent} src={player.artKey || main ? championArtUrl('loading', player.artKey ?? main!.key, version, player.skin) : null} position="center 18%" width={s.w * 2} cutout={player.artCutoutUrl} />
       <Shade style={{ background: 'linear-gradient(180deg, rgba(11,8,5,0.35) 0%, rgba(11,8,5,0) 22%, rgba(11,8,5,0.25) 42%, rgba(11,8,5,0.88) 62%, rgba(11,8,5,0.98) 100%)' }} />
       <div style={abs({ left: 0, right: 0, top: 0, height: Math.max(3, s.w * 0.014), background: `linear-gradient(90deg, transparent, ${accent.main}, transparent)` })} />
       <div style={abs({ left: s.w * 0.06, top: s.w * 0.06, width: s.badge, height: s.badge, borderRadius: '50%', background: 'rgba(11,8,5,0.78)', border: `1px solid ${alpha(accent.main, 0.85)}`, display: 'flex', alignItems: 'center', justifyContent: 'center' })}>
@@ -522,7 +530,7 @@ function LobbyBackground({ players, accent, version, design, width }: Pick<LftPo
   const main = players[0]?.champions[0]
   return (
     <>
-      <ArtLayer design={design} accent={accent} src={main ? championArtUrl('splash', main.key, version, players[0]?.skin) : null} position="center 25%" coverStyle={{ filter: 'blur(10px) saturate(1.1)', transform: 'scale(1.08)', opacity: 0.55 }} width={width} />
+      <ArtLayer design={design} accent={accent} src={players[0]?.artKey || main ? championArtUrl('splash', players[0]?.artKey ?? main!.key, version, players[0]?.skin) : null} position="center 25%" coverStyle={{ filter: 'blur(10px) saturate(1.1)', transform: 'scale(1.08)', opacity: 0.55 }} width={width} />
       <Shade style={{ background: 'linear-gradient(180deg, rgba(11,8,5,0.9) 0%, rgba(11,8,5,0.62) 30%, rgba(11,8,5,0.7) 70%, rgba(11,8,5,0.95) 100%)' }} />
       <Shade style={{ background: `radial-gradient(ellipse 55% 40% at 50% 55%, ${alpha(accent.main, 0.14)}, transparent 75%)` }} />
     </>

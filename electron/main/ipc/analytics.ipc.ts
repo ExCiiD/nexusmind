@@ -187,7 +187,7 @@ export function registerAnalyticsHandlers() {
     const ownGame = { session: { userId: user.id } }
     const [toReview, mistakes30d] = await Promise.all([
       prisma.game.count({ where: { ...ownGame, reviewStatus: 'to_be_reviewed' } }),
-      prisma.mistake.count({ where: { game: ownGame, createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) } } }),
+      prisma.mistake.count({ where: { game: ownGame, createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) }, ...(user.selfTagMistakes ? { autoDetected: false } : {}) } }),
     ])
     return { toReview, mistakes30d }
   })

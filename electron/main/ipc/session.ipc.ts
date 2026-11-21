@@ -1,5 +1,14 @@
 import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
+import { z } from 'zod'
+import { validatedHandle, id } from './validate'
+import { markShortReview } from '../shortReview'
+import {
+  assertHasObjective, fundamentalIdsOf, MAX_CUSTOM_OBJECTIVES, normalizeCustomObjectives, parseCustomObjectives,
+  type CustomObjective, type CustomObjectiveInput,
+} from '../../../src/lib/sessionObjectives'
+import { setAssignmentStatus } from '../../../src/lib/collabCore'
+import { getSessionUserId, getSupabase, isCloudConfigured } from '../cloud/supabase'
 import { saveTimeline } from '../matchStore'
 import { parseStoredTimeline } from '../matchStoreCore'
 import { platformOfMatchId } from '../gameCatchUpCore'
@@ -14,7 +23,7 @@ import { isOffSessionSession } from '../offSessionGames'
  * badges. Shared by the manual `session:end` handler and the S3 auto-close
  * (sessionAutoClose.ts) so both paths award the same XP and badges.
  */
-export async function endSessionCore(id: string, manualSummary?: string, sessionConclusion?: string) {
+export async function endSessionCore(id: string, manualSummary?: string, sessionConclusion?: string, opts: { completedAssignmentIds?: string[] } = {}) {
   const prisma = getPrisma()
 
   const session = await prisma.session.update({
@@ -46,11 +55,35 @@ export async function endSessionCore(id: string, manualSummary?: string, session
     if (completedCount >= 50) await tryUnlockBadge(user.id, 'sessions_50')
   }
 
-  return session
+  // A coach objective the player says they reached (21/11/2026): its assignment goes to 'done'. Only the ones of
+  // this session, only when the player ticks them (never automatic).
+  const assignmentsDone = await completeAssignments(parseCustomObjectives(session.customObjectives), opts.completedAssignmentIds ?? [])
+  return { ...session, assignmentsDone }
 }
 
+/** Sets to 'done' the coach assignments the player ticked among this session's objectives. Returns how many. */
+async function completeAssignments(objectives: CustomObjective[], ticked: string[]): Promise<number> {
+  const ids = [...new Set(ticked)].filter((a) => objectives.some((o) => o.assignmentId === a))
+  if (ids.length === 0 || !isCloudConfigured() || !(await getSessionUserId())) return 0
+  let done = 0
+  for (const a of ids) {
+    try { await setAssignmentStatus(getSupabase(), a, 'done'); done++ } catch (err) {
+      console.warn('[session] could not complete an assignment:', (err as Error)?.message)
+    }
+  }
+  return done
+}
+
+const customObjectiveInput = z.object({
+  id: z.string().max(64).optional(),
+  text: z.string().max(400),
+  source: z.enum(['player', 'coach']),
+  assignmentId: z.string().max(64).nullable().optional(),
+  fundamentalIds: z.array(z.string().max(80)).max(10).optional(),
+}).strict()
+
 export function registerSessionHandlers() {
-  ipcMain.handle('session:create', async (_event, data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) => {
+  ipcMain.handle('session:create', async (_event, data: { objectiveId?: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean; customObjectives?: CustomObjectiveInput[] }) => {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) throw new Error('No user found')
@@ -63,14 +96,20 @@ export function registerSessionHandlers() {
       if (existing) throw new Error('An active session already exists')
     }
 
-    const ids = data.objectiveIds ?? [data.objectiveId]
+    // 21/11/2026: fundamentals, written objectives, or both; at least one of them.
+    const ids = (data.objectiveIds ?? (data.objectiveId ? [data.objectiveId] : [])).filter((x) => typeof x === 'string' && x.length > 0)
+    const parsedCustom = z.array(customObjectiveInput).max(MAX_CUSTOM_OBJECTIVES).safeParse(data.customObjectives ?? [])
+    if (!parsedCustom.success) throw new Error('BAD_OBJECTIVE')
+    const custom = normalizeCustomObjectives(parsedCustom.data)
+    assertHasObjective(ids, custom)
     const sessionDate = data.date ? new Date(data.date) : new Date()
 
     const session = await prisma.session.create({
       data: {
         userId: user.id,
-        objectiveId: ids[0],
+        objectiveId: ids[0] ?? '',
         objectiveIds: JSON.stringify(ids),
+        customObjectives: JSON.stringify(custom),
         selectedKpiIds: JSON.stringify(data.selectedKpiIds ?? []),
         subObjective: data.subObjective,
         customNote: data.customNote,
@@ -332,6 +371,9 @@ export function registerSessionHandlers() {
     return imported
   })
 
+  // « Review courte » (20/11/2026, electron/main/shortReview.ts): 60 s of the recording watched, or one moment answered.
+  validatedHandle('game:mark-short-review', z.tuple([id, z.enum(['player', 'microReview'])]), (_e, gameId, source) => markShortReview(gameId, source))
+
   ipcMain.handle('session:set-review-status', async (_event, gameId: string, reviewStatus: string) => {
     const prisma = getPrisma()
 
@@ -384,15 +426,19 @@ export function registerSessionHandlers() {
     })
     if (!last) return null
     return {
-      objectiveIds:   JSON.parse(last.objectiveIds  ?? '[]'),
+      objectiveIds:   fundamentalIdsOf(last),
       selectedKpiIds: JSON.parse(last.selectedKpiIds ?? '[]'),
       customNote:     last.customNote ?? '',
       date:           last.date.toISOString(),
+      // Written objectives come back without their coach link: an assignment is used for one session (21/11/2026).
+      customObjectives: parseCustomObjectives(last.customObjectives).filter((o) => o.source === 'player'),
     }
   })
 
-  ipcMain.handle('session:end', async (_event, id: string, manualSummary?: string, sessionConclusion?: string) =>
-    endSessionCore(id, manualSummary, sessionConclusion),
+  ipcMain.handle('session:end', async (_event, id: string, manualSummary?: string, sessionConclusion?: string, opts?: { completedAssignmentIds?: string[] }) =>
+    endSessionCore(id, manualSummary, sessionConclusion, {
+      completedAssignmentIds: Array.isArray(opts?.completedAssignmentIds) ? opts!.completedAssignmentIds.filter((a) => typeof a === 'string').slice(0, MAX_CUSTOM_OBJECTIVES) : [],
+    }),
   )
 
   ipcMain.handle('session:delete', async (_event, id: string) => {
@@ -458,13 +504,25 @@ export function registerSessionHandlers() {
     return { success: true }
   })
 
-  ipcMain.handle('session:update', async (_event, id: string, data: { objectiveIds?: string[]; selectedKpiIds?: string[]; customNote?: string }) => {
+  ipcMain.handle('session:update', async (_event, id: string, data: { objectiveIds?: string[]; selectedKpiIds?: string[]; customNote?: string; customObjectives?: CustomObjectiveInput[] }) => {
     const prisma = getPrisma()
 
     const updateData: Record<string, unknown> = {}
+    const current = await prisma.session.findUnique({ where: { id }, select: { objectiveId: true, objectiveIds: true, customObjectives: true } })
+    if (!current) throw new Error('Session not found')
+    const nextIds = data.objectiveIds !== undefined ? data.objectiveIds.filter((x) => typeof x === 'string' && x.length > 0) : fundamentalIdsOf(current)
+    let nextCustom = parseCustomObjectives(current.customObjectives)
+    if (data.customObjectives !== undefined) {
+      const parsed = z.array(customObjectiveInput).max(MAX_CUSTOM_OBJECTIVES).safeParse(data.customObjectives)
+      if (!parsed.success) throw new Error('BAD_OBJECTIVE')
+      nextCustom = normalizeCustomObjectives(parsed.data)
+      updateData.customObjectives = JSON.stringify(nextCustom)
+    }
+    // Still at least one objective of some kind (21/11/2026).
+    assertHasObjective(nextIds, nextCustom)
     if (data.objectiveIds !== undefined) {
-      updateData.objectiveId = data.objectiveIds[0]
-      updateData.objectiveIds = JSON.stringify(data.objectiveIds)
+      updateData.objectiveId = nextIds[0] ?? ''
+      updateData.objectiveIds = JSON.stringify(nextIds)
     }
     if (data.selectedKpiIds !== undefined) {
       updateData.selectedKpiIds = JSON.stringify(data.selectedKpiIds)

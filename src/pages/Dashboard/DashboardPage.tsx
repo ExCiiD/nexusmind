@@ -800,11 +800,13 @@ function StatDiffsCard({ diffs, onViewAll }: { diffs: StatDiffItem[]; onViewAll:
                 <div className="text-xs font-bold text-hextech-text-bright md:col-span-3">{item.label}</div>
                 <div className="md:col-span-5">
                   <div className="relative h-2 w-full overflow-hidden rounded-full bg-hextech-elevated">
-                    <div className="absolute inset-y-0 left-0 rounded-full bg-slate-500/40" style={{ width: `${prevFill}%` }} />
                     <div
                       className={cn('absolute inset-y-0 left-0 rounded-full transition-all duration-500', good ? 'bg-gradient-to-r from-hextech-green/50 to-hextech-green' : bad ? 'bg-gradient-to-r from-hextech-red/50 to-hextech-red' : 'bg-hextech-text-dim')}
                       style={{ width: `${currFill}%`, opacity: 0.9 }}
                     />
+                    {/* The previous snapshot on top, see-through (it dims what it covers), with a mark at its end: the
+                        gain shows bright past the mark, a drop shows as a grey stretch past the current bar. */}
+                    <div className="absolute inset-y-0 left-0 rounded-l-full border-r-2 border-hextech-text-bright bg-slate-400/25" style={{ width: `${prevFill}%`, boxShadow: 'inset 0 0 0 999px rgb(0 0 0 / 0.35)' }} />
                   </div>
                   <div className="mt-1 flex justify-between font-mono text-[10px] text-hextech-text-dim">
                     <span>{t('dashboard.statDiffs.prev')}</span>

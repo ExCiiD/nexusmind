@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/useToast'
 import { useDdragonVersion } from '@/hooks/useChampionIconUrl'
 import type { Team, TeamMember } from '@/lib/ipc'
 import {
-  asLftRole, assignSeat, championArtUrl, cleanLine, cleanTraits, pickTrait, toggleTrait, LFT_TRAITS, type TraitPicks, commonRegion, joinLobby, leaveLobby, parseTags, toggleTag, wantedRoles,
+  asLftRole, assignSeat, cleanLine, cleanTraits, pickTrait, toggleTrait, LFT_TRAITS, type TraitPicks, commonRegion, joinLobby, leaveLobby, parseTags, toggleTag, wantedRoles,
   LFT_FORMATS, LFT_LIMITS, LFT_ROLES, MAX_SEARCHERS,
   type LftFormat, type LftMode, type LftRole, type SeatRoles,
 } from '@/lib/lftCore'
@@ -25,12 +25,15 @@ import { cn } from '@/lib/utils'
 import { LftPoster } from './LftPoster'
 import { accentOf, LFT_ACCENTS, type LftAccentId } from './theme'
 import { exportPoster } from './exportPoster'
-import { playerView, useChampionNames, useChampionSkins, useLookSources, useMemberRanks, type SkinChoice } from './useLftData'
+import { playerView, useChampionNames, useLookSources, useMemberRanks, type SkinChoice } from './useLftData'
 import type { LftContent, LftDesign, LftPlayerView } from './types'
 import { Slider } from '@/components/ui/slider'
 import { CardPatternThumb } from '@/components/team/CardLookButton'
 import { CARD_BACKGROUNDS, CARD_LOOK_LIMITS, DEFAULT_CARD_LOOK, sanitizeCardLook, type CardLook } from '@/lib/cardLookCore'
 import { fundamentalCatalog, fundamentalLabel, isFundamentalId } from './fundamentals'
+import { LftCardPicker, hostedCutouts } from './LftCardPicker'
+import { skinLocale } from '@/lib/cardChampionView'
+import type { CardSkin } from '@/lib/collab'
 
 type PosterLang = 'fr' | 'en'
 
@@ -198,11 +201,13 @@ export function LftDialog({ team, open, onOpenChange, soloRank, lookingFor }: Lf
   })
   useEffect(() => saveDraft(team.id, draft), [team.id, draft])
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }))
+  // 21/11 (spec § 22): the hosted cut-outs of the art champions, so the poster draws them over the card background.
+  const [cutouts, setCutouts] = useState<Record<string, CardSkin[]>>({})
 
   const posterT = useMemo(() => i18n.getFixedT(draft.lang), [i18n, draft.lang])
   const accent = accentOf(draft.accent)
 
-  const players: LftPlayerView[] = useMemo(() => {
+  const basePlayers: LftPlayerView[] = useMemo(() => {
     const ctx = (m: TeamMember) => ({ rank: ranks.results[m.id], ranksLoading: ranks.loading, looks, nameOf, skin: draft.skins[m.id], traits: draft.traits[m.id], lang: draft.lang })
     if (draft.mode === 'solo') {
       const m = draft.soloId ? memberById.get(draft.soloId) : undefined
@@ -216,6 +221,20 @@ export function LftDialog({ team, open, onOpenChange, soloRank, lookingFor }: Lf
       .filter((p): p is LftPlayerView => !!p)
       .sort((a, b) => LFT_ROLES.indexOf(a.role) - LFT_ROLES.indexOf(b.role))
   }, [draft.mode, draft.soloId, draft.seats, draft.skins, draft.traits, draft.lang, memberById, ranks.results, ranks.loading, looks, nameOf])
+  const artKeys = basePlayers.map((p) => p.artKey).filter((k): k is string => !!k).join(',')
+  useEffect(() => {
+    let alive = true
+    const locale = skinLocale(i18n.language)
+    for (const key of artKeys ? artKeys.split(',') : []) {
+      if (cutouts[key]) continue
+      void hostedCutouts(key, locale).then((list) => { if (alive) setCutouts((c) => ({ ...c, [key]: list })) })
+    }
+    return () => { alive = false }
+  }, [artKeys, i18n.language]) // eslint-disable-line react-hooks/exhaustive-deps -- once per champion
+  const players: LftPlayerView[] = useMemo(() => basePlayers.map((p) => ({
+    ...p,
+    artCutoutUrl: p.artKey ? cutouts[p.artKey]?.find((s) => s.num === p.skin)?.url ?? null : null,
+  })), [basePlayers, cutouts])
 
   const wanted = draft.mode === 'multi' ? wantedRoles(draft.seats, draft.unwanted) : []
   const content: LftContent = {
@@ -312,17 +331,12 @@ export function LftDialog({ team, open, onOpenChange, soloRank, lookingFor }: Lf
                       onSeat={(r) => set({ seats: assignSeat(draft.seats, m.id, r) })}
                       skinPicker={(() => {
                         const p = players.find((x) => x.id === m.id)
-                        const key = p?.champions[0]?.key
-                        return key ? (
-                          <SkinPicker
-                            championKey={key}
-                            championName={p.champions[0].name}
-                            value={p.skin}
-                            version={version}
-                            lang={draft.lang}
-                            onChange={(num) => set({ skins: { ...draft.skins, [m.id]: { key, num } } })}
-                          />
-                        ) : null
+                        if (!p?.champions.length) return null
+                        // 21/11 (spec § 22): like the Lobby card: « Auto » or one of the player's top champions, then its cut-out skin.
+                        return (
+                          <LftCardPicker player={p} value={draft.skins[m.id] ?? null} version={version}
+                            onChange={(next) => { const skins = { ...draft.skins }; if (next) skins[m.id] = next; else delete skins[m.id]; set({ skins }) }} />
+                        )
                       })()}
                       traitPicker={
                         <div className="ml-7 mt-1.5 space-y-1.5">
@@ -816,50 +830,6 @@ function noticesFor(
 }
 
 /** Skins of the player's first champion (its art fills the announcement). */
-function SkinPicker({ championKey, championName, value, version, lang, onChange }: {
-  championKey: string
-  championName: string
-  value: number
-  version: string
-  lang: 'fr' | 'en'
-  onChange: (num: number) => void
-}) {
-  const { t } = useTranslation()
-  const skins = useChampionSkins(championKey, version, lang)
-  if (skins.length < 2) return null
-  const label = (s: ChampionSkinLike) => (s.num === 0 ? t('team.lft.baseSkin', { champion: championName }) : s.name)
-  const current = skins.find((s) => s.num === value) ?? skins[0]
-  return (
-    <div className="ml-7 mt-1.5">
-      <div className="mb-1 flex items-baseline gap-1.5 font-mono text-[10px] uppercase tracking-wider text-hextech-text-dim">
-        {t('team.lft.skin')}
-        <span className="truncate normal-case tracking-normal text-hextech-text">{label(current)}</span>
-      </div>
-      <div role="radiogroup" aria-label={t('team.lft.skinOf', { champion: championName })} className="flex gap-1 overflow-x-auto pb-1">
-        {skins.map((s) => (
-          <button
-            key={s.num}
-            type="button"
-            role="radio"
-            aria-checked={s.num === current.num}
-            aria-label={label(s)}
-            title={label(s)}
-            onClick={() => onChange(s.num)}
-            className={cn(
-              'h-9 w-9 shrink-0 overflow-hidden rounded border-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-hextech-gold',
-              s.num === current.num ? 'border-hextech-gold' : 'border-transparent opacity-70 hover:opacity-100',
-            )}
-          >
-            <img src={championArtUrl('tiles', championKey, version, s.num)} alt="" loading="lazy" draggable={false} className="h-full w-full object-cover" />
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-type ChampionSkinLike = { num: number; name: string }
-
 /** Fundamentals as chips, plus a list (by category) to add one. */
 function TraitPicker({ label, value, max, lang, onToggle, weak }: {
   label: string

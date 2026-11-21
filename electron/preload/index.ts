@@ -16,7 +16,7 @@ const api = {
   getActiveSession: () => ipcRenderer.invoke('session:get-active'),
   getLastSessionConfig: () => ipcRenderer.invoke('session:get-last-config'),
   getKpiHistory: () => ipcRenderer.invoke('session:get-kpi-history'),
-  endSession: (id: string, manualSummary?: string, sessionConclusion?: string) => ipcRenderer.invoke('session:end', id, manualSummary, sessionConclusion),
+  endSession: (id: string, manualSummary?: string, sessionConclusion?: string, opts?: { completedAssignmentIds?: string[] }) => ipcRenderer.invoke('session:end', id, manualSummary, sessionConclusion, opts),
   deleteSession: (id: string) => ipcRenderer.invoke('session:delete', id),
   bulkDeleteSessions: (ids: string[]) => ipcRenderer.invoke('session:bulk-delete', ids),
   cancelSession: (id: string) => ipcRenderer.invoke('session:cancel', id),
@@ -25,13 +25,18 @@ const api = {
   deleteGame: (gameId: string) => ipcRenderer.invoke('game:delete', gameId),
   setGameReviewStatus: (gameId: string, reviewStatus: 'pending' | 'to_be_reviewed') =>
     ipcRenderer.invoke('session:set-review-status', gameId, reviewStatus),
+  gameMarkShortReview: (gameId: string, source: 'player' | 'microReview') => ipcRenderer.invoke('game:mark-short-review', gameId, source),
 
   saveReview: (data: {
     gameId: string
     timelineNotes: Array<{ time: string; note: string }>
     kpiScores: Record<string, number>
+    kpiNotes?: Record<string, string>
     freeText?: string
-    objectiveRespected: boolean
+    /** Null when the session has no fundamental (20/11). */
+    objectiveRespected: boolean | null
+    /** 20/11: one result per written objective. */
+    customObjectiveResults?: Array<{ objectiveId: string; result: 'yes' | 'no' | 'partial'; note?: string | null }>
   }) => ipcRenderer.invoke('review:save', data),
   getGameContext: (gameId: string) => ipcRenderer.invoke('review:get-game-context', gameId),
   analyzeReviewBias: (gameId: string, objectiveIds: string[]) =>
@@ -474,7 +479,16 @@ const api = {
   listMistakesByGame: (gameId: string) => ipcRenderer.invoke('mistake:list-by-game', gameId),
   createMistake: (args: { gameId: string; tagId: string; gameTimeSec: number; videoTimeMs?: number; note?: string; severity?: number; recordingId?: string }) =>
     ipcRenderer.invoke('mistake:create', args),
-  deleteMistake: (id: string) => ipcRenderer.invoke('mistake:delete', id),
+  deleteMistake: (id: string, opts?: { reason?: string | null; note?: string | null }) => ipcRenderer.invoke('mistake:delete', id, opts),
+  // 21/11/2026: the review's « Erreurs détectées » (one at a time; a removed detection is never recreated).
+  listDetectedMistakes: (gameId: string) => ipcRenderer.invoke('mistake:list-detected', gameId),
+  dismissDetectedMistake: (mistakeId: string, opts?: { reason?: string | null; note?: string | null }) => ipcRenderer.invoke('mistake:dismiss-detected', mistakeId, opts),
+  // 21/11/2026: « Annuler » a removal or a retag (while the app runs, 6 h at most; NOT_UNDOABLE otherwise).
+  undoMistakeCorrection: (mistakeId: string) => ipcRenderer.invoke('mistake:undo-correction', mistakeId),
+  retagMistake: (mistakeId: string, to: { tagSlug?: string | null; customLabel?: string | null }, opts?: { reason?: string | null; note?: string | null }) =>
+    ipcRenderer.invoke('mistake:retag', mistakeId, to, opts),
+  // 21/11/2026: the next key moments, once the first ones are answered.
+  microReviewMoreMoments: (gameId: string) => ipcRenderer.invoke('microreview:more-moments', gameId),
   autoDetectMistakes: (gameId: string) => ipcRenderer.invoke('mistake:auto-detect', gameId),
   coachStartTagExperiment: (tagSlug: string) => ipcRenderer.invoke('coach:start-tag-experiment', tagSlug),
   getMistakeOccurrences: (opts?: { days?: number; role?: string | null; champion?: string | null }) => ipcRenderer.invoke('mistake-stats:occurrences', opts),
@@ -616,6 +630,8 @@ const api = {
   youtubeAuthStart: () => ipcRenderer.invoke('youtube:auth-start'),
   youtubeGetStatus: () => ipcRenderer.invoke('youtube:get-status'),
   youtubeDisconnect: () => ipcRenderer.invoke('youtube:disconnect'),
+  // 21/11/2026: a saved clip to YouTube (its link is kept on the clip: a second share reuses it).
+  youtubeUploadClip: (clipId: string, opts?: { visibility?: 'public' | 'unlisted' | 'private' }) => ipcRenderer.invoke('youtube:upload-clip', clipId, opts),
   youtubeUpload: (opts: { filePath: string; title: string; description?: string; visibility?: string }) =>
     ipcRenderer.invoke('youtube:upload', opts),
   transcriptionRun: (filePath: string, language: string) => ipcRenderer.invoke('transcription:run', filePath, language),
@@ -629,6 +645,14 @@ const api = {
   teamSessionFeedbackList: (sessionId: string) => ipcRenderer.invoke('team-session-review:feedback-list', sessionId),
   teamSessionFeedbackSubmit: (sessionId: string, body: string, transcript?: string | null) =>
     ipcRenderer.invoke('team-session-review:feedback-submit', sessionId, body, transcript),
+  // 21/11/2026 « Upload YouTube automatique »: the queue (src/lib/youtubeQueue.ts), its retry and its pushed list.
+  youtubeQueueList: () => ipcRenderer.invoke('youtube:queue-list'),
+  youtubeQueueRetry: (queueId: string) => ipcRenderer.invoke('youtube:queue-retry', queueId),
+  onYoutubeQueueChanged: (cb: (items: unknown[]) => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, data: any) => cb(data)
+    ipcRenderer.on('youtube:queue-changed', handler)
+    return () => ipcRenderer.removeListener('youtube:queue-changed', handler)
+  },
   onYoutubeUploadProgress: (cb: (data: { jobId: string; percent: number }) => void) => {
     const handler = (_e: Electron.IpcRendererEvent, data: any) => cb(data)
     ipcRenderer.on('youtube:upload-progress', handler)

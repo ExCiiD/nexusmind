@@ -17,6 +17,10 @@ model User {
   region             String
   /// 'auto' (found from the puuid) or the platform the player chose (20/11/2026)
   regionMode         String       @default("auto")
+  /// "I do my reviews myself" / "I tag my mistakes myself" (21/11/2026): no micro-review saved, no auto-detected mistake
+  selfReview         Boolean      @default(false)
+  selfTagMistakes    Boolean      @default(false)
+  preferences        UserPreference[]
   /// Server before a transfer: the older games stay there
   previousRegion     String?
   assessmentFreqDays Int          @default(14)
@@ -108,6 +112,9 @@ model Session {
   date            DateTime @default(now())
   objectiveId     String
   objectiveIds    String   @default("[]")
+  /// Written objectives (21/11/2026): JSON [{ id, text, source: self | coach, assignedObjectiveId? }]. With them, a
+  /// session may have no fundamental (objectiveId empty).
+  customObjectives String  @default("[]")
   selectedKpiIds  String   @default("[]")
   subObjective       String?
   customNote         String?
@@ -179,6 +186,52 @@ model DetailedStatsMemo {
   @@id([matchId, puuid])
 }
 
+/// Auto-detected mistakes the player deleted (21/11/2026): the detection does not create them again (same game and
+/// tag, within 20 s). Local, not synced.
+model IgnoredMistake {
+  id          String   @id @default(cuid())
+  gameId      String
+  tagSlug     String
+  gameTimeSec Int
+  createdAt   DateTime @default(now())
+
+  @@index([gameId])
+}
+
+/// Every removal or retag of an auto-detected mistake by the player (21/11/2026, layer 1 of "the engine learns from
+/// corrections"): the rule's tag, what the player did, why (optional), and the context. Local only, never uploaded.
+model MistakeCorrection {
+  id              String   @id @default(cuid())
+  mistakeId       String
+  gameId          String
+  /// The tag the detection gave (its rule)
+  ruleTag         String
+  /// removed | retagged
+  action          String
+  newTag          String?
+  /// not_a_mistake | wrong_tag | wrong_time | team_context | other
+  reason          String?
+  note            String?
+  analysisVersion Int
+  role            String?
+  queueType       String?
+  createdAt       DateTime @default(now())
+
+  @@index([ruleTag])
+}
+
+/// A player's settings that follow them on every device (21/11/2026): synced, one row per key, a validated JSON value.
+model UserPreference {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@unique([userId, key])
+}
+
 /// Match ids the start-up catch-up must not import (20/11/2026, electron/main/ignoredMatches.ts):
 /// deleted by the player, or unknown to Riot (practice tool). Local to this PC, not synced.
 model IgnoredMatch {
@@ -231,6 +284,8 @@ model Review {
   freeText           String?
   aiSummary          String?
   objectiveRespected Boolean
+  /// Per written objective of the session: JSON [{ id, result: yes | no | partial, note? }] (21/11/2026)
+  customObjectiveResults String @default("[]")
   createdAt          DateTime @default(now())
 }
 
@@ -684,6 +739,9 @@ model MicroReviewAnswer {
   mistakeId   String?
   // created | confirmed-auto | existing — what re-answering may undo (see migration)
   mistakeOrigin String?
+  /// Manual mistakes the answer added for its extra tags, and its bookmark: undone on re-answer (21/11/2026)
+  extraMistakeIds String  @default("[]")
+  bookmarkId      String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

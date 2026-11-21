@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/useToast'
 import { collabErrorKey } from '@/lib/collab'
 import { fmtClock } from '@/lib/mistakeInsights'
 import { UNAVAILABLE } from '@/lib/microReviewCloudCore'
-import { PRE_ROLL_SEC } from '@/lib/microReview/vodTiming'
+import { clipWindow } from '@/lib/microReview/vodTiming'
 import type { CloudMicroAnswer } from '@/lib/microReview/types'
 import { championLabel } from '@/lib/statsInsights'
 import { summaryText, tagLabel } from './text'
@@ -40,11 +40,12 @@ function AnswerLine({ a }: { a: CloudMicroAnswer }) {
   const { t } = useTranslation()
   const label = useAnswerLabel()
   const s = a.summary ? summaryText(t, a.summary) : null
-  const vod = a.videoTimeSec ?? Math.max(0, a.gameTimeSec - PRE_ROLL_SEC)
+  // Answers saved before 20/11 carry the old 12 s start; newer ones the clip's start (vodTiming.clipWindow).
+  const vod = a.videoTimeSec ?? clipWindow(a).startSec
   return (
     <div className="min-w-0">
       <p className="text-xs text-hextech-text-bright">
-        <span className="font-mono font-semibold text-hextech-gold">{fmtClock(a.gameTimeSec)}</span>
+        <span className="font-mono font-semibold text-hextech-gold">{fmtClock(clipWindow(a).headerSec)}</span>
         <span className="ml-1.5 font-mono text-[10px] text-hextech-text-dim">{t('coachMicro.vodAt', { time: fmtClock(vod) })}</span>
         {s && <span className="text-hextech-text"> — {s.zone ? `${s.zone}, ` : ''}{s.line}</span>}
       </p>

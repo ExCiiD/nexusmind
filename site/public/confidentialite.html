@@ -35,7 +35,7 @@
 <main id="main" tabindex="-1">
 <article class="legal wrap">
 <h1>Politique de confidentialité</h1>
-<p class="meta">Version 0.3 · mise à jour le 19 novembre 2026 · s'applique à l'application de bureau, à l'app web et à ce site</p>
+<p class="meta">Version 0.3 · mise à jour le 21 novembre 2026 · s'applique à l'application de bureau, à l'app web et à ce site</p>
 
 <h2>1. Qui est responsable de vos données</h2>
 <p>Ascend est édité par ExCiiD, La Réunion, France. Contact pour toute question sur vos données : <a href="mailto:exciid501@gmail.com">exciid501@gmail.com</a>.</p>
@@ -77,10 +77,16 @@
 
 <h2>4. Ce qui ne quitte jamais votre ordinateur</h2>
 <ul>
-  <li><strong>Les vidéos</strong> de vos parties, clips et miniatures.</li>
+  <li><strong>Les vidéos</strong> de vos parties, clips et miniatures, sauf celles que vous publiez sur YouTube (§ 4 bis).</li>
   <li><strong>Le cache des matchs Riot</strong> et les statistiques détaillées calculées à partir de celui-ci.</li>
   <li><strong>L'audio des débriefs</strong> : la transcription est faite par un modèle qui tourne sur votre PC.</li>
   <li>Les webhooks Discord personnels et les réglages propres à chaque PC (dossier d'enregistrement, qualité, apparence).</li>
+</ul>
+
+<h2>4 bis. YouTube (si vous le connectez)</h2>
+<ul>
+  <li><strong>Une seule autorisation.</strong> Ascend ne demande qu'une autorisation : publier sur votre chaîne les vidéos que vous choisissez de partager (autorisation Google « youtube.upload ») : un clip, la vidéo d'une partie, ou l'enregistrement d'une réunion d'équipe. Si vous activez l'upload YouTube automatique dans les réglages, chaque partie enregistrée et chaque clip sont publiés automatiquement, avec la visibilité que vous avez choisie (publique, non répertoriée ou privée), jusqu'à ce que vous le désactiviez. Ces vidéos sont publiées sans relecture : elles peuvent contenir votre micro et la voix d'autres personnes (par exemple un vocal Discord). Le micro est mélangé au son de la partie : le réglage du son (avec audio ou sans audio, « sans audio » par défaut) s'applique à tous vos PC, car il est synchronisé avec votre compte. Ne publiez la voix d'autres personnes qu'avec leur accord. Ascend ne lit rien de votre compte YouTube : ni vos vidéos, ni le nom de votre chaîne, ni vos statistiques. L'autorisation est chiffrée par le trousseau de Windows sur votre PC ; sans ce chiffrement, Ascend refuse la connexion. L'envoi se fait directement de votre PC vers YouTube, sans passer par un serveur Ascend.</li>
+  <li><strong>Ce qu'Ascend garde.</strong> Ascend garde l'adresse de la vidéo publiée. Pour un clip, elle reste sur votre PC. Pour la vidéo d'une partie, elle est synchronisée avec votre compte Ascend et visible du staff de vos groupes si vous partagez vos reviews. Pour l'enregistrement d'une réunion d'équipe, elle est visible des membres du groupe. Ascend ne garde aucune autre donnée YouTube.</li>
 </ul>
 
 <h2>5. Qui voit quoi</h2>
@@ -98,9 +104,12 @@
   <li><strong>Cloudflare</strong> : relais vers l'API Riot Games, app web, bot Discord et ce site (réseau mondial).</li>
   <li><strong>Riot Games</strong> : reçoit les requêtes d'API nécessaires, selon sa propre politique de confidentialité.</li>
   <li><strong>Discord</strong> : uniquement si vous utilisez cette intégration.</li>
+  <li><strong>YouTube (Google)</strong> : uniquement si vous connectez YouTube et y publiez une vidéo (§ 4 bis).</li>
+  <li><strong>litterbox.catbox.moe</strong> : uniquement quand vous créez un lien temporaire pour partager un clip. Ce service anonyme héberge la vidéo ; le lien est lisible par toute personne qui l'a, pendant 72 heures au plus, et ne peut pas être supprimé avant.</li>
   <li><strong>GitHub</strong> : héberge les fichiers d'installation et les mises à jour de l'application ; ce site interroge l'API publique de GitHub pour afficher la dernière version.</li>
 </ul>
 <p>Pour limiter les appels à l'API Riot, notre relais garde chez Cloudflare (stockage R2) un cache partagé des parties publiques de League of Legends qu'il a déjà récupérées. Ces données de match proviennent de Riot Games et contiennent notamment le Riot ID et l'identifiant de compte Riot (PUUID) des 10 joueurs de chaque partie, y compris de joueurs qui n'ont pas de compte Ascend. Elles servent uniquement à ne pas redemander la même partie à Riot et sont supprimées après 90 jours.</p>
+<p>En utilisant la publication sur YouTube, vous acceptez les <a href="https://www.youtube.com/t/terms">Conditions d'utilisation de YouTube</a>. Le traitement par Google est régi par les <a href="https://policies.google.com/privacy">Règles de confidentialité de Google</a>.</p>
 <p>Aucune donnée n'est vendue ni utilisée à des fins publicitaires. Ce site n'utilise ni cookie, ni outil de mesure d'audience, ni police ou script hébergé par un tiers.</p>
 
 <h2>7. Durées de conservation</h2>
@@ -121,6 +130,7 @@
   <li><strong>Accès et portabilité</strong> : <em>Réglages → Sauvegarde</em> exporte toutes vos données dans un fichier <code>.nexusmind</code>.</li>
   <li><strong>Effacement</strong> : <em>Réglages → Compte Ascend → Supprimer mon compte</em> supprime immédiatement votre compte, vos données synchronisées et vos sauvegardes cloud (voir § 7 pour les données de groupe). Les données présentes sur votre PC ne sont pas touchées : pour les effacer, désinstallez l'application puis supprimez son dossier de données (dans <code>%APPDATA%</code>) et votre dossier d'enregistrements.</li>
   <li><strong>Retrait du consentement au bien-être</strong> : <em>Réglages → Confidentialité</em>, effet immédiat (§ 3 bis).</li>
+  <li><strong>Retirer l'accès YouTube</strong> : <em>Réglages → YouTube → Déconnecter</em> révoque l'autorisation chez Google et l'efface de votre PC. Vous pouvez aussi la retirer depuis la page des autorisations de votre compte Google : <a href="https://myaccount.google.com/permissions">https://myaccount.google.com/permissions</a>.</li>
   <li><strong>Rectification, opposition, limitation, retrait du consentement</strong> : écrivez à <a href="mailto:exciid501@gmail.com">exciid501@gmail.com</a>. Réponse sous un mois.</li>
   <li><strong>Réclamation</strong> : vous pouvez saisir l'autorité de protection des données de votre pays (en France, la CNIL).</li>
 </ul>

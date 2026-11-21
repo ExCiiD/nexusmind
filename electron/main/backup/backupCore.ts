@@ -81,6 +81,7 @@ interface ImportContext {
 const TABLES: TableSpec[] = [
   { model: 'Account', userField: 'userId', existing: (r) => ({ puuid: r.puuid }) },
   { model: 'Session', userField: 'userId' },
+  { model: 'UserPreference', userField: 'userId', existing: (r, c) => ({ userId: c.localUserId, key: r.key }) },
   { model: 'Game', parents: { sessionId: 'Session' }, existing: (r) => ({ matchId: r.matchId }) },
   { model: 'MatchCache', existing: (r) => ({ matchId: r.matchId }), cloud: false, exported: false },
   { model: 'GameDetailedStats', parents: { gameId: 'Game' }, existing: (r, c) => ({ gameId: mapId(c, 'Game', r.gameId) }) },

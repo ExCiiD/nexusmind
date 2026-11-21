@@ -28,6 +28,7 @@ import { championLabel } from '@/lib/statsInsights'
 import { EmptyState, SkeletonKpiTiles } from '@/components/ui/data-state'
 import { useCachedQuery } from '@/hooks/useCachedQuery'
 import { mistakeOccurrencesKey } from '@/lib/pageQueries'
+import { mistakePlayFromSec } from '@/lib/microReview/playbackWindow'
 import {
   rankMistakes,
   phaseBreakdown,
@@ -216,7 +217,7 @@ export function MistakeStatsPage() {
                   role={role || mainRole}
                   experiment={experiment}
                   onExperiment={startExperiment}
-                  onReplay={(o) => navigate(`/record/${o.recordingId}?at=${o.gameTimeSec}`)}
+                  onReplay={(o) => navigate(`/record/${o.recordingId}?at=${mistakePlayFromSec({ gameTimeSec: o.gameTimeSec, tagSlug: o.tag.slug, autoDetected: o.autoDetected })}`)}
                 />
               ) : (
                 <p className="py-8 text-center text-xs text-hextech-text-dim">{t('mistakeLab.inspector.pick')}</p>

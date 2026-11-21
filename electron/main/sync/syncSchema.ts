@@ -24,6 +24,8 @@ export interface SyncTableSpec {
 
 export const SYNC_TABLES: SyncTableSpec[] = [
   { table: 'Account', userColumns: ['userId'], naturalKey: ['puuid'] },
+  // 21/11/2026: settings that follow the player on every device (the video player's filters first).
+  { table: 'UserPreference', userColumns: ['userId'], naturalKey: ['userId', 'key'] },
   { table: 'Session', userColumns: ['userId'] },
   { table: 'Game', fks: { sessionId: 'Session' }, naturalKey: ['matchId'] },
   { table: 'Review', fks: { gameId: 'Game' }, naturalKey: ['gameId'] },

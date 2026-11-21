@@ -54,7 +54,9 @@ describe('spec constants', () => {
       death: { windowSec: 90, wpDrop: 0.05, allyRadius: 2500, sameFightSec: 10, wardLookbackSec: 60, ownPlaySec: 35, hpSnapshotMinAgeSec: 10 },
       absent: { wardRadius: 3500, wardLookbackSec: 90, crossMapSec: 60, deadBeforeSec: 110, accountableFromSec: 300 },
       early: { atSec: 600, csDiff: -15, xpDiff: -400, takedowns: 2 },
-      hesitation: { notInPitSec: 30, moveFromSec: 25, approachMin: 1200, crossMapBeforeSec: 40, crossMapAfterSec: 15, towerGreedSec: 75 },
+      hesitation: { notInPitSec: 30, moveFromSec: 25, approachMin: 1200, crossMapBeforeSec: 40, crossMapAfterSec: 15, towerGreedSec: 75, inPositionRadius: 4500, estimatedFarSec: 20 },
+      soloQLaning: { untilSec: 840, roles: ['TOP', 'MIDDLE', 'BOTTOM'] },
+      markers: { afterObjectiveSec: 45, afterDeathSec: 30 },
       jungle: {
         fromSec: 115, toSec: 480, overchaseSec: 20, sampleSec: 5, counterTempoXp: 150, riverPlaySec: [160, 220], backAtSec: 265, passiveBotLead: 250,
         homeSamplesSec: [85, 145, 175, 205], quietUntilSec: 205, passiveAtSec: 160, startAtSec: 85, counterTempoAtSec: 235,
@@ -81,7 +83,7 @@ describe('spec constants', () => {
       adcReopen: { fromSec: 840, walkSec: 45, withinSec: 45 },
       baronRecall: { kda: 3, goldSpent: 10000, alliesForward: 3, alliesDown: 2, fightWindowSec: 30, awayBeforeSec: 30, awayAfterSec: 15 },
       inhibDive: { withinSec: 15 },
-      spawns: { firstDragonSec: 300, dragonRespawnSec: 300, grubsSec: 480 },
+      spawns: { firstDragonSec: 300, dragonRespawnSec: 300, grubsSec: 480, heraldSec: 900, baronSec: 1200, baronRespawnSec: 360, elderAfterSoulSec: 360, elderRespawnSec: 360, soulDragons: 4 },
       // V7–V10 (jungle, mid, engage support) — boundaries tested in microReviewV7.test.ts.
       jungleFirstBack: { bySec: 210, startSec: 60 },
       gankCost: { fromSec: 120, untilSec: 720, cs: 8, enemyRadius: 2500 },

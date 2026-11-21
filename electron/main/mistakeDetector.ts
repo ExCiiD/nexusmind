@@ -331,7 +331,7 @@ export function detectMistakes(
     teamId: player.teamId,
     championName: player.championName,
     position: raw?.teamPosition ?? raw?.individualPosition ?? '',
-  }))
+  }, { teamContext: selector.teamContext }))
 
   return out
 }

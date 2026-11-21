@@ -17,7 +17,7 @@ import { readMatch, readSummaries, readTimeline, saveMatch, saveTimeline, timeli
 import { pickStored, readStoredDetailedStats, storeDetailedStats } from '../detailedStatsStore'
 import { withRiotPriority, type RiotPriority } from '../riotPriority'
 import { platformOfMatchId } from '../gameCatchUpCore'
-import { buildPrefilledNotes } from '../reviewNotes'
+import { buildMomentNotes } from '../reviewNotes'
 
 let autoSnapshotRunning = false
 
@@ -556,20 +556,24 @@ export function registerStatsHandlers() {
   })
 
   /**
-   * R1 — draft, timestamped notes built from this game's own events and
-   * severity-3 mistakes. The renderer only uses this when the review form
-   * is otherwise empty (no saved review, no draft) and never overwrites
-   * anything the player typed.
+   * Prefilled review notes (21/11/2026): the micro-review moments the player answered, each with its title and the error
+   * tag they chose; no game events any more. Local reads only (no timeline). Never overwrites what the player typed
+   * (the renderer only uses it on an empty review).
    */
   ipcMain.handle('review:prefilled-notes', async (_event, gameId: string) => {
-    const { events, diag } = await loadGameEvents(gameId, false)
-    if (diag.reason !== 'ok') return []
     const prisma = getPrisma()
-    const mistakes = await prisma.mistake.findMany({ where: { gameId }, select: { gameTimeSec: true, severity: true, tag: { select: { slug: true, label: true } } } })
-    return buildPrefilledNotes(
-      events,
-      mistakes.map((m) => ({ tagSlug: m.tag.slug, tagLabel: m.tag.label, gameTimeSec: m.gameTimeSec, severity: m.severity })),
-    )
+    const answers = await prisma.microReviewAnswer.findMany({
+      where: { gameId }, select: { momentKey: true, trigger: true, gameTimeSec: true, outcome: true, tagSlug: true },
+    })
+    if (answers.length === 0) return []
+    const slugs = [...new Set(answers.map((a) => a.tagSlug).filter((x): x is string => !!x))]
+    const tags = slugs.length ? await prisma.mistakeTag.findMany({ where: { slug: { in: slugs } }, select: { slug: true, label: true } }) : []
+    const stored = await prisma.gameAnalysis.findUnique({ where: { gameId }, select: { payload: true } })
+    const patterns = new Map<string, string>()
+    try {
+      for (const m of (stored ? JSON.parse(stored.payload).moments : []) ?? []) if (m?.key && m.facts?.pattern) patterns.set(m.key, m.facts.pattern)
+    } catch { /* no titles from the analysis */ }
+    return buildMomentNotes(answers, new Map(tags.map((t) => [t.slug, t.label])), (key) => patterns.get(key) ?? null)
   })
 
   // Diagnostic variant — UI uses this for the "Refresh events" button and

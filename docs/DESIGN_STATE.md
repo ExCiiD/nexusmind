@@ -1167,3 +1167,335 @@ team » ; « Check-in avant la session ? » / « Check in before the session? »
 « Plus tard » / « Later » ; « Plan de mon coach » / « My coach's plan » ;
 « Objectifs de mon coach » / « My coach's goals » ; « À travailler (review
 VOD) » / « To work on (VOD review) » ; « Mon équipe » / « My team ».
+
+## 19. Spec Front-end — page Review retravaillée (21/11)
+
+Décisions du 21/11 (`docs/DECISIONS.md`). Maquette Penpot : page « Review —
+rework 21/11 », plan « Review · page retravaillée » et « Panneau · Erreurs
+détectées ».
+
+**Ordre de la page** (1120 px, une colonne de 1056) :
+1. **En-tête** : « Review » + badge Victoire / Défaite ; ligne champion, rôle,
+   durée, objectif de session. À droite, bouton outline **« Erreurs détectées
+   · N »** (N = erreurs auto-détectées de la partie). Masqué si l'utilisateur a
+   choisi « Je tague mes erreurs moi-même » (Réglages, 21/11).
+2. Pastilles de stats (inchangées).
+3. **Lecteur unique + panneau droit** côte à côte (680 + 360, écart 16).
+   Décision du 21/11 « Un seul lecteur vidéo » : la page n'a **qu'un lecteur**,
+   celui de l'enregistrement ; la micro-review n'a plus le sien et le pilote.
+   Maquette : plan « Review v2 · un seul lecteur ».
+   - **Panneau droit** (décision du 21/11, « même emplacement que notes
+     marquées, avec un filtre pour switch entre les 2 ») : en haut, un
+     **sélecteur à deux segments** 328 px, fond `black`, contour `border-dim`,
+     rayon 8 : **« Micro-review 2 / 3 »** · **« Notes marquées 4 »** ; segment
+     actif fond `elevated` + contour or, texte `gold-bright`, compteur mono
+     `text-dim`. Par défaut : Micro-review tant qu'il reste un moment à
+     répondre, sinon Notes marquées. Contour du panneau or en mode
+     Micro-review, `border-dim` en mode Notes. Contenu Micro-review : § 20.
+     Plans « Panneau droit · état Micro-review » et « … · état Notes marquées ».
+   - **Barre du lecteur v2** (décisions du 21/11 « la barre actuelle, améliorée,
+     dans le thème » puis « tu flood la bar, il y a besoin de filtres »).
+     Maquettes : plans « Barre du lecteur v2 · états » (normal, mode
+     micro-review) et « … · menu Filtres ouvert ». Fond `black`, padding 12,
+     de haut en bas :
+     1. **Repères en icônes** au-dessus de la timeline : pastille ronde 18 px,
+        fond couleur 16 %, contour 1 px, glyphe de la couleur. Par défaut une
+        seule rangée (Mes notes, Micro-review). Les événements de partie
+        (objectifs, fights), quand ils sont filtrés, ont une **deuxième
+        rangée** sous une ligne pointillée `border-dim` (toi en haut, partie
+        en bas).
+     2. **Regroupement** : deux repères à **moins de 26 px** se fondent en une
+        pilule (jusqu'à 2 glyphes, par priorité Nashor > Drake > Héraut >
+        Inhib > Larves > Tours, + compteur mono 9 px gras). Survol → info-bulle
+        `elevated` avec chaque élément, par heure (« 21:30 · Nashor ·
+        ennemi »). Clic → saute au premier.
+     3. **Timeline** 5 px, rayon 2,5 : non lue `border-dim`, lue or ; tête
+        de lecture rond 12 px `#E4C285` + fin trait vertical jusqu'aux repères.
+     4. **Ligne des heures** : « 0:00 » à gauche, durée à droite, puis le
+        bouton **« Filtres »** (pilule contour `border`, icône entonnoir,
+        compteur de filtres actifs sur fond or 20 %, ▾).
+     5. **Contrôles** : moment précédent, −10, **lecture** (rond or 36 px),
+        +10, moment suivant, volume (curseur au survol), heure « 9:12 /
+        26:10 » (courante en `gold-bright`). À droite : vitesse « 1× ▾ »
+        (menu 0,25× → 2×), **« Clip »** (outline `border`, ciseaux,
+        raccourci **C** en info-bulle, voir « Mode clip »), **« Erreur »**
+        (outline `#E3A35B`, triangle, raccourci **E** en info-bulle : ajoute
+        une erreur à l'heure courante, ouvre le sélecteur de tag), **« Prise
+        de note »** (§ 21, pastille **N** visible). La bascule du panneau
+        droit et le plein écran passent **dans le coin haut droit de la
+        vidéo** (fond noir 55 %, rayon 8, visibles au survol).
+   - **Coin de la vidéo : disposition du panneau** (décision du 21/11 ;
+     plans « Review v2 · panneau à gauche (mémorisé) » et « … · panneau
+     masqué (lecteur pleine largeur) »), trois icônes 20 px dans l'ordre :
+     1. **Changer de côté** (⇄) : le panneau latéral passe à gauche ou à
+        droite du lecteur (lecteur et panneau échangent leur place, mêmes
+        largeurs 680 / 360). Info-bulle « Panneau à gauche · mémorisé » (ou
+        « à droite »). Inactif (35 %) quand le panneau est masqué.
+     2. **Masquer / afficher le panneau** (touche **P**) : l'icône montre la
+        moitié or du côté du panneau ; masqué, cadre vide + trait pointillé.
+        Panneau masqué : **le lecteur prend toute la largeur** (1056 px,
+        vidéo 16:9 à 594 px de haut, timeline étirée) ; un **onglet**
+        « ◎ Micro-review 2 / 3 ◂ » (ou « Notes marquées 4 ») sous les
+        icônes, fond noir 55 % + contour or, rouvre le panneau d'un clic.
+     3. Plein écran.
+     **Les deux réglages (côté, masqué) sont sauvegardés** dans les réglages
+     de l'utilisateur, synchronisés au compte, comme les filtres : ils
+     restent tels quels à chaque ouverture et sur toutes les reviews, jusqu'à
+     ce que le joueur les change. Fermeture automatique : jamais.
+   - **Menu « Filtres »** (pop-over 300 px au-dessus du bouton, `elevated`,
+     contour `border`, ombre) : titre « Afficher sur la timeline » +
+     « Réinitialiser » ; section **TOI** : Mes notes, Micro-review, Erreurs
+     détectées (absente si « Je tague mes erreurs moi-même »), Morts ;
+     section **PARTIE** : « Objectifs · tous » (case à trois états) puis les
+     types en pastilles (Drakes, Nashor, Héraut, Larves, Tours, Inhibs),
+     Fights. Chaque ligne : case à cocher or, glyphe, nom, compteur. Puis
+     « Zoom de la timeline − 1× + » et « Mémorisé pour toutes tes parties. »
+     **Par défaut : Mes notes + Micro-review seulement** (premier lancement
+     uniquement). **Sauvegarde** (décision du 21/11) : chaque changement est
+     enregistré tout de suite dans les réglages de l'utilisateur (synchronisés
+     avec son compte) ; il **n'est jamais remis à zéro** à l'ouverture d'une
+     page et s'applique à **tous les lecteurs** de l'app (Review,
+     Enregistrements, lecteur plein écran, VOD d'équipe). Seul
+     « Réinitialiser » revient au défaut. Le mode micro-review atténue mais ne
+     change pas les filtres.
+   - **Mode clip** (bouton « Clip », touche **C**, ou « Clipper ce moment »
+     dans le panneau Micro-review ; décision du 21/11 « interface clip user
+     friendly ») ; plans « Barre du lecteur v2 · mode clip » :
+     1. Barre au contour or. En haut, **vue d'ensemble** de la partie (3 px)
+        avec la zone zoomée encadrée or et le clip en `gold-bright`.
+     2. **Timeline zoomée automatiquement** autour du clip (± 2 min environ,
+        heures aux bords) ; sélection `gold-bright` 22 % + contour, **deux
+        poignées** 10 × 26 `gold-bright` à rainures, à glisser ; bulle de
+        durée « 0:30 » au-dessus. Sélection par défaut : **heure courante
+        − 10 s → + 20 s** ; depuis la micro-review : la fenêtre du moment.
+     3. **Panneau clip** (`elevated`) : titre « Nouveau clip » avec ciseaux ;
+        champs **Début** et **Fin** (heures modifiables au clavier, touches
+        **I** et **O** pour poser la borne à l'heure courante) + « = 30 s » ;
+        ligne **DURÉE** : 10 s, 30 s, 1 min, 2 min (centrées sur l'heure
+        courante) et « Moment de micro-review » ; champ **Titre du clip
+        (facultatif)**, **« ↻ Aperçu »** (lit la sélection en boucle),
+        « Annuler » (Échap), **« Enregistrer le clip »** (Entrée).
+     4. Après enregistrement, la barre revient en mode normal et une bande
+        `elevated` s'affiche 8 s : « ✓ Clip enregistré 9:02 → 9:32 » +
+        « Rangé dans Mes clips → » (or) et les actions **Exporter MP4**,
+        **Copier le lien**, **Partager à l'équipe** (flux existants :
+        export, `ClipSharePanel`).
+   - **Couleurs des repères** : notes `#D4A24C`, micro-review `#E66556`,
+     erreurs `#E3A35B`, morts `#B5A68C`, drake `#E08A3C`, Nashor `#A97BF0`,
+     Héraut `#6FA0D8`, larves `#5FB38A`, tours `#8C96A3`, inhibs `#D86FA0`,
+     fights `#E4D9C4`. Glyphes : signet, cible, triangle, crâne, flamme,
+     couronne, œil, larve, tour, cercle barré, épées croisées.
+   - **Mode micro-review** (moment ouvert dans le panneau droit) : la fenêtre
+     du moment (objectif − 60 s → + 45 s ; mort − 45 s → + 30 s) est
+     surlignée (bande or 8 % sur les repères, cadre or 18 % + contour
+     `gold-bright` sur la timeline) ; ses **trois traits** Erreur `#E3A35B`,
+     Conséquence `--hextech-red`, Conclusion `text-bright` dépassent de la
+     timeline ; **les repères hors fenêtre passent à 32 %**. Sous la
+     timeline, au centre : « Micro-review · 15:25 → 17:10 » mono or. Le
+     lecteur se cale au début de la fenêtre ; tout revient à 100 % en
+     quittant la micro-review.
+   - **Notes marquées** (lecture) : une ligne par note, triées par heure :
+     heure en mono or, badge de source (« MICRO-REVIEW » rouge, « PRISE DE
+     NOTE » or), titre ; dessous, les tags choisis ou le texte de la note.
+     Clic → la vidéo saute à l'heure. Les notes pré-remplies ne contiennent
+     plus d'événements de partie : seulement les moments de micro-review
+     (titre + tag choisi) et les Prises de note (décision du 21/11).
+   - Sans enregistrement : lecteur remplacé par « Pas d'enregistrement pour
+     cette partie » ; la liste des notes reste.
+4. *(Micro-review : plus de bloc sous le lecteur, elle est dans le panneau
+   droit.)* Si « Je fais mes reviews moi-même » : pas de sélecteur, le
+   panneau droit montre seulement Notes marquées.
+5. **Bloc-notes** (remplace les *timeline notes* et le champ « Impressions ») :
+   carte pleine largeur, titre « Bloc-notes », phrase d'aide, zone de texte
+   libre de 160 px minimum qui grandit avec le contenu, enregistrement
+   automatique (« Enregistré · il y a 3 s » en mono). Pas d'heure, pas de
+   bouton d'ajout : on écrit, c'est tout.
+6. **Guide des notes**, replié par défaut : une ligne pointillée « ▸ Guide :
+   quoi noter pendant une review », clic → déplie le guide actuel.
+7. Question d'objectif (inchangée), puis « Reviewer plus tard » et
+   « Enregistrer la review ».
+
+**Panneau « Erreurs détectées »** (Dialog 440 px, ou panneau latéral droit) :
+titre, phrase « Ce que l'app a repéré dans cette partie. Supprime celles qui
+sont fausses : le Labo d'erreurs en devient plus juste. » ; une ligne par
+erreur : heure (mono or), tag (texte clair), raison courte (mono `text-dim`),
+deux actions **« Modifier l'erreur »** (or) et **« Supprimer »** (rouge).
+Maquette : plan « Panneau v2 · Erreurs détectées (modifier + pourquoi) »
+(480 px), décisions du 21/11.
+- **Modifier l'erreur** : la ligne s'ouvre (fond `elevated`, contour or) :
+  « NOUVEAU TAG », champ de recherche « Chercher un tag (les tiens + Codex) »,
+  propositions en pastilles (choisie : rouge 14 % + contour rouge), puis
+  l'étape « Pourquoi ? », puis « Enregistrer » (bouton principal).
+- **Supprimer** : la ligne s'ouvre (contour rouge) sur l'étape « Pourquoi ? »,
+  puis « Supprimer » (outline).
+- **Étape « Pourquoi ? (facultatif) »**, commune aux deux : encart or 8 % ;
+  titre + lien **« Passer »** à droite (valide l'action **en un clic**, sans
+  raison) ; 5 raisons cliquables, une seule choisie (contour or + fond or
+  18 %) : **Pas une erreur · Mauvais tag · Mal daté · Contexte d'équipe ·
+  Autre** ; champ libre facultatif, **300 caractères max**, compteur « 52 /
+  300 » mono. Pré-sélection : « Pas une erreur » pour Supprimer, « Mauvais
+  tag » pour Modifier.
+- Une erreur supprimée reste grisée (55 %) avec sa raison et **« Annuler »**
+  jusqu'à la fermeture du panneau ; une erreur modifiée affiche son nouveau
+  tag. Pied « 1 supprimée · 1 modifiée · le Labo en tient compte ». Vide :
+  « L'app n'a rien détecté dans cette partie. »
+
+**Textes FR / EN.** « Erreurs détectées » / « Detected mistakes » ; « Notes
+marquées » / « Marked notes » ; « Bloc-notes » / « Notepad » ; « Guide : quoi
+noter pendant une review » / « Guide: what to note during a review » ;
+« Supprimer » / « Delete » ; « Annuler » / « Undo » ; « Modifier l'erreur » /
+« Edit mistake » ; « Pourquoi ? (facultatif) » / « Why? (optional) » ;
+« Passer » / « Skip » ; « Pas une erreur » / « Not a mistake » ; « Mauvais
+tag » / « Wrong tag » ; « Mal daté » / « Wrong time » ; « Contexte d'équipe » /
+« Team context » ; « Autre » / « Other » ; « Afficher » / « Show » ;
+« Mes notes » / « My notes » ; « Morts » / « Deaths » ; « Objectifs » /
+« Objectives » ; « Fights » / « Fights » ; « Filtres » / « Filters » ;
+« Afficher sur la timeline » / « Show on timeline » ; « Réinitialiser » /
+« Reset » ; « Objectifs · tous » / « Objectives · all » ; « Zoom de la
+timeline » / « Timeline zoom » ; « Mémorisé pour toutes tes parties. » /
+« Remembered for all your games. » ; « Erreur » / « Mistake » ; « Clip » /
+« Clip » ; « Nouveau clip » / « New clip » ; « Début » / « Start » ; « Fin » /
+« End » ; « Durée » / « Length » ; « Moment de micro-review » /
+« Micro-review moment » ; « Titre du clip (facultatif) » / « Clip title
+(optional) » ; « Aperçu » / « Preview » ; « Enregistrer le clip » / « Save
+clip » ; « Clip enregistré » / « Clip saved » ; « Rangé dans Mes clips » /
+« Saved to My clips » ; « Exporter MP4 » / « Export MP4 » ; « Copier le
+lien » / « Copy link » ; « Partager à l'équipe » / « Share with team » ;
+« Clipper ce moment » / « Clip this moment » ; « Zoom auto autour du clip ·
+glisse les poignées » / « Auto-zoom around the clip · drag the handles » ;
+« Changer de côté » / « Switch side » ; « Panneau à gauche · mémorisé » /
+« Panel on the left · saved » ; « Masquer le panneau » / « Hide panel » ;
+« Afficher le panneau » / « Show panel ».
+
+## 20. Spec Front-end — boîte de micro-review (21/11)
+
+Décision du 21/11. Maquette Penpot : page « Review — rework 21/11 », plan
+« Micro-review · boîte (maquette 2) ». La mini-carte de preuve est la
+maquette 5 (§ 23).
+
+**Un seul lecteur (21/11)** : la boîte **n'a plus de lecteur vidéo**. Elle
+pilote celui de la page (§ 19, point 3). Maquette : plan « Micro-review v2 ·
+pilote le lecteur ». Ouvrir un moment (onglet ou « Moment suivant ») cale le
+lecteur au début de sa fenêtre et passe la timeline en mode micro-review.
+
+**Emplacement (21/11)** : la micro-review est un **état du panneau droit**
+du lecteur (360 px, § 19 point 3), à la place des Notes marquées, via le
+sélecteur « Micro-review · Notes marquées ». **Pas de mini-carte de
+preuve** (décision du 21/11 « ne pas montrer la carte avec les positions ») :
+les lieux restent en mots dans la phrase de contexte.
+
+**Structure** (une colonne de 328 px) : sélecteur, onglets des moments (✓
+vert si répondu, sinon le numéro ; heure mono), titre du moment en `Card
+title` or + badge « OBJECTIF » / « MORT », puis :
+1. Contexte du moment en une phrase (`Small`, lieu en mots, jamais de
+   distance).
+1 bis. **« PARCOURIR DANS LE LECTEUR »** : les **trois pastilles**
+   Erreur · Conséquence · Conclusion (§ 23) avec leur heure ; clic → le lecteur
+   unique saute à l'heure (pas de lecture locale). Pastille active contour 2 px.
+2. « QU'EST-CE QUI A COÛTÉ CE MOMENT ? » : les causes proposées (une seule
+   sélectionnable), puis « Autre cause… ».
+   Points 3 et 4 **repliés** par défaut dans le panneau étroit : une ligne
+   pointillée « ▸ Raisons d'après moi · autres tags d'erreur », clic → déplie.
+3. **« Raisons de l'erreur d'après moi (facultatif) »** : zone de texte de 64
+   px, 300 caractères.
+4. **« Autres erreurs dans ce moment »** : liste des tags ajoutés ; chaque
+   ligne = pastille du tag (rouge 14 %) + champ « Description (facultatif) »
+   (140 caractères) + ✕. Bouton outline **« + Ajouter un tag d'erreur »** :
+   ouvre un sélecteur avec recherche dans les tags du joueur et ceux du Codex
+   (même liste que le Labo d'erreurs), plusieurs tags possibles.
+5. Pied : à gauche « Enregistré comme note marquée à 1:17 » (mono
+   `text-dim`) ; à droite « Moment suivant → ». Chaque moment répondu devient
+   une note marquée à son heure (§ 19).
+
+**Fin de la micro-review** (après le dernier moment), à la place des
+réponses :
+- titre « Micro-review terminée · 3 moments » ;
+- **« Continuer sur d'autres moments clés »** (bouton principal) : propose les
+  3 moments suivants classés par le moteur ;
+- **encouragement** : carte or 10 % « Une erreur critique que l'app n'a pas
+  vue ? » + bouton outline **« Ajouter une erreur non détectée »** (ouvre le
+  même sélecteur de tag, avec une heure à choisir sur la timeline) ;
+- lien « Terminer » qui replie la boîte.
+
+**Textes FR / EN.** « Raisons de l'erreur d'après moi » / « Why I think it
+happened » ; « Autres erreurs dans ce moment » / « Other mistakes in this
+moment » ; « Ajouter un tag d'erreur » / « Add a mistake tag » ;
+« Description (facultatif) » / « Description (optional) » ; « Enregistré
+comme note marquée à 1:17 » / « Saved as a marked note at 1:17 » ;
+« Continuer sur d'autres moments clés » / « Continue with other key moments » ;
+« Ajouter une erreur non détectée » / « Add a mistake the app missed ».
+
+## 21. Spec Front-end — bouton « Prise de note » (lecteur d'enregistrement)
+
+Décision du 21/11 : le seul moyen d'écrire une note datée, mis en valeur.
+Maquette Penpot : page « Review — rework 21/11 », plan « Prise de note ·
+lecteur (maquette 3) ».
+
+- Dans la barre de contrôle de `VideoReviewPlayer` (sur la Review : le
+  **lecteur unique**, § 19 ; aucun autre lecteur n'en porte), le lien cyan « Noter » devient un **bouton plein or**, h 34 px,
+  padding 0 14, rayon 8 : icône crayon + **« Prise de note »** + pastille de
+  raccourci **N** (fond noir 25 %). Placé à droite de la vitesse, toujours
+  visible (pas dans un menu).
+- Clic ou touche **N** : la vidéo se met en pause et un **pop-over** 360 px
+  s'ouvre au-dessus de la barre, à droite : titre « Prise de note » + heure
+  courante en mono or ; zone de texte 64 px (focus automatique) ; tags
+  facultatifs (pastilles + « + tag », mêmes tags que le Labo) ; pied
+  « Entrée enregistre · Échap annule » + bouton « Noter ». Contour or 1 px,
+  ombre portée.
+- La note apparaît aussitôt comme repère or sur la timeline et dans « Notes
+  marquées » (§ 19). Le bouton « Signet » séparé disparaît : il fait doublon.
+- Textes : « Prise de note » / « Take a note » ; « Noter » / « Save note » ;
+  « Entrée enregistre · Échap annule » / « Enter saves · Esc cancels ».
+
+## 22. Spec Front-end — annonce LFT : champion, skin et fond de carte
+
+Décision du 21/11 : mêmes choix que la carte du Lobby (§ 14). Maquette
+Penpot : plan « Annonce LFT · choix de la carte (maquette 4) ».
+
+Dialogue LFT, deux colonnes : **aperçu en direct** de l'affiche à gauche
+(300 × 525, rendu 1080 × 1920 à l'export), réglages à droite (608 px) :
+1. **Champion · parmi ton top** : « Auto » + les 5 champions du dos de la
+   carte, tuiles 56 px, sélection contour or 2 px.
+2. **Skin · avec détouré seulement** : tuiles 96 × 128 du champion choisi ;
+   seuls les skins avec détouré sont listés (décision du 20/11) ; mention en
+   `Data small text-dim`.
+3. **Fond de carte** : les 7 motifs (`CARD_BACKGROUNDS`), vignettes 64 × 112
+   (`CardPatternThumb` existant).
+4. **Filtre couleur** : les 6 teintes + « Aucun » (existant).
+Pied : « Annuler » / « Exporter l'annonce ». Par défaut, le choix de la carte
+du Lobby (§ 14) est repris ; le changer ici ne modifie que l'annonce.
+
+## 23. Spec Front-end — carte de micro-review : lieux, preuve, extrait
+
+Décisions du 20/11 (rapports `docs/engine-reports/2026-11-20-*`). Maquette
+Penpot : plan « Carte de micro-review · objectif (maquette 5) ».
+
+- **En-tête à l'heure de l'objectif** (pas de l'ancrage interne) : heure en
+  `Section title` or, titre du moment, badge « OBJECTIF » (ou « MORT »).
+- **Phrase de contexte** avec les lieux en mots, jamais de distance ni
+  d'unités ; fosse toujours nommée (« fosse du Dragon », « des Larves », « du
+  Héraut », « du Baron »).
+- ~~Mini-carte de preuve~~ **retirée de la Review** (décision du 21/11 « ne pas
+  montrer la carte avec les positions »). Spec gardée pour mémoire, à ne pas
+  coder sur la Review. **Mini-carte de preuve**, 340 × 340 (`MiniMap.tsx`) :
+  lanes et base en `border-dim`, rivière `#1E3A4A`, la **fosse nommée** en
+  cercle pointillé or 12 % + son nom en or 11 px ; la **tour prise** en
+  losange or + « T1 top · 15:14 » mono 10 px ; l'**objectif tombé** en
+  losange rouge ; les **points du joueur** autour du moment reliés par un
+  trait pointillé : point plein = **position exacte** (relevé Riot ou
+  événement), cercle pointillé = **position estimée** (« 16:25 ~ »). Légende
+  sous la carte, 3 lignes. Les étiquettes ne se chevauchent pas : décaler à
+  gauche ou au-dessus du point si besoin.
+- **« Où tu étais »** à droite : une ligne par point (heure mono or, lieu en
+  badge clair, ce qui se passe, « exacte » / « estimée ~ » à droite).
+- **Extrait, sans lecteur propre** (décision du 21/11 « Un seul lecteur ») :
+  la fenêtre **objectif − 60 s à objectif + 45 s** (mort : **−45 s à +30 s**)
+  est surlignée sur la timeline du **lecteur unique** de la Review (§ 19). La
+  carte garde **trois pastilles cliquables** : **Erreur** (orange `#E3A35B`),
+  **Conséquence** (rouge), **Conclusion** (`text`), chacune avec son heure ;
+  la pastille active a un contour 2 px. Clic : le lecteur unique saute à
+  l'heure. Vidéo absente : pastilles masquées ; la carte garde la mini-carte
+  et les lieux.
+- Textes : « Où tu étais » / « Where you were » ; « exacte » / « exact » ;
+  « estimée » / « estimated » ; « Erreur · Conséquence · Conclusion » /
+  « Mistake · Consequence · Outcome ».

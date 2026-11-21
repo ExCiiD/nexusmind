@@ -226,7 +226,7 @@ function SessionJournal({ days, label, player, myUserId, nameOf }: {
     const q = query.trim().toLowerCase()
     if (!q) return true
     const date = new Date(d.date).toLocaleDateString(i18n.language).toLowerCase()
-    return date.includes(q) || d.objectiveIds.some((id) => label(id).toLowerCase().includes(q))
+    return date.includes(q) || d.objectiveIds.some((id) => label(id).toLowerCase().includes(q)) || d.customObjectives.some((o) => o.text.toLowerCase().includes(q))
   })
 
   return (
@@ -267,9 +267,15 @@ function SessionJournal({ days, label, player, myUserId, nameOf }: {
                   <ChevronRight className={cn('h-4 w-4 shrink-0 text-hextech-gold transition-transform', isOpen && 'rotate-90')} />
                   <span className="shrink-0 font-mono text-xs font-bold text-hextech-text-bright">{new Date(day.date).toLocaleDateString(i18n.language)}</span>
                   <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-                    {day.objectiveIds.length ? day.objectiveIds.map((id) => (
-                      <span key={id} className="rounded border border-hextech-border-dim bg-hextech-elevated px-2 py-0.5 text-[11px] text-hextech-text-bright">{label(id)}</span>
-                    )) : (
+                    {day.objectiveIds.length || day.customObjectives.length ? (<>
+                      {day.objectiveIds.map((id) => (
+                        <span key={id} className="rounded border border-hextech-border-dim bg-hextech-elevated px-2 py-0.5 text-[11px] text-hextech-text-bright">{label(id)}</span>
+                      ))}
+                      {/* 20/11: the player's written objectives. */}
+                      {day.customObjectives.map((o) => (
+                        <span key={o.id} className="max-w-[16rem] truncate rounded border border-hextech-gold/30 bg-hextech-gold/5 px-2 py-0.5 text-[11px] text-hextech-text-bright" title={o.text}>{o.text}</span>
+                      ))}
+                    </>) : (
                       <span className="inline-flex items-center gap-1 rounded border border-hextech-red/40 bg-hextech-red/15 px-2 py-0.5 font-mono text-[10px] font-bold text-hextech-red">
                         <AlertCircle className="h-3 w-3" />{t('coaching.journal.autopilot')}
                       </span>

@@ -9,7 +9,7 @@ import { skinLocale, skinTiles, type SkinTile } from '@/lib/cardChampionView'
 import type { CardChampion, CardSkin } from '@/lib/collab'
 
 /** All of a champion's skins from Data Dragon (number and name), empty when they cannot be read. */
-async function ddragonSkins(championId: string, locale: string): Promise<Array<{ num: number; name: string | null }>> {
+export async function ddragonSkins(championId: string, locale: string): Promise<Array<{ num: number; name: string | null }>> {
   try {
     const version = await getDdragonVersion()
     const res = await fetch(`${DDRAGON_BASE}/cdn/${version}/data/${locale}/champion/${championId}.json`)

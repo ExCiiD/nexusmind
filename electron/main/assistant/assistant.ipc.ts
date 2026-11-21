@@ -60,6 +60,8 @@ function parseScores(json: string | null | undefined): Record<string, number> | 
 
 async function loadInputs(userId: string, puuids: string[]): Promise<{ games: GameRecord[]; sessions: SessionRecord[] }> {
   const prisma = getPrisma()
+  // "I tag my mistakes myself" (21/11/2026): the coaching rests on the player's own tags only.
+  const selfTag = (await prisma.user.findUnique({ where: { id: userId }, select: { selfTagMistakes: true } }))?.selfTagMistakes ?? false
   const sessions = await prisma.session.findMany({
     where: { userId },
     orderBy: { date: 'desc' },
@@ -74,7 +76,7 @@ async function loadInputs(userId: string, puuids: string[]): Promise<{ games: Ga
       session: { select: { objectiveId: true, objectiveIds: true } },
       review: { select: { kpiScores: true, objectiveRespected: true } },
       recording: { select: { id: true } },
-      mistakes: { select: { id: true, gameTimeSec: true, recordingId: true, severity: true, tag: { select: { slug: true, label: true } } } },
+      mistakes: { ...(selfTag ? { where: { autoDetected: false } } : {}), select: { id: true, gameTimeSec: true, recordingId: true, severity: true, tag: { select: { slug: true, label: true } } } },
     },
   })
 

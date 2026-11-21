@@ -506,3 +506,54 @@ describe('one mistake, one row — auto-detector and micro-review', () => {
     expect(res).toMatchObject({ completed: true, xpAwarded: 0 })
   })
 })
+
+describe('older analysis kept when the recompute is impossible (21/11/2026, audit P3)', () => {
+  it('timeline purged: the old cards stay (stale), the recompute is retried later and then replaces them', async () => {
+    const { ensureGameAnalysis } = await import('../../electron/main/ipc/microReview.ipc')
+    const { RETRY_AFTER_MS } = await import('../../electron/main/analysisCompat')
+    const prisma = getPrisma()
+    const game = await addGame({ sessionId, gameEndAt: new Date(2026, 10, 8, 15, 0) })
+    const fresh = await ensureGameAnalysis(game.id, false)
+    expect(fresh.analysis?.moments).toHaveLength(2)
+    // An analysis stored by an older engine, without the fields added since (extraMoments…), and no timeline any more.
+    const old = { ...fresh.analysis!, extraMoments: undefined, contested: undefined }
+    await prisma.gameAnalysis.update({ where: { gameId: game.id }, data: { version: ANALYSIS_VERSION - 1, payload: JSON.stringify(old) } })
+    const cache = await prisma.matchCache.findUnique({ where: { matchId: game.matchId } })
+    await prisma.matchCache.delete({ where: { matchId: game.matchId } })
+
+    const stale = await ensureGameAnalysis(game.id, false)
+    expect(stale).toMatchObject({ stale: true, reason: 'not-cached' })
+    expect(stale.analysis!.moments).toHaveLength(2)
+    expect(stale.analysis!.contested).toEqual([])
+    expect(stale.analysis!.extraMoments).toBeUndefined()
+    expect((await prisma.gameAnalysis.findUnique({ where: { gameId: game.id } }))!.version).toBe(ANALYSIS_VERSION - 1)
+
+    // The timeline is back, but within the retry delay the old analysis is served without trying again.
+    await prisma.matchCache.create({ data: { matchId: cache!.matchId, matchJson: cache!.matchJson, timelineJson: cache!.timelineJson } })
+    expect(await ensureGameAnalysis(game.id, false)).toMatchObject({ stale: true, reason: 'recompute-pending' })
+
+    // After the delay: recomputed with the current engine.
+    const now = Date.now()
+    const spy = vi.spyOn(Date, 'now').mockReturnValue(now + RETRY_AFTER_MS + 1)
+    try {
+      const again = await ensureGameAnalysis(game.id, false)
+      expect(again.stale).toBeUndefined()
+      expect(again.analysis!.moments).toHaveLength(2)
+      expect((await prisma.gameAnalysis.findUnique({ where: { gameId: game.id } }))!.version).toBe(ANALYSIS_VERSION)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+  it('nothing stored, or an unreadable payload: no cards, as before', async () => {
+    const { readStoredAnalysis, mayFallBack } = await import('../../electron/main/analysisCompat')
+    expect(readStoredAnalysis('{"moments":[]}')).toBeNull()
+    expect(readStoredAnalysis('{broken')).toBeNull()
+    expect(readStoredAnalysis(null)).toBeNull()
+    expect(readStoredAnalysis('{"participantId":1,"moments":[]}')).toMatchObject({ winProb: [], contested: [], garbageDiscarded: 0, laneAt10: null, position: '' })
+    // Another mode or an older season is never shown with old cards (current season only).
+    expect(mayFallBack('previous-season')).toBe(false)
+    expect(mayFallBack('unsupported-mode')).toBe(false)
+    expect(mayFallBack('timeline-fetch-failed')).toBe(true)
+    expect(mayFallBack('player-not-resolved')).toBe(true)
+  })
+})

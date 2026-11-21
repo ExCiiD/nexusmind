@@ -3,6 +3,7 @@
  * over the sessions a player shares with their staff.
  */
 import type { PlayerSessionView } from './collab'
+import { parseObjectives, type CustomObjective } from './customObjectives'
 
 const ts = (v: number | string | null) => (v == null ? 0 : typeof v === 'number' ? v : Date.parse(v))
 const dayKey = (v: number | string | null) => {
@@ -37,6 +38,8 @@ export interface SessionDay {
   date: number
   sessions: PlayerSessionView[]
   objectiveIds: string[]
+  /** 20/11: the written objectives of the day's sessions (a session may have no fundamental). */
+  customObjectives: CustomObjective[]
   games: number
   reviews: number
   status: DayStatus
@@ -56,7 +59,8 @@ export function groupByDay(sessions: PlayerSessionView[]): SessionDay[] {
       const games = list.reduce((n, s) => n + s.games.length, 0)
       const reviews = list.reduce((n, s) => n + s.games.filter((g) => g.review).length, 0)
       const status: DayStatus = games >= ALERT_MIN_GAMES && reviews === 0 ? 'alert' : reviews >= games ? 'complete' : 'partial'
-      return { key, date: Math.max(...list.map((s) => ts(s.date))), sessions: list, objectiveIds: [...new Set(list.flatMap((s) => s.objectiveIds))], games, reviews, status }
+      const customObjectives = list.flatMap((s) => parseObjectives((s as { customObjectives?: unknown }).customObjectives))
+      return { key, date: Math.max(...list.map((s) => ts(s.date))), sessions: list, objectiveIds: [...new Set(list.flatMap((s) => s.objectiveIds))], customObjectives, games, reviews, status }
     })
     .sort((a, b) => b.date - a.date)
 }

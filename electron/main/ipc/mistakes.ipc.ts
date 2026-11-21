@@ -17,6 +17,10 @@
 
 import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
+import { CORRECTION_NOTE_MAX, CORRECTION_REASONS, removeMistake, retagMistake, undoMistakeCorrection, type CorrectionInput, type CorrectionReason } from '../mistakeCorrections'
+import { resolveTag } from './microReview.ipc'
+import { z } from 'zod'
+import { validatedHandle, id } from './validate'
 import { autoDetectMistakes } from '../mistakeAutoDetect'
 import { nextTuning } from '../mistakeTuning'
 import { ensureGameAnalysis } from './microReview.ipc'
@@ -38,6 +42,22 @@ const TAG_CATEGORIES = new Set(['macro', 'micro', 'vision', 'economy', 'draft'])
 function championMatches(gameChampion: string | null | undefined, query: string): boolean {
   if (!query) return true
   return (gameChampion ?? '').toLowerCase().includes(query)
+}
+
+const correctionSchema = z.object({
+  reason: z.enum(CORRECTION_REASONS).nullable().optional(),
+  note: z.string().max(CORRECTION_NOTE_MAX).nullable().optional(),
+}).strict()
+/** The optional "why?" of a removal or retag, kept only when valid (it never blocks the action). */
+function correctionInput(opts: { reason?: string | null; note?: string | null } | null | undefined): CorrectionInput {
+  const reason = opts?.reason && (CORRECTION_REASONS as readonly string[]).includes(opts.reason) ? opts.reason as CorrectionReason : null
+  return { reason, note: typeof opts?.note === 'string' ? opts.note.slice(0, CORRECTION_NOTE_MAX) : null }
+}
+
+/** "I tag my mistakes myself" (21/11/2026): the Lab reads only the player's own tags. */
+async function manualOnly(): Promise<{ autoDetected?: false }> {
+  const user = await getPrisma().user.findFirst({ where: { isActive: true }, select: { selfTagMistakes: true } })
+  return user?.selfTagMistakes ? { autoDetected: false } : {}
 }
 
 export function registerMistakeHandlers() {
@@ -85,10 +105,35 @@ export function registerMistakeHandlers() {
   })
 
 
+  // ── Review « Erreurs détectées » (21/11/2026) ──
+  // The game's auto-detected mistakes, and the deletion of a wrong one: removed from the Lab and remembered, so the
+  // detection does not create it again.
+  validatedHandle('mistake:list-detected', z.tuple([id]), async (_e, gameId) => {
+    const rows = await getPrisma().mistake.findMany({ where: { gameId, autoDetected: true }, include: { tag: true }, orderBy: { gameTimeSec: 'asc' } })
+    return rows.map((m) => ({ id: m.id, tagSlug: m.tag.slug, tagLabel: m.tag.label, gameTimeSec: m.gameTimeSec, severity: m.severity, note: m.note }))
+  })
+  validatedHandle('mistake:dismiss-detected', z.tuple([id, correctionSchema.optional()]), async (_e, mistakeId, opts) => {
+    const m = await getPrisma().mistake.findUnique({ where: { id: mistakeId }, select: { autoDetected: true } })
+    if (!m?.autoDetected) throw new Error('NOT_FOUND')
+    await removeMistake(mistakeId, correctionInput(opts))
+    return { success: true }
+  })
+  // « Modifier l'erreur » (21/11/2026): another tag for ONE mistake, by id. The detection never recreates nor overwrites it.
+  validatedHandle('mistake:retag', z.tuple([id, z.object({
+    tagSlug: z.string().max(64).regex(/^[a-z0-9-]+$/).nullable().optional(),
+    customLabel: z.string().max(60).nullable().optional(),
+  }).strict(), correctionSchema.optional()]), async (_e, mistakeId, to, opts) => {
+    const tag = await resolveTag(to.tagSlug, to.customLabel)
+    if (!tag) throw new Error('UNKNOWN_TAG')
+    return retagMistake(mistakeId, tag.id, tag.slug, correctionInput(opts))
+  })
+  // « Annuler » (21/11/2026): reverts the last removal or retag of this mistake while the app runs. NOT_UNDOABLE otherwise.
+  validatedHandle('mistake:undo-correction', z.tuple([id]), async (_e, mistakeId) => undoMistakeCorrection(mistakeId))
+
   ipcMain.handle('mistake:list-by-game', async (_e, gameId: string) => {
     const prisma = getPrisma()
     return prisma.mistake.findMany({
-      where: { gameId },
+      where: { gameId, ...(await manualOnly()) },
       include: { tag: true },
       orderBy: { gameTimeSec: 'asc' },
     })
@@ -122,9 +167,11 @@ export function registerMistakeHandlers() {
   })
 
 
-  ipcMain.handle('mistake:delete', async (_e, id: string) => {
+  // One mistake at a time, by id (21/11/2026: never a whole game's). An auto-detected one is remembered (never recreated)
+  // and logged as a correction, with the optional "why?" of the dialog.
+  ipcMain.handle('mistake:delete', async (_e, id: string, opts?: { reason?: string | null; note?: string | null }) => {
     const prisma = getPrisma()
-    const deleted = await prisma.mistake.delete({ where: { id } })
+    const deleted = await removeMistake(id, correctionInput(opts))
     // MX3: deleting an auto-detected mistake counts toward lowering that
     // tag's default severity for this player. Manually-created ones never count.
     if (deleted.autoDetected) {
@@ -160,6 +207,7 @@ export function registerMistakeHandlers() {
       where: {
         createdAt: { gte: since },
         ...(opts?.role ? { game: { role: opts.role } } : {}),
+        ...(await manualOnly()),
       },
       include: { tag: true, game: { select: { champion: true } } },
       orderBy: { createdAt: 'desc' },
@@ -197,6 +245,7 @@ export function registerMistakeHandlers() {
       where: {
         createdAt: { gte: since },
         ...(opts?.role ? { game: { role: opts.role } } : {}),
+        ...(await manualOnly()),
       },
       include: {
         tag: true,

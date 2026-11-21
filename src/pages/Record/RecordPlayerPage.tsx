@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ import i18n from '@/i18n/config'
 import { useToast } from '@/hooks/useToast'
 import { formatFileSize, formatMs, toNxmUrl } from '@/lib/mediaCore'
 import { useYoutubeUploadAvailable } from '@/hooks/useYoutubeUploadAvailable'
+import { useShortReviewWatch } from '@/hooks/useShortReviewWatch'
 
 type YoutubeUploadState = 'idle' | 'uploading' | 'done' | 'error'
 type BottomTab = 'clips' | 'share'
@@ -487,6 +488,10 @@ export function RecordPlayerPage() {
     } catch (err: any) { setYtError(err?.message ?? t('record.youtube.failed')); setYtState('error') }
   }
 
+  // « Review courte » (20/11): 60 s of this game's recording watched marks it as short-reviewed.
+  const rootRef = useRef<HTMLDivElement>(null)
+  useShortReviewWatch(rootRef, recording?.gameId ?? null)
+
   if (loading) return (
     <div className="flex items-center justify-center py-20 text-hextech-text-dim">
       <Loader2 className="h-6 w-6 animate-spin mr-3" /><span>{t('record.player.loading')}</span>
@@ -522,7 +527,7 @@ export function RecordPlayerPage() {
 
   return (
     // Fixed-height column — no page scroll possible
-    <div className="flex flex-col gap-2 animate-fade-in" style={{ height: 'calc(100vh - 3.25rem)', overflow: 'auto' }}>
+    <div ref={rootRef} className="flex flex-col gap-2 animate-fade-in" style={{ height: 'calc(100vh - 3.25rem)', overflow: 'auto' }}>
       {/* Back nav */}
       <button onClick={() => navigate('/record')} className="flex items-center gap-1.5 text-xs text-hextech-text-dim hover:text-hextech-text transition-colors self-start shrink-0">
         <ArrowLeft className="h-3.5 w-3.5" />{t('record.player.back')}

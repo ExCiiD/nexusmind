@@ -93,6 +93,19 @@ export const userUpdateSchema = z
     recordAudioMicDevice: shortText(256).nullable(),
     recordInBackground: z.boolean(),
     reviewPopup: z.boolean(),
+    /** 21/11/2026: "I do my reviews myself", "I tag my mistakes myself". */
+    selfReview: z.boolean(),
+    selfTagMistakes: z.boolean(),
+    /** 21/11/2026: the video player's timeline filters (stored in the synced UserPreference table); null = default. */
+    playerFilters: z.object({
+      notes: z.boolean(), microReview: z.boolean(), mistakes: z.boolean(), deaths: z.boolean(),
+      dragon: z.boolean(), baron: z.boolean(), herald: z.boolean(), grubs: z.boolean(), turrets: z.boolean(), inhibs: z.boolean(), fights: z.boolean(),
+      zoom: z.number().min(1).max(8),
+    }).partial().strip().nullable(),
+    /** 21/11/2026, § 19 « Coin de la vidéo »: the review panel hidden or shown, left or right (synced UserPreference); null = default. */
+    reviewPanel: z.object({ hidden: z.boolean(), side: z.enum(['left', 'right']) }).partial().strip().nullable(),
+    /** 21/11/2026 « Upload YouTube automatique »: on/off and the videos' visibility (synced UserPreference); null = default (off). */
+    autoYoutubeUpload: z.object({ enabled: z.boolean(), visibility: z.enum(['public', 'unlisted', 'private']), audio: z.enum(['all', 'none']) }).partial().strip().nullable(),
   })
   .partial()
   .strip()

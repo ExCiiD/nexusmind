@@ -3,7 +3,7 @@ import type { TeamMember } from '@/lib/ipc'
 import type { MemberLook } from '@/lib/collab'
 import { displayRank, type MemberRankResult } from '@/lib/rankCore'
 import { mainChampions, parseChampionSkins, riotIdOf, type LftRole, type TraitPicks } from '@/lib/lftCore'
-import { lookForMember, type LookSources } from '@/lib/playerCard'
+import { lookForMember, riotIdKey, riotIdKeyOf, type LookSources } from '@/lib/playerCard'
 import { iconUrl } from '@/lib/profile'
 import { useAllChampions } from '@/hooks/useAllChampions'
 import { useProfilePrefs } from '@/components/Profile/ProfileCard'
@@ -117,12 +117,19 @@ export function playerView(
 ): LftPlayerView {
   const id = riotIdOf(member)
   const look = lookForMember(member, ctx.looks)
+  // The member's Lobby card (champion + skin, shared through their look), the announcement's default (spec § 22).
+  const cardKey = riotIdKey(member.ign, member.tagLine)
+  const lobbyCard = cardKey ? ctx.looks.looks?.find((l) => riotIdKeyOf(l.riotId) === cardKey)?.card ?? null : null
   const r = ctx.rank
   const champions = mainChampions(member.champPool, role).map((c) => ({ key: c.championKey, name: ctx.nameOf(c.championKey), games: c.games, winRate: c.winRate }))
   return {
     strengths: (ctx.traits?.strengths ?? []).map((f) => fundamentalLabel(f, ctx.lang)),
     weaknesses: (ctx.traits?.weaknesses ?? []).map((f) => fundamentalLabel(f, ctx.lang)),
-    skin: ctx.skin && ctx.skin.key === champions[0]?.key ? ctx.skin.num : 0,
+    // 21/11: the champion and skin picked for the announcement, else the Lobby card's choice (spec § 22), else the
+    // first champion's base skin. The cut-out is filled in by the dialog (it is fetched).
+    artKey: ctx.skin?.key ?? lobbyCard?.championId ?? null,
+    skin: ctx.skin ? ctx.skin.num : lobbyCard ? lobbyCard.skinNum : 0,
+    artCutoutUrl: null,
     id: member.id,
     name: id?.name || member.displayName,
     tag: id?.tag ?? null,

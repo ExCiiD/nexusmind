@@ -142,6 +142,29 @@ export interface MistakeTag {
   createdAt: string
 }
 
+/** 21/11: why a detected mistake was removed or retagged (« Pourquoi ? », optional, never blocking). */
+export type MistakeCorrectionReason = 'not_a_mistake' | 'wrong_tag' | 'wrong_time' | 'team_context' | 'other'
+export interface MistakeCorrection { reason?: MistakeCorrectionReason | null; note?: string | null }
+
+/** 21/11: an auto-detected mistake of a game (Review « Erreurs détectées »). */
+export interface DetectedMistake {
+  id: string
+  tagSlug: string
+  tagLabel: string
+  gameTimeSec: number
+  severity: number
+  note: string | null
+}
+
+/**
+ * 21/11 (micro-review box): the player's own reasons go in `note`; extra error tags, each with an optional description,
+ * are saved as manual mistakes at the moment's time; the answered moment becomes a bookmark labelled `bookmarkLabel`.
+ */
+export interface MicroReviewAnswerExtras {
+  extraTags?: Array<{ tagSlug?: string | null; customLabel?: string | null; note?: string | null }>
+  bookmarkLabel?: string | null
+}
+
 export interface Mistake {
   id: string
   gameId: string
@@ -253,6 +276,7 @@ export interface CustomGame {
 }
 
 import type { SynergyPlayerStats } from './synergyStats'
+import type { CustomObjective, CustomObjectiveResult } from './customObjectives'
 export type { SynergyPlayerStats } from './synergyStats'
 
 export interface TeamSynergyStats {
@@ -302,17 +326,25 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   reactivateAccount: (userId: string) => Promise<any>
   listSavedAccounts: () => Promise<SavedAccount[]>
 
-  createSession: (data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) => Promise<any>
+  /** 20/11: `customObjectives` (written or coach objectives); `objectiveId` is '' when the session has no fundamental. */
+  createSession: (data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean; customObjectives?: CustomObjective[] }) => Promise<any>
   getActiveSession: () => Promise<any>
-  getLastSessionConfig: () => Promise<{ objectiveIds: string[]; selectedKpiIds: string[]; customNote: string; date: string } | null>
+  getLastSessionConfig: () => Promise<{ objectiveIds: string[]; selectedKpiIds: string[]; customNote: string; date: string; customObjectives?: CustomObjective[] } | null>
   getKpiHistory: () => Promise<Array<{ objectiveIds: string[]; selectedKpiIds: string[] }>>
-  endSession: (id: string, manualSummary?: string, sessionConclusion?: string) => Promise<any>
+  /** `completedAssignmentIds` (20/11): the coach objectives the player ticked « Objectif atteint » (never automatic). */
+  endSession: (id: string, manualSummary?: string, sessionConclusion?: string, opts?: { completedAssignmentIds?: string[] }) => Promise<any>
   deleteSession: (id: string) => Promise<any>
   bulkDeleteSessions: (ids: string[]) => Promise<{ success: boolean; deleted: number }>
   cancelSession: (id: string) => Promise<{ success: boolean }>
-  updateSession: (id: string, data: { objectiveIds?: string[]; selectedKpiIds?: string[]; customNote?: string }) => Promise<any>
+  updateSession: (id: string, data: { objectiveIds?: string[]; selectedKpiIds?: string[]; customNote?: string; customObjectives?: CustomObjective[] }) => Promise<any>
   deleteGame: (gameId: string) => Promise<any>
   setGameReviewStatus: (gameId: string, reviewStatus: 'pending' | 'to_be_reviewed') => Promise<any>
+  /**
+   * « Review courte » (20/11): marks the game reviewed with no review record (no notes, no scores), never over a full
+   * review. 'player': 60 s of its recording watched; 'microReview': one moment answered (the answer handler also
+   * does it). Desktop only.
+   */
+  gameMarkShortReview?: (gameId: string, source: 'player' | 'microReview') => Promise<{ reviewStatus: 'reviewed' | 'pending' | 'to_be_reviewed' }>
 
   saveReview: (data: {
     gameId: string
@@ -320,7 +352,10 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
     kpiScores: Record<string, number>
     kpiNotes?: Record<string, string>
     freeText?: string
-    objectiveRespected: boolean
+    /** Null when the session has no fundamental (20/11). */
+    objectiveRespected: boolean | null
+    /** 20/11: one result per written objective. */
+    customObjectiveResults?: CustomObjectiveResult[]
   }) => Promise<any>
   getGameContext: (gameId: string) => Promise<{ game: any; session: any } | null>
   analyzeReviewBias: (gameId: string, objectiveIds: string[]) => Promise<ReviewBiasSignal[]>
@@ -516,14 +551,25 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   createMistakeTag: (args: { label: string; category: string; icon?: string; color?: string }) => Promise<MistakeTag>
   listMistakesByGame: (gameId: string) => Promise<Mistake[]>
   createMistake: (args: { gameId: string; tagId: string; gameTimeSec: number; videoTimeMs?: number; note?: string; severity?: number; recordingId?: string }) => Promise<Mistake>
-  deleteMistake: (id: string) => Promise<{ success: boolean }>
+  /** `opts` (21/11): the optional « Pourquoi ? » of a correction. */
+  deleteMistake: (id: string, opts?: MistakeCorrection) => Promise<{ success: boolean }>
+  /** 21/11: the review's « Erreurs détectées »: the game's auto-detected mistakes. Desktop only. */
+  listDetectedMistakes?: (gameId: string) => Promise<DetectedMistake[]>
+  /** 21/11: a wrong detection, deleted and never detected again for this game. Desktop only. */
+  dismissDetectedMistake?: (mistakeId: string, opts?: MistakeCorrection) => Promise<{ success: boolean }>
+  /** 21/11: « Annuler » a removal or a retag: the mistake comes back as it was (same id). NOT_UNDOABLE: hide the button. Desktop only. */
+  undoMistakeCorrection?: (mistakeId: string) => Promise<{ success: boolean }>
+  /** 21/11: « Modifier l'erreur »: same time, another tag; it becomes the player's, the old tag is never recreated there. Desktop only. */
+  retagMistake?: (mistakeId: string, to: { tagSlug?: string | null; customLabel?: string | null }, opts?: MistakeCorrection) => Promise<{ success: boolean }>
   autoDetectMistakes: (gameId: string) => Promise<{ created: number; skipped: number; reason: string }>
   /** Mistake Lab: tagged occurrences with game result, game time and recording. */
   getMistakeOccurrences: (opts?: { days?: number; role?: string | null; champion?: string | null }) => Promise<import('./mistakeInsights').MistakeOccurrence[]>
 
   // Micro-review (docs/PLAN_MICRO_REVIEW.md)
   microReviewGet: (gameId: string) => Promise<import('./microReview/types').MicroReviewPayload | null>
-  microReviewAnswer: (input: import('./microReview/types').MicroReviewAnswerInput) => Promise<import('./microReview/types').MicroReviewAnswerResult>
+  microReviewAnswer: (input: import('./microReview/types').MicroReviewAnswerInput & MicroReviewAnswerExtras) => Promise<import('./microReview/types').MicroReviewAnswerResult>
+  /** 21/11: the next key moments, once the first ones are answered. Desktop only. */
+  microReviewMoreMoments?: (gameId: string) => Promise<import('./microReview/anomalyDetector').CriticalMoment[]>
   microReviewVerifyObjectives: (gameId: string) => Promise<import('./microReview/types').ObjectiveVerificationPayload | null>
   calibrationStatus: () => Promise<import('./microReview/types').CalibrationStatus | null>
   calibrationSubmit: (family: import('./mistakeInsights').MistakeFamily) => Promise<import('./microReview/types').CalibrationResult>
@@ -694,6 +740,17 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   /** `available`: false in the installed app or without OAuth credentials (option A, 19/11/2026): hide upload. */
   youtubeGetStatus: () => Promise<{ connected: boolean; channelName: string | null; available?: boolean }>
   youtubeDisconnect: () => Promise<{ success: boolean }>
+  /**
+   * 21/11: a saved clip to YouTube (unlisted by the screens); a second share returns the same link (`reused`).
+   * Errors: YOUTUBE_UNAVAILABLE (this build can't), NOT_AUTHENTICATED, AUTH_EXPIRED, QUOTA_EXCEEDED, … Desktop only.
+   */
+  youtubeUploadClip?: (clipId: string, opts?: { visibility?: 'public' | 'unlisted' | 'private' }) => Promise<{ videoId: string; url: string; reused: boolean }>
+  /** 21/11 « Upload YouTube automatique »: Back-end's queue (recordings and clips going up on their own). Desktop only. */
+  youtubeQueueList?: () => Promise<import('./youtubeQueue').YoutubeQueueItem[]>
+  /** Retries one entry (its id « kind:targetId »); a paused queue (auth) resumes. */
+  youtubeQueueRetry?: (queueId: string) => Promise<{ success: boolean }>
+  /** The whole list, pushed on every change. */
+  onYoutubeQueueChanged?: (cb: (items: unknown[]) => void) => () => void
   /** Resolves when the upload is done (progress comes through onYoutubeUploadProgress). */
   youtubeUpload: (opts: { filePath: string; title: string; description?: string; visibility?: string }) => Promise<{ videoId: string; url: string }>
   onYoutubeUploadProgress: (cb: (data: { jobId: string; percent: number }) => void) => () => void

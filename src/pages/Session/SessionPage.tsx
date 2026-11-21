@@ -29,6 +29,10 @@ import { cn, formatKDA, formatGameTime } from '@/lib/utils'
 import { SESSION_TEMPLATES, type SessionTemplate } from '@/lib/constants/sessionTemplates'
 import { AssignedObjectivesCard } from '@/components/Coaching/AssignedObjectivesCard'
 import { invalidateCached } from '@/lib/queryCache'
+import { isShortReview } from '@/lib/shortReview'
+import { addObjective as addCustomObjective, canStartSession, cleanObjectives, coachObjectivesOf, completedAssignmentIds, objectiveFromAssignment, parseObjectives, type CustomObjective } from '@/lib/customObjectives'
+import { CustomObjectivesEditor } from '@/components/Session/CustomObjectivesEditor'
+import { CustomObjectivesList } from '@/components/Session/CustomObjectivesList'
 
 type CreationStep = 'objectives' | 'kpis'
 type SessionType = 'live' | 'retroactive'
@@ -53,9 +57,12 @@ export function SessionPage() {
   const [selectedObjectives, setSelectedObjectives] = useState<string[]>(() => prefill?.objectiveIds.slice(0, 3) ?? [])
   const [selectedKpiIds, setSelectedKpiIds] = useState<string[]>([])
   const [customNote, setCustomNote] = useState(() => prefill?.customNote ?? '')
+  // 20/11: objectives written by the player or assigned by a coach; a session can start with these alone.
+  const [customObjectives, setCustomObjectives] = useState<CustomObjective[]>([])
   const [creating, setCreating] = useState(false)
   const [ending, setEnding] = useState(false)
   const [endDialogOpen, setEndDialogOpen] = useState(false)
+  const [reachedAssignments, setReachedAssignments] = useState<Set<string>>(new Set())
   const [sessionAnalysis, setSessionAnalysis] = useState('')
   const [pendingShareData, setPendingShareData] = useState<ShareSessionData | null>(null)
   const [cancelling, setCancelling] = useState(false)
@@ -73,6 +80,7 @@ export function SessionPage() {
     selectedKpiIds: string[]
     customNote: string
     date: string
+    customObjectives?: CustomObjective[]
   } | null>(null)
   /**
    * Per-objective KPI memory: maps each objective ID to the KPI IDs that were
@@ -138,6 +146,23 @@ export function SessionPage() {
   const selectedLabels = selectedObjectives.map(
     (id) => allFundamentals.find((f) => f.id === id)?.label ?? id,
   )
+  const writtenObjectives = cleanObjectives(customObjectives)
+  const canStart = canStartSession(selectedObjectives, customObjectives)
+
+  /** A coach's assigned objective: its note becomes a written objective, its fundamentals are added too. */
+  const useAssignment = (objectiveIds: string[], note: string | null, assignmentId: string) => {
+    const label = (id: string) => allFundamentals.find((f) => f.id === id)?.label ?? id
+    const o = objectiveFromAssignment({ id: assignmentId, note, objectiveIds }, label)
+    if (o) setCustomObjectives((prev) => addCustomObjective(prev, o))
+    const valid = objectiveIds.filter((id) => allFundamentals.some((f) => f.id === id))
+    if (valid.length) setSelectedObjectives((prev) => [...prev, ...valid.filter((id) => !prev.includes(id))].slice(0, 3))
+  }
+
+  /** Step 1 → step 2 (the KPIs of the fundamentals), or straight to the start when there is no fundamental. */
+  const handleNext = () => {
+    if (selectedObjectives.length === 0) void handleCreate()
+    else handleGoToKpis()
+  }
 
   const handleGoToKpis = () => {
     /**
@@ -186,7 +211,8 @@ export function SessionPage() {
     setSelectedKpiIds(validKpis.length > 0 ? validKpis : kpiPool)
 
     setCustomNote(lastConfig.customNote)
-    setStep('kpis')
+    setCustomObjectives(lastConfig.customObjectives ?? [])
+    if (validObjectives.length > 0) setStep('kpis')
   }
 
   const handleApplyTemplate = (tpl: SessionTemplate) => {
@@ -221,21 +247,22 @@ export function SessionPage() {
   }
 
   const handleCreate = async () => {
-    if (selectedObjectives.length === 0) return
+    if (!canStart) return
     setCreating(true)
     try {
       const isRetroactive = sessionType === 'retroactive'
       await createSession({
-        objectiveId: selectedObjectives[0],
+        objectiveId: selectedObjectives[0] ?? '',
         objectiveIds: selectedObjectives,
-        selectedKpiIds,
+        selectedKpiIds: selectedObjectives.length ? selectedKpiIds : [],
+        customObjectives: writtenObjectives,
         customNote: customNote || undefined,
         isRetroactive,
         date: isRetroactive && retroactiveDate ? retroactiveDate : undefined,
       })
       toast({
         title: t('session.toast.startedTitle'),
-        description: t('session.toast.startedDesc', { label: selectedLabels.join(', ') }),
+        description: t('session.toast.startedDesc', { label: [...selectedLabels, ...writtenObjectives.map((o) => o.text)].join(', ') }),
         variant: 'gold',
       })
     } catch (err: any) {
@@ -247,14 +274,18 @@ export function SessionPage() {
 
   const handleEnd = () => {
     setSessionAnalysis('')
+    setReachedAssignments(new Set())
     setEndDialogOpen(true)
   }
+  // 20/11: the coach objectives the player ticks « Objectif atteint » at the end (unticked by default, never automatic).
+  const endCoachObjectives = activeSession ? coachObjectivesOf(parseObjectives((activeSession as { customObjectives?: unknown }).customObjectives)) : []
+  const endOpts = () => ({ completedAssignmentIds: completedAssignmentIds(endCoachObjectives, reachedAssignments) })
 
   const doEndSession = async (conclusion?: string) => {
     setEnding(true)
     setEndDialogOpen(false)
     try {
-      await endSession(conclusion || undefined)
+      await endSession(conclusion || undefined, endOpts())
       toast({ title: t('session.toast.endedTitle'), description: t('session.toast.endedDesc'), variant: 'success' })
       navigate('/analytics')
     } catch (err: any) {
@@ -269,7 +300,7 @@ export function SessionPage() {
     setEnding(true)
     setEndDialogOpen(false)
     try {
-      await endSession(conclusion || undefined)
+      await endSession(conclusion || undefined, endOpts())
       // Build share data snapshot before navigating away
       const wins = activeSession.games.filter((g) => g.win).length
       const losses = activeSession.games.length - wins
@@ -408,8 +439,10 @@ export function SessionPage() {
   if (activeSession) {
     const objIds: string[] = (() => {
       try { return JSON.parse(activeSession.objectiveIds) } catch { return [activeSession.objectiveId] }
-    })()
+    })().filter(Boolean)
     const objLabels = objIds.map((id) => allFundamentals.find((f) => f.id === id)?.label ?? id)
+    // 20/11: the written objectives (a session may have no fundamental).
+    const activeObjectives = parseObjectives((activeSession as { customObjectives?: unknown }).customObjectives)
 
     return (
       <div className="space-y-4 animate-fade-in">
@@ -426,13 +459,16 @@ export function SessionPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {objLabels.map((label, i) => (
-                <Badge key={i} variant="gold" className="text-sm px-3 py-1">
-                  {label}
-                </Badge>
-              ))}
-            </div>
+            {objLabels.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {objLabels.map((label, i) => (
+                  <Badge key={i} variant="gold" className="text-sm px-3 py-1">
+                    {label}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <CustomObjectivesList objectives={activeObjectives} />
             {activeSession.customNote && (
               <p className="text-sm text-hextech-text italic">"{activeSession.customNote}"</p>
             )}
@@ -526,7 +562,7 @@ export function SessionPage() {
         {/* End session analysis dialog */}
         {endDialogOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="w-full max-w-lg mx-4 rounded-xl border border-hextech-border bg-hextech-dark shadow-2xl space-y-4 p-6">
+            <div className="w-full max-w-2xl mx-4 rounded-xl border border-hextech-border bg-hextech-dark shadow-2xl space-y-4 p-6">
               <div>
                 <h2 className="font-display text-lg font-bold text-hextech-gold-bright">{t('session.endDialog.title')}</h2>
                 <p className="text-xs text-hextech-text-dim mt-1">{t('session.endDialog.subtitle')}</p>
@@ -537,11 +573,32 @@ export function SessionPage() {
                 onChange={(e) => setSessionAnalysis(e.target.value)}
                 className="min-h-[140px] resize-none bg-hextech-elevated border-hextech-border text-hextech-text placeholder:text-hextech-text-dim"
               />
-              <div className="flex gap-3 justify-between">
+              {/* 20/11: each coach objective used, « Objectif atteint » unticked by default; only the ticked ones are sent. */}
+              {endCoachObjectives.length > 0 && (
+                <div className="space-y-1.5" data-testid="end-coach-objectives">
+                  <p className="text-xs font-semibold text-hextech-text-bright">{t('session.endDialog.coachObjectives')}</p>
+                  {endCoachObjectives.map((o) => (
+                    <label key={o.id} className="flex cursor-pointer items-start gap-2 text-sm text-hextech-text">
+                      <input type="checkbox" className="mt-1 accent-[var(--hextech-gold)]" checked={reachedAssignments.has(o.assignmentId)}
+                        onChange={(e) => setReachedAssignments((prev) => {
+                          const next = new Set(prev)
+                          if (e.target.checked) next.add(o.assignmentId); else next.delete(o.assignmentId)
+                          return next
+                        })} />
+                      <span className="min-w-0 flex-1 break-words">
+                        {o.text}
+                        <span className="block text-[11px] text-hextech-text-dim">{t('session.endDialog.reached')}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {/* Wraps instead of overflowing the dialog (the French labels are long). */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <Button variant="outline" onClick={() => setEndDialogOpen(false)} disabled={ending}>
                   {t('session.endDialog.cancel')}
                 </Button>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap justify-end gap-2">
                   <Button variant="ghost" onClick={() => doEndSession()} disabled={ending}>
                     {t('session.endDialog.skip')}
                   </Button>
@@ -773,13 +830,7 @@ export function SessionPage() {
       {/* Objectives assigned by a coach (W3) — one click pre-fills the session */}
       {step === 'objectives' && (
         <AssignedObjectivesCard
-          onUse={(objectiveIds, note) =>
-            // Same flow as a template; empty KPI list = all KPIs of the objectives.
-            handleApplyTemplate({
-              id: 'coach-assignment', name: '', nameFr: '', description: '', descriptionFr: '',
-              objectiveIds, selectedKpiIds: [], customNote: note ?? '',
-            })
-          }
+          onUse={useAssignment}
         />
       )}
 
@@ -801,7 +852,11 @@ export function SessionPage() {
               assessmentScores={assessmentScores}
               addObjective={addObjective}
               removeObjective={removeObjective}
-              onNext={handleGoToKpis}
+              onNext={handleNext}
+              customObjectives={customObjectives}
+              setCustomObjectives={setCustomObjectives}
+              canStart={canStart}
+              creating={creating}
               sessionType={sessionType}
               setSessionType={setSessionType}
               retroactiveDate={retroactiveDate}
@@ -851,6 +906,10 @@ function ObjectiveStep({
   addObjective,
   removeObjective,
   onNext,
+  customObjectives,
+  setCustomObjectives,
+  canStart,
+  creating,
   sessionType,
   setSessionType,
   retroactiveDate,
@@ -863,6 +922,10 @@ function ObjectiveStep({
   addObjective: (id: string) => void
   removeObjective: (id: string) => void
   onNext: () => void
+  customObjectives: CustomObjective[]
+  setCustomObjectives: (next: CustomObjective[]) => void
+  canStart: boolean
+  creating: boolean
   sessionType: SessionType
   setSessionType: (t: SessionType) => void
   retroactiveDate: string
@@ -973,12 +1036,15 @@ function ObjectiveStep({
           </div>
         )}
 
+        <CustomObjectivesEditor value={customObjectives} onChange={setCustomObjectives} />
+
+        {/* ≥ 1 fundamental (→ its KPIs) or ≥ 1 written objective (→ the session starts). */}
         <Button
           onClick={onNext}
-          disabled={selectedObjectives.length === 0}
+          disabled={!canStart || creating}
           className="w-full"
         >
-          {t('session.kpiSelection.title')}
+          {selectedObjectives.length > 0 ? t('session.kpiSelection.title') : t('session.customObjectives.start')}
           <ChevronRight className="h-4 w-4 ml-2" />
         </Button>
       </CardContent>
@@ -1355,6 +1421,15 @@ function ActiveSessionGameList({
                       <CheckCircle className="h-3 w-3" />
                       {t('history.gamesTab.reviewed')}
                     </button>
+                  ) : isShortReview({ reviewStatus: game.reviewStatus, hasFullReview: !!game.review }) ? (
+                    <button
+                    onClick={() => navigate(`/review?gameId=${game.id}`)}
+                    className="flex items-center gap-1 rounded-full border border-hextech-cyan/50 bg-hextech-cyan/5 px-2 py-0.5 text-[10px] text-hextech-cyan hover:bg-hextech-cyan/15 transition-colors cursor-pointer"
+                    title={t('history.gamesTab.shortReviewHint')}
+                  >
+                    <CheckCircle className="h-3 w-3" />
+                    {t('history.gamesTab.shortReview')}
+                  </button>
                   ) : game.reviewStatus === 'to_be_reviewed' ? (
                     <button
                       onClick={() => navigate(`/review?gameId=${game.id}`)}

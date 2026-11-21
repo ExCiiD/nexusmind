@@ -3,6 +3,7 @@ import { getPrisma } from '../database'
 import { readMatch, readTimeline, saveMatch, saveTimeline } from '../matchStore'
 import { platformOfMatchId } from '../gameCatchUpCore'
 import { tryUnlockBadge } from '../badgeUnlock'
+import { normalizeCustomResults, objectiveRespectedOf, sessionObjectivesOf } from '../../../src/lib/sessionObjectives'
 import { extractDetailedStats, getMatch, getMatchTimeline } from '../riotClient'
 export function registerReviewHandlers() {
   ipcMain.handle(
@@ -11,34 +12,44 @@ export function registerReviewHandlers() {
       _event,
       data: {
         gameId: string
-        timelineNotes: Array<{ time: string; note: string }>
+        /** No longer written (21/11/2026: dated notes are the recorder's "Prise de note"); old ones are kept. */
+        timelineNotes?: Array<{ time: string; note: string }>
         kpiScores: Record<string, number>
         kpiNotes?: Record<string, string>
+        /** The free notepad (21/11/2026). */
         freeText?: string
-        objectiveRespected: boolean
+        /** Required with fundamentals; without, derived from the written objectives' results. */
+        objectiveRespected?: boolean
+        customObjectiveResults?: Array<{ objectiveId: string; result: string; note?: string | null }>
       },
     ) => {
       const prisma = getPrisma()
       const existingReview = await prisma.review.findUnique({
         where: { gameId: data.gameId },
       })
+      // The session's objectives decide what "respected" means (21/11/2026: a session may have only written ones).
+      const game = await prisma.game.findUnique({ where: { id: data.gameId }, select: { session: { select: { objectiveId: true, objectiveIds: true, customObjectives: true } } } })
+      const { fundamentalIds, custom } = sessionObjectivesOf(game?.session ?? {})
+      const results = normalizeCustomResults(Array.isArray(data.customObjectiveResults) ? data.customObjectiveResults : [], custom)
+      const objectiveRespected = objectiveRespectedOf({ hasFundamentals: fundamentalIds.length > 0, given: data.objectiveRespected, results, objectives: custom })
 
       const review = await prisma.review.upsert({
         where: { gameId: data.gameId },
         create: {
           gameId: data.gameId,
-          timelineNotes: JSON.stringify(data.timelineNotes),
-          kpiScores: JSON.stringify(data.kpiScores),
+          timelineNotes: '[]',
+          kpiScores: JSON.stringify(data.kpiScores ?? {}),
           kpiNotes: data.kpiNotes ? JSON.stringify(data.kpiNotes) : undefined,
           freeText: data.freeText,
-          objectiveRespected: data.objectiveRespected,
+          objectiveRespected,
+          customObjectiveResults: JSON.stringify(results),
         },
         update: {
-          timelineNotes: JSON.stringify(data.timelineNotes),
-          kpiScores: JSON.stringify(data.kpiScores),
+          kpiScores: JSON.stringify(data.kpiScores ?? {}),
           kpiNotes: data.kpiNotes ? JSON.stringify(data.kpiNotes) : undefined,
           freeText: data.freeText,
-          objectiveRespected: data.objectiveRespected,
+          objectiveRespected,
+          ...(data.customObjectiveResults !== undefined ? { customObjectiveResults: JSON.stringify(results) } : {}),
         },
       })
 

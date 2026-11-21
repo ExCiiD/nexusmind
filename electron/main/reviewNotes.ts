@@ -81,3 +81,37 @@ export function buildPrefilledNotes(events: GameEvent[], mistakes: MistakeForNot
   drafts.sort((a, b) => a.ms - b.ms)
   return drafts.slice(0, MAX_NOTES).map((d) => ({ time: fmt(d.ms), note: d.note, auto: true }))
 }
+
+// ── 21/11/2026: the notes are the micro-review moments only ─────────────
+/**
+ * The prefilled review notes (decision of 21/11/2026): no game events any more (towers, drakes, grubs…), only the
+ * micro-review moments the player answered, oldest first, each with its title (from `trigger` / `pattern`, written by
+ * the screens) and the error tag the player chose. `note` keeps the old field: the tag label, or nothing.
+ */
+export interface MomentNote {
+  time: string
+  note: string
+  auto: true
+  momentKey: string
+  trigger: string
+  pattern: string | null
+  gameTimeSec: number
+  tagSlug: string | null
+  tagLabel: string | null
+  outcome: string
+}
+
+export function buildMomentNotes(
+  answers: Array<{ momentKey: string; trigger: string; gameTimeSec: number; outcome: string; tagSlug: string | null }>,
+  tagLabels: Map<string, string>,
+  patternOf: (momentKey: string) => string | null,
+): MomentNote[] {
+  return [...answers].sort((a, b) => a.gameTimeSec - b.gameTimeSec).map((a) => {
+    const tagLabel = a.tagSlug ? tagLabels.get(a.tagSlug) ?? null : null
+    return {
+      time: fmt(a.gameTimeSec * 1000), note: tagLabel ?? '', auto: true as const,
+      momentKey: a.momentKey, trigger: a.trigger, pattern: patternOf(a.momentKey), gameTimeSec: a.gameTimeSec,
+      tagSlug: a.tagSlug, tagLabel, outcome: a.outcome,
+    }
+  })
+}

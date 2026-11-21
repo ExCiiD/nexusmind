@@ -5,6 +5,8 @@ import { getOrCreateOffSessionSession } from '../offSessionGames'
 import { ignoredAmong } from '../ignoredMatches'
 import { z } from 'zod'
 import { validatedHandle, id, youtubeUrl as youtubeUrlSchema } from './validate'
+import { queueAutoUpload } from '../youtubeAutoUpload'
+import { assertClipRange, isInsideDirs, CLIP_NOTE_MAX, CLIP_TITLE_MAX } from '../clipCore'
 import { getActiveRecorder } from '../recorderBackend'
 import { enterRecordingBackground, leaveRecordingBackground } from '../windowFocus'
 import {
@@ -1133,14 +1135,17 @@ export function registerRecordingHandlers() {
 
 
   // ── Clip handlers ────────────────────────────────────────────────────────────
+  const clipInput = z.object({
+    recordingId: id,
+    startMs: z.number().int().min(0).max(36_000_000),
+    endMs: z.number().int().min(0).max(36_000_000),
+    title: z.string().max(CLIP_TITLE_MAX).nullish().transform((v) => v ?? undefined),
+    linkedNoteText: z.string().max(CLIP_NOTE_MAX).nullish().transform((v) => v ?? undefined),
+  }).strict()
 
-  ipcMain.handle('clip:create', async (_e, opts: {
-    recordingId: string
-    startMs: number
-    endMs: number
-    title?: string
-    linkedNoteText?: string
-  }) => {
+  // 21/11/2026 (mode clip): validated input, 2 minutes at most, written in the recordings folder.
+  validatedHandle('clip:create', z.tuple([clipInput]), async (_e, opts) => {
+    assertClipRange(opts.startMs, opts.endMs)
     const prisma = getPrisma()
     const rec = await prisma.recording.findUnique({ where: { id: opts.recordingId } })
     if (!rec?.filePath || !existsSync(rec.filePath)) {
@@ -1182,6 +1187,8 @@ export function registerRecordingHandlers() {
       opts.linkedNoteText ?? null,
     )
     console.log(`[clip:create] Clip saved to DB: ${clipId} → ${clipPath}`)
+    // « Upload YouTube automatique » (21/11/2026): nothing happens unless the player turned it on.
+    void queueAutoUpload('clip', clipId)
 
     return {
       id: clipId,
@@ -1202,13 +1209,8 @@ export function registerRecordingHandlers() {
    * Returns the Clip row + the source `filePath` so the renderer can show
    * a toast with the actual on-disk location.
    */
-  ipcMain.handle('clip:export', async (_e, opts: {
-    recordingId: string
-    startMs: number
-    endMs: number
-    title?: string
-    linkedNoteText?: string
-  }) => {
+  validatedHandle('clip:export', z.tuple([clipInput]), async (_e, opts) => {
+    assertClipRange(opts.startMs, opts.endMs)
     const prisma = getPrisma()
     const rec = await prisma.recording.findUnique({ where: { id: opts.recordingId } })
     if (!rec?.filePath || !existsSync(rec.filePath)) {
@@ -1251,6 +1253,7 @@ export function registerRecordingHandlers() {
     }
 
     console.log(`[clip:export] Clip exported: ${clipId} → ${clipPath}`)
+    void queueAutoUpload('clip', clipId)
 
     return {
       id: clipId,
@@ -1264,7 +1267,7 @@ export function registerRecordingHandlers() {
     }
   })
 
-  ipcMain.handle('clip:list', async (_e, recordingId: string) => {
+  validatedHandle('clip:list', z.tuple([id]), async (_e, recordingId) => {
     const prisma = getPrisma()
     const clips: any[] = await prisma.$queryRawUnsafe(
       `SELECT * FROM "Clip" WHERE "recordingId" = ? ORDER BY "createdAt" ASC`,
@@ -1312,14 +1315,19 @@ export function registerRecordingHandlers() {
     })
   })
 
-  ipcMain.handle('clip:delete', async (_e, clipId: string) => {
+  validatedHandle('clip:delete', z.tuple([id]), async (_e, clipId) => {
     const prisma = getPrisma()
     const rows: any[] = await prisma.$queryRawUnsafe(
-      `SELECT * FROM "Clip" WHERE "id" = ?`,
+      `SELECT c.*, r."filePath" AS "parentFilePath" FROM "Clip" c LEFT JOIN "Recording" r ON r."id" = c."recordingId" WHERE c."id" = ?`,
       clipId,
     )
     const clip = rows[0]
     if (!clip) return false
+    // Files are only ever deleted from the recordings folders (21/11/2026): a path stored outside them is left alone.
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    const allowed = [recordingManager.getRecordingsDir(user?.recordingPath), user?.externalRecordingPath, clip.parentFilePath ? dirname(clip.parentFilePath) : null]
+    if (clip.filePath && !isInsideDirs(clip.filePath, allowed)) clip.filePath = null
+    if (clip.thumbnailPath && !isInsideDirs(clip.thumbnailPath, allowed)) clip.thumbnailPath = null
 
     // Delete video file
     if (clip.filePath && existsSync(clip.filePath)) {

@@ -25,6 +25,9 @@ import { useCachedResource } from '@/hooks/useCachedResource'
 import { ACCOUNTS_KEY } from '@/lib/pageQueries'
 const NO_ACCOUNTS: AccountEntry[] = []
 import { invalidateCached } from '@/lib/queryCache'
+import { SelfJudgementCard } from '@/components/Settings/SelfJudgementCard'
+import { AutoYoutubeUploadSection } from '@/components/Settings/AutoYoutubeUploadSection'
+import { YOUTUBE_TERMS_URL } from '@/components/Recording/YoutubeTermsNote'
 
 interface AccountEntry {
   id: string
@@ -1021,6 +1024,8 @@ export function SettingsPage() {
       <BackupCard />
 
       {/* ── Danger Zone — destructive bulk cleanups ──────────────────────────── */}
+      <SelfJudgementCard />
+
       <DangerZoneCard />
     </div>
   )
@@ -1770,7 +1775,9 @@ function YouTubeCard() {
               {t('settings.youtube.disconnect')}
             </Button>
           </div>
-        ) : (
+        ) : null}
+        {status.connected && <AutoYoutubeUploadSection />}
+        {status.connected ? null : (
           <div className="space-y-3">
             <div className="rounded-md border border-orange-500/30 bg-orange-500/5 px-3 py-2 text-xs text-orange-400">
               <p className="font-medium mb-1">{t('settings.youtube.setupTitle')}</p>
@@ -1791,6 +1798,12 @@ function YouTubeCard() {
               {connecting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Youtube className="h-4 w-4" aria-hidden />}
               {connecting ? t('settings.youtube.connecting') : t('settings.youtube.connect')}
             </Button>
+            {/* docs/GOOGLE_YOUTUBE_VERIFICATION.md § 3.6: under the connect button. */}
+            <p className="text-[11px] text-hextech-text-dim" data-testid="youtube-connect-terms">
+              {t('settings.youtube.auto.terms.before')}
+              <a href={YOUTUBE_TERMS_URL} target="_blank" rel="noreferrer" className="text-hextech-gold hover:underline">{t('recording.youtubeTerms.link')}</a>
+              {t('settings.youtube.auto.terms.after')}
+            </p>
           </div>
         )}
       </CardContent>

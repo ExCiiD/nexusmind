@@ -112,6 +112,22 @@ if (-not $NoPublish) {
 
 # ── 2. Build (unless caller said skip) ────────────────────────────────
 if (-not $PublishOnly) {
+    # YouTube upload (21/11/2026, Desktop client + PKCE): on only if the build gets the Google client id and secret,
+    # from the git-ignored .env or this shell's environment. Says whether they are there, never their values.
+    $envFile = Join-Path $repoRoot '.env'
+    $envText = if (Test-Path $envFile) { Get-Content $envFile -Raw } else { '' }
+    $missing = @()
+    foreach ($k in @('MAIN_VITE_GOOGLE_CLIENT_ID', 'MAIN_VITE_GOOGLE_CLIENT_SECRET')) {
+        $inEnv = -not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($k))
+        $inFile = $envText -match ('(?m)^' + $k + '=\s*\S')
+        if (-not ($inEnv -or $inFile)) { $missing += $k }
+    }
+    if ($missing.Count -eq 0) {
+        Write-Host "[release] YouTube upload: on (Google client id and secret found)." -ForegroundColor Cyan
+    } else {
+        Write-Host ("[release] YouTube upload: OFF in this build, missing: {0}" -f ($missing -join ', ')) -ForegroundColor Yellow
+    }
+
     Write-Host "[release] Building electron-vite bundles..." -ForegroundColor Cyan
     npm run build
     if ($LASTEXITCODE -ne 0) { Write-Error "Build failed"; exit $LASTEXITCODE }

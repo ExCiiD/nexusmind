@@ -148,3 +148,83 @@ export function inBaseBox(p: Point | null | undefined, team: TeamId): boolean {
   if (!p) return false
   return team === 100 ? p.x < BASE_BOX.blueMax && p.y < BASE_BOX.blueMax : p.x > BASE_BOX.redMin && p.y > BASE_BOX.redMin
 }
+
+// ── Places in words (20/11/2026, docs/engine-reports/2026-11-20-lieux-et-extraits-video-des-cartes.md) ──
+// The cards never show a distance ("aucun user ne pourra se situer avec ça"): a point is told as top / mid / bot,
+// river top / river bot, a pit named by its objective, "near the [camp] blue / red side", or a base. The rules keep
+// deciding in game units (OBJECTIVE_RADIUS, PIT_INSIDE_RADIUS…): only what is shown changes.
+
+export type CampName = 'blue' | 'gromp' | 'wolves' | 'raptors' | 'red' | 'krugs'
+export type MapSide = 'blue' | 'red'
+
+/**
+ * The 12 jungle camps (camp centre, Riot timeline coordinates, current map). Blue side from the community map data,
+ * red side its point mirror. Checked on 200 cached games (20/11/2026): 800 jungler positions at 1:00 and 2:00 sit
+ * 400-600 units (median) from the camp they are clearing; blue, red and raptors, the usual first camps, within
+ * 450-800. Enough to name the nearest camp, which is all the cards do with it.
+ */
+export const JUNGLE_CAMPS: Record<MapSide, Record<CampName, Point>> = {
+  blue: {
+    blue: { x: 3821, y: 8101 }, gromp: { x: 2288, y: 8448 }, wolves: { x: 3783, y: 6495 },
+    raptors: { x: 6823, y: 5508 }, red: { x: 7772, y: 4031 }, krugs: { x: 8394, y: 2641 },
+  },
+  red: {
+    blue: { x: 10984, y: 6960 }, gromp: { x: 12703, y: 6443 }, wolves: { x: 11008, y: 8387 },
+    raptors: { x: 7852, y: 9324 }, red: { x: 7101, y: 10856 }, krugs: { x: 6317, y: 12146 },
+  },
+}
+
+export type PitObjective = 'dragon' | 'elder' | 'grubs' | 'herald' | 'baron'
+
+export type Place =
+  | { kind: 'lane'; lane: 'top' | 'mid' | 'bot' }
+  | { kind: 'river'; side: 'top' | 'bot' }
+  | { kind: 'pit'; pit: Pit; objective: PitObjective | null }
+  | { kind: 'camp'; camp: CampName; side: MapSide }
+  | { kind: 'base'; side: MapSide }
+
+/** The objective a pit holds at `sec` with the 2026 timers (Elder only once it is known to be up). */
+export function pitObjectiveAt(pit: Pit, sec: number, opts: { elderUp?: boolean } = {}): PitObjective | null {
+  if (pit === 'dragon') return opts.elderUp ? 'elder' : sec >= 300 ? 'dragon' : null
+  if (sec >= 1200) return 'baron'
+  if (sec >= 900) return 'herald'
+  if (sec >= 480) return 'grubs'
+  return null
+}
+
+/**
+ * Where a point is, in the words of the cards. In order: inside a pit (or its entrance), a lane, the river, near a
+ * jungle camp, a base. `pitObjective` names the pit when the caller knows what was in it (a card about that very
+ * objective); otherwise the 2026 timers decide.
+ */
+export function placeOf(p: Point, sec: number, opts: { pitObjective?: PitObjective | null; elderUp?: boolean } = {}): Place {
+  if (p.x < 4200 && p.y < 4200 && p.x + p.y < 6500) return { kind: 'base', side: 'blue' }
+  if (p.x > 10600 && p.y > 10600 && p.x + p.y > 23500) return { kind: 'base', side: 'red' }
+  const near = nearestPit(p)
+  if (near.distance <= PIT_RIVER_RADIUS) {
+    return { kind: 'pit', pit: near.pit, objective: opts.pitObjective !== undefined ? opts.pitObjective : pitObjectiveAt(near.pit, sec, opts) }
+  }
+  // A camp next to a lane (the raptors sit inside the mid corridor of laneOf) reads as the camp when close to it.
+  const camp = nearestCamp(p)
+  if (camp.d <= CAMP_RADIUS) return { kind: 'camp', camp: camp.camp, side: camp.side }
+  const lane = laneOf(p)
+  if (lane === 'TOP') return { kind: 'lane', lane: 'top' }
+  if (lane === 'MID') return { kind: 'lane', lane: 'mid' }
+  if (lane === 'BOT') return { kind: 'lane', lane: 'bot' }
+  if (Math.abs(p.x + p.y - 15000) <= 1500) return { kind: 'river', side: p.y > p.x ? 'top' : 'bot' }
+  return { kind: 'camp', camp: camp.camp, side: camp.side }
+}
+
+/** Within this distance of a camp centre, a point is "near" that camp even inside a lane corridor. */
+export const CAMP_RADIUS = 600
+
+export function nearestCamp(p: Point): { camp: CampName; side: MapSide; d: number } {
+  let best: { camp: CampName; side: MapSide; d: number } | null = null
+  for (const side of ['blue', 'red'] as const) {
+    for (const camp of Object.keys(JUNGLE_CAMPS[side]) as CampName[]) {
+      const d = dist(p, JUNGLE_CAMPS[side][camp])
+      if (!best || d < best.d) best = { camp, side, d }
+    }
+  }
+  return best!
+}

@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { QcmSummary } from '@/lib/microReview/smartQcm'
 import { fmtClock } from '@/lib/mistakeInsights'
+import { parsePlaceKey, placeText } from './placeText'
 
 /** Localised label of a Mistake Library tag (built-ins are translated, custom tags keep their own label). */
 export function tagLabel(t: TFunction, slug: string | null | undefined, fallback?: string | null): string {
@@ -17,6 +18,17 @@ export function summaryText(t: TFunction, s: QcmSummary): { clock: string; zone:
       out.objectiveOf = t(`microReview.objectiveOf.${p.objective}`)
       out.objectiveThe = t(`microReview.objectiveThe.${p.objective}`)
     }
+    // ANALYSIS_VERSION 12 params (Back-end, 20/11):
+    // - a game time `xxxSec` (towerAtSec, spawnSec, killSec…) also reads as a clock `xxx` (« 15:14 »);
+    for (const [k, v] of Object.entries(p)) if (k.length > 3 && k.endsWith('Sec') && typeof v === 'number') out[k.slice(0, -3)] = fmtClock(v)
+    // - a lane in Riot's casing reads as the jargon (« top »);
+    if (typeof p.towerLane === 'string') out.towerLane = p.towerLane.toLowerCase()
+    // - `placeKey` ('lane:mid', 'river:top', 'pit:dragon:herald', 'camp:wolves:blue', 'base:red') reads as `place`,
+    //   in a sentence (« tu étais dans la fosse du Dragon »), never as a distance;
+    const place = typeof p.placeKey === 'string' ? parsePlaceKey(p.placeKey) : null
+    if (place) out.place = placeText(t, place, { inSentence: true })
+    // - `positionKind` 'estimated' adds « (position estimée) » to `posNote`.
+    out.posNote = p.positionKind === 'estimated' ? ` (${t('microReview.position.estimated')})` : ''
     return out
   }
   const head = t(`microReview.summary.${s.head.key}`, params(s.head.params))

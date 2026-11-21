@@ -12,6 +12,9 @@
  * offset would silently bookmark the wrong moment.
  */
 
+import { bookmarkLeadSec } from '../../src/lib/microReview/vodTiming'
+import { DEATH_TRIGGER } from '../../src/lib/mistakeDeathDated'
+
 export const LEAD_SEC = 15
 /** Same plausibility window as src/lib/eventSync.ts (PLAUSIBILITY_LIMIT_SEC). */
 export const PLAUSIBILITY_LIMIT_SEC = 600
@@ -32,6 +35,13 @@ export interface AutoBookmarkCandidate {
   tagLabel: string
   gameTimeSec: number
   severity: number
+  /** Dated from a death (src/lib/mistakeDeathDated.ts): the bookmark starts at the death window, 45 s before. */
+  deathDated?: boolean
+}
+
+/** Seconds before the mistake a bookmark starts: the death window of vodTiming for a death, else LEAD_SEC. */
+export function bookmarkLeadFor(c: Pick<AutoBookmarkCandidate, 'gameTimeSec' | 'deathDated'>): number {
+  return c.deathDated ? bookmarkLeadSec({ trigger: DEATH_TRIGGER, gameTimeSec: c.gameTimeSec }) : LEAD_SEC
 }
 
 export interface AutoBookmarkPlan {
@@ -58,7 +68,7 @@ export function planAutoBookmarks(candidates: AutoBookmarkCandidate[], opts: Pla
     const momentMs = mistakeVideoTimeMs(c.gameTimeSec, offset)
     // A moment far beyond the game's own duration means the offset is bad for this clip.
     if (momentMs > (opts.gameDurationSec + LEAD_SEC) * 1000) continue
-    const at = Math.max(0, momentMs - LEAD_SEC * 1000)
+    const at = Math.max(0, momentMs - bookmarkLeadFor(c) * 1000)
     if (taken.some((t) => Math.abs(t - at) <= DEDUP_WINDOW_MS)) continue
     out.push({ videoTimeMs: at, label: c.tagLabel })
     taken.push(at)

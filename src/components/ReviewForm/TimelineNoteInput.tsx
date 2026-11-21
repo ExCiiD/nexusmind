@@ -39,6 +39,41 @@ const EXAMPLES: Record<string, string[]> = {
   ],
 }
 
+/**
+ * The timeline-notes guide (21/11: the notes are taken with the recorder's « Prise de note » button; the review screen
+ * keeps only this guide, collapsed by default, next to its free notepad).
+ */
+export function TimelineNotesGuide({ objectiveLabel }: { objectiveLabel: string }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const examples = EXAMPLES[objectiveLabel] || EXAMPLES.default
+  return (
+    <div className="space-y-2">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} data-testid="notes-guide-toggle"
+        className="flex w-full items-center gap-1.5 border-t border-dashed border-hextech-border-dim pt-2 text-left text-xs text-hextech-text-dim hover:text-hextech-gold">
+        <span className={open ? 'rotate-90 transition-transform' : 'transition-transform'}>▸</span>
+        <HelpCircle className="h-3.5 w-3.5" />{t('reviewForm.timeline.guideLine')}
+      </button>
+      {open && (
+        <Card className="border-hextech-teal/30 bg-gradient-to-b from-hextech-blue/30 to-hextech-blue/30">
+          <CardContent className="p-4">
+            <p className="text-xs font-semibold text-hextech-cyan mb-2">{t('reviewForm.timeline.guideTitle')}</p>
+            <ul className="space-y-1.5">
+              {examples.map((ex, i) => (
+                <li key={i} className="text-xs text-hextech-text flex gap-2">
+                  <Clock className="h-3 w-3 mt-0.5 shrink-0 text-hextech-teal" />
+                  <span className="italic">{ex}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-hextech-text-dim mt-3">{t('reviewForm.timeline.guideText')}</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+
 export function TimelineNoteInput({ notes, onChange, objectiveLabel }: TimelineNoteInputProps) {
   const { t } = useTranslation()
   const [showGuide, setShowGuide] = useState(notes.length === 0)

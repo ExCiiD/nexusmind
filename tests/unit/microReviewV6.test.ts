@@ -223,7 +223,7 @@ describe('detector — the V6 numbers and places', () => {
     expect(DETECTOR_SPEC.adcReopen).toMatchObject({ fromSec: 840, withinSec: 45 })
     expect(DETECTOR_SPEC.baronRecall).toMatchObject({ kda: 3, alliesForward: 3 })
     expect(DETECTOR_SPEC.inhibDive).toEqual({ withinSec: 15 })
-    expect(DETECTOR_SPEC.spawns).toEqual({ firstDragonSec: 300, dragonRespawnSec: 300, grubsSec: 480 })
+    expect(DETECTOR_SPEC.spawns).toEqual({ firstDragonSec: 300, dragonRespawnSec: 300, grubsSec: 480, heraldSec: 900, baronSec: 1200, baronRespawnSec: 360, elderAfterSoulSec: 360, elderRespawnSec: 360, soulDragons: 4 })
     expect(BASE_BOX).toEqual({ blueMax: 2000, redMin: 12800 })
   })
   it('reads the places it relies on', () => {
@@ -381,8 +381,11 @@ describe('pattern — forced back before an objective (before 14:00)', () => {
     const enemyDragon = { type: 'ELITE_MONSTER_KILL', timestamp: 340_000, monsterType: 'DRAGON', killerTeamId: 200, killerId: 7, position: DRAGON_PIT }
     const absents = (g: Game) => run(g).moments.filter((m) => m.trigger === 'absent-objective').map((m) => m.facts.pattern ?? 'absent')
     expect(absents(recallGame({ extra: [enemyDragon] }))).toEqual([P_])
-    // Without the forced back the same objective is an absent moment of its own (the claim is what removes it above).
-    expect(absents(recallGame({ mine: 80, extra: [enemyDragon] }))).toEqual(['absent'])
+    // Without the forced back the same objective is an absent moment of its own (the claim is what removes it above)…
+    const teamGame = (g: Game): Game => ({ ...g, selector: { ...g.selector, teamContext: true } as Game['selector'] })
+    expect(absents(teamGame(recallGame({ mine: 80, extra: [enemyDragon] })))).toEqual(['absent'])
+    // …in a team context. In soloQ a laner who stayed on their lane before 14:00 is not absent (20/11/2026).
+    expect(absents(recallGame({ mine: 80, extra: [enemyDragon] }))).toEqual([])
   })
 })
 

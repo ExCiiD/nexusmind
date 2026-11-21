@@ -1228,6 +1228,41 @@ Gaps (not blocking):
    - `WeeklyCodex.tsx:24` (`mistake-stats:occurrences`) is not cached and can backfill analyses (`ensureGameAnalysis`) on every Dashboard visit.
    - Going back to an older version would see `gz1:` timelines as unreadable. Some old readers had no `try` (`JSON.parse` in `stats.ipc.ts:90` in beta.18), so their handler would fail. Acceptable if downgrades are not supported.
 
+### Grouped review beta.20 (21/11/2026), uncommitted since `d81aa41`: **not blocking**
+
+Reviewed, per the decisions of 20 and 21/11:
+- micro-review: v13 cards, extra moments, extras in the answer box;
+- sessions with written objectives;
+- short review, review notes built from the moments;
+- `selfReview` / `selfTagMistakes`;
+- detected mistakes (remove, retag, undo, `MistakeCorrection`);
+- review v2, clip mode, automatic YouTube upload with its queue;
+- LFT card.
+
+Checked:
+
+- **Migration `20261121010000_written_objectives_review_flow`**: compiled app (my build of 21/11, current with the diff) on a fresh copy of the real database. The `before-…` backup is created, 2 launches work, and **each table keeps the same number of rows before and after**. No semicolons in the SQL comments.
+- **FE-8**: no new origin on the interface side.
+  - The YouTube embeds stay on `www.youtube.com`, already in `frame-src`.
+  - `oauth2.googleapis.com` and `www.googleapis.com` are called from the main process, which the CSP does not cover.
+- **Old data**:
+  - saved `timelineNotes`: the parse is guarded (`ReviewPage.tsx:205-210`), and only the prefill changes (moments instead of events);
+  - analyses from before v13: recomputed because of the version (`microReview.ipc.ts:54`); the « absent before v12/v13 » fields are optional on the screen side.
+- **Cache invalidations**: my two P2 from beta.19 are fixed.
+  - `RealtimeCacheBridge` handles Realtime.
+  - `games:` is invalidated on game deletion and import (History, Session, picker) and when an account is added or removed.
+  - New invalidations: detected mistakes (remove, retag, undo), undetected mistake, self-judgement settings, short review.
+- **Automatic YouTube upload**: off by default (`autoYoutubePref.ts:15`), `unlisted` by default.
+- **Synced `UserPreference`**: always read and written for the active profile (`preferences.ipc.ts:20-51`), with `userColumns: ['userId']`.
+- **e2e pass** (copy of the real database, cloud off, 2 launches): 11 pages (Home, Session, History, Review, Record, Stats, Mistake Lab, Plan, Settings, Management, Coaching) without any page error or console error.
+- typecheck ✅, Vitest **186 files ✅**.
+
+Not covered: the screens with data (micro-review cards, review v2, clips). The copy has no local `Game`, so they are covered by the unit tests only.
+
+Remaining, not blocking (pre-existing):
+- **P3**: when a v13 recompute is impossible (timeline missing with `fetch=false`, Riot unreachable), `ensureGameAnalysis` returns null instead of the old analysis. A game whose timeline was purged loses its cards.
+- The 3rd P2 from beta.19 (`stats:auto-snapshot`) is **fixed**: the matchId filter is gone, and the filter is now on `meta.gameEndAt` (`stats.ipc.ts:985`).
+
 ## Procédure de revue avant release
 
 **Registre des décisions :** chaque livraison et chaque maquette sont relues contre `docs/DECISIONS.md` (ordre des

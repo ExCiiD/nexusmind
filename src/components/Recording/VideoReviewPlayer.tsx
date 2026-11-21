@@ -2,17 +2,17 @@ import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import { gameTimeToVideoTime } from '@/lib/eventSync'
 import { useTranslation } from 'react-i18next'
 import i18n from '@/i18n/config'
-import {
-  Bookmark, Play, Pause, Volume2, VolumeX, Maximize2, Minimize2,
-  Check, X, RotateCcw, RotateCw, PanelRight, PanelLeft, PanelRightClose,
-  ZoomIn, ZoomOut, StepBack, StepForward, Trash2, Loader2,
-  Sword, Skull, Handshake, Flame, Crown, Eye, Bug, RadioTower, ShieldOff, Shield,
-  User, Users, Target, AlertTriangle, MessageSquare, EyeOff,
-} from 'lucide-react'
+import { Bookmark, Play, Pause, Volume2, VolumeX, Maximize2, Minimize2, Check, X, RotateCcw, RotateCw, PanelRight, PanelLeft, PanelRightClose, ZoomIn, ZoomOut, StepBack, StepForward, Trash2, Loader2, Sword, Skull, Handshake, Flame, Crown, Eye, Bug, RadioTower, ShieldOff, Shield, User, Users, Target, AlertTriangle, MessageSquare, EyeOff, Scissors, ArrowLeftRight, PanelLeftDashed, PanelRightDashed, Crosshair } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TimelineNote } from '@/components/ReviewForm/TimelineNoteInput'
 import type { GameEvent, GameEventType, Mistake, MistakeTag, Bookmark as BookmarkData } from '@/lib/ipc'
+import { mistakePlayFromSec } from '@/lib/microReview/playbackWindow'
+import { isMicroReviewBookmark, layerOfEvent, layerOfMistake, markerOpacity, type PlayerLayers } from '@/lib/playerLayers'
+import type { ReviewClip } from '@/store/useReviewPlayerStore'
+import { loopTarget } from '@/lib/clipEdit'
+import { PlayerBarV2, type BarMarker } from './PlayerBarV2'
+import { NotePopover } from './NotePopover'
 
 // Visual styling per event category. Saturated colors for the most
 // important events (player K/D/A, objectives), muted for buildings so
@@ -155,6 +155,33 @@ interface VideoReviewPlayerProps {
    *  Phase Comparator ("click the 12-min dip → jump to 12 min in the replay").
    *  Re-applied whenever the value changes. */
   seekToGameTimeSec?: number | null
+  /** Changes on every seek request, so the same game time can be sought twice (the Review's shared player). */
+  seekNonce?: number
+  /**
+   * The Review's single player (DECISIONS 21/11): the micro-review moment shown (game time): its window is drawn on
+   * the timeline with its 3 markers (Error · Consequence · Conclusion) and playback stops at its end.
+   */
+  clip?: ReviewClip | null
+  /** The Review's layer toggles (notes, micro-review, detected mistakes, deaths, objectives, fights); none: as before. */
+  layers?: PlayerLayers
+  /** Current video time and duration (seconds), for the clip mode's bounds (spec § 19). */
+  onTimeChange?: (sec: number, durationSec: number) => void
+  /** Clip mode « ↻ Aperçu »: plays this selection (video ms) in a loop. */
+  loopRange?: { startMs: number; endMs: number } | null
+  /** A seek in video time (clip mode's track); the nonce makes the same time seekable twice. */
+  seekVideo?: { ms: number; nonce: number } | null
+  /** The « Clip » button of the bar (key C, spec § 19): opens the clip mode. */
+  onClip?: () => void
+  /** Review v2 (spec § 19, § 21): the filters menu, the « Prise de note » pop-over and the right panel's toggle. */
+  onLayersChange?: (next: PlayerLayers) => void
+  hideMistakes?: boolean
+  onTakeNote?: (note: { videoTimeMs: number; text: string; tagSlugs: string[] }) => Promise<void> | void
+  onTogglePanel?: () => void
+  panelOpen?: boolean
+  /** Spec § 19 « Coin de la vidéo »: the panel's side (⇄), and the reopen tab's label when the panel is hidden. */
+  panelSide?: 'left' | 'right'
+  onToggleSide?: () => void
+  panelTabLabel?: string
   // ── Mistake Library integration ────────────────────────────────────
   /** Mistakes attached to this recording's game. Rendered as a separate
    *  marker lane above game events and as a collapsible side list. */
@@ -177,7 +204,8 @@ export function VideoReviewPlayer({
   src, notes, onAddNote, onEditNote, onDeleteNote, onFileNotFound, readonly,
   clipping, clipRange, onClipRangeChange,
   videoMaxHeight = 'max-h-[480px]',
-  gameEvents, gameMeta, seekToGameTimeSec,
+  gameEvents, gameMeta, seekToGameTimeSec, seekNonce, clip, layers, onTimeChange, loopRange, seekVideo, onClip,
+  onLayersChange, hideMistakes, onTakeNote, onTogglePanel, panelOpen, panelSide = 'right', onToggleSide, panelTabLabel,
   mistakes, mistakeTags, onAddMistake, onDeleteMistake,
   bookmarks, onAddBookmark, onDeleteBookmark,
 }: VideoReviewPlayerProps) {
@@ -340,8 +368,13 @@ export function VideoReviewPlayer({
       // Filter mode gate. "mine" only takes isPlayer=true events.
       // "objectives" only takes OBJECTIVE_TYPES (regardless of isPlayer).
       // "all" lets everything through.
-      if (filterMode === 'mine' && !ev.isPlayer) continue
-      if (filterMode === 'objectives' && !OBJECTIVE_TYPES.has(ev.type)) continue
+      if (layers) {
+        // The Review's layers replace the filter modes.
+        if (!layers[layerOfEvent(ev)]) continue
+      } else {
+        if (filterMode === 'mine' && !ev.isPlayer) continue
+        if (filterMode === 'objectives' && !OBJECTIVE_TYPES.has(ev.type)) continue
+      }
       const t = gameTimeToVideoTime({
         eventGameTimeMs: ev.gameTimeMs,
         gameEndAt,
@@ -353,7 +386,7 @@ export function VideoReviewPlayer({
       if (t !== null) out.push({ ...ev, videoTime: t })
     }
     return out
-  }, [gameEvents, gameMeta, duration, filterMode])
+  }, [gameEvents, gameMeta, duration, filterMode, layers])
 
   /**
    * Cluster same-type adjacent events into a single marker with a count
@@ -440,9 +473,9 @@ export function VideoReviewPlayer({
    */
   const mappedMistakes = useMemo(() => {
     if (!mistakes || mistakes.length === 0 || duration <= 0) return []
-    const out: Array<Mistake & { videoTime: number }> = []
+    const out: Array<Mistake & { videoTime: number; playFrom: number }> = []
     for (const m of mistakes) {
-      if (!showAutoDetected && m.autoDetected) continue
+      if (layers ? !layers[layerOfMistake(m)] : (!showAutoDetected && m.autoDetected)) continue
       // Prefer the stored videoTimeMs (saved at marker creation). Fall back
       // to recomputing through the gameMeta pipeline when missing.
       let videoTime: number | null = null
@@ -463,11 +496,13 @@ export function VideoReviewPlayer({
         })
       }
       if (videoTime !== null && videoTime >= 0 && videoTime <= duration) {
-        out.push({ ...m, videoTime })
+        // 20/11: an error dated from a death plays from 45 s before it (the stored time does not change).
+        const lead = m.gameTimeSec - mistakePlayFromSec({ gameTimeSec: m.gameTimeSec, tagSlug: m.tag?.slug, autoDetected: m.autoDetected })
+        out.push({ ...m, videoTime, playFrom: Math.max(0, videoTime - lead) })
       }
     }
     return out
-  }, [mistakes, showAutoDetected, gameMeta, duration])
+  }, [mistakes, showAutoDetected, gameMeta, duration, layers])
 
   const cycleSidebar = useCallback(() => {
     setSidebarPosition((pos) => {
@@ -531,14 +566,13 @@ export function VideoReviewPlayer({
   // Phase Comparator jumping to the 12-min dip), map it to video time via the
   // same offset pipeline the event markers use, then seek + play. Applied
   // once per distinct value, and only after metadata is ready (duration>0).
-  const appliedSeekRef = useRef<number | null>(null)
-  useEffect(() => {
-    if (seekToGameTimeSec == null || !gameMeta || duration <= 0) return
-    if (appliedSeekRef.current === seekToGameTimeSec) return
+  /** Game time → video time (the event markers' offset pipeline, else game time + offset). Null before metadata. */
+  const gameToVideo = useCallback((gameSec: number): number | null => {
+    if (!gameMeta || duration <= 0) return null
     const gameEndAt = typeof gameMeta.gameEndAt === 'string' ? new Date(gameMeta.gameEndAt) : gameMeta.gameEndAt
     const recordingCreatedAt = typeof gameMeta.recordingCreatedAt === 'string' ? new Date(gameMeta.recordingCreatedAt) : gameMeta.recordingCreatedAt
     let vt = gameTimeToVideoTime({
-      eventGameTimeMs: seekToGameTimeSec * 1000,
+      eventGameTimeMs: gameSec * 1000,
       gameEndAt,
       gameDurationSec: gameMeta.gameDurationSec,
       recordingCreatedAt,
@@ -551,16 +585,57 @@ export function VideoReviewPlayer({
         ? gameMeta.startOffsetSec
         : (recordingCreatedAt.getTime() - (gameEndAt.getTime() - gameMeta.gameDurationSec * 1000)) / 1000
       if (!Number.isFinite(offsetSec)) offsetSec = 0
-      vt = seekToGameTimeSec + offsetSec
+      vt = gameSec + offsetSec
     }
-    const clamped = Math.max(0, Math.min(duration, vt))
+    return Math.max(0, Math.min(duration, vt))
+  }, [gameMeta, duration])
+
+  // The micro-review moment's window in video time; playback stops at its end once, after a seek into it.
+  const clipVideo = useMemo(() => {
+    if (!clip) return null
+    const start = gameToVideo(clip.startSec), end = gameToVideo(clip.endSec)
+    if (start == null || end == null) return null
+    const m = (s: number | null) => (s == null ? null : gameToVideo(s))
+    return { start, end, error: m(clip.markers.error), consequence: m(clip.markers.consequence), conclusion: m(clip.markers.conclusion) }
+  }, [clip, gameToVideo])
+  const stopAtRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (!seekVideo || !videoRef.current) return
+    videoRef.current.currentTime = seekVideo.ms / 1000
+    setCurrentTime(seekVideo.ms / 1000)
+  }, [seekVideo?.nonce]) // eslint-disable-line react-hooks/exhaustive-deps -- once per request
+  // « ↻ Aperçu »: starts the loop at the selection's start.
+  useEffect(() => {
+    if (!loopRange || !videoRef.current) return
+    videoRef.current.currentTime = loopRange.startMs / 1000
+    videoRef.current.play().catch(() => {})
+  }, [loopRange?.startMs, loopRange?.endMs]) // eslint-disable-line react-hooks/exhaustive-deps -- once per selection
+  // « Prise de note » (N) is defined further down; the hotkey calls it through this ref.
+  const markRef = useRef<(() => void) | null>(null)
+  // Review v2 « Prise de note » pop-over (spec § 21): open at a time, the video paused.
+  const [noteAt, setNoteAt] = useState<number | null>(null)
+  const openNoteRef = useRef<(() => void) | null>(null)
+  openNoteRef.current = () => {
+    videoRef.current?.pause()
+    setNoteAt(videoRef.current?.currentTime ?? 0)
+  }
+
+  const appliedSeekRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (seekToGameTimeSec == null) return
+    const key = `${seekToGameTimeSec}:${seekNonce ?? 0}`
+    if (appliedSeekRef.current === key) return
+    const clamped = gameToVideo(seekToGameTimeSec)
+    if (clamped == null) return
     if (videoRef.current) {
       videoRef.current.currentTime = clamped
       videoRef.current.play().catch(() => {})
     }
     setCurrentTime(clamped)
-    appliedSeekRef.current = seekToGameTimeSec
-  }, [seekToGameTimeSec, duration, gameMeta])
+    // A seek inside the moment's window plays to its end, then stops.
+    stopAtRef.current = clipVideo && clamped >= clipVideo.start - 1 && clamped < clipVideo.end ? clipVideo.end : null
+    appliedSeekRef.current = key
+  }, [seekToGameTimeSec, seekNonce, gameToVideo, clipVideo])
 
   // ── Progress bar interaction (drag scrub + zoom) ─────────────────────────────
 
@@ -806,7 +881,19 @@ export function VideoReviewPlayer({
         case 'k': togglePlay(); break
         case 'm': toggleMute(); break
         case 'f': toggleFullscreen(); break
-        case 'n': cycleSidebar(); break
+        case 'n':
+          // The Review's player (spec § 19): N = « Prise de note ». Elsewhere it still cycles the sidebar.
+          if (layers && onTakeNote) { e.preventDefault(); openNoteRef.current?.() }
+          else if (layers && !readonly) { e.preventDefault(); markRef.current?.() } else cycleSidebar()
+          break
+        case 'p':
+          // The Review's player (spec § 19): P hides / shows the right panel.
+          if (layers && onTogglePanel) { e.preventDefault(); onTogglePanel() }
+          break
+        case 'e':
+          // The Review's player (spec § 19): E = « Erreur » at the current time (opens the tag picker).
+          if (layers && onAddMistake && gameMeta) { e.preventDefault(); openMistakeDialog() }
+          break
         case 'h':
           // Shortcut to directly TOGGLE the sidebar visibility (hide ↔ show on right).
           // Different from N (cycle right→left→hidden→right) — H is the one-shot
@@ -846,10 +933,11 @@ export function VideoReviewPlayer({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [togglePlay, skip, seekBy, speed, changeSpeed, isFullscreen, cycleSidebar, onAddMistake, gameMeta, onAddBookmark, toggleMute, openMistakeDialog, openBookmarkDialog])
+  }, [togglePlay, skip, seekBy, speed, changeSpeed, isFullscreen, cycleSidebar, onAddMistake, gameMeta, onAddBookmark, toggleMute, openMistakeDialog, openBookmarkDialog, layers, readonly, onTakeNote, onTogglePanel])
 
   // ── Mark moment ──────────────────────────────────────────────────────────────
 
+  markRef.current = () => handleMarkMoment()
   const handleMarkMoment = () => {
     if (!videoRef.current) return
     videoRef.current.pause()
@@ -1230,7 +1318,7 @@ export function VideoReviewPlayer({
         mappedMistakes.map((m) => (
           <div key={m.id} className="flex items-start gap-2 group/mistake">
             <button
-              onClick={() => seekTo(m.videoTime)}
+              onClick={() => seekTo(m.playFrom)}
               className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
             >
               ▶ {fmt(m.videoTime)}
@@ -1385,6 +1473,15 @@ export function VideoReviewPlayer({
   const videoCoversScreen = isFullscreen && sidebarPosition === 'hidden'
   const sidebarVisible = sidebarPosition !== 'hidden' && sidebarHasAnyContent
 
+  // Review v2 (DECISIONS 21/11, spec § 19): the v2 bar, its markers by layer (bookmarks: a micro-review moment or a
+  // « Prise de note »; mistakes: mine or detected; game events), each layer as the Filtres menu says.
+  const v2 = !!layers
+  const barMarkers: BarMarker[] = !layers ? [] : [
+    ...(bookmarks ?? []).map((b): BarMarker => ({ time: b.videoTimeMs / 1000, layer: isMicroReviewBookmark(b) ? 'microReview' : 'notes', label: b.label ?? i18n.t('record.player.bookmark') })),
+    ...mappedMistakes.map((m): BarMarker => ({ time: m.videoTime, layer: layerOfMistake(m), label: m.tag.label })),
+    ...mappedEvents.map((ev): BarMarker => ({ time: ev.videoTime, layer: layerOfEvent(ev), label: ev.label })),
+  ].filter((m) => layers[m.layer])
+
   return (
     <div
       ref={containerRef}
@@ -1446,7 +1543,16 @@ export function VideoReviewPlayer({
               'block object-contain',
               isFullscreen ? 'w-full h-full' : cn('w-full', videoMaxHeight),
             )}
-            onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
+            onTimeUpdate={() => {
+              const now = videoRef.current?.currentTime ?? 0
+              setCurrentTime(now)
+              onTimeChange?.(now, videoRef.current?.duration ?? 0)
+              if (stopAtRef.current != null && now >= stopAtRef.current) { stopAtRef.current = null; videoRef.current?.pause() }
+              if (loopRange && videoRef.current) {
+                const back = loopTarget(now * 1000, loopRange)
+                if (back != null) videoRef.current.currentTime = back / 1000
+              }
+            }}
             onDurationChange={() => setDuration(videoRef.current?.duration ?? 0)}
             onPlay={() => setPlaying(true)}
             onPause={() => setPlaying(false)}
@@ -1456,6 +1562,35 @@ export function VideoReviewPlayer({
               onFileNotFound?.()
             }}
           />
+          {/* The video's corner (spec § 19): ⇄ side, panel, fullscreen; the panel hidden: a tab to reopen it. */}
+          {v2 && (
+            // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- only stops the click-to-play; the buttons inside take the keyboard
+            <div className="absolute right-2 top-2 z-10 flex flex-col items-end gap-1.5" onClick={(e) => e.stopPropagation()} data-testid="video-corner">
+              <div className="flex gap-1 rounded-md bg-black/55 p-1">
+                {onToggleSide && (
+                  <CornerBtn label={i18n.t(panelSide === 'left' ? 'recording.corner.sideLeft' : 'recording.corner.sideRight')} onClick={onToggleSide} disabled={!panelOpen}>
+                    <ArrowLeftRight className="h-[18px] w-[18px]" />
+                  </CornerBtn>
+                )}
+                {onTogglePanel && (
+                  <CornerBtn label={i18n.t(panelOpen ? 'recording.corner.hidePanel' : 'recording.corner.showPanel')} onClick={onTogglePanel} pressed={panelOpen}>
+                    {panelOpen
+                      ? (panelSide === 'left' ? <PanelLeft className="h-[18px] w-[18px] text-hextech-gold" /> : <PanelRight className="h-[18px] w-[18px] text-hextech-gold" />)
+                      : (panelSide === 'left' ? <PanelLeftDashed className="h-[18px] w-[18px]" /> : <PanelRightDashed className="h-[18px] w-[18px]" />)}
+                  </CornerBtn>
+                )}
+                <CornerBtn label={i18n.t('recording.bar.fullscreen')} onClick={toggleFullscreen}>
+                  {isFullscreen ? <Minimize2 className="h-[18px] w-[18px]" /> : <Maximize2 className="h-[18px] w-[18px]" />}
+                </CornerBtn>
+              </div>
+              {!panelOpen && onTogglePanel && panelTabLabel && (
+                <button type="button" onClick={onTogglePanel} data-testid="panel-reopen-tab"
+                  className="flex items-center gap-1.5 rounded-md border border-hextech-gold bg-black/55 px-2.5 py-1 text-xs text-hextech-gold-bright hover:bg-black/70">
+                  <Crosshair className="h-3.5 w-3.5" />{panelTabLabel}<span aria-hidden>◂</span>
+                </button>
+              )}
+            </div>
+          )}
           {flashIcon && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="rounded-full bg-black/50 p-4 animate-ping-once">
@@ -1503,6 +1638,46 @@ export function VideoReviewPlayer({
               : '',
           )}
         >
+        {v2 ? (
+          <PlayerBarV2
+            currentTime={currentTime}
+            duration={duration}
+            playing={playing}
+            onTogglePlay={togglePlay}
+            onSkip={skip}
+            onSeek={(s) => seekTo(s)}
+            volume={volume}
+            muted={muted}
+            onVolume={(x) => {
+              setVolume(x)
+              if (videoRef.current) { videoRef.current.volume = x; videoRef.current.muted = x === 0; setMuted(x === 0) }
+            }}
+            onToggleMute={toggleMute}
+            speed={speed}
+            onSpeed={changeSpeed}
+            markers={barMarkers}
+            clipWindow={clipVideo}
+            layers={layers!}
+            onLayersChange={onLayersChange ?? (() => {})}
+            hideMistakes={hideMistakes}
+            onClip={onClip}
+            onMistake={onAddMistake && gameMeta ? openMistakeDialog : undefined}
+            onNote={onTakeNote ? () => openNoteRef.current?.() : undefined}
+            overlay={(
+              <>
+                {noteAt != null && onTakeNote && (
+                  <NotePopover timeSec={noteAt} tags={mistakeTags ?? []} onCancel={() => setNoteAt(null)}
+                    onSave={async (n) => { await onTakeNote({ videoTimeMs: Math.round(noteAt * 1000), ...n }); setNoteAt(null) }} />
+                )}
+                {mistakeDialogOpen && (
+                  <div className="absolute bottom-full right-3 z-40 mb-2 w-[360px] max-w-[calc(100%-1.5rem)] rounded-lg border border-[#E3A35B] bg-hextech-elevated p-3 shadow-2xl" data-testid="mistake-popover">
+                    {mistakeDialogBlock}
+                  </div>
+                )}
+              </>
+            )}
+          />
+        ) : (<>
         {/* Progress bar. The big top padding when events are visible
             reserves room for the up-to-3 marker lanes that float above
             the scrubber (kill/death/assist lane, objectives lane,
@@ -1590,6 +1765,27 @@ export function VideoReviewPlayer({
               </>
             )}
 
+            {/* The micro-review moment's window and its 3 markers (the Review's single player, 21/11). */}
+            {duration > 0 && clipVideo && (() => {
+              const from = timeToPercent(clipVideo.start), to = timeToPercent(clipVideo.end)
+              if (to < 0 || from > 100) return null
+              const marks = ([['error', clipVideo.error], ['consequence', clipVideo.consequence], ['conclusion', clipVideo.conclusion]] as const)
+                .filter(([, v]) => v != null) as ReadonlyArray<readonly ['error' | 'consequence' | 'conclusion', number]>
+              return (
+                <>
+                  <div aria-hidden data-testid="clip-window" className="pointer-events-none absolute top-1/2 z-[4] h-3 -translate-y-1/2 rounded-sm bg-hextech-gold/25 ring-1 ring-hextech-gold/60"
+                    style={{ left: `${Math.max(0, from)}%`, width: `${Math.min(100, to) - Math.max(0, from)}%` }} />
+                  {marks.map(([k, v]) => (
+                    <button key={`clip-${k}`} type="button" data-testid={`clip-marker-${k}`}
+                      title={`${i18n.t(`microReview.vod.markers.${k}`)} — ${fmt(v)}`}
+                      onClick={(e) => { e.stopPropagation(); seekTo(v); stopAtRef.current = clipVideo.end }}
+                      style={{ left: `${timeToPercent(v)}%`, top: 'calc(50% - 20px)' }}
+                      className="absolute z-[7] h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[2px] border border-black/70 bg-hextech-gold shadow hover:scale-125" />
+                  ))}
+                </>
+              )
+            })()}
+
             {/* Note markers */}
             {duration > 0 && videoNotes.map(({ note, originalIndex }) => {
               const pct = timeToPercent(note.videoTime ?? 0)
@@ -1599,7 +1795,7 @@ export function VideoReviewPlayer({
                   key={originalIndex}
                   title={`${fmt(note.videoTime!)} — ${note.note}`}
                   onClick={(e) => { e.stopPropagation(); seekTo(note.videoTime!) }}
-                  style={{ left: `${pct}%` }}
+                  style={{ left: `${pct}%`, opacity: markerOpacity(note.videoTime ?? 0, clipVideo) }}
                   className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-[#00C8C8] border-2 border-[#050A10] hover:scale-150 transition-transform z-10"
                 />
               )
@@ -1629,7 +1825,7 @@ export function VideoReviewPlayer({
                   key={`evt-${idx}`}
                   title={tooltip}
                   onClick={(e) => { e.stopPropagation(); seekTo(c.videoTime) }}
-                  style={{ left: `${pct}%`, top: `calc(50% + ${lane + c.stackOffset}px)` }}
+                  style={{ left: `${pct}%`, top: `calc(50% + ${lane + c.stackOffset}px)`, opacity: markerOpacity(c.videoTime, clipVideo) }}
                   className={cn(
                     'absolute -translate-y-1/2 -translate-x-1/2 rounded-md border border-black/60 shadow-md flex items-center justify-center gap-0.5 hover:scale-[1.4] hover:z-30 transition-transform z-[5]',
                     // Wider when there's a count badge so the number fits.
@@ -1658,7 +1854,7 @@ export function VideoReviewPlayer({
                   key={`bookmark-${b.id}`}
                   title={`${fmt(b.videoTimeMs / 1000)} — ${b.label ?? i18n.t('record.player.bookmark')}`}
                   onClick={(e) => { e.stopPropagation(); seekTo(b.videoTimeMs / 1000) }}
-                  style={{ left: `${pct}%`, top: 'calc(50% - 92px)', backgroundColor: bg }}
+                  style={{ left: `${pct}%`, top: 'calc(50% - 92px)', backgroundColor: bg, opacity: markerOpacity(b.videoTimeMs / 1000, clipVideo) }}
                   className="absolute -translate-y-1/2 -translate-x-1/2 flex items-center justify-center w-5 h-5 rounded-md border border-black/60 shadow-md hover:scale-[1.4] hover:z-30 transition-transform z-[6]"
                 >
                   <Bookmark className="w-3 h-3 text-black" strokeWidth={2.75} />
@@ -1671,6 +1867,18 @@ export function VideoReviewPlayer({
                 badge in the tag's color; AUTO badge for heuristic-detected
                 rows so the user can tell at a glance which markers came
                 from the detector. */}
+            {/* Double marker (20/11): where the replay of an error dated from a death starts, linked to the death. */}
+            {duration > 0 && mappedMistakes.filter((m) => m.playFrom < m.videoTime).map((m) => {
+              const from = timeToPercent(m.playFrom), to = timeToPercent(m.videoTime)
+              if (from < 0 || to > 100) return null
+              return (
+                <div key={`window-${m.id}`} aria-hidden data-testid="death-window"
+                  className="pointer-events-none absolute z-[5] h-0.5 rounded-full opacity-70"
+                  style={{ left: `${from}%`, width: `${to - from}%`, top: 'calc(50% - 72px)', backgroundColor: m.tag.color ?? '#FFB454' }}>
+                  <span className="absolute -left-px -top-1.5 h-3.5 w-0.5 rounded-full" style={{ backgroundColor: m.tag.color ?? '#FFB454' }} />
+                </div>
+              )
+            })}
             {duration > 0 && mappedMistakes.map((m) => {
               const pct = timeToPercent(m.videoTime)
               if (pct < 0 || pct > 100) return null
@@ -1680,8 +1888,8 @@ export function VideoReviewPlayer({
                 <button
                   key={`mistake-${m.id}`}
                   title={`${fmt(m.videoTime)} — ${m.tag.label}${isAuto ? ` · ${i18n.t('record.player.auto').toUpperCase()}` : ''}${m.note ? `\n${m.note}` : ''}`}
-                  onClick={(e) => { e.stopPropagation(); seekTo(m.videoTime) }}
-                  style={{ left: `${pct}%`, top: 'calc(50% - 72px)', backgroundColor: bg }}
+                  onClick={(e) => { e.stopPropagation(); seekTo(m.playFrom) }}
+                  style={{ left: `${pct}%`, top: 'calc(50% - 72px)', backgroundColor: bg, opacity: markerOpacity(m.videoTime, clipVideo) }}
                   className={cn(
                     'absolute -translate-y-1/2 -translate-x-1/2 flex items-center justify-center gap-0.5 rounded border border-black/60 shadow-md hover:scale-[1.4] hover:z-30 transition-transform z-[6]',
                     isAuto ? 'h-4 px-1 opacity-80' : 'w-5 h-5',
@@ -1917,13 +2125,26 @@ export function VideoReviewPlayer({
             ))}
           </div>
 
+          {onClip && (
+            <button
+              onClick={onClip}
+              title={i18n.t('recording.clip.buttonHint')}
+              data-testid="clip-button"
+              className="ml-2 flex items-center gap-1.5 rounded-md border border-hextech-border px-3 py-1.5 text-sm font-medium text-hextech-text transition-colors hover:border-hextech-gold/60 hover:text-hextech-gold-bright"
+            >
+              <Scissors className="h-4 w-4" />
+              {i18n.t('recording.clip.button')}
+            </button>
+          )}
           {!readonly && (
+            // 21/11: the only way to write a dated note, so it stands out (final look after Graphic Design's mockup).
             <button
               onClick={handleMarkMoment}
               title={i18n.t('record.player.markHint')}
-              className="flex items-center gap-1 rounded px-2 py-1 text-[#00C8C8] hover:text-white hover:bg-[#00C8C8]/20 transition-colors text-xs font-medium ml-1"
+              data-testid="take-note-button"
+              className="ml-2 flex items-center gap-1.5 rounded-md border border-[#00C8C8]/70 bg-[#00C8C8]/20 px-3 py-1.5 text-sm font-semibold text-[#7FF0F0] shadow-[0_0_12px_rgba(0,200,200,0.25)] transition-colors hover:bg-[#00C8C8]/35 hover:text-white"
             >
-              <Bookmark className="h-3.5 w-3.5" />
+              <Bookmark className="h-4 w-4" />
               {i18n.t('record.player.mark')}
             </button>
           )}
@@ -1994,6 +2215,7 @@ export function VideoReviewPlayer({
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
         </div>
+        </>)}
         </div>{/* /controls overlay wrapper */}
 
       </div>{/* /video column */}
@@ -2002,8 +2224,19 @@ export function VideoReviewPlayer({
           both windowed and fullscreen modes so the user can watch + review
           simultaneously. Hideable via the collapse button, the N/H hotkeys,
           or the control-bar toggle. */}
-      {sidebarVisible && sidebarPanel}
-      {sidebarPosition === 'hidden' && sidebarReopenHandle}
+      {/* Review v2: the page's right panel replaces this sidebar. */}
+      {!v2 && sidebarVisible && sidebarPanel}
+      {!v2 && sidebarPosition === 'hidden' && sidebarReopenHandle}
     </div>
+  )
+}
+
+/** An icon of the video's corner (spec § 19), 20 px. */
+function CornerBtn({ label, onClick, disabled, pressed, children }: { label: string; onClick: () => void; disabled?: boolean; pressed?: boolean; children: React.ReactNode }) {
+  return (
+    <button type="button" title={label} aria-label={label} aria-pressed={pressed} onClick={onClick} disabled={disabled}
+      className="flex h-7 w-7 items-center justify-center rounded text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-35">
+      {children}
+    </button>
   )
 }

@@ -1,9 +1,12 @@
 import { getPrisma } from './database'
+import { isDismissed } from './detectedMistakesCore'
+import { teamContextForMatch } from './teamContext'
 import { timelineFromRow } from './matchStore'
 import { detectMistakes, type MistakeCandidate } from './mistakeDetector'
 import { planAutoBookmarks, type AutoBookmarkCandidate } from './mistakeBookmarks'
 import { applySeverityDelta } from './mistakeTuning'
 import { mistakeDuplicateIndex } from './mistakeDedupe'
+import { isDeathDatedMistake } from '../../src/lib/mistakeDeathDated'
 
 /**
  * Audit E11 (19/11/2026): the Mistake Library auto-detection, in one place. The post-game path
@@ -17,7 +20,7 @@ import { mistakeDuplicateIndex } from './mistakeDedupe'
 export type AutoDetectResult = {
   created: number
   skipped: number
-  reason: 'ok' | 'no-game' | 'no-cache' | 'detector-error'
+  reason: 'ok' | 'no-game' | 'no-cache' | 'detector-error' | 'self-tag'
 }
 
 /** A cached match and its timeline, already parsed (the post-game path parses them once, audit E09). */
@@ -25,8 +28,10 @@ export type ParsedMatch = { match: unknown; timeline: unknown }
 
 export async function autoDetectMistakes(gameId: string, parsed?: ParsedMatch | null): Promise<AutoDetectResult> {
   const prisma = getPrisma()
-  const game = await prisma.game.findUnique({ where: { id: gameId } })
+  const game = await prisma.game.findUnique({ where: { id: gameId }, include: { session: { select: { user: { select: { selfTagMistakes: true } } } } } })
   if (!game?.matchId) return { created: 0, skipped: 0, reason: 'no-game' }
+  // "I tag my mistakes myself" (21/11/2026): no auto-detected mistake is saved for this player.
+  if (game.session?.user?.selfTagMistakes) return { created: 0, skipped: 0, reason: 'self-tag' }
   let source: { match: unknown; timeline: unknown }
   if (parsed) {
     source = parsed
@@ -43,10 +48,13 @@ export async function autoDetectMistakes(gameId: string, parsed?: ParsedMatch | 
 
   let candidates: MistakeCandidate[]
   try {
-    candidates = detectMistakes(source.timeline as any, source.match as any, {
+    const matchBody: any = typeof source.match === 'string' ? JSON.parse(source.match) : source.match
+    candidates = detectMistakes(source.timeline as any, matchBody, {
       puuids: userPuuids,
       championName: game.champion,
       win: game.win,
+      // M6 follows the micro-review: no objective blame for a laner in soloQ before 14:00 (20/11/2026).
+      teamContext: await teamContextForMatch(game.matchId, matchBody),
     })
   } catch (err) {
     console.warn('[mistake] detector failed:', (err as Error)?.message ?? err)
@@ -60,6 +68,8 @@ export async function autoDetectMistakes(gameId: string, parsed?: ParsedMatch | 
 
   // Every mistake the game already has, whoever made it (auto, micro-review answer, by hand).
   const known = await mistakeDuplicateIndex(gameId)
+  // Auto-detected mistakes the player deleted from the review (21/11/2026): never created again.
+  const dismissed = await prisma.ignoredMistake.findMany({ where: { gameId }, select: { tagSlug: true, gameTimeSec: true } })
 
   // MX3: per-tag severity learned from this player repeatedly deleting it.
   const tunings = user
@@ -74,6 +84,7 @@ export async function autoDetectMistakes(gameId: string, parsed?: ParsedMatch | 
     const tag = tagBySlug.get(c.tagSlug)
     if (!tag) { skipped++; continue }
     if (known.has(tag.id, c.gameTimeSec)) { skipped++; continue }
+    if (isDismissed(dismissed, c.tagSlug, c.gameTimeSec)) { skipped++; continue }
     const severity = applySeverityDelta(Math.min(3, Math.max(1, c.severity ?? 2)), deltaByTagId.get(tag.id) ?? 0)
     await prisma.mistake.create({
       data: {
@@ -86,7 +97,8 @@ export async function autoDetectMistakes(gameId: string, parsed?: ParsedMatch | 
       },
     })
     created++
-    newlyCreated.push({ tagSlug: c.tagSlug, tagLabel: tag.label, gameTimeSec: c.gameTimeSec, severity })
+    // A death-dated mistake is bookmarked at the death window (45 s before), 20/11/2026.
+    newlyCreated.push({ tagSlug: c.tagSlug, tagLabel: tag.label, gameTimeSec: c.gameTimeSec, severity, deathDated: isDeathDatedMistake({ tagSlug: c.tagSlug, autoDetected: true }) })
     known.add(tag.id, c.gameTimeSec)
   }
   if (created > 0) console.log(`[mistake] auto-detected ${created} mistake(s) for game ${gameId} (${skipped} skipped)`)

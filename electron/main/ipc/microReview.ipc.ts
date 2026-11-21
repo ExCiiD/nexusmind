@@ -12,14 +12,18 @@
  *   microreview:calibration-submit  → CalibrationResult
  */
 
+import { mayFallBack, readStoredAnalysis, shouldRetry } from '../analysisCompat'
 import { z } from 'zod'
 import { randomUUID } from 'crypto'
 import type { Prisma } from '../../../prisma-client'
 import { getPrisma } from '../database'
+import { markShortReview } from '../shortReview'
+import { isPlausibleOffset, mistakeVideoTimeMs } from '../mistakeBookmarks'
+import { teamContextForMatch } from '../teamContext'
 import { timelineFromRow } from '../matchStore'
 import { validatedHandle, id } from './validate'
 import { ensureMatchCache } from './stats.ipc'
-import { analyzeGame, isSupportedGame, type GameAnalysis } from '../../../src/lib/microReview/anomalyDetector'
+import { analyzeGame, isSupportedGame, type CriticalMoment, type GameAnalysis } from '../../../src/lib/microReview/anomalyDetector'
 import { seasonOf } from '../../../src/lib/microReview/gameClock'
 import { verifySessionObjectives } from '../../../src/lib/microReview/objectiveVerification'
 import { CALIBRATION_EVERY, calibrationDue, calibrationGap, measuredDistribution } from '../../../src/lib/microReview/calibration'
@@ -31,8 +35,8 @@ import { microReviewPushAnswer } from '../cloud/collab'
 import { momentWindow } from '../mistakeDedupe'
 import { mistakeSlug } from '../../../src/lib/mistakeSlug'
 
-/** Bump when the detector's output changes, to recompute cached analyses. 6: V5 laning + V6 role patterns; 7: V7–V10 jungle, mid and support patterns; 8: season-2026 clock (16.x games 35 s earlier, wiki respawn timers); 9: plates stay up after 14:00 (dive, mid roam on plates, side-lane T1); 10: #45 game data (Herald eye 15:00-22:00, pit fights from 15:00, M8 Baron deaths only once the Baron is up); 11: current season only (15.x games not analysed, Atakhan removed). */
-export const ANALYSIS_VERSION = 11
+/** Bump when the detector's output changes, to recompute cached analyses. 6: V5 laning + V6 role patterns; 7: V7–V10 jungle, mid and support patterns; 8: season-2026 clock (16.x games 35 s earlier, wiki respawn timers); 9: plates stay up after 14:00 (dive, mid roam on plates, side-lane T1); 10: #45 game data (Herald eye 15:00-22:00, pit fights from 15:00, M8 Baron deaths only once the Baron is up); 11: current season only (15.x games not analysed, Atakhan removed); 12: 20/11 cards (no cross-map blame for laners in soloQ before 14:00, greed only after the spawn, setup in mid / river, places in words, exact / estimated positions, header and markers); 13: extraMoments (21/11, the next key moments offered after the 3). */
+export const ANALYSIS_VERSION = 13
 export const MICRO_REVIEW_XP = 30
 
 async function userPuuids(userId: string): Promise<string[]> {
@@ -45,15 +49,40 @@ async function userPuuids(userId: string): Promise<string[]> {
 }
 
 /** Cached analysis, or computed from MatchCache. `fetch`: allow a Riot fetch when the timeline is not cached yet. */
-export async function ensureGameAnalysis(gameId: string, fetch: boolean): Promise<{ analysis: GameAnalysis | null; reason?: string }> {
+/** Last failed recompute per game (this run of the app): the stored analysis is served until RETRY_AFTER_MS has passed. */
+const recomputeFailedAt = new Map<string, number>()
+
+/**
+ * The game's analysis for the current engine. When the recompute is impossible (timeline purged, Riot offline…) and an
+ * analysis of an older version is stored, that one is returned (stale: true) so the game keeps its cards; the recompute
+ * is tried again after RETRY_AFTER_MS (21/11/2026, audit P3). Never for another mode or an older season.
+ */
+export async function ensureGameAnalysis(gameId: string, fetch: boolean): Promise<{ analysis: GameAnalysis | null; reason?: string; stale?: boolean }> {
   const prisma = getPrisma()
   const cached = await prisma.gameAnalysis.findUnique({ where: { gameId } })
   if (cached && cached.version === ANALYSIS_VERSION) {
     try { return { analysis: JSON.parse(cached.payload) as GameAnalysis } } catch { /* recompute */ }
   }
+  const stored = cached && cached.version !== ANALYSIS_VERSION ? readStoredAnalysis(cached.payload) : null
+  if (stored && !shouldRetry(recomputeFailedAt.get(gameId), Date.now())) return { analysis: stored, stale: true, reason: 'recompute-pending' }
+  const result = await recomputeGameAnalysis(gameId, fetch)
+  if (result.analysis) {
+    recomputeFailedAt.delete(gameId)
+    return result
+  }
+  if (stored && mayFallBack(result.reason)) {
+    recomputeFailedAt.set(gameId, Date.now())
+    console.warn(`[microreview] recompute impossible (${result.reason}): game ${gameId} keeps its version ${cached?.version} analysis`)
+    return { analysis: stored, stale: true, reason: result.reason }
+  }
+  return result
+}
+
+async function recomputeGameAnalysis(gameId: string, fetch: boolean): Promise<{ analysis: GameAnalysis | null; reason?: string }> {
+  const prisma = getPrisma()
   let matchJson: string | null = null
   let timelineJson: string | null = null
-  let selector: { puuids: string[]; championName: string }
+  let selector: { puuids: string[]; championName: string; teamContext?: boolean }
   if (fetch) {
     const loaded = await ensureMatchCache(gameId, false, 'microreview')
     if (!loaded.ok) return { analysis: null, reason: loaded.reason }
@@ -77,6 +106,9 @@ export async function ensureGameAnalysis(gameId: string, fetch: boolean): Promis
     if (!isSupportedGame(match)) return { analysis: null, reason: 'unsupported-mode' }
     // A game of an older season (15.x): the engine only knows the current clock. Its cached analysis is left as it is.
     if (seasonOf(match) !== 'current') return { analysis: null, reason: 'previous-season' }
+    // Team session, custom or tournament: cross-map remarks apply (20/11/2026). Unknown counts as soloQ.
+    const matchId: string = match?.metadata?.matchId ?? ''
+    selector = { ...selector, teamContext: matchId ? await teamContextForMatch(matchId, match) : false }
     analysis = analyzeGame(match, JSON.parse(timelineJson), selector)
   } catch (err) {
     console.warn('[microreview] analysis failed:', (err as Error)?.message ?? err)
@@ -100,7 +132,11 @@ const toView = (a: {
   note: a.note, mistakeId: a.mistakeId, createdAt: a.createdAt.toISOString(),
 })
 
-async function resolveTag(slug: string | null | undefined, customLabel: string | null | undefined) {
+function parseIdList(raw: string | null | undefined): string[] {
+  try { const v = JSON.parse(raw ?? '[]'); return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [] } catch { return [] }
+}
+
+export async function resolveTag(slug: string | null | undefined, customLabel: string | null | undefined) {
   const prisma = getPrisma()
   if (customLabel?.trim()) {
     const label = customLabel.trim().slice(0, 60)
@@ -129,6 +165,16 @@ const answerSchema = z.object({
   reason: z.string().max(40).regex(/^[A-Za-z0-9]+$/).nullable().optional(),
   viaOther: z.boolean(),
   note: z.string().max(1000).nullable().optional(),
+  /** 21/11/2026, Front's name for « Raisons de l'erreur d'après moi »: stored as the note (wins over `note`). */
+  myReasons: z.string().max(1000).nullable().optional(),
+  /** 21/11/2026: extra error tags beyond the proposed one, each a manual mistake at the moment's time. */
+  extraTags: z.array(z.object({
+    tagSlug: slugSchema.nullable().optional(),
+    customLabel: z.string().max(60).nullable().optional(),
+    note: z.string().max(280).nullable().optional(),
+  }).strict()).max(5).optional(),
+  /** 21/11/2026: the answered moment becomes a bookmark at its time, with this label (the card's short title). */
+  bookmarkLabel: z.string().max(80).nullable().optional(),
   summary: z.object({
     gameTimeSec: z.number().int().min(0).max(36000),
     zone: z.string().max(20).nullable(),
@@ -144,7 +190,9 @@ export function registerMicroReviewHandlers(): void {
     const game = await prisma.game.findUnique({ where: { id: gameId }, include: { session: { select: { userId: true } }, recording: true } })
     if (!game) return null
     const userId = game.session.userId
-    const { analysis, reason } = await ensureGameAnalysis(gameId, true)
+    // "I do my reviews myself" (21/11/2026): no micro-review is computed nor shown for this player.
+    const owner = await prisma.user.findUnique({ where: { id: userId }, select: { selfReview: true } })
+    const { analysis, reason } = owner?.selfReview ? { analysis: null, reason: 'self-review' } : await ensureGameAnalysis(gameId, true)
     const role = analysis?.position || game.role
     const [answers, past] = await Promise.all([
       prisma.microReviewAnswer.findMany({ where: { gameId }, orderBy: { gameTimeSec: 'asc' } }),
@@ -163,9 +211,13 @@ export function registerMicroReviewHandlers(): void {
 
   validatedHandle('microreview:answer', z.tuple([answerSchema]), async (_e, input): Promise<MicroReviewAnswerResult> => {
     const prisma = getPrisma()
-    const game = await prisma.game.findUnique({ where: { id: input.gameId }, include: { session: { select: { userId: true } }, recording: { select: { id: true } } } })
+    const game = await prisma.game.findUnique({ where: { id: input.gameId }, include: { session: { select: { userId: true } }, recording: { select: { id: true, startOffsetSec: true } } } })
     if (!game) throw new Error('Game not found')
     const userId = game.session.userId
+    if (input.myReasons !== undefined) input.note = input.myReasons
+    // "I do my reviews myself" (21/11/2026): nothing of the micro-review is saved for this player.
+    const owner = await prisma.user.findUnique({ where: { id: userId }, select: { selfReview: true } })
+    if (owner?.selfReview) throw new Error('SELF_REVIEW')
 
     // Resolve the tag first: an unknown tag must fail before anything is undone.
     const tag = input.outcome === 'justified' ? null : await resolveTag(input.tagSlug, input.outcome === 'custom' ? input.customLabel : null)
@@ -193,6 +245,10 @@ export function registerMicroReviewHandlers(): void {
     const oldOrigin = old ? previous?.mistakeOrigin ?? (old.note?.startsWith('[micro-review]') ? 'created' : 'existing') : null
     if (old && oldOrigin === 'created') writes.push(prisma.mistake.delete({ where: { id: old.id } }))
     else if (old && oldOrigin === 'confirmed-auto') writes.push(prisma.mistake.update({ where: { id: old.id }, data: { autoDetected: true } }))
+    // …and its extra tags and its bookmark (21/11/2026).
+    const oldExtras = parseIdList(previous?.extraMistakeIds)
+    if (oldExtras.length) writes.push(prisma.mistake.deleteMany({ where: { id: { in: oldExtras }, autoDetected: false } }))
+    if (previous?.bookmarkId) writes.push(prisma.bookmark.deleteMany({ where: { id: previous.bookmarkId } }))
 
     let mistakeId: string | null = null
     let mistakeOrigin: 'created' | 'confirmed-auto' | 'existing' | null = null
@@ -232,10 +288,41 @@ export function registerMicroReviewHandlers(): void {
       }
     }
 
+    // Extra error tags (21/11/2026): one manual mistake each at the moment's time, never the proposed tag again.
+    const extraMistakeIds: string[] = []
+    const extraSlugs = new Set<string>(tagSlug ? [tagSlug] : [])
+    for (const extra of input.extraTags ?? []) {
+      const t = await resolveTag(extra.tagSlug, extra.customLabel)
+      if (!t || extraSlugs.has(t.slug)) continue
+      extraSlugs.add(t.slug)
+      const eid = randomUUID()
+      extraMistakeIds.push(eid)
+      writes.push(prisma.mistake.create({
+        data: {
+          id: eid, gameId: input.gameId, tagId: t.id, gameTimeSec: input.gameTimeSec,
+          severity: input.trigger === 'critical-death' ? 3 : 2, note: extra.note?.trim().slice(0, 280) || null,
+          recordingId: game.recording?.id ?? null, autoDetected: false,
+        },
+      }))
+    }
+    // The answered moment as a bookmark at its time, when the recording's offset is known (21/11/2026).
+    let bookmarkId: string | null = null
+    const offset = game.recording?.startOffsetSec
+    if (game.recording && isPlausibleOffset(offset)) {
+      bookmarkId = randomUUID()
+      writes.push(prisma.bookmark.create({
+        data: {
+          id: bookmarkId, recordingId: game.recording.id, videoTimeMs: Math.max(0, mistakeVideoTimeMs(input.gameTimeSec, offset)),
+          label: input.bookmarkLabel?.trim().slice(0, 80) || null, color: '#E66556',
+        },
+      }))
+    }
+
     const data = {
       userId, trigger: input.trigger, gameTimeSec: input.gameTimeSec, outcome: input.outcome, tagSlug,
       reason: input.reason ?? null, viaOther: input.viaOther, note: input.note?.trim() || null,
       role, champion: game.champion, mistakeId, mistakeOrigin,
+      extraMistakeIds: JSON.stringify(extraMistakeIds), bookmarkId,
     }
     const upsert = prisma.microReviewAnswer.upsert({ where: answerKey, create: { gameId: input.gameId, momentKey: input.momentKey, ...data }, update: data })
     const results = await prisma.$transaction([...writes, upsert])
@@ -261,7 +348,19 @@ export function registerMicroReviewHandlers(): void {
       reason: row.reason, note: row.note, summary: input.summary ?? null,
     })
 
+    // « Review courte » (20/11/2026): one answered moment marks the game reviewed (never over a full review).
+    await markShortReview(input.gameId, 'microReview').catch(() => {})
+
     return { answer: toView(row), xpAwarded, completed }
+  })
+
+  // 21/11/2026: the next key moments, offered once the 3 are answered (GameAnalysis.extraMoments, ANALYSIS_VERSION 13).
+  validatedHandle('microreview:more-moments', z.tuple([id]), async (_e, gameId): Promise<CriticalMoment[]> => {
+    const prisma = getPrisma()
+    const game = await prisma.game.findUnique({ where: { id: gameId }, select: { session: { select: { user: { select: { selfReview: true } } } } } })
+    if (!game || game.session.user.selfReview) return []
+    const { analysis } = await ensureGameAnalysis(gameId, false)
+    return analysis?.extraMoments ?? []
   })
 
   validatedHandle('microreview:verify-objectives', z.tuple([id]), async (_e, gameId): Promise<ObjectiveVerificationPayload | null> => {

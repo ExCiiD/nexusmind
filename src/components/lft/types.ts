@@ -25,8 +25,12 @@ export interface LftPlayerView {
   rank: QueueRank | null
   rankState: LftRankState
   champions: LftChampionView[]
-  /** Skin of the first champion for the background art (0: base skin). */
+  /** Skin of the art champion for the background art (0: base skin). */
   skin: number
+  /** 21/11: the champion of the art, picked like on the Lobby card (any of the player's champions); null: the first one. */
+  artKey: string | null
+  /** 21/11 (spec § 22): the art champion's hosted cut-out for that skin; null: the splash art. */
+  artCutoutUrl: string | null
   /** Fundamentals picked as strengths / weaknesses, already named. */
   strengths: string[]
   weaknesses: string[]

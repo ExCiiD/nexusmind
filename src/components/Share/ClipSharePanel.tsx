@@ -150,6 +150,8 @@ export function ClipSharePanel({ filePath, fileSize, title, onShared }: ClipShar
               </button>
             ))}
           </div>
+          {/* CyberSecurity audit 21/11: who can read a temporary link. */}
+          <p className="text-[10px] text-hextech-gold" data-testid="temp-link-warning">{t('share.tempLinkWarning')}</p>
         </div>
       )}
 

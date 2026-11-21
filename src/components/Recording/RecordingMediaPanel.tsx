@@ -8,6 +8,10 @@ import {
 } from 'lucide-react'
 import { formatFileSize, formatMs } from '@/lib/mediaCore'
 import { useYoutubeUploadAvailable } from '@/hooks/useYoutubeUploadAvailable'
+import { YoutubeTermsNote, markYoutubeTermsSeen } from './YoutubeTermsNote'
+import { YoutubeQueueStatus } from '@/components/Settings/YoutubeQueueStatus'
+import { useYoutubeQueue } from '@/hooks/useYoutubeQueue'
+import { queueEntryFor, type YoutubeQueueItem } from '@/lib/youtubeQueue'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -73,6 +77,9 @@ export function RecordingMediaPanel({
 
   // YouTube status (upload hidden in the packaged app, see useYoutubeUploadAvailable)
   const youtubeUpload = useYoutubeUploadAvailable()
+  // « Upload YouTube automatique » (21/11): this recording's place in the queue.
+  const ytQueue = useYoutubeQueue()
+  const ytQueueEntry = recordingId ? queueEntryFor(ytQueue.items, 'recording', recordingId) : null
   useEffect(() => {
     if (!youtubeUpload) { setYtConnected(false); return }
     window.api.youtubeGetStatus?.()
@@ -102,6 +109,7 @@ export function RecordingMediaPanel({
       })
       setYtUrl(r.url)
       setYtState('done')
+      markYoutubeTermsSeen()
     } catch (err: any) {
       setYtError(err?.message ?? t('record.youtube.failed'))
       setYtState('error')
@@ -163,6 +171,8 @@ export function RecordingMediaPanel({
             ytUrl={ytUrl}
             ytError={ytError}
             onYtUpload={handleYtUpload}
+            queueEntry={ytQueueEntry}
+            onQueueRetry={(id) => void ytQueue.retry(id)}
           />
         )}
       </div>
@@ -253,9 +263,12 @@ interface ShareSectionProps {
   ytUrl: string | null
   ytError: string | null
   onYtUpload: () => void
+  /** « Upload YouTube automatique » (21/11): this recording's place in the queue. */
+  queueEntry: YoutubeQueueItem | null
+  onQueueRetry: (id: string) => void
 }
 
-function ShareSection({ filePath, title, ytConnected, ytState, ytProgress, ytUrl, ytError, onYtUpload }: ShareSectionProps) {
+function ShareSection({ filePath, title, ytConnected, ytState, ytProgress, ytUrl, ytError, onYtUpload, queueEntry, onQueueRetry }: ShareSectionProps) {
   const { t } = useTranslation()
   return (
     <div className="flex flex-wrap gap-6">
@@ -277,6 +290,8 @@ function ShareSection({ filePath, title, ytConnected, ytState, ytProgress, ytUrl
               <Youtube className="h-3.5 w-3.5" />{t('record.youtube.upload')}
             </Button>
           )}
+          {ytState === 'idle' && <YoutubeTermsNote />}
+          {queueEntry && ytState === 'idle' && <YoutubeQueueStatus item={queueEntry} compact onRetry={() => onQueueRetry(queueEntry.id)} />}
           {ytState === 'uploading' && (
             <div className="flex items-center gap-2 text-xs text-hextech-text-dim">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

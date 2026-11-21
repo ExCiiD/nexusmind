@@ -114,7 +114,8 @@ describe('MX2 + MX5 — prefetchGameAnalysis', () => {
 
     const bookmarks = await prisma.bookmark.findMany({ where: { recordingId: recording.id } })
     expect(bookmarks).toHaveLength(1)
-    expect(bookmarks[0].videoTimeMs).toBe(Math.max(0, (125 - 5) * 1000 - 15_000))
+    // unused-gold is dated at a death: the bookmark starts at the death window, 45 s before (20/11/2026).
+    expect(bookmarks[0].videoTimeMs).toBe(Math.max(0, (125 - 5) * 1000 - 45_000))
     expect(bookmarks[0].label).toMatch(/gold/i)
 
     // Re-running must not duplicate either the mistake or the bookmark.
@@ -181,11 +182,21 @@ describe('MX2 + MX5 — prefetchGameAnalysis', () => {
 })
 
 describe('R1 — review:prefilled-notes', () => {
-  it('builds draft notes from the game\'s own events and severity-3 mistakes', async () => {
-    const notes = await invoke('review:prefilled-notes', (await getPrisma().game.findFirstOrThrow({ where: { matchId: 'EUW1_POSTGAME1' } })).id)
-    expect(notes.length).toBeGreaterThan(0)
-    expect(notes.every((n: any) => n.auto === true)).toBe(true)
-    expect(notes.some((n: any) => /gold/i.test(n.note))).toBe(true)
+  // 21/11/2026: no game events any more, only the micro-review moments the player answered, with their tag.
+  it('returns no notes before any micro-review answer (never the game events)', async () => {
+    const game = await getPrisma().game.findFirstOrThrow({ where: { matchId: 'EUW1_POSTGAME1' } })
+    expect(await invoke('review:prefilled-notes', game.id)).toEqual([])
+  })
+
+  it('lists the answered moments with the tag the player chose', async () => {
+    const prisma = getPrisma()
+    const game = await prisma.game.findFirstOrThrow({ where: { matchId: 'EUW1_POSTGAME1' } })
+    await prisma.mistakeTag.upsert({ where: { slug: 'bad-trade' }, create: { slug: 'bad-trade', label: 'Bad trade', category: 'laning' }, update: {} })
+    const label = (await prisma.mistakeTag.findUniqueOrThrow({ where: { slug: 'bad-trade' } })).label
+    await prisma.microReviewAnswer.create({ data: { userId, gameId: game.id, momentKey: 'critical-death@77', trigger: 'critical-death', gameTimeSec: 77, outcome: 'mistake', tagSlug: 'bad-trade', role: 'TOP', champion: 'Renekton' } })
+    const notes = await invoke('review:prefilled-notes', game.id)
+    expect(notes).toMatchObject([{ time: '1:17', note: label, trigger: 'critical-death', tagSlug: 'bad-trade', auto: true }])
+    await prisma.microReviewAnswer.deleteMany({ where: { gameId: game.id } })
   })
 
   it('returns [] when the game has no matchId yet (never hits the network)', async () => {

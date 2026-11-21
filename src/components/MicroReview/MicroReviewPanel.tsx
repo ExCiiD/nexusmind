@@ -23,20 +23,29 @@ import type { CriticalMoment } from '@/lib/microReview/anomalyDetector'
 import type { MicroReviewAnswerView, MicroReviewPayload } from '@/lib/microReview/types'
 import type { MistakeTag } from '@/lib/ipc'
 import { CodexCard, VideoExampleLink } from './CodexCard'
-import { MiniMap } from './MiniMap'
 import { OtherCausePicker, type OtherChoice } from './OtherCausePicker'
 import { summaryText, tagLabel } from './text'
 import { usePrepareSession } from './usePrepareSession'
 import { useTeamCodex } from './useTeamCodex'
 import { toNxmUrl } from '@/lib/mediaCore'
-import { EXCERPT_SEC, PRE_ROLL_SEC } from '@/lib/microReview/vodTiming'
+import { clipWindow, objectiveTimeOf } from '@/lib/microReview/vodTiming'
 import { isRiotRateLimited, riotErrorText } from '@/lib/riotErrors'
+import { invalidateCached } from '@/lib/queryCache'
+import { placeText, positionKindText, type Place, type PositionKind } from './placeText'
+import { AnswerExtrasEditor } from './AnswerExtrasEditor'
+import { UndetectedMistakeButton } from './UndetectedMistakeDialog'
+import { EMPTY_EXTRAS, answerNote, bookmarkLabelOf, extraTagsPayload, type AnswerExtras } from './answerExtras'
+import { SharedExcerpt } from './SharedExcerpt'
+import { useReviewPlayerStore } from '@/store/useReviewPlayerStore'
 
 const panel = 'panel-surface rounded-2xl border border-hextech-border-dim/70 shadow-lg backdrop-blur-sm'
 
 const youtubeId = (url: string) => url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^&?/\s]+)/)?.[1] ?? null
 
-export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAnswered?: () => void }) {
+/** `sharedPlayer` (21/11): the page has the recording player; the box drives it instead of showing its own video. */
+export function MicroReviewPanel({ gameId, onAnswered, sharedPlayer = false, onFinish }: { gameId: string; onAnswered?: () => void; sharedPlayer?: boolean; onFinish?: () => void }) {
+  // Review v2 (spec § 20): in the player's right panel, one column of 328 px; the selector above shows the counts.
+  const v2 = sharedPlayer
   const { t } = useTranslation()
   const addXp = useUserStore((s) => s.addXp)
   const prepare = usePrepareSession()
@@ -51,11 +60,17 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
   const [error, setError] = useState<string | null>(null)
   // Post-game: the analysis could not load because Riot is rate-limiting (shown with its wait instead of "unavailable").
   const [loadError, setLoadError] = useState<string | null>(null)
+  // 21/11: the player's reasons and extra tags, per moment, until they are sent; the extra key moments asked for.
+  const [extrasByKey, setExtrasByKey] = useState<Record<string, AnswerExtras>>({})
+  const [more, setMore] = useState<CriticalMoment[]>([])
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [noMore, setNoMore] = useState(false)
 
   useEffect(() => {
     let alive = true
     setData(undefined)
     setLoadError(null)
+    setMore([]); setNoMore(false); setExtrasByKey({})
     window.api.microReviewGet(gameId)
       .then((d) => {
         if (!alive) return
@@ -74,7 +89,13 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
     return () => { alive = false }
   }, [gameId, t])
 
-  const moments = useMemo(() => data?.analysis?.moments ?? [], [data])
+  // The selector « Micro-review 2 / 3 » (spec § 19) reads the progress from the shared store.
+  const setMicroReviewCount = useReviewPlayerStore((s) => s.setMicroReviewCount)
+  const momentTitle = (m: CriticalMoment) => (m.facts.pattern ? t(`microReview.pattern.${m.facts.pattern}`) : t(`microReview.trigger.${m.trigger}`))
+  const moments = useMemo(() => {
+    const base = data?.analysis?.moments ?? []
+    return [...base, ...more.filter((m) => !base.some((b) => b.key === m.key))]
+  }, [data, more])
   const stats = useMemo(() => (data ? choiceStats(data.pastAnswers, data.role, data.champion) : undefined), [data])
   const cards = useMemo(() => moments.map((m) => buildQcm(m, stats)), [moments, stats])
   const moment = moments[index] ?? null
@@ -84,35 +105,54 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
   const legacy = card ? retiredOption(card.options, answer) : null
   const options = card ? (legacy ? [...card.options, legacy] : card.options) : []
   const allDone = moments.length > 0 && moments.every((m) => answers[m.key])
+  const answeredCount = moments.filter((m) => answers[m.key]).length
+  useEffect(() => {
+    if (!v2) return
+    setMicroReviewCount(data?.analysis ? { done: answeredCount, total: moments.length } : null)
+  }, [v2, data, answeredCount, moments.length, setMicroReviewCount])
   // Next unanswered moment after the current one, wrapping around (-1 when all are answered).
   const nextOpen = moments.map((_, i) => (index + 1 + i) % moments.length).find((i) => i !== index && !answers[moments[i].key]) ?? -1
 
-  const submit = useCallback(async (m: CriticalMoment, c: QcmCard, choice: { option?: QcmOption; other?: OtherChoice }) => {
+  const submit = useCallback(async (m: CriticalMoment, c: QcmCard, choice: { option?: QcmOption; other?: OtherChoice; again?: MicroReviewAnswerView }) => {
     if (!data) return
     const option = choice.option
     const other = choice.other
-    setBusy(option?.id ?? 'other')
+    const again = choice.again
+    setBusy(option?.id ?? (again ? 'again' : 'other'))
     setError(null)
+    const extras = extrasByKey[m.key] ?? EMPTY_EXTRAS
+    const outcome = again ? again.outcome : other ? (other.justified ? 'justified' : other.customLabel ? 'custom' : 'mistake') : option!.outcome
+    const tagSlug = again ? again.tagSlug : other ? (other.justified ? null : other.tagSlug ?? null) : option!.tagSlug
+    const customLabel = !again && other && !other.justified ? other.customLabel ?? null : null
+    // The answered moment becomes a marked note at its time: its title and the tag chosen (21/11).
+    const title = m.facts.pattern ? t(`microReview.pattern.${m.facts.pattern}`) : t(`microReview.trigger.${m.trigger}`)
+    const tagText = outcome === 'justified' ? t('microReview.justifiedBadge') : customLabel ?? (tagSlug ? tagLabel(t, tagSlug, tags.find((x) => x.slug === tagSlug)?.label) : null)
     try {
       const res = await window.api.microReviewAnswer({
         gameId,
         momentKey: m.key,
         trigger: m.trigger,
         gameTimeSec: m.gameTimeSec,
-        outcome: other ? (other.justified ? 'justified' : other.customLabel ? 'custom' : 'mistake') : option!.outcome,
-        tagSlug: other ? (other.justified ? null : other.tagSlug ?? null) : option!.tagSlug,
-        customLabel: other && !other.justified ? other.customLabel ?? null : null,
-        reason: other ? (other.justified ? 'assumed' : null) : option!.reason,
-        viaOther: !!other,
-        note: other?.note ?? null,
+        outcome,
+        tagSlug,
+        customLabel,
+        reason: again ? again.reason : other ? (other.justified ? 'assumed' : null) : option!.reason,
+        viaOther: again ? again.viaOther : !!other,
+        note: answerNote(again ? again.note : other?.note, extras),
+        extraTags: extraTagsPayload(extras, tagSlug),
+        bookmarkLabel: bookmarkLabelOf(`${fmtClock(clipWindow(m).headerSec)} ${title}`, tagText),
         summary: c.summary,
         // Excerpt start in the VOD, so the coach can jump to it.
-        videoTimeSec: data.recording ? Math.max(0, Math.round(m.gameTimeSec - PRE_ROLL_SEC - deriveOffsetSec({
+        videoTimeSec: data.recording ? Math.max(0, Math.round(clipWindow(m).startSec - deriveOffsetSec({
           gameEndAt: new Date(data.gameEndAt), gameDurationSec: data.durationSec, recordingCreatedAt: new Date(data.recording.createdAt),
           videoDurationSec: data.durationSec, startOffsetSec: data.recording.startOffsetSec,
         }))) : null,
       })
       setAnswers((prev) => ({ ...prev, [m.key]: res.answer }))
+      // Sent: the reasons are now in the answer's note, the extra tags saved as mistakes.
+      setExtrasByKey((prev) => ({ ...prev, [m.key]: EMPTY_EXTRAS }))
+      // « Review courte » (20/11): one answered moment is enough (idempotent; never over a full review).
+      window.api.gameMarkShortReview?.(gameId, 'microReview').then(() => invalidateCached('games:')).catch(() => {})
       setPicking(false)
       if (res.xpAwarded > 0) { setXp(res.xpAwarded); addXp(res.xpAwarded) }
       onAnswered?.()
@@ -121,23 +161,39 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
     } finally {
       setBusy(null)
     }
-  }, [data, gameId, addXp, onAnswered])
+  }, [data, gameId, addXp, onAnswered, extrasByKey, t, tags])
+
+  /** « Continuer sur d'autres moments clés » (21/11): the next moments the engine kept aside. */
+  const loadMore = useCallback(async () => {
+    setLoadingMore(true)
+    try {
+      const list = (await window.api.microReviewMoreMoments?.(gameId)) ?? []
+      const fresh = list.filter((m) => !moments.some((x) => x.key === m.key))
+      if (fresh.length === 0) { setNoMore(true); return }
+      setMore((prev) => [...prev, ...fresh])
+      setIndex(moments.length)
+    } catch {
+      setNoMore(true)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [gameId, moments])
 
   if (data === undefined) {
-    return <section className={cn(panel, 'flex items-center justify-center gap-2 p-6 text-sm text-hextech-text-dim')}><Loader2 className="h-4 w-4 animate-spin" />{t('microReview.loading')}</section>
+    return <section className={cn(!v2 && panel, 'flex items-center justify-center gap-2 p-6 text-sm text-hextech-text-dim')}><Loader2 className="h-4 w-4 animate-spin" />{t('microReview.loading')}</section>
   }
   if (!data || !data.analysis) {
     return (
-      <section className={cn(panel, 'p-4')} data-testid="micro-review-unavailable">
-        <Header count={0} done={0} />
+      <section className={cn(!v2 && panel, !v2 && 'p-4')} data-testid="micro-review-unavailable">
+        {!v2 && <Header count={0} done={0} />}
         <p className="mt-2 text-xs text-hextech-text-dim">{loadError ?? t(data?.reason === 'unsupported-mode' ? 'microReview.unsupported' : data?.reason === 'previous-season' ? 'microReview.previousSeason' : 'microReview.unavailable')}</p>
       </section>
     )
   }
   if (moments.length === 0) {
     return (
-      <section className={cn(panel, 'p-4')} data-testid="micro-review-none">
-        <Header count={0} done={0} />
+      <section className={cn(!v2 && panel, !v2 && 'p-4')} data-testid="micro-review-none">
+        {!v2 && <Header count={0} done={0} />}
         <p className="mt-2 flex items-center gap-2 text-xs text-hextech-text"><ShieldCheck className="h-4 w-4 text-hextech-green" />{t('microReview.none')}</p>
       </section>
     )
@@ -151,8 +207,8 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
   const chosenEntry = (chosenCodexId ? codexById(chosenCodexId) : null) ?? (answer?.tagSlug ? codexFor(answer.tagSlug, data.role, phaseOf(moment!.gameTimeSec), teamRules) : null)
 
   return (
-    <section className={cn(panel, 'p-4')} data-testid="micro-review">
-      <Header count={moments.length} done={doneCount} />
+    <section className={cn(!v2 && panel, !v2 && 'p-4')} data-testid="micro-review">
+      {!v2 && <Header count={moments.length} done={doneCount} />}
       {/* § 18.5 L3: the coach's verdicts on my answers of this game. */}
       {data.matchId && <CoachVerdictsForGame matchId={data.matchId} />}
 
@@ -169,8 +225,8 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
                   a ? 'bg-hextech-green/20 text-hextech-green' : 'bg-hextech-elevated text-hextech-text-bright')}>
                   {a ? <Check className="h-3 w-3" /> : i + 1}
                 </span>
-                <span className="font-mono font-semibold">{fmtClock(m.gameTimeSec)}</span>
-                <span className="hidden sm:inline">{m.facts.pattern ? t(`microReview.pattern.${m.facts.pattern}`) : t(`microReview.trigger.${m.trigger}`)}</span>
+                <span className="font-mono font-semibold">{fmtClock(clipWindow(m).headerSec)}</span>
+                {!v2 && <span className="hidden sm:inline">{m.facts.pattern ? t(`microReview.pattern.${m.facts.pattern}`) : t(`microReview.trigger.${m.trigger}`)}</span>}
               </button>
             </li>
           )
@@ -178,13 +234,28 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
       </ol>
 
       {moment && card && (
-        <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <div className="lg:col-span-7">
-            <Excerpt data={data} moment={moment} />
+        <div className={cn('mt-3', v2 ? 'space-y-3' : 'grid grid-cols-1 gap-4 lg:grid-cols-12')}>
+          <div className={cn(v2 ? 'space-y-3' : 'lg:col-span-7')}>
+            {v2 ? (
+              <>
+                {/* Title of the moment + OBJECTIF / MORT, the context in words, « Parcourir dans le lecteur » (spec § 20). */}
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className="text-base font-semibold text-hextech-gold-bright">{momentTitle(moment)}</span>
+                  {(objectiveTimeOf(moment) != null || moment.trigger === 'critical-death') && (
+                    <span className={cn('rounded px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider',
+                      objectiveTimeOf(moment) != null ? 'bg-hextech-gold/15 text-hextech-gold' : 'bg-hextech-red/15 text-hextech-red')}>
+                      {t(objectiveTimeOf(moment) != null ? 'microReview.badge.objective' : 'microReview.badge.death')}
+                    </span>
+                  )}
+                </p>
+                <QcmHead card={card} headerSec={clipWindow(moment).headerSec} place={moment.place ?? null} positionKind={moment.positionKind ?? null} />
+                {data.recording?.filePath && <SharedExcerpt moment={moment} />}
+              </>
+            ) : <Excerpt data={data} moment={moment} />}
           </div>
 
-          <div className="space-y-3 lg:col-span-5">
-            <QcmHead card={card} />
+          <div className={cn('space-y-3', !v2 && 'lg:col-span-5')}>
+            {!v2 && <QcmHead card={card} headerSec={clipWindow(moment).headerSec} place={moment.place ?? null} positionKind={moment.positionKind ?? null} />}
             {picking ? (
               <OtherCausePicker tags={tags} busy={busy === 'other'} onCancel={() => setPicking(false)}
                 onConfirm={(other) => submit(moment, card, { other })} />
@@ -220,6 +291,13 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
                 </button>
               </div>
             )}
+            {/* 21/11: under « autre cause »: my reasons, and more error tags. */}
+            {!picking && (
+              <AnswerExtrasEditor key={moment.key} value={extrasByKey[moment.key] ?? EMPTY_EXTRAS} tags={tags}
+                onChange={(next) => setExtrasByKey((prev) => ({ ...prev, [moment.key]: next }))}
+                answered={!!answer && answer.outcome !== 'custom'} busy={!!busy}
+                onSaveAnswered={() => answer && submit(moment, card, { again: answer })} />
+            )}
             {error && <p className="text-xs text-hextech-red">{t('microReview.error')}</p>}
             {!answer && !picking && (() => {
               const ref = card.options[0]?.codexId ? codexById(card.options[0].codexId) : null
@@ -244,7 +322,13 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
                 ) : (
                   <p className="text-xs text-hextech-text-dim">{t('codex.none')}</p>
                 )}
-                {nextOpen >= 0 && (
+                {v2 ? (
+                  // Pied (spec § 20): the answer is a marked note at its time; « Moment suivant → ».
+                  <div className="flex items-center justify-between gap-2 border-t border-hextech-border-dim pt-2">
+                    <span className="font-mono text-[10px] text-hextech-text-dim">{data.recording ? t('microReview.savedAsNote', { time: fmtClock(clipWindow(moment).headerSec) }) : ''}</span>
+                    {nextOpen >= 0 && <Button size="sm" variant="ghost" className="gap-1 text-hextech-gold" onClick={() => setIndex(nextOpen)}>{t('microReview.next')}<ChevronRight className="h-4 w-4" /></Button>}
+                  </div>
+                ) : nextOpen >= 0 && (
                   <Button size="sm" className="w-full gap-1.5" onClick={() => setIndex(nextOpen)}>{t('microReview.next')}<ChevronRight className="h-4 w-4" /></Button>
                 )}
               </>
@@ -253,13 +337,43 @@ export function MicroReviewPanel({ gameId, onAnswered }: { gameId: string; onAns
         </div>
       )}
 
-      {allDone && (
+      {allDone && v2 && (
+        // Fin de la micro-review (spec § 20).
+        <div className="mt-4 space-y-3" data-testid="micro-review-done">
+          <p className="flex items-center gap-2 text-sm font-bold text-hextech-gold-bright"><Sparkles className="h-4 w-4" />{t('microReview.doneTitle', { count: moments.length })}</p>
+          {xp > 0 && <span className="inline-block rounded-full bg-hextech-gold px-3 py-1 text-xs font-bold text-hextech-black">{t('microReview.doneXp', { xp })}</span>}
+          {!noMore && window.api.microReviewMoreMoments && (
+            <Button className="w-full gap-1.5" disabled={loadingMore} onClick={loadMore} data-testid="micro-review-more">
+              {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}{t('microReview.more.button')}
+            </Button>
+          )}
+          {noMore && <p className="text-xs text-hextech-text-dim">{t('microReview.more.none')}</p>}
+          <div className="space-y-2 rounded-lg border border-hextech-gold/30 bg-hextech-gold/10 p-3">
+            <p className="text-sm text-hextech-text-bright">{t('microReview.undetected.question')}</p>
+            <UndetectedMistakeButton gameId={gameId} tags={tags} durationSec={data.durationSec} />
+          </div>
+          {onFinish && <button type="button" onClick={onFinish} className="text-xs text-hextech-gold hover:underline">{t('microReview.finish')}</button>}
+        </div>
+      )}
+
+      {allDone && !v2 && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-hextech-gold/30 bg-gradient-to-r from-hextech-gold/15 to-transparent px-4 py-3" data-testid="micro-review-done">
           <div>
             <p className="flex items-center gap-2 text-sm font-bold text-hextech-gold-bright"><Sparkles className="h-4 w-4" />{t('microReview.done')}</p>
             <p className="mt-0.5 text-xs text-hextech-text">{t('microReview.doneSummary', { mistakes: doneCount - justifiedCount, justified: justifiedCount })}</p>
           </div>
           {xp > 0 && <span className="rounded-full bg-hextech-gold px-3 py-1 text-xs font-bold text-hextech-black">{t('microReview.doneXp', { xp })}</span>}
+          {/* 21/11: go on with other key moments, and add the critical mistakes the micro-review missed. */}
+          <div className="flex w-full flex-wrap gap-2">
+            {!noMore && window.api.microReviewMoreMoments && (
+              <Button size="sm" className="gap-1.5" disabled={loadingMore} onClick={loadMore} data-testid="micro-review-more">
+                {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}{t('microReview.more.button')}
+              </Button>
+            )}
+            {noMore && <span className="self-center text-xs text-hextech-text-dim">{t('microReview.more.none')}</span>}
+            <UndetectedMistakeButton gameId={gameId} tags={tags} durationSec={data.durationSec} />
+          </div>
+          <p className="w-full text-[11px] text-hextech-text-dim">{t('microReview.undetected.encourage')}</p>
         </div>
       )}
     </section>
@@ -279,22 +393,27 @@ function Header({ count, done }: { count: number; done: number }) {
   )
 }
 
-function QcmHead({ card }: { card: QcmCard }) {
+/** `headerSec`: the objective's time on an objective card (vodTiming.clipWindow), the moment's otherwise. */
+function QcmHead({ card, headerSec, place, positionKind }: { card: QcmCard; headerSec: number; place: Place | null; positionKind: PositionKind | null }) {
   const { t } = useTranslation()
-  const s = summaryText(t, card.summary)
+  const s = summaryText(t, { ...card.summary, gameTimeSec: headerSec })
+  // ANALYSIS_VERSION 12: the place in words, and whether the position is exact or estimated (older analyses: the zone).
+  const where = place ? placeText(t, place) : s.zone
+  const kind = place ? positionKindText(t, positionKind) : null
   return (
     <div>
       <p className="text-sm text-hextech-text-bright" data-testid="micro-review-summary">
         <span className="font-mono font-semibold text-hextech-gold">{s.clock}</span>
-        {s.zone && <> • <span className="font-medium">{s.zone}</span></>}
+        {where && <> • <span className="font-medium">{where}</span></>}
         {' — '}{s.line}
       </p>
+      {kind && <p className="mt-0.5 text-[11px] text-hextech-text-dim">{kind}</p>}
       <p className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-hextech-text-dim">{t('microReview.question')}</p>
     </div>
   )
 }
 
-/** ~15 s excerpt starting 12 s before the moment; schematic map when there is no VOD. */
+/** The clip around the moment (vodTiming.clipWindow: error > consequence > conclusion); schematic map when there is no VOD. */
 function Excerpt({ data, moment }: { data: MicroReviewPayload; moment: CriticalMoment }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -308,8 +427,9 @@ function Excerpt({ data, moment }: { data: MicroReviewPayload; moment: CriticalM
       recordingCreatedAt: new Date(rec.createdAt), videoDurationSec: duration, startOffsetSec: rec.startOffsetSec,
     })
   }, [rec, data.gameEndAt, data.durationSec, duration])
-  const start = Math.max(0, moment.gameTimeSec - PRE_ROLL_SEC - offset)
-  const end = start + EXCERPT_SEC
+  const win = clipWindow(moment)
+  const start = Math.max(0, win.startSec - offset)
+  const end = Math.max(start, win.endSec - offset)
 
   const replay = useCallback(() => {
     const v = ref.current
@@ -317,6 +437,31 @@ function Excerpt({ data, moment }: { data: MicroReviewPayload; moment: CriticalM
     v.currentTime = start
     v.play().catch(() => {})
   }, [start])
+  // Error · Consequence · Conclusion (20/11): a click jumps the clip there (YouTube: the embed restarts there).
+  const [ytFrom, setYtFrom] = useState<number | null>(null)
+  useEffect(() => { setYtFrom(null) }, [moment.key])
+  const seek = (gameSec: number) => {
+    const at = Math.max(start, Math.min(end, gameSec - offset))
+    const v = ref.current
+    if (v) { v.currentTime = at; v.play().catch(() => {}) } else setYtFrom(Math.round(at))
+  }
+  const markers = (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]" data-testid="micro-review-markers">
+      {/* A death that cost nothing after it has no consequence marker. */}
+      {(['error', 'consequence', 'conclusion'] as const).flatMap((k) => {
+        const sec = win.markers[k]
+        return sec == null ? [] : [{ k, sec }]
+      }).map(({ k, sec }, i) => (
+        <span key={k} className="flex items-center gap-1.5">
+          {i > 0 && <span className="text-hextech-text-dim">·</span>}
+          <button type="button" onClick={() => seek(sec)}
+            className="rounded-md border border-hextech-border-dim px-2 py-0.5 text-hextech-text hover:border-hextech-gold/60 hover:text-hextech-gold">
+            {t(`microReview.vod.markers.${k}`)} <span className="font-mono">{fmtClock(sec)}</span>
+          </button>
+        </span>
+      ))}
+    </div>
+  )
   useEffect(() => { if (duration > 0) replay() }, [duration, replay, moment.key])
 
   const frame = 'relative aspect-video w-full overflow-hidden rounded-xl border border-hextech-border-dim bg-hextech-black'
@@ -328,11 +473,12 @@ function Excerpt({ data, moment }: { data: MicroReviewPayload; moment: CriticalM
             onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
             onTimeUpdate={(e) => { if (e.currentTarget.currentTime >= end) e.currentTarget.pause() }} />
         </div>
+        {markers}
         <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-hextech-text-dim">
-          <span>{t('microReview.vod.excerpt', { from: fmtClock(moment.gameTimeSec - PRE_ROLL_SEC), to: fmtClock(moment.gameTimeSec - PRE_ROLL_SEC + EXCERPT_SEC) })}</span>
+          <span>{t('microReview.vod.excerpt', { from: fmtClock(win.startSec), to: fmtClock(win.endSec) })}</span>
           <span className="flex gap-1.5">
             <Button size="sm" variant="ghost" className="h-7 gap-1 text-[11px]" onClick={replay}><RotateCcw className="h-3 w-3" />{t('microReview.vod.replay')}</Button>
-            <Button size="sm" variant="ghost" className="h-7 gap-1 text-[11px]" onClick={() => navigate(`/record/${rec.id}?at=${Math.max(0, moment.gameTimeSec - PRE_ROLL_SEC)}`)}><ExternalLink className="h-3 w-3" />{t('microReview.vod.openFull')}</Button>
+            <Button size="sm" variant="ghost" className="h-7 gap-1 text-[11px]" onClick={() => navigate(`/record/${rec.id}?at=${Math.round(win.startSec)}`)}><ExternalLink className="h-3 w-3" />{t('microReview.vod.openFull')}</Button>
           </span>
         </div>
       </div>
@@ -340,22 +486,21 @@ function Excerpt({ data, moment }: { data: MicroReviewPayload; moment: CriticalM
   }
   const yt = rec?.youtubeUrl ? youtubeId(rec.youtubeUrl) : null
   if (yt) {
-    const s = Math.round(start)
+    const s = ytFrom ?? Math.round(start)
     return (
-      <div className={frame}>
-        <iframe key={moment.key} title={t('microReview.vod.title')} src={`https://www.youtube.com/embed/${yt}?start=${s}&end=${s + EXCERPT_SEC}&autoplay=1&mute=1`}
-          className="h-full w-full" allow="autoplay; encrypted-media" allowFullScreen />
+      <div>
+        <div className={frame}>
+          <iframe key={`${moment.key}@${s}`} title={t('microReview.vod.title')} src={`https://www.youtube.com/embed/${yt}?start=${s}&end=${Math.round(end)}&autoplay=1&mute=1`}
+            className="h-full w-full" allow="autoplay; encrypted-media" allowFullScreen />
+        </div>
+        {markers}
       </div>
     )
   }
+  // No recording: no mini-map on the Review (DECISIONS 21/11), the place is in words in the card's head.
   return (
-    <div>
-      <div className={cn(frame, 'flex items-center justify-center p-3')}>
-        <div className="aspect-square h-full max-h-full">
-          <MiniMap position={moment.position} team={data.analysis?.teamId ?? 100} />
-        </div>
-      </div>
-      <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-hextech-text-dim"><MapPin className="h-3 w-3" />{t('microReview.vod.noRecording')}</p>
-    </div>
+    <p className="flex items-center gap-1.5 rounded-xl border border-hextech-border-dim px-3 py-2 text-[11px] text-hextech-text-dim" data-testid="micro-review-no-vod">
+      <MapPin className="h-3 w-3" />{t('microReview.vod.noRecording')}
+    </p>
   )
 }

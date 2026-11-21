@@ -1,4 +1,5 @@
 import { deathTimerSec, seasonOf } from '../../src/lib/microReview/gameClock'
+import { DETECTOR_SPEC } from '../../src/lib/microReview/anomalyDetector'
 
 /**
  * Mistake Library — additional business rules (M5–M19, see
@@ -58,7 +59,8 @@ const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y)
 const isPoint = (p: any): p is Point => p && typeof p.x === 'number' && typeof p.y === 'number'
 const mmss = (ms: number) => `${Math.floor(ms / MIN)}:${String(Math.floor((ms % MIN) / SEC)).padStart(2, '0')}`
 
-export function detectAdvancedMistakes(timeline: any, match: any, player: RuleParticipant): AdvancedCandidate[] {
+/** `teamContext`: the game was played in a team context (src/lib/microReview/teamContext.ts); absent = soloQ. */
+export function detectAdvancedMistakes(timeline: any, match: any, player: RuleParticipant, opts: { teamContext?: boolean } = {}): AdvancedCandidate[] {
   const frames: any[] = timeline?.info?.frames ?? []
   // Games of an older season (15.x) are not analysed: the engine only knows the current clock (gameClock.ts).
   if (frames.length === 0 || seasonOf(match) !== 'current') return []
@@ -173,8 +175,11 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
 
   // ── M6 no-ward-pre-obj ───────────────────────────────────────────────
   const visionRole = role === 'UTILITY' || role === 'JUNGLE'
+  // 20/11/2026: a top, mid or ADC in soloQ is not accountable for an objective before 14:00 (same rule as the micro-review).
+  const soloQLaner = !opts.teamContext && DETECTOR_SPEC.soloQLaning.roles.includes(role)
   for (const o of objectives) {
     if (o.ts < 5 * MIN || o.type === 'HORDE') continue
+    if (soloQLaner && o.ts < DETECTOR_SPEC.soloQLaning.untilSec * SEC) continue
     // Laners are only accountable for vision on objectives the team lost;
     // supports / junglers on every objective (it is their job).
     if (!visionRole && o.teamId === player.teamId) continue

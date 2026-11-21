@@ -230,6 +230,8 @@ function championKillEvent(e: RawTimelineEvent, participants: ParticipantInfo[],
  * which player you are.
  */
 export interface PlayerSelector {
+  /** The game was played in a team context (src/lib/microReview/teamContext.ts); absent = soloQ. */
+  teamContext?: boolean
   /** Preferred — list of puuids that COULD match the player (user + linked accounts). */
   puuids?: string[]
   /** Fallback — champion name (Riot format, e.g. "Aatrox") played by the user. */

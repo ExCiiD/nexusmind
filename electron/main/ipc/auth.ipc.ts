@@ -1,5 +1,9 @@
 import { ipcMain } from 'electron'
 import { getPrisma } from '../database'
+import { getAutoYoutube, getPlayerFilters, getReviewPanel, setAutoYoutube, setPlayerFilters, setReviewPanel } from './preferences.ipc'
+import { DEFAULT_PLAYER_FILTERS } from '../../../src/lib/playerFilters'
+import { DEFAULT_REVIEW_PANEL } from '../../../src/lib/reviewPanelPref'
+import { DEFAULT_AUTO_YOUTUBE } from '../../../src/lib/autoYoutubePref'
 import { invalidateMediaAccessCache } from '../mediaAccess'
 import { z } from 'zod'
 import { validatedHandle, userUpdateSchema } from './validate'
@@ -169,7 +173,13 @@ export function registerAuthHandlers() {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })
     if (!user) return null
-    return user
+    // The player's timeline filters (21/11/2026), from the synced UserPreference table.
+    return {
+      ...user,
+      playerFilters: await getPlayerFilters().catch(() => null),
+      reviewPanel: await getReviewPanel().catch(() => null),
+      autoYoutubeUpload: await getAutoYoutube().catch(() => null),
+    }
   })
 
   // Unknown keys are stripped by the schema, so only whitelisted, correctly
@@ -181,8 +191,23 @@ export function registerAuthHandlers() {
 
     if (Object.keys(safeData).length === 0) throw new Error('No allowed fields provided')
 
-    const updated = await prisma.user.update({ where: { id: user.id }, data: safeData })
+    // The timeline filters live in the synced UserPreference table (User is not synced); null = back to the default.
+    const { playerFilters, reviewPanel, autoYoutubeUpload, ...columns } = safeData
+    let filters: unknown = undefined
+    if (playerFilters !== undefined) filters = await setPlayerFilters(playerFilters === null ? DEFAULT_PLAYER_FILTERS : { ...DEFAULT_PLAYER_FILTERS, ...playerFilters })
+    // The review panel's place (21/11/2026), same synced storage; null = back to the default.
+    let panel: unknown = undefined
+    if (reviewPanel !== undefined) panel = await setReviewPanel(reviewPanel === null ? DEFAULT_REVIEW_PANEL : reviewPanel)
+    // « Upload YouTube automatique » (21/11/2026), same synced storage; null = back to the default (off).
+    let autoYt: unknown = undefined
+    if (autoYoutubeUpload !== undefined) autoYt = await setAutoYoutube(autoYoutubeUpload === null ? DEFAULT_AUTO_YOUTUBE : autoYoutubeUpload)
+    const updated = Object.keys(columns).length ? await prisma.user.update({ where: { id: user.id }, data: columns }) : user
     if ('recordingPath' in safeData || 'externalRecordingPath' in safeData) invalidateMediaAccessCache()
-    return updated
+    return {
+      ...updated,
+      playerFilters: filters ?? await getPlayerFilters().catch(() => null),
+      reviewPanel: panel ?? await getReviewPanel().catch(() => null),
+      autoYoutubeUpload: autoYt ?? await getAutoYoutube().catch(() => null),
+    }
   })
 }

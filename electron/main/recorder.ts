@@ -379,6 +379,20 @@ export interface PcmAudioFormat {
  * If the video already has a mic audio track, both are mixed via amix.
  * Video stream is copied (no re-encode), audio is transcoded to AAC.
  */
+/**
+ * A copy of a video without any audio track (21/11/2026, automatic YouTube upload "no audio"). The video stream is
+ * copied, not re-encoded. The microphone is mixed into the game's audio track, so the voice cannot be removed alone.
+ */
+export function stripAudioCopy(srcPath: string, destPath: string): Promise<void> {
+  const bin = ffmpegBinPath()
+  if (!bin || !existsSync(bin)) return Promise.reject(new Error('FFMPEG_UNAVAILABLE'))
+  return new Promise((resolve, reject) => {
+    const proc = spawn(bin, ['-i', srcPath, '-map', '0:v:0', '-c:v', 'copy', '-an', '-movflags', '+faststart', '-y', destPath], { stdio: ['ignore', 'ignore', 'ignore'], windowsHide: true })
+    proc.on('error', () => reject(new Error('AUDIO_STRIP_FAILED')))
+    proc.on('close', (code) => (code === 0 && existsSync(destPath) ? resolve() : reject(new Error('AUDIO_STRIP_FAILED'))))
+  })
+}
+
 export function mergeAudioIntoVideo(videoPath: string, audioBuffer: Buffer, format?: PcmAudioFormat): Promise<string> {
   if (!ffmpegExists()) return Promise.reject(new Error('ffmpeg not available'))
 

@@ -14,6 +14,11 @@ interface ImportMetaEnv {
   readonly MAIN_VITE_RIOT_PROXY_URL?: string
   /** Public web app URL ("Ouvrir l'app web"). */
   readonly MAIN_VITE_WEB_URL?: string
+  /**
+   * The Google project's OAuth client, type "Desktop app" (21/11/2026, decision "client Desktop app + PKCE"). Google
+   * treats a Desktop client's secret as not confidential: it ships in the installer, the flow is protected by PKCE.
+   * Set in the git-ignored .env or the environment of the build; never committed, never logged.
+   */
   readonly MAIN_VITE_GOOGLE_CLIENT_ID?: string
   readonly MAIN_VITE_GOOGLE_CLIENT_SECRET?: string
 }

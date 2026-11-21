@@ -416,7 +416,48 @@
       "setupTitle": "Setup required",
       "setupDesc": "Add <code>MAIN_VITE_GOOGLE_CLIENT_ID</code> and <code>MAIN_VITE_GOOGLE_CLIENT_SECRET</code> to your <code>.env</code> file to enable YouTube uploads.",
       "connecting": "Connecting…",
-      "connect": "Connect YouTube"
+      "connect": "Connect YouTube",
+      "auto": {
+        "title": "Automatic YouTube upload",
+        "desc": "Publishes every recorded game and every clip to your channel on its own.",
+        "visibility": "Visibility",
+        "visibilities": {
+          "public": "Public",
+          "unlisted": "Unlisted",
+          "private": "Private"
+        },
+        "onLine": "On: every recorded game and every clip will be published to YouTube automatically ({{visibility}}).",
+        "saveFailed": "The setting couldn’t be saved.",
+        "audio": "Sound",
+        "audios": {
+          "none": "No sound (recommended)",
+          "all": "With sound"
+        },
+        "allPcs": "Applies to all your PCs signed in to this account.",
+        "warnTitle": "Automatic YouTube upload",
+        "warnDesc": "Every game and clip will be published without review.",
+        "warnConfirm": "Turn on",
+        "publicTitle": "Public visibility",
+        "publicDesc": "Your games will be visible to everyone on YouTube. Continue?",
+        "publicConfirm": "Continue",
+        "audioWarning": "Your voice and your voice chat go out with every game.",
+        "terms": {
+          "before": "Your games and clips will be published on your channel with the visibility you chose. By publishing, you agree to the ",
+          "after": ". Ascend does not read anything from your channel."
+        }
+      },
+      "queue": {
+        "queued": "Waiting to upload",
+        "uploading": "Uploading to YouTube · {{percent}} %",
+        "waitingQuota": "Waiting for the YouTube quota",
+        "waitingQuotaUntil": "Waiting for the YouTube quota (until {{when}})",
+        "done": "On YouTube",
+        "open": "Open",
+        "retry": "Retry",
+        "summary": "Uploads: {{active}} in progress · {{waiting}} waiting for the quota · {{errors}} failed",
+        "aClip": "A clip",
+        "aGame": "A game"
+      }
     },
     "region": {
       "label": "Server of {{account}}",
@@ -432,6 +473,24 @@
         "notFound": "This account no longer exists.",
         "generic": "The server couldn’t be saved."
       }
+    },
+    "selfJudgement": {
+      "title": "My own judgement",
+      "subtitle": "For players who would rather trust their own read than the app’s.",
+      "selfReview": {
+        "title": "I do my reviews myself",
+        "desc": "No micro-review: the Review page opens straight on the recording.",
+        "warn": "The app will no longer offer you a micro-review nor record your answers."
+      },
+      "selfTagMistakes": {
+        "title": "I tag my mistakes myself",
+        "desc": "The Mistake Lab shows only your own tags; no more automatically detected mistakes.",
+        "warn": "The app will no longer record automatically detected mistakes for you."
+      },
+      "warnTitle": "Are you sure?",
+      "warnProgress": "Your personal progression will rest only on your own judgement.",
+      "confirm": "Turn on",
+      "saveFailed": "The setting couldn’t be saved."
     }
   },
   "sidebar": {
@@ -649,7 +708,9 @@
       "cancel": "Cancel",
       "skip": "Skip",
       "confirm": "End & Save",
-      "confirmAndShare": "End & Share"
+      "confirmAndShare": "End & Share",
+      "coachObjectives": "Your coach’s objectives",
+      "reached": "Tick if the objective is reached"
     },
     "shareDialog": {
       "title": "Share Session",
@@ -747,6 +808,25 @@
       "all": "All fundamentals",
       "allCategories": "All",
       "confirm": "Confirm"
+    },
+    "customObjectives": {
+      "title": "My objectives",
+      "hint": "Write 1 to 5 objectives for this session, alone or on top of the fundamentals.",
+      "placeholder": "E.g. ward the river before every drake",
+      "itemLabel": "Objective {{n}}",
+      "add": "Add an objective",
+      "remove": "Remove the objective",
+      "fromCoach": "Objective from your coach",
+      "start": "Start the session",
+      "activeTitle": "Session objectives",
+      "reviewTitle": "Your objectives",
+      "result": {
+        "yes": "Met",
+        "partial": "Partly",
+        "no": "Not met"
+      },
+      "resultNote": "Note (optional)",
+      "missing": "Say for each objective whether it was met."
     }
   },
   "review": {
@@ -831,7 +911,54 @@
     },
     "draftSaved": "Draft auto-saved",
     "gameRemoved": "Game removed from the session",
-    "gameRemoveFailed": "Couldn’t remove the game"
+    "gameRemoveFailed": "Couldn’t remove the game",
+    "detected": {
+      "button": "Detected mistakes",
+      "title": "Mistakes the app detected",
+      "desc": "What the app spotted in this game. Delete the wrong ones: the Mistake Lab gets more accurate.",
+      "empty": "The app detected nothing in this game.",
+      "wrong": "Delete",
+      "confirm": "Delete",
+      "deleted": "Mistake deleted",
+      "deleteFailed": "The mistake couldn’t be deleted.",
+      "retag": "Edit mistake",
+      "newTag": "New tag",
+      "confirmRetag": "Save",
+      "retagged": "Mistake changed",
+      "retagFailed": "The mistake couldn’t be changed.",
+      "why": "Why? (optional)",
+      "whyNote": "Details (optional)",
+      "reasons": {
+        "not_a_mistake": "Not a mistake",
+        "wrong_tag": "Wrong tag",
+        "wrong_time": "Wrong time",
+        "team_context": "Team context",
+        "other": "Other"
+      },
+      "searchTag": "Search a tag (yours + Codex)",
+      "skip": "Skip",
+      "removedAs": "Deleted · {{reason}}",
+      "noReason": "no reason",
+      "retaggedFrom": "Before: {{tag}}",
+      "footer": "{{removed}} deleted · {{retagged}} edited · the Lab takes it into account",
+      "undo": "Undo",
+      "undoFailed": "The undo failed."
+    },
+    "notepad": {
+      "title": "Notepad",
+      "hint": "Write down everything you take from the game. For a note at a precise moment, use « Take a note » while recording.",
+      "placeholder": "What worked, what lost the game, what you want to work on…",
+      "savedSec": "Saved · {{n}} s ago",
+      "savedMin": "Saved · {{n}} min ago"
+    },
+    "panel": {
+      "label": "Player panel",
+      "microReview": "Micro-review",
+      "notes": "Marked notes",
+      "notesEmpty": "No marked note yet: use « Take a note » (N) while watching.",
+      "sourceMicroReview": "MICRO-REVIEW",
+      "sourceNote": "NOTE"
+    }
   },
   "analytics": {
     "title": "Analytics",
@@ -939,7 +1066,9 @@
       "unreviewed": "Unreviewed",
       "toBeReviewed": "To Be Reviewed",
       "notImported": "Not imported",
-      "details": "Stats"
+      "details": "Stats",
+      "shortReview": "Short review",
+      "shortReviewHint": "Watched or micro-reviewed, without notes. Click to complete it."
     },
     "status": {
       "active": "Active",
@@ -1195,7 +1324,8 @@
       "autoBadge": "Pre-filled",
       "timeLabel": "Note {{n}} — time",
       "noteLabel": "Note {{n}} — text",
-      "deleteNote": "Delete note {{n}}"
+      "deleteNote": "Delete note {{n}}",
+      "guideLine": "Guide: what to note during a review"
     }
   },
   "fundamentalsGrid": {
@@ -1364,6 +1494,118 @@
       "scan": "Scan for recording",
       "linkFile": "Link local file",
       "addYoutube": "Add YouTube link"
+    },
+    "layers": {
+      "title": "Show on the timeline",
+      "notes": "My notes",
+      "microReview": "Micro-review",
+      "mistakes": "Detected mistakes",
+      "deaths": "Deaths",
+      "fights": "Fights",
+      "filters": "Filters",
+      "reset": "Reset",
+      "self": "You",
+      "game": "Game",
+      "allObjectives": "Objectives · all",
+      "remembered": "Remembered for all your games.",
+      "dragon": "Drakes",
+      "baron": "Baron",
+      "herald": "Herald",
+      "grubs": "Voidgrubs",
+      "turrets": "Towers",
+      "inhibs": "Inhibs"
+    },
+    "clip": {
+      "thisMoment": "Clip this moment",
+      "duration": "Duration",
+      "moment": "Micro-review moment",
+      "preview": "Preview",
+      "saved": "Clip saved {{from}} → {{to}}",
+      "inMyClips": "Saved to My clips",
+      "export": "Export MP4",
+      "link": "Copy link",
+      "share": "Share with the team",
+      "exported": "Clip exported as MP4",
+      "linkCopied": "Link copied (valid 24 h)",
+      "actionFailed": "The clip action failed.",
+      "new": "New clip",
+      "start": "Start",
+      "end": "End",
+      "title": "Clip title (optional)",
+      "save": "Save clip",
+      "zoomHint": "Auto-zoom around the clip · drag the handles",
+      "button": "Clip",
+      "buttonHint": "Create a clip (C)",
+      "escKey": "Esc",
+      "errors": {
+        "tooLong": "A clip lasts 2 min at most.",
+        "badRange": "The clip’s start must come before its end.",
+        "saveFailed": "The clip couldn’t be saved."
+      },
+      "track": "Clip timeline",
+      "youtube": "YouTube",
+      "youtubeConnect": "Connect YouTube",
+      "youtubeProgress": "YouTube {{percent}} %",
+      "youtubeDone": "Clip on YouTube (unlisted), link copied",
+      "youtubeLink": "YouTube link:",
+      "defaultTitle": "Ascend clip",
+      "youtubeErrors": {
+        "NOT_AUTHENTICATED": "YouTube isn’t connected: connect it in Settings.",
+        "AUTH_EXPIRED": "The YouTube connection expired: reconnect it in Settings.",
+        "QUOTA_EXCEEDED": "Today’s YouTube quota is used up: try again tomorrow.",
+        "YOUTUBE_UNAVAILABLE": "YouTube upload isn’t available in this version.",
+        "generic": "The YouTube upload failed.",
+        "UPLOAD_IN_PROGRESS": "This clip is already being uploaded by the automatic upload.",
+        "ENCRYPTION_UNAVAILABLE": "Windows encryption isn’t available: Ascend can’t keep the YouTube connection."
+      },
+      "discord": "Send to Discord",
+      "discordSend": "Send",
+      "webhook": "Discord webhook",
+      "noWebhook": "No Discord webhook: add one in Settings.",
+      "discordSent": "Link sent to {{name}}",
+      "discordFailed": "The Discord send failed.",
+      "createLink": "Create the link"
+    },
+    "bar": {
+      "timeline": "Video timeline",
+      "microReview": "Micro-review · {{from}} → {{to}}",
+      "prevMoment": "Previous moment",
+      "nextMoment": "Next moment",
+      "back10": "Back 10 s",
+      "fwd10": "Forward 10 s",
+      "play": "Play",
+      "pause": "Pause",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "volume": "Volume",
+      "speed": "Playback speed",
+      "mistake": "Mistake",
+      "mistakeHint": "Add a mistake at the current time (E)",
+      "panel": "Show or hide the panel",
+      "fullscreen": "Fullscreen"
+    },
+    "note": {
+      "button": "Take a note",
+      "hint": "Take a note at the current time (N)",
+      "text": "Note text",
+      "placeholder": "What you notice at this moment…",
+      "tag": "tag",
+      "searchTag": "Search a tag",
+      "keys": "Enter saves · Esc cancels",
+      "save": "Save note",
+      "saved": "Note marked",
+      "failed": "The note couldn’t be saved."
+    },
+    "corner": {
+      "sideLeft": "Panel on the left · remembered",
+      "sideRight": "Panel on the right · remembered",
+      "hidePanel": "Hide the panel (P)",
+      "showPanel": "Show the panel (P)"
+    },
+    "youtubeTerms": {
+      "before": "By publishing, you agree to the ",
+      "link": "YouTube Terms of Service",
+      "after": ". Ascend does not read anything from your channel."
     }
   },
   "jobs": {
@@ -1983,6 +2225,12 @@
         "strengthsShort": "Strong",
         "wantedStrengths": "Wanted strengths",
         "required": "Minimum required"
+      },
+      "card": {
+        "champion": "Champion · from your top",
+        "auto": "Auto",
+        "skin": "Skin · with a cut-out only",
+        "cutoutOnly": "Only the skins with a cut-out are offered."
       }
     },
     "rosterLink": {
@@ -4365,7 +4613,7 @@
       "marks": "Marks",
       "noMoments": "No moments marked yet.",
       "press": "Press",
-      "mark": "Mark",
+      "mark": "Take a note",
       "hideAuto": "Hide auto-detected mistakes",
       "showAuto": "Show auto-detected mistakes",
       "noMistakes": "No mistakes tagged yet.",
@@ -4465,7 +4713,8 @@
       "addInSettings": "Add one in Settings.",
       "copyAsText": "Copy as text",
       "copyAsTextHint": "Markdown — paste anywhere"
-    }
+    },
+    "tempLinkWarning": "Temporary link hosted by litterbox.catbox.moe (an anonymous service): readable by anyone who has the link, for up to 72 h, and it can’t be deleted earlier."
   },
   "microReview": {
     "title": "45-second micro-review",
@@ -4485,11 +4734,11 @@
     "zone": {
       "own-base": "Your base",
       "enemy-base": "Enemy base",
-      "top-lane": "Top lane",
-      "mid-lane": "Mid lane",
-      "bot-lane": "Bot lane",
-      "top-river": "Top river",
-      "bot-river": "Bot river",
+      "top-lane": "top",
+      "mid-lane": "mid",
+      "bot-lane": "bot",
+      "top-river": "river top",
+      "bot-river": "river bot",
       "own-jungle": "Your jungle",
       "enemy-jungle": "Enemy jungle"
     },
@@ -4519,7 +4768,7 @@
       "outnumbered": "alone against {{n}}",
       "noWard": "no ward in the last 60 s",
       "absent": "the enemy takes {{objectiveThe}}",
-      "distance": "you were {{distance}} units away",
+      "distance": "you weren’t there",
       "wardsElsewhere_one": "{{count}} ward placed elsewhere",
       "wardsElsewhere_other": "{{count}} wards placed elsewhere",
       "noWardAtAll": "no ward from you",
@@ -4528,7 +4777,7 @@
       "csDiff": "{{n}} CS",
       "xpDiff": "{{n}} XP",
       "hesitation": "the enemy takes {{objectiveThe}} while you arrive late",
-      "lateMove": "{{distance}} units walked toward the pit in the last 25 seconds",
+      "lateMove": "a late move toward the objective in the last 25 seconds",
       "noCrossMap": "no cross-map in return",
       "overchase": "chase in enemy ground without a kill or a camp",
       "counterTempo": "back to your starting quadrant after a river play",
@@ -4548,7 +4797,7 @@
       "fedCarryFirst": "first to die in the fight while you were the carry",
       "goldShare": "{{pct}} % of your team's gold",
       "streak": "{{n}}-kill streak (shutdown)",
-      "junglerFar": "{{distance}} units away from you",
+      "junglerFar": "far from you",
       "badRotation": "roam without a kill or assist",
       "rotationLoss": "−{{cs}} CS and −{{xp}} XP vs your lane opponent",
       "tempoWindowUnpunished": "the enemy jungler shows on the other side, no punish",
@@ -4597,7 +4846,7 @@
       "sideT1": "{{lane}} T1 destroyed, the first tower already down",
       "heraldUnused": "dead {{sec}} s after the Herald was taken, the eye still in your pocket",
       "fledInvade": "at {{pct}} % HP in your jungle against the enemy jungler at {{theirs}} %",
-      "outsmited": "the enemy takes {{objectiveThe}} while you stood in the pit",
+      "outsmited": "the enemy takes {{objectiveThe}} while you stood in the {{objectiveOf}} pit",
       "aheadOfWave": "dead in lane {{sec}} s after leaving base",
       "resetTrapHp": "stayed in lane at {{pct}} % HP after the enemy back, dead {{sec}} s later",
       "resetTrapMana": "stayed in lane at {{pct}} % mana after the enemy back, dead {{sec}} s later",
@@ -4606,7 +4855,11 @@
       "botLeech": "next to your ADC in bot lane on {{n}} of the 7 snapshots between 9:00 and 15:00",
       "killParticipation": "{{pct}} % kill participation at 15:00",
       "absentScuttle": "your jungler dies at the bottom Scuttle Crab without you",
-      "weakSideUnwarded": "{{cs}} CS taken in your bot jungle, no ward of yours"
+      "weakSideUnwarded": "{{cs}} CS taken in your bot jungle, no ward of yours",
+      "towerBeforeSpawn": "you took the {{towerLane}} tower at {{towerAt}}, before {{objectiveThe}} spawned ({{spawn}})",
+      "objectiveFell": "the enemy takes {{objectiveThe}} at {{kill}} in the {{objectiveOf}} pit",
+      "placeAt": "you were {{place}}{{posNote}}",
+      "leftLaneLate": "you left your lane for {{objectiveThe}} too late"
     },
     "reason": {
       "noWard": "No ward before the objective",
@@ -4657,7 +4910,7 @@
       "doubleSpend": "Tempo spent twice: I tried to chain two actions (objective + wave or camp) without resetting and got punished on their respawn",
       "tempoWindowUnused": "Tempo window wasted: the enemy jungler showed on the other side and I punished nothing (passive farming of my camps)",
       "noTempoWindow": "No real window: my lanes had no priority to punish",
-      "chokePoint": "Choke point mistake: I stayed stuck in the objective pit instead of locking the choke point upstream",
+      "chokePoint": "Choke point mistake: I stayed stuck on the objective instead of locking the choke point upstream",
       "pitRole": "My job: I had to tank or burst the objective",
       "ecoTempo": "Real economic tempo deficit: I fought a level behind, with too little HP/mana, or kept my Barrier/Heal too late",
       "summonerLate": "Defensive summoner used too late (or not at all)",
@@ -4762,8 +5015,16 @@
       "excerpt": "Excerpt {{from}} → {{to}}",
       "replay": "Replay",
       "openFull": "Full player",
-      "noRecording": "No VOD for this game: position on the map at the key moment.",
-      "mapLabel": "Position on the map at the key moment"
+      "noRecording": "No VOD for this game: the moment’s place is written above.",
+      "mapLabel": "Position on the map at the key moment",
+      "markers": {
+        "error": "Error",
+        "consequence": "Consequence",
+        "conclusion": "Conclusion"
+      },
+      "watch": "Watch the moment ({{from}} → {{to}})",
+      "inPlayer": "The video plays in the game’s player, with its markers.",
+      "browse": "Browse in the player"
     },
     "pattern": {
       "tempo-hesitation": "Missed cross-map",
@@ -4810,7 +5071,78 @@
     },
     "otherJustified": "This was not a mistake: it was my call",
     "unsupported": "The micro-review only covers classic games on Summoner's Rift.",
-    "previousSeason": "Previous season: the micro-review only analyses this season's games."
+    "previousSeason": "Previous season: the micro-review only analyses this season's games.",
+    "position": {
+      "estimated": "estimated position",
+      "exact": "exact position",
+      "estimatedBetween": "estimated position (between {{from}} and {{to}})"
+    },
+    "place": {
+      "lane": {
+        "top": "top",
+        "mid": "mid",
+        "bot": "bot"
+      },
+      "river": {
+        "top": "river top",
+        "bot": "river bot"
+      },
+      "pit": "{{objectiveOf}} pit",
+      "camp": "near {{camp}}, {{side}}",
+      "camps": {
+        "blue": "blue",
+        "gromp": "Gromp",
+        "wolves": "the wolves",
+        "raptors": "the raptors",
+        "red": "red",
+        "krugs": "the krugs"
+      },
+      "side": {
+        "blue": "blue side",
+        "red": "red side"
+      },
+      "base": "{{side}} base",
+      "pitIn": "in the {{objectiveOf}} pit",
+      "baseIn": "in the {{side}} base"
+    },
+    "extras": {
+      "toggle": "My reasons · other mistake tags",
+      "reasons": "Why I think it happened (optional)",
+      "reasonsPlaceholder": "What I misread, what I meant to do…",
+      "moreTags": "Other mistakes in this moment",
+      "tag": "Mistake tag",
+      "pickTag": "Pick a tag",
+      "removeTag": "Remove this tag",
+      "tagNote": "Description (optional)",
+      "addTag": "Add a mistake tag",
+      "save": "Save my additions",
+      "sentWithAnswer": "Sent with your answer."
+    },
+    "more": {
+      "button": "Go on with other key moments",
+      "none": "No other key moment in this game."
+    },
+    "undetected": {
+      "button": "Add a mistake the app missed",
+      "title": "A mistake the micro-review missed",
+      "desc": "Add the critical mistakes the app didn’t see: your Mistake Lab gets more accurate.",
+      "time": "Game time",
+      "timePlaceholder": "Game time (e.g. 12:34)",
+      "badTime": "Write the time like 12:34.",
+      "save": "Add",
+      "saved": "Mistake added",
+      "failed": "The mistake couldn’t be added.",
+      "encourage": "A critical mistake the app didn’t see? Add it: that’s what keeps your Mistake Lab accurate.",
+      "question": "A critical mistake the app didn’t see?"
+    },
+    "badge": {
+      "objective": "OBJECTIVE",
+      "death": "DEATH"
+    },
+    "savedAsNote": "Saved as a marked note at {{time}}",
+    "doneTitle_one": "Micro-review done · {{count}} moment",
+    "doneTitle_other": "Micro-review done · {{count}} moments",
+    "finish": "Finish"
   },
   "codex": {
     "title": "Codex advice",
