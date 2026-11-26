@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog } from 'electron'
+import { app, BrowserWindow, clipboard, ClipboardItem, dialog } from 'electron'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
@@ -155,7 +155,8 @@ export function registerLftHandlers(): void {
     // the app's own fonts and logo load; never a place the renderer names.
     const baseUrl = new URL('.', event.sender.getURL()).href
     const image = await renderPoster({ markup: req.markup, css: req.css, width: req.width, height: req.height, baseUrl })
-    clipboard.writeImage(image)
+    // Electron 45: the clipboard API is async and W3C-shaped (writeImage was removed).
+    await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(image.toPNG())], { type: 'image/png' }) })])
     if (req.action === 'copy') return { copied: true as const, filePath: null }
 
     const parent = BrowserWindow.fromWebContents(event.sender) ?? undefined

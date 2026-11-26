@@ -52,8 +52,9 @@ win:
       arch:
         - x64
   icon: build/icon.ico
-  sign: false
-  signingHashAlgorithms: []
+  # Unsigned until ~300 users (user decision). electron-builder 26 moved
+  # `sign` / `signingHashAlgorithms` under `signtoolOptions`; with no
+  # certificate configured nothing is signed, so they are simply omitted.
   forceCodeSigning: false
   artifactName: Ascend-Setup-${version}.${ext}
 
@@ -66,3 +67,13 @@ nsis:
   createDesktopShortcut: always
   createStartMenuShortcut: true
   shortcutName: Ascend
+
+# S19-01 (26/11, Electron 45): hardening fuses, flipped in the binary at
+# package time. No code path relaunches the exe as Node (no
+# ELECTRON_RUN_AS_NODE, fork or NODE_OPTIONS), so these are free.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
