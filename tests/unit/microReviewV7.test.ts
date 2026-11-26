@@ -18,7 +18,8 @@ import { buildGame, at } from './microReviewFixtures'
 const CODEX_SUP_ENGAGE = 'codex_support_engage_micro_cc_chain_exit_pathing_zone_c_crash'
 const V7_IDS = [CODEX_JGL_CLEAR, CODEX_JGL_INVADE_ORDER, CODEX_JGL_GANK, CODEX_JGL_MINUS, CODEX_JGL_ECONOMY, CODEX_JGL_T1_HERALD, CODEX_JGL_NEVER_FLEE,
   CODEX_JGL_INVADE_STOP, CODEX_JGL_VISION, CODEX_JGL_SMITE, CODEX_MID_MICRO, CODEX_MID_WAVES, CODEX_SUP_ENGAGE, CODEX_SUP_POST_CRASH, CODEX_SUP_POST6]
-const V7_PATTERNS = MOMENT_PATTERNS.slice(MOMENT_PATTERNS.indexOf('jungle-late-first-recall'))
+// mid-roam-unpaid (26/11/2026, roam ledger) is not a V7-V10 pattern: tested in microReviewRoam.test.ts.
+const V7_PATTERNS = MOMENT_PATTERNS.slice(MOMENT_PATTERNS.indexOf('jungle-late-first-recall')).filter((p) => !String(p).endsWith('-roam-unpaid') && p !== 'jungle-gank-unpaid')
 /**
  * The briefs' qcmTrigger.condition → the detector patterns that implement it → the fiche of choice [1] (the fiche whose
  * text teaches that case). Conditions with no pattern cannot be read from Riot's timeline.
@@ -47,8 +48,8 @@ const moment = (facts: MomentFacts, trigger: CriticalMoment['trigger'] = 'critic
 // ── Codex: audit, mapping, content ───────────────────────────────────────
 
 describe('AscendCodex — V7–V10 audit: nothing duplicated', () => {
-  it('109 fiches (75 after V7–V10, + 34 from the Nov. 2026 research): the 15 V7 ids are fiches of their own, no id, alias or headline collision', () => {
-    expect(CODEX).toHaveLength(109)
+  it('110 fiches (75 after V7–V10, + 34 from the Nov. 2026 research, + the ADC roam fiche of 26/11): the 15 V7 ids are fiches of their own, no id, alias or headline collision', () => {
+    expect(CODEX).toHaveLength(110)
     for (const id of V7_IDS) {
       expect(CODEX.filter((e) => e.id === id), id).toHaveLength(1)
       expect(CODEX_ALIASES[id], id).toBeUndefined()

@@ -1,6 +1,6 @@
 # Politique de confidentialité
 
-Version 0.3 · mise à jour le 19 novembre 2026 · s'applique à l'application de bureau, à l'app web et à ce site
+Version 0.3 · mise à jour le 21 novembre 2026 · s'applique à l'application de bureau, à l'app web et à ce site
 
 ## 1. Qui est responsable de vos données
 
@@ -40,10 +40,15 @@ Base légale : l'exécution du service que vous demandez (article 6.1.b du RGPD)
 
 ## 4. Ce qui ne quitte jamais votre ordinateur
 
-- **Les vidéos** de vos parties, clips et miniatures.
+- **Les vidéos** de vos parties, clips et miniatures, sauf celles que vous publiez sur YouTube (§ 4 bis).
 - **Le cache des matchs Riot** et les statistiques détaillées calculées à partir de celui-ci.
 - **L'audio des débriefs** : la transcription est faite par un modèle qui tourne sur votre PC.
 - Les webhooks Discord personnels et les réglages propres à chaque PC (dossier d'enregistrement, qualité, apparence).
+
+## 4 bis. YouTube (si vous le connectez)
+
+- **Une seule autorisation.** Ascend ne demande qu'une autorisation : publier sur votre chaîne les vidéos que vous choisissez de partager (autorisation Google « youtube.upload ») : un clip, la vidéo d'une partie, ou l'enregistrement d'une réunion d'équipe. Si vous activez l'upload YouTube automatique dans les réglages, chaque partie enregistrée et chaque clip sont publiés automatiquement, avec la visibilité que vous avez choisie (publique, non répertoriée ou privée), jusqu'à ce que vous le désactiviez. Ces vidéos sont publiées sans relecture : elles peuvent contenir votre micro et la voix d'autres personnes (par exemple un vocal Discord). Le micro est mélangé au son de la partie : le réglage du son (avec audio ou sans audio, « sans audio » par défaut) s'applique à tous vos PC, car il est synchronisé avec votre compte. Ne publiez la voix d'autres personnes qu'avec leur accord. Ascend ne lit rien de votre compte YouTube : ni vos vidéos, ni le nom de votre chaîne, ni vos statistiques. L'autorisation est chiffrée par le trousseau de Windows sur votre PC ; sans ce chiffrement, Ascend refuse la connexion. L'envoi se fait directement de votre PC vers YouTube, sans passer par un serveur Ascend.
+- **Ce qu'Ascend garde.** Ascend garde l'adresse de la vidéo publiée. Pour un clip, elle reste sur votre PC. Pour la vidéo d'une partie, elle est synchronisée avec votre compte Ascend et visible du staff de vos groupes si vous partagez vos reviews. Pour l'enregistrement d'une réunion d'équipe, elle est visible des membres du groupe. Ascend ne garde aucune autre donnée YouTube.
 
 ## 5. Qui voit quoi
 
@@ -59,9 +64,13 @@ Base légale : l'exécution du service que vous demandez (article 6.1.b du RGPD)
 - **Cloudflare** : relais vers l'API Riot Games, app web, bot Discord et ce site (réseau mondial).
 - **Riot Games** : reçoit les requêtes d'API nécessaires, selon sa propre politique de confidentialité.
 - **Discord** : uniquement si vous utilisez cette intégration.
+- **YouTube (Google)** : uniquement si vous connectez YouTube et y publiez une vidéo (§ 4 bis).
+- **litterbox.catbox.moe** : uniquement quand vous créez un lien temporaire pour partager un clip. Ce service anonyme héberge la vidéo ; le lien est lisible par toute personne qui l'a, pendant 72 heures au plus, et ne peut pas être supprimé avant.
 - **GitHub** : héberge les fichiers d'installation et les mises à jour de l'application ; ce site interroge l'API publique de GitHub pour afficher la dernière version.
 
 Pour limiter les appels à l'API Riot, notre relais garde chez Cloudflare (stockage R2) un cache partagé des parties publiques de League of Legends qu'il a déjà récupérées. Ces données de match proviennent de Riot Games et contiennent notamment le Riot ID et l'identifiant de compte Riot (PUUID) des 10 joueurs de chaque partie, y compris de joueurs qui n'ont pas de compte Ascend. Elles servent uniquement à ne pas redemander la même partie à Riot et sont supprimées après 90 jours.
+
+En utilisant la publication sur YouTube, vous acceptez les [Conditions d'utilisation de YouTube](https://www.youtube.com/t/terms). Le traitement par Google est régi par les [Règles de confidentialité de Google](https://policies.google.com/privacy).
 
 Aucune donnée n'est vendue ni utilisée à des fins publicitaires. Ce site n'utilise ni cookie, ni outil de mesure d'audience, ni police ou script hébergé par un tiers.
 
@@ -84,6 +93,7 @@ Aucune donnée n'est vendue ni utilisée à des fins publicitaires. Ce site n'ut
 - **Accès et portabilité** : _Réglages → Sauvegarde_ exporte toutes vos données dans un fichier `.nexusmind`.
 - **Effacement** : _Réglages → Compte Ascend → Supprimer mon compte_ supprime immédiatement votre compte, vos données synchronisées et vos sauvegardes cloud (voir § 7 pour les données de groupe). Les données présentes sur votre PC ne sont pas touchées : pour les effacer, désinstallez l'application puis supprimez son dossier de données (dans `%APPDATA%`) et votre dossier d'enregistrements.
 - **Retrait du consentement au bien-être** : _Réglages → Confidentialité_, effet immédiat (§ 3 bis).
+- **Retirer l'accès YouTube** : _Réglages → YouTube → Déconnecter_ révoque l'autorisation chez Google et l'efface de votre PC. Vous pouvez aussi la retirer depuis la page des autorisations de votre compte Google : [https://myaccount.google.com/permissions](https://myaccount.google.com/permissions).
 - **Rectification, opposition, limitation, retrait du consentement** : écrivez à exciid501@gmail.com. Réponse sous un mois.
 - **Réclamation** : vous pouvez saisir l'autorité de protection des données de votre pays (en France, la CNIL).
 

@@ -76,7 +76,7 @@ describe('AscendCodex — no duplicate fiche', () => {
       const [only] = contextsOf(moment({ pattern }))
       expect(contextsOf(moment({ pattern })), pattern).toHaveLength(1)
       // tempo-hesitation / late recall / pit-chokepoint share no context with another pattern, except the two jungle-cycle ones.
-      if (owner.has(only) && !(only === 'jungle-cycle')) throw new Error(`${pattern} and ${owner.get(only)} share the context ${only}`)
+      if (owner.has(only) && !(only === 'jungle-cycle') && !(only === 'jgl-gank-camps-up' && [pattern, owner.get(only)].includes('jungle-gank-unpaid')) && !(only === 'mid-roam' && [pattern, owner.get(only)].includes('mid-roam-unpaid') && String(pattern).endsWith('-roam-unpaid'))) throw new Error(`${pattern} and ${owner.get(only)} share the context ${only}`)
       owner.set(only, pattern)
     }
   })

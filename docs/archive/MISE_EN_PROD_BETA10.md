@@ -1,3 +1,5 @@
+> **ARCHIVÉ le 26/11/2026** : document livré ou remplacé, gardé pour l'historique. Ne pas suivre comme instruction.
+
 # Mise en production groupée de la beta.10 (Back-end)
 
 Back-end, 20/11/2026. Liste exacte, dans l'ordre. **Chaque étape demande l'accord direct de l'utilisateur.** On

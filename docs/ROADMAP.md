@@ -1,6 +1,6 @@
 # Ascend — Roadmap technique & produit
 
-> Issu de l'audit du 12/11/2026 (v0.2.0-beta.60). Ce document complète le [PRD](../PRD.md).
+> Issu de l'audit du 12/11/2026 (v0.2.0-beta.60). Le PRD d'origine est archivé : [PRD](archive/PRD_2026-04_v1.2.md).
 > Légende : ✅ fait · 🔜 prochain · ⏳ planifié · 💡 idée
 
 ---

@@ -28,6 +28,19 @@ const VARIANTS: MomentFacts[] = [
   { alliesNearby: 0, enemiesInvolved: 3 }, { nearObjective: true, wardedLast60s: false }, { objectiveLost: 'baron', objectiveLostAfterSec: 30 },
   { objective: 'baron', playerDistance: 3000, wardsElsewhere: 1 }, { objective: 'dragon', wardsElsewhere: 2 }, { objective: 'grubs', wardsElsewhere: 0 },
   { opponentChampion: 'Ahri', csDiff10: -20, xpDiff10: -500 }, { csDiff10: -20 },
+  // mid-roam-unpaid (26/11/2026): each branch of its bilan (gain / objective / nothing, follow-up / tower / freeze).
+  { roamSide: 'top', roamBackSec: 500, roamKills: 1, roamAssists: 0, followKills: 1, platesLost: 1 },
+  { roamSide: 'bot', roamBackSec: 500, roamObjective: 'dragon', followTowerLost: true },
+  { roamBackSec: 500, freezeLikely: true },
+  // roam cards of the other roles: tp, ADC / support extras, every support timer.
+  { roamBackSec: 500, roamTp: true, csLost: 8, xpLost: 100 },
+  { roamBackSec: 500, partnerDied: true, roamTimer: 'after-kills', roamGoldLost: 200 },
+  { roamBackSec: 500, partnerForcedBack: true, partnerHpPct: 20, roamTimer: 'after-recall' },
+  { roamBackSec: 500, roamTimer: 'adc-away' }, { roamBackSec: 500, roamTimer: 'enemy-duo-recall' }, { roamBackSec: 500, roamTimer: 'wave-crash-probable' },
+  { roamBackSec: 500, roamTimer: 'paid-window' }, { roamBackSec: 500, roamTimer: 'bad' }, { roamBackSec: 500, roamTimer: 'none' },
+  // jungle-gank-unpaid: gain / forced back / objective / nothing, and the two bad timers.
+  { gankLane: 'BOT', roamBackSec: 500, campsLost: 3, gankGold: [-50, -420], gankXp: [30, -310], roamKills: 1, gankTimer: 'enemy-close' },
+  { gankLane: 'TOP', roamBackSec: 500, gankForcedBack: true, gankTimer: 'camps-up' }, { gankLane: 'MID', roamBackSec: 500, roamObjective: 'dragon' }, { gankLane: 'MID', roamBackSec: 500 },
 ]
 const moment = (facts: MomentFacts, trigger: CriticalMoment['trigger']): CriticalMoment => ({
   key: `${trigger}@200`, trigger, gameTimeSec: 200, severity: 0.3, position: null, zone: null, lane: null, territory: null, winProbBefore: 0.5, winProbAfter: 0.45, facts,

@@ -40,7 +40,9 @@
  *                        jungle-late-first-recall, jungle-early-boots,
  *                        jungle-camps-up-gank, jungle-weakside-stolen,
  *                        jungle-fled-invade, jungle-side-t1-destroyed,
- *                        bad-rotation, mid-roam-plates, cheater-recall
+ *                        bad-rotation, mid-roam-plates, cheater-recall,
+ *                        mid-roam-unpaid (the mid's roam; replaces mid-roam-plates, bad-rotation and the 10:00 card
+ *                        for a roam it reads, once DETECTOR_SPEC.roam.enabled)
  * A death gets at most one pattern: they are tried in the order above, the
  * most specific first, so one death never yields two concurrent readings
  * (a death read as a Dragon tank or a compensation is not an overchase too).
@@ -92,6 +94,9 @@ import {
 } from './winProbability'
 import { attackTypeOf, isControlMage } from './championClasses'
 import { deathTimerSec, respawnTimeFactor, seasonOf } from './gameClock'
+import { ROAM_THRESHOLDS, roamLedger, type RoamEntry } from './roamLedger'
+import { GANK_THRESHOLDS, gankLedger, type GankEntry } from './gankLedger'
+import { questGap, type QuestGap } from './roleQuest'
 
 export type MomentTrigger = 'critical-death' | 'absent-objective' | 'early-deficit'
 
@@ -110,8 +115,16 @@ export const MOMENT_PATTERNS = [
   'jungle-compensation-death', 'jungle-early-boots', 'jungle-side-t1-destroyed', 'jungle-herald-unused-death', 'jungle-fled-invade',
   'jungle-outsmited', 'mid-ahead-of-wave-death', 'mid-reset-trap-death', 'mid-passive-wave-loss',
   'support-botlane-leech', 'support-absent-scuttle', 'support-weakside-unwarded',
+  // 26/11/2026 — bilan of the mid roam (roamLedger.ts): a roam that cost more than it paid. Replaces mid-roam-plates and bad-rotation for the mid.
+  'mid-roam-unpaid', 'top-roam-unpaid', 'adc-roam-unpaid', 'support-roam-unpaid',
+  // 26/11/2026 — bilan of the jungler's gank (gankLedger.ts): replaces jungle-camps-up-gank once DETECTOR_SPEC.gankLedger.enabled.
+  'jungle-gank-unpaid',
 ] as const
 export type MomentPattern = typeof MOMENT_PATTERNS[number]
+
+/** The roam ledger's roles, and the card each one's losing roam becomes (phases 1-2 of docs/PLAN_MOTEUR_BILANS). */
+const ROAM_ROLES: readonly string[] = ['TOP', 'MIDDLE', 'BOTTOM', 'UTILITY']
+const ROAM_PATTERN: Record<string, MomentPattern> = { TOP: 'top-roam-unpaid', MIDDLE: 'mid-roam-unpaid', BOTTOM: 'adc-roam-unpaid', UTILITY: 'support-roam-unpaid' }
 
 /**
  * Kept above the garbage-time ceiling (P(win) > 0.85): throwing a won game is the very mistake they describe, and a
@@ -166,6 +179,17 @@ export const DETECTOR_SPEC = {
    * 20:00, when Baron spawns and the map regroups (mid T1 p75 20:30).
    */
   midRoam: { untilSec: 1200, plates: 1, cs: 10, minOffAxis: 2600 },
+  /**
+   * 26/11/2026 (docs/PLAN_MOTEUR_BILANS.md phase 1): the mid roam ledger, ROAM_THRESHOLDS of roamLedger.ts plus a flag.
+   * Delivered silently: the ledger is computed and stored with the analysis (`GameAnalysis.roams`) but, while `enabled` is
+   * false, no card comes from it and mid-roam-plates / bad-rotation / the 10:00 deficit work as before. Calibration of
+   * 26/11/2026 on 483 cached 16.x games (966 mid player-games), docs/engine-reports/2026-11-26-calibrage-roam-mid.md:
+   * netThreshold 1.25, about 12 losing roams per 100 player-games, their games won 26 % against 53 % without.
+   * Turn `enabled` on only once the user has validated the threshold.
+   */
+  /** 26/11/2026 (phase 3): the jungler's gank ledger, GANK_THRESHOLDS of gankLedger.ts plus a flag; silent until validated (2026-11-26-calibrage-ganks.md). */
+  gankLedger: { enabled: false, ...GANK_THRESHOLDS },
+  roam: { enabled: false, enabledRoles: { TOP: false, BOTTOM: false, UTILITY: false }, ...ROAM_THRESHOLDS },
   // V5 — laning phase.
   /**
    * Kills the lane opponent within 850 units of a standing enemy T1, dies within 4 s, enemy jungler not involved. The
@@ -361,6 +385,35 @@ export interface MomentFacts {
   platesLost?: number
   roamSide?: 'top' | 'bot'
   enemyGrubs?: boolean
+  /** mid-roam-unpaid: when the roam ended (s), what it paid (takedowns, the heaviest objective) and what the opponent drew from it. */
+  roamBackSec?: number
+  roamKills?: number
+  roamAssists?: number
+  roamObjective?: ObjectiveKind
+  followKills?: number
+  followPlates?: number
+  followTowerLost?: boolean
+  /** The wave probably stayed on the player's side after the return (a hint from CS and position, never a fact). */
+  freezeLikely?: boolean
+  roamDied?: boolean
+  /** top / ADC / support roams: the support's timer, the tax on a support who left early, a probable Teleport of the top, the partner left alone, the gold the payers lost. */
+  roamTimer?: string
+  roamTaxed?: boolean
+  roamTp?: boolean
+  partnerHpPct?: number
+  partnerForcedBack?: boolean
+  partnerDied?: boolean
+  partnerCs?: number
+  roamGoldLost?: number
+  /** jungle-gank-unpaid: the lane, camps lost against the enemy jungler, the gold / XP lead before and after, the timer, the lane's laner forced back. */
+  gankLane?: 'TOP' | 'MID' | 'BOT'
+  campsLost?: number
+  gankGold?: [number, number]
+  gankXp?: [number, number]
+  gankTimer?: string
+  gankForcedBack?: boolean
+  gankDied?: boolean
+  roamCrossed?: boolean
   /** pit-chokepoint, low-hp-recall-before-objective, jungle-baron-recall: allies who died in the fight the player missed or lost. */
   alliesDown?: number
   /** tower-dive-one-for-one: seconds between the player's kill and their death, lane of the enemy T1. */
@@ -489,6 +542,18 @@ export interface GameAnalysis {
   garbageDiscarded: number
   /** Lane numbers at 10:00 vs the direct opponent (laners only), for objective checks. */
   laneAt10: { csDiff: number; xpDiff: number } | null
+  /**
+   * 26/11/2026, internal: the mid's roam ledger (every roam read, whatever its verdict), kept for the calibration and the
+   * assistant; never shown. Mid only, absent in analyses stored before ANALYSIS_VERSION 15.
+   */
+  roams?: RoamEntry[]
+  /** Same, for the jungler's ganks (ANALYSIS_VERSION 16). */
+  ganks?: GankEntry[]
+  /**
+   * Phase 4: the real end of the role quest and the gap with the direct opponent (ITEM_DESTROYED of the quest item). Shown alone, never
+   * a term of a verdict (2026-11-26-calibrage-quetes.md). Absent when a quest never ended.
+   */
+  quest?: QuestGap
 }
 
 export interface DetectorSelector {
@@ -1378,6 +1443,20 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     }, after, o.ts)
   }
 
+  // ── 2z. Roam ledger (the mid's, 26/11/2026). Always computed (silent delivery: stored in `roams`); it only drives cards
+  // once DETECTOR_SPEC.roam.enabled. One event, one reading: a roam it reads is not also a bad-rotation, a mid-roam-plates
+  // or the 10:00 deficit it caused.
+  const roamEntries: RoamEntry[] = ROAM_ROLES.includes(role) && (laneOpponent || role === 'UTILITY') ? roamLedger(match, timeline, pid, S.roam)?.entries ?? [] : []
+  const roamsLive = (role === 'MIDDLE' ? S.roam.enabled : (S.roam.enabledRoles as Record<string, boolean>)[role] === true) && roamEntries.length > 0
+  const roamOverlaps = (fromMs: number, toMs: number): boolean => roamsLive && roamEntries.some((r) => r.fromSec * 1000 <= toMs && r.backSec * 1000 >= fromMs)
+  // ── 2y. Gank ledger (the jungler's, phase 3): always computed, a card only once DETECTOR_SPEC.gankLedger.enabled.
+  const gankEntries: GankEntry[] = role === 'JUNGLE' ? gankLedger(match, timeline, pid, S.gankLedger)?.entries ?? [] : []
+  const ganksLive = S.gankLedger.enabled && gankEntries.length > 0
+  const questOf = ROAM_ROLES.includes(role) || role === 'JUNGLE' ? questGap(match, timeline, pid) : null
+  /** A roam before `bySec` explains a CS deficit measured then: a losing one gets its own card, a profitable one paid for at least half of it. */
+  const roamExplainsDeficit = (bySec: number, csDiff: number): boolean => roamsLive && roamEntries.some((r) =>
+    r.fromSec < bySec && (r.verdict === 'losing' || (r.verdict === 'profitable' && r.cost.cs >= -csDiff / 2)))
+
   // ── 3a. Mid lane given away (V9): 12+ CS behind at 6:00 without 2 points in one basic spell at level 3. That is the
   // lane's CS story: the 10:00 deficit (section 3) is then not reported a second time.
   let midWaveLoss = false
@@ -1387,7 +1466,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     const ups = events.filter((e) => e.type === 'SKILL_LEVEL_UP' && e.participantId === pid && (e.levelUpType ?? 'NORMAL') === 'NORMAL').slice(0, 3)
     const doubled = ups.some((e, n) => ups.findIndex((x) => x.skillSlot === e.skillSlot) !== n)
     const takedowns = kills.filter((e) => e.timestamp <= k * 60_000 && involves(e, pid)).length
-    if (diff <= S.midWaveLoss.csDiff && ups.length === 3 && !doubled && takedowns < S.midWaveLoss.takedowns) {
+    if (diff <= S.midWaveLoss.csDiff && ups.length === 3 && !doubled && takedowns < S.midWaveLoss.takedowns && !roamExplainsDeficit(S.midWaveLoss.atSec, diff)) {
       // Same scale as the 10:00 deficit (1 CS = 0.01).
       midWaveLoss = add('early-deficit', k * 60_000, pframe(k, pid)?.position ?? null, Math.min(0.2, -diff / 100), {
         pattern: 'mid-passive-wave-loss', csDiff6: diff, opponentChampion: laneOpponent.championName ?? null,
@@ -1406,7 +1485,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       const xpDiff = Math.round(xpOf(atFrame, pid) - xpOf(atFrame, laneOpponent.participantId))
       laneAt10 = { csDiff, xpDiff }
       const takedowns = kills.filter((e) => e.timestamp <= S.early.atSec * 1000 && involves(e, pid)).length
-      if (!midWaveLoss && (csDiff < S.early.csDiff || xpDiff < S.early.xpDiff) && takedowns < S.early.takedowns) {
+      if (!midWaveLoss && (csDiff < S.early.csDiff || xpDiff < S.early.xpDiff) && takedowns < S.early.takedowns && !roamExplainsDeficit(S.early.atSec, csDiff)) {
         const severity = Math.min(0.3, Math.abs(Math.min(0, csDiff)) / 100 + Math.abs(Math.min(0, xpDiff)) / 4000)
         add('early-deficit', S.early.atSec * 1000, mine.position ?? null, severity, {
           csDiff10: csDiff, xpDiff10: xpDiff, takedownsBefore10: takedowns, opponentChampion: laneOpponent.championName ?? null,
@@ -1589,7 +1668,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     // V7 — a gank that cost the camps (2:00–12:00): in a lane next to an enemy on a snapshot, no takedown and no death in the
     // minute that follows, and 8+ jungle CS lost on the enemy jungler meanwhile.
     const GK = S.gankCost
-    if (enemyJungler != null) {
+    if (enemyJungler != null && !S.gankLedger.enabled) {
       for (let k = GK.fromSec / 60; k * 60 < GK.untilSec && k + 1 <= clock.last; k++) {
         const t0 = k * 60_000
         const here = pframe(k, pid)?.position as Point | undefined
@@ -1735,7 +1814,7 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
         if (Math.abs(p1.x - p1.y) < S.midRoam.minOffAxis) continue
         const from = k * 60_000
         const to = (k + 2) * 60_000
-        if (takedownIn(from, to)) continue
+        if (takedownIn(from, to) || roamOverlaps(from, to)) continue
         const platesLost = ourMidPlates.filter((e) => e.timestamp >= from && e.timestamp <= to).length
         const csLost = csGap(k) - csGap(k + 2)
         if (platesLost < S.midRoam.plates || csLost < S.midRoam.cs) continue
@@ -1761,10 +1840,58 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
       const t0 = k * 60_000 + 20_000
       if (![t0, t0 + R.awaySec * 1000, (k + 1) * 60_000].every((ms) => offLane(posAt(pid, ms)))) continue
       if (takedownIn(k * 60_000, (k + 2) * 60_000)) continue
+      if (roamOverlaps(k * 60_000, (k + 2) * 60_000)) continue
       const csLost = csGap(k) - csGap(k + 2)
       const xpLost = Math.round(xpGap(k) - xpGap(k + 2))
       if (csLost <= R.cs || xpLost <= R.xp) continue
       if (add('early-deficit', t0, posAt(pid, t0), 0.1 + Math.min(0.15, csLost / 100), { pattern: 'bad-rotation', csLost, xpLost })) break
+    }
+
+  }
+
+  // The roams the ledger reads as losing (26/11/2026), the costliest first. A roam that ends in a death the death
+  // section already reads is that death's card, not a second one.
+  {
+    if (roamsLive) {
+      const R2 = S.roam
+      const losing = roamEntries.filter((r) => r.verdict === 'losing').sort((a, b) => a.net - b.net)
+      let cards = 0
+      for (const r of losing) {
+        if (cards >= R2.maxCards) break
+        const t0 = r.fromSec * 1000
+        if (r.died && candidates.some((c) => c.trigger === 'critical-death' && c.gameTimeSec * 1000 >= t0 - 20_000 && c.gameTimeSec * 1000 <= r.backSec * 1000 + 30_000)) continue
+        const heaviest = [...r.gain.objectives].sort((a, b) => OBJECTIVE_WEIGHT[b] - OBJECTIVE_WEIGHT[a])[0]
+        const pos: Point | null = r.at ? { x: r.at.x, y: r.at.y } : posAt(pid, t0)
+        if (add('early-deficit', t0, pos, 0.14 + Math.min(0.14, r.cost.cs / 150 + -r.net / 20), {
+          pattern: ROAM_PATTERN[role], csLost: r.cost.cs, xpLost: r.cost.xp, platesLost: r.cost.plates + r.followUp.plates, roamSide: r.side, roamBackSec: r.backSec,
+          roamKills: r.gain.kills, roamAssists: r.gain.assists, ...(heaviest ? { roamObjective: heaviest } : {}),
+          followKills: r.followUp.kills, followTowerLost: r.followUp.towerLost || r.cost.towerLost,
+          ...(r.freezeLikely ? { freezeLikely: true } : {}), ...(r.died ? { roamDied: true } : {}), ...(r.crossed ? { roamCrossed: true } : {}),
+          ...(objectives.some((o) => !o.ours && o.kind === 'grubs' && o.ts <= r.backSec * 1000) ? { enemyGrubs: true } : {}),
+          ...(r.timer ? { roamTimer: r.timer } : {}), ...(r.taxed ? { roamTaxed: true } : {}), ...(r.tpLikely ? { roamTp: true } : {}),
+          ...(r.partner ? { partnerHpPct: r.partner.hpAfter ?? undefined, partnerForcedBack: r.partner.forcedBack, partnerDied: r.partner.died, partnerCs: r.partner.cs } : {}),
+          roamGoldLost: r.goldLost ?? 0,
+        })) cards++
+      }
+    }
+  }
+
+  // The jungler's ganks the ledger reads as losing (phase 3), the costliest first. A gank that ends in a death the death section
+  // already reads is that death's card; a gank is never also a jungle-camps-up-gank (the legacy rule is off while this one is on).
+  if (ganksLive) {
+    let cards = 0
+    for (const g of gankEntries.filter((x) => x.verdict === 'losing').sort((a, b) => a.net - b.net)) {
+      if (cards >= S.gankLedger.maxCards) break
+      const t0 = g.fromSec * 1000
+      if (g.died && candidates.some((c) => c.trigger === 'critical-death' && c.gameTimeSec * 1000 >= t0 - 20_000 && c.gameTimeSec * 1000 <= g.backSec * 1000 + 30_000)) continue
+      const heaviest = [...g.gain.objectives].sort((a, b) => OBJECTIVE_WEIGHT[b] - OBJECTIVE_WEIGHT[a])[0]
+      const pos: Point | null = g.at ? { x: g.at.x, y: g.at.y } : posAt(pid, t0)
+      if (add('early-deficit', t0, pos, 0.12 + Math.min(0.14, g.campsLost / 40 + -g.net / 30), {
+        pattern: 'jungle-gank-unpaid', gankLane: g.lane, roamBackSec: g.backSec, campsLost: g.campsLost, campsStolenCs: g.campsStolen * 4,
+        jungleCsLost: Math.round(g.campsLost * 4), gankGold: [g.gap.goldBefore, g.gap.goldAfter], gankXp: [g.gap.xpBefore, g.gap.xpAfter],
+        roamKills: g.gain.kills, roamAssists: g.gain.assists, ...(heaviest ? { roamObjective: heaviest } : {}),
+        followKills: g.followUp.kills, gankTimer: g.timer, ...(g.gain.forcedBack ? { gankForcedBack: true } : {}), ...(g.died ? { gankDied: true } : {}),
+      })) cards++
     }
   }
 
@@ -1796,6 +1923,9 @@ export function analyzeGame(match: any, timeline: any, selector: DetectorSelecto
     contested,
     garbageDiscarded,
     laneAt10,
+    ...(roamEntries.length ? { roams: roamEntries } : {}),
+    ...(gankEntries.length ? { ganks: gankEntries } : {}),
+    ...(questOf ? { quest: questOf } : {}),
   }
 }
 

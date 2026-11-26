@@ -18,6 +18,8 @@ import {
   GARBAGE_HIGH, GARBAGE_LOW, OBJECTIVE_WEIGHT, frameClock, isGarbageTime, objectiveKindOf, winProbAt, winProbability, winProbabilityCurve, winProbabilityTrack,
 } from '../../src/lib/microReview/winProbability'
 import { buildGame, at } from './microReviewFixtures'
+import { ROAM_THRESHOLDS } from '../../src/lib/microReview/roamLedger'
+import { GANK_THRESHOLDS } from '../../src/lib/microReview/gankLedger'
 
 type Game = ReturnType<typeof buildGame>
 const run = (g: Game) => analyzeGame(g.match, g.timeline, g.selector)!
@@ -69,6 +71,9 @@ describe('spec constants', () => {
       pit: { fromSec: 900, fightRadius: 3000, insideRadius: 900, beforeSec: 15, fightGapSec: 20 },
       // Plates stay up after 14:00, so the plate-bound rules run to 20:00.
       midRoam: { untilSec: 1200, plates: 1, cs: 10, minOffAxis: 2600 },
+      // Mid roam ledger (26/11/2026), delivered silently: boundaries in microReviewRoam.test.ts.
+      gankLedger: { enabled: false, ...GANK_THRESHOLDS },
+      roam: { enabled: false, enabledRoles: { TOP: false, BOTTOM: false, UTILITY: false }, ...ROAM_THRESHOLDS },
       // V5 (laning phase) — boundaries tested in microReviewV5.test.ts.
       dive: { untilSec: 1200, turretRadius: 850, afterKillSec: 4 },
       levelSpike: { untilSec: 235, windowSec: 10, levels: [2, 3] },

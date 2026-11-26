@@ -1,3 +1,5 @@
+> **ARCHIVÉ le 26/11/2026** : document livré ou remplacé, gardé pour l'historique. Ne pas suivre comme instruction.
+
 # Impact de la web app sur Supabase — rapport avant redéploiement
 
 > Rédigé par la session **Audit** le 19/11/2026, à la demande de l'utilisateur

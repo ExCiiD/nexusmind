@@ -2273,6 +2273,9 @@
     "id": "codex_mid_roam_budget_next_wave_numbers",
     "role": "MIDDLE",
     "mistakeSlug": "overstay",
+    "mistakeSlugs": [
+      "bad-wave-sync"
+    ],
     "phase": "early",
     "radarAxis": "kp",
     "fundamentalId": "roam_gank_timing",
@@ -2396,9 +2399,37 @@
     "videoExamples": []
   },
   {
+    "id": "codex_adc_roam_leave_support_alone_in_lane",
+    "role": "BOTTOM",
+    "mistakeSlug": "overstay",
+    "mistakeSlugs": [
+      "bad-wave-sync",
+      "cs-deficit"
+    ],
+    "phase": "early",
+    "radarAxis": "cs15",
+    "fundamentalId": "roam_gank_timing",
+    "headline": {
+      "fr": "Roam de l'ADC en lane : ne laisse pas ton support seul sous leur tour",
+      "en": "ADC roams in lane: do not leave your support alone under their tower"
+    },
+    "tacticalRule": {
+      "fr": "Un ADC qui quitte la bot lane laisse son support en 1v2 et ne farm plus : le duo perd la wave et l'XP, et le support peut mourir seul. (1) PUSH D'ABORD : ne pars que wave crashée ou presque, sinon ton support encaisse et la wave rebondit chez toi. (2) SORS AVEC TON SUPPORT : un roam à deux vers le mid ou la rivière coûte une wave mais crée un 2v1 ou un 3v2 ; un roam seul est presque toujours perdant. (3) PARS SUR UN TIMER : leur duo en recall ou mort, ou ton support qui garde la wave sous ta tour. (4) Si tu vois leur jungler côté bot, reste : l'XP d'un ADC seul est grosse mais elle se perd si le support meurt.",
+      "en": "An ADC who leaves bot lane leaves the support in a 1v2 and stops farming: the duo loses the wave and the XP, and the support can die alone. (1) SHOVE FIRST: leave only with the wave crashed or nearly, otherwise your support takes the hits and the wave bounces back to you. (2) LEAVE WITH YOUR SUPPORT: a two-person roam to mid or the river costs a wave but creates a 2v1 or a 3v2; a solo roam is almost always a loss. (3) LEAVE ON A TIMER: their duo recalling or dead, or your support holding the wave under your tower. (4) If you see their jungler on the bot side, stay: a lone ADC takes a big share of the XP, but it is lost if the support dies."
+    },
+    "drillObjective": {
+      "fr": "5 prochaines parties : avant 14:00, ne quitte la bot lane qu'avec ton support ou sur un recall ennemi, et ne perds pas plus de 4 CS par absence.",
+      "en": "Next 5 games: before 14:00, leave bot lane only with your support or on an enemy recall, and lose no more than 4 CS per absence."
+    },
+    "videoExamples": []
+  },
+  {
     "id": "codex_support_roam_free_windows_level5",
     "role": "UTILITY",
     "mistakeSlug": "overstay",
+    "mistakeSlugs": [
+      "bad-wave-sync"
+    ],
     "phase": "early",
     "radarAxis": "kp",
     "fundamentalId": "roam_gank_timing",

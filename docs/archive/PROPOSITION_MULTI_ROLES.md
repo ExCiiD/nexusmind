@@ -1,3 +1,5 @@
+> **ARCHIVÉ le 26/11/2026** : document livré ou remplacé, gardé pour l'historique. Ne pas suivre comme instruction.
+
 # Proposition #39 — Plusieurs rôles par membre d'un groupe
 
 Back-end Dev, 19/11/2026. Analyse seulement, sans code. À valider par le Chief, puis à faire revoir par

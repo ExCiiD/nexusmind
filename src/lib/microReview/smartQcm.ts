@@ -38,6 +38,8 @@ export const QCM_CONTEXTS = [
   'jgl-first-recall', 'jgl-gank-camps-up', 'jgl-weakside', 'jgl-invade-death', 'jgl-dragon-tank', 'jgl-compensation', 'jgl-boots',
   'jgl-t1', 'jgl-herald', 'jgl-fled', 'jgl-outsmited', 'mid-ahead-wave', 'mid-reset-trap', 'mid-wave-loss',
   'sup-post6', 'sup-scuttle', 'sup-weakside',
+  // 26/11/2026 — roam ledger of the ADC and of the support (the top and the mid share 'mid-roam').
+  'adc-roam', 'sup-roam',
 ] as const
 export type QcmContext = typeof QCM_CONTEXTS[number]
 
@@ -92,6 +94,8 @@ export const CODEX_ASYMMETRY = 'codex_macro_pressure_asymmetry_next_midwave'
 export const CODEX_CHOKEPOINT = 'codex_vision_baron_chokepoint_support_zoning'
 export const CODEX_ARCHETYPES = 'codex_mechanics_mid_6archetypes_3v3_synergy'
 export const CODEX_ROAM_CHECK = 'codex_tempo_roam_check_systematic_fog'
+export const CODEX_ADC_ROAM = 'codex_adc_roam_leave_support_alone_in_lane'
+export const CODEX_SUPPORT_ROAM = 'codex_support_roam_free_windows_level5'
 // V5 (laning phase). Fiches merged into an existing one keep that one's id (see CODEX_ALIASES in codex.ts).
 export const CODEX_DIVE = 'dive-any-early'
 export const CODEX_BACK_TIMER = 'overstay-any-early'
@@ -155,7 +159,7 @@ export function retiredOption(options: readonly QcmOption[], answer: { tagSlug: 
 }
 
 /** The matrix: each context's diagnoses, most likely first. */
-export function optionsFor(context: QcmContext, facts: Pick<MomentFacts, 'nearObjective' | 'secondsSinceOwnPlay' | 'playerWarded' | 'hpPct' | 'midOnWave'> = {}): QcmOption[] {
+export function optionsFor(context: QcmContext, facts: Pick<MomentFacts, 'nearObjective' | 'secondsSinceOwnPlay' | 'playerWarded' | 'hpPct' | 'midOnWave' | 'pattern' | 'freezeLikely'> = {}): QcmOption[] {
   const nearObjective = !!facts.nearObjective
   switch (context) {
     // Death near a lost objective: setup (vision / mid opening), tempo (tower greed vs cross-map), or a justified 50/50.
@@ -223,7 +227,16 @@ export function optionsFor(context: QcmContext, facts: Pick<MomentFacts, 'nearOb
     case 'early-cs': return [mistake('cs-deficit', 'csMissed'), mistake('bad-wave-sync', 'waveState'), mistake('bad-trade', 'lostTrades')]
     case 'early-xp': return [mistake('xp-deficit', 'xpLost'), mistake('bad-trade', 'lostTrades'), mistake('bad-lane-opening', 'laneOpening')]
     case 'bad-rotation': return [linked('cs-deficit', 'waveRotation', CODEX_SLOW_FAST), linked('bad-positioning', 'badFightChoice', CODEX_FIGHTS), justified('rotationWorth')]
-    case 'mid-roam': return [linked('cs-deficit', 'roamCheck', CODEX_ROAM_CHECK), mistake('bad-wave-sync', 'waveState'), justified('rotationWorth')]
+    // Support who left: outside a free window, or the ADC left alone with the wave under their tower; the way out is a free window.
+    case 'sup-roam': return [linked('overstay', 'roamOutsideWindow', CODEX_SUPPORT_ROAM), linked('bad-wave-sync', 'adcLeftAlone', CODEX_SUPPORT_ROAM), justified('freeWindow')]
+    // ADC who left: the duo paid for it.
+    case 'adc-roam': return [linked('overstay', 'adcLeftSupport', CODEX_ADC_ROAM), linked('bad-wave-sync', 'adcWaveLeft', CODEX_ADC_ROAM), justified('roamTradeOk')]
+    // The roam ledger's card (mid-roam-unpaid, 26/11/2026): a wave probably left on the player's side reads first as the
+    // wave not pushed before leaving, and the way out is the assumed trade; the older plates card keeps its own.
+    case 'mid-roam': return facts.pattern === 'mid-roam-unpaid' || facts.pattern === 'top-roam-unpaid'
+      ? [facts.freezeLikely ? linked('bad-wave-sync', 'waveState', CODEX_ROAM_CHECK) : linked('cs-deficit', 'roamCheck', CODEX_ROAM_CHECK),
+        facts.freezeLikely ? mistake('cs-deficit', 'roamCheck') : linked('bad-wave-sync', 'waveState', CODEX_ROAM_CHECK), justified('roamTradeOk')]
+      : [linked('cs-deficit', 'roamCheck', CODEX_ROAM_CHECK), mistake('bad-wave-sync', 'waveState'), justified('rotationWorth')]
     case 'jungle-cycle': return [linked('overstay', 'cycleBreak', CODEX_JUNGLE_CYCLE), mistake('cs-deficit', 'campsLost'), justified('invadeWorth')]
     case 'jungle-passive': return [linked('cs-deficit', 'passiveClear', CODEX_JUNGLE_INVADE), mistake('bad-threat-assessment', 'misreadPrio'), justified('noInvadeWindow')]
     case 'jungle-window': return [linked('cs-deficit', 'tempoWindowUnused', CODEX_TEMPO_WINDOW), mistake('bad-threat-assessment', 'misreadPrio'), justified('noTempoWindow')]
@@ -250,7 +263,11 @@ export function contextsOf(m: CriticalMoment): QcmContext[] {
     case 'gank-timer': return ['gank-timer']
     case 'fed-carry-first': return ['carry-first']
     case 'bad-rotation': return ['bad-rotation']
-    case 'mid-roam-plates': return ['mid-roam']
+    case 'mid-roam-plates':
+    case 'mid-roam-unpaid':
+    case 'top-roam-unpaid': return ['mid-roam']
+    case 'adc-roam-unpaid': return ['adc-roam']
+    case 'support-roam-unpaid': return ['sup-roam']
     case 'pit-chokepoint': return ['chokepoint']
     case 'tower-dive-one-for-one': return ['tower-dive']
     case 'level-up-spike': return ['level-spike']
@@ -265,7 +282,8 @@ export function contextsOf(m: CriticalMoment): QcmContext[] {
     case 'jungle-baron-recall': return ['baron-recall']
     case 'inhib-forced-dive': return ['inhib-dive']
     case 'jungle-late-first-recall': return ['jgl-first-recall']
-    case 'jungle-camps-up-gank': return ['jgl-gank-camps-up']
+    case 'jungle-camps-up-gank':
+    case 'jungle-gank-unpaid': return ['jgl-gank-camps-up']
     case 'jungle-weakside-stolen': return ['jgl-weakside']
     case 'jungle-invade-death': return ['jgl-invade-death']
     case 'jungle-dragon-tank-death': return ['jgl-dragon-tank']
@@ -369,6 +387,13 @@ export function promotedTag(stats: ChoiceStats, exclude: string[]): string | nul
 /** Game clock "m:ss" of a second count. */
 const clockOf = (sec: number): string => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
 
+/** The roam ledger's cards: a cost, a gain or what the partner paid, a follow-up or a timer: three lines. */
+const ROAM_CARDS: readonly string[] = ['mid-roam-unpaid', 'top-roam-unpaid', 'adc-roam-unpaid', 'support-roam-unpaid']
+const SUPPORT_TIMER_KEY: Record<string, string> = {
+  'after-kills': 'roamTimerAfterKills', 'after-recall': 'roamTimerAfterRecall', 'adc-away': 'roamTimerAdcAway', 'enemy-duo-recall': 'roamTimerEnemyRecall',
+  'wave-crash-probable': 'roamTimerCrash', 'paid-window': 'roamTimerPaid', bad: 'roamTimerBad', none: 'roamTimerNone',
+}
+
 /** Factual one-liner: only what the timeline establishes (never a guess about intent or ward location). */
 function summaryOf(m: CriticalMoment): QcmSummary {
   const f = m.facts
@@ -413,6 +438,50 @@ function summaryOf(m: CriticalMoment): QcmSummary {
       head = { key: f.roamSide === 'top' ? 'midRoamTop' : 'midRoamBot' }
       extras.push({ key: 'platesLost', params: { count: f.platesLost ?? 1 } })
       extras.push({ key: 'csLost', params: { cs: f.csLost ?? 0 } })
+      break
+    // The roam's bilan (26/11/2026): where and when, what it cost against the lane opponent, what it paid, what the opponent drew from it.
+    case 'mid-roam-unpaid':
+      head = { key: 'roamUnpaid', params: { side: f.roamSide === 'top' ? 'top' : 'bot', from: clockOf(m.gameTimeSec), back: clockOf(f.roamBackSec ?? m.gameTimeSec) } }
+      extras.push({ key: 'roamCost', params: { cs: f.csLost ?? 0, xp: f.xpLost ?? 0 } })
+      extras.push((f.roamKills ?? 0) + (f.roamAssists ?? 0) > 0 ? { key: 'roamGain', params: { kills: f.roamKills ?? 0, assists: f.roamAssists ?? 0 } }
+        : f.roamObjective ? { key: 'roamGainObjective', params: { objective: f.roamObjective } } : { key: 'roamNoGain' })
+      if (f.followTowerLost) extras.push({ key: 'roamFollowTower' })
+      else if ((f.followKills ?? 0) > 0 || (f.platesLost ?? 0) > 0) extras.push({ key: 'roamFollow', params: { kills: f.followKills ?? 0, plates: f.platesLost ?? 0 } })
+      else if (f.freezeLikely) extras.push({ key: 'roamFreeze' })
+      break
+    case 'top-roam-unpaid':
+      head = { key: 'roamUnpaidTop', params: { from: clockOf(m.gameTimeSec), back: clockOf(f.roamBackSec ?? m.gameTimeSec) } }
+      extras.push({ key: 'roamCost', params: { cs: f.csLost ?? 0, xp: f.xpLost ?? 0 } })
+      extras.push((f.roamKills ?? 0) + (f.roamAssists ?? 0) > 0 ? { key: 'roamGain', params: { kills: f.roamKills ?? 0, assists: f.roamAssists ?? 0 } }
+        : f.roamObjective ? { key: 'roamGainObjective', params: { objective: f.roamObjective } } : { key: 'roamNoGain' })
+      if (f.roamTp) extras.push({ key: 'roamTp' })
+      else if (f.followTowerLost) extras.push({ key: 'roamFollowTower' })
+      else if ((f.followKills ?? 0) > 0 || (f.platesLost ?? 0) > 0) extras.push({ key: 'roamFollow', params: { kills: f.followKills ?? 0, plates: f.platesLost ?? 0 } })
+      break
+    case 'adc-roam-unpaid':
+      head = { key: 'roamUnpaidAdc', params: { from: clockOf(m.gameTimeSec), back: clockOf(f.roamBackSec ?? m.gameTimeSec) } }
+      extras.push({ key: 'roamCost', params: { cs: f.csLost ?? 0, xp: f.xpLost ?? 0 } })
+      extras.push(f.partnerDied ? { key: 'roamSupportDied' } : (f.roamKills ?? 0) + (f.roamAssists ?? 0) > 0 ? { key: 'roamGain', params: { kills: f.roamKills ?? 0, assists: f.roamAssists ?? 0 } } : { key: 'roamNoGain' })
+      if (f.followTowerLost) extras.push({ key: 'roamFollowTower' })
+      else if ((f.followKills ?? 0) > 0 || (f.platesLost ?? 0) > 0) extras.push({ key: 'roamFollow', params: { kills: f.followKills ?? 0, plates: f.platesLost ?? 0 } })
+      break
+    // Support: what the ADC paid during the absence (never "because of you"), then the timer the roam left on.
+    case 'support-roam-unpaid':
+      head = { key: 'roamUnpaidSupport', params: { from: clockOf(m.gameTimeSec), back: clockOf(f.roamBackSec ?? m.gameTimeSec) } }
+      extras.push({ key: 'roamAdcCost', params: { cs: f.csLost ?? 0, gold: Math.round((f.roamGoldLost ?? 0) / 10) * 10 } })
+      extras.push(f.partnerForcedBack ? { key: 'roamAdcBack', params: { pct: f.partnerHpPct ?? 0 } } : f.partnerDied ? { key: 'roamAdcDied' }
+        : (f.roamKills ?? 0) + (f.roamAssists ?? 0) > 0 ? { key: 'roamGain', params: { kills: f.roamKills ?? 0, assists: f.roamAssists ?? 0 } } : { key: 'roamNoGain' })
+      extras.push({ key: SUPPORT_TIMER_KEY[f.roamTimer ?? 'none'] ?? 'roamTimerNone' })
+      break
+    // The jungler's gank bilan (phase 3): camps lost, the gold / XP lead before and after, what it paid, a timer that was a bad one.
+    case 'jungle-gank-unpaid':
+      head = { key: 'gankUnpaid', params: { lane: (f.gankLane ?? 'MID').toLowerCase(), from: clockOf(m.gameTimeSec), back: clockOf(f.roamBackSec ?? m.gameTimeSec) } }
+      extras.push({ key: 'gankCamps', params: { lost: Math.round((f.campsLost ?? 0) * 10) / 10 } })
+      extras.push({ key: 'gankGap', params: { goldBefore: f.gankGold?.[0] ?? 0, goldAfter: f.gankGold?.[1] ?? 0, xpBefore: f.gankXp?.[0] ?? 0, xpAfter: f.gankXp?.[1] ?? 0 } })
+      extras.push((f.roamKills ?? 0) + (f.roamAssists ?? 0) > 0 ? { key: 'roamGain', params: { kills: f.roamKills ?? 0, assists: f.roamAssists ?? 0 } }
+        : f.gankForcedBack ? { key: 'gankForcedBack' } : f.roamObjective ? { key: 'roamGainObjective', params: { objective: f.roamObjective } } : { key: 'roamNoGain' })
+      if (f.gankTimer === 'camps-up') extras.push({ key: 'gankTimerCampsUp' })
+      else if (f.gankTimer === 'enemy-close') extras.push({ key: 'gankTimerEnemyClose' })
       break
     case 'pit-chokepoint':
       head = { key: 'chokePoint', params: { objective: f.nearestPit === 'dragon' ? 'dragon' : 'baron' } }
@@ -557,7 +626,8 @@ function summaryOf(m: CriticalMoment): QcmSummary {
         if (f.nearObjective && !f.wardedLast60s) extras.push({ key: 'noWard' })
       }
   }
-  return { gameTimeSec: m.gameTimeSec, zone: m.zone, head, extras: extras.slice(0, 2) }
+  // The roam's bilan tells a cost, a gain and a follow-up: three lines; every other card keeps two.
+  return { gameTimeSec: m.gameTimeSec, zone: m.zone, head, extras: extras.slice(0, f.pattern === 'jungle-gank-unpaid' ? 4 : f.pattern && ROAM_CARDS.includes(f.pattern) ? 3 : 2) }
 }
 
 /**

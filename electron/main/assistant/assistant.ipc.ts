@@ -26,6 +26,8 @@ import {
   type FinishedExperiment,
   type Verdict,
 } from './experiments'
+import { bilanOf } from '../../../src/lib/microReview/bilanSummary'
+import { readStoredAnalysis } from '../analysisCompat'
 import { buildPlayerContext, laneFromReport, type GameRecord, type PlayerContext, type SessionRecord } from './features'
 import { problemById, problemForTag } from './problems'
 import { buildReport, neighbourObjective, type AssistantReport } from './report'
@@ -37,6 +39,8 @@ import { tallyVotes } from './weights'
 
 const MOMENTS = ['post_game', 'session', 'weekly'] as const
 const MAX_GAMES = 40
+/** First ANALYSIS_VERSION whose analyses carry the roam / gank ledgers (phase 5 indicators). */
+const BILAN_FROM_VERSION = 16
 /** Riot timelines are 1–2 MB each: only the newest games are parsed. */
 const MAX_TIMELINES = 20
 
@@ -76,6 +80,7 @@ async function loadInputs(userId: string, puuids: string[]): Promise<{ games: Ga
       session: { select: { objectiveId: true, objectiveIds: true } },
       review: { select: { kpiScores: true, objectiveRespected: true } },
       recording: { select: { id: true } },
+      analysis: { select: { payload: true, version: true } },
       mistakes: { ...(selfTag ? { where: { autoDetected: false } } : {}), select: { id: true, gameTimeSec: true, recordingId: true, severity: true, tag: { select: { slug: true, label: true } } } },
     },
   })
@@ -133,6 +138,7 @@ async function loadInputs(userId: string, puuids: string[]): Promise<{ games: Ga
         severity: m.severity,
       })),
       recordingId: g.recording?.id ?? null,
+      bilan: g.analysis && g.analysis.version >= BILAN_FROM_VERSION ? bilanOf(readStoredAnalysis(g.analysis.payload)) : null,
     }
   })
 

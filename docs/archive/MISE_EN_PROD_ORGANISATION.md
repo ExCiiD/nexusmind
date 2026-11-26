@@ -1,3 +1,5 @@
+> **ARCHIVÉ le 26/11/2026** : document livré ou remplacé, gardé pour l'historique. Ne pas suivre comme instruction.
+
 # Mise en production — « Relancer » (§ 18, Back-end)
 
 Back-end, 20/11/2026. Une migration écrite, testée sur PGlite et **non appliquée**, plus un déploiement du bot Discord.

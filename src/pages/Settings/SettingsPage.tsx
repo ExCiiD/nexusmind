@@ -1779,10 +1779,6 @@ function YouTubeCard() {
         {status.connected && <AutoYoutubeUploadSection />}
         {status.connected ? null : (
           <div className="space-y-3">
-            <div className="rounded-md border border-orange-500/30 bg-orange-500/5 px-3 py-2 text-xs text-orange-400">
-              <p className="font-medium mb-1">{t('settings.youtube.setupTitle')}</p>
-              <p><Trans i18nKey="settings.youtube.setupDesc" components={{ code: <code className="font-mono bg-white/5 px-1 rounded" /> }} /></p>
-            </div>
             {error && (
               <p className="text-xs text-[#E24C3A] bg-[#E24C3A]/10 border border-[#E24C3A]/30 rounded px-3 py-2">
                 {error}

@@ -1,0 +1,43 @@
+name: Engine timings watch
+
+# Every two weeks (patch cadence): compare the engine's game timers with the newest patch.
+# Opens (or updates) one issue when a review is due. See scripts/check-patch-timings.mjs and docs/engine-timings.json.
+on:
+  schedule:
+    - cron: '0 8 1,15 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Compare timers with the latest patch
+        id: check
+        run: |
+          set +e
+          node scripts/check-patch-timings.mjs > report.md
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+      - name: Open or update the review issue
+        if: steps.check.outputs.code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh issue list --label engine-timings --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file report.md
+          else
+            gh label create engine-timings --color 1d76db --description "Game timers to re-check" 2>/dev/null || true
+            gh issue create --title "Engine timings: review due" --label engine-timings --body-file report.md
+          fi
+      - name: Fail on network or parse errors
+        if: steps.check.outputs.code == '2'
+        run: exit 1

@@ -31,9 +31,17 @@ const W_GOLD = 0.0075
 const W_XP = 0.004
 const W_OBJ = 0.28
 
-export function winProbability(goldDiff: number, xpDiff: number, objDiff: number, minutes: number): number {
+/**
+ * The linear score z of the estimate above, for a gold, XP and objective difference at `minutes`. The bilan ledgers
+ * (ledgerCore.ts) use it as their single scale: a cost and a gain in different units become a Δz, compared, never shown.
+ */
+export function winZ(goldDiff: number, xpDiff: number, objDiff: number, minutes: number): number {
   const t = Math.max(minutes, 5)
-  const z = (W_GOLD * goldDiff) / t + (W_XP * xpDiff) / t + W_OBJ * objDiff
+  return (W_GOLD * goldDiff) / t + (W_XP * xpDiff) / t + W_OBJ * objDiff
+}
+
+export function winProbability(goldDiff: number, xpDiff: number, objDiff: number, minutes: number): number {
+  const z = winZ(goldDiff, xpDiff, objDiff, minutes)
   return 1 / (1 + Math.exp(-z))
 }
 

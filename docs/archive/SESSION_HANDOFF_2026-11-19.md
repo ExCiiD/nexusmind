@@ -1,3 +1,5 @@
+> **ARCHIVÉ le 26/11/2026** : document livré ou remplacé, gardé pour l'historique. Ne pas suivre comme instruction.
+
 # Handoff du projet Ascend (NexusMind) — 19/11/2026
 
 À lire en premier par toute session, avec `docs/TEAM_ROLES.md` (organisation

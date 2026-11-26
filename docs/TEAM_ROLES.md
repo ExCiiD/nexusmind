@@ -3,8 +3,9 @@
 Mise en place le 19/11/2026 à la demande de l'utilisateur. Six sessions
 permanentes, toutes dans `D:\DEV\NexusMind` (même dossier de travail),
 regroupées dans le groupe « NexusMind » de la barre latérale. Chaque session
-lit d'abord `docs/SESSION_HANDOFF.md`, ce document, `docs/INBOX.md` et
-l'index de mémoire.
+lit d'abord ce document, `docs/DECISIONS.md`, `docs/INBOX.md`,
+`docs/DECISIONS_EN_ATTENTE.md` et l'index de mémoire (l'ancien
+`SESSION_HANDOFF.md` est archivé dans `docs/archive/`, 26/11).
 
 **Registre des décisions (`docs/DECISIONS.md`) :** chaque session le relit
 avant toute tâche et s'y conforme. Une demande de l'utilisateur reçue par
@@ -87,10 +88,29 @@ dépense. Règles :
 
 ## Règles communes
 
-Celles de `docs/SESSION_HANDOFF.md` § 4 : commit / push / release / base de
-production sur demande de l'utilisateur uniquement, pas de `prisma migrate
-dev`, pas de point-virgule dans les commentaires SQL, jargon LoL en anglais
-dans les textes français, maquettes Penpot avant les changements visuels.
+(Reprises de l'ancien handoff, 26/11.)
+
+- **Commit, push, release, base de production :** seulement sur demande
+  explicite de l'utilisateur ; toute modification de la base Supabase de
+  production demande son accord.
+- **Migrations locales :** jamais `prisma migrate dev` (dérive de `dev.db`) ;
+  SQL écrit à la main dans `prisma/migrations/<date>_<nom>/`. **Pas de
+  point-virgule dans les commentaires SQL** (le runner découpe sur `;` avant
+  d'enlever les commentaires : l'app ne démarrerait plus).
+- **Release :** `scripts/release.ps1` après avoir monté la version dans
+  `package.json`. Le build embarque le dossier de travail, pas le commit :
+  construire depuis un worktree propre si d'autres sessions ont du travail non
+  commité, et ne rien envoyer aux sessions pendant un build.
+- **Vérifications :** `npm run typecheck`, `npm run lint`,
+  `npm run check:i18n`, `npx vitest run` ; interface vérifiée dans le harnais
+  (`.harness/`, serveur `ui-harness` du `launch.json` parent).
+- **Textes FR :** jargon LoL en anglais (shotcalling, spacing, trades, waves,
+  gank, roam, cooldowns…).
+- **Design :** maquettes Penpot avant les changements visuels.
+- **Shell :** pas de `\` dans un heredoc ou un `node -e` (mangés) : écrire le
+  script avec l'outil d'écriture de fichiers.
+- **Synchronisation :** filtrer explicitement par uid, ne jamais compter sur la
+  RLS seule.
 
 **Confirmations de l'utilisateur (règle du 19/11) :** quand une session pose une
 question ou demande une confirmation à l'utilisateur, elle s'arrête et attend sa

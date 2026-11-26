@@ -32,6 +32,8 @@ export interface LaneRecord {
   goldDiff14?: number | null
 }
 
+import type { GameBilan } from '../../../src/lib/microReview/bilanSummary'
+
 export interface GameRecord {
   id: string
   matchId: string
@@ -65,6 +67,8 @@ export interface GameRecord {
   timeDeadSec?: number | null
   mistakes?: MistakeRecord[]
   recordingId?: string | null
+  /** Phase 5 (26/11/2026): the roam / gank ledgers and the quest gap of the stored analysis, null when it has none. */
+  bilan?: GameBilan | null
 }
 
 // ── Per-game features ────────────────────────────────────────────────────
@@ -115,6 +119,7 @@ export interface GameFeatures {
   mistakes: MistakeRecord[]
   recordingId: string | null
   kpiScores: Record<string, number>
+  bilan?: GameBilan | null
 }
 
 const LANE_GRADE_SCORE: Record<string, number> = { S: 95, 'A+': 82, A: 72, 'B+': 62, B: 52, C: 40, D: 28, F: 15 }
@@ -206,6 +211,7 @@ export function computeGameFeatures(g: GameRecord): GameFeatures {
     mistakes: g.mistakes ?? [],
     recordingId: g.recordingId ?? null,
     kpiScores: g.kpiScores ?? {},
+    bilan: g.bilan ?? null,
   }
 }
 

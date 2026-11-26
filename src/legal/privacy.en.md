@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Version 0.3 · updated November 19, 2026 · applies to the desktop application, the web app and this website
+Version 0.3 · updated November 21, 2026 · applies to the desktop application, the web app and this website
 
 ## 1. Who is responsible for your data
 
@@ -40,10 +40,15 @@ Legal basis: performance of the service you request (GDPR Article 6(1)(b)). Well
 
 ## 4. What never leaves your computer
 
-- **Videos** of your games, clips and thumbnails.
+- **Videos** of your games, clips and thumbnails, except the ones you publish on YouTube (§ 4a).
 - **The Riot match cache** and detailed statistics computed from it.
 - **Debrief audio**: transcription is done by a model running on your PC.
 - Personal Discord webhooks and per-PC settings (recording folder, quality, appearance).
+
+## 4a. YouTube (if you connect it)
+
+- **One permission only.** Ascend asks for one permission only: to publish on your channel the videos you choose to share (Google scope "youtube.upload"): a clip, a full game video, or a team meeting recording. If you turn on automatic YouTube upload in the settings, every recorded game and every clip is published automatically, with the visibility you chose (public, unlisted or private), until you turn it off. These videos are published without review: they may contain your microphone and other people's voices (a Discord call, for example). The microphone is mixed into the game sound: the sound setting (with audio or no audio, "no audio" by default) applies to all your PCs, as it is synced with your account. Only publish other people's voices with their consent. Ascend does not read anything from your YouTube account: not your videos, not your channel name, not your statistics. The authorization is encrypted by Windows' credential store on your PC; without that encryption, Ascend refuses to connect. The upload goes straight from your PC to YouTube, never through an Ascend server.
+- **What Ascend keeps.** Ascend keeps the link of the published video. For a clip, it stays on your PC. For a full game video, it is synced with your Ascend account and visible to your groups' staff if you share your reviews. For a team meeting recording, it is visible to the group's members. Ascend stores no other YouTube data.
 
 ## 5. Who sees what
 
@@ -59,9 +64,13 @@ Legal basis: performance of the service you request (GDPR Article 6(1)(b)). Well
 - **Cloudflare**: Riot Games API relay, web app, Discord bot and this website (global network).
 - **Riot Games**: receives the necessary API requests, under its own privacy policy.
 - **Discord**: only if you use that integration.
+- **YouTube (Google)**: only if you connect YouTube and publish a video there (§ 4a).
+- **litterbox.catbox.moe**: only when you create a temporary link to share a clip. This anonymous service hosts the video; the link is readable by anyone who has it, for up to 72 hours, and cannot be deleted earlier.
 - **GitHub**: hosts the installer files and application updates; this website queries GitHub's public API to show the latest version.
 
 To limit calls to the Riot API, our relay keeps a shared cache of public League of Legends games it has already fetched, stored with Cloudflare (R2 storage). This match data comes from Riot Games and includes the Riot ID and Riot account identifier (PUUID) of the 10 players in each game, including players who have no Ascend account. It is used only to avoid requesting the same game from Riot again, and is deleted after 90 days.
+
+By publishing to YouTube you agree to the [YouTube Terms of Service](https://www.youtube.com/t/terms). Google's processing is governed by the [Google Privacy Policy](https://policies.google.com/privacy).
 
 No data is sold or used for advertising. This website uses no cookies, no analytics and no third-party fonts or scripts.
 
@@ -84,6 +93,7 @@ No data is sold or used for advertising. This website uses no cookies, no analyt
 - **Access and portability**: _Settings → Backup_ exports all your data to a `.nexusmind` file.
 - **Erasure**: _Settings → Ascend account → Delete my account_ immediately deletes your account, synced data and cloud backups (see § 7 for group data). Data on your PC is not touched: to erase it, uninstall the application, then delete its data folder (under `%APPDATA%`) and your recordings folder.
 - **Withdrawing wellbeing consent**: _Settings → Privacy_, effective immediately (§ 3a).
+- **Removing YouTube access**: _Settings → YouTube → Disconnect_ revokes the authorization at Google and erases it from your PC. You can also remove it from your Google Account permissions page: [https://myaccount.google.com/permissions](https://myaccount.google.com/permissions).
 - **Rectification, objection, restriction, withdrawal of consent**: write to exciid501@gmail.com. We answer within one month.
 - **Complaint**: you can contact your country's data protection authority (in France, the CNIL).
 

@@ -21,6 +21,24 @@ export function seasonOf(match: any): Season {
 }
 
 /**
+ * Patch steps inside the current season that change a rule the bilans read (docs/PLAN_MOTEUR_BILANS.md): 16.9 brings the
+ * role-quest roam budget and the −75 % off-lane penalty, 16.16 the support tax change (notes de patch, read 20/11/2026).
+ * `tier` is the last step reached; 'pre-16.9' = a 16.x game before the first one, 'unknown' = no readable version.
+ * Ids of the role-quest items did not move across 16.1-16.23 on the cached games (docs/engine-reports/2026-11-26-verifs-bilans.md).
+ */
+export const PATCH_TIERS = [{ id: '16.9', minor: 9 }, { id: '16.16', minor: 16 }] as const
+export type PatchTier = 'pre-16.9' | '16.9' | '16.16' | 'unknown'
+export interface PatchInfo { major: number | null; minor: number | null; tier: PatchTier }
+
+/** Patch of a game, from Match-V5 `info.gameVersion` ("16.9.123.456" → 16.9). Only the 16.x steps are known. */
+export function patchOf(match: any): PatchInfo {
+  const [maj, min] = String(match?.info?.gameVersion ?? '').split('.').map((s) => Number.parseInt(s, 10))
+  if (!Number.isFinite(maj) || !Number.isFinite(min) || maj !== 16) return { major: Number.isFinite(maj) ? maj : null, minor: Number.isFinite(min) ? min : null, tier: 'unknown' }
+  const reached = PATCH_TIERS.filter((t) => min >= t.minor).at(-1)
+  return { major: maj, minor: min, tier: reached ? reached.id : 'pre-16.9' }
+}
+
+/**
  * The early-game times the micro-review cards quote (seconds). The detector's own copy lives in DETECTOR_SPEC
  * (anomalyDetector.ts); tests keep the two equal. Kept here so the renderer can word a card without importing the
  * detector.

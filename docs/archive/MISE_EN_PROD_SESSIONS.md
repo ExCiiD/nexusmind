@@ -1,3 +1,5 @@
+> **ARCHIVÉ le 26/11/2026** : document livré ou remplacé, gardé pour l'historique. Ne pas suivre comme instruction.
+
 # Mise en production — migrations des sessions d'équipe (Back-end)
 
 Back-end, 20/11/2026. Quatre migrations écrites, testées sur PGlite et **non appliquées**. Chaque étape demande l'accord

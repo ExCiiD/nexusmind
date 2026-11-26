@@ -80,3 +80,7 @@ vérification d'objectif et assistant.
   gratuitement, ADC seul du côté opposé, push pendant le reset de l'équipe, or non dépensé à T−60.
 - Trois tags retombent sur une fiche d'une autre phase en late game : `walked-into-ward`, `xp-deficit`,
   `behind-on-levels-death`.
+
+## 5. Chantier en attente
+
+Bilans des roams, des ganks et des quêtes de rôle : **codés le 26/11, désactivés** (`ledgerCore.ts`, `roamLedger.ts`, `gankLedger.ts`, `roleQuest.ts`, `patchOf()` dans `gameClock.ts`, drapeaux `DETECTOR_SPEC.roam` et `gankLedger`). Avancement et activation : [`PLAN_MOTEUR_BILANS.md`](PLAN_MOTEUR_BILANS.md) § 8, seuils en attente (A1b et A1c).

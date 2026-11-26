@@ -119,6 +119,8 @@ export function normalizeRole(role: string | null | undefined): CodexRole {
   return 'any'
 }
 
+const PHASE_ORDER: readonly string[] = ['early', 'mid', 'late']
+
 /**
  * Best entry for a mistake: team rules first, then (role, phase) →
  * (any, phase) → (role, any phase) → (any, any phase) → same tag in another
@@ -135,7 +137,8 @@ export function codexFor(
   if (pool.length === 0) return null
   const rank = (e: CodexEntry) => {
     const roleScore = e.role === r && r !== 'any' ? 0 : e.role === 'any' ? 1 : 9
-    const phaseScore = phase && e.phase === phase ? 0 : e.phase === 'any' ? 1 : 2
+    // Another phase: the nearest one wins (late falls back on mid, never on early).
+    const phaseScore = phase && e.phase === phase ? 0 : e.phase === 'any' ? 1 : phase ? 2 + Math.abs(PHASE_ORDER.indexOf(e.phase) - PHASE_ORDER.indexOf(phase)) * 0.1 : 2
     const teamScore = e.source === 'team' ? 0 : 1
     // The entry written for this exact tag beats one that only lists it as a secondary tag.
     const slugScore = e.mistakeSlug === slug ? 0 : 1

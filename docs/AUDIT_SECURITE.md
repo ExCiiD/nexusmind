@@ -786,3 +786,17 @@ Pourquoi cet ordre : la clé OpenAI est un secret **valide** qui ne demande qu'u
 
 ### Revue avant release (règle permanente)
 À chaque livraison, CyberSecurity vérifie : advisors Supabase (sécurité), RLS des nouvelles tables et fonctions, `npm audit` (aucune nouvelle haute en exécution), présence de secrets dans `out/` et `app.asar`, CSP inchangée ou justifiée, nouveaux IPC validés par zod, et rend son verdict au Chief.
+
+---
+
+## 26/11/2026 — Passe Security (décisions du 26/11)
+
+**Verdict : Electron 45.4.1 prêt à fusionner, une migration prête mais non appliquée, le reste déjà corrigé en production.**
+
+- **S19-01 Electron :** branche locale `sec/electron-45` (worktree `wt-electron45`, 2 commits, rien poussé) : Electron 45.4.1, electron-builder 26.18.1, fuses (`runAsNode` et `NODE_OPTIONS` coupés, inspect coupé, intégrité ASAR et `onlyLoadAppFromAsar` actifs), API presse-papiers asynchrone (`lft.ipc.ts`, `share.ipc.ts`). Vérifié : typecheck, 2197 tests, `electron-builder` (fuses appliquées, ffmpeg épinglé), l'exe packagé démarre. **À tester à la main avant release :** capture WGC/ddagrab, `nxm:` (Range 206), `safeStorage`, mise à jour automatique.
+- **npm :** `npm audit fix` non cassant, 45 → 12 (dont 2 critiques de dev : `vitest`/`tinypool`, majeure v5 ; `zod` 3 haute, `react-router` 6 modérée : migrations dédiées). `riot-proxy` et `discord-bot` : 0.
+- **Dispos hors groupe :** déjà bloqué en base (`availability_rules_write` et `availability_exceptions_write` exigent `group_role(group_id, user_id)`) et dans le bot Discord (`getGroupMemberRole` avant toute écriture). Aucune action.
+- **Drafts et données d'équipe liés à un seul groupe :** migration `20261126090000_team_data_scoped_to_linked_group.sql` (**non appliquée, accord de mise en production requis**). Les lignes `Team`, `TeamMember`, `ChampionPoolEntry`, `CustomGame` et `DraftPrep` de `sync_records` ne sont lisibles que par le staff du groupe auquel l'équipe est liée (`Team.groupId`), plus le partage `share_team`. Une équipe sans groupe n'est plus partagée. Testée en transaction annulée sur la production : 3 équipes sur 4 liées, 140 des 173 entrées de pool, 7 des 9 membres ; le `CustomGame` non lié (1) cesserait d'être partagé.
+- **`team_sessions` « modifiable sur toutes les colonnes » (S19-13) :** **déjà réduit en production.** `authenticated` ne peut mettre à jour que `status`, `responsible_user_ids`, `queue_filter`, `started_at`, `ended_at` (vérifié par `has_column_privilege`), et seulement s'il gère la session. Sur `team_session_games`, seuls `status`, `match_json`, `our_team_id`, `enemy_team_name` : `session_id` et `reported_by` ne bougent plus. Reste : l'auteur d'une partie peut réécrire `match_json` (sans limite de taille) ; dire si on veut le borner.
+- **Advisors Supabase :** les `run_*` ne sont plus exposés ; il ne reste que les 21 fonctions `SECURITY DEFINER` appelables par `authenticated`, qui se contrôlent elles-mêmes, et 4 tables sans policy voulues.
+- **Litterbox :** l'envoi se fait depuis le processus principal (`share.ipc.ts`), aucune origine à ajouter à la CSP ; reste la mention dans la politique de confidentialité (Front).

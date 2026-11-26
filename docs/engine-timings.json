@@ -1,0 +1,24 @@
+{
+  "_comment": "Timers the engine relies on, season 2026 (game version 16.x). Read by scripts/check-patch-timings.mjs; details and sources in docs/DONNEES_JEU_2026.md. Bump lastVerifiedPatch only after reading the notes of every patch since.",
+  "lastVerifiedPatch": "26.23",
+  "wikiPages": ["Voidgrub camp", "Rift Herald", "Baron Nashor", "Dragon pit", "Minion (League of Legends)", "Scuttle Crab", "Jungling", "Death", "Turret", "Summoner's Rift"],
+  "pinned": {
+    "firstMinionWaveSec": 30,
+    "jungleCampsSec": 55,
+    "krugsGrompSec": 67,
+    "scuttleCrabSec": 175,
+    "voidgrubsSec": 480,
+    "voidgrubsDespawnSec": 885,
+    "heraldSec": 900,
+    "heraldDespawnSec": 1185,
+    "baronSec": 1200,
+    "baronRespawnSec": 360,
+    "firstDragonSec": 300,
+    "dragonRespawnSec": 300,
+    "elderRespawnSec": 360,
+    "soulDragons": 4,
+    "respawnFactorFromSec": 900,
+    "respawnFactorCap": 0.5,
+    "maxSourcedRespawnLevel": 18
+  }
+}
