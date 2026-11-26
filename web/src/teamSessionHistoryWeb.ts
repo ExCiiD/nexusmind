@@ -1,5 +1,7 @@
 import { sb, currentUserId } from './supabase'
 import * as history from '@/lib/teamSessionHistoryCore'
+import { getPlayerSessionStats } from '@/lib/playerSessionStatsCore'
+import { teamGameTimelineWithPlayers } from './analystWeb'
 import type { TeamSessionHistoryApi } from '@/lib/teamSessionHistory'
 
 /**
@@ -10,5 +12,6 @@ import type { TeamSessionHistoryApi } from '@/lib/teamSessionHistory'
 export const teamSessionHistoryWebApi: TeamSessionHistoryApi = {
   teamSessionHistoryList: async (groupId, filters) => history.listTeamSessionHistory(sb, await currentUserId(), groupId, filters),
   teamSessionHistoryDetail: (sessionId) => history.getTeamSessionHistoryDetail(sb, sessionId),
+  teamSessionPlayerStats: (sessionId, opts) => getPlayerSessionStats(sb, sessionId, opts?.enrich ? teamGameTimelineWithPlayers : undefined),
   teamSessionSetObjectiveResult: (sessionId, objectiveId, gameId, met) => history.setObjectiveResult(sb, sessionId, objectiveId, gameId, met),
 }

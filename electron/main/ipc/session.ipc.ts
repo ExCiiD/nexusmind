@@ -17,6 +17,7 @@ import { getMatchIds, getMatch, getMatchTimeline, extractPlayerStats } from '../
 import { forgetIgnoredMatches, rememberDeletedMatches } from '../ignoredMatches'
 import { pickNewest, PICK_CONCURRENCY, PICK_DEADLINE_MS } from '../matchHistoryPickCore'
 import { isOffSessionSession } from '../offSessionGames'
+import { soloSessionPlayerStats } from '../soloPlayerStats'
 
 /**
  * Completes a session: status, optional conclusion/summary, XP, session-count
@@ -83,6 +84,9 @@ const customObjectiveInput = z.object({
 }).strict()
 
 export function registerSessionHandlers() {
+  // Individual stats of the signed-in player for a solo session (null = the active one). Local data only, no Riot call.
+  validatedHandle('solo-session:player-stats', z.tuple([id.nullable().optional()]), (_e, sessionId) => soloSessionPlayerStats(sessionId ?? null))
+
   ipcMain.handle('session:create', async (_event, data: { objectiveId?: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean; customObjectives?: CustomObjectiveInput[] }) => {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })

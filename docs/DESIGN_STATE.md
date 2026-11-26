@@ -937,6 +937,42 @@ tenus » / « Objectives met » ; « Reviews faites » / « Reviews done » ;
 session » ; « Stats d'équipe » / « Team stats » ; « Stats individuelles » /
 « Player stats » ; « Notes et reviews » / « Notes and reviews ».
 
+### 4. Les 4 ajouts retenus (26/11, lot L2)
+
+Décision de l'utilisateur du 26/11 (`docs/DECISIONS.md`, B1) : on garde, dans cet ordre, le rappel de review 48 h, la recherche par adversaire, la tendance et le lien vers le Journal des drafts. Les trois autres propositions du § 3 (comparer deux sessions, moments clés, joueur de la session) ne sont pas retenues.
+
+Maquette Penpot, page « Sessions d'équipe — historique », à droite des deux pages d'origine : **« L2 · Liste — rappel 48 h + tendance »**, **« L2 · Liste — recherche par adversaire »** et **« L2 · Session — draft + Journal »** (faites le 26/11, chacune exportée en png). Jargon LoL en anglais dans les textes FR (games, picks, bans, side).
+
+**4.1 Rappel de review 48 h (staff).**
+- **Règle** : une session de jeu terminée, sans review (`team_session_reviews` vide, hors « Review courte »), depuis plus de 48 h après sa fin. Visible par le staff seulement.
+- **Sidebar** : pastille ronde rouge (`red` #E24C3A, texte blanc, mono 10) avec le nombre de sessions concernées, à droite de « Sessions d'équipe ». Elle disparaît à 0.
+- **Bandeau** en tête de la liste, sous l'en-tête : fond `red` à 10 %, contour `red` à 45 %, icône « ! », « 2 sessions terminées sans review depuis plus de 48 h », les titres des sessions concernées (en `text`), bouton outline or « Faire la review › » (ouvre la plus ancienne), badge « STAFF ». Pas de bouton de fermeture : il part quand les reviews sont faites.
+- **Ligne de liste** : le badge « REVIEW À FAIRE » (or) devient **« REVIEW EN RETARD »** (rouge, fond `red` à 15 %) au-delà de 48 h.
+- Avant 48 h, rien ne change (badge or). Pas de notification hors de l'app.
+
+**4.2 Recherche par adversaire.**
+- **Champ** « Adversaire… » (170 px, loupe) dans la barre de filtres, après Période. Recherche partielle, insensible à la casse, sur le titre « vs … » et le nom d'équipe du scouting. Se garde dans l'URL (`?opponent=aegis`).
+- **Actif** : contour or, texte `text-bright`, croix pour vider ; le compteur de droite se recalcule (« 3 sessions · 8 games · 5 V – 3 D »).
+- **Bilan contre l'adversaire** remplace la rangée de 4 tuiles : titre « BILAN CONTRE » + nom, région, « 3 sessions depuis le 25 oct. » ; colonnes *Sessions* (2 V – 1 D), *Games* (5 V – 3 D, échelle § 9), *Objectifs tenus* (5 / 9), *Dernière* (score et jour) ; bouton outline « Dossier adverse › » vers le dossier du § 12 (visible si l'équipe existe dans Scouting, sinon masqué).
+- **Liste** : seulement les sessions correspondantes, regroupées par semaine comme d'habitude.
+- **États** : sans résultat, « Aucune session contre « xyz » » + « Effacer la recherche ».
+
+**4.3 Tendance.**
+- **Panneau** sous les tuiles de synthèse, au-dessus de la liste : « TENDANCE · 10 DERNIÈRES SESSIONS » et la période en mono à droite.
+- Deux courbes de 300 px de large : **Winrate** (vert `green`) et **Objectifs tenus** (or), une pastille par session, la dernière pleine. À gauche de chaque courbe : valeur actuelle en grand et écart « ▲ +9 pts vs 5 précédentes » (vert si hausse, rouge si baisse, `text-dim` si stable).
+- Calculée sur les 10 dernières sessions du filtre Type courant (la période ne la limite pas). Moins de 3 sessions : le panneau est masqué.
+- Elle reste affichée pendant une recherche par adversaire, recalculée sur ses sessions.
+- Accessibilité : un résumé texte pour lecteur d'écran (« Winrate de 40 % à 67 % sur 10 sessions »).
+
+**4.4 Lien vers le Journal des drafts** (page d'une session terminée).
+- **Carte « DRAFTS DE LA SESSION »** entre « Stats d'équipe » et « Stats individuelles » : une ligne par game avec la pastille G1 V / G2 D, le **side** (bleu / rouge), nos **picks** dans l'ordre du rôle, nos **bans**, et le bouton outline or « Ouvrir dans le Journal › ».
+- Le bouton ouvre le Journal (§ 11, onglet Coaching → Draft Sim → Journal) filtré sur cette game (`?tab=journal&game=…`). Les joueurs y ont la lecture seule.
+- **Game sans draft saisie** : « Draft non saisie pour cette game » et bouton « Saisir dans le Journal › » (staff, contour `border`).
+- Le filtre par game de la page (§ 2) réduit la carte à la game choisie.
+- Maquette : G1 et G2 avec draft, G3 sans draft (le side de G3 n'est pas affiché tant que la draft n'est pas saisie).
+
+**Données (Back-end).** Rappel : date de fin de session + absence de review ; adversaire : titre de session et table scouting ; tendance : agrégats déjà calculés pour les tuiles ; draft : la table du Journal des drafts, clé = game de la session. À confirmer par le Back-end.
+
 ## 16. Spec Front-end — dashboard Management d'un joueur
 
 Décision du 20/11 (`docs/DECISIONS.md`) : un membre **sans rôle management
@@ -1000,6 +1036,117 @@ Erreur par carte (gabarit § 7) sans casser les autres.
 prep » ; « Mes dispos » / « My availability » ; « Mes tâches » / « My tasks » ;
 « Mon bien-être » / « My wellbeing » ; « Mes objectifs assignés » / « My
 assigned goals ».
+
+## 16 bis. Spec Front-end — fiche « Stats individuelles » d'un joueur (lot L11)
+
+> **Numéro.** Section demandée « § 16 » : le § 16 existe déjà (dashboard Management) ; celle-ci s'y insère comme **§ 16 bis**, sans toucher aux autres numéros ni aux renvois.
+
+Complète le bloc 2 « Stats individuelles » du § 15.2 (tableau de tous les joueurs) : il manque la fiche d'**un** joueur. Maquette Penpot, page « Sessions d'équipe — historique », en dessous des pages existantes (mise à jour du 26/11, lot L11b : toutes les frames exportées en png). Positions (x, y) en px, largeur 1360 :
+| Frame | Contenu | Position |
+| --- | --- | --- |
+| **L11 · A** | Équipe, « Toute la session » : fiche complète | 0, 7000 |
+| **L11 · B** | Solo, « Toute la session » : même fiche, session en cours | 1460, 7000 |
+| **L11 · A2** | Équipe, une seule game (G2) | 0, 9900 |
+| **L11 · B2** | Solo, une seule game (G2) | 1460, 9900 |
+| **L11 · B3** | Où ouvrir la fiche dans `SessionPage` (session en cours) | 0, 12800 |
+| **L11 · B4** | Solo, **session terminée** : badge TERMINÉE + point d'accès historique | 1460, 12800 |
+| **L11 · C** | États (chargement, vide, stats non chargées, erreur, sans timeline, game indisponible solo + position inconnue) | 0, 13700 |
+| **L11 · D** | Repliables **ouverts** : « Voir les valeurs par minute » (écarts) et « Voir les valeurs en tableau » (radar) | 0, 14800 |
+
+Jargon LoL en anglais dans les textes FR.
+
+> **Existant à réutiliser.** `src/components/TeamSession/PlayerIndivStats.tsx` (onglet « Stats indiv », avec radar, jeu isolé et écart au vis-à-vis) et `playerIndivTypes.ts` (`PlayerSessionStats`, `PlayerGameStats`) existent déjà. La fiche ci-dessous est la **page** qu'ouvre un clic sur une ligne du tableau ; le Front peut en reprendre les tuiles et le calcul, et décider de garder ou non le radar (non maquetté ici).
+
+### 16 bis.1 A — Session d'équipe
+
+**Route.** `/team-session/:calendarEventId/player/:userId?game=N` (`game` absent = « Toute la session », comme `?game=2` du § 15.2). Entrée : clic ou Entrée sur une ligne du tableau « Stats individuelles » ; le chevron de dépli du duel reste un bouton séparé (le clic sur la ligne n'ouvre plus le dépli, voir ci-dessous). Même sidebar, entrée « Sessions d'équipe » active.
+
+**Structure (de haut en bas).**
+1. **Fil d'Ariane** : « ← Sessions d'équipe / vs Karmine Academy / Rook » (les deux premiers en or, cliquables ; le dernier en `text-bright`).
+2. **En-tête joueur** : pastille ronde 56 px (contour or, rôle en mono or : ADC), nom en Big Shoulders 34 (`text-bright`), badge du type de la session (`KIND_STYLE`), dessous en mono `text-dim` : champions joués avec le nombre de games (« Varus ×2 · Zeri ×1 »), nombre de games, « 2 V – 1 D », jour. À droite : deux boutons outline or **« ‹ Nyra · MID »** et **« Lumi · SUP ›** (joueur précédent / suivant dans l'ordre TOP, JGL, MID, ADC, SUP ; masqués aux extrémités).
+3. **Filtre par game** : **le même composant que § 15.2** (segmenté *Toute la session · G1 V · G2 V · G3 D*, sticky sous l'en-tête, texte de droite en mono : « 3 games · Varus G1, G3 · Zeri G2 · 1 h 34 de jeu »). Le choix reste dans l'URL (`?game=`), se conserve en passant d'un joueur à l'autre, et est partagé avec la page de la session (revenir au fil d'Ariane garde la game).
+4. **7 tuiles** (gabarit des tuiles KPI § 15.2, libellé mono caps, valeur mono 26 gras, pied mono 11 coloré) : **KDA** · **CS/min** · **Or/min** · **Dégâts/min** · **Vision** · **Part des dégâts** · **KP**. Pied de tuile = écart au vis-à-vis de lane pour les 4 premières et la vision (« +58 vs lane »), écart à la moyenne de l'équipe pour KDA, part des dégâts et KP (« +4 pts vs équipe »). Vert si mieux, rouge si moins bien, `text-dim` si égal. « Mieux » = plus, sauf pour les morts (moins = vert). Pour le rôle SUPPORT, l'écart de vision n'est jamais rouge (la vision est son travail) : il reste en `text-dim`.
+5. **Ordre complet des blocs : § 16 bis.6** (mise à jour L11b : le panneau « Game par game » est descendu en bas de la fiche, à côté de « Meilleure et pire game » ; à sa place, à droite du duel, le radar). Les deux blocs d'origine :
+   - **Duel de lane** (gauche) : titre « DUEL DE LANE · VS LYRA#KCA » et le champion adverse à droite (« Jinx · ADC »). Tableau 4 colonnes *Métrique · Rook · Lyra · Écart* ; lignes **CS @15, Or @15, Dégâts, Morts, Vision, CS/min**, lignes de 36 px séparées par 1 px `border-dim`, chiffres en mono alignés à droite, écart en vert / rouge (morts : moins = vert). Aucun vis-à-vis (rôle non pairé) : « Pas de vis-à-vis identifié pour cette lane ».
+   - **Game par game** (droite) : en vue « Toute la session » **seulement** (une game choisie : le panneau devient « Cette game » et affiche à la place la ligne de la game, voir 16 bis.1.a). Segmenté de métrique *KDA · CS/min · Dégâts/min* ; un bâton par game (vert 55 % si victoire, rouge si défaite, contour plein), valeur au-dessus, étiquette « G1 · Varus · V » dessous, **ligne pointillée or = moyenne** avec « moy. 4.9 · 3 games » ; clic sur un bâton = choisit cette game dans le filtre. Bâtons accessibles au clavier (Tab, Entrée). Résumé pour lecteur d'écran : « KDA : 6.0, 5.8, 3.0 ; moyenne 4.9 sur 3 games ».
+
+**16 bis.1.a Une seule game choisie.** Les tuiles passent aux valeurs de la game ; le pied de tuile garde les mêmes écarts ; le duel reprend les chiffres de la game ; le panneau de droite devient « CETTE GAME » : champion, résultat (V / D), durée, et les chiffres de timeline s'ils existent (morts avant 14 min, morts isolées, kills isolés, or et XP contre la moyenne de l'équipe : `PlayerGameStats`).
+
+**16 bis.1.b Dépli du tableau § 15.2.** Le clic sur la ligne ouvre désormais la fiche ; le chevron « ▾ » à droite de la ligne continue de déplier le duel rapide (`buildDuelRows`), avec `aria-label` « Voir le duel de Rook ».
+
+### 16 bis.2 B — Session solo (`src/pages/Session/SessionPage.tsx`)
+
+Même fiche pour le **joueur connecté**, dans la page Session (route de la page, par exemple `/session?player=me&game=N` ou un panneau de la page : choix du Front, pas de nouvelle entrée de sidebar). Fil d'Ariane « ← Session / Session du 24 nov. / Ma fiche » ; en-tête : pastille de rôle, nom Riot (« ROOK#EUW »), badge « SOLO · EN COURS » (ou « SOLO · TERMINÉE »), « Varus ×3 · Zeri ×2 · 5 games · 3 V – 2 D · SoloQ ». Filtre **Toute la session · G1 V … G5 D** (même composant, 5 games ici ; au-delà de 8 games, défilement horizontal du segmenté).
+
+**C'est la même fiche que l'équipe, avec les mêmes 7 tuiles** (KDA, CS/min, Or/min, Dégâts/min, Vision, **Part des dégâts**, **KP**) : aucune tuile n'est remplacée. Le Back lit le match complet du cache local (`soloSessionPlayerStats`, B7), donc duel, radar, timeline, objectifs et autres chiffres sont remplis comme en équipe. Seule différence de contenu : **Part des dégâts** et **KP** ne sont pas comparées à « l'équipe » (pas d'équipe de groupe à comparer) ; chaque tuile montre à la place une ligne **« vs moy. 30 j »** (la moyenne des 30 derniers jours du joueur connecté, `avg30d`), et KDA n'a pas de ligne « vs équipe ». Les autres tuiles gardent « vs lane » **et** « vs moy. 30 j ». Le reste :
+- vis-à-vis = le joueur adverse de la même lane dans le même match ;
+- pas de boutons « précédent / suivant » ;
+- badge **« SOLO · EN COURS »** (B) ou **« SOLO · TERMINÉE »** (B4, § 16 bis.2.c) ;
+- filtre sur les games de la session solo (défilement horizontal au-delà de 8) ;
+- aucun appel Riot : tout vient du cache local ; une game sans match ou sans timeline le dit (maquette C).
+
+**16 bis.2.a Une seule game choisie (maquette « L11 · B2 », x 1460, y 4500).** Filtre sur **G2 D** : le segmenté montre G2 actif, le fil d'Ariane finit par « Ma fiche · G2 », la ligne méta devient « G2 sur 5 · Zeri vs Jinx · défaite · SoloQ ». Les 7 tuiles prennent les valeurs de la game (pieds de tuile en rouge ou vert contre la moyenne 30 jours ou le champion adverse ; la tuile « Morts » remplace « Morts / game »). Le duel reprend les chiffres de la game (CS, or, XP, niveau @15, CS et or @10). Le panneau de droite devient **« CETTE GAME · G2 »** : champion, résultat et durée, morts avant 14 min, morts isolées après 14 min, kills isolés, or et XP contre la moyenne de la session (lignes de 34 px, chiffres en mono, `green` / `red`) ; un champ sans timeline affiche « — ». Les sources sont celles du § 16 bis.5.
+
+**16 bis.2.b Où ouvrir la fiche dans `SessionPage` (maquette « L11 · B3 », x 0, y 5400).** Schéma d'insertion : les éléments existants de la page (carte de la session en cours, boutons, liste des games) sont indicatifs, la maquette ne les remplace pas ; deux ajouts en or :
+1. bouton outline or **« Mes stats › »** dans la rangée de boutons de la carte, juste après « Revoir la dernière game » : ouvre la fiche en « Toute la session » ;
+2. lien outline or **« Fiche › »** (clé `playerSheet.gameSheet`) à droite de chaque game de la liste : ouvre la fiche filtrée sur cette game (`?sheet=1&game=N`).
+Session terminée : voir § 16 bis.2.c. Sans aucune game : « Mes stats › » désactivé, infobulle « Aucune game dans cette session ».
+
+**16 bis.2.c Session solo terminée (maquette « L11 · B4 »).** Même fiche, avec le badge **« SOLO · TERMINÉE »** (`playerSheet.soloEnded`, `live=false` du composant `SoloPlayerSheet`) et le fil d'Ariane « ← Historique / Session solo du 24 nov. / Ma fiche ». **Point d'accès** : dans l'historique des sessions, la ligne d'une session passée (badge SOLO, titre, « 5 games · 3 V – 2 D · 2 h 41 de jeu ») porte un bouton outline or **« Mes stats › »** (fiche en « Toute la session », `?sheet=1&session=<id>`) à côté de « Voir le détail » ; dans le détail, chaque game a « Fiche › ». Session sans game : bouton désactivé, infobulle « Aucune game dans cette session ». **À faire côté Front** : aujourd'hui `SessionPage` ne montre la fiche que pour la session active (`live` toujours vrai, un seul appel de `SoloPlayerSheet`) ; le point d'accès de l'historique est une proposition de design, pas encore livrée. Les blocs sous les tuiles sont ceux de L11 · B (la frame B4 ne les redessine pas).
+
+### 16 bis.3 États (maquette C, gabarits du § 7)
+
+| État | Rendu |
+| --- | --- |
+| **Chargement** | 4 à 7 tuiles squelette (libellé 60×10, valeur 80×22, pied 100×8) + 3 lignes de duel squelette (`elevated`, rayon 4). Fil d'Ariane, en-tête et filtre restent affichés. Pas de spinner plein écran. |
+| **Vide** | Le joueur n'a aucune game dans la session : puce or « ∅ », « Aucune game pour Rook dans cette session », « Il n'était pas dans l'équipe sur les games enregistrées. », bouton outline or « Retour à la session ». |
+| **Stats non chargées pour une game** | Bandeau « partiel » or 10 % (point or, « Stats indisponibles pour la G3 », « Game non trouvée chez Riot. Les autres games restent consultables. ») ; les tuiles qui dépendent de Riot restent **« — »** (jamais 0), le KDA de la game enregistrée reste affiché, le duel dit « Duel indisponible pour la G3 ». Les autres games restent choisissables. |
+| **Sans timeline** | Les blocs qui lisent la timeline (isolement, morts et kills, écarts, radar, objectifs, autres chiffres) disent pourquoi (`WhyEmpty`) : équipe « La timeline de cette game n'est pas encore extraite… » + bouton « Extraire la timeline » ; solo « Pas de timeline en cache pour cette game. En solo, rien n'est demandé à Riot. » sans bouton. Tuiles du bloc isolement « — ». |
+| **Game indisponible (solo)** | Bandeau « partiel » : « G3 : match absent du cache local (aucun appel Riot en solo). » ; autres messages « G2 : ton côté est introuvable dans le match. », « G4 : tu n'es pas dans les dix joueurs du match. » |
+| **Position inconnue** | Une mort ou un kill sans position est listé avec la pastille « POSITION INCONNUE » et « zone inconnue » ; l'isolement n'est ni compté ni nié (note sous la liste : « N mort(s) après 14 min sans position connue… »). |
+| **Erreur** | Puce rouge « ! », « Impossible de charger la fiche de Rook », la cause en clair (« Le serveur Riot ne répond pas (erreur 503). La session reste consultable. »), bouton outline « Réessayer ». |
+
+### 16 bis.4 Textes FR / EN
+
+« Fiche joueur » / « Player sheet » ; « Stats individuelles » / « Player stats » ; « Toute la session » / « Whole session » ; « Duel de lane » / « Lane matchup » ; « Game par game » / « Game by game » ; « Cette game » / « This game » ; « moy. 4.9 · 3 games » / « avg. 4.9 · 3 games » ; « vs lane » / « vs lane » ; « vs équipe » / « vs team » ; « vs moy. 30 j » / « vs 30-day avg. » ; « Part des dégâts » / « Damage share » ; « Dégâts par or » / « Damage per gold » ; « Morts / game » / « Deaths / game » ; « Pas de vis-à-vis identifié pour cette lane » / « No lane opponent identified » ; « Duel indisponible pour la G3 » / « Lane matchup unavailable for G3 » ; « Stats indisponibles pour la G3 » / « Stats unavailable for G3 » ; « Game non trouvée chez Riot » / « Game not found on Riot's side » ; « Aucune game pour Rook dans cette session » / « No games for Rook in this session » ; « Impossible de charger la fiche de Rook » / « Couldn't load Rook's sheet » ; « Réessayer » / « Retry » ; « Retour à la session » / « Back to session » ; « ‹ Nyra · MID » / « ‹ Nyra · MID » ; « Voir le duel de Rook » / « Show Rook's matchup » ; « Ma fiche » / « My sheet ».
+
+### 16 bis.5 Ce que le Front doit lire
+
+**Fiche d'équipe (A).** Un appel par joueur et par session (déjà couvert par `teamSessionPlayerStats` → `PlayerSessionStats` / `PlayerGameStats`, `playerIndivTypes.ts`).
+- **Identité** : `PlayerSessionStats.{memberId, displayName, role, gamesCounted}` ; champions : `PlayerGameStats.championKey` par game ou `SynergyPlayerStats.byChampion[]` (`championKey`, `games`, `wins`) ; résultat par game : `PlayerGameStats.win` (`null` = inconnu → pastille grise).
+- **Tuiles** (`SynergyPlayerStats`, soit `PlayerGameStats.base` pour une game, soit les moyennes de la session) : `averages.kda` (+ `kills`, `deaths`, `assists`), `averages.csPerMin`, `averages.goldPerMin`, `averages.damagePerMin`, `averages.visionScore`, `shares.damagePct`, `shares.kpPct`. Écart à l'équipe : `PlayerGameStats.goldVsTeamAvgPct` et `xpVsTeamAvgPct` ; le reste se calcule contre la moyenne des `SynergyPlayerStats` de l'équipe (`scopePlayers`).
+- **Duel** : `DuelRow` (`role`, `our`, `enemy`, tous deux `SynergyPlayerStats | null` ; `our` ou `enemy` nul = « Pas de vis-à-vis… ») via `buildDuelRows(ourSide, enemySide)` ; les CS @15 / Or @15 viennent de `PlayerGameStats.vsOpponent` (`opponentName`, `opponentChampion`, `at10`, `at15`, `end`, chacun `{ goldDiff, xpDiff }`). **Attention** : `vsOpponent` donne des **écarts** (`goldDiff`), pas les deux valeurs absolues ; pour afficher « Rook 5 910 / Lyra 5 270 », il faut les valeurs brutes des deux côtés (à confirmer côté Back, sinon n'afficher que l'écart).
+- **Game par game** : `PlayerSessionStats.games[]` (`gameIndex`, `win`, `championKey`, `base.averages.*`) ; moyenne = `PlayerSessionStats.total` (forme libre : lire défensivement, comme le commentaire du fichier l'indique).
+- **Une game seule** : `PlayerGameStats` (`plates`, `deathsBefore14`, `isolatedDeathsAfter14`, `isolatedKills`, `goldVsTeamAvgPct`, `xpVsTeamAvgPct`) ; un champ `null` s'affiche « — », jamais 0.
+
+**Fiche solo (B).** Les 10 joueurs du match sont dans le match Riot déjà stocké (`MatchCache.matchJson`) : part des dégâts, KP, vision et duel se calculent comme pour l'équipe (même code `synergyStats` appliqué au match solo, à confirmer côté Back). Lire le modèle `Game` (`champion`, `opponentChampion`, `role`, `kills`, `deaths`, `assists`, `cs`, `visionScore`, `duration`, `win`, `lanePhaseReport`) et `GameDetailedStats.stats` (JSON : or, dégâts, XP si présents, à lire défensivement). `csPerMin = cs / (duration / 60)`. Pour les chiffres à 10 et 15 min : `lanePhaseReport` (`stats:get-lane-phase`, calculé à la demande). Moyenne perso 30 jours : même source que le Dashboard. **À confirmer par le Back** : les moyennes de session d'une session solo en un seul objet de la forme `SynergyPlayerStats` (sinon le Front les calcule à partir de `Game`).
+
+**Points ouverts.** (1) Valeurs absolues du vis-à-vis à 15 min (voir ci-dessus). (2) Le radar de `PlayerIndivStats` est gardé ou non dans la fiche (non maquetté). (3) Route solo : page ou panneau. Les chiffres de la maquette sont des exemples.
+
+### 16 bis.6 Blocs de la fiche, dans l'ordre (lot L11b, maquettes A, A2, B, B2)
+
+Ordre réel de `PlayerSheet.tsx`, repris dans les maquettes. Chaque bloc est un panneau `dark` + contour `border-dim`, rayon 8, padding 16, titre mono caps or. Les nombres sont en mono ; une valeur inconnue est « — », jamais 0.
+
+| # | Bloc (composant) | Contenu maquetté | Toute la session / une game |
+| --- | --- | --- | --- |
+| 1 | **Bandeau d'état** (`notReady`) | voir maquette C | — |
+| 2 | **7 tuiles** | KDA, CS/min, Or/min, Dégâts/min, Vision, Part des dégâts, KP. Pied : « vs lane » / « vs équipe » (équipe) ; **« vs moy. 30 j »** en plus (solo, joueur connecté) | idem |
+| 3 | **Points forts et à travailler** (`HighlightsBlock`) | deux colonnes (vert « POINTS FORTS », rouge « À TRAVAILLER »), 3 lignes chacune : libellé, valeur, écart (« +12 % vs lane », « −5 % vs moy. 30 j ») ; note sur la référence (moyenne 30 j si elle existe, sinon le vis-à-vis) | idem, calculé sur la game |
+| 4 | **Duel de lane** (`DuelPanel`) | tableau Métrique · Toi · Vis-à-vis · Écart : CS @15, Or @15, Dégâts, Morts, Vision, CS/min (+ XP @15 si lu) | idem |
+| 5 | **Radar face à l'opposant** (`RadarBlock`) | 7 axes DMG/min, Or/min, CS/min, Vision, KP %, Survie, XP/min ; joueur en or plein (25 %), opposant en pointillé `text-dim` ; légende ; « Voir les valeurs en tableau ▸ » | idem |
+| 6 | **Jeu en isolement & phases** (`IsolationBlock`) | 4 tuiles : Morts avant 14′, Isolées >14′, Kills isolés, Plaques ; note « Somme sur N games avec timeline » | idem |
+| 7 | **Morts et kills (timeline)** (`EventsBlock`) | trois listes : **Morts avant 14 min**, **Morts isolées après 14 min**, **Kills isolés**. Ligne : horloge, G (en « Toute la session »), zone, « tué par Jinx · 2 assist. » / « victime : … » / « exécution », pastille « ISOLÉ » (rouge) ou « POSITION INCONNUE » (gris), bouton outline **« Revoir »** (ouvre la VOD à l'heure − 10 s ; **désactivé** avec infobulle « Pas d'enregistrement pour cette game »). Pied : zones des morts (« Bot lane ×2 · … ») | en une game, pas de colonne G |
+| 8 | **Écarts contre le vis-à-vis** (`LaneDiffBlock`) | segmenté **Or · XP · CS** ; courbe écart par minute (axe 0, repères @10 et @15 en pointillé, un trou si une minute est inconnue) ; « Voir les valeurs par minute » ; **tableau @10 / @15** (CS, Or, XP, Niveau × Toi · Vis-à-vis · Écart) ; ligne **source** (« Source : timeline. » ou « Source : rapport de lane (la timeline n'est pas en cache). ») | « moyenne par game » en vue session |
+| 9 | **Face à son opposant direct** (`VsOpponentBlock`) | écart d'or et d'XP à 10 min, 15 min et fin de game | idem |
+| 10 | **Par rapport à l'équipe** (`VsTeamBlock`) | 2 tuiles : or et XP contre la moyenne des 4 coéquipiers ; **support : « — » et « Non calculé pour le support. »** | idem |
+| 11 | **Participation aux objectifs** (`ObjectivesBlock`) | tableau des **6 types** Dragon, Elder, Grubs, Herald, Baron, Tower : « Participé / pris » (avec %), « Tué par toi », « Pris par eux » ; puis les **événements** (horloge, G, type, « participé » vert / « tué par toi » / « pris par eux » / « pris sans toi », bouton **Revoir**) | « Sur N game(s) avec timeline » en vue session |
+| 12 | **Autres chiffres du match** (`ExtrasBlock`) | grille de tuiles : Solo kills, First Blood (% en session, Oui / Non en une game), plus gros multikill, double / triple / quadra / penta kills, killing sprees, temps mort (m:ss et %), dégâts aux objectifs / aux tours, dégâts mitigés, soins et boucliers, objectifs volés, vision/min ; **un chiffre que Riot ne donne pas est masqué** | idem |
+| 13 | **Stats habituelles** (`UsualStats`) | 16 tuiles (KDA, K/D/A, CS/min, CS, Gold/min, Or total, Dégâts, DMG/min, % dégâts d'équipe, Dégâts/gold, Vision, Wards posées / détruites / contrôle, KP %, Dégâts subis, CC, XP/min) | idem |
+| 14 | **Game par game** / **Cette game** + **Meilleure et pire game** | en session : bâtons par game (§ 16 bis.1) + deux lignes (meilleure / pire game en KDA, cliquables) et « Tendance G1 → G5 : −2.20 de KDA » (au moins 2 games, sinon « Il faut au moins deux games jouées avec stats… ») ; en une game : le panneau « Cette game » (§ 16 bis.1.a) | selon la vue |
+
+**Textes FR / EN des blocs** (clés `playerSheet.*` déjà en place) : « Points forts et à travailler » / « Strengths and to work on » ; « Points forts » / « Strengths » ; « À travailler » / « To work on » ; « Morts et kills (timeline) » / « Deaths and kills (timeline) » ; « Morts avant 14 min » / « Deaths before 14 min » ; « Morts isolées après 14 min » / « Isolated deaths after 14 min » ; « Kills isolés » / « Isolated kills » ; « Revoir » / « Review » ; « Pas d'enregistrement pour cette game » / « No recording for this game » ; « isolé » / « isolated » ; « position inconnue » / « position unknown » ; « zone inconnue » / « unknown zone » ; « Zones des morts » / « Death zones » ; « Écarts contre le vis-à-vis » / « Gaps against the lane opponent » ; « Voir les valeurs par minute » / « Show the per-minute values » ; « Source : timeline. » / « Source: timeline. » ; « Participation aux objectifs » / « Objective participation » ; « Participé / pris » / « Took part / taken » ; « Tué par toi » / « Killed by you » ; « Pris par eux » / « Taken by them » ; « Autres chiffres du match » / « Other match figures » ; « vs moy. 30 j » / « vs 30-day avg. » ; « Radar face à l'opposant » / « Radar vs opponent » ; « Jeu en isolement & phases » / « Isolated play & phases » ; « Meilleure et pire game » / « Best and worst game » ; « Mes stats › » / « My stats › » ; « Fiche › » / « Sheet › » ; « SOLO · EN COURS » / « SOLO · ONGOING » ; « SOLO · TERMINÉE » / « SOLO · ENDED » ; « Extraire la timeline » / « Extract the timeline ».
+
+**Ce qui est maquetté mais pas encore lu dans le code (à vérifier par le Front).** Le bloc « Plaques » est une tuile de `IsolationBlock` (lue : `plates`). Le point d'accès de la session terminée (§ 16 bis.2.c) n'existe pas encore dans `SessionPage`. Les deux repliables (« Voir les valeurs par minute » des écarts, « Voir les valeurs en tableau » du radar) sont **dessinés ouverts** dans la frame **L11 · D** ; ils sont fermés par défaut dans A, A2, B et B2. Écarts : tableau Minute · Écart (Or, XP ou CS selon le segmenté), une ligne par minute de 0′ à la dernière, 10′ et 15′ en or, hauteur max 192 px avec défilement, minute inconnue « — ». Radar : tableau Axe · Joueur · Opposant avec les valeurs brutes des 7 axes (DMG/min, Or/min, CS/min, Vision, KP %, Survie, XP/min), « — » si inconnue. Libellés FR / EN : « Voir les valeurs par minute » / « Show the per-minute values » ; « Voir les valeurs en tableau » / « Show values as a table » ; « Axe · Joueur · Opposant » / « Axis · Player · Opponent » ; « Minute » / « Minute ». Les valeurs des frames sont des exemples.
 
 ## 17. Spec Front-end — préparer une session à l'avance (coach)
 
@@ -1511,3 +1658,4 @@ Penpot : plan « Carte de micro-review · objectif (maquette 5) ».
 - Textes : « Où tu étais » / « Where you were » ; « exacte » / « exact » ;
   « estimée » / « estimated » ; « Erreur · Conséquence · Conclusion » /
   « Mistake · Consequence · Outcome ».
+

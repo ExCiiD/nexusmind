@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
+import { SoloPlayerSheet, soloGameRank } from '@/components/Session/SoloPlayerSheet'
 import type { SessionPrefillState } from '@/components/MicroReview/usePrepareSession'
 import { ChampionMatchup } from '@/components/ChampionMatchup'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -47,6 +48,8 @@ export function SessionPage() {
   const cancelSession = useSessionStore((s) => s.cancelSession)
   const updateSessionStore = useSessionStore((s) => s.updateSession)
   const navigate = useNavigate()
+  // § 24.2: the player sheet of the current solo session (?sheet=1, &game=N for one game).
+  const [sheetParams] = useSearchParams()
   // AscendCodex "Préparer ma prochaine session": objective + drill pre-filled.
   const prefill = (useLocation().state as SessionPrefillState | null)?.prefill ?? null
   const { toast } = useToast()
@@ -444,6 +447,8 @@ export function SessionPage() {
     // 20/11: the written objectives (a session may have no fundamental).
     const activeObjectives = parseObjectives((activeSession as { customObjectives?: unknown }).customObjectives)
 
+    if (sheetParams.get('sheet') === '1') return <SoloPlayerSheet games={activeSession.games} sessionId={activeSession.id} onBack={() => navigate('/session')} />
+
     return (
       <div className="space-y-4 animate-fade-in">
         <div>
@@ -481,6 +486,10 @@ export function SessionPage() {
               <Button onClick={() => navigate('/review')}>
                 <Play className="h-4 w-4 mr-2" />
                 {t('session.reviewLatest')}
+              </Button>
+              <Button variant="outline" disabled={activeSession.games.length === 0} title={activeSession.games.length === 0 ? t('playerSheet.noGamesTip') : undefined}
+                onClick={() => navigate('/session?sheet=1')}>
+                {t('playerSheet.myStats')}
               </Button>
               <Button variant="outline" onClick={handleEnd} disabled={ending}>
                 {ending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Square className="h-4 w-4 mr-2" />}
@@ -1458,6 +1467,14 @@ function ActiveSessionGameList({
                     </>
                   )}
 
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => navigate(`/session?sheet=1&game=${soloGameRank(games, game.id)}`)}
+                  >
+                    {t('playerSheet.gameSheet')}
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"

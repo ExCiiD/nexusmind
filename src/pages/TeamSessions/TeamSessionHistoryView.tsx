@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, CalendarDays, Check, ChevronDown, ClipboardCopy, ExternalLink, Minus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/data-state'
@@ -10,6 +10,7 @@ import { KIND_STYLE } from '@/lib/planningView'
 import { isServerNotReadyError } from '@/lib/matchEventView'
 import { formatClock, orderForGame, parseGameParam, selectGame, summaryLines } from '@/lib/teamSessionHistoryView'
 import { DuelComparisonTable } from '@/components/TeamSession/DuelComparisonTable'
+import { GameFilter } from '@/components/TeamSession/GameFilter'
 import { GamesFrieze } from '@/components/analyst/ObjectivesView'
 import type { SynergyPlayerStats } from '@/lib/ipc'
 import type { NameOf } from '@/hooks/useCollab'
@@ -17,6 +18,7 @@ import { MeetingHistoryView } from './MeetingHistoryView'
 import { useSessionNavStore } from '@/store/useSessionNavStore'
 import { historyApi, type HistoryGame, type HistoryObjective, type SideTotals, type TeamSessionHistoryDetail, type TeamTotals } from './historyContract'
 
+const ROLE_ORDER = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
 const panel = 'rounded-lg border border-hextech-border-dim bg-hextech-dark/50 p-4'
 
 function Block({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
@@ -91,6 +93,13 @@ export function TeamSessionHistoryView({ sessionId, calendarEventId, canManage, 
     if (index == null) n.delete('game'); else n.set('game', String(index))
     return n
   }, { replace: true })
+  // One player sheet for everything individual (/…/player/:userId?game=N): the « Stats indiv » tab, a click on a player row
+  // and the legacy ?tab=indiv&player=<id> link all lead there.
+  const sheetBase = calendarEventId ? `/team-session/${encodeURIComponent(calendarEventId)}` : `/team-sessions/${encodeURIComponent(sessionId)}`
+  const sheetPath = (memberId: string) => `${sheetBase}/player/${encodeURIComponent(memberId)}${gameIndex != null ? `?game=${gameIndex}` : ''}`
+  const legacyPlayer = params.get('tab') === 'indiv' ? params.get('player') : null
+  const navigate = useNavigate()
+  useEffect(() => { if (legacyPlayer && detail) navigate(sheetPath(legacyPlayer), { replace: true }) })
   const sel = useMemo(() => (detail ? selectGame(detail, gameIndex) : null), [detail, gameIndex])
   const meetingWithoutData = !!detail && detail.header.kind === 'meeting' && !detail.meeting
   useEffect(() => { if (meetingWithoutData) onNotHistory?.() }, [meetingWithoutData, onNotHistory])
@@ -177,27 +186,20 @@ export function TeamSessionHistoryView({ sessionId, calendarEventId, canManage, 
         <p className={cn(panel, 'text-sm text-hextech-text-dim')}>{t('teamSessions.detail.noGames')}</p>
       ) : (
         <>
-          {/* Game filter */}
-          <div className="sticky top-0 z-10 -mx-1 bg-hextech-black/80 px-1 py-2 backdrop-blur">
-            <div role="radiogroup" aria-label={t('teamSessions.detail.gameFilter')} className="inline-flex flex-wrap gap-1 rounded-md border border-hextech-border-dim bg-hextech-dark p-1">
-              {[null, ...detail.games.map((g) => g.index)].map((idx) => {
-                const g = idx == null ? null : detail.games.find((x) => x.index === idx)!
-                const active = gameIndex === idx
-                return (
-                  <button key={idx ?? 'all'} type="button" role="radio" aria-checked={active} onClick={() => pickGame(idx)}
-                    className={cn('flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold',
-                      active ? 'bg-hextech-gold text-hextech-black' : 'text-hextech-text hover:bg-hextech-elevated')}>
-                    {g ? `G${g.index}` : t('teamSessions.detail.whole')}
-                    {g && g.win != null && (
-                      <span className={cn('rounded px-1 font-mono text-[10px] font-bold', active ? 'bg-black/20' : g.win ? 'bg-hextech-green/20 text-hextech-green' : 'bg-hextech-red/20 text-hextech-red')}>
-                        {g.win ? t('teamSessions.winShort') : t('teamSessions.lossShort')}
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
+          {/* Tabs: team view (this page) / individual stats (the player sheet) */}
+          <div role="tablist" aria-label={t('teamSessions.detail.indiv.tabsLabel')} className="flex gap-1 border-b border-hextech-border-dim">
+            {([['team', 'tabTeam'], ['indiv', 'tabIndiv']] as const).map(([id, key]) => (
+              <button key={id} id={`tab-${id}`} type="button" role="tab" aria-selected={id === 'team'} aria-controls="team-panel" disabled={id === 'indiv' && sel.players.length === 0}
+                onClick={() => { if (id === 'indiv') navigate(sheetPath([...sel.players].sort((x, y) => ROLE_ORDER.indexOf(x.role) - ROLE_ORDER.indexOf(y.role))[0].memberId)) }}
+                className={cn('-mb-px rounded-t px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold',
+                  id === 'team' ? 'border-b-2 border-hextech-gold text-hextech-gold-bright' : 'text-hextech-text-dim hover:text-hextech-text')}>
+                {t(`teamSessions.detail.indiv.${key}`)}
+              </button>
+            ))}
           </div>
+
+          {/* Game filter */}
+          <GameFilter games={detail.games} value={gameIndex} onPick={pickGame} />
 
           {sel.game && sel.game.stats !== 'ready' ? (
             <p className={cn(panel, 'text-sm text-hextech-text-dim')}>
@@ -205,9 +207,11 @@ export function TeamSessionHistoryView({ sessionId, calendarEventId, canManage, 
             </p>
           ) : (
             <>
-              {sel.team && <TeamStatsBlock team={sel.team} single={!!sel.game} counted={sel.counted} />}
-              {sel.game?.timeline && <GamesFrieze games={[sel.game.timeline]} pageSize={1} />}
-              {sel.players.length > 0 && <PlayerStatsBlock players={sel.players} duels={sel.duels} whole={!sel.game} />}
+              <div id="team-panel" role="tabpanel" aria-labelledby="tab-team" className="space-y-4">
+                {sel.team && <TeamStatsBlock team={sel.team} single={!!sel.game} counted={sel.counted} />}
+                {sel.game?.timeline && <GamesFrieze games={[sel.game.timeline]} pageSize={1} />}
+                {sel.players.length > 0 && <PlayerStatsBlock players={sel.players} duels={sel.duels} whole={!sel.game} sheetPath={sheetPath} />}
+              </div>
             </>
           )}
           {!sel.game && detail.games.some((g) => g.stats === 'error' || g.stats === 'no-side') && (
@@ -276,10 +280,10 @@ function TeamStatsBlock({ team, single, counted }: { team: TeamTotals; single: b
 
 /* ─── Block 2: player stats, with the lane duel ─── */
 
-function PlayerStatsBlock({ players, duels, whole }: { players: SynergyPlayerStats[]; duels: TeamSessionHistoryDetail['games'][number]['duels']; whole: boolean }) {
+function PlayerStatsBlock({ players, duels, whole, sheetPath }: { players: SynergyPlayerStats[]; duels: TeamSessionHistoryDetail['games'][number]['duels']; whole: boolean; sheetPath: (memberId: string) => string }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [open, setOpen] = useState<string | null>(null)
-  const ROLE_ORDER = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT']
   const rows = [...players].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
   const cols = ['KDA', 'CS/min', 'Gold/min', 'DMG/min', 'Vision', t('teamSessions.detail.dmgShare'), 'KP']
   return (
@@ -303,7 +307,10 @@ function PlayerStatsBlock({ players, duels, whole }: { players: SynergyPlayerSta
               const a = p.averages
               return (
                 <Fragment key={p.memberId}>
-                  <tr className="cursor-pointer hover:bg-hextech-elevated/50" onClick={() => setOpen(isOpen ? null : p.memberId)}>
+                  <tr className="cursor-pointer hover:bg-hextech-elevated/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-hextech-gold"
+                    tabIndex={0}
+                    onClick={() => navigate(sheetPath(p.memberId))}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) navigate(sheetPath(p.memberId)) }}>
                     <td className="px-2 py-1.5 font-mono text-[10px] text-hextech-text-dim">{p.role}</td>
                     <td className="px-2 py-1.5 font-semibold text-hextech-text-bright">
                       {p.displayName}

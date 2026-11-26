@@ -9,6 +9,13 @@ import type { TeamGameTimeline } from './analyst'
 import type { TeamSessionStatus } from './teamSessions'
 import type { ReviewStatus, TeamSessionFeedback, TeamSessionReview, YoutubeVisibility } from './teamSessionReviews'
 import type { DuelRow } from './teamSessionStatsCore'
+import type { PlayerSessionStats } from './playerSessionStatsCore'
+
+export type {
+  PlayerGameStats, PlayerSessionStats, PlayerSessionTotals, RadarAxis, RadarAxisKey, VsOpponent, DiffPoint,
+  Baseline30d, EventSummary, Highlight, Highlights, HighlightId, LaneSide, LaneSnap, LaneSummary, MapZone, MinuteDiffs, ObjectiveEvent,
+  ObjectiveKind, ObjectiveLine, ObjectiveParticipation, PlayerEvent, PlayerExtras, SessionExtras, TimelineStatus, UnavailableGame,
+} from './playerSessionStatsCore'
 
 export type SessionKind = 'flex' | 'scrim' | 'tournament' | 'meeting' | 'other'
 /** Who a meeting concerns (the slot's attendee scope). */
@@ -209,6 +216,13 @@ export interface MeetingDetail {
 }
 
 export interface TeamSessionHistoryApi {
+  /**
+   * Individual stats of each member who played in the session (docs/contracts/team-session-history.md § 7). Same rights
+   * as teamSessionHistoryDetail (NOT_FOUND otherwise). `enrich: true` extracts, one game at a time and in the
+   * background, the timeline of this session's games whose cache lacks the per-player block (Riot calls); without it
+   * nothing is fetched and those games' timeline figures are null.
+   */
+  teamSessionPlayerStats?: (sessionId: string, opts?: { enrich?: boolean }) => Promise<PlayerSessionStats[]>
   teamSessionHistoryList: (groupId: string, filters: TeamSessionHistoryFilters) => Promise<TeamSessionHistoryPage>
   /** Rejects with NOT_FOUND when the session does not exist or is not readable. */
   teamSessionHistoryDetail: (sessionId: string) => Promise<TeamSessionHistoryDetail>

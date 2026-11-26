@@ -55,6 +55,8 @@ export function registerTeamSessionHandlers() {
   }).strict()
   validatedHandle('team-session-history:list', z.tuple([uuid, historyFilters]), (_e, groupId, filters) => teamSessions.teamSessionHistoryList(groupId, filters))
   validatedHandle('team-session-history:detail', z.tuple([uuid]), (_e, sessionId) => teamSessions.teamSessionHistoryDetail(sessionId))
+  validatedHandle('team-session-history:player-stats', z.tuple([uuid, z.object({ enrich: z.boolean().optional() }).strict().optional()]),
+    (_e, sessionId, opts) => teamSessions.teamSessionPlayerStats(sessionId, opts))
   validatedHandle('team-session-history:set-objective-result', z.tuple([uuid, objectiveId, uuid.nullable(), z.boolean().nullable()]),
     (_e, sessionId, objective, gameId, met) => teamSessions.teamSessionSetObjectiveResult(sessionId, objective, gameId, met))
 

@@ -242,3 +242,67 @@ encore vide repasse en `scheduled` si le créneau part plus tard.
 - Un créneau qui passe à un type sans session (repos, autre) emporte aussi sa session vide.
 
 Avant la migration, rien ne change : ouverture et fin à la main, et suppression du créneau = suppression de la session.
+
+## 7. Stats individuelles d'un joueur (lot « Stats indiv joueur »)
+
+`window.api.teamSessionPlayerStats?(sessionId, opts?: { enrich?: boolean }): Promise<PlayerSessionStats[]>` (optionnelle
+côté types). Desktop : IPC `team-session-history:player-stats` (zod) + preload + `cloud/teamSessions.ts` ; web :
+`teamSessionHistoryWebApi`. Même calcul partagé : `src/lib/playerSessionStatsCore.ts` (types ré-exportés par
+`teamSessionHistory.ts`). Droits identiques à `teamSessionHistoryDetail` (session illisible : `NOT_FOUND`). Aucune migration.
+
+Un élément par membre du groupe ayant joué ≥ 1 game (les remplaçants hors groupe n'ont pas de ligne), games dans l'ordre joué.
+
+```ts
+interface PlayerGameStats {
+  gameId; gameIndex; memberId; displayName; role; championKey; win; durationSec
+  base: SynergyPlayerStats        // buildSideStats : kda, cs/min, gold/min, xp/min, dmg, dmg/min, parts dmg/or, vision, KP, dmg subis, CC, dmg/or
+  plates: number | null           // challenges.turretPlatesTaken, null si absent
+  deathsBefore14: number | null   // morts avec timestamp < 14:00 (840 s)
+  isolatedDeathsAfter14: number | null
+  isolatedKills: number | null
+  vsOpponent: { opponentName; opponentChampion
+                at10: DiffPoint; at15: DiffPoint   // timeline, joueur − opposant
+                end: DiffPoint } | null            // fin de game, depuis le match (connu sans timeline)
+  goldVsTeamAvgPct: number | null  // (valeur / moyenne des non-supports de l'équipe − 1) × 100, fin de game ; null pour le support
+  xpVsTeamAvgPct: number | null
+  opponent: SynergyPlayerStats | null  // opposant de lane (mêmes champs de base, sans isolation)
+  radar: RadarAxis[]                   // [] sans opposant
+  timelineStatus: 'ready' | 'no-players' | 'no-timeline'
+}
+interface DiffPoint { goldDiff: number | null; xpDiff: number | null }
+interface PlayerSessionStats {
+  memberId; displayName; role; gamesCounted; games: PlayerGameStats[]
+  total: { deathsBefore14; isolatedDeathsAfter14; isolatedKills; plates   // sommes (null si aucune game n'a la donnée)
+           gamesWithTimeline: number
+           base: SynergyPlayerStats                                      // moyennes par game
+           at10; at15; end: DiffPoint                                    // moyennes par game (games connues)
+           goldVsTeamAvgPct; xpVsTeamAvgPct }                            // moyenne des ratios par game
+  radar: RadarAxis[]                                                     // moyenne des valeurs brutes, puis normalisé
+}
+interface RadarAxis { key: 'damagePerMin'|'goldPerMin'|'csPerMin'|'vision'|'kpPct'|'survival'|'xpPerMin'
+                      player: number; opponent: number; playerRaw: number; opponentRaw: number }   // player/opponent : 0-100
+```
+
+Règles :
+- **Radar** : valeur / max(joueur, opposant) × 100 sur chaque axe (le meilleur des deux vaut 100 ; 0 et 0 → 0). `survival` =
+  1 / (1 + morts par minute) (morts/min inversé). Fonction pure `buildPlayerRadar(player, opponent, durationSec)`.
+- **Isolement** : D = `ISOLATION_DISTANCE` = **2500** unités de carte. Une mort (≥ 14:00) ou un kill du joueur est isolé quand
+  aucun coéquipier vivant n'est à ≤ D du lieu de l'évènement. Position d'un coéquipier à l'instant t : interpolation linéaire
+  entre les deux frames minute qui l'encadrent. Coéquipier mort exclu : mort dans les `respawnSec(t)` secondes précédentes
+  (approximation 10 s + 1,5 s/min, plafond 60 s ; Riot ne journalise pas le timer). Position d'un kill = celle de la victime.
+  Les exécutions (`killerId` 0) ne sont jamais des kills du joueur. Un évènement sans position n'est pas compté.
+- **Sans timeline** (ou résumé en cache sans bloc `players`) : tous les champs issus de la timeline sont `null`, jamais 0
+  (`deathsBefore14`, isolées, `at10`, `at15`). Les totaux ignorent ces games (`gamesWithTimeline`). `end`, `plates`,
+  `goldVsTeamAvgPct` et le radar viennent du match et restent connus.
+- **Moyenne d'équipe** : les 4 non-supports de l'équipe (le joueur inclus s'il n'est pas support) ; null pour le support.
+
+**Timeline en cache** : `TeamGameTimeline.players?` (optionnel, **`TEAM_TIMELINE_VERSION` inchangé à 1**) : par participant
+`xp[]`, `gold[]` par minute, `x[]`/`y[]` (notre côté seulement), et les `CHAMPION_KILL` (`t` en ms, killer, victim, assists,
+x, y). Environ 10 ko par game. Les résumés déjà en cache restent valides pour l'onglet Objectifs ; ils n'ont pas `players`
+(`timelineStatus: 'no-players'`).
+
+**Quota Riot** : `teamSessionPlayerStats(sessionId)` seul n'appelle jamais Riot. Avec `{ enrich: true }`, les games **de cette
+session** dont le résumé n'a pas `players` sont ré-extraites une par une (priorité background, 1 appel timeline par game, cache
+local desktop d'abord) puis recachées pour tout le groupe : au plus quelques appels, une seule fois par game, jamais en lot sur
+l'historique. Le Front l'appelle d'abord sans `enrich`, puis avec si des games sont `no-players` / `no-timeline`.
+`teamObjectivesGameTimeline` est inchangé (ne ré-extrait pas).

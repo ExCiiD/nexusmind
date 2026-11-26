@@ -50,6 +50,9 @@ async function championNameById(): Promise<(id: number) => string | null> {
   return (id) => map[id] ?? null
 }
 
+/** One game's timeline with the per-player block, extracted again when the cached summary lacks it (on demand). */
+export const teamGameTimelineWithPlayers = (gameId: string) => analystCore.loadTeamGameTimeline(sb, gameId, analystMatches, { withPlayers: true })
+
 export const analystWebApi: AnalystApi = {
   // § 10
   teamObjectivesGames: (groupId, filters) => analystCore.listTeamObjectivesGames(sb, groupId, filters),

@@ -10,6 +10,9 @@ import type { PlayerObjectivesInput, SessionDraftInput } from '../../../src/lib/
 import { getPrisma } from '../database'
 import { resolveMediaFile } from '../mediaAccess'
 import { withLocalRecording } from './teamSessionReviews'
+import { attachBaseline, getPlayerSessionStats } from '../../../src/lib/playerSessionStatsCore'
+import { localBaseline30d } from '../soloPlayerStats'
+import { teamGameTimelineWithPlayers } from './analyst'
 import type { NewGroupFundamentalInput, SessionQueueFilter } from '../../../src/lib/teamSessions'
 
 /** The Riot match-v5 route is derived from the matchId's own platform
@@ -65,6 +68,13 @@ export async function teamSessionHistoryDetail(sessionId: string) {
     detail.meeting = { ...detail.meeting, recording: { ...recording, localPath: await resolveMediaFile(recording.localPath) } }
   }
   return { ...detail, reviews }
+}
+/** Individual stats (contract § 7). `enrich` reads Riot, one game at a time, in the background; never otherwise. */
+export const teamSessionPlayerStats = async (sessionId: string, opts?: { enrich?: boolean }) => {
+  const stats = await getPlayerSessionStats(getSupabase(), sessionId, opts?.enrich ? teamGameTimelineWithPlayers : undefined)
+  // The 30-day baseline (the Dashboard's stats) exists on this PC for the signed-in player only (contract § B5).
+  const uid = await requireSessionUserId()
+  return stats.some((s) => s.memberId === uid) ? attachBaseline(stats, uid, await localBaseline30d().catch(() => null)) : stats
 }
 export const teamSessionSetObjectiveResult = (sessionId: string, objectiveId: string, gameId: string | null, met: boolean | null) =>
   history.setObjectiveResult(getSupabase(), sessionId, objectiveId, gameId, met)

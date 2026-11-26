@@ -38,6 +38,7 @@ import { HISTORY_KEY, fetchHistory } from '@/lib/pageQueries'
 import { invalidateCached } from '@/lib/queryCache'
 import { isShortReview } from '@/lib/shortReview'
 import { parseObjectives } from '@/lib/customObjectives'
+import { soloGameRank } from '@/components/Session/SoloPlayerSheet'
 import { CustomObjectivesList } from '@/components/Session/CustomObjectivesList'
 
 const NO_HISTORY: any[] = []
@@ -915,6 +916,7 @@ function SessionsTab() {
 
 function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, onDelete, onGameDelete, recordedIds }: { session: SessionSummary; isSelected: boolean; onToggleSelect: () => void; expanded: boolean; onToggle: () => void; onDelete: (id: string) => void; onGameDelete: (gameId: string) => void; recordedIds: Set<string> }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const fundamental = useLocalizedFundamental(session.objectiveId)
   const written = parseObjectives(session.customObjectives)
@@ -995,6 +997,13 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
                 }}
               />
             </div>
+            {!isOffSession(session) && (
+              <Button variant="outline" size="sm" className="ml-2 h-7 shrink-0 border-hextech-gold/60 px-2 text-xs text-hextech-gold" disabled={session.games.length === 0}
+                title={session.games.length === 0 ? t('playerSheet.noGamesTip') : undefined}
+                onClick={(e) => { e.stopPropagation(); navigate(`/history/session/${encodeURIComponent(session.id)}/stats`) }}>
+                {t('playerSheet.myStats')}
+              </Button>
+            )}
             {confirmDelete ? (
               // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- event barrier only: stops the click from reaching the clickable row; the buttons inside handle the keyboard.
               <div className="flex items-center gap-1 ml-2 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -1056,6 +1065,7 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
                 index={idx + 1}
                 hasRecording={recordedIds.has(game.id)}
                 onDelete={(id) => onGameDelete(id)}
+                statsPath={isOffSession(session) ? undefined : `/history/session/${encodeURIComponent(session.id)}/stats?game=${soloGameRank(session.games, game.id)}`}
               />
             ))}
           </div>
@@ -1069,7 +1079,7 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
   )
 }
 
-function GameRow({ game, index, hasRecording, onDelete }: { game: GameEntry; index: number; hasRecording: boolean; onDelete?: (id: string) => void }) {
+function GameRow({ game, index, hasRecording, onDelete, statsPath }: { game: GameEntry; index: number; hasRecording: boolean; onDelete?: (id: string) => void; statsPath?: string }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const kpiCategories = useLocalizedFundamentals()
@@ -1188,6 +1198,12 @@ function GameRow({ game, index, hasRecording, onDelete }: { game: GameEntry; ind
               onClick={() => setReviewExpanded(!reviewExpanded)}
             >
               {t('history.reviewButton')} {reviewExpanded ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+            </Button>
+          )}
+
+          {statsPath && (
+            <Button variant="outline" size="sm" className="h-6 border-hextech-gold/60 px-2 text-xs text-hextech-gold" onClick={() => navigate(statsPath)}>
+              {t('playerSheet.gameSheet')}
             </Button>
           )}
 
