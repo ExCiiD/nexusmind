@@ -3,7 +3,7 @@
 _20/11/2026, session **Engine** (pilotée par le Chief). Lecture seule du code. Les détails chiffrés sont dans
 [`RAPPORT_MOTEUR.md`](RAPPORT_MOTEUR.md) ; les sources dans [`RECHERCHE_CONNAISSANCES.md`](RECHERCHE_CONNAISSANCES.md) ;
 la vérification des timers 2026 dans [`DONNEES_JEU_2026.md`](DONNEES_JEU_2026.md) ; le design de l'assistant dans
-[`MOTEUR_REGLES.md`](MOTEUR_REGLES.md). Les rapports de la session Engine vont dans `docs/engine-reports/`._
+[`MOTEUR_REGLES.md`](MOTEUR_REGLES.md). Les rapports de la session Engine vont dans `docs/moteur/engine-reports/`._
 
 ## 1. Carte : où vit quoi
 
@@ -68,7 +68,7 @@ vérification d'objectif et assistant.
   `ANALYSIS_VERSION`) et tests ; Front-end = composants `src/components/MicroReview/`, pages, i18n ; Graphic Design si
   un nouvel élément visuel est nécessaire (maquette Penpot d'abord). `codex.json` et les fondamentaux : Back-end, avec
   relecture des textes par le Front-end (i18n).
-- **La session Engine ne code pas et ne commite pas** : elle écrit ici et dans `docs/engine-reports/AAAA-MM-JJ-sujet.md`,
+- **La session Engine ne code pas et ne commite pas** : elle écrit ici et dans `docs/moteur/engine-reports/AAAA-MM-JJ-sujet.md`,
   puis envoie 5 lignes au Chief.
 
 ## 4. Points ouverts connus (à garder en tête)

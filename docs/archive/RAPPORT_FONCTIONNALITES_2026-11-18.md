@@ -1,8 +1,8 @@
 # Rapport — fonctionnalités d'Ascend : ce qui existe, ce qui reste, ce qui pourrait venir
 
 _18/11/2026, version 1.0.0-beta.1 plus le travail non encore publié (micro-revue V5 à V10, impact en fight du support,
-retrait du protocole basse énergie, refonte visuelle en cours dans une autre session). Sources : le code, `docs/ROADMAP.md`,
-`docs/PLAN_GESTION_EQUIPE.md`, `docs/MOTEUR_REGLES.md`, `docs/PLAN_MICRO_REVIEW.md`._
+retrait du protocole basse énergie, refonte visuelle en cours dans une autre session). Sources : le code, `docs/archive/ROADMAP_2026-11-18.md`,
+`docs/PLAN_GESTION_EQUIPE.md`, `docs/moteur/MOTEUR_REGLES.md`, `docs/PLAN_MICRO_REVIEW.md`._
 
 Légende : ✅ disponible · 🟡 disponible avec un reste à faire · ⏳ à faire · 💡 idée.
 

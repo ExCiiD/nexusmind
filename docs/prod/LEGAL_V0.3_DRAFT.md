@@ -1,10 +1,10 @@
-# Textes légaux v0.3 — BROUILLON (à valider par l'utilisateur)
+# Textes légaux v0.3 — VALIDÉS (26/11/2026)
 
-> Rédigé le 19/11/2026 par la session CyberSecurity, à la demande du Chief. **Pas encore en vigueur.** Ne rien reporter dans `src/legal/` ni dans `site/` avant la validation de l'utilisateur. Une fois validé : le Front-end reporte le texte dans l'app (`src/legal/privacy.{fr,en}.md`, `terms.{fr,en}.md`) et ajoute la case de consentement (partie C) ; Graphic Design reporte le texte sur le site (`site/src/legal/confidentialite.html`, `privacy.html`, `conditions.html`, `terms.html`). La version anglaise reste à traduire depuis ce texte.
+> Rédigé le 19/11/2026 par la session CyberSecurity, à la demande du Chief. **Validé par l'utilisateur le 26/11/2026** (publié dans l'app et sur le site le 21/11). Historique du report : le Front-end reporte le texte dans l'app (`src/legal/privacy.{fr,en}.md`, `terms.{fr,en}.md`) et ajoute la case de consentement (partie C) ; Graphic Design reporte le texte sur le site (`site/src/legal/confidentialite.html`, `privacy.html`, `conditions.html`, `terms.html`). La version anglaise reste à traduire depuis ce texte.
 >
 > Base : la v0.2 du site (18/11). Chaque ajout a été vérifié dans le schéma de production (lecture seule) le 19/11. Les passages **nouveaux ou modifiés** sont marqués ➕ dans la partie B ; tout le reste est repris de la v0.2.
 >
-> Ce brouillon n'est pas un avis juridique : la qualification finale (base légale, âge minimum, durées) est la décision de l'éditeur.
+> Ce texte n'est pas un avis juridique : la qualification finale (base légale, âge minimum, durées) est la décision de l'éditeur.
 
 ---
 

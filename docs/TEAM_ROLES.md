@@ -16,18 +16,18 @@ transmet à toutes les sessions concernées.
 
 | Session (nom) | Rôle | Responsable de | Ne fait pas |
 |---|---|---|---|
-| **Chief** (session « Chief », `local_c8abf60b-4556-452b-8f1b-e972f463ff10` depuis le 20/11 : l'ancienne session Chief a été fusionnée dedans) | Reçoit les idées de l'utilisateur, planifie la stratégie, découpe en tâches et délègue à la bonne session ; suit l'avancement ; gère commits, push et releases **quand l'utilisateur les demande**. | Le plan (`docs/PLAN_CHIEF.md`), l'ordre des tâches, l'attribution des fichiers, l'intégration finale (fusion, version, release). | N'écrit pas de fonctionnalité lui-même, sauf correctif d'intégration. |
+| **Chief** (session « Chief », `local_c8abf60b-4556-452b-8f1b-e972f463ff10` depuis le 20/11 : l'ancienne session Chief a été fusionnée dedans) | Reçoit les idées de l'utilisateur, planifie la stratégie, découpe en tâches et délègue à la bonne session ; suit l'avancement ; gère commits, push et releases **quand l'utilisateur les demande**. | Le plan (`docs/REFERENCE.md`), l'ordre des tâches, l'attribution des fichiers, l'intégration finale (fusion, version, release). | N'écrit pas de fonctionnalité lui-même, sauf correctif d'intégration. |
 | **Graphic Design** (`graphic-design`) | Maquettes, mockups, images, assets, design system, bonnes pratiques UI/UX. | Penpot (serveur MCP `penpot`), `src/assets/`, tokens de thème (`tailwind.config.ts`, CSS des thèmes), visuels du site (`site/`), spécifications d'interface remises au Front-end. | Ne code pas la logique des écrans. |
 | **Front-End Dev** (`frontend-dev`) | Interface de l'app desktop et web, à partir des maquettes ou directement pour une modification d'interface ; bonnes pratiques front-end. | `src/components/`, `src/pages/`, `src/hooks/`, `src/store/`, `web/src/` (hors adaptateur `api.ts`), i18n (`src/i18n/`), harnais `.harness/`. | Ne touche ni à la base, ni au processus principal Electron, ni aux workers. |
 | **Back-end Dev** (`backend-dev`) | Processus principal Electron (IPC, enregistrement, transcription, sync), logique `src/lib/*Core.ts`, Prisma/SQLite, Supabase (migrations, RLS, edge functions), workers Cloudflare, API Riot ; bonnes pratiques back-end. | `electron/`, `src/lib/`, `prisma/`, `supabase/`, `cloudflare/`, `web/src/api.ts`, `scripts/`. | Toute modification de la base de production attend l'accord de l'utilisateur. |
-| **Audit** (`audit`) | Audit des fonctions : vérifie que tout fonctionne, fixe un critère de bonne pratique par catégorie et dit s'il est respecté. | `docs/QUALITY_CRITERIA.md` (critères), rapports `docs/AUDIT_*.md`, tests de non-régression. Revoit chaque livraison avant release. | Ne corrige pas lui-même : il signale au Chief, qui attribue. |
+| **Audit** (`audit`) | Audit des fonctions : vérifie que tout fonctionne, fixe un critère de bonne pratique par catégorie et dit s'il est respecté. | `docs/audits/QUALITY_CRITERIA.md` (critères), rapports `docs/AUDIT_*.md`, tests de non-régression. Revoit chaque livraison avant release. | Ne corrige pas lui-même : il signale au Chief, qui attribue. |
 | **CyberSecurity** (`cybersecurity`) | Sécurité de l'infra web et de l'app, protection des utilisateurs, recherche de failles front et back. | `docs/AUDIT_SECURITE.md`, revue des RLS, des secrets, de la CSP, des IPC exposés, des dépendances, des workers. Revoit chaque livraison avant release. | Pas de test d'intrusion hors de l'infra du projet ; correctifs attribués via le Chief ; base de production sur accord de l'utilisateur. |
 
 ### Ajout du 20/11 : Engine
 
 | Session (nom) | Rôle | Responsable de | Ne fait pas |
 |---|---|---|---|
-| **Engine** (`engine`) | Reçoit les nouvelles informations pour le moteur de coaching (connaissances de jeu, timings, règles), répond aux questions de l'utilisateur dans le même contexte, et rédige un rapport : comment l'implémenter dans le moteur, et ce que le moteur en fera dans l'app. | `docs/ENGINE_NOTES.md`, `docs/engine-reports/`. | Ne code pas l'app et ne commite pas. Le Chief présente le rapport à l'utilisateur et attend sa confirmation avant de le confier au Back-end et au Front-end. Quand l'utilisateur pose une question au Chief ou lui donne des données pour le moteur, le Chief les transmet directement à Engine. |
+| **Engine** (`engine`) | Reçoit les nouvelles informations pour le moteur de coaching (connaissances de jeu, timings, règles), répond aux questions de l'utilisateur dans le même contexte, et rédige un rapport : comment l'implémenter dans le moteur, et ce que le moteur en fera dans l'app. | `docs/moteur/ENGINE_NOTES.md`, `docs/moteur/engine-reports/`. | Ne code pas l'app et ne commite pas. Le Chief présente le rapport à l'utilisateur et attend sa confirmation avant de le confier au Back-end et au Front-end. Quand l'utilisateur pose une question au Chief ou lui donne des données pour le moteur, le Chief les transmet directement à Engine. |
 
 ## Comment elles travaillent ensemble
 
@@ -63,7 +63,7 @@ dépense. Règles :
 1. **Pas de message sans action attendue.** Pas d'accusé de réception
    (« noté », « prêt », « je relirai »), pas de « pas besoin de répondre »,
    pas de diffusion d'information générale : elle va dans un fichier
-   (`docs/DECISIONS.md`, ce document, `docs/PLAN_CHIEF.md`), que chaque session
+   (`docs/DECISIONS.md`, ce document, `docs/REFERENCE.md`), que chaque session
    relit au début de sa prochaine tâche.
 2. **Un message = un lot complet.** Le Chief envoie à une session toutes ses
    tâches d'un coup, avec fichiers, critère de fin et vérifications ; pas de

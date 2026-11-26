@@ -2,7 +2,7 @@
 
 > **Saison en cours seulement (règle du 20/11/2026)** : ce rapport ne contient que des valeurs 16.x. Les règles générales sans timer restent, les valeurs et timers 2025 sont retirés (voir [`2026-11-20-inventaire-regles-avant-2026.md`](2026-11-20-inventaire-regles-avant-2026.md)).
 
-_20/11/2026, session Engine. Suite de [`2026-11-20-bilan-des-roams-tous-laners.md`](2026-11-20-bilan-des-roams-tous-laners.md).
+_20/11/2026, session Engine. Suite de [`2026-11-20-bilan-des-roams.md`](2026-11-20-bilan-des-roams.md).
 Demande de l'utilisateur : compter les quêtes de rôle dans l'impact d'un roam, en mesurant la **différence entre le
 joueur et son vis-à-vis direct**. Lecture seule du code. Les données ont été lues sur une **copie** de la base locale
 (`MatchCache`, 431 parties classées 16.x avec timeline), sans rien modifier._

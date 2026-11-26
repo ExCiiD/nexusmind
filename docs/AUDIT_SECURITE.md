@@ -160,7 +160,7 @@ Passe en **lecture seule** : rien n'a été modifié (ni code, ni base de produc
 - **Secrets :** `.env` ignoré par git ; aucun fichier de secret suivi ; aucun secret dans `out/` ni dans `app.asar`.
 
 #### S19-16 — La suppression de compte échoue ou efface le groupe des autres (Haute — droit à l'effacement)
-*Trouvé le 19/11 pendant la rédaction de la v0.3 (`docs/LEGAL_V0.3_DRAFT.md`).*
+*Trouvé le 19/11 pendant la rédaction de la v0.3 (`docs/prod/LEGAL_V0.3_DRAFT.md`).*
 - **Impact :**
   1. `delete-account` appelle `auth.admin.deleteUser(uid)`. Or neuf tables pointent vers `auth.users` avec `ON DELETE NO ACTION` : `team_discussion_comments.author_id`, `team_session_feedback.user_id`, `team_session_games.reported_by`, `team_session_reviews.recorded_by`, `team_session_objectives.set_by`, `calendar_event_requests.requested_by`, `group_fundamentals.created_by`, `report_shares.created_by` et `calendar_subscriptions.created_by`. Pour tout utilisateur qui a écrit au moins une de ces lignes, la suppression échoue en 500 (`delete_user_failed`). Le bouton « Supprimer mon compte » promis par la politique de confidentialité ne marche donc pas pour les membres actifs d'une équipe.
   2. À l'inverse, `groups.created_by` est en `ON DELETE CASCADE` : quand le **créateur** d'un groupe supprime son compte, tout le groupe disparaît pour tous ses membres (planning, scrims, sessions, rosters…), sans avertissement.
@@ -339,7 +339,7 @@ Pourquoi cet ordre : la clé OpenAI est un secret **valide** qui ne demande qu'u
   1. Le réglage est une **UserPreference synchronisée** : l'activer sur un PC l'active sur tous les PC du compte, y compris pour les parties enregistrées ailleurs. À dire dans l'écran des réglages (« s'applique à tous tes PC »), ou à garder local.
   2. Le client OAuth étant public, n'importe qui peut s'en servir **avec ton quota** YouTube. Risque accepté par la décision ; à surveiller dans la console Google, dont les alertes de quota sont gratuites.
 
-#### `docs/GOOGLE_YOUTUBE_VERIFICATION.md` § 2 et § 3 face au code (21/11, lecture seule) : **4 écarts, dont 2 bloquants pour la vérification Google**
+#### `docs/prod/GOOGLE_YOUTUBE_VERIFICATION.md` § 2 et § 3 face au code (21/11, lecture seule) : **4 écarts, dont 2 bloquants pour la vérification Google**
 **Conforme au code :**
 - scope unique `youtube.upload` (`YOUTUBE_SCOPE`) ;
 - PKCE `S256` avec `state` vérifié au retour ;
@@ -367,7 +367,7 @@ Pourquoi cet ordre : la clé OpenAI est un secret **valide** qui ne demande qu'u
 - § 3.3 et 3.4 : remplacer « No YouTube data is stored on Ascend servers » par « Only the uploaded video's link is stored, as described in the privacy policy; no other YouTube data is stored on Ascend servers ». Remplacer aussi « Ascend servers never hold YouTube data » par la même précision.
 - **Réunions d'équipe :** ajouter que la personne qui publie doit avoir l'accord des participants, enregistrés en voix et en image (§ 2.2, conditions d'utilisation).
 
-#### beta.19 — lot de performances (`docs/AUDIT_PERF_2.md`, gains 0 à 4, 6, 7 et 9 ; arbre non commité, lecture seule) : **non bloquant, 1 correctif bas**
+#### beta.19 — lot de performances (`docs/audits/AUDIT_PERF.md`, gains 0 à 4, 6, 7 et 9 ; arbre non commité, lecture seule) : **non bloquant, 1 correctif bas**
 1. **`perfLog.ts` :** inactif sauf si `NEXUSMIND_PERF_LOG=1` (`perfLogEnabled`). Il écrit dans `userData/logs/perf.log` : **le nom du canal IPC seulement** (aucun argument), et pour le réseau un **libellé** tiré de `labelForUrl`.
    - Supabase : 3 ou 4 segments, du genre `/rest/v1/<table>`, `/functions/v1/<nom>`, `/storage/v1/object/<bucket>`. Le jeton de `team-report` et le chemin `<uid>/…` du stockage sont coupés.
    - Riot : `:id`, `:match`, `:name` et `:tag` remplacent le puuid, le matchId et le Riot ID.
@@ -655,7 +655,7 @@ Pourquoi cet ordre : la clé OpenAI est un secret **valide** qui ne demande qu'u
 - **Au déploiement (Back-end) :** vérifier dans les journaux de la fonction que `cf-connecting-ip` est **bien présent**. Sinon, tous les appelants partagent le même compteur de 10 échecs par heure, ce qui crée là aussi un déni de service facile.
 - **Point bas (prochaine migration) :** les codes d'invitation sont tirés avec `random()`, qui n'est pas cryptographique. Leur longueur rend toute prédiction peu réaliste, mais `gen_random_bytes` (pgcrypto) ou `gen_random_uuid()` serait préférable.
 
-#### #39 — `docs/PROPOSITION_MULTI_ROLES.md` : avis CyberSecurity
+#### #39 — `docs/archive/PROPOSITION_MULTI_ROLES.md` : avis CyberSecurity
 **Modèle : B, recommandé.** Il garde un seul point de contrôle (`has_group_role`), ne réécrit que les corps des fonctions `private.*` (les politiques restent identiques, ce qui réduit le risque d'oubli), et reste compatible avec les anciennes versions. C'est un bon choix de sécurité. Conditions :
 1. `staff_roles` ne doit **jamais** entrer dans un `grant update` à `authenticated`. Ajouter un test PGlite qui vérifie qu'un membre ne peut pas modifier sa propre colonne `staff_roles`.
 2. `set_member_staff_roles` : vérifier que `p_user` est membre de `p_group`, que l'appelant en est l'owner, avec un `check` sur les valeurs (sous-ensemble de {coach, manager, analyst}, sans doublon), et un refus sur l'owner lui-même. `SECURITY DEFINER`, `search_path` vide, exécution retirée à `anon`.

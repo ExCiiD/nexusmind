@@ -81,7 +81,7 @@ Compte : celui qui possède le projet Google Cloud `nexusmind-493022` (son seul 
 |---|---|---|
 | **Page d'accueil publique** qui décrit l'app | ✅ <https://asc3nd.app> (domaine du projet, attaché au worker `ascend-site`), sans `noindex` au 21/11 | relire que la page décrit bien Ascend et son usage de YouTube |
 | **Domaine vérifié** dans Google Search Console (« Authorized domains ») | ✅ fichier de vérification en ligne : <https://asc3nd.app/googlec7dae68e8dccf3cd.html> (200, servi par `site/worker.ts`) | dans Search Console, cliquer **Valider** sur la propriété `https://asc3nd.app` **avec le même compte Google que celui du projet Cloud** (Google exige que le propriétaire du domaine soit propriétaire ou éditeur du projet) |
-| **Politique de confidentialité** qui parle des données YouTube | ⚠️ v0.3 en brouillon (`docs/LEGAL_V0.3_DRAFT.md`) : YouTube y est cité (§ 4 et § 6), mais pas ce que Google exige | ajouter le texte du § 2.1 ci-dessous, puis publier la v0.3 (FR + EN) |
+| **Politique de confidentialité** qui parle des données YouTube | ⚠️ v0.3 en brouillon (`docs/prod/LEGAL_V0.3_DRAFT.md`) : YouTube y est cité (§ 4 et § 6), mais pas ce que Google exige | ajouter le texte du § 2.1 ci-dessous, puis publier la v0.3 (FR + EN) |
 | **Conditions d'utilisation** | ✅ v0.2 sur le site (`conditions.html`) | ajouter la phrase du § 2.2 à la v0.3 |
 | **E-mail d'assistance** | ✅ l'adresse de contact publiée dans la politique | la même dans la console |
 | **Logo** | ✅ `build/icon.png` | le même logo sur le site et dans la console (Google compare) |
@@ -279,7 +279,7 @@ dans un build qui contient l'identifiant et le secret du client Desktop.
 
 ---
 
-## 6. Ce qui se fait avec la demande de clé Riot de production (`docs/PLAN_CLE_PROD.md`)
+## 6. Ce qui se fait avec la demande de clé Riot de production (`docs/prod/PLAN_CLE_PROD.md`)
 
 À préparer **une seule fois**, pour les deux demandes :
 1. **Site public sur un domaine à soi** : `asc3nd.app`, déjà en place et vérifiable dans Search Console. Riot l'exige

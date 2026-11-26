@@ -78,7 +78,7 @@ Quand les données ne prouvent rien, le moteur se tait.
 **Saison analysée.** Le moteur ne connaît que la saison en cours. Il lit la saison dans `info.gameVersion` de Match-V5
 (`gameClock.ts`, `seasonOf`) : version 16 et plus (ou inconnue) → saison en cours ; 15.x et avant → **non analysée**
 (ni micro-revue, ni erreurs automatiques du Labo). Les analyses et erreurs déjà enregistrées sur ces parties ne sont pas
-touchées (décision de l'utilisateur du 20/11/2026, `docs/engine-reports/2026-11-20-inventaire-regles-avant-2026.md`).
+touchées (décision de l'utilisateur du 20/11/2026, `docs/moteur/engine-reports/2026-11-20-inventaire-regles-avant-2026.md`).
 Repères du début de partie : sbires 0:30, camps 0:55, Carapateur 2:55. Ils fixent les fenêtres de gank, Carapateur,
 premier back du jungler, première ward et all-in niveau 2 du support, pic de niveau 2/3, cheater recall, overchase, full
 clear passif, contre-tempo, fenêtre de tempo et course aux niveaux (M19). Vérifié sur les parties 16.x en cache
@@ -336,7 +336,7 @@ chiffre trompeur.
 
 ### 2.7 Assistant (moteur de coaching)
 
-`electron/main/assistant/`, design dans `docs/MOTEUR_REGLES.md`
+`electron/main/assistant/`, design dans `docs/moteur/MOTEUR_REGLES.md`
 
 | Calcul | Règle | Ce que tu vois |
 |---|---|---|
@@ -472,4 +472,4 @@ l'une des 6 parties ne la contenait qu'en garbage time, elle sort des deux côt�
 - Le « premier mort d'un fight » compte les kills des deux équipes.
 - Le bouton « détecter les erreurs » du lecteur vidéo n'applique pas encore le décalage de gravité appris en 3.5 (la
   détection automatique, si), et il recrée une erreur auto que tu avais supprimée : correction listée dans
-  `docs/RAPPORT_FONCTIONNALITES.md`.
+  `docs/archive/RAPPORT_FONCTIONNALITES_2026-11-18.md`.

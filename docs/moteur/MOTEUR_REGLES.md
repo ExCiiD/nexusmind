@@ -1,7 +1,7 @@
 # Moteur de coaching à règles métier — design
 
 > Objectif : faire de Ascend un **coach automatique** sans IA payante. Après chaque partie, l'app sait ce qui s'est passé, ce qui compte le plus pour ce joueur, quoi faire ensuite, et **vérifie si le conseil a marché**.
-> Point de départ (13/11/2026) : feature store (`assistant/features.ts`), ~28 règles déclaratives (`assistant/rules.ts`), pondération par 👍/👎 (`weights.ts`, Thompson sampling), facteurs de victoire (`regression.ts`, régression logistique), détection d'erreurs M1–M13 (`mistakeDetector.ts`, `mistakeRules.ts`), rapport de phase de lane, catalogue [`AUDIT_REGLES_METIER.md`](AUDIT_REGLES_METIER.md).
+> Point de départ (13/11/2026) : feature store (`assistant/features.ts`), ~28 règles déclaratives (`assistant/rules.ts`), pondération par 👍/👎 (`weights.ts`, Thompson sampling), facteurs de victoire (`regression.ts`, régression logistique), détection d'erreurs M1–M13 (`mistakeDetector.ts`, `mistakeRules.ts`), rapport de phase de lane, catalogue [`AUDIT_REGLES_METIER.md`](../audits/AUDIT_REGLES_METIER.md).
 
 ---
 

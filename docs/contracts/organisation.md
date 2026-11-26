@@ -75,4 +75,4 @@ lftMySolo?(opts?: { force?: boolean }): Promise<{ member: SoloLftMember; rank: M
 ## Mise en production
 
 Migration `20261120115200_event_response_reminders` (non appliquée) et déploiement du bot (DM). Pas-à-pas :
-`docs/MISE_EN_PROD_ORGANISATION.md`. Les points 2 et 3 n'ont besoin d'aucune migration.
+`docs/archive/MISE_EN_PROD_ORGANISATION.md`. Les points 2 et 3 n'ont besoin d'aucune migration.

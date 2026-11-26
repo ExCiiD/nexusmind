@@ -1,7 +1,7 @@
 # Plan moteur : bilans des roams, des ganks et des quêtes de rôle
 
 _26/11/2026, Chief. Suite des propositions de la session Engine du 20/11. Analyse faite à partir des 4 rapports
-(`engine-reports/2026-11-20-bilan-des-roams-mid`, `…-tous-laners`, `…-quetes-de-role-dans-le-bilan-des-roams`,
+(`engine-reports/2026-11-20-bilan-des-roams`, `…-tous-laners`, `…-quetes-de-role-dans-le-bilan-des-roams`,
 `…-bilan-des-ganks-jungle`), du code actuel (`src/lib/microReview/`, ANALYSIS_VERSION 14) et du registre
 `DECISIONS.md`. **Mise à jour 26/11 soir : phases 0a, 0b, 1 à 5 et textes Front faits, rien commité, aucun affichage actif** (voir § 8)._
 

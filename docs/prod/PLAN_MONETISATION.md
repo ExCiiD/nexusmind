@@ -9,8 +9,8 @@
 > - donner un avant-goût (création de groupe, annonce LFT, espace d'équipe) sans tout donner (certaines stats,
 >   scouting…).
 >
-> **Appuis :** `docs/RAPPORT_SUPABASE_WEB.md` (charge Supabase), `docs/PLAN_CLE_PROD.md` (coût Riot),
-> `docs/DEMANDE_CLE_PROD.md` (règles Riot).
+> **Appuis :** `docs/archive/RAPPORT_SUPABASE_WEB.md` (charge Supabase), `docs/prod/PLAN_CLE_PROD.md` (coût Riot),
+> `docs/prod/DEMANDE_CLE_PROD.md` (règles Riot).
 
 ## En bref
 

@@ -1479,7 +1479,7 @@ du Lobby (§ 14) est repris ; le changer ici ne modifie que l'annonce.
 
 ## 23. Spec Front-end — carte de micro-review : lieux, preuve, extrait
 
-Décisions du 20/11 (rapports `docs/engine-reports/2026-11-20-*`). Maquette
+Décisions du 20/11 (rapports `docs/moteur/engine-reports/2026-11-20-*`). Maquette
 Penpot : plan « Carte de micro-review · objectif (maquette 5) ».
 
 - **En-tête à l'heure de l'objectif** (pas de l'ancrage interne) : heure en

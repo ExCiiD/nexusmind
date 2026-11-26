@@ -11,7 +11,7 @@
 > - `electron/main/mistakeRules.ts` ;
 > - `electron/main/eventExtractor.ts`, `riotClient.ts` ;
 > - `src/lib/microReview/codex.json`, `src/lib/constants/fundamentals*.ts`, `src/i18n/locales/*.json` ;
-> - `docs/RAPPORT_MOTEUR.md`.
+> - `docs/moteur/RAPPORT_MOTEUR.md`.
 >
 > **Sources, consultées le 19/11/2026 :**
 > - **[PN 26.1]** patch notes officielles 26.1 (janvier 2026),
@@ -119,7 +119,7 @@ partie).
 | i18n `microReview.*.heraldUnused` | `fr.json:4245`, `:4350` | pas d'heure citée | — | ✅ |
 | Codex « Héraut de 15:00 à 19:45 depuis 2026 » | `codex.json:1587-1588` | conforme | — | ✅ |
 | Codex « Baron disponible depuis 20:00 » | `codex.json:265-266`, `2200-2201` | conforme pour 2026 | — | ✅ |
-| `docs/RAPPORT_MOTEUR.md` | 69 | « Larves du Néant : un camp à 8:00 » | ajouter « 3 Larves, sans réapparition » | P3 |
+| `docs/moteur/RAPPORT_MOTEUR.md` | 69 | « Larves du Néant : un camp à 8:00 » | ajouter « 3 Larves, sans réapparition » | P3 |
 
 **Aucun texte de l'app ne parle de « 6 Larves » ni de deux vagues de Larves** : la recherche par motif
 (`6 larves`, `deux vagues`, `grubs at 6`, `Herald at 14`, `Baron at 25`, `125 g`, `wave 4`…) ne trouve que des

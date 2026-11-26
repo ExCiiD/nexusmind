@@ -207,9 +207,9 @@ Chaque constat : fichiers, pourquoi, risque, correctif proposé. « Décision »
 - **S3 — ffmpeg téléchargé sans vérification d'intégrité** au postinstall (`scripts/download-ffmpeg.mjs`), puis livré à tous : épingler le SHA-256.
 - **CI1** — ajouter `npm run site:build` (et T8) à la CI.
 - **C3** — `.gitignore` : `!.env.example` et `!.dev.vars.example` ré-incluent des fichiers qui n'existent pas ; un `.env.example` documenterait les 10 variables.
-- **DOC1 — `docs/SESSION_HANDOFF.md`** demande à être supprimé « une fois l'item 2 résolu » : l'item 2 (chargement infini / impossible de se reconnecter après déconnexion) n'a pas de correctif depuis le 17/11. Proposition : le passer dans `docs/INBOX.md` (Pending), puis archiver le handoff. Non fait (rituel de début de session de l'utilisateur).
+- **DOC1 — `docs/archive/SESSION_HANDOFF_2026-11-19.md`** demande à être supprimé « une fois l'item 2 résolu » : l'item 2 (chargement infini / impossible de se reconnecter après déconnexion) n'a pas de correctif depuis le 17/11. Proposition : le passer dans `docs/INBOX.md` (Pending), puis archiver le handoff. Non fait (rituel de début de session de l'utilisateur).
 - **DOC2 — `PRD.md`** décrit le produit d'avril 2026 (IA, CSP, variables d'environnement, tests, périmètre). **Décision** : archiver ou mettre à jour.
-- **DOC3 — Affirmations périmées** dans `docs/ROADMAP.md` (`supabase/schema.sql` inexistant, monorepo jamais créé, `AssistantFeedback` dit non synchronisé alors qu'il l'est, compteurs d'avertissements) et `RAPPORT_FONCTIONNALITES.md`. Non modifiés ici (documents de pilotage édités en parallèle).
+- **DOC3 — Affirmations périmées** dans `docs/archive/ROADMAP_2026-11-18.md` (`supabase/schema.sql` inexistant, monorepo jamais créé, `AssistantFeedback` dit non synchronisé alors qu'il l'est, compteurs d'avertissements) et `RAPPORT_FONCTIONNALITES.md`. Non modifiés ici (documents de pilotage édités en parallèle).
 - **DOC4 — Deux listes de tâches** (`ROADMAP.md` et `RAPPORT_FONCTIONNALITES.md` § 2) qui divergent déjà. **Décision** : laquelle reste la référence.
 - **DOC5 — `PLAN_GESTION_EQUIPE.md` et `AUDIT_REGLES_METIER.md`** : v1 livrée, mais ~60 commentaires du code et 12 migrations les citent : garder, ajouter un bandeau d'état.
 - **K1 — `.claude/skills` (7,2 Mo, un tiers des octets suivis)** : politique « vendre de vraies skills » assumée. Gardé.

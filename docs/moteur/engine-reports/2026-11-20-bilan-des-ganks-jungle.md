@@ -1,7 +1,7 @@
 # Bilan des ganks du jungler
 
 _20/11/2026, session Engine. Règle propre au jungler, en complément du bilan des roams
-([`2026-11-20-bilan-des-roams-tous-laners.md`](2026-11-20-bilan-des-roams-tous-laners.md)). Demande de l'utilisateur :
+([`2026-11-20-bilan-des-roams.md`](2026-11-20-bilan-des-roams.md)). Demande de l'utilisateur :
 pour chaque gank, compter les camps perdus et l'écart de gold et d'XP avec le jungler ennemi avant et après, puis juger
 le gank comme les autres lanes. Valait-il le coup ? La perte a-t-elle été compensée ailleurs ? Le gank a-t-il créé un
 avantage ? **Saison en cours seulement (16.x)**, conformément à la règle du 20/11. Lecture seule du code ; les mesures

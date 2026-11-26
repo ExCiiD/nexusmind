@@ -137,13 +137,13 @@ une demande directe de l'utilisateur est signalée au Chief.
 |---|---|---|---|
 | 2 | Chargement infini / reconnexion impossible après déconnexion | `web/src/api.ts`, `electron/main/ipc/auth.ipc.ts`, `electron/main/cloud/supabase.ts` (session dans le trousseau, `onAuthStateChange`) | Desktop ou web ? Étapes exactes (à demander à l'utilisateur via le Chief) |
 | 3 | Héberger les images du pack de détourage | Sortie `D:\DEV\NexusMind\cutout-pack` | Fin du calcul + vérification Graphic Design |
-| 4 | Règles encore sur l'horloge 2025 (plaques, dive, roam mid, tour latérale, M12 « mort avant 4:00 ») | `electron/main/mistakeRules.ts`, `assistant/rules.ts`, `docs/RAPPORT_MOTEUR.md` | — |
+| 4 | Règles encore sur l'horloge 2025 (plaques, dive, roam mid, tour latérale, M12 « mort avant 4:00 ») | `electron/main/mistakeRules.ts`, `assistant/rules.ts`, `docs/moteur/RAPPORT_MOTEUR.md` | — |
 | 7 | Scouting : adversaires de toutes les équipes locales | Filtre par groupe côté `scoutingCore.ts` / `team.ipc.ts`, avec le Front-end | Coordination Front-end |
 | 9 | Redéployer la web app (CSP logos, page Management web) | `web/`, wrangler | Go de l'utilisateur |
 | 10 | Qualité de transcription : évaluer `whisper-small` | `electron/main/transcription.ts` | — |
 | 11 | Purge des marqueurs de suppression de `sync_records` > 90 jours | RPC ou cron Supabase | Accord production |
 
-Constats de l'audit (`docs/AUDIT_APP_2026-11.md`) dans mon périmètre,
+Constats de l'audit (`docs/audits/AUDIT_APP_2026-11.md`) dans mon périmètre,
 attribués par le Chief :
 
 - **§ 3.1 processus principal** : E10 (enrichissement post-partie, cœur
@@ -162,7 +162,7 @@ attribués par le Chief :
   du bot non déclarée), WSC-23 / WSC-24 (proxy Riot : endpoints morts,
   commentaires).
 
-Ordre retenu par le Chief (19/11, `docs/PLAN_CHIEF.md`) : #2 (bloquant
+Ordre retenu par le Chief (19/11, `docs/archive/PLAN_CHIEF_2026-11-19_au_26.md`) : #2 (bloquant
 pour les joueurs) → #7 (filtre Scouting par groupe, bloque le Front-end) →
 WSC-06 (fuite de lecture potentielle, petit) → E11/E27 → E07/E08a → #4 →
 E10 (avec test réel) → le reste. Rien ne démarre avant le go du Chief.

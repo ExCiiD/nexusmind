@@ -86,7 +86,7 @@ Déclencheur commun : la timeline de la partie est disponible (après enrichisse
 Règles transverses de la Mistake Library :
 - **MX1 — Déduplication** : une erreur auto par (tag, minute) ; les erreurs manuelles ne sont jamais touchées.
 - **MX2 — Relance automatique** : la détection tourne dès que la timeline est en cache (enrichissement post-partie, ouverture d'une review, refresh) ✅.
-- **MX3 — Apprentissage du seuil** : si le joueur supprime ≥ 3 fois un même tag auto, sa sévérité par défaut baisse de 1 pour ce joueur (✅ ; simplification : compteur cumulatif, jamais remis à zéro par une recréation manuelle — voir [MOTEUR_REGLES.md](MOTEUR_REGLES.md)).
+- **MX3 — Apprentissage du seuil** : si le joueur supprime ≥ 3 fois un même tag auto, sa sévérité par défaut baisse de 1 pour ce joueur (✅ ; simplification : compteur cumulatif, jamais remis à zéro par une recréation manuelle — voir [MOTEUR_REGLES.md](../moteur/MOTEUR_REGLES.md)).
 - **MX4 — Top erreurs → objectif** : un tag présent dans ≥ 40 % des 10 dernières games devient une suggestion d'objectif (assistant) (✅ règle `dominant_mistake`).
 - **MX5 — Clip auto** : erreur sévérité 3 avec vidéo liée → bookmark à `t − 15 s` (✅, seulement si le décalage vidéo de l'enregistrement est fiable).
 
@@ -119,7 +119,7 @@ Règles transverses de la Mistake Library :
 ### 3.4 Assistant (Phase A) — existant, à enrichir
 
 Règles actuelles : morts précoces répétées, biais KPI, objectif sans progrès, tilt, baisse de vision, tendance CS, longue session… (voir `electron/main/assistant/rules.ts`).
-Ajouts proposés (✅ livrés avec le moteur de coaching, voir [MOTEUR_REGLES.md](MOTEUR_REGLES.md)) : **AS1** profil meilleur/pire (B4) ; **AS2** tag d'erreur dominant (MX4) ; **AS3** champion à sortir du pool (≥ 10 games, winrate < 40 %, KDA sous la moyenne personnelle) ; **AS4** heure de jeu défavorable (winrate après minuit < winrate global − 10 pts sur ≥ 15 games) ; **AS5** fatigue de série (performance des games 4+ d'une session < games 1-3).
+Ajouts proposés (✅ livrés avec le moteur de coaching, voir [MOTEUR_REGLES.md](../moteur/MOTEUR_REGLES.md)) : **AS1** profil meilleur/pire (B4) ; **AS2** tag d'erreur dominant (MX4) ; **AS3** champion à sortir du pool (≥ 10 games, winrate < 40 %, KDA sous la moyenne personnelle) ; **AS4** heure de jeu défavorable (winrate après minuit < winrate global − 10 pts sur ≥ 15 games) ; **AS5** fatigue de série (performance des games 4+ d'une session < games 1-3).
 
 ### 3.5 Équipe (staff)
 
@@ -163,6 +163,6 @@ Ajouts proposés (✅ livrés avec le moteur de coaching, voir [MOTEUR_REGLES.md
 ## 5. Mise en œuvre
 
 - M5–M13 ✅ (9 nouvelles détections, 4 nouveaux tags), détection relancée automatiquement après chaque partie.
-- Moteur de coaching (voir [MOTEUR_REGLES.md](MOTEUR_REGLES.md)) : S2, R2, P2 (lot 2) puis MX2 (corrigé), MX5, R1, R4, R5, S3 (lot 3), puis AS1, AS3, AS4, AS5, M14, MX3, P1 (lot 4) ✅. M15 écrit le 19/11/2026 avec la formule de réapparition du wiki (`src/lib/microReview/gameClock.ts`).
+- Moteur de coaching (voir [MOTEUR_REGLES.md](../moteur/MOTEUR_REGLES.md)) : S2, R2, P2 (lot 2) puis MX2 (corrigé), MX5, R1, R4, R5, S3 (lot 3), puis AS1, AS3, AS4, AS5, M14, MX3, P1 (lot 4) ✅. M15 écrit le 19/11/2026 avec la formule de réapparition du wiki (`src/lib/microReview/gameClock.ts`).
 - Lot 5 (page « Mon plan », pré-remplissage du bilan depuis les stats) ✅.
-- Les 5 lots du moteur de coaching sont livrés. Le moteur de règles métier est terminé pour cette itération ; la suite se trouve dans [PLAN_GESTION_EQUIPE.md](PLAN_GESTION_EQUIPE.md) (équipe) et [ROADMAP.md](ROADMAP.md) (reste du produit).
+- Les 5 lots du moteur de coaching sont livrés. Le moteur de règles métier est terminé pour cette itération ; la suite se trouve dans [PLAN_GESTION_EQUIPE.md](../PLAN_GESTION_EQUIPE.md) (équipe) et [ROADMAP.md](../REFERENCE.md) (reste du produit).

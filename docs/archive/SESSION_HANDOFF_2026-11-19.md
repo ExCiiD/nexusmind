@@ -38,7 +38,7 @@ archivées le 19/11 après cette synthèse (sauf deux, voir § 5).
 - Transcription Whisper réparée (import `wavefile`), anti-boucle, bouton
   « Relancer la transcription » ; micro activé par défaut.
 - Détecteurs de micro-review sur l'horloge 2026, connaissances high-elo du
-  moteur, audit complet de l'app (`docs/AUDIT_APP_2026-11.md`).
+  moteur, audit complet de l'app (`docs/audits/AUDIT_APP_2026-11.md`).
 - Cartes joueurs : apparence, fonds, détourage des champions, récompenses
   MVP / Grinder ; export LFT ; Champion Pool tiers v2 ; lancement au
   démarrage de Windows.
@@ -50,7 +50,7 @@ archivées le 19/11 après cette synthèse (sauf deux, voir § 5).
 | 1 | Pousser et publier `beta.8` (section Équipe & staff) | Chief | Vérifiée dans le harnais avec deux groupes ; 1 502 tests OK. |
 | 2 | Bug « chargement infini / impossible de se reconnecter après déconnexion » (ouvert depuis le 17/11) | Back-end | Demander desktop ou web et les étapes. Partir de `web/src/api.ts`, `web/src/pages/AccountPage.tsx`, `electron/main/ipc/auth.ipc.ts`, la restauration de session Supabase du desktop. |
 | 3 | Pack de détourage de tous les skins | Graphic Design → Back-end → Front-end | Lancé le 19/11 à 11:15, ~2 145 skins, ~6 h ; sortie `D:\DEV\NexusMind\cutout-pack` (`review.html` pour vérifier). Ensuite : héberger les images, puis choix du skin sur la page Profil. La session d'origine (« Auto background removal… ») est gardée non archivée tant que le calcul tourne. |
-| 4 | Règles encore sur l'horloge 2025 | Back-end | Plaques (plus à 14:00 en 2026) : règles dive, roam mid sur plaques, tour latérale ; M12 « mort avant 4:00 ». Voir `docs/RAPPORT_MOTEUR.md`. |
+| 4 | Règles encore sur l'horloge 2025 | Back-end | Plaques (plus à 14:00 en 2026) : règles dive, roam mid sur plaques, tour latérale ; M12 « mort avant 4:00 ». Voir `docs/moteur/RAPPORT_MOTEUR.md`. |
 | 5 | Détourage dans l'app | Front-end | Pas d'indicateur pour le téléchargement du modèle (224 Mo) ; seul le skin 0 est découpé ; tresse de Jinx coupée (`REFINE_DEFAULTS`, puis augmenter `CUTOUT_VERSION`). |
 | 6 | Draft Sim : anciennes couleurs de tiers dans la barre du pool | Front-end | Aligner `DraftTab.tsx` sur `ChampionPoolBoard.tsx`. |
 | 7 | Scouting : liste les adversaires de toutes les équipes de l'ordinateur | Front-end + Back-end | Filtrer sur le groupe choisi. |
@@ -58,7 +58,7 @@ archivées le 19/11 après cette synthèse (sauf deux, voir § 5).
 | 9 | Déployer la web app | Back-end | CSP logos + page Management web. |
 | 10 | Qualité de transcription | Back-end | Modèle `whisper-base` ; évaluer `whisper-small` (meilleur français, plus lent). |
 | 11 | Purge des marqueurs de suppression de `sync_records` (> 90 jours) | Back-end | Plus tard ; base de production → accord requis. |
-| 12 | Backlog de l'audit (décisions et correctifs) | Audit + Chief | `docs/AUDIT_APP_2026-11.md` § 3 (E02, E06, E10, UI-08, UI-11, L06, WSC-05…). |
+| 12 | Backlog de l'audit (décisions et correctifs) | Audit + Chief | `docs/audits/AUDIT_APP_2026-11.md` § 3 (E02, E06, E10, UI-08, UI-11, L06, WSC-05…). |
 | 13 | Sécurité | CyberSecurity | `docs/AUDIT_SECURITE.md` ; clé OpenAI encore dans `.env` (à révoquer) ; secret YouTube embarqué ; textes légaux v0.1 dans l'app contre v0.2 sur le site (L06) ; ffmpeg téléchargé sans vérification d'empreinte (S3). |
 | 14 | Ménage | Chief | Worktrees déjà fusionnés : `wt-app-audit`, `wt-detectors-2026`, `wt-engine-knowledge`, `wt-section3`. |
 

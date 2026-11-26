@@ -2,7 +2,7 @@
 
 > Rédigé par la session **Audit** le 19/11/2026, en lecture seule, pour que l'utilisateur dépose lui-même la demande
 > sur <https://developer.riotgames.com>. **Rien n'a été envoyé à Riot.**
-> Complète `docs/PLAN_CLE_PROD.md` (pourquoi et quoi activer) et `docs/RAPPORT_SUPABASE_WEB.md` (volumes).
+> Complète `docs/prod/PLAN_CLE_PROD.md` (pourquoi et quoi activer) et `docs/archive/RAPPORT_SUPABASE_WEB.md` (volumes).
 >
 > Sources officielles relues le 19/11/2026 :
 > - <https://developer.riotgames.com/docs/portal> (types de clés, prérequis) ;
@@ -48,7 +48,7 @@ formulaire (bouton *Register Product* du tableau de bord).
 | R7 | ✅ | **Site** : pied de page de toutes les pages, CGU et politique. **App** (19/11, `src/components/legal/RiotLegalNotice.tsx`) : écran de connexion desktop et web (`CloudGate.tsx:366`), onboarding (`OnboardingPage.tsx:124`), Aide desktop (`HelpPage.tsx:192`), page Compte web (`web/src/pages/AccountPage.tsx:68`). Texte **identique au caractère près** à celui du site (271 caractères, comparaison par script) et conforme au texte officiel de Riot ; balisé `lang="en"`. Vu dans le harnais : affiché sur l'écran de connexion et dans l'Aide (680 × 36 px), contraste 5,63:1. Onboarding et page Compte web vérifiés dans le code seulement. | — | — |
 | R8 | ✅ | clé seulement en secret Cloudflare (`RIOT_API_KEY`), proxy authentifié par le JWT Supabase, liste blanche de 9 endpoints GET, HTTPS ; jamais dans le binaire (mode direct réservé au dev, `.env` jamais embarqué) | décrire au § 4.6 | — |
 | R9 | ✅ | la Live Client Data API sert seulement à détecter début et fin de partie ; aucun affichage pendant la partie ; pas de MMR (le « niveau » d'Ascend mesure le travail fait dans l'app, `src/lib/profile.ts`) ; le scouting n'utilise que des données publiques par Riot ID | le dire explicitement au § 4.5 | — |
-| R10 | ✅ **décidé** (19/11) | Décision de l'utilisateur : **gratuit pendant la bêta**, puis palier gratuit permanent + abonnements **Pro** (joueur) et **Team** (groupe), qui vendent de l'analyse et de la collaboration (contenu transformatif), pas la donnée brute de Riot. Détail dans `docs/PLAN_MONETISATION.md`. Rien de payant avant l'approbation de la clé. | utiliser la 2e option du § 4.9 | — |
+| R10 | ✅ **décidé** (19/11) | Décision de l'utilisateur : **gratuit pendant la bêta**, puis palier gratuit permanent + abonnements **Pro** (joueur) et **Team** (groupe), qui vendent de l'analyse et de la collaboration (contenu transformatif), pas la donnée brute de Riot. Détail dans `docs/prod/PLAN_MONETISATION.md`. Rien de payant avant l'approbation de la clé. | utiliser la 2e option du § 4.9 | — |
 | R11 | ✅ | un seul produit, Ascend (desktop + web = un produit) | — | — |
 | R12 | ✅ | **v0.3** dans l'app (`src/legal/privacy.*.md:3`, `terms.*.md:3`) et sur le site (`site/src/legal/*.html`), 19/11/2026 ; suppression de compte (edge function `delete-account`), consentement bien-être | vérifier que la v0.3 est bien celle validée par l'utilisateur (le brouillon `LEGAL_V0.3_DRAFT.md` dit encore « pas en vigueur ») | utilisateur + cybersecurity |
 | R13 | ⚠️ | connexion Ascend par e-mail (code ou mot de passe, Supabase). Compte Riot lié par **saisie du Riot ID, sans preuve de propriété** | annoncer RSO comme prévu après approbation ; en attendant, preuve par icône (P1-8 de `PLAN_CLE_PROD.md`) | backend-dev + frontend-dev |
@@ -60,9 +60,9 @@ formulaire (bouton *Register Product* du tableau de bord).
 
 ### Captures pour le dossier (R14, graphic-design, 20/11/2026)
 
-Dans `docs/riot-application/`, en PNG (pour le formulaire) et WebP. App en français, version 1.0.0-beta.9, données de démo du
+Dans `docs/prod/riot-application/`, en PNG (pour le formulaire) et WebP. App en français, version 1.0.0-beta.9, données de démo du
 harnais uniquement : joueurs et équipes fictifs (Nova, Kaito, Vexa, Nyra, Rook, Lumi, Coach Sora, Aegis Gaming…), aucun vrai
-pseudo. Régénérables : `SHOTS_FILE=./shots-riot.cjs CAPTURE_OUT=docs/riot-application npx electron site/capture.cjs`
+pseudo. Régénérables : `SHOTS_FILE=./shots-riot.cjs CAPTURE_OUT=docs/prod/riot-application npx electron site/capture.cjs`
 (harnais lancé sur le port 5199).
 
 | Fichier | Écran | Ce qu'il montre à Riot |
