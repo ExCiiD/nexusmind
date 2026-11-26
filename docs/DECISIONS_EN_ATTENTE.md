@@ -45,7 +45,3 @@ _Retirés le 26/11 : B1 (4 ajouts retenus), B6 (mention du site à retirer), D1 
 | D6 | **Clé Riot de production** (dossier prêt, `riot.txt` publié le 24/11) et **vérification Google YouTube** (dossier prêt, rien déposé) : formulaires à soumettre par l'utilisateur ; monétisation et site public | Soumettre les deux | `prod/DEMANDE_CLE_PROD.md`, `prod/GOOGLE_YOUTUBE_VERIFICATION.md`, `prod/PLAN_MONETISATION.md` |
 | D7 | Clé OpenAI encore dans `.env` locale (**à révoquer**, elle a aussi été affichée dans une sortie de session le 26/11) et `GH_TOKEN` inutile | Révoquer (action de l'utilisateur chez le fournisseur) | `audits/AUDIT_APP_2026-11.md` § 3.5 |
 | D8 | **Migration `20261126090000_team_data_scoped_to_linked_group`** : l'appliquer en production ? (retour arrière et test 16/16 prêts) | Oui, après revue Cyber | `prod/MISE_EN_PROD_TEAM_DATA.md` |
-
-## E. Hors périmètre Chief, à signaler
-
-- Fichiers à la racine `D:\DEV\NexusMind\` : `ascend_*_export.tsx` (4 instantanés d'interface du 17/11, hors dépôt, ~260 Ko) et `WORKFRAME_CHIEF.md` (cadre réutilisable pour d'autres projets) ne sont pas supprimés : garder ou jeter ? Les `wt-e45-*.log` et le worktree `wt-electron45` (branche déjà fusionnée) peuvent partir.
