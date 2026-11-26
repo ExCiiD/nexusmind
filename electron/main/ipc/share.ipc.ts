@@ -162,8 +162,8 @@ export function registerShareHandlers() {
    * Copies a plain-text review summary to the system clipboard.
    * Falls back option when no webhook is configured.
    */
-  validatedHandle('share:copy-text', z.tuple([z.string().max(20_000)]), (_event, text) => {
-    clipboard.writeText(text)
+  validatedHandle('share:copy-text', z.tuple([z.string().max(20_000)]), async (_event, text) => {
+    await clipboard.writeText(text)
     return { success: true }
   })
 
