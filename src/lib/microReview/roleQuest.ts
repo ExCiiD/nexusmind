@@ -1,11 +1,11 @@
 /**
- * Role quests in the bilans (docs/PLAN_MOTEUR_BILANS.md phase 4, docs/engine-reports/2026-11-20-quetes-de-role-dans-le-bilan-des-roams.md).
+ * Role quests in the bilans (docs/moteur/PLAN_MOTEUR_BILANS.md phase 4, docs/moteur/engine-reports/2026-11-20-quetes-de-role-dans-le-bilan-des-roams.md).
  *
  * The timeline carries no quest event, but each role holds a quest item that an ITEM_DESTROYED removes when the quest ends
- * (ids checked on 483 cached 16.x games, 16.1 to 16.23: no change at 16.9 nor 16.16, docs/engine-reports/2026-11-26-verifs-bilans.md).
+ * (ids checked on 483 cached 16.x games, 16.1 to 16.23: no change at 16.9 nor 16.16, docs/moteur/engine-reports/2026-11-26-verifs-bilans.md).
  * The real end of the quest of a player, and of their direct opponent, gives the gap the bilans can show. A model of the
  * points (CS, takedowns, time in lane) is NOT used for the verdict: see roleQuestModel below and
- * docs/engine-reports/2026-11-26-calibrage-quetes.md for what the check on the cache concluded.
+ * docs/moteur/engine-reports/2026-11-26-calibrage-quetes.md for what the check on the cache concluded.
  */
 import { patchOf } from './gameClock'
 

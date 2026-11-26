@@ -86,7 +86,7 @@ describe('rules fire on the right patterns', () => {
     const ins = buildInsights(ctxOf(gs, live), { moment: 'session' })
     expect(ins[0].ruleId).toBe('tilt_break') // highest priority, supersedes loss_streak (same group)
     expect(ins.map((i) => i.ruleId)).not.toContain('loss_streak')
-    // ~30 minutes: the average length of tilt (docs/RECHERCHE_CONNAISSANCES.md).
+    // ~30 minutes: the average length of tilt (docs/moteur/RECHERCHE_CONNAISSANCES.md).
     expect(ins[0].action).toEqual({ type: 'break', minutes: 30 })
     expect(ins[0].params.losses).toBe(4)
   })

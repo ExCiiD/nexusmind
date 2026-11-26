@@ -149,7 +149,7 @@ export function inBaseBox(p: Point | null | undefined, team: TeamId): boolean {
   return team === 100 ? p.x < BASE_BOX.blueMax && p.y < BASE_BOX.blueMax : p.x > BASE_BOX.redMin && p.y > BASE_BOX.redMin
 }
 
-// ── Places in words (20/11/2026, docs/engine-reports/2026-11-20-lieux-et-extraits-video-des-cartes.md) ──
+// ── Places in words (20/11/2026, docs/moteur/engine-reports/2026-11-20-lieux-et-extraits-video-des-cartes.md) ──
 // The cards never show a distance ("aucun user ne pourra se situer avec ça"): a point is told as top / mid / bot,
 // river top / river bot, a pit named by its objective, "near the [camp] blue / red side", or a base. The rules keep
 // deciding in game units (OBJECTIVE_RADIUS, PIT_INSIDE_RADIUS…): only what is shown changes.

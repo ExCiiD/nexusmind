@@ -1,5 +1,5 @@
 /**
- * Calibration of the jungler's gank ledger (docs/PLAN_MOTEUR_BILANS.md phase 3), read-only, on a COPY of the MatchCache.
+ * Calibration of the jungler's gank ledger (docs/moteur/PLAN_MOTEUR_BILANS.md phase 3), read-only, on a COPY of the MatchCache.
  * Usage: npx tsx scripts/calibrate-gank.ts <copy of nexusmind.db> [--list]
  * Every jungler of every cached 16.x game (both teams). Also measures the value of a camp without the passive income.
  */

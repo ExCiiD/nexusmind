@@ -21,6 +21,17 @@ export interface PlayerWeeklyReport {
   experimentVerdicts: Array<{ problemId: string; verdict: string | null }>
 }
 
+/** A mistake that came back across the team over the period (period report, analyst page). */
+export interface RecurringMistake {
+  label: string
+  /** Occurrences in the period, all players together. */
+  count: number
+  /** Occurrences in the equal-length period before. */
+  previousCount: number
+  /** How many players made it in the period. */
+  players: number
+}
+
 export interface TeamWeeklyReport {
   groupId: string
   /** "YYYY-MM-DD", inclusive. */
@@ -30,6 +41,10 @@ export interface TeamWeeklyReport {
   players: PlayerWeeklyReport[]
   totalGames: number
   avgWinrate: number | null
+  /** Period report only: the mistakes that recur across the team, most frequent first (at most 5). */
+  recurringMistakes?: RecurringMistake[]
+  /** Period report only: the analyst's own conclusions, written when the report is shared. */
+  analystConclusions?: string
 }
 
 /** 40 hex chars (160 bits) via Web Crypto — same scheme as
@@ -62,6 +77,8 @@ export interface ReportApi {
   reportGetWeekly: (groupId: string, weekStart: string) => Promise<TeamWeeklyReport>
   /** Post-tournament report: the `calendar_events` row's own start/end defines the window. */
   reportGetForEvent: (groupId: string, eventId: string) => Promise<TeamWeeklyReport>
+  /** Period report (analyst): any window of 1 to 92 days, "YYYY-MM-DD" both inclusive, compared with the equal-length window before. */
+  reportGetForPeriod: (groupId: string, from: string, to: string) => Promise<TeamWeeklyReport>
   reportCreateShare: (groupId: string, groupName: string, report: TeamWeeklyReport) => Promise<ReportShare>
   reportRevokeShare: (id: string) => Promise<void>
 }

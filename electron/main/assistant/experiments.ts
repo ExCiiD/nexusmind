@@ -1,5 +1,5 @@
 /**
- * Coaching engine — closed loop (docs/MOTEUR_REGLES.md §2 ⑤).
+ * Coaching engine — closed loop (docs/moteur/MOTEUR_REGLES.md §2 ⑤).
  *
  * A prescription becomes an *experiment*: a measurable criterion checked on
  * each of the next N games, then a verdict:

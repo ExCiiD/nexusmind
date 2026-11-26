@@ -44,7 +44,7 @@ export const BUILT_IN_MISTAKE_TAGS: BuiltInMistakeTag[] = [
   { slug: 'forgot-trinket',     label: 'Forgot trinket up',       category: 'vision',  color: '#3E8E7E' },
   { slug: 'no-ward-pre-obj',    label: 'No ward pre-objective',   category: 'vision',  color: '#3E8E7E' },
   { slug: 'walked-into-ward',   label: 'Walked into enemy ward',  category: 'vision',  color: '#3E8E7E' },
-  // Macro — detected automatically (docs/AUDIT_REGLES_METIER.md M5, M9, M15)
+  // Macro — detected automatically (docs/audits/AUDIT_REGLES_METIER.md M5, M9, M15)
   { slug: 'death-before-objective', label: 'Died before a lost objective', category: 'macro', color: '#E24C3A' },
   { slug: 'dead-during-objective', label: 'Dead when the objective fell', category: 'macro', color: '#E24C3A' },
   { slug: 'caught-out',         label: 'Caught out alone',        category: 'macro',   color: '#E24C3A' },

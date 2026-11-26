@@ -1,5 +1,5 @@
 /**
- * Gank ledger of the jungler (docs/PLAN_MOTEUR_BILANS.md phase 3, docs/engine-reports/2026-11-20-bilan-des-ganks-jungle.md § 5):
+ * Gank ledger of the jungler (docs/moteur/PLAN_MOTEUR_BILANS.md phase 3, docs/moteur/engine-reports/2026-11-20-bilan-des-ganks-jungle.md § 5):
  * the ten cases of the report. Blue jungler = participant 2, red jungler = 7; red bot laners stand in the bot lane at (11500, 1500),
  * the blue jungler is in the bot lane on the snapshots of minutes 7 and 8 and in his own jungle before and after.
  */

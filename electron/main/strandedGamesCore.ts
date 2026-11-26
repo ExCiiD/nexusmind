@@ -62,3 +62,14 @@ export function pickMatchForProvisional(game: ProvisionalGame, candidates: Candi
 
 /** A provisional game this old that still has no match is given up on. */
 export const GIVE_UP_AFTER_MS = 14 * 86_400_000
+
+/**
+ * Audit E10 (26/11/2026): the post-game lookup takes the player's newest match id. 10 s after a game ends, Riot has
+ * often not published it yet, so after two games in a row the newest id is the PREVIOUS game. A match belongs to the
+ * game that just ended only if it started near the detected start (same tolerance as the stranded-games catch-up).
+ * A match with no start time is accepted (nothing to compare), and a start in the future of the detected one too.
+ */
+export function startsNearDetectedStart(matchStartMs: number | null | undefined, detectedStartMs: number): boolean {
+  if (!matchStartMs || matchStartMs <= 0) return true
+  return Math.abs(matchStartMs - detectedStartMs) <= START_TOLERANCE_MS
+}

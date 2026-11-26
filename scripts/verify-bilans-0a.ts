@@ -1,5 +1,5 @@
 /**
- * Phase 0a of docs/PLAN_MOTEUR_BILANS.md: four read-only checks on a copy of the MatchCache (16.x games only).
+ * Phase 0a of docs/moteur/PLAN_MOTEUR_BILANS.md: four read-only checks on a copy of the MatchCache (16.x games only).
  * Usage: npx tsx scripts/verify-bilans-0a.ts <path-to-copy-of-nexusmind.db>
  * No write, no Riot call.
  */

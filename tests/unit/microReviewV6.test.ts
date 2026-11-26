@@ -93,7 +93,7 @@ describe('AscendCodex — V6 fiches', () => {
     expect(fr(CODEX_ADC_MIDGAME)).toMatch(/1 à 2 s de vision/)
     expect(fr(CODEX_ADC_MIDGAME)).toMatch(/une seule wave bot avant de remonter mid/)
     expect(fr(CODEX_JUNGLE_DISCIPLINE)).toMatch(/Épée longue \(\+10 AD\)/)
-    // 26.1: the Scuttle Crab spawns at 2:55 (was 3:30) — docs/RECHERCHE_CONNAISSANCES.md.
+    // 26.1: the Scuttle Crab spawns at 2:55 (was 3:30) — docs/moteur/RECHERCHE_CONNAISSANCES.md.
     expect(fr(CODEX_JUNGLE_DISCIPLINE)).toMatch(/Carapateur top juste après son apparition de 2:55/)
     expect(fr(CODEX_JUNGLE_DISCIPLINE)).toMatch(/100 s de cooldown/)
     expect(fr(CODEX_JUNGLE_DISCIPLINE)).toMatch(/3000 g en poche/)

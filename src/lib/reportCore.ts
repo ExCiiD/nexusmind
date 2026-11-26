@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { MistakeTrend, PlayerWeeklyReport, ReportShare, TeamWeeklyReport } from './report'
+import type { MistakeTrend, PlayerWeeklyReport, RecurringMistake, ReportShare, TeamWeeklyReport } from './report'
 import { generateReportShareToken } from './report'
 import { fail } from './supabaseErrors'
 
@@ -12,6 +12,39 @@ import { fail } from './supabaseErrors'
  */
 
 const RECENT_WINDOW = 10
+/** The longest period report: a scrim block, a tournament, a split stage. */
+export const MAX_PERIOD_DAYS = 92
+const DAY_MS = 86_400_000
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * The window of a period report: `from` and `to` are "YYYY-MM-DD", both inclusive. Returns [start, end) in UTC and the
+ * start of the equal-length window right before, or throws a readable error for a bad range.
+ */
+export function periodRange(from: string, to: string): { start: Date; end: Date; prevStart: Date } {
+  if (!DATE_RE.test(from) || !DATE_RE.test(to)) throw new Error('INVALID_PERIOD: dates must be YYYY-MM-DD')
+  const start = new Date(`${from}T00:00:00Z`)
+  const end = new Date(new Date(`${to}T00:00:00Z`).getTime() + DAY_MS)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) throw new Error('INVALID_PERIOD: not a date')
+  if (end.getTime() <= start.getTime()) throw new Error('INVALID_PERIOD: the end is before the start')
+  if ((end.getTime() - start.getTime()) / DAY_MS > MAX_PERIOD_DAYS) throw new Error(`INVALID_PERIOD: at most ${MAX_PERIOD_DAYS} days`)
+  return { start, end, prevStart: new Date(start.getTime() - (end.getTime() - start.getTime())) }
+}
+
+/** The mistakes that recur across the team: summed over the players' trends, the most frequent first. Pure. */
+export function recurringMistakes(players: PlayerWeeklyReport[], limit = 5): RecurringMistake[] {
+  const byLabel = new Map<string, RecurringMistake>()
+  for (const p of players) {
+    for (const t of p.mistakeTrends) {
+      const cur = byLabel.get(t.label) ?? { label: t.label, count: 0, previousCount: 0, players: 0 }
+      cur.count += t.thisWeek
+      cur.previousCount += t.lastWeek
+      if (t.thisWeek > 0) cur.players++
+      byLabel.set(t.label, cur)
+    }
+  }
+  return [...byLabel.values()].filter((m) => m.count > 0).sort((a, b) => b.count - a.count || b.players - a.players || a.label.localeCompare(b.label)).slice(0, limit)
+}
 
 function ts(v: unknown): number {
   return typeof v === 'number' ? v : Date.parse(String(v ?? '')) || 0
@@ -123,6 +156,17 @@ async function computeTeamReportForRange(
   return { groupId, weekStart, weekEnd, players: reports, totalGames, avgWinrate }
 }
 
+/**
+ * Period report (analyst page, PROPOSITION_ANALYSTE § 5): results and collective stats of any window the analyst
+ * picks, mistakes that recur across the team, compared with the window right before. The analyst's conclusions are
+ * added by the caller (`analystConclusions`) when the report is shared.
+ */
+export async function computeTeamPeriodReport(sb: SupabaseClient, groupId: string, from: string, to: string): Promise<TeamWeeklyReport> {
+  const { start, end, prevStart } = periodRange(from, to)
+  const report = await computeTeamReportForRange(sb, groupId, start, end, prevStart)
+  return { ...report, recurringMistakes: recurringMistakes(report.players) }
+}
+
 export async function computeTeamWeeklyReport(sb: SupabaseClient, groupId: string, weekStartDate: string): Promise<TeamWeeklyReport> {
   const weekStart = new Date(`${weekStartDate}T00:00:00Z`)
   const weekEnd = new Date(weekStart); weekEnd.setUTCDate(weekEnd.getUTCDate() + 7)
@@ -192,5 +236,11 @@ export function reportToText(report: TeamWeeklyReport, groupName: string): strin
       lines.push(`  experiment "${e.problemId}": ${e.verdict ?? 'in progress'}`)
     }
   }
+  if (report.recurringMistakes?.length) {
+    lines.push('', 'Recurring mistakes:')
+    for (const m of report.recurringMistakes) lines.push(`  ${m.label}: ${m.count} (before: ${m.previousCount}), ${m.players} player(s)`)
+  }
+  const conclusions = report.analystConclusions?.trim()
+  if (conclusions) lines.push('', 'Analyst conclusions:', conclusions)
   return lines.join('\n')
 }

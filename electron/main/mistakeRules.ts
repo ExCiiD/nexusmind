@@ -3,7 +3,7 @@ import { DETECTOR_SPEC } from '../../src/lib/microReview/anomalyDetector'
 
 /**
  * Mistake Library — additional business rules (M5–M19, see
- * docs/AUDIT_REGLES_METIER.md §3.1).
+ * docs/audits/AUDIT_REGLES_METIER.md §3.1).
  *
  * Pure functions over Riot Match-V5 + Timeline-V5. Every rule only claims
  * what the data can prove and explains itself in `note`. Positions come
@@ -125,7 +125,7 @@ export function detectAdvancedMistakes(timeline: any, match: any, player: RulePa
   const champOf = (id: number) => participants.find((p) => p.participantId === id)?.championName ?? 'an enemy'
 
   const out: AdvancedCandidate[] = []
-  /** Baron spawn: 20:00 (docs/DONNEES_JEU_2026.md). */
+  /** Baron spawn: 20:00 (docs/moteur/DONNEES_JEU_2026.md). */
   const baronFrom = 20 * MIN
 
   // ── M5 death-before-objective ────────────────────────────────────────

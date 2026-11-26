@@ -10,7 +10,7 @@ import type {
   TeamGameSource, TeamGameTimeline, TeamObjectivesFilters, TeamObjectivesGameRef, TeamTimelineUnavailable,
 } from './analyst'
 import { opponentKeyOf } from './analyst'
-import { extractTeamTimeline, isCurrentTimeline, summarizeTeamObjectives } from './teamTimelineCore'
+import { extractTeamTimeline, hasCurrentPlayers, isCurrentTimeline, summarizeTeamObjectives } from './teamTimelineCore'
 import { draftFromMatch, draftOpponentKey } from './draftLogCore'
 import {
   assembleDossierView, DOSSIER_SNAPSHOT_VERSION, duosOf, poolChangeOf, recentFormOf, scoutingFor, type PlayerRankedGame,
@@ -99,12 +99,15 @@ async function memberRiotIds(sb: SupabaseClient, groupId: string): Promise<strin
  * One team game's summary. The cached one when current; else the match (cached on the game too), our side (cached
  * once resolved from the roster's Riot IDs) and the timeline, extracted, then cached for the whole group.
  */
-export async function loadTeamGameTimeline(sb: SupabaseClient, gameId: string, riot: RiotMatchFetchers): Promise<TeamGameTimeline | TeamTimelineUnavailable> {
+export async function loadTeamGameTimeline(sb: SupabaseClient, gameId: string, riot: RiotMatchFetchers,
+  /** withPlayers: also re-extract a cached summary that lacks the per-player block (individual stats), on demand only. */
+  opts: { withPlayers?: boolean } = {},
+): Promise<TeamGameTimeline | TeamTimelineUnavailable> {
   const { data: game, error } = await sb.from('team_session_games')
     .select('id, session_id, match_id, match_json, our_team_id, enemy_team_name, timeline_summary').eq('id', gameId).maybeSingle()
   if (error) fail(error, 'game')
   if (!game) throw new Error('NOT_FOUND')
-  if (isCurrentTimeline(game.timeline_summary)) return game.timeline_summary
+  if (isCurrentTimeline(game.timeline_summary) && (!opts.withPlayers || hasCurrentPlayers(game.timeline_summary))) return game.timeline_summary
 
   const { data: session, error: sErr } = await sb.from('team_sessions').select('group_id, calendar_event_id').eq('id', game.session_id).maybeSingle()
   if (sErr) fail(sErr, 'session')

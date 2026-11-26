@@ -1,5 +1,5 @@
 /**
- * Shared base of the bilan ledgers (docs/PLAN_MOTEUR_BILANS.md § 2.1): a pure, self-contained reading of a Match-V5 +
+ * Shared base of the bilan ledgers (docs/moteur/PLAN_MOTEUR_BILANS.md § 2.1): a pure, self-contained reading of a Match-V5 +
  * Timeline-V5 pair. Position at any millisecond (interpolated between the 60 s snapshots along what the events prove),
  * lives and deaths, per-minute counters, the excursions of a champion out of its lane, and the single Δz scale that puts
  * gold, XP and objectives on the same footing (winProbability.winZ). Nothing here is shown to the player.

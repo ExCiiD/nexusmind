@@ -1,5 +1,5 @@
 /**
- * Assistant rules added from the Nov. 2026 research (docs/RECHERCHE_CONNAISSANCES.md): time spent dead, control
+ * Assistant rules added from the Nov. 2026 research (docs/moteur/RECHERCHE_CONNAISSANCES.md): time spent dead, control
  * wards, and role vision benchmarks. Each threshold is tested on both sides of its boundary.
  */
 import { describe, it, expect } from 'vitest'

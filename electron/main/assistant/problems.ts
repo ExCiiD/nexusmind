@@ -1,5 +1,5 @@
 /**
- * Coaching engine — problem taxonomy (docs/MOTEUR_REGLES.md §2 ②).
+ * Coaching engine — problem taxonomy (docs/moteur/MOTEUR_REGLES.md §2 ②).
  *
  * Rules (assistant/rules.ts) and auto-detected mistakes (Mistake Library)
  * produce *findings*; each finding belongs to one problem. Several findings

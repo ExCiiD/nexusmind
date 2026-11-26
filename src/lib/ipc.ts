@@ -332,6 +332,12 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   /** 20/11: `customObjectives` (written or coach objectives); `objectiveId` is '' when the session has no fundamental. */
   createSession: (data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean; customObjectives?: CustomObjective[] }) => Promise<any>
   getActiveSession: () => Promise<any>
+  /**
+   * Individual stats of the signed-in player for a solo session (null / absent = the active one), the same PlayerSessionStats[]
+   * as teamSessionPlayerStats (docs/contracts/player-session-stats.md § B7): 0 or 1 element, memberId = the local user id.
+   * Local data only (cached match, timeline, lane report, Dashboard stats): no Riot call.
+   */
+  soloSessionPlayerStats?: (sessionId?: string | null) => Promise<import('./playerSessionStatsCore').PlayerSessionStats[]>
   getLastSessionConfig: () => Promise<{ objectiveIds: string[]; selectedKpiIds: string[]; customNote: string; date: string; customObjectives?: CustomObjective[] } | null>
   getKpiHistory: () => Promise<Array<{ objectiveIds: string[]; selectedKpiIds: string[] }>>
   /** `completedAssignmentIds` (20/11): the coach objectives the player ticked « Objectif atteint » (never automatic). */

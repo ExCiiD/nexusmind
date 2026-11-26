@@ -1,5 +1,5 @@
 /**
- * Team context of a game (20/11/2026, docs/engine-reports/2026-11-20-cross-map-soloq-phase-de-lane.md).
+ * Team context of a game (20/11/2026, docs/moteur/engine-reports/2026-11-20-cross-map-soloq-phase-de-lane.md).
  *
  * Coordinated cross-map plays (swap, overloading a side) only exist when the team plans them. In soloQ, a top, mid
  * or ADC is never blamed for not cross-mapping an enemy objective before 14:00. The detector is told which one it is.

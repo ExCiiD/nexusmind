@@ -324,7 +324,7 @@ export function detectMistakes(
     }
   }
 
-  // Rules M5–M13 (see docs/AUDIT_REGLES_METIER.md §3.1).
+  // Rules M5–M13 (see docs/audits/AUDIT_REGLES_METIER.md §3.1).
   const raw = match.info.participants.find((p: any) => p.participantId === pid)
   out.push(...detectAdvancedMistakes(timeline, match, {
     participantId: pid,

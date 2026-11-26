@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 
 /**
- * R7 (docs/DEMANDE_CLE_PROD.md): Riot's required legal notice, "readily visible to players". The official text stays
+ * R7 (docs/prod/DEMANDE_CLE_PROD.md): Riot's required legal notice, "readily visible to players". The official text stays
  * in English in both languages (same text as the site footer, site/public/index.html), hence lang="en".
  */
 export const RIOT_LEGAL_NOTICE =

@@ -87,6 +87,9 @@ async function getActiveUser() {
  * fetch + not cached) are simply absent from the map — callers should
  * treat that as "skip this match".
  */
+/** Games being downloaded right now (key region:matchId), shared by the scouts that run at the same time. */
+const inFlightMatches = new Map<string, Promise<any>>()
+
 async function getMatchesBulkCached(
   matchIds: string[],
   region: string,
@@ -131,8 +134,19 @@ async function getMatchesBulkCached(
       if (i >= missing.length) break
       const id = missing[i]
       try {
-        const match = await getMatch(id, region)
+        // L5 (26/11/2026): scouts of several opponents run side by side and share games (a flex or scrim lobby). A
+        // game being downloaded by one scout is awaited by the others instead of being asked of Riot again.
+        const flightKey = `${region}:${id}`
+        let flight = inFlightMatches.get(flightKey)
+        const owner = !flight
+        if (!flight) {
+          flight = getMatch(id, region)
+          inFlightMatches.set(flightKey, flight)
+          flight.then(() => inFlightMatches.delete(flightKey), () => inFlightMatches.delete(flightKey))
+        }
+        const match = await flight
         out.set(id, match)
+        if (!owner) continue // the scout that downloaded it writes the cache row
         // AWAIT the upsert (was fire-and-forget). Without await, 1500
         // simultaneous SQLite writes from a 5-player auto-fill pile up,
         // starving every other IPC handler (listChampionPool,

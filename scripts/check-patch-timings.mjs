@@ -3,7 +3,7 @@
  * Engine timing watch (26/11/2026, user request: "faire des recherches automatiques toutes les 2 semaines").
  *
  * The micro-review and the mistake rules rely on game timers (camps, Voidgrubs, Herald, Baron, dragons, minions,
- * Scuttle Crab, plates, respawn) listed in docs/DONNEES_JEU_2026.md and pinned in docs/engine-timings.json.
+ * Scuttle Crab, plates, respawn) listed in docs/moteur/DONNEES_JEU_2026.md and pinned in docs/engine-timings.json.
  * This script compares them with the newest patch:
  *   1. reads the latest live patch from Data Dragon (16.23.1 = patch 26.23);
  *   2. reads the "Patch History" of the official wiki pages that carry those timers;

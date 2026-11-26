@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { pickMatchForProvisional, provisionalStartMs, type CandidateMatch } from '../../electron/main/strandedGamesCore'
+import { pickMatchForProvisional, provisionalStartMs, startsNearDetectedStart, type CandidateMatch } from '../../electron/main/strandedGamesCore'
 
 const MIN = 60_000
 // A Yunara game started at 19:00, written provisional at 19:27.
@@ -39,5 +39,24 @@ describe('pickMatchForProvisional', () => {
 
   it('accepts any champion when the provisional row has none', () => {
     expect(pickMatchForProvisional({ ...game, champion: '' }, [match({ championName: 'Ezreal' })])?.matchId).toBe('EUW1_1')
+  })
+})
+
+describe('startsNearDetectedStart (E10, two games in a row)', () => {
+  const second = Date.UTC(2026, 10, 26, 20, 0)
+  const first = second - 40 * MIN // the previous game started 40 min earlier
+  it('rejects the previous game when Riot has not published the new one yet', () => {
+    expect(startsNearDetectedStart(first, second)).toBe(false)
+  })
+  it('accepts the new game, with the loading-screen skew', () => {
+    expect(startsNearDetectedStart(second + 90_000, second)).toBe(true)
+    expect(startsNearDetectedStart(second - 5 * MIN, second)).toBe(true)
+  })
+  it('accepts a match with no start time', () => {
+    expect(startsNearDetectedStart(undefined, second)).toBe(true)
+    expect(startsNearDetectedStart(0, second)).toBe(true)
+  })
+  it('keeps the previous game rejected even when it ended just before this one started', () => {
+    expect(startsNearDetectedStart(second - 9 * MIN - 1, second)).toBe(false)
   })
 })

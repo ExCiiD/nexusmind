@@ -10,7 +10,7 @@
 # i18n, unit tests) and refuses to go on if one fails. It also refuses a
 # working folder with uncommitted changes unless you confirm: the installer
 # is built from the folder, not from the commit, so another session's
-# unfinished work would ship (REL-1 / REL-2 in docs/QUALITY_CRITERIA.md).
+# unfinished work would ship (REL-1 / REL-2 in docs/audits/QUALITY_CRITERIA.md).
 #
 # Why this script exists:
 # `npm run release` -> `electron-builder --publish always` needs a valid

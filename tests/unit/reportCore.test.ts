@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { computeTeamWeeklyReport, computeTeamReportForEvent, reportToText, createReportShare, revokeReportShare } from '../../src/lib/reportCore'
+import { computeTeamWeeklyReport, computeTeamReportForEvent, computeTeamPeriodReport, periodRange, recurringMistakes, reportToText, createReportShare, revokeReportShare } from '../../src/lib/reportCore'
 import type { TeamWeeklyReport } from '../../src/lib/report'
 
 function chain(result: unknown) {
@@ -142,5 +142,75 @@ describe('createReportShare / revokeReportShare', () => {
     const sb = { from: vi.fn(() => ({ delete: del })) } as never
     await revokeReportShare(sb, 's1')
     expect(del).toHaveBeenCalled()
+  })
+})
+
+describe('periodRange', () => {
+  it('is [from, to + 1 day) with the equal-length window before', () => {
+    const r = periodRange('2026-12-01', '2026-12-03')
+    expect(r.start.toISOString()).toBe('2026-12-01T00:00:00.000Z')
+    expect(r.end.toISOString()).toBe('2026-12-04T00:00:00.000Z')
+    expect(r.prevStart.toISOString()).toBe('2026-11-28T00:00:00.000Z')
+  })
+  it('accepts one day and refuses bad ranges', () => {
+    expect(periodRange('2026-12-01', '2026-12-01').end.toISOString()).toBe('2026-12-02T00:00:00.000Z')
+    expect(() => periodRange('2026-12-03', '2026-12-01')).toThrow('INVALID_PERIOD')
+    expect(() => periodRange('2026-12-01', '2027-06-01')).toThrow('at most 92 days')
+    expect(() => periodRange('12/01/2026', '2026-12-02')).toThrow('INVALID_PERIOD')
+    expect(() => periodRange('2026-13-45', '2026-13-46')).toThrow('INVALID_PERIOD')
+  })
+})
+
+describe('recurringMistakes', () => {
+  const player = (id: string, trends: Array<[string, number, number]>) => ({
+    playerId: id, displayName: id, gamesPlayed: 1, winrate: 0, reviewsDone: 0, reviewsPending: 0, objectivesAssigned: 0, objectivesCompleted: 0, experimentVerdicts: [],
+    mistakeTrends: trends.map(([label, thisWeek, lastWeek]) => ({ label, thisWeek, lastWeek, direction: 'flat' as const })),
+  })
+  it('sums across players, most frequent first, ignoring mistakes absent from the period', () => {
+    const out = recurringMistakes([player('a', [['Overstay', 3, 1], ['Vision', 0, 4]]), player('b', [['Overstay', 2, 0], ['Wave', 1, 1]])])
+    expect(out).toEqual([
+      { label: 'Overstay', count: 5, previousCount: 1, players: 2 },
+      { label: 'Wave', count: 1, previousCount: 1, players: 1 },
+    ])
+  })
+  it('keeps at most the limit', () => {
+    const many = player('a', Array.from({ length: 9 }, (_, i) => [`m${i}`, 9 - i, 0] as [string, number, number]))
+    expect(recurringMistakes([many])).toHaveLength(5)
+  })
+})
+
+describe('computeTeamPeriodReport', () => {
+  it('computes the window of the dates and adds the recurring mistakes', async () => {
+    const start = new Date('2026-12-01T00:00:00Z').getTime()
+    const members = chain({ data: [{ user_id: 'p1', display_name: 'Top' }], error: null })
+    const rows = [
+      { user_id: 'p1', table_name: 'Game', data: { id: 'g1', win: true, gameEndAt: start + 2 * DAY } },
+      { user_id: 'p1', table_name: 'MistakeTag', data: { id: 't1', label: 'Overstay' } },
+      { user_id: 'p1', table_name: 'Mistake', data: { gameId: 'g1', tagId: 't1' } },
+    ]
+    const sb = { from: vi.fn((t: string) => ({ group_members: members, sync_records: chain({ data: rows, error: null }), assigned_objectives: chain({ data: [], error: null }) }[t])) } as never
+    const report = await computeTeamPeriodReport(sb, 'g1', '2026-12-01', '2026-12-07')
+    expect(report.weekStart).toBe('2026-12-01')
+    expect(report.weekEnd).toBe('2026-12-08')
+    expect(report.totalGames).toBe(1)
+    expect(report.recurringMistakes).toEqual([{ label: 'Overstay', count: 1, previousCount: 0, players: 1 }])
+  })
+  it('refuses a bad range before reading anything', async () => {
+    const sb = { from: vi.fn() } as never
+    await expect(computeTeamPeriodReport(sb, 'g1', '2026-12-05', '2026-12-01')).rejects.toThrow('INVALID_PERIOD')
+    expect((sb as any).from).not.toHaveBeenCalled()
+  })
+})
+
+describe('reportToText, period sections', () => {
+  it('adds the recurring mistakes and the analyst conclusions', () => {
+    const text = reportToText({
+      groupId: 'g1', weekStart: '2026-12-01', weekEnd: '2026-12-08', totalGames: 0, avgWinrate: null, players: [],
+      recurringMistakes: [{ label: 'Overstay', count: 5, previousCount: 1, players: 2 }],
+      analystConclusions: '  Ban Nidalee.  ',
+    }, 'Team')
+    expect(text).toContain('Recurring mistakes:')
+    expect(text).toContain('Overstay: 5 (before: 1), 2 player(s)')
+    expect(text).toContain('Analyst conclusions:\nBan Nidalee.')
   })
 })

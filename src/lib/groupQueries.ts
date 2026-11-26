@@ -1,5 +1,5 @@
 /**
- * Perf gain 3 (docs/AUDIT_PERF_2.md): the cache keys of a group's screens (Management, Coaching, Lobby, Team
+ * Perf gain 3 (docs/audits/AUDIT_PERF.md): the cache keys of a group's screens (Management, Coaching, Lobby, Team
  * sessions). Every key carries the group id, so a screen never shows another group's data; the invalidations below
  * also reach the keys of the Organisation tab (`org:`). Shared with the web bundle: no desktop-only call here.
  */

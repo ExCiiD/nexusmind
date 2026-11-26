@@ -1,5 +1,5 @@
 /**
- * Mid roam ledger (docs/PLAN_MOTEUR_BILANS.md phase 1, docs/engine-reports/2026-11-20-bilan-des-roams-mid.md § 5): the nine
+ * Mid roam ledger (docs/moteur/PLAN_MOTEUR_BILANS.md phase 1, docs/moteur/engine-reports/2026-11-20-bilan-des-roams.md § 5): the nine
  * cases of the report, the thresholds on both sides, the one-event-one-reading rule, the QCM context and the silent flag.
  * Fixtures: mid laner = participant 3 (blue), lane opponent = participant 8. The mid walks to the bot side between the
  * snapshots of minutes 7 and 9 (out of the lane from about 7:18 to 8:42).

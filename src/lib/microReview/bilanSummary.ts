@@ -1,7 +1,7 @@
 /**
- * Per-game indicators of the bilans for the assistant (docs/PLAN_MOTEUR_BILANS.md phase 5), read from a stored GameAnalysis:
+ * Per-game indicators of the bilans for the assistant (docs/moteur/PLAN_MOTEUR_BILANS.md phase 5), read from a stored GameAnalysis:
  * how many roams and ganks the ledgers read, how many were losing, the camps lost per gank, the real role-quest gap.
- * Pure. Rules and experiments on them are NOT written: see docs/engine-reports/2026-11-26-calibrage-assistant-bilans.md.
+ * Pure. Rules and experiments on them are NOT written: see docs/moteur/engine-reports/2026-11-26-calibrage-assistant-bilans.md.
  */
 import type { GameAnalysis } from './anomalyDetector'
 

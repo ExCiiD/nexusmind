@@ -1,5 +1,5 @@
 {
-  "_comment": "Timers the engine relies on, season 2026 (game version 16.x). Read by scripts/check-patch-timings.mjs; details and sources in docs/DONNEES_JEU_2026.md. Bump lastVerifiedPatch only after reading the notes of every patch since.",
+  "_comment": "Timers the engine relies on, season 2026 (game version 16.x). Read by scripts/check-patch-timings.mjs; details and sources in docs/moteur/DONNEES_JEU_2026.md. Bump lastVerifiedPatch only after reading the notes of every patch since.",
   "lastVerifiedPatch": "26.23",
   "wikiPages": ["Voidgrub camp", "Rift Herald", "Baron Nashor", "Dragon pit", "Minion (League of Legends)", "Scuttle Crab", "Jungling", "Death", "Turret", "Summoner's Rift"],
   "pinned": {

@@ -1,5 +1,5 @@
 /**
- * Perf gain 4 (docs/AUDIT_PERF_2.md): my last group list, kept from one session to the next so Management, Lobby and
+ * Perf gain 4 (docs/audits/AUDIT_PERF.md): my last group list, kept from one session to the next so Management, Lobby and
  * Coaching show at once at start-up, then refresh. One entry, tied to the cloud account that read it: the app only
  * seeds from it for that account (another account, a sign-out or a wrong shape drops it). Pure, tested.
  */

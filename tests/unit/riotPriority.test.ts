@@ -1,5 +1,5 @@
 /**
- * P1-3 (docs/PLAN_CLE_PROD.md): the app serves Riot calls by urgency (end of game, open screen, background),
+ * P1-3 (docs/prod/PLAN_CLE_PROD.md): the app serves Riot calls by urgency (end of game, open screen, background),
  * the priority follows the work through its awaits, and background calls tell the proxy so (P1-2).
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'

@@ -145,14 +145,14 @@ export const DETECTOR_SPEC = {
   absent: { wardRadius: WARD_RADIUS, wardLookbackSec: 90, crossMapSec: 60, deadBeforeSec: 110, accountableFromSec: 300 },
   early: { atSec: 600, csDiff: -15, xpDiff: -400, takedowns: 2 },
   /**
-   * 20/11/2026 (docs/engine-reports/2026-11-20-hesitation-lecture-erronee.md): a tower or plate is greed only once the
+   * 20/11/2026 (docs/moteur/engine-reports/2026-11-20-hesitation-lecture-erronee.md): a tower or plate is greed only once the
    * objective is up, taken more than inPositionRadius from its pit; alive in the mid lane or the objective's river within
    * inPositionRadius at T−30 s is a setup. A blame never rests only on a position estimated more than estimatedFarSec
    * from a snapshot.
    */
   hesitation: { notInPitSec: 30, moveFromSec: 25, approachMin: 1200, crossMapBeforeSec: 40, crossMapAfterSec: 15, towerGreedSec: 75, inPositionRadius: 4500, estimatedFarSec: 20 },
   /**
-   * 20/11/2026 (docs/engine-reports/2026-11-20-cross-map-soloq-phase-de-lane.md): in soloQ, before 14:00, a top, mid or
+   * 20/11/2026 (docs/moteur/engine-reports/2026-11-20-cross-map-soloq-phase-de-lane.md): in soloQ, before 14:00, a top, mid or
    * ADC is never blamed for an enemy objective unless they left their lane for it and arrived too late.
    */
   soloQLaning: { untilSec: 840, roles: ['TOP', 'MIDDLE', 'BOTTOM'] as readonly string[] },
@@ -180,10 +180,10 @@ export const DETECTOR_SPEC = {
    */
   midRoam: { untilSec: 1200, plates: 1, cs: 10, minOffAxis: 2600 },
   /**
-   * 26/11/2026 (docs/PLAN_MOTEUR_BILANS.md phase 1): the mid roam ledger, ROAM_THRESHOLDS of roamLedger.ts plus a flag.
+   * 26/11/2026 (docs/moteur/PLAN_MOTEUR_BILANS.md phase 1): the mid roam ledger, ROAM_THRESHOLDS of roamLedger.ts plus a flag.
    * Delivered silently: the ledger is computed and stored with the analysis (`GameAnalysis.roams`) but, while `enabled` is
    * false, no card comes from it and mid-roam-plates / bad-rotation / the 10:00 deficit work as before. Calibration of
-   * 26/11/2026 on 483 cached 16.x games (966 mid player-games), docs/engine-reports/2026-11-26-calibrage-roam-mid.md:
+   * 26/11/2026 on 483 cached 16.x games (966 mid player-games), docs/moteur/engine-reports/2026-11-26-calibrage-roam-mid.md:
    * netThreshold 1.25, about 12 losing roams per 100 player-games, their games won 26 % against 53 % without.
    * Turn `enabled` on only once the user has validated the threshold.
    */

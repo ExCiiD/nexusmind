@@ -3,7 +3,7 @@
  * the coach views (CoachMicroReviews, also on the web app) can read it
  * without pulling the panel and the Codex into their bundle.
  *
- * 20/11/2026 (docs/engine-reports/2026-11-20-lieux-et-extraits-video-des-cartes.md § 3, DECISIONS 20/11): the clip
+ * 20/11/2026 (docs/moteur/engine-reports/2026-11-20-lieux-et-extraits-video-des-cartes.md § 3, DECISIONS 20/11): the clip
  * window. Beta.20 (ANALYSIS_VERSION 14): no automatic Erreur · Conséquence · Conclusion markers any more; the player
  * sets precise timestamps on the answer if they want.
  * - A card tied to an objective: from objective − 60 s to objective + 45 s, the header at the objective's time. An

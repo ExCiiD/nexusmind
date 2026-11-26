@@ -23,7 +23,7 @@ interface RelatedGame {
 }
 
 /**
- * "Mon plan" (docs/MOTEUR_REGLES.md §5 Interface): the focus and its
+ * "Mon plan" (docs/moteur/MOTEUR_REGLES.md §5 Interface): the focus and its
  * experiment, why it was picked, the next couple of priorities, the
  * verdict history and the fundamentals graduated so far. Everything here
  * is composed from endpoints the earlier lots already built — no new

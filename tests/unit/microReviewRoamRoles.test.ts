@@ -1,6 +1,6 @@
 /**
- * Roam ledger of the top, the ADC and the support (docs/PLAN_MOTEUR_BILANS.md phase 2, docs/engine-reports/
- * 2026-11-20-bilan-des-roams-tous-laners.md § 5): the cases of the report, the roles' flags and the cards.
+ * Roam ledger of the top, the ADC and the support (docs/moteur/PLAN_MOTEUR_BILANS.md phase 2, docs/moteur/engine-reports/
+ * 2026-11-20-bilan-des-roams.md § 5): the cases of the report, the roles' flags and the cards.
  * Blue duo: ADC 4, support 5; red duo: ADC 9, support 10; blue top 1, red top 6. Duos stand in the bot lane, the top in
  * the top lane; the roamer walks to the middle of the map between the snapshots of minutes 7 and 9 (out from about 7:07).
  */

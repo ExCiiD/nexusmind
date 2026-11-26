@@ -1025,7 +1025,8 @@ export function registerStatsHandlers() {
   })
 }
 
-function computeAverages(statsArray: any[]) {
+/** The Dashboard's averages of a list of detailed stats (also used by the player sheet's 30-day baseline). */
+export function computeAverages(statsArray: any[]) {
   const n = statsArray.length
   const sum = (fn: (s: any) => number | null) => {
     let total = 0

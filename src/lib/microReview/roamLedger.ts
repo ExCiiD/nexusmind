@@ -1,5 +1,5 @@
 /**
- * Roam ledger (docs/PLAN_MOTEUR_BILANS.md phases 1-2, docs/engine-reports/2026-11-20-bilan-des-roams-mid.md and
+ * Roam ledger (docs/moteur/PLAN_MOTEUR_BILANS.md phases 1-2, docs/moteur/engine-reports/2026-11-20-bilan-des-roams.md and
  * ...-tous-laners.md): for each roam of a laner, what it cost (CS, XP, plates, a death), what it created (takedowns,
  * objectives, an ally lane ahead, a fight won), and what the lane opponent made of it afterwards, all in one Δz scale
  * (winProbability.winZ):
@@ -28,7 +28,7 @@ export type RoamVerdict = 'profitable' | 'neutral' | 'losing'
 
 /**
  * Thresholds of the roam ledger. DETECTOR_SPEC.roam is this object plus the flags. Calibrated on the cached 16.x games
- * (docs/engine-reports/2026-11-26-calibrage-roam-mid.md for the mid, ...-calibrage-roams-roles.md for the others).
+ * (docs/moteur/engine-reports/2026-11-26-calibrage-roam-mid.md for the mid, ...-calibrage-roams-roles.md for the others).
  */
 export const ROAM_THRESHOLDS = {
   /** The window of the ledger: from 2:00 to the fall of our T1 of the lane / 20:00 (Baron). */
@@ -66,7 +66,7 @@ export const ROAM_THRESHOLDS = {
   minCsLost: 6,
   /** Δz scale of the mid: |net| below it is neutral. Set by the calibration of 26/11/2026. */
   netThreshold: 1.25,
-  /** Same, for the other roles (calibrated per role: docs/engine-reports/2026-11-26-calibrage-roams-roles.md). */
+  /** Same, for the other roles (calibrated per role: docs/moteur/engine-reports/2026-11-26-calibrage-roams-roles.md). */
   netThresholdTop: 1.5,
   netThresholdAdc: 1.25,
   netThresholdSupport: 1.25,
@@ -83,7 +83,7 @@ export const ROAM_THRESHOLDS = {
   /** Duo roles: a roam is not one while the partner stays within this of the roamer for this share of it. */
   partnerRadius: 2500,
   partnerShare: 0.5,
-  /** Support timers (docs/engine-reports/2026-11-20-bilan-des-roams-tous-laners.md § 3.2). */
+  /** Support timers (docs/moteur/engine-reports/2026-11-20-bilan-des-roams.md § 3.2). */
   killTimerSec: 30,
   recallTimerSec: 40,
   crashRadius: 1500,

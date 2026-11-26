@@ -1,5 +1,5 @@
 /**
- * Which errors are dated from a death (20/11/2026, docs/engine-reports/2026-11-20-lieux-et-extraits-video-des-cartes.md
+ * Which errors are dated from a death (20/11/2026, docs/moteur/engine-reports/2026-11-20-lieux-et-extraits-video-des-cartes.md
  * § 6). The user: "la règle des 45 s devrait se faire pour les morts tout court" — such an error plays from the death
  * − 45 s to + 30 s on every screen (the player, the Lab, the bookmarks, the review notes), so the trade that caused
  * the death is seen, not only the death.

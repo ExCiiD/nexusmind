@@ -1,5 +1,5 @@
 /**
- * Calibration of the roam ledger for top, ADC and support (docs/PLAN_MOTEUR_BILANS.md phase 2), read-only, on a COPY of the MatchCache.
+ * Calibration of the roam ledger for top, ADC and support (docs/moteur/PLAN_MOTEUR_BILANS.md phase 2), read-only, on a COPY of the MatchCache.
  * Usage: npx tsx scripts/calibrate-roam-roles.ts <copy of nexusmind.db> [--list]
  * Every laner of the role in every cached 16.x game (both teams). Also checks the mid is unchanged.
  */

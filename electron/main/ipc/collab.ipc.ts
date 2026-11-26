@@ -265,6 +265,7 @@ export function registerCollabHandlers() {
 
   validatedHandle('report:get-weekly', z.tuple([uuid, dateOnly]), (_e, groupId, weekStart) => collab.reportGetWeekly(groupId, weekStart))
   validatedHandle('report:get-for-event', z.tuple([uuid, uuid]), (_e, groupId, eventId) => collab.reportGetForEvent(groupId, eventId))
+  validatedHandle('report:get-for-period', z.tuple([uuid, z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]), (_e, groupId, from, to) => collab.reportGetForPeriod(groupId, from, to))
 
   const mistakeTrend = z.object({ label: z.string(), thisWeek: z.number(), lastWeek: z.number(), direction: z.enum(['up', 'down', 'flat']) })
   const playerWeeklyReport = z.object({

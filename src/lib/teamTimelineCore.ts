@@ -10,9 +10,12 @@
 import type {
   ObjectiveKind, TeamGameSource, TeamGameTimeline, TeamObjectivesFilters, TeamObjectivesSummary, TeamSide, TeamTimelineEvent,
 } from './analyst'
+import type { TimelineKillEvent, TimelineObjectiveEvent, TimelinePlayerSeries, TimelinePlayers } from './playerSessionStatsCore'
 
 /** Bump when the extraction changes: summaries cached with an older version are extracted again. */
 export const TEAM_TIMELINE_VERSION = 1
+/** Version of the per-player block (v2: levels, CS per minute, objective events). An older block is extracted again on demand. */
+export const PLAYERS_BLOCK_VERSION = 2
 /** Minutes of the gold curve (0..30). */
 export const GOLD_CURVE_MINUTES = 30
 /** Under this many games the tiles are shown dimmed (§ 10). */
@@ -40,7 +43,7 @@ export function patchOf(gameVersion: unknown): string {
 }
 
 /**
- * Void Grubs a game offers: one camp of 3 at 8:00, without a respawn (docs/DONNEES_JEU_2026.md). On the cached games:
+ * Void Grubs a game offers: one camp of 3 at 8:00, without a respawn (docs/moteur/DONNEES_JEU_2026.md). On the cached games:
  * 2.93 taken per game.
  */
 export const GRUBS_PER_GAME = 3
@@ -118,6 +121,7 @@ export function extractTeamTimeline(match: any, timeline: any, meta: ExtractMeta
     return ours - theirs
   })
 
+  const playersBlock = extractTimelinePlayers(frames, (pid) => teamOf(pid), us)
   const ourTeam = (info.teams ?? []).find((t: any) => t.teamId === us)
   const start = info.gameStartTimestamp ?? info.gameCreation
   return {
@@ -134,7 +138,82 @@ export function extractTeamTimeline(match: any, timeline: any, meta: ExtractMeta
     grubsAvailable: GRUBS_PER_GAME,
     events,
     goldDiffByMinute,
+    // Per-player series for the individual stats (optional: summaries cached before it do not have it).
+    ...(playersBlock ? { players: playersBlock } : {}),
   }
+}
+
+const rounded = (n: unknown) => (typeof n === 'number' && Number.isFinite(n) ? Math.round(n) : 0)
+
+/** `players` block of the timeline summary, from the raw match-v5 timeline frames. Null without participant frames. */
+export function extractTimelinePlayers(frames: any[], teamOf: (pid: number) => number | null, ourTeamId: 100 | 200): TimelinePlayers | null {
+  const byPid = new Map<number, TimelinePlayerSeries>()
+  frames.forEach((frame, i) => {
+    for (const [key, pf] of Object.entries<any>(frame.participantFrames ?? {})) {
+      const pid = Number(pf?.participantId ?? key)
+      const team = teamOf(pid)
+      if (team !== 100 && team !== 200) continue
+      let s = byPid.get(pid)
+      if (!s) {
+        s = { pid, teamId: team, xp: [], gold: [], ...(team === ourTeamId ? { x: [], y: [] } : {}) }
+        byPid.set(pid, s)
+      }
+      // A missing frame repeats the previous value (never invents a 0 in the middle of a curve).
+      s.lvl = s.lvl ?? []; s.cs = s.cs ?? []
+      s.lvl[i] = typeof pf?.level === 'number' ? rounded(pf.level) : (s.lvl[i - 1] ?? 1)
+      s.cs[i] = typeof pf?.minionsKilled === 'number' || typeof pf?.jungleMinionsKilled === 'number'
+        ? rounded(pf.minionsKilled) + rounded(pf.jungleMinionsKilled) : (s.cs[i - 1] ?? 0)
+      s.xp[i] = typeof pf?.xp === 'number' ? rounded(pf.xp) : (s.xp[i - 1] ?? 0)
+      s.gold[i] = typeof pf?.totalGold === 'number' ? rounded(pf.totalGold) : (s.gold[i - 1] ?? 0)
+      if (s.x && s.y) {
+        const pos = pf?.position
+        s.x[i] = typeof pos?.x === 'number' ? rounded(pos.x) : (s.x[i - 1] ?? 0)
+        s.y[i] = typeof pos?.y === 'number' ? rounded(pos.y) : (s.y[i - 1] ?? 0)
+      }
+    }
+  })
+  if (byPid.size === 0) return null
+  const kills: TimelineKillEvent[] = []
+  for (const frame of frames) for (const e of frame.events ?? []) {
+    if (e.type !== 'CHAMPION_KILL' || typeof e.victimId !== 'number') continue
+    kills.push({
+      t: rounded(e.timestamp), killer: typeof e.killerId === 'number' ? e.killerId : 0, victim: e.victimId,
+      assists: Array.isArray(e.assistingParticipantIds) ? e.assistingParticipantIds.filter((a: unknown) => typeof a === 'number') : [],
+      x: typeof e.position?.x === 'number' ? rounded(e.position.x) : null, y: typeof e.position?.y === 'number' ? rounded(e.position.y) : null,
+    })
+  }
+  kills.sort((a, b) => a.t - b.t)
+  const objectives = extractObjectiveEvents(frames, teamOf)
+  return { v: PLAYERS_BLOCK_VERSION, players: [...byPid.values()].sort((a, b) => a.pid - b.pid), kills, objectives }
+}
+
+/** Every objective taken, with who took it and who assisted (each player's participation). One event per grub / tower. */
+export function extractObjectiveEvents(frames: any[], teamOf: (pid: number) => number | null): TimelineObjectiveEvent[] {
+  const out: TimelineObjectiveEvent[] = []
+  const ids = (e: any): number[] => (Array.isArray(e.assistingParticipantIds) ? e.assistingParticipantIds.filter((a: unknown) => typeof a === 'number') : [])
+  for (const frame of frames) for (const e of frame.events ?? []) {
+    const t = rounded(e.timestamp)
+    if (e.type === 'ELITE_MONSTER_KILL') {
+      const team = e.killerTeamId ?? teamOf(e.killerId)
+      if (team !== 100 && team !== 200) continue
+      const kind = e.monsterType === 'DRAGON' ? (e.monsterSubType === 'ELDER_DRAGON' ? 'elder' : 'dragon')
+        : e.monsterType === 'BARON_NASHOR' ? 'baron' : e.monsterType === 'RIFTHERALD' ? 'herald' : e.monsterType === 'HORDE' ? 'grubs' : null
+      if (!kind) continue
+      out.push({ t, kind, teamId: team, killer: typeof e.killerId === 'number' ? e.killerId : 0, assists: ids(e),
+        ...(kind === 'dragon' && e.monsterSubType ? { subType: String(e.monsterSubType).replace(/_DRAGON$/, '') } : {}) })
+    } else if (e.type === 'BUILDING_KILL' && e.buildingType === 'TOWER_BUILDING') {
+      if (e.teamId !== 100 && e.teamId !== 200) continue // the team that LOST the tower
+      const lane = String(e.laneType ?? '').replace(/_LANE$/, '')
+      out.push({ t, kind: 'tower', teamId: e.teamId === 100 ? 200 : 100, killer: typeof e.killerId === 'number' ? e.killerId : 0, assists: ids(e),
+        ...(lane === 'TOP' || lane === 'MID' || lane === 'BOT' ? { lane } : {}) })
+    }
+  }
+  return out.sort((a, b) => a.t - b.t)
+}
+
+/** The summary's per-player block exists and is the current version (older ones lack levels, CS and objectives). */
+export function hasCurrentPlayers(v: TeamGameTimeline): boolean {
+  return !!v.players && v.players.v === PLAYERS_BLOCK_VERSION
 }
 
 /** A cached summary still valid for this code (else it is extracted again). */

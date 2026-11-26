@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 
 /**
- * P1-3 (docs/PLAN_CLE_PROD.md): how urgent a Riot call is, carried through every await of the work that made
+ * P1-3 (docs/prod/PLAN_CLE_PROD.md): how urgent a Riot call is, carried through every await of the work that made
  * it, so the call sites keep their shape.
  *
  *   gameEnd      the game that just ended (enrichment, timeline, post-game analysis): always first

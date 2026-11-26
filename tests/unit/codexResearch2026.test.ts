@@ -1,5 +1,5 @@
 /**
- * AscendCodex — the Nov. 2026 research upgrade (docs/RECHERCHE_CONNAISSANCES.md): 34 new fiches that fill the
+ * AscendCodex — the Nov. 2026 research upgrade (docs/moteur/RECHERCHE_CONNAISSANCES.md): 34 new fiches that fill the
  * (tag, role, phase) gaps, and the season-2026 facts (patch 26.1+) that replaced outdated numbers in older fiches.
  */
 import { describe, it, expect } from 'vitest'

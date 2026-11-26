@@ -1,5 +1,5 @@
 /**
- * Coaching engine — diagnosis and priority (docs/MOTEUR_REGLES.md §2 ②–③).
+ * Coaching engine — diagnosis and priority (docs/moteur/MOTEUR_REGLES.md §2 ②–③).
  *
  *   rule matches ──► grouped by problem (+ polarity) ──► one diagnosis each
  *

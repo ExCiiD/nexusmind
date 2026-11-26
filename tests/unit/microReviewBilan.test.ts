@@ -1,6 +1,6 @@
 /**
- * Phase 5 (docs/PLAN_MOTEUR_BILANS.md): the bilan indicators of a stored analysis for the assistant, and their passage into the game
- * features. No assistant rule or experiment reads them yet (docs/engine-reports/2026-11-26-calibrage-assistant-bilans.md).
+ * Phase 5 (docs/moteur/PLAN_MOTEUR_BILANS.md): the bilan indicators of a stored analysis for the assistant, and their passage into the game
+ * features. No assistant rule or experiment reads them yet (docs/moteur/engine-reports/2026-11-26-calibrage-assistant-bilans.md).
  */
 import { describe, it, expect } from 'vitest'
 import { bilanOf } from '../../src/lib/microReview/bilanSummary'

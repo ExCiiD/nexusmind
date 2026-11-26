@@ -1,5 +1,5 @@
 /**
- * Fundamentals — the Nov. 2026 research numbers (docs/RECHERCHE_CONNAISSANCES.md) and the EN/FR mirror.
+ * Fundamentals — the Nov. 2026 research numbers (docs/moteur/RECHERCHE_CONNAISSANCES.md) and the EN/FR mirror.
  */
 import { describe, it, expect } from 'vitest'
 import { FUNDAMENTALS, getFundamentalById } from '../../src/lib/constants/fundamentals'

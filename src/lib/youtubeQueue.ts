@@ -23,7 +23,7 @@ export const YOUTUBE_VISIBILITIES: YoutubeVisibility[] = ['public', 'unlisted', 
  * src/lib/autoYoutubePref.ts): the mic is mixed into the game's sound track when recording.
  */
 export type YoutubeAudio = 'all' | 'none'
-/** « Sans son (recommandé) » first (docs/GOOGLE_YOUTUBE_VERIFICATION.md § 3.6). */
+/** « Sans son (recommandé) » first (docs/prod/GOOGLE_YOUTUBE_VERIFICATION.md § 3.6). */
 export const YOUTUBE_AUDIOS: YoutubeAudio[] = ['none', 'all']
 
 export interface AutoYoutubeUpload { enabled: boolean; visibility: YoutubeVisibility; audio: YoutubeAudio }

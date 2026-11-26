@@ -1,9 +1,9 @@
 /**
- * Stills for the Riot production-key application (docs/riot-application/,
- * docs/DEMANDE_CLE_PROD.md R14). Same format as site/shots.cjs; harness mock
+ * Stills for the Riot production-key application (docs/prod/riot-application/,
+ * docs/prod/DEMANDE_CLE_PROD.md R14). Same format as site/shots.cjs; harness mock
  * data only, and capture.cjs swaps the developer's own name for a demo one.
  *
- *   SHOTS_FILE=./shots-riot.cjs CAPTURE_OUT=docs/riot-application npx electron site/capture.cjs
+ *   SHOTS_FILE=./shots-riot.cjs CAPTURE_OUT=docs/prod/riot-application npx electron site/capture.cjs
  */
 const NO_CALIBRATION = 'm.calibrationStatus = { ...m.calibrationStatus, due: false }'
 const wide = { viewport: [1600, 900], out: [1600, 900] }

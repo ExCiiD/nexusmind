@@ -194,7 +194,7 @@ export function startIdentityRefresh(delayMs = 30_000): void {
 }
 
 /**
- * Perf gain 4 (docs/AUDIT_PERF_2.md): the cloud status and my groups in one call at start-up, instead of the
+ * Perf gain 4 (docs/audits/AUDIT_PERF.md): the cloud status and my groups in one call at start-up, instead of the
  * renderer's cloud:status then collab:list-groups (2-3 round trips before Management, Lobby or Coaching can show).
  * `groups` is null when they could not be read (the screen keeps the last list it had).
  */
@@ -356,6 +356,7 @@ export const staffNotesDelete = (id: string) => teamOps.deleteStaffNote(getSupab
 
 export const reportGetWeekly = (groupId: string, weekStart: string) => report.computeTeamWeeklyReport(getSupabase(), groupId, weekStart)
 export const reportGetForEvent = (groupId: string, eventId: string) => report.computeTeamReportForEvent(getSupabase(), groupId, eventId)
+export const reportGetForPeriod = (groupId: string, from: string, to: string) => report.computeTeamPeriodReport(getSupabase(), groupId, from, to)
 export const reportCreateShare = (groupId: string, groupName: string, r: TeamWeeklyReport) =>
   report.createReportShare(getSupabase(), groupId, groupName, r, getSupabaseUrl())
 export const reportRevokeShare = (id: string) => report.revokeReportShare(getSupabase(), id)

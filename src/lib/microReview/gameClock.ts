@@ -3,7 +3,7 @@
  *
  * The engine knows the current season only (game version 16.x, 2026): minions spawn at 0:30, camps at 0:55, Krugs and
  * Gromp at 1:07, the Scuttle Crabs at 2:55. Games of an older season (15.x and below) are not analysed: their clock
- * and timers are not the engine's (user's decision, 20/11/2026, docs/engine-reports/2026-11-20-inventaire-regles-avant-2026.md).
+ * and timers are not the engine's (user's decision, 20/11/2026, docs/moteur/engine-reports/2026-11-20-inventaire-regles-avant-2026.md).
  * Checked on cached 16.x games: median laner level 2 at 1:40, support level 2 at 1:44, jungler level 3 at 1:59,
  * jungler first back at 3:45, support first ward at 1:10.
  *
@@ -21,10 +21,10 @@ export function seasonOf(match: any): Season {
 }
 
 /**
- * Patch steps inside the current season that change a rule the bilans read (docs/PLAN_MOTEUR_BILANS.md): 16.9 brings the
+ * Patch steps inside the current season that change a rule the bilans read (docs/moteur/PLAN_MOTEUR_BILANS.md): 16.9 brings the
  * role-quest roam budget and the −75 % off-lane penalty, 16.16 the support tax change (notes de patch, read 20/11/2026).
  * `tier` is the last step reached; 'pre-16.9' = a 16.x game before the first one, 'unknown' = no readable version.
- * Ids of the role-quest items did not move across 16.1-16.23 on the cached games (docs/engine-reports/2026-11-26-verifs-bilans.md).
+ * Ids of the role-quest items did not move across 16.1-16.23 on the cached games (docs/moteur/engine-reports/2026-11-26-verifs-bilans.md).
  */
 export const PATCH_TIERS = [{ id: '16.9', minor: 9 }, { id: '16.16', minor: 16 }] as const
 export type PatchTier = 'pre-16.9' | '16.9' | '16.16' | 'unknown'

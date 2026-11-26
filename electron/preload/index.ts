@@ -162,6 +162,8 @@ const api = {
   teamSessionSetEnemyTeamName: (gameId: string, name: string | null) => ipcRenderer.invoke('team-session:set-enemy-team-name', gameId, name),
   teamSessionHistoryList: (groupId: string, filters: unknown) => ipcRenderer.invoke('team-session-history:list', groupId, filters),
   teamSessionHistoryDetail: (sessionId: string) => ipcRenderer.invoke('team-session-history:detail', sessionId),
+  teamSessionPlayerStats: (sessionId: string, opts?: { enrich?: boolean }) => ipcRenderer.invoke('team-session-history:player-stats', sessionId, opts),
+  soloSessionPlayerStats: (sessionId?: string | null) => ipcRenderer.invoke('solo-session:player-stats', sessionId ?? null),
   teamSessionSetObjectiveResult: (sessionId: string, objectiveId: string, gameId: string | null, met: boolean | null) =>
     ipcRenderer.invoke('team-session-history:set-objective-result', sessionId, objectiveId, gameId, met),
   sessionPrepGet: (sessionId: string) => ipcRenderer.invoke('session-prep:get', sessionId),
@@ -300,6 +302,7 @@ const api = {
   // E9: weekly reports
   reportGetWeekly: (groupId: string, weekStart: string) => ipcRenderer.invoke('report:get-weekly', groupId, weekStart),
   reportGetForEvent: (groupId: string, eventId: string) => ipcRenderer.invoke('report:get-for-event', groupId, eventId),
+  reportGetForPeriod: (groupId: string, from: string, to: string) => ipcRenderer.invoke('report:get-for-period', groupId, from, to),
   reportCreateShare: (groupId: string, groupName: string, report: unknown) => ipcRenderer.invoke('report:create-share', groupId, groupName, report),
   reportRevokeShare: (id: string) => ipcRenderer.invoke('report:revoke-share', id),
 

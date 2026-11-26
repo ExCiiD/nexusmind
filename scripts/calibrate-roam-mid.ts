@@ -1,5 +1,5 @@
 /**
- * Calibration of the mid roam ledger (docs/PLAN_MOTEUR_BILANS.md § 3), read-only, on a COPY of the MatchCache.
+ * Calibration of the mid roam ledger (docs/moteur/PLAN_MOTEUR_BILANS.md § 3), read-only, on a COPY of the MatchCache.
  * Usage: npx tsx scripts/calibrate-roam-mid.ts <copy of nexusmind.db> [--list]
  * Every mid laner of every cached 16.x game is read (both teams: the verdict is about the roam, not about who owns the app).
  */

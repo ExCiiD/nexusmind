@@ -1,5 +1,5 @@
 /**
- * Phase 1 of docs/PLAN_CLE_PROD.md in the Riot proxy (cloudflare/riot-proxy), without the Workers runtime:
+ * Phase 1 of docs/prod/PLAN_CLE_PROD.md in the Riot proxy (cloudflare/riot-proxy), without the Workers runtime:
  * P1-1 the shared store of finished games, P1-2 the global budget with its interactive reserve, P1-10 the
  * metrics (and that they never hold a Riot ID or a puuid).
  */

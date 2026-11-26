@@ -1,5 +1,5 @@
 /**
- * Role quests (docs/PLAN_MOTEUR_BILANS.md phase 4): the real end of a quest read from the ITEM_DESTROYED of its item, the gap with
+ * Role quests (docs/moteur/PLAN_MOTEUR_BILANS.md phase 4): the real end of a quest read from the ITEM_DESTROYED of its item, the gap with
  * the direct opponent, and the rule that the gap is shown alone (never a term of the roam / gank verdict).
  */
 import { describe, it, expect } from 'vitest'

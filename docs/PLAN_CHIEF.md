@@ -16,3 +16,11 @@ Les 59 fichiers modifiés non commités (moteur, riot-proxy, tests) appartiennen
 | L8 | Back | Installeur : runtimes ONNX, `@prisma/client` et bibliothèques du renderer en devDependencies (C2) ; build packagé de contrôle, puis UI-09 (C1). | build packagé |
 | L9 | Engine + Back | Saison 2027 : mode prudent prêt avant décembre. | — |
 | L10 | Chief | Après L1 : `REFERENCE.md`, `DECISIONS_EN_ATTENTE.md`. Reste côté utilisateur : D5, D6, contrôle analyste, bug reconnexion. | — |
+
+## L11 — Fiche « Stats indiv joueur » (demande du 26/11)
+Page d'un joueur du groupe, dans une session d'équipe : session entière ou une game, radar contre son vis-à-vis de lane.
+Accès : clic sur le joueur dans le tableau de la page session (+ solo dans `SessionPage`).
+Contenu exigé : morts avant 14 min ; morts isolées après 14 min ; kills isolés ; plates ; écarts d'XP et d'or contre le vis-à-vis ;
+or / XP en % contre la moyenne des coéquipiers hors support ; stats habituelles individuelles (KDA, dégâts, % dégâts, CS/min, vision, KP…).
+Données : `src/lib/playerSessionStatsCore.ts` (timeline, radar, écarts) + `src/lib/playerStatsSheetCore.ts` (sélection session / game).
+Statut : Back livré, Front en cours (`job_1795709981678_47ho`), spec Design § 24 de `DESIGN_STATE.md`. Rien commité.

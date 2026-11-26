@@ -1,5 +1,5 @@
 /**
- * Phase 4 check (docs/PLAN_MOTEUR_BILANS.md): (1) can a simple model estimate the real end of a role quest to ~45 s from what the
+ * Phase 4 check (docs/moteur/PLAN_MOTEUR_BILANS.md): (1) can a simple model estimate the real end of a role quest to ~45 s from what the
  * timeline shows at 10:00 ? (2) does the quest gap with the direct opponent explain wins beyond the lane numbers ?
  * Read-only, on a COPY of the MatchCache. Usage: npx tsx scripts/validate-role-quest.ts <copy of nexusmind.db>
  */

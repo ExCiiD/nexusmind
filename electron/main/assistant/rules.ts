@@ -465,7 +465,7 @@ export const RULES: Rule[] = [
     priority: 56,
     confidence: 0.6,
     // 20 games, not 10: a new champion runs at ~44 % for its first ~20 games, and 4 wins in 10 games is compatible
-    // with a true winrate anywhere from 17 to 69 % (docs/RECHERCHE_CONNAISSANCES.md).
+    // with a true winrate anywhere from 17 to 69 % (docs/moteur/RECHERCHE_CONNAISSANCES.md).
     when: [{ kind: 'weakChampion', minGames: 20, maxWinrate: 40 }],
     variants: 2,
     params: { champion: 'c0.champion', games: 'c0.games', winrate: 'c0.winrate' },
@@ -497,7 +497,7 @@ export const RULES: Rule[] = [
     why: { key: 'lastSessions', n: 'c0.sessions' },
   },
 
-  // ─ Benchmarks from the Nov. 2026 research (docs/RECHERCHE_CONNAISSANCES.md) ─
+  // ─ Benchmarks from the Nov. 2026 research (docs/moteur/RECHERCHE_CONNAISSANCES.md) ─
   // Thresholds calibrated on 3,004 cached ranked games (patches 16.1–16.10): win rate by bucket, per role.
   {
     // Time dead: < 5 % of the game → 84 % wins, 8–11 % → 50 %, ≥ 14 % → under 31 %.

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { bookmarkLeadSec, clipWindow, objectiveTimeOf } from '../../src/lib/microReview/vodTiming'
 
-// 20/11 (docs/engine-reports/2026-11-20-lieux-et-extraits-video-des-cartes.md § 3); no markers since beta.20.
+// 20/11 (docs/moteur/engine-reports/2026-11-20-lieux-et-extraits-video-des-cartes.md § 3); no markers since beta.20.
 describe('micro-review clip window', () => {
   it('objective card: T − 60 s to T + 45 s, header at the objective', () => {
     const w = clipWindow({ trigger: 'absent-objective', gameTimeSec: 960, facts: { objectiveAtSec: 985 } })

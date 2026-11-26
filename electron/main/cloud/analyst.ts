@@ -85,6 +85,9 @@ const background = <T>(fn: () => Promise<T>) => withRiotPriority('background', f
 export const teamObjectivesGames = (groupId: string, filters: TeamObjectivesFilters) => core.listTeamObjectivesGames(getSupabase(), groupId, filters)
 export const teamObjectivesGameTimeline = (gameId: string) => background(() => core.loadTeamGameTimeline(getSupabase(), gameId, matchFetchers))
 
+/** One game's timeline with the per-player block, extracted again when the cached summary lacks it (on demand). */
+export const teamGameTimelineWithPlayers = (gameId: string) => background(() => core.loadTeamGameTimeline(getSupabase(), gameId, matchFetchers, { withPlayers: true }))
+
 // § 11
 export const draftLogList = (groupId: string) => core.listDrafts(getSupabase(), groupId)
 export const draftLogSyncFromGames = async (groupId: string) => core.syncDraftsFromGames(getSupabase(), groupId, await uid(), await championNameById())

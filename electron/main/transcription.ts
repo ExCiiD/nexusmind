@@ -2,7 +2,7 @@ import { spawn } from 'child_process'
 import { existsSync, readFileSync, unlinkSync } from 'fs'
 import { app } from 'electron'
 import { join } from 'path'
-import { getFfmpegBinaryPath } from './recorder'
+import { getFfmpegBinaryPath, waitUntilReadable } from './recorder'
 
 /**
  * Local Whisper transcription (Phase 5, Planning rework §9 — team session
@@ -33,6 +33,9 @@ async function getTranscriber(): Promise<any> {
       env.cacheDir = join(app.getPath('userData'), 'whisper-cache')
       return pipeline('automatic-speech-recognition', MODEL_ID)
     })()
+    // 26/11/2026: a failed load (first-use download cut, offline for a moment) used to stay cached as a rejected
+    // promise, so every later transcription failed the same way until the app was restarted.
+    pipelinePromise.catch(() => { pipelinePromise = null })
   }
   return pipelinePromise
 }
@@ -46,10 +49,19 @@ function extractAudioWav(sourcePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const args = ['-i', sourcePath, '-ar', '16000', '-ac', '1', '-f', 'wav', '-y', outPath]
     const proc = spawn(ffmpegBin, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
-    proc.stderr?.on('data', (d: Buffer) => { if (!app.isPackaged) process.stdout.write('[transcribe] ' + d.toString()) })
+    let stderrTail = ''
+    proc.stderr?.on('data', (d: Buffer) => {
+      stderrTail = (stderrTail + d.toString()).slice(-600)
+      if (!app.isPackaged) process.stdout.write('[transcribe] ' + d.toString())
+    })
     proc.on('exit', (code) => {
       if (code === 0 && existsSync(outPath)) resolve(outPath)
-      else reject(new Error(`ffmpeg audio extraction failed (code ${code})`))
+      else {
+        // The real cause (no audio track, unreadable file) is in ffmpeg's last lines, not in the exit code.
+        const noAudio = /does not contain any stream|Stream map .* matches no streams|no audio/i.test(stderrTail)
+        const detail = stderrTail.trim().split('\n').slice(-2).join(' | ')
+        reject(new Error(noAudio ? 'NO_AUDIO_TRACK: the recording has no audio to transcribe' : `ffmpeg audio extraction failed (code ${code}): ${detail}`))
+      }
     })
     proc.on('error', reject)
     setTimeout(() => { try { proc.kill() } catch { /* ignore */ } }, 120_000)
@@ -89,6 +101,10 @@ export interface TranscriptionResult {
  * English. The caller passes the app's current UI language.
  */
 export async function transcribeFile(sourcePath: string, language: string): Promise<TranscriptionResult> {
+  // A recording just stopped may still be remuxed (the capture finishes in the background, 26/11/2026): wait until
+  // ffmpeg can read it instead of failing on a half-written file.
+  const readable = await waitUntilReadable(sourcePath, { timeoutMs: 60_000, intervalMs: 1_500 })
+  if (readable <= 0) throw new Error('RECORDING_NOT_READY: the recording is still being finalised or is empty, retry in a moment')
   const wavPath = await extractAudioWav(sourcePath)
   try {
     const samples = await readWavSamples(wavPath)

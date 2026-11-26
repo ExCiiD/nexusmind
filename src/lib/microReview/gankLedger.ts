@@ -1,5 +1,5 @@
 /**
- * Gank ledger (docs/PLAN_MOTEUR_BILANS.md phase 3, docs/engine-reports/2026-11-20-bilan-des-ganks-jungle.md): for each gank
+ * Gank ledger (docs/moteur/PLAN_MOTEUR_BILANS.md phase 3, docs/moteur/engine-reports/2026-11-20-bilan-des-ganks-jungle.md): for each gank
  * of the jungler, what it cost (camps not taken against the enemy jungler, camps stolen, gold and XP gap, a death), what it
  * created (takedowns, a laner forced back, plates, an objective chained, the ganked lane ahead), and what the enemy jungler
  * did on their side meanwhile, in the same Δz scale as the roam ledger (winProbability.winZ).

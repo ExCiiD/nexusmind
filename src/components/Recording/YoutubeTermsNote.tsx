@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 const SEEN_KEY = 'nm.youtube.termsSeen'
 export const YOUTUBE_TERMS_URL = 'https://www.youtube.com/t/terms'
 
-/** Shown under the YouTube button until the first upload (docs/GOOGLE_YOUTUBE_VERIFICATION.md § 3.6). */
+/** Shown under the YouTube button until the first upload (docs/prod/GOOGLE_YOUTUBE_VERIFICATION.md § 3.6). */
 export function youtubeTermsSeen(): boolean {
   try { return localStorage.getItem(SEEN_KEY) === '1' } catch { return false }
 }

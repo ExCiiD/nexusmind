@@ -7,6 +7,7 @@
  * publishing a team rewrites the group's scouting rows, so their ids change on every publish.
  */
 import type { TeamRole } from './team'
+import type { TimelinePlayers } from './playerSessionStatsCore'
 
 export type TeamGameSource = 'flex' | 'scrim' | 'tournament'
 export type TeamSide = 'blue' | 'red'
@@ -54,6 +55,8 @@ export interface TeamGameTimeline {
   events: TeamTimelineEvent[]
   /** Our total gold minus theirs at each minute (index = minute, from 0). */
   goldDiffByMinute: number[]
+  /** Per-player minute series and champion kills (individual stats). Absent on summaries cached before it: no version bump. */
+  players?: TimelinePlayers
 }
 
 /** A team game the tab can read, and whether its summary is already cached for everyone. */

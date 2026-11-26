@@ -18,6 +18,7 @@ const POLL_INTERVAL_MS = 5_000
  * clock skew + slow LCU detection while still rejecting matches from a
  * previous session.
  */
+import { startsNearDetectedStart } from './strandedGamesCore'
 const STALE_MATCH_WINDOW_MS = 30 * 60 * 1000
 
 // ── Live Client API helpers ───────────────────────────────────────────────────
@@ -356,7 +357,7 @@ export class GameDetector {
    * updates the Game row with accurate stats (win/loss, exact CS, matchId, opponent, etc.).
    */
   // `_snapshot` (the live champion) is not used yet: matching the Riot match on
-  // it is the fix proposed in docs/AUDIT_APP_2026-11.md (E10).
+  // it is the fix proposed in docs/audits/AUDIT_APP_2026-11.md (E10).
   private async enrichWithMatchApi(gameStartedAt: number, _snapshot: LiveSnapshot | null, gameRef: GameLogRef | null = null) {
     const prisma = getPrisma()
     const user = await prisma.user.findFirst({ where: { isActive: true } })
@@ -416,6 +417,8 @@ export class GameDetector {
           // 30 min of slack covers all of these without re-picking stale
           // history matches (which are always >>30min old).
           if (matchEndMs > 0 && matchEndMs < gameStartedAt - STALE_MATCH_WINDOW_MS) return null
+          // E10: the newest id is the previous game when Riot has not published this one yet: wait for the next try.
+          if (!startsNearDetectedStart((matchData as any)?.info?.gameStartTimestamp ?? (matchData as any)?.info?.gameCreation, gameStartedAt)) return null
           return { matchId: ids[0], region: acc.region, stats: s, matchData }
         }),
       )

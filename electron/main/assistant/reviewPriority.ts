@@ -1,5 +1,5 @@
 /**
- * R4 — which unreviewed game to review first (docs/AUDIT_REGLES_METIER.md §3.3).
+ * R4 — which unreviewed game to review first (docs/audits/AUDIT_REGLES_METIER.md §3.3).
  *
  * Priority order: close loss (final gold diff < 3k) > ≥ 2 severity-3
  * mistakes > largest deviation from the player's own average > most recent.

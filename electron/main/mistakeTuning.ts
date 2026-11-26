@@ -5,7 +5,7 @@
  * Simplification over the catalogue's exact wording: the count is lifetime
  * (never reset by re-creating the tag), kept simple and provable rather than
  * tracking "was it re-created after each deletion" — documented in
- * docs/AUDIT_REGLES_METIER.md.
+ * docs/audits/AUDIT_REGLES_METIER.md.
  */
 
 export const DELETIONS_TO_LEARN = 3
