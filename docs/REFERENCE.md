@@ -31,11 +31,11 @@ _Dernière mise à jour : 26/11/2026. Base : `main` = merge Electron 45 (`21ec21
 | Sujet | Responsable | Statut | Prochaine action |
 |---|---|---|---|
 | **Chantier « bilans »** : roams (mid, top, ADC, support), ganks, quêtes de rôle, indicateurs de l'assistant. Plan : `moteur/PLAN_MOTEUR_BILANS.md` | Engine → Back-end, Front-end | **Feu vert de l'utilisateur le 26/11.** Phases 0 à 4 faites ; **tous les drapeaux `DETECTOR_SPEC.*.enabled` sont à `false`** ; `ANALYSIS_VERSION` 16 | Valider les seuils A1b/A1c (`DECISIONS_EN_ATTENTE.md`), relire quelques cartes en vidéo, activer mid puis top, puis le reste ; monter `ANALYSIS_VERSION` une seule fois à l'activation |
-| Migration `20261126090000_team_data_scoped_to_linked_group` (données d'équipe lisibles par le staff du groupe lié) + retour arrière + test 16/16 | Back-end, Cyber | Écrite, **non appliquée en production** | Accord explicite de l'utilisateur, voir `prod/MISE_EN_PROD_TEAM_DATA.md` |
+| Migration `20261126090000_team_data_scoped_to_linked_group` | Back-end, Cyber | **Appliquée en production le 26/11** ; test 22/22 dont staff multi-groupe | Contrôle manuel avec un compte analyste (étape 3 de `prod/MISE_EN_PROD_TEAM_DATA.md`) |
 | Page analyste, suites (proposition `PROPOSITION_ANALYSTE.md`) | Graphic → Back-end, Front-end | **« Go » de l'utilisateur le 26/11** ; points 1 à 3 déjà construits, 5 partiel | 5 phases à déléguer, en commençant par le rapport de période et l'extraction de la timeline partagée |
 | Historique des sessions d'équipe : 4 ajouts retenus le 26/11 (rappel de review 48 h, recherche par adversaire, tendance, lien Journal des drafts ; `DESIGN_STATE.md` § 15.3) | Graphic puis Front/Back | Aucun construit ; maquette à faire | `DECISIONS.md` 26/11 |
 | Clé Riot de production + vérification Google YouTube | Utilisateur | Dossiers prêts (`prod/DEMANDE_CLE_PROD.md`, `prod/GOOGLE_YOUTUBE_VERIFICATION.md`) ; Riot semble déposé (`riot.txt`, 24/11), aucune trace d'approbation ; Google non déposé | L'utilisateur soumet les formulaires |
-| Révocation de la clé OpenAI (encore dans `.env` local) et de `GH_TOKEN` | Utilisateur | **À faire chez le fournisseur** | Aucun code ne lit la clé |
+| Clé OpenAI | Utilisateur | **Révoquée le 26/11** ; `GH_TOKEN` inutile à supprimer du `.env` | — |
 | 2FA GitHub et jeton de publication à portée minimale | Utilisateur | À faire | — |
 | Signature payante des installeurs | Utilisateur | Reportée : à reposer vers 300 utilisateurs | — |
 | Bug « chargement infini / reconnexion impossible » (corrigé le 19/11) | Utilisateur | Jamais confirmé en réel | Demander si le bug persiste, sinon fermer |
