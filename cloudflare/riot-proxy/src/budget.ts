@@ -1,5 +1,5 @@
 /**
- * P1-2 (docs/PLAN_CLE_PROD.md): one budget for the whole Riot key, shared by every user and device, so the
+ * P1-2 (docs/prod/PLAN_CLE_PROD.md): one budget for the whole Riot key, shared by every user and device, so the
  * proxy answers 429 itself before Riot does (a key that keeps hitting Riot's 429 risks a blacklist).
  *
  * Pure (no Workers APIs): sliding windows that mirror Riot's application limits for one routing value (Riot

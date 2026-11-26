@@ -6,7 +6,7 @@
  * forwards the (allow-listed, read-only) call to Riot with the key stored as
  * a Worker secret. The request flow itself is in handler.ts.
  *
- * Phase 1 of docs/PLAN_CLE_PROD.md (each binding optional: without it, the
+ * Phase 1 of docs/prod/PLAN_CLE_PROD.md (each binding optional: without it, the
  * Worker behaves as before):
  *   MATCH_STORE  R2 bucket   — P1-1, finished games' match and timeline shared by everyone
  *   RIOT_BUDGET  Durable Obj — P1-2, one budget for the whole key, with a reserve for interactive calls

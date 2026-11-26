@@ -1,5 +1,5 @@
 /**
- * P1-1 (docs/PLAN_CLE_PROD.md): which Riot answers the proxy keeps and shares between every user and device.
+ * P1-1 (docs/prod/PLAN_CLE_PROD.md): which Riot answers the proxy keeps and shares between every user and device.
  *
  * Only the match-v5 match body and its timeline: Riot publishes them once the game is over and never changes
  * them, so the second request for the same game, from a teammate, another device or the web app, costs

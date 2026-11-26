@@ -1,5 +1,5 @@
 /**
- * P1-10 (docs/PLAN_CLE_PROD.md): what the proxy measures, per endpoint. These numbers back the request for a
+ * P1-10 (docs/prod/PLAN_CLE_PROD.md): what the proxy measures, per endpoint. These numbers back the request for a
  * production key: calls made, calls Riot actually received, cache hit rate, and 429s (ours and Riot's).
  *
  * Each request writes one data point to Workers Analytics Engine when the METRICS binding exists (queried with
