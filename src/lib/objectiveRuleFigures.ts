@@ -29,9 +29,22 @@ export interface CrossmapSplit {
   crossed: number
 }
 
+export type GameContext = 'soloQ' | 'team'
+/** Normal / ranked solo queues are soloQ; flex, scrims, tournament and custom games are team play (the rules weigh more there, decision 27/11). */
+export const contextOfQueue = (queueId: unknown): GameContext => (queueId === 400 || queueId === 420 || queueId === 430 || queueId === 490 ? 'soloQ' : 'team')
+
+/** The figures that weigh differently in soloQ and in team play: the own-lane prio (top, ADC, mid) and the objectives given up. */
+export interface ContextFigures {
+  games: number
+  own: { n: number; tally: PrioTally }
+  dropped: CrossmapSplit & { objectivesTheirs: number; contested: number }
+}
+
 export interface RuleCounts {
   /** Games added into these counts. */
   games: number
+  /** The own-lane prio and the objectives given up, split soloQ / team (the totals below are their sum). */
+  byContext: Record<GameContext, ContextFigures>
   prio: {
     /** Objectives read (a climax window, before 20:00). */
     objectives: number
@@ -63,9 +76,12 @@ const faults = (): Record<DuoFault, number> => ({ support: 0, adc: 0, shared: 0,
 const split = (): CrossmapSplit => ({ uncontested: 0, traded: 0, noTrade: 0, justified: 0, judged: 0, crossed: 0 })
 const duoSplit = (): DuoSplit => ({ adcDeaths: faults(), supDeaths: faults() })
 
+const emptyContext = (): ContextFigures => ({ games: 0, own: { n: 0, tally: tally() }, dropped: { ...split(), objectivesTheirs: 0, contested: 0 } })
+
 export function emptyRuleCounts(): RuleCounts {
   return {
     games: 0,
+    byContext: { soloQ: emptyContext(), team: emptyContext() },
     prio: {
       objectives: 0,
       byKind: Object.fromEntries(RULE_KINDS.map((k) => [k, { n: 0, side: tally(), mid: tally() }])) as RuleCounts['prio']['byKind'],
@@ -88,13 +104,15 @@ const OWN_LANE: Record<string, 'TOP' | 'MID' | 'BOT'> = { TOP: 'TOP', MIDDLE: 'M
  * The counts of one game. `pid` = the player (their own lane, their crossmap verdict), or null for the whole team.
  * Null when the game has no block (or one of an older version).
  */
-export function ruleCountsOf(block: ObjectiveRulesBlock | null | undefined, pid: number | null): RuleCounts | null {
+export function ruleCountsOf(block: ObjectiveRulesBlock | null | undefined, pid: number | null, context: GameContext = 'team'): RuleCounts | null {
   if (!block || block.v !== OBJECTIVE_RULES_SPEC.version) return null
   const P = OBJECTIVE_RULES_SPEC.prio
   const role = pid == null ? null : block.roles.find((r) => r.pid === pid)?.role ?? null
   if (pid != null && role == null) return null
   const c = emptyRuleCounts()
   c.games = 1
+  const cx = c.byContext[context]
+  cx.games = 1
   const ownLane = role ? OWN_LANE[role] ?? null : null
   c.prio.own.lane = ownLane
 
@@ -105,9 +123,8 @@ export function ruleCountsOf(block: ObjectiveRulesBlock | null | undefined, pid:
       const k = c.prio.byKind[o.kind]
       k.n++
       put(k.side, o.sideLane); put(k.mid, o.mid)
-      if (ownLane === 'MID') { c.prio.own.n++; put(c.prio.own.tally, o.mid) }
-      else if (ownLane === 'TOP' && o.side === 'top') { c.prio.own.n++; put(c.prio.own.tally, o.sideLane) }
-      else if (ownLane === 'BOT' && o.side === 'bot') { c.prio.own.n++; put(c.prio.own.tally, o.sideLane) }
+      const ownRead = ownLane === 'MID' ? o.mid : (ownLane === 'TOP' && o.side === 'top') || (ownLane === 'BOT' && o.side === 'bot') ? o.sideLane : null
+      if (ownRead) { c.prio.own.n++; put(c.prio.own.tally, ownRead); cx.own.n++; put(cx.own.tally, ownRead) }
       if (role == null || role === 'JUNGLE') {
         if (o.engaged) {
           c.prio.jungle.engaged++
@@ -128,13 +145,14 @@ export function ruleCountsOf(block: ObjectiveRulesBlock | null | undefined, pid:
     // ── Crossmap (objectives taken by them) ──
     if (!o.ours) {
       c.crossmap.objectivesTheirs++
-      if (o.contested) c.crossmap.contested++
+      cx.dropped.objectivesTheirs++
+      if (o.contested) { c.crossmap.contested++; cx.dropped.contested++ }
       else if (o.contested === false && o.crossmap) {
         const s = o.atSec < OBJECTIVE_RULES_SPEC.duo.after14Sec ? c.crossmap.before14 : c.crossmap.after14
-        s.uncontested++
-        if (o.crossmap.verdict === 'traded') s.traded++
-        else if (o.crossmap.verdict === 'no-trade') s.noTrade++
-        else s.justified++
+        s.uncontested++; cx.dropped.uncontested++
+        if (o.crossmap.verdict === 'traded') { s.traded++; cx.dropped.traded++ }
+        else if (o.crossmap.verdict === 'no-trade') { s.noTrade++; cx.dropped.noTrade++ }
+        else { s.justified++; cx.dropped.justified++ }
         const r = o.crossmap.resources
         if (r.objective) c.crossmap.resources.objective++
         if (r.plates) c.crossmap.resources.plates++
@@ -143,8 +161,8 @@ export function ruleCountsOf(block: ObjectiveRulesBlock | null | undefined, pid:
         if (r.invade) c.crossmap.resources.invade++
         if (r.numbers) c.crossmap.resources.numbers++
         if (pid != null && OBJECTIVE_RULES_SPEC.crossmap.roles.includes(role ?? '') && o.crossmap.verdict !== 'justified') {
-          s.judged++
-          if (o.crossmap.crossed.includes(pid)) s.crossed++
+          s.judged++; cx.dropped.judged++
+          if (o.crossmap.crossed.includes(pid)) { s.crossed++; cx.dropped.crossed++ }
         }
       }
     }
@@ -171,6 +189,11 @@ export function sumRuleCounts(list: Array<RuleCounts | null | undefined>): RuleC
   t.prio.own.lane = rows.find((r) => r.prio.own.lane)?.prio.own.lane ?? null
   for (const r of rows) {
     t.games += r.games
+    for (const k of ['soloQ', 'team'] as const) {
+      const a = t.byContext[k], b = r.byContext[k]
+      a.games += b.games; a.own.n += b.own.n; addTally(a.own.tally, b.own.tally)
+      for (const f of Object.keys(a.dropped) as Array<keyof ContextFigures['dropped']>) a.dropped[f] += b.dropped[f]
+    }
     t.prio.objectives += r.prio.objectives
     for (const k of RULE_KINDS) { t.prio.byKind[k].n += r.prio.byKind[k].n; addTally(t.prio.byKind[k].side, r.prio.byKind[k].side); addTally(t.prio.byKind[k].mid, r.prio.byKind[k].mid) }
     t.prio.own.n += r.prio.own.n; addTally(t.prio.own.tally, r.prio.own.tally)

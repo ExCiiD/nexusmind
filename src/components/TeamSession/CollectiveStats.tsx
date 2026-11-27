@@ -13,6 +13,7 @@ import {
 } from '@/lib/collectiveView'
 import { ReviewButton, useRecordings } from './PlayerTimelineBlocks'
 import { WhyEmpty } from './PlayerIndivBlocks'
+import { RulesSection, RulesSummary } from './CollectiveRules'
 
 /* ── Data ── */
 
@@ -54,7 +55,7 @@ export function useCollective(sessionId: string, refreshKey: string | number = 0
 /* ── Small pieces ── */
 
 const OPEN_KEY = 'ascend.collective.open'
-type SectionId = 'objectives' | 'gold' | 'conversion' | 'setup' | 'deaths' | 'kp' | 'winrate'
+type SectionId = 'objectives' | 'gold' | 'conversion' | 'setup' | 'deaths' | 'kp' | 'winrate' | 'rules'
 function readOpen(): SectionId[] {
   try { const v = JSON.parse(localStorage.getItem(OPEN_KEY) ?? '[]'); return Array.isArray(v) ? v : [] } catch { return [] }
 }
@@ -77,16 +78,16 @@ function Pill({ tone, children }: { tone: 'green' | 'red' | 'gold' | 'dim'; chil
   )
 }
 
-function Accordion({ id, title, summary, open, onToggle, children }: { id: SectionId; title: string; summary: ReactNode; open: boolean; onToggle: () => void; children: ReactNode }) {
+function Accordion({ id, title, summary, open, onToggle, children, disabled = false }: { id: SectionId; title: string; summary: ReactNode; open: boolean; onToggle: () => void; children: ReactNode; disabled?: boolean }) {
   return (
     <div className="border-b border-hextech-border-dim last:border-b-0">
-      <button type="button" aria-expanded={open} aria-controls={`collective-${id}`} onClick={onToggle}
+      <button type="button" aria-expanded={disabled ? false : open} aria-controls={`collective-${id}`} aria-disabled={disabled || undefined} onClick={disabled ? undefined : onToggle}
         className="flex min-h-[44px] w-full flex-wrap items-center gap-x-3 gap-y-0.5 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-hextech-gold">
-        <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 text-hextech-gold transition-transform', open && 'rotate-90')} aria-hidden />
-        <span className="font-mono text-xs font-bold uppercase tracking-wider text-hextech-text-bright">{title}</span>
+        <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 transition-transform', disabled ? 'text-hextech-text-dim' : 'text-hextech-gold', open && !disabled && 'rotate-90')} aria-hidden />
+        <span className={cn('font-mono text-xs font-bold uppercase tracking-wider', disabled ? 'text-hextech-text-dim' : 'text-hextech-text-bright')}>{title}</span>
         <span className="min-w-0 basis-full truncate pl-6 font-mono text-[11px] text-hextech-text-dim sm:ml-auto sm:basis-auto sm:pl-0 sm:text-right">{summary}</span>
       </button>
-      {open && <div id={`collective-${id}`} className="space-y-3 px-3 pb-4 pt-1">{children}</div>}
+      {open && !disabled && <div id={`collective-${id}`} className="space-y-3 px-3 pb-4 pt-1">{children}</div>}
     </div>
   )
 }
@@ -179,6 +180,8 @@ function CollectiveBody({ scope, lang, open, toggle, onExtract, extracting, matc
   const setup = useMemo(() => setupOf(scope), [scope])
   const deaths = deathsOf(scope)
   const kp = kpOf(scope)
+  const rules = (scope.kind === 'game' ? scope.game.rules : scope.c.rules) ?? null
+  const roleName = (r: string) => { const m = kp.find((p) => roleOf?.(p.memberId) === r); return m?.displayName }
   const noTimeline = gamesWithoutTimeline(scope)
   const small = head.games < SMALL_SAMPLE
   const pctText = (p: number | null) => (p == null ? '—' : `${Math.round(p)} %`)
@@ -304,6 +307,12 @@ function CollectiveBody({ scope, lang, open, toggle, onExtract, extracting, matc
             <WinrateSection scope={scope} t={t} sideWord={sideWord} pct={pctText} />
           </Accordion>
         )}
+
+        {/* 8 · Prio, crossmap & duo (docs/design/STATS_COLLECTIVES_EQUIPE.md A.3) */}
+        <Accordion id="rules" title={t('prioRules.title')} open={open.includes('rules')} onToggle={() => toggle('rules')} disabled={!rules}
+          summary={<RulesSummary rules={rules} timelineNeeded />}>
+          {rules && <RulesSection rules={rules} noTimeline={noTimeline.map((g) => g.gameIndex)} games={head.games} duoNames={{ adc: roleName('ADC'), support: roleName('SUPPORT') }} />}
+        </Accordion>
       </div>
       {live && <p className="text-[11px] text-hextech-text-dim">{t('teamCollective.liveNote')}</p>}
     </section>

@@ -5,6 +5,9 @@ import {
 } from '../../src/lib/microReview/objectiveRules'
 import { ruleCountsOf, sumRuleCounts, emptyRuleCounts } from '../../src/lib/objectiveRuleFigures'
 import { buildLedgerTrack } from '../../src/lib/microReview/ledgerCore'
+import { contextOfQueue } from '../../src/lib/objectiveRuleFigures'
+import { extractTeamTimeline } from '../../src/lib/teamTimelineCore'
+import { buildObjectiveParticipation } from '../../src/lib/playerSessionStatsCore'
 
 const match = (fixture as any).match
 const timeline = (fixture as any).timeline
@@ -216,5 +219,38 @@ describe('type surface the front relies on', () => {
     const o: ObjectiveRuleEntry = blue.objectives[0]
     expect(JSON.parse(JSON.stringify(o))).toEqual(o)
     expect(JSON.stringify(blue).length).toBeLessThan(20_000)
+  })
+})
+
+describe('soloQ / team split and the pills of the objective list (27/11)', () => {
+  const blue = objectiveRules(match, timeline, 100) as ObjectiveRulesBlock
+  const top = blue.roles.find((r) => r.role === 'TOP')!.pid
+
+  it('the own-lane figures and the objectives given up land in the context of the game', () => {
+    const team = ruleCountsOf(blue, top, 'team')!
+    const solo = ruleCountsOf(blue, top, 'soloQ')!
+    expect(team.byContext.team.games).toBe(1); expect(team.byContext.soloQ.games).toBe(0)
+    expect(solo.byContext.soloQ.own.n).toBe(solo.prio.own.n)
+    expect(solo.byContext.soloQ.dropped.objectivesTheirs).toBe(solo.crossmap.objectivesTheirs)
+    const sum = sumRuleCounts([team, solo])!
+    expect(sum.byContext.team.own.n).toBe(team.prio.own.n)
+    expect(sum.byContext.soloQ.own.n).toBe(solo.prio.own.n)
+    expect(sum.prio.own.n).toBe(team.prio.own.n + solo.prio.own.n)
+  })
+  it('queue ids: ranked / normal are soloQ, the rest is team play', () => {
+    expect([contextOfQueue(420), contextOfQueue(400), contextOfQueue(440), contextOfQueue(0), contextOfQueue(undefined)]).toEqual(['soloQ', 'soloQ', 'team', 'team', 'team'])
+  })
+  it('each objective event carries its prio pill until 20:00 and the crossmap verdict of objectives left uncontested', () => {
+    const summary = extractTeamTimeline(match, timeline, { gameId: 'g', matchId: 'm', source: 'flex', ourTeamId: 100, opponentName: null })!
+    expect(summary.players?.objectiveRules?.v).toBe(OBJECTIVE_RULES_SPEC.version)
+    const part = buildObjectiveParticipation(summary.players!, top, 100)!
+    const early = part.events.filter((e) => e.kind !== 'tower' && e.atSec <= 1200)
+    expect(early.length).toBeGreaterThan(0)
+    for (const e of early) expect(e.prio).not.toBeUndefined()
+    expect(part.events.filter((e) => e.kind === 'tower').every((e) => e.prio === null)).toBe(true)
+    for (const e of part.events) {
+      if (e.crossmap) expect(e.ours).toBe(false)
+      if (e.prio) expect(['ours', 'theirs', 'even', 'unknown']).toContain(e.prio.state)
+    }
   })
 })

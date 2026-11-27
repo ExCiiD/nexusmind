@@ -7,6 +7,7 @@ import type { PlayerStatsSheet, SheetGamePoint } from '@/lib/playerStatsSheetCor
 import type { SynergyPlayerStats } from '@/lib/synergyStats'
 import { formatClock } from '@/lib/teamSessionHistoryView'
 import { IsolationBlock, RadarBlock, VsOpponentBlock, VsTeamBlock, WhyEmpty, type IndivState } from './PlayerIndivBlocks'
+import { PlayerRulesCard } from './PlayerRulesCard'
 import { EventsBlock, ExtrasBlock, HighlightsBlock, LaneDiffBlock, ObjectivesBlock } from './PlayerTimelineBlocks'
 import type { Baseline30d, LaneSummary } from '@/lib/playerSessionStatsCore'
 import type { PlayerSessionStats } from '@/pages/TeamSessions/historyContract'
@@ -173,6 +174,7 @@ export function PlayerSheet({ sheet, name, role, teamPlayers, indiv, indivState,
               <LaneDiffBlock {...ctx} />
               <VsOpponentBlock {...ctx} />
               <ObjectivesBlock {...ctx} />
+              <PlayerRulesCard {...ctx} />
               <IsolationBlock {...ctx} />
               <EventsBlock {...ctx} />
               <ExtrasBlock {...ctx} />

@@ -17,8 +17,8 @@ import { hasCurrentPlayers, hasObjectiveRules, isCurrentTimeline } from './teamT
 import { fail } from './supabaseErrors'
 import { mergePlayerStats } from './teamSessionHistoryCore'
 import { zoneOf, type Zone } from './microReview/geometry'
-import type { ObjectiveRulesBlock } from './microReview/objectiveRules'
-import { ruleCountsOf, sumRuleCounts, type RuleCounts } from './objectiveRuleFigures'
+import { OBJECTIVE_RULES_SPEC, type CrossVerdict, type ObjectiveRuleEntry, type ObjectiveRulesBlock, type PrioProof, type PrioState } from './microReview/objectiveRules'
+import { contextOfQueue, ruleCountsOf, sumRuleCounts, type RuleCounts } from './objectiveRuleFigures'
 
 // ── What the timeline summary keeps per player (compact: one value per minute) ──────────────────────────────────
 
@@ -246,6 +246,9 @@ export interface ObjectiveLine {
   /** @deprecated 27/11: "killed by you" no longer counts (= byReason.kill). Kept until the Front drops the column. */
   killed: number
 }
+/** A prio pill: who had the lane, how sure (`approx`: only suggested by positions or CS: show "≈"). */
+export interface PrioPill { state: PrioState; proof: PrioProof; approx: boolean }
+
 export interface ObjectiveEvent {
   kind: ObjectiveKind
   atSec: number
@@ -262,6 +265,13 @@ export interface ObjectiveEvent {
   subType?: string
   lane?: 'TOP' | 'MID' | 'BOT'
   vodSeekSec: number
+  /** Prio of the lane on the objective's side at the climax before it, then of the mid. Null after 20:00, for a tower, or without the block (show "—"). */
+  prio?: PrioPill | null
+  prioMid?: PrioPill | null
+  /** Only for an objective taken by them that nobody of ours contested; null otherwise. */
+  crossmap?: CrossVerdict | null
+  /** With a crossmap verdict: this player crossed (a resource, or time on the other half of the map). */
+  crossed?: boolean | null
 }
 export interface ObjectiveParticipation { byKind: ObjectiveLine[]; events: ObjectiveEvent[] }
 
@@ -546,6 +556,17 @@ export function involvementOf(tp: TimelinePlayers, pid: number, e: TimelineObjec
 
 const emptyReasons = (): Record<InvolvementReason, number> => ({ kill: 0, assist: 0, nearby: 0, fight: 0 })
 
+const pillOf = (l: ObjectiveRuleEntry['mid']): PrioPill => ({ state: l.state, proof: l.proof, approx: l.proof === 'suggested' && (l.state === 'ours' || l.state === 'theirs') })
+
+/** The block's reading of an objective event: same kind, taken at the same second (grubs: the camp, within 90 s). */
+function ruleEntryOf(block: ObjectiveRulesBlock | undefined, kind: ObjectiveKind, atSec: number): ObjectiveRuleEntry | null {
+  if (!block || block.v !== OBJECTIVE_RULES_SPEC.version) return null
+  const slack = kind === 'grubs' ? 90 : 5
+  let best: ObjectiveRuleEntry | null = null
+  for (const o of block.objectives) if (o.kind === kind && Math.abs(o.atSec - atSec) <= slack && (!best || Math.abs(o.atSec - atSec) < Math.abs(best.atSec - atSec))) best = o
+  return best
+}
+
 export function buildObjectiveParticipation(tp: TimelinePlayers, pid: number, ourTeamId: 100 | 200): ObjectiveParticipation | null {
   if (!tp.objectives) return null
   const lines = new Map<ObjectiveKind, ObjectiveLine>(OBJECTIVE_KINDS.map((kind) => [kind, {
@@ -560,9 +581,14 @@ export function buildObjectiveParticipation(tp: TimelinePlayers, pid: number, ou
     if (ours) { line.ours++; if (reason) { line.participated++; line.byReason[reason]++; if (reason === 'kill') line.killed++ } }
     else { line.theirs++; if (involved && line.theirsPresent !== null) line.theirsPresent++ }
     const atSec = Math.round(e.t / 1000)
+    const rule = ruleEntryOf(tp.objectiveRules, e.kind, atSec)
+    const read = rule && rule.window && rule.refSec <= OBJECTIVE_RULES_SPEC.prio.untilSec
     events.push({
       kind: e.kind, atSec, clock: clock(atSec), ours, involved, reason, participated: ours && involved, killed: reason === 'kill', ...(e.subType ? { subType: e.subType } : {}),
       ...(e.lane ? { lane: e.lane } : {}), vodSeekSec: Math.max(0, atSec - VOD_LEAD_SEC),
+      prio: read ? pillOf(rule!.sideLane) : null, prioMid: read ? pillOf(rule!.mid) : null,
+      crossmap: !ours && rule?.contested === false ? rule.crossmap?.verdict ?? null : null,
+      crossed: !ours && rule?.contested === false && rule.crossmap ? rule.crossmap.crossed.includes(pid) : null,
     })
   }
   return { byKind: [...lines.values()], events }
@@ -741,7 +767,7 @@ function gameLines(g: PlayerGameInput, gameIndex: number, ctx: LineContext): { l
       deathEvents = deaths.map((k) => eventOf(k, 'death', evCtx))
       killEvents = killed.map((k) => eventOf(k, 'kill', evCtx))
       objectives = buildObjectiveParticipation(tp, pid, ourTeamId)
-      objectiveRules = ruleCountsOf(tp.objectiveRules, pid)
+      objectiveRules = ruleCountsOf(tp.objectiveRules, pid, contextOfQueue((g.matchJson as { info?: { queueId?: unknown } } | null)?.info?.queueId))
     }
 
     const at = (m: number, a: TimelinePlayerSeries | undefined, b: TimelinePlayerSeries | undefined): DiffPoint => ({

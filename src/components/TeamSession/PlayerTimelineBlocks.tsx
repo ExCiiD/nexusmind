@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils'
 import type { Highlight, HighlightId, LaneSide, LaneSnap, ObjectiveEvent, ObjectiveLine, PlayerEvent, PlayerExtras, SessionExtras } from '@/lib/playerSessionStatsCore'
 import { localGameIdOf, localGamesByMatch, needsMatchLookup } from '@/lib/vodResolve'
 import { groupEvents, groupKills, mmss, participationPct, seriesRuns, summarizeEvents, vodHref, zonesOf } from '@/lib/playerSheetView'
+import { eventPills } from '@/lib/ruleView'
+import { RulePills } from './RuleParts'
 import { Section, WhyEmpty, num, signed, tone, kfmt, useIndivView, useReason, type IndivCtx } from './PlayerIndivBlocks'
 
 /* ── VOD: « Revoir » ── */
@@ -325,7 +327,7 @@ export function ObjectivesBlock(ctx: IndivCtx) {
             {kindFilter && visible.length === 0 && <p className="text-xs text-hextech-text-dim">{t('playerSheet.objFilterNone')}</p>}
             {visible.length > 0 && (
               <ul className="divide-y divide-hextech-border-dim/60" aria-label={t('playerSheet.objEvents')}>
-                {shown.map(({ e, gameId, gameIndex }) => <ObjectiveEventRow key={`${gameId}-${e.kind}-${e.atSec}`} e={e} gameIndex={gameIndex} recordingId={rec[gameId]} showGame={!single} />)}
+                {shown.map(({ e, gameId, gameIndex }) => <ObjectiveEventRow key={`${gameId}-${e.kind}-${e.atSec}`} e={e} role={ctx.role} gameIndex={gameIndex} recordingId={rec[gameId]} showGame={!single} />)}
               </ul>
             )}
             {visible.length > OBJECTIVE_EVENTS_COLLAPSED && (
@@ -340,7 +342,7 @@ export function ObjectivesBlock(ctx: IndivCtx) {
   )
 }
 
-function ObjectiveEventRow({ e, gameIndex, recordingId, showGame }: { e: ObjectiveEvent; gameIndex: number; recordingId: string | null | undefined; showGame: boolean }) {
+function ObjectiveEventRow({ e, role, gameIndex, recordingId, showGame }: { e: ObjectiveEvent; role: string; gameIndex: number; recordingId: string | null | undefined; showGame: boolean }) {
   const { t } = useTranslation()
   const why = e.reason ? ` (${t(`playerSheet.objReason.${e.reason}`)})` : ''
   const noPit = e.kind === 'tower'
@@ -353,7 +355,7 @@ function ObjectiveEventRow({ e, gameIndex, recordingId, showGame }: { e: Objecti
       {showGame && <span className="font-mono text-[11px] text-hextech-gold">G{gameIndex}</span>}
       <span className="text-hextech-text">{t(`playerSheet.obj.${e.kind}`)}{e.subType ? ` · ${e.subType}` : ''}{e.lane ? ` · ${e.lane}` : ''}</span>
       <span className={cn(e.ours && e.involved ? 'text-hextech-green' : e.ours ? 'text-hextech-text-dim' : 'text-hextech-red/80')}>{who}</span>
-      <span className="ml-auto"><ReviewButton recordingId={recordingId} seekSec={e.vodSeekSec} clock={e.clock} game={gameIndex} /></span>
+      <span className="ml-auto flex items-center gap-2"><RulePills {...eventPills(e, role)} /><ReviewButton recordingId={recordingId} seekSec={e.vodSeekSec} clock={e.clock} game={gameIndex} /></span>
     </li>
   )
 }

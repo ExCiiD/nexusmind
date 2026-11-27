@@ -10,7 +10,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { fail } from './supabaseErrors'
 import { resolveOurTeamId } from './matchSide'
 import { isCurrentTimeline, hasCurrentPlayers, hasWardEvents, hasObjectiveRules } from './teamTimelineCore'
-import { ruleCountsOf, sumRuleCounts, type RuleCounts } from './objectiveRuleFigures'
+import { contextOfQueue, ruleCountsOf, sumRuleCounts, type RuleCounts } from './objectiveRuleFigures'
 import { MIN_GAME_SECONDS } from './weeklyAwardsCore'
 import type { TeamGameTimeline } from './analyst'
 import {
@@ -309,7 +309,7 @@ export function buildGameCollective(g: PlayerGameInput, gameIndex: number, membe
     conversion: ready ? buildConversion(ready, us) : null,
     setup: ready ? buildSetup(ready, us) : null,
     deaths: ready && ready.players.some((p) => p.x) ? buildDeathBreakdown(ready, ourPids) : null,
-    rules: ready ? ruleCountsOf(ready.objectiveRules, null) : null,
+    rules: ready ? ruleCountsOf(ready.objectiveRules, null, contextOfQueue((match as { info?: { queueId?: unknown } } | null)?.info?.queueId)) : null,
     kp,
   }
 }

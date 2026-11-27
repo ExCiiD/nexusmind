@@ -15,10 +15,10 @@ import type { SessionCollective } from './teamCollectiveStatsCore'
 export type {
   PlayerGameStats, PlayerSessionStats, PlayerSessionTotals, RadarAxis, RadarAxisKey, VsOpponent, DiffPoint,
   Baseline30d, EventSummary, Highlight, Highlights, HighlightId, LaneSide, LaneSnap, LaneSummary, MapZone, MinuteDiffs, ObjectiveEvent,
-  ObjectiveKind, ObjectiveLine, InvolvementReason, ObjectiveParticipation, PlayerEvent, PlayerExtras, SessionExtras, TimelineStatus, UnavailableGame,
+  ObjectiveKind, ObjectiveLine, InvolvementReason, PrioPill, ObjectiveParticipation, PlayerEvent, PlayerExtras, SessionExtras, TimelineStatus, UnavailableGame,
 } from './playerSessionStatsCore'
 // Prio before objectives, crossmap on objectives given up, duo botlane (27/11/2026): figures of a player / of the team (additive).
-export type { RuleCounts, PrioTally, DuoSplit, CrossmapSplit } from './objectiveRuleFigures'
+export type { RuleCounts, PrioTally, DuoSplit, CrossmapSplit, ContextFigures, GameContext } from './objectiveRuleFigures'
 export type { LaneRead, PrioState, PrioProof, PrioSignal, CrossVerdict, DuoFault, DuoReason, RuleKind } from './microReview/objectiveRules'
 
 export type SessionKind = 'flex' | 'scrim' | 'tournament' | 'meeting' | 'other'

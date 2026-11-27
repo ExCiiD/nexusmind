@@ -290,3 +290,11 @@ Points ouverts : (A) vocabulaire sûre / estimée (§ A.1) ; (B) split soloQ /
 équipe du chiffre mis en avant : le contrat ne le porte pas encore (`RuleCounts`
 n'a pas de file de jeu) ; (C) ligne « Late game (après 20:00) » du § 4.1 du
 rapport : pas dans `RuleCounts`, non maquettée.
+
+### A.6 Frames Penpot (page « Prio, crossmap & duo — chiffres »)
+
+| Frame | Contenu | Export |
+|---|---|---|
+| OR · P — Fiche joueur, carte par rôle | ADC, support, jungle, mid, top ; états sans timeline / partielle / rien à lire | `docs/design/objective-rules/P-fiche-joueur-par-role.png` |
+| OR · S — Stats collectives, section 8 ouverte | sections 1-7 fermées, section 8 ouverte (prio par objectif, jungle, pris par eux, duo) | `docs/design/objective-rules/S-stats-collectives-section8.png` |
+| OR · L — Placement + pastilles de la liste | carte sous « Participation aux objectifs », pastilles « prio » et « crossmap » | `docs/design/objective-rules/L-placement-pastilles.png` |
