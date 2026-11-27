@@ -59,6 +59,8 @@ export const CORS_HEADERS = {
   'access-control-allow-methods': 'GET, OPTIONS',
   'access-control-allow-headers': 'authorization, x-nxm-priority',
   'access-control-max-age': '600',
+  // Without this a browser hides retry-after and x-rate-limit-type from the web client (not CORS-safelisted).
+  'access-control-expose-headers': 'retry-after, x-rate-limit-type',
 }
 
 /** P1-2: `background` for scouts and synergy, anything else (or nothing, older apps) counts as interactive. */
@@ -139,9 +141,14 @@ export async function handleRequest(req: Request, env: HandlerEnv, deps: Handler
       const slot = await deps.budget.acquire(route.host, priority, user.sub)
       if (!slot.ok) {
         metric('proxy_limited', 429)
+        // A full window seen by a background call is the background reserve (interactive and game-end calls still have
+        // theirs): only that case is renamed. riot_backoff (Riot really answered 429) and an interactive window stay global.
+        const limitType = slot.reason === 'user_share' ? 'proxy-user-share'
+          : slot.reason === 'window' && priority === 'background' ? 'proxy-background-reserve'
+          : 'proxy-global'
         return json(429, { error: slot.reason === 'user_share' ? 'user_share_exceeded' : 'proxy_rate_limited' }, {
           'retry-after': String(Math.max(1, Math.ceil(slot.retryAfterMs / 1000))),
-          'x-rate-limit-type': slot.reason === 'user_share' ? 'proxy-user-share' : 'proxy-global',
+          'x-rate-limit-type': limitType,
         })
       }
     } catch (err) {

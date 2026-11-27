@@ -217,6 +217,29 @@ describe('request flow', () => {
     expect(store.data.size).toBe(0)
   })
 
+  it('B3: only a full window seen by a background call is proxy-background-reserve', async () => {
+    const typeOf = async (reason: 'window' | 'riot_backoff' | 'user_share', headers: Record<string, string>, url = IDS_URL) => {
+      const { call } = setup({}, { acquire: vi.fn(async () => ({ ok: false as const, retryAfterMs: 4200, reason })), penalize: vi.fn(async () => {}) })
+      return (await call(url, headers)).headers.get('x-rate-limit-type')
+    }
+    expect(await typeOf('window', { 'x-nxm-priority': 'background' })).toBe('proxy-background-reserve')
+    expect(await typeOf('window', {})).toBe('proxy-global')
+    expect(await typeOf('riot_backoff', { 'x-nxm-priority': 'background' })).toBe('proxy-global')
+    expect(await typeOf('user_share', { 'x-nxm-priority': 'background' })).toBe('proxy-user-share')
+  })
+
+  it('B1: retry-after and x-rate-limit-type are exposed to browsers on every kind of answer', async () => {
+    const expected = 'retry-after, x-rate-limit-type'
+    const { call, store } = setup()
+    expect((await handleRequest(new Request(IDS_URL, { method: 'OPTIONS' }), { RIOT_API_KEY: 'x' }, { verifyUser: async () => null, fetchRiot: vi.fn(), waitUntil: () => {} } as any)).headers.get('access-control-expose-headers')).toBe(expected) // preflight
+    expect((await call(IDS_URL)).headers.get('access-control-expose-headers')).toBe(expected) // Riot answer
+    expect((await call(MATCH_URL)).headers.get('access-control-expose-headers')).toBe(expected) // miss
+    store.data.set('europe/lol/match/v5/matches/EUW1_7', '{}')
+    expect((await call(MATCH_URL)).headers.get('access-control-expose-headers')).toBe(expected) // R2 hit
+    const full = setup({}, { acquire: vi.fn(async () => ({ ok: false as const, retryAfterMs: 1000, reason: 'window' as const })), penalize: vi.fn(async () => {}) })
+    expect((await full.call(IDS_URL)).headers.get('access-control-expose-headers')).toBe(expected) // json()
+  })
+
   it('P1-2: a full budget answers 429 with Retry-After before Riot, and a stored game still passes', async () => {
     const acquire = vi.fn(async () => ({ ok: false as const, retryAfterMs: 4200 }))
     const { call, riot, store } = setup({}, { acquire, penalize: vi.fn(async () => {}) })

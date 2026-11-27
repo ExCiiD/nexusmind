@@ -6,6 +6,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 
 vi.mock('../../electron/main/riotTransport', () => ({
   prepareRiotRequest: async (url: string) => ({ url, headers: {} }),
+  riotTransportMode: () => 'direct',
   RiotAuthError: class RiotAuthError extends Error {},
 }))
 

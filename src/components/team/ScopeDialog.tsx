@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import type { FetchScope } from '@/lib/riotLimits'
+import { isWebApp } from '@/lib/isWebApp'
 
 /**
  * Scope of a fetch (champion-pool fill, opponent scout):
@@ -41,6 +42,8 @@ interface Props {
 export function ScopeDialog({ open, playerCount = 1, actionLabel, onCancel, onConfirm }: Props) {
   const { t } = useTranslation()
   const [busy, setBusy] = useState<FetchScope | null>(null)
+  // The web has no disk cache and its scouts run behind the screen's own requests, not in front of them.
+  const web = isWebApp()
 
   // Rough time hints based on a Personal key (100 req per 120s). These
   // numbers don't need to be exact — they exist so the user can make an
@@ -109,7 +112,7 @@ export function ScopeDialog({ open, playerCount = 1, actionLabel, onCancel, onCo
               perPlayer: completePerPlayer,
               count: Math.max(1, playerCount),
             })}
-            warning={t('team.scope.completeWarning', {
+            warning={web ? t('team.scope.completeWarningWeb') : t('team.scope.completeWarning', {
               defaultValue: 'You can keep using the rest of the app, but new Riot calls (other scouts, dashboard refresh) will queue behind this one.',
             })}
             accent="amber"
@@ -120,7 +123,7 @@ export function ScopeDialog({ open, playerCount = 1, actionLabel, onCancel, onCo
         <div className="text-[10px] text-hextech-text-dim italic flex items-start gap-1.5">
           <Clock className="h-3 w-3 shrink-0 mt-px" />
           <span>
-            {t('team.scope.cacheNote', {
+            {web ? t('team.scope.cacheNoteWeb') : t('team.scope.cacheNote', {
               defaultValue: 'Previously-scanned matches are cached on disk — every subsequent fetch is near-instant.',
             })}
           </span>

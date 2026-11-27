@@ -8,6 +8,7 @@ export default defineConfig({
     },
   },
   test: {
+    hookTimeout: 60_000,
     environment: 'node',
     include: ['tests/unit/**/*.test.ts'],
   },

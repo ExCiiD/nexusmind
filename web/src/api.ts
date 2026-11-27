@@ -1,7 +1,8 @@
 import * as core from '@/lib/collabCore'
 import * as notifications from '@/lib/notificationsCore'
 import * as team from '@/lib/teamCore'
-import { scoutMemberWeb, autoFillPoolWeb } from './scoutingWeb'
+import { assertScoutMemberCount } from '@/lib/scoutEngine'
+import { scoutMemberWeb, autoFillPoolWeb, scoutTeamWeb, scoutCancelWeb, onScoutProgressWeb } from './scoutingWeb'
 import { computeCombinedStatsWeb, computeCustomStatsWeb, computeTeamSynergyStatsWeb, listCustomGamesWeb } from './teamStatsWeb'
 import { analystWebApi } from './analystWeb'
 import { cardChampionWebApi } from './cardChampionWeb'
@@ -542,10 +543,17 @@ export const webApi = {
     await team.removePoolEntry(sb, entryId)
     return { ok: true as const }
   },
-  async scoutMember(memberId: string, count?: number, opts?: { roleOnly?: boolean }) {
+  async scoutMember(memberId: string, count?: number, opts?: { roleOnly?: boolean; scoutId?: string }) {
     const member = await team.getRosterMember(sb, memberId)
     return scoutMemberWeb(member, count, opts)
   },
+  async scoutTeam(memberIds: string[], opts?: { count?: number; roleOnly?: boolean; scoutId?: string }) {
+    assertScoutMemberCount(memberIds.length) // before any roster is read
+    const rosters = await Promise.all(memberIds.map((id) => team.getRosterMember(sb, id)))
+    return scoutTeamWeb(rosters, opts)
+  },
+  scoutCancel: async (scoutId: string) => scoutCancelWeb(scoutId),
+  onScoutProgress: onScoutProgressWeb,
   async autoFillPool(memberId: string, opts?: { matchCount?: number; masteryCount?: number; roleOnly?: boolean }) {
     const member = await team.getRosterMember(sb, memberId)
     return autoFillPoolWeb(member, opts)

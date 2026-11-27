@@ -546,8 +546,17 @@ const api = {
   upsertChampionPool: (memberId: string, championKey: string, role: string, data: Record<string, unknown>) =>
     ipcRenderer.invoke('team:pool-upsert', memberId, championKey, role, data),
   removeChampionPoolEntry: (entryId: string) => ipcRenderer.invoke('team:pool-remove', entryId),
-  scoutMember: (memberId: string, count?: number, opts?: { roleOnly?: boolean }) =>
+  scoutMember: (memberId: string, count?: number, opts?: { roleOnly?: boolean; scoutId?: string }) =>
     ipcRenderer.invoke('team:scout-member', memberId, count, opts),
+  // Progressive team scout (docs/contracts/scouting-progressive.md): events on 'team:scout-progress'.
+  scoutTeam: (memberIds: string[], opts?: { count?: number; roleOnly?: boolean; scoutId?: string }) =>
+    ipcRenderer.invoke('team:scout-team', memberIds, opts),
+  scoutCancel: (scoutId: string) => ipcRenderer.invoke('team:scout-cancel', scoutId),
+  onScoutProgress: (callback: (event: import('../../src/lib/scoutEngine').ScoutEvent) => void) => {
+    const handler = (_e: unknown, event: import('../../src/lib/scoutEngine').ScoutEvent) => callback(event)
+    ipcRenderer.on('team:scout-progress', handler)
+    return () => { ipcRenderer.removeListener('team:scout-progress', handler) }
+  },
   autoFillPool: (memberId: string, opts?: { matchCount?: number; masteryCount?: number; overwriteTiers?: boolean; roleOnly?: boolean }) =>
     ipcRenderer.invoke('team:auto-fill-pool', memberId, opts),
   teamCardChampions: (memberId: string) => ipcRenderer.invoke('team:card-champions', memberId),

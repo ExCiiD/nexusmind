@@ -21,6 +21,10 @@ import { useBackgroundJobsStore } from '@/store/useBackgroundJobsStore'
 import { wrText } from '@/lib/winrate'
 import { riotErrorText } from '@/lib/riotErrors'
 import { useCollab } from '@/hooks/useCollab'
+import { ScoutProgressBanner } from '@/components/team/ScoutProgressBanner'
+import { isSessionExpiredMessage, scoutErrorKind, type ScoutLive, type ScoutLiveMember } from '@/store/scoutLive'
+import { isWebApp } from '@/lib/isWebApp'
+import type { ScoutPoolEntry } from '@/lib/scoutEngine'
 import { isLegacyStaff } from '@/lib/permissions'
 import type { PublishedDossier } from '@/lib/organisation'
 
@@ -65,6 +69,12 @@ export function ScoutingTab({ groupId }: { groupId?: string }) {
   // unique display names per team. Worst case both rows spin briefly.
   const startScoutOneJob = useBackgroundJobsStore((s) => s.runScoutOne)
   const startScoutAllJob = useBackgroundJobsStore((s) => s.runScoutAll)
+  const cancelJob = useBackgroundJobsStore((s) => s.cancelJob)
+  const dismissScoutLive = useBackgroundJobsStore((s) => s.dismissScoutLive)
+  // Progressive scout of the active team (lives in the store: it keeps going when the tab is left, and shows again on return).
+  const liveScout = useBackgroundJobsStore((s) => (activeId ? s.scoutLive[activeId] : undefined))
+  const liveJobId = useBackgroundJobsStore((s) => s.jobs.find((j) => j.scoutId && liveScout && j.scoutId === liveScout.scoutId)?.id ?? null)
+  const resumeScout = useBackgroundJobsStore((s) => s.resumeScout)
 
   const load = async () => {
     setLoading(true)
@@ -186,17 +196,24 @@ export function ScoutingTab({ groupId }: { groupId?: string }) {
         name: member.displayName,
       }),
       member,
+      teamId: activeId ?? undefined,
       scope,
-      onDone: ({ upserted, cancelled, rateLimited }) => {
-        if (cancelled) return
-        if (rateLimited) {
-          toast({ title: t('team.scouting.scoutFailed', { defaultValue: 'Scouting failed' }), description: riotErrorText(rateLimited, t), variant: 'destructive' })
+      onDone: ({ upserted, cancelled, rateLimited, failed, errorMessage }) => {
+        if (cancelled) { load(); return }
+        if (rateLimited || failed) {
+          // Never the raw message: the translated text of its class (the banner shows the same).
+          const e = scoutErrorKind(errorMessage)
+          toast({
+            title: t('team.scouting.scoutFailed', { defaultValue: 'Scouting failed' }),
+            description: rateLimited ? riotErrorText(rateLimited, t) : t(`team.scouting.live.err.${e.kind === 'rateLimited' && isWebApp() ? 'rateLimitedWeb' : e.kind}`, { bad: e.bad ?? 0, of: e.of ?? 0 }),
+            variant: 'destructive',
+          })
           load()
           return
         }
         toast({
           title: t('team.scouting.done', { defaultValue: 'Scouting complete' }),
-          description: `${upserted} champion entries.`,
+          description: t('team.scouting.scoutOneDoneDesc', { count: upserted }),
         })
         load()
       },
@@ -228,6 +245,7 @@ export function ScoutingTab({ groupId }: { groupId?: string }) {
         team: team.name,
       }),
       members: eligible,
+      teamId: team.id,
       scope,
       onDone: ({ ok, upserted, cancelled, failed, rateLimited }) => {
         if (cancelled) {
@@ -363,6 +381,10 @@ export function ScoutingTab({ groupId }: { groupId?: string }) {
           scoutingMemberName={scoutingMemberId}
           onScout={handleScout}
           onScoutAll={() => handleScoutAll(activeTeam)}
+          live={liveScout}
+          onCancelLive={() => { if (liveJobId) cancelJob(liveJobId) }}
+          onDismissLive={() => dismissScoutLive(activeTeam.id)}
+          onResumeLive={() => { void resumeScout(activeTeam.id, load) }}
           onOpenDossier={groupId ? () => setDossier(opponentKeyOf(activeTeam.name)) : undefined}
         />
       ) : (
@@ -402,8 +424,13 @@ export function ScoutingTab({ groupId }: { groupId?: string }) {
   )
 }
 
-function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAll, onOpenDossier }: {
+function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAll, onOpenDossier, live, onCancelLive, onDismissLive, onResumeLive }: {
   team: Team
+  /** Progressive scout of this team (running or just finished), if any. */
+  live?: ScoutLive
+  onCancelLive: () => void
+  onDismissLive: () => void
+  onResumeLive?: () => void
   onChange: () => void
   /** Display name of the member currently being scouted by ANY active
    *  background job. Used for row-level spinner. Null when nothing is
@@ -557,6 +584,12 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
           )}
         </div>
 
+        {live && (
+          <div className="mb-3">
+            <ScoutProgressBanner live={live} onCancel={onCancelLive} onDismiss={onDismissLive} onRetry={onResumeLive} />
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
           {byRole.map(({ role, member }) => (
             <div key={role} className="border border-hextech-border rounded p-2 space-y-1">
@@ -572,7 +605,7 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
                       aria-label={t('team.scouting.scoutOneAria', { name: member.displayName })}
                       className="text-hextech-gold hover:text-hextech-gold-bright disabled:opacity-30"
                     >
-                      {scoutingMemberName === member.displayName ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <RefreshCw className="h-3 w-3" aria-hidden />}
+                      {(scoutingMemberName === member.displayName || live?.members[member.id]?.status === 'running') ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <RefreshCw className="h-3 w-3" aria-hidden />}
                     </button>
                     <button
                       type="button"
@@ -593,7 +626,7 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
                       {member.ign}{member.tagLine ? `#${member.tagLine}` : ''}
                     </p>
                   )}
-                  <MemberPoolPreview member={member} />
+                  <MemberPoolPreview member={member} live={live?.members[member.id]} version={live?.finishedAt ?? 0} />
                 </>
               ) : (
                 <p className="text-[10px] text-hextech-text-dim italic text-center py-3">{t('team.scouting.emptySlot')}</p>
@@ -658,17 +691,32 @@ function OpponentDetail({ team, onChange, scoutingMemberName, onScout, onScoutAl
   )
 }
 
-function MemberPoolPreview({ member }: { member: TeamMember }) {
+/** The progressive scout's pool, in the shape of the stored one (playRate = games), so one aggregation serves both. */
+function livePoolAsEntries(member: TeamMember, pool: ScoutPoolEntry[]): ChampionPoolEntry[] {
+  return pool.map((e) => ({
+    id: `live-${e.championKey}-${e.role}`, memberId: member.id, championKey: e.championKey, role: e.role, tier: e.tier,
+    playRate: e.games, winRate: e.winRate, masteryPoints: e.masteryPoints, updatedAt: '',
+  }))
+}
+
+/** 142 300 → « 142k » (mastery points shown on a mastery-only champion, which has no game yet). */
+function shortPoints(n: number): string {
+  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : String(n)
+}
+
+function MemberPoolPreview({ member, live, version = 0 }: { member: TeamMember; live?: ScoutLiveMember; version?: number }) {
   const { t } = useTranslation()
   const [pool, setPool] = useState<ChampionPoolEntry[]>([])
+  const liveActive = !!live && live.poolSource !== 'none' && (live.status === 'mastery' || live.status === 'running' || live.status === 'done')
 
+  // `version` changes when a scout finishes: the pools written at member-done are read again.
   useEffect(() => {
     let cancelled = false
     window.api.listChampionPool(member.id)
       .then((res) => { if (!cancelled) setPool(res) })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [member.id])
+  }, [member.id, version])
 
   // IMPORTANT: this useMemo MUST run on every render, even when pool is
   // empty — otherwise we hit React error #310 ("Rendered more hooks than
@@ -677,15 +725,17 @@ function MemberPoolPreview({ member }: { member: TeamMember }) {
   // Aggregate by championKey across ALL roles so the displayed game count
   // matches op.gg ("Aatrox 84 games") instead of just the assigned-role
   // subset ("Aatrox TOP 19 games").
+  const shown = useMemo(() => (liveActive && live ? livePoolAsEntries(member, live.pool) : pool), [liveActive, live, member, pool])
   const aggregated = useMemo(() => {
-    const byChamp = new Map<string, { championKey: string; games: number; wins: number; primaryRole: string; primaryGames: number }>()
-    for (const e of pool) {
+    const byChamp = new Map<string, { championKey: string; games: number; wins: number; primaryRole: string; primaryGames: number; mastery: number }>()
+    for (const e of shown) {
       const games = e.playRate ?? 0
       const wins = e.winRate != null ? Math.round((e.winRate / 100) * games) : 0
       const cur = byChamp.get(e.championKey)
       if (cur) {
         cur.games += games
         cur.wins += wins
+        cur.mastery = Math.max(cur.mastery, e.masteryPoints ?? 0)
         if (games > cur.primaryGames) {
           cur.primaryGames = games
           cur.primaryRole = e.role
@@ -697,32 +747,73 @@ function MemberPoolPreview({ member }: { member: TeamMember }) {
           wins,
           primaryRole: e.role,
           primaryGames: games,
+          mastery: e.masteryPoints ?? 0,
         })
       }
     }
     return Array.from(byChamp.values())
-      .sort((a, b) => b.games - a.games)
+      .sort((a, b) => b.games - a.games || b.mastery - a.mastery)
       .slice(0, 5)
-  }, [pool])
+  }, [shown])
 
-  if (pool.length === 0) {
-    return <p className="text-[9px] text-hextech-text-dim italic mt-1">{t('team.scouting.noPoolData')}</p>
-  }
+  const status = live && live.status !== 'waiting' ? live : null
+  const pct = live && live.total > 0 ? Math.min(100, Math.round((live.processed / live.total) * 100)) : 0
+  const provisional = !!live && (live.status === 'mastery' || live.status === 'running')
 
   return (
     <div className="space-y-0.5 mt-1">
-      <p className="text-[9px] uppercase tracking-wider text-hextech-text-dim">{t('team.scouting.topN', { n: aggregated.length })}</p>
-      <div className="flex gap-0.5 flex-wrap">
-        {aggregated.map((e) => (
-          <TinyChampIcon
-            key={e.championKey}
-            championKey={e.championKey}
-            count={e.games}
-            wins={e.wins}
-            role={e.primaryRole}
-          />
-        ))}
-      </div>
+      {shown.length === 0 ? (
+        live?.status === 'waiting' || live?.status === 'mastery' || live?.status === 'running'
+          ? <p className="text-[9px] text-hextech-text-dim italic mt-1">{t('team.scouting.live.memberWaiting')}</p>
+          : <p className="text-[9px] text-hextech-text-dim italic mt-1">{t('team.scouting.noPoolData')}</p>
+      ) : (
+        <>
+          <p className="text-[9px] uppercase tracking-wider text-hextech-text-dim">
+            {t('team.scouting.topN', { n: aggregated.length })}
+            {provisional && <span className="ml-1 normal-case italic text-hextech-gold/80" title={t('team.scouting.live.provisionalHint')}>· {live?.poolSource === 'mastery' ? t('team.scouting.live.byMastery') : t('team.scouting.live.partial')}</span>}
+          </p>
+          <div className="flex gap-0.5 flex-wrap">
+            {aggregated.map((e) => (
+              <TinyChampIcon
+                key={e.championKey}
+                championKey={e.championKey}
+                count={e.games}
+                label={e.games === 0 && e.mastery > 0 ? shortPoints(e.mastery) : undefined}
+                wins={e.wins}
+                role={e.primaryRole}
+              />
+            ))}
+          </div>
+        </>
+      )}
+      {status && (
+        <div className="space-y-0.5" data-scout-member-status={status.status}>
+          {status.status === 'running' && (
+            <>
+              <div className="h-1 bg-black/40 rounded overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={t('team.scouting.live.memberBarAria', { name: member.displayName })}>
+                <div className="h-full bg-hextech-gold transition-all duration-300" style={{ width: `${pct}%` }} />
+              </div>
+              <p className="text-[9px] text-hextech-text-dim font-mono">{t('team.scouting.live.memberGames', { done: status.processed, total: status.total })}</p>
+            </>
+          )}
+          {status.status === 'mastery' && <p className="text-[9px] text-hextech-text-dim italic">{t('team.scouting.live.memberListing')}</p>}
+          {status.status === 'done' && (status.totalMatches ?? 0) === 0 && (
+            <p className="text-[9px] text-hextech-text-dim italic">{t('team.scouting.live.memberNoGames')}</p>
+          )}
+          {status.status === 'done' && (status.totalMatches ?? 0) > 0 && (
+            <p className="text-[9px] text-emerald-400">
+              {t('team.scouting.live.memberDone', { count: status.totalMatches ?? status.total })}
+              {status.unreadable > 0 && <span className="text-amber-300"> · {t('team.scouting.live.memberUnreadable', { count: status.unreadable })}</span>}
+            </p>
+          )}
+          {status.status === 'cancelled' && <p className="text-[9px] text-amber-300">{t('team.scouting.live.memberCancelled')}</p>}
+          {status.status === 'error' && (
+            <p className="text-[9px] text-hextech-red">
+              {status.errorCode === 'RIOT_RATE_LIMITED' ? t('team.scouting.live.memberRateLimited') : isSessionExpiredMessage(status.errorMessage) ? t('team.scouting.live.memberSession') : t('team.scouting.live.memberFailed')}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -919,9 +1010,11 @@ function OpponentSynergyPanel({ team }: { team: Team }) {
   )
 }
 
-function TinyChampIcon({ championKey, count, wins, role }: {
+function TinyChampIcon({ championKey, count, wins, role, label }: {
   championKey: string
   count: number
+  /** Replaces the count badge (mastery points when no game is known yet). */
+  label?: string
   wins?: number
   role?: string
 }) {
@@ -937,7 +1030,7 @@ function TinyChampIcon({ championKey, count, wins, role }: {
       {/* Game count pinned bottom-right, slightly larger so it actually
           reads at scouting distance. */}
       <span className="absolute -bottom-0.5 -right-0.5 text-[9px] bg-black/85 text-hextech-gold px-0.5 rounded font-mono leading-tight">
-        {count}
+        {label ?? count}
       </span>
       {/* WR pinned top-right, colored by performance. Only shown when we
           have win data — saves visual noise for manually-added entries. */}

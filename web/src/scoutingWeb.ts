@@ -5,6 +5,7 @@ import { tierPool } from '@/lib/threatCore'
 import { championPlaysRole, type Role } from '@/lib/championRoles'
 import { updateRosterMember, upsertPoolEntry, listPoolForMember, removePoolEntry } from '@/lib/teamCore'
 import { RIOT_LIMITS } from '@/lib/riotLimits'
+import { runScout, toTeamResult, registerScout, releaseScout, assertScoutMemberCount, type ScoutDeps, type ScoutEvent, type ScoutMember, type ScoutTeamResult } from '@/lib/scoutEngine'
 
 /**
  * Web equivalents of team.ipc.ts's `team:scout-member` / `team:auto-fill-pool`
@@ -35,60 +36,22 @@ async function resolvePuuid(member: RosterLike): Promise<{ puuid: string; region
   return { puuid: acct.puuid, region }
 }
 
+/**
+ * One member, same shape as before (the single-member screens): runs through the SAME engine as the team scout
+ * (scoutTeamWeb), so it has the same pacing, cancel and error classification. A member error is thrown, like the desktop handler does.
+ */
 export async function scoutMemberWeb(
   member: RosterLike,
   count: number = RIOT_LIMITS.QUICK_SCOUT_MATCH_COUNT,
-  opts: { roleOnly?: boolean } = {},
+  opts: { roleOnly?: boolean; scoutId?: string } = {},
 ): Promise<{ upserted: number; totalMatches: number; sameRoleCount: number }> {
-  const roleOnly = opts.roleOnly ?? false
-  const { puuid, region } = await resolvePuuid(member)
-
-  const noCap = !Number.isFinite(count) || count <= 0 || count > RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL
-  const allSeasonIds = await riot.getSeasonMatchIds(puuid, region, undefined, riot.BACKGROUND)
-  const matchIds = noCap ? allSeasonIds : allSeasonIds.slice(0, Math.max(1, count))
-  if (matchIds.length === 0) return { upserted: 0, totalMatches: 0, sameRoleCount: 0 }
-
-  const [matches, idToKey, masteries] = await Promise.all([
-    riot.getMatchesBulk(matchIds, region, undefined, riot.BACKGROUND),
-    riot.getChampionIdToKey().catch(() => ({}) as Record<number, string>),
-    riot.getChampionMasteries(puuid, region, RIOT_LIMITS.MAX_MASTERY_COUNT, riot.BACKGROUND).catch(() => [] as Array<{ championId: number; championPoints: number }>),
-  ])
-  const masteryByKey = new Map<string, number>()
-  for (const m of masteries) {
-    const key = idToKey[m.championId]
-    if (key) masteryByKey.set(key, m.championPoints)
+  const r = await scoutTeamWeb([member], { count, roleOnly: opts.roleOnly, scoutId: opts.scoutId })
+  const m = r.members[0]
+  if (!m?.ok) {
+    if (m?.error?.code === 'RIOT_RATE_LIMITED') throw new riot.RiotWebError(m.error.message, 'rate-limited')
+    throw new Error(m?.error?.message ?? 'Scout failed')
   }
-
-  const { agg, sameRoleCount, history } = aggregateChampionPlays(matches, matchIds, puuid, { roleOnly, memberRole: member.role })
-
-  // Cleanup: drop previously auto-scouted entries no longer in the fresh
-  // scan, same intent as the desktop handler — keeps the pool tight to the
-  // member's current meta. Manual entries (playRate=null) are preserved.
-  if (roleOnly) {
-    const newKeys = new Set(Array.from(agg.values()).map((e) => `${e.championKey}|${e.role}`))
-    const existing = await listPoolForMember(sb, member.id)
-    for (const e of existing) {
-      if (e.playRate == null) continue
-      if (!newKeys.has(`${e.championKey}|${e.role}`)) await removePoolEntry(sb, e.id)
-    }
-  }
-
-  const entries = Array.from(agg.values())
-  const tiers = tierPool(entries.map((e) => ({
-    championKey: e.championKey, role: e.role, games: e.count, winRate: winRateOf(e),
-    masteryPoints: masteryByKey.get(e.championKey) ?? null, firstPlayedAt: e.firstAt ?? null, lastPlayedAt: e.lastAt ?? null,
-  })), { historyFrom: history.from, historyTo: history.to, allowNew: false })
-
-  let upserted = 0
-  for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i]
-    const winRate = winRateOf(entry)
-    const masteryPoints = masteryByKey.get(entry.championKey) ?? null
-    const kda = kdaOf(entry)
-    await upsertPoolEntry(sb, member.id, entry.championKey, entry.role, { tier: tiers[i], playRate: entry.count, winRate, masteryPoints, kda })
-    upserted++
-  }
-  return { upserted, totalMatches: matchIds.length, sameRoleCount }
+  return { upserted: m.upserted, totalMatches: m.totalMatches, sameRoleCount: m.sameRoleCount }
 }
 
 export async function autoFillPoolWeb(
@@ -158,4 +121,91 @@ export async function autoFillPoolWeb(
     upserted++
   }
   return { upserted, matchesUsed: matchIds.length, masteriesUsed: masteries.length }
+}
+
+// ── Progressive team scout (27/11/2026, docs/contracts/scouting-progressive.md) ──────────────────────────────
+// Same engine as the desktop (src/lib/scoutEngine.ts): masteries first, one download list for the whole team, most
+// recent games first, events to the screen. The browser has no persistent match cache (the proxy's shared store
+// answers games anyone already read without touching Riot's budget), so `loadCached` is empty here.
+
+type ScoutListener = (event: ScoutEvent) => void
+const scoutListeners = new Set<ScoutListener>()
+const activeScouts = new Map<string, { cancelled: boolean }>()
+/** A cancel that arrives before the scout is registered (the roster is read first) still stops it, like the desktop's. */
+const earlyCancels = new Set<string>()
+
+export function onScoutProgressWeb(cb: ScoutListener): () => void {
+  scoutListeners.add(cb)
+  return () => { scoutListeners.delete(cb) }
+}
+
+export function scoutCancelWeb(scoutId: string): { ok: true; found: boolean } {
+  const flag = activeScouts.get(scoutId)
+  if (flag) flag.cancelled = true
+  else {
+    earlyCancels.add(scoutId)
+    if (earlyCancels.size > 50) earlyCancels.delete(earlyCancels.values().next().value as string)
+  }
+  return { ok: true, found: !!flag }
+}
+
+export async function scoutTeamWeb(
+  rosters: RosterLike[],
+  opts: { count?: number; roleOnly?: boolean; scoutId?: string } = {},
+): Promise<ScoutTeamResult> {
+  const roleOnly = opts.roleOnly ?? false
+  const scoutId = opts.scoutId ?? `scout-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+  const byId = new Map(rosters.map((r) => [r.id, r]))
+  assertScoutMemberCount(rosters.length)
+  const flag = registerScout(activeScouts, scoutId, earlyCancels.delete(scoutId))
+  const idToKey = await riot.getChampionIdToKey().catch(() => ({}) as Record<number, string>)
+  const deps: ScoutDeps = {
+    resolveMember: (m) => resolvePuuid(byId.get(m.id)!),
+    getMasteries: async (_m, r) => {
+      const ms = await riot.getChampionMasteries(r.puuid, r.region, RIOT_LIMITS.MAX_MASTERY_COUNT, riot.BACKGROUND).catch(() => [] as Array<{ championId: number; championPoints: number }>)
+      return ms.flatMap((m) => (idToKey[m.championId] ? [{ championKey: idToKey[m.championId], championPoints: m.championPoints }] : []))
+    },
+    getSeasonIds: (_m, r) => riot.getSeasonMatchIds(r.puuid, r.region, undefined, riot.BACKGROUND),
+    loadCached: async () => new Map(),
+    fetchMatch: async (id, region) => {
+      try { return await riot.getMatch(id, region, riot.BACKGROUND) } catch (err) {
+        if ((err as { status?: number })?.status === 404) return null
+        throw err
+      }
+    },
+    saveMatch: async () => {},
+    async finalizeMember(m, _r, snap) {
+      const entries = snap.entries
+      if (roleOnly) {
+        const newKeys = new Set(entries.map((e) => `${e.championKey}|${e.role}`))
+        for (const e of await listPoolForMember(sb, m.id)) {
+          if (e.playRate != null && !newKeys.has(`${e.championKey}|${e.role}`)) await removePoolEntry(sb, e.id)
+        }
+      }
+      const tiers = tierPool(entries.map((e) => ({
+        championKey: e.championKey, role: e.role, games: e.count, winRate: winRateOf(e),
+        masteryPoints: e.masteryPoints || null, firstPlayedAt: e.firstAt ?? null, lastPlayedAt: e.lastAt ?? null,
+      })), { historyFrom: snap.history.from, historyTo: snap.history.to, allowNew: false })
+      for (let i = 0; i < entries.length; i++) {
+        const e = entries[i]
+        await upsertPoolEntry(sb, m.id, e.championKey, e.role, {
+          tier: tiers[i], playRate: e.count, winRate: winRateOf(e), masteryPoints: e.masteryPoints > 0 ? e.masteryPoints : null, kda: kdaOf(e),
+        })
+      }
+      return entries.length
+    },
+    emit: (ev) => { for (const l of scoutListeners) { try { l(ev) } catch { /* a listener must not stop the scout */ } } },
+    isCancelled: () => flag.cancelled,
+  }
+  try {
+    const members: ScoutMember[] = rosters.map((r) => ({ id: r.id, displayName: r.ign ?? r.id, role: r.role }))
+    const result = await runScout(deps, members, {
+      scoutId, count: opts.count ?? RIOT_LIMITS.QUICK_SCOUT_MATCH_COUNT, roleOnly,
+      concurrency: RIOT_LIMITS.MATCH_FETCH_CONCURRENCY, maxIds: RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL,
+      isFatal: (err) => (err as { status?: number })?.status === 401,
+    })
+    return toTeamResult(result)
+  } finally {
+    releaseScout(activeScouts, scoutId, flag)
+  }
 }

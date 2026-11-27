@@ -8,6 +8,7 @@ import { NotificationBell } from '@/components/Notifications/NotificationBell'
 import { AnnouncementBubbleStack } from '@/components/Announcements/AnnouncementBubbleStack'
 import { SessionCheckinToast } from '@/components/TeamSession/SessionCheckinToast'
 import { TeamSessionBanner } from '@/components/TeamSession/TeamSessionBanner'
+import { BackgroundJobsIndicator } from '@/components/BackgroundJobsIndicator'
 import { DownloadButton } from './DownloadButton'
 import { AscendMark } from '@/components/Brand/AscendMark'
 import { SkipLink } from '@/components/Layout/SkipLink'
@@ -65,6 +66,9 @@ export function WebLayout() {
       <div className="fixed right-4 top-4 z-30 md:hidden">
         <NotificationBell />
       </div>
+
+      {/* The progressive scout runs in the store: its pill stays visible on every page (above the mobile tab bar). */}
+      <BackgroundJobsIndicator bottomClass="bottom-20 md:bottom-4" />
 
       <main id="main" tabIndex={-1} className="px-[4vw] pb-24 pt-4 focus:outline-none md:ml-56 md:px-[3vw] md:pb-8 md:pt-8">
         <div className="w-full">

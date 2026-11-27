@@ -11,7 +11,9 @@ import { inBackground, withRiotPriority } from '../riotPriority'
 import { readFileSync, existsSync } from 'node:fs'
 import { basename } from 'node:path'
 import { getPrisma } from '../database'
-import { getMatchIds, getMatch, getAccountByRiotId, getChampionMasteries, getSeasonMatchIds } from '../riotClient'
+import { getMatchIds, getMatch, getAccountByRiotId, getChampionMasteries, getSeasonMatchIds, RiotNotFoundError } from '../riotClient'
+import { RiotAuthError } from '../riotTransport'
+import { runScout, toTeamResult, registerScout, releaseScout, MAX_SCOUT_MEMBERS, type ScoutDeps, type ScoutMember, type ScoutResult } from '../../../src/lib/scoutEngine'
 import { getChampionIdToKey } from '../dataDragon'
 import { championPlaysRole, type Role } from '../../../src/lib/championRoles'
 import { tierPool, NEW_PICK_DAYS } from '../../../src/lib/threatCore'
@@ -28,6 +30,9 @@ import { importGroupOpponents, rememberDismissedOpponent } from '../cloud/oppone
 import { importGroupPools, publishOwnPoolIfMine } from '../cloud/poolImport'
 import { z } from 'zod'
 import { validatedHandle, id as idSchema, shortText } from './validate'
+
+/** Games per member of a scout: -1 / 0 = the whole season, else a count (RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL at most). */
+const scoutCountSchema = z.number().int().min(-1).max(RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL)
 
 /** Cloud group ids (uuid). */
 const groupIdSchema = z.string().uuid()
@@ -89,6 +94,44 @@ async function getActiveUser() {
  */
 /** Games being downloaded right now (key region:matchId), shared by the scouts that run at the same time. */
 const inFlightMatches = new Map<string, Promise<any>>()
+
+/** Games Riot does not have (404), remembered for a few hours so a repeat scout does not ask again. */
+const missingMatches = new Map<string, { firstAt: number; checkedAt: number }>()
+const MISSING_TTL_MS = 6 * 3_600_000
+/** A game that just ended can 404 for a while (Riot's delay): it is asked again until a check made at least this long after the first 404 still finds it missing. */
+const MISSING_SETTLE_MS = 30 * 60_000
+const MISSING_MAX_ENTRIES = 5_000
+
+/**
+ * One game from Riot, shared with the scouts running at the same time (same in-flight map as getMatchesBulkCached).
+ * null = Riot does not have it. Throws on any other failure.
+ */
+async function fetchMatchShared(id: string, region: string): Promise<any | null> {
+  const missed = missingMatches.get(id)
+  if (missed && missed.checkedAt - missed.firstAt >= MISSING_SETTLE_MS && Date.now() - missed.checkedAt < MISSING_TTL_MS) return null
+  const flightKey = `${region}:${id}`
+  let flight = inFlightMatches.get(flightKey)
+  if (!flight) {
+    flight = getMatch(id, region)
+    inFlightMatches.set(flightKey, flight)
+    const clear = () => { inFlightMatches.delete(flightKey) }
+    flight.then(clear, clear)
+  }
+  try {
+    const match = await flight
+    missingMatches.delete(id) // it exists after all (Riot's delay): forget the 404
+    return match
+  } catch (err) {
+    if (err instanceof RiotNotFoundError) {
+      const now = Date.now()
+      missingMatches.delete(id) // re-inserted last: the oldest entries are the first to go
+      missingMatches.set(id, { firstAt: missed?.firstAt ?? now, checkedAt: now })
+      if (missingMatches.size > MISSING_MAX_ENTRIES) missingMatches.delete(missingMatches.keys().next().value as string)
+      return null
+    }
+    throw err
+  }
+}
 
 async function getMatchesBulkCached(
   matchIds: string[],
@@ -738,145 +781,154 @@ export function registerTeamHandlers() {
   // ── Scouting ─────────────────────────────────────────────────────────────
 
   /**
-   * Auto-populates a TeamMember's champion pool by fetching their last N
-   * games via the Riot API and aggregating champion plays per role.
-   *
-   * Requires the member to have `ign` + `tagLine` + `region` set. Returns
-   * the number of pool entries created/updated.
+   * Progressive scout (27/11/2026, docs/contracts/scouting-progressive.md): one or several members at once, masteries
+   * first (instant pool), ONE download list for the whole team (a game two scouted players share is read once), most
+   * recent games first, partial pools sent to the renderer as `team:scout-progress` events. Same final write as
+   * before (cleanup, tiers, scout cache), per member, the moment their games are all analysed.
    */
-  handleInBackground('team:scout-member', async (_e, memberId: string, count = 100, opts: { roleOnly?: boolean } = {}) => {
-    // Default to UNFILTERED so the champion counts match op.gg's view:
-    // op.gg shows "Aatrox 84g" across all roles, not just TOP. A flex
-    // player who plays 50 TOP + 34 JG on Aatrox should appear as 84g,
-    // since opponents care about WHAT this player can pick — not just
-    // what they pick in their preferred lane. Callers can opt back into
-    // strict role filtering via `opts.roleOnly = true` (Champion Pool
-    // tab's auto-fill, for example).
+  const activeScouts = new Map<string, { cancelled: boolean }>()
+  /** A cancel that arrived before its scout was registered (the scout then starts already cancelled). */
+  const earlyCancels = new Set<string>()
+
+  async function scoutMembersDesktop(
+    sender: Electron.WebContents | null,
+    memberIds: string[],
+    opts: { count?: number; roleOnly?: boolean; scoutId?: string; emitProgress?: boolean },
+  ): Promise<ScoutResult> {
+    // Default to UNFILTERED so the champion counts match op.gg's view (a flex player who plays 50 TOP + 34 JG on
+    // Aatrox appears as 84 games). Callers can opt back into strict role filtering.
     const roleOnly = opts.roleOnly ?? false
+    const count = opts.count ?? RIOT_LIMITS.QUICK_SCOUT_MATCH_COUNT
+    const scoutId = opts.scoutId ?? `scout-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+    // Registered FIRST: a cancel received while the rows are being read must find the scout.
+    // Refuses a duplicate id and more than MAX_ACTIVE_SCOUTS at once (TOO_MANY_SCOUTS).
+    const flag = registerScout(activeScouts, scoutId, earlyCancels.delete(scoutId))
+    try {
     const prisma = getPrisma()
-    const member = await prisma.teamMember.findUnique({ where: { id: memberId } })
-    if (!member) throw new Error('Member not found')
-
-    let puuid = member.puuid
-    let region = member.region
-    if (!puuid) {
-      if (!member.ign || !member.tagLine || !member.region) {
-        throw new Error('Member needs IGN + tagLine + region to be scouted')
-      }
-      const acct = await getAccountByRiotId(member.ign, member.tagLine, member.region)
-      if (!acct?.puuid) throw new Error('Could not resolve Riot account')
-      puuid = acct.puuid
-      region = member.region
-      await prisma.teamMember.update({ where: { id: memberId }, data: { puuid } })
-    }
-    if (!region) throw new Error('Region missing')
-
-    // Fetch ranked + clash game IDs for the current split (SoloQ + Flex +
-    // Clash, paginated). The cap is now driven by the wire `count` param:
-    //   - count = 100 (default)  → ~2 min on Personal key, default "quick"
-    //   - count = 500            → ~10 min on Personal key, "deep" scout
-    //   - count = -1 or large    → no cap, fetch every season match Riot
-    //                              returns (~30 min worst case on Personal,
-    //                              fast on Production). Used by the "Complete"
-    //                              scope dialog option.
-    // We still apply a sanity ceiling (~max season-list payload from
-    // getSeasonMatchIds: 1000 solo + 1000 flex + 500 clash) so a runaway
-    // caller can't accidentally allocate forever.
+    memberIds = Array.from(new Set(memberIds)) // the same member twice would be scouted (and written) twice
+    const rows = await prisma.teamMember.findMany({ where: { id: { in: memberIds } } })
+    const rowById = new Map(rows.map((r) => [r.id, r]))
+    const members: ScoutMember[] = memberIds.filter((id) => rowById.has(id)).map((id) => {
+      const r = rowById.get(id)!
+      return { id, displayName: r.displayName, role: r.role }
+    })
+    if (members.length === 0) throw new Error('Member not found')
     const noCap = !Number.isFinite(count) || count <= 0 || count > RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL
-    const scoutStart = Date.now()
-    // E15: incremental — a repeat "quick" scout only asks Riot for games
-    // since the last one; "Complete" (noCap) always relists from scratch.
-    const allSeasonIds = await getSeasonMatchIdsIncremental(member, puuid, region, noCap)
-    const matchIds = noCap ? allSeasonIds : allSeasonIds.slice(0, Math.max(1, count))
-    if (matchIds.length === 0) return { upserted: 0, totalMatches: 0, sameRoleCount: 0 }
-
-    const memberRole = (member.role || '').toUpperCase()
-    let sameRoleCount = 0
-
-    // Aggregate champion plays per role using the persistent MatchCache —
-    // each match is fetched at most once across the lifetime of the install.
-    // Mastery is fetched in parallel so we can attach it to the upsert below
-    // (needed for the Draft Sim threat highlights). Mastery is one cheap
-    // call per scout, vs hundreds of match fetches, so we always grab it.
-    const fetchStart = Date.now()
     const idToKey = await getChampionIdToKey().catch(() => ({} as Record<number, string>))
-    const [matches, masteries] = await Promise.all([
-      getMatchesBulkCached(matchIds, region),
-      getChampionMasteries(puuid, region, RIOT_LIMITS.MAX_MASTERY_COUNT).catch((err) => {
-        console.warn('[scout-member] mastery fetch failed:', (err as Error)?.message)
-        return [] as Awaited<ReturnType<typeof getChampionMasteries>>
-      }),
-    ])
-    const masteryByKey = new Map<string, number>()
-    for (const m of masteries) {
-      const key = idToKey[m.championId]
-      if (key) masteryByKey.set(key, m.championPoints)
-    }
-    const fetchMs = Date.now() - fetchStart
-    console.info(`[scout-member] ${member.displayName}: ${matchIds.length} matches, ${matches.size} resolved in ${(fetchMs / 1000).toFixed(1)}s (${(matches.size / (fetchMs / 1000)).toFixed(1)} req/s effective)`)
-    const playCount = new Map<string, PoolAgg>()
-    // Span of every analysed game, any role: tells the "new" rule how far
-    // back the data looks, and the recency rule when the player last played.
-    const history = { from: null as number | null, to: null as number | null }
-    let failed = 0
-    for (const id of matchIds) {
-      const match = matches.get(id)
-      if (!match) { failed++; continue }
-      const participant = match?.info?.participants?.find((p: any) => p.puuid === puuid)
-      if (!participant) continue
-      const at = matchStartOf(match)
-      stretch(history, at)
-      const role = normalizeRole(participant.teamPosition || participant.individualPosition)
-      if (!role || role === 'UNKNOWN' || role === 'INVALID' || role === 'NONE') continue
-      if (roleOnly && memberRole && role !== memberRole) continue
-      sameRoleCount++
-      const key = `${participant.championName}|${role}`
-      let entry = playCount.get(key)
-      if (!entry) {
-        entry = {
-          championKey: participant.championName, role, count: 0, wins: 0, kills: 0, deaths: 0, assists: 0,
-          masteryPoints: masteryByKey.get(participant.championName) ?? null, firstAt: null, lastAt: null,
+
+    const deps: ScoutDeps = {
+      async resolveMember(m) {
+        const member = rowById.get(m.id)!
+        let puuid = member.puuid
+        if (!puuid) {
+          if (!member.ign || !member.tagLine || !member.region) throw new Error('Member needs IGN + tagLine + region to be scouted')
+          const acct = await getAccountByRiotId(member.ign, member.tagLine, member.region)
+          if (!acct?.puuid) throw new Error('Could not resolve Riot account')
+          puuid = acct.puuid
+          await prisma.teamMember.update({ where: { id: m.id }, data: { puuid } })
         }
-        playCount.set(key, entry)
-      }
-      addPlay(entry, participant, at)
+        if (!member.region) throw new Error('Region missing')
+        return { puuid, region: member.region }
+      },
+      // Same priority as the web (background: the proxy classes the mastery route as background anyway).
+      getMasteries: (_m, r) => (async () => {
+        const ms = await getChampionMasteries(r.puuid, r.region, RIOT_LIMITS.MAX_MASTERY_COUNT).catch((err) => {
+          console.warn('[scout] mastery fetch failed:', (err as Error)?.message)
+          return [] as Awaited<ReturnType<typeof getChampionMasteries>>
+        })
+        return ms.flatMap((m) => (idToKey[m.championId] ? [{ championKey: idToKey[m.championId], championPoints: m.championPoints }] : []))
+      })(),
+      // E15: incremental, a repeat scout only asks Riot for the games since the last one ("Complete" relists).
+      getSeasonIds: (m, r) => getSeasonMatchIdsIncremental(rowById.get(m.id)!, r.puuid, r.region, noCap),
+      async loadCached(ids) {
+        const out = new Map<string, any>()
+        const cached = await prisma.matchCache.findMany({ where: { matchId: { in: ids } }, select: { matchId: true, matchJson: true } })
+        for (const row of cached) {
+          try { out.set(row.matchId, JSON.parse(row.matchJson)) } catch { /* corrupt row: treated as a miss and downloaded again */ }
+        }
+        return out
+      },
+      fetchMatch: (id, region) => fetchMatchShared(id, region),
+      async saveMatch(id, match) {
+        // AWAITED: SQLite serialises writes anyway, and a fire-and-forget pile of them starves the other IPC handlers.
+        try {
+          const json = JSON.stringify(match)
+          await prisma.matchCache.upsert({ where: { matchId: id }, create: { matchId: id, matchJson: json }, update: { matchJson: json } })
+        } catch (dbErr) {
+          console.warn('[scout] cache write failed for', id, (dbErr as Error)?.message)
+        }
+      },
+      async finalizeMember(m, _r, snap, allSeasonIds) {
+        // Cleanup pass. Removes pre-normalization entries with raw Riot role names (MIDDLE/BOTTOM/UTILITY, dead data
+        // the Draft Sim can never show) and, with roleOnly, auto-scouted entries no longer in the fresh scan.
+        // Manual entries (playRate=null) are always preserved.
+        const newKeys = new Set(snap.entries.map((e) => `${e.championKey}|${e.role}`))
+        const existing = await prisma.championPoolEntry.findMany({ where: { memberId: m.id, playRate: { not: null } } })
+        const toDelete = existing.filter((e) => {
+          if (e.role === 'MIDDLE' || e.role === 'BOTTOM' || e.role === 'UTILITY') return true
+          return roleOnly && !newKeys.has(`${e.championKey}|${e.role}`)
+        })
+        if (toDelete.length > 0) {
+          await prisma.championPoolEntry.deleteMany({ where: { id: { in: toDelete.map((e) => e.id) } } })
+          console.log(`[team:scout] cleaned ${toDelete.length} stale entries for ${m.displayName}`)
+        }
+        if (snap.failed > 0) console.warn(`[team:scout] ${m.displayName}: ${snap.failed}/${snap.totalMatches} matches missing (not on Riot or fetch failed)`)
+        // Same rule as auto-fill-pool (tierPool: rank and share per role, recency, the "new" tier).
+        const upserted = await writeTieredPool(m.id, snap.entries.map((e) => ({ ...e, masteryPoints: e.masteryPoints || null, firstAt: e.firstAt ?? null, lastAt: e.lastAt ?? null })), snap.history)
+        await saveScoutCache(m.id, allSeasonIds)
+        return upserted
+      },
+      emit(ev) {
+        if (!opts.emitProgress || !sender || sender.isDestroyed()) return
+        try { sender.send('team:scout-progress', ev) } catch { /* the window closed meanwhile */ }
+      },
+      isCancelled: () => flag.cancelled,
     }
-    if (failed > 0) console.warn(`[team:scout-member] ${failed}/${matchIds.length} matches missing (cache miss + fetch fail)`)
-
-    // Cleanup pass. Removes:
-    //   1. Pre-normalization entries with raw Riot role names
-    //      (MIDDLE/BOTTOM/UTILITY) regardless of mode — these are dead data
-    //      that the Draft Sim's PoolSidebar can never display anyway.
-    //   2. When roleOnly is on, any previously-auto-scouted entry that no
-    //      longer appears in the fresh scan — keeps the pool tight to the
-    //      member's current meta.
-    // Manual entries (playRate=null) are always preserved.
-    const newKeys = new Set(Array.from(playCount.values()).map((e) => `${e.championKey}|${e.role}`))
-    const existing = await prisma.championPoolEntry.findMany({
-      where: { memberId, playRate: { not: null } },
-    })
-    const toDelete = existing.filter((e) => {
-      const isRawRiotRole = e.role === 'MIDDLE' || e.role === 'BOTTOM' || e.role === 'UTILITY'
-      if (isRawRiotRole) return true
-      if (roleOnly && !newKeys.has(`${e.championKey}|${e.role}`)) return true
-      return false
-    })
-    if (toDelete.length > 0) {
-      await prisma.championPoolEntry.deleteMany({
-        where: { id: { in: toDelete.map((e) => e.id) } },
+    try {
+      const result = await runScout(deps, members, {
+        scoutId, count, roleOnly, concurrency: RIOT_LIMITS.MATCH_FETCH_CONCURRENCY, maxIds: RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL,
+        // A signed-out session fails every call: stop the whole scout instead of counting 1 500 "missing" games.
+        isFatal: (err) => err instanceof RiotAuthError,
       })
-      console.log(`[team:scout-member] cleaned ${toDelete.length} stale entries for ${member.displayName}`)
+      const s = result.stats
+      console.info(`[scout] ${members.length} member(s): ${s.rawIds} ids, ${s.uniqueIds} distinct (${s.sharedIds} shared), ${s.fromCache} cached, ${s.downloaded} downloaded, ${s.failed} failed (${s.unreadable} unreadable) · first pool ${s.firstPoolMs ?? '-'}ms · total ${(s.totalMs / 1000).toFixed(1)}s`)
+      return result
+    } finally {
+      releaseScout(activeScouts, scoutId, flag)
     }
+    } catch (err) {
+      releaseScout(activeScouts, scoutId, flag)
+      throw err
+    }
+  }
 
-    // Same rule as auto-fill-pool (tierPool: rank and share per role,
-    // recency, the "new" tier), so an opponent's pool in Draft Sim reads
-    // exactly like the player's own pool in the Champion Pool tab.
-    const upserted = await writeTieredPool(memberId, Array.from(playCount.values()), history)
+  // Whole team (or several members): progress events on `team:scout-progress`, see the contract.
+  validatedHandle('team:scout-team', z.tuple([z.array(idSchema).min(1).max(MAX_SCOUT_MEMBERS), z.object({
+    count: scoutCountSchema.optional(), roleOnly: z.boolean().optional(), scoutId: z.string().min(4).max(64).optional(),
+  }).strict().optional()]), inBackground(async (e, memberIds, opts) => {
+    const r = await scoutMembersDesktop(e.sender, memberIds, { ...opts, emitProgress: true })
+    return toTeamResult(r)
+  }))
 
-    await saveScoutCache(memberId, allSeasonIds)
-    console.info(`[scout-member] ${member.displayName}: total ${((Date.now() - scoutStart) / 1000).toFixed(1)}s · ${upserted} pool entries`)
-    return { upserted, totalMatches: matchIds.length, sameRoleCount }
+  validatedHandle('team:scout-cancel', z.tuple([z.string().min(4).max(64)]), (_e, scoutId) => {
+    const flag = activeScouts.get(scoutId)
+    if (flag) flag.cancelled = true
+    else {
+      earlyCancels.add(scoutId)
+      if (earlyCancels.size > 50) earlyCancels.delete(earlyCancels.values().next().value as string)
+    }
+    return { ok: true as const, found: !!flag }
   })
+
+  // One member (kept for the screens that scout one by one): same engine, same result shape as before.
+  validatedHandle('team:scout-member', z.tuple([idSchema, scoutCountSchema.optional(), z.object({
+    roleOnly: z.boolean().optional(), scoutId: z.string().min(4).max(64).optional(),
+  }).strict().optional()]), inBackground(async (e, memberId, count, opts) => {
+    const r = await scoutMembersDesktop(e.sender, [memberId], { count: count ?? 100, roleOnly: opts?.roleOnly, scoutId: opts?.scoutId, emitProgress: opts?.scoutId != null })
+    const m = r.members[0]
+    if (!m?.ok) throw (m?.error?.cause instanceof Error ? m.error.cause : new Error(m?.error?.message ?? 'Scout failed'))
+    return { upserted: m.upserted, totalMatches: m.totalMatches, sameRoleCount: m.sameRoleCount }
+  }))
 
   /**
    * Full auto-fill of a member's champion pool: combines mastery points
@@ -948,9 +1000,11 @@ export function registerTeamHandlers() {
     // E15: incremental listing (see getSeasonMatchIdsIncremental) — a
     // repeat "quick"/"deep" auto-fill only asks Riot for games since the
     // last one; "Complete" (matchCountNoCap) always relists from scratch.
+    let listFailed = false
     const [allSeasonIds, masteries, idToKey] = await Promise.all([
       getSeasonMatchIdsIncremental(member, puuid, region, matchCountNoCap).catch((err) => {
         console.warn('[auto-fill] match list failed:', err.message)
+        listFailed = true
         return [] as string[]
       }),
       getChampionMasteries(puuid, region, masteryCount).catch((err) => {
@@ -1029,7 +1083,7 @@ export function registerTeamHandlers() {
     }
 
     if (agg.size === 0) {
-      await saveScoutCache(memberId, allSeasonIds)
+      if (!listFailed) await saveScoutCache(memberId, allSeasonIds)
       return { upserted: 0, matchesUsed: matchIds.length, masteriesUsed: masteries.length }
     }
 
@@ -1069,7 +1123,7 @@ export function registerTeamHandlers() {
     // writes a number (0 for mastery-only entries), manual adds keep null.
     const upserted = await writeTieredPool(memberId, Array.from(agg.values()), history, opts.overwriteTiers === true)
 
-    await saveScoutCache(memberId, allSeasonIds)
+    if (!listFailed) await saveScoutCache(memberId, allSeasonIds)
     // #46 point 1: my own pool, once filled here, goes to the group so my teammates don't fetch it again.
     void publishOwnPoolIfMine(memberId)
     return {

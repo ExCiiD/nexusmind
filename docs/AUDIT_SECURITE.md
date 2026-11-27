@@ -800,3 +800,64 @@ Pourquoi cet ordre : la clé OpenAI est un secret **valide** qui ne demande qu'u
 - **`team_sessions` « modifiable sur toutes les colonnes » (S19-13) :** **déjà réduit en production.** `authenticated` ne peut mettre à jour que `status`, `responsible_user_ids`, `queue_filter`, `started_at`, `ended_at` (vérifié par `has_column_privilege`), et seulement s'il gère la session. Sur `team_session_games`, seuls `status`, `match_json`, `our_team_id`, `enemy_team_name` : `session_id` et `reported_by` ne bougent plus. Reste : l'auteur d'une partie peut réécrire `match_json` (sans limite de taille) ; dire si on veut le borner.
 - **Advisors Supabase :** les `run_*` ne sont plus exposés ; il ne reste que les 21 fonctions `SECURITY DEFINER` appelables par `authenticated`, qui se contrôlent elles-mêmes, et 4 tables sans policy voulues.
 - **Litterbox :** l'envoi se fait depuis le processus principal (`share.ipc.ts`), aucune origine à ajouter à la CSP ; reste la mention dans la politique de confidentialité (Front).
+
+---
+
+## 27/11/2026 — Lot scout progressif (non commité, lecture seule)
+
+**Verdict : OK pour release, aucun constat critique, élevé ni moyen ; 5 constats faibles, aucun bloquant.** Périmètre : `git diff` du lot (`team.ipc.ts`, `preload/index.ts`, `src/lib/ipc.ts`, `riotClient.ts`, `riotLimits.ts`, `web/src/riotWeb.ts`, `scoutingWeb.ts`, `api.ts`, `scoutEngine.ts`, `scoutLive.ts`, `ScoutProgressBanner.tsx`, `useBackgroundJobsStore.ts`), contrat `docs/contracts/scouting-progressive.md`. Le worker `cloudflare/riot-proxy` n'est pas modifié (lu seulement pour les types de 429).
+
+### Verdicts par point
+
+1. **IPC : OK.**
+   - `team:scout-team` (`electron/main/ipc/team.ipc.ts:901`) : `validatedHandle` + zod, ids `^[A-Za-z0-9_-]{1,64}$`, 1 à 20 membres, `scoutId` 4 à 64, objet `.strict()`. `team:scout-cancel` (`:908`) et `team:scout-member` (`:919`) aussi validés : **progrès** sur `scout-member`, qui passait avant sans aucune validation (`handleInBackground`).
+   - Le renderer ne donne que des ids : Riot ID, région et puuid viennent de la base locale (`team.ipc.ts:815-827`), les URL sont construites par `riotClient`. Aucun moyen de faire appeler une URL arbitraire.
+   - Les événements partent seulement vers `e.sender` (la fenêtre qui a lancé le scout), fenêtre détruite ignorée (`team.ipc.ts:875-878`).
+   - Preload (`electron/preload/index.ts:549-559`) : trois fonctions, l'écouteur `team:scout-progress` ne transmet pas l'objet `IpcRendererEvent` et renvoie son désabonnement ; le store se désabonne dans un `finally` (`src/store/useBackgroundJobsStore.ts:155-168`). Pas de fuite d'écouteurs.
+   - `scoutId` déjà en cours refusé (`team.ipc.ts:799`), libéré dans les deux chemins de sortie (`:892`, `:895`).
+2. **Abus de ressources : OK, deux remarques faibles (F1, F2).** Caches bornés : 404 mémorisés 5 000 entrées en LRU (`team.ipc.ts:124`), annulations anticipées 50 (`:913`), scouts actifs retirés à la fin, téléchargements en vol retirés à la fin de chaque promesse. Les appels urgents restent prioritaires : le limiteur de fond du proxy ne s'applique qu'à la priorité `background` (`riotClient.ts:338-342`), et une pause « share » ne bloque que le fond. Le budget des autres joueurs est protégé par le worker (limiteurs par `user.sub`, priorité imposée par la route), que le client ne peut pas contourner.
+3. **Web : OK, une remarque faible (F3, F4).** Jeton : même `authHeader()` qu'avant, envoyé seulement à `PROXY_BASE` ; seul ajout, un statut 401 sur l'erreur. `Retry-After` : `retryAfterSeconds` borne à ≥ 0, la pause de fond est plafonnée à 120 s et un `Retry-After` plus long fait échouer l'appel (`web/src/riotWeb.ts:140-147`) ; la pause globale reste plafonnée par `MAX_WAIT_SEC` (30 s). Lectures et écritures de pools : `team_rosters` / `team_pool_entries` par id de roster, contrôlés côté serveur par `team_pool_read` / `team_pool_write` (membre du groupe pour lire, staff du groupe ou propriétaire du roster pour écrire, `20261113200040_e1_team_shared.sql:97-110`). Ce sont des tables de groupe partagées, pas de la synchronisation d'appareil : la règle « filtrer par uid, jamais la RLS seule » ne s'applique pas ici, et rien de neuf n'est lu hors des rosters demandés.
+4. **Données écrites : OK.** Desktop : `saveScoutCache` (`team.ipc.ts:252`) et `writeTieredPool` n'écrivent que pour les `memberId` validés, dans la base locale de l'utilisateur ; rien n'est écrit pour un membre en erreur, et le cache de scout n'est plus enregistré quand une liste a échoué (`:1081`, `:1121`). La synchronisation n'est pas touchée par le lot (filtre uid explicite inchangé, et migration `20261126090000` toujours en attente pour le partage limité au groupe lié). Web : écritures soumises à `team_pool_write` (cf. point 3).
+5. **Interface : OK.** Les messages d'erreur ne sont jamais affichés bruts : classés par `scoutErrorKind` puis traduits (`src/store/scoutLive.ts:208`, `ScoutProgressBanner.tsx:98-107`), et rendus en texte React (aucun `dangerouslySetInnerHTML` dans les fichiers du lot). Logs : `[riotFetch]` n'écrit que le code, le type de limite et la clé d'endpoint normalisée ; `[scout]` des compteurs et le nom affiché du membre ; aucun jeton, en-tête ni puuid.
+6. **Dépendances : OK.** Aucun changement de `package.json` ni de lockfile (desktop, `web/`, workers). `tsconfig.node.json` ajoute seulement `scoutEngine.ts` à l'inclusion ; `vitest.config.ts` un `hookTimeout`.
+
+### Constats (tous faibles)
+
+| # | Gravité | Fichier:ligne | Scénario | Correctif recommandé |
+|---|---|---|---|---|
+| F1 | Faible | `electron/main/ipc/team.ipc.ts:901` | Aucun plafond du nombre de scouts simultanés : un renderer compromis peut lancer des centaines de `team:scout-team` (ids différents, 20 membres chacun). Le débit Riot reste tenu par les limiteurs et le worker, mais la file d'attente et la mémoire (listes, JSON des parties en cours) grossissent sans borne dans le main. | Refuser au-delà de 2 ou 3 scouts actifs (`activeScouts.size`) avec une erreur claire. |
+| F2 | Faible | `electron/main/riotClient.ts:383` | L'attente avant un nouvel essai utilise le `Retry-After` brut, alors que la pause partagée est plafonnée à 120 s (`:369`). Avec 12 essais en mode proxy, un `Retry-After` anormal (proxy mal configuré, ou Riot en clé directe) bloque un appel de fond pendant des heures ; au-delà de 2^31 ms, `setTimeout` se déclenche tout de suite et les 12 essais partent d'affilée (toujours sous les limiteurs). Antérieur au lot, rendu plus visible par les 12 essais. | `Math.min(retryAfter * 1000, MAX_PROXY_PAUSE_MS)` dans l'attente, ou échouer au-delà, comme sur le web. |
+| F3 | Faible | `web/src/scoutingWeb.ts:192`, `:241` | Deux scouts web avec le même `scoutId` : le second écrase le drapeau du premier, et le premier qui se termine retire celui du second : `scoutCancel` ne trouve plus rien et le scout continue jusqu'au bout (budget du joueur consommé). Le desktop refuse ce cas. | Refuser un `scoutId` déjà actif, et ne supprimer que son propre drapeau (`if (activeScouts.get(id) === flag)`), comme `team.ipc.ts:892`. |
+| F4 | Faible | `web/src/api.ts:549` | Pas de plafond de 20 membres côté web (seul le desktop le valide) : une liste de 200 ids lance 200 lectures de roster puis un scout de 200 joueurs sur le budget de l'utilisateur. Impact limité à son propre budget (le worker le borne). | Même plafond (`memberIds.length > 20` → erreur) dans `scoutTeam`. |
+| F5 | Faible | `electron/main/ipc/team.ipc.ts:902`, `:919` | `count` accepte décimaux et infinis (`z.number()`). Sans effet dangereux aujourd'hui (`noCap`, `Math.max(1, …)`), mais la règle des autres IPC est des entiers bornés. | `z.number().int().min(-1).max(RIOT_LIMITS.MAX_MATCH_IDS_PER_CALL)`. |
+
+### Non vérifié
+
+- Rien n'a été exécuté : ni scout réel contre le proxy, ni tests, ni build packagé (revue du code seulement).
+- Pas de `semgrep` (non installé) ni de `npm audit` : inutile pour ce lot, aucune dépendance ne change.
+- La QA croisée de Gemini (`docs/notes/antigravity/`) n'a pas été attendue.
+
+---
+
+## 27/11 — Correctifs worker issus de la QA Gemini (lecture seule, rien de modifié ni déployé)
+
+Source : `docs/notes/antigravity/2026-11-27_qa-scout-progressif.md` (B1, B3), confirmés par le Chief. Code relu : `cloudflare/riot-proxy/src/handler.ts`, `budget.ts`, `routing.ts`.
+
+**Verdict : les deux correctifs sont OK sur le plan sécurité, à faire tels que proposés, avec les précisions ci-dessous. `allow-origin: *` reste tel quel.** Tout déploiement du worker se fait avec l'accord de l'utilisateur.
+
+### B1 — `access-control-expose-headers: retry-after, x-rate-limit-type` : **OK**
+
+- **Pas de nouvelle fuite.** Les en-têtes CORS ne limitent que le JavaScript d'un navigateur : tout compte connecté lit déjà ces deux en-têtes avec curl ou depuis le desktop. Les exposer ne donne rien de plus à un attaquant, seulement à notre page web.
+- **Ce qu'ils révèlent :** `x-rate-limit-type` dit si la limite atteinte est la sienne (`proxy-user*`) ou la limite commune (`proxy-global`) ; `retry-after` donne au plus la durée d'une fenêtre du budget (≤ 120 s), ou le blocage Riot (plafonné à 3 600 s par `penalize`, `budget.ts:155`). Cela indique, en gros, qu'un autre joueur charge le proxy. Pas d'identité, pas de compteur par joueur. Acceptable.
+- **N'exposer que ces deux en-têtes.** Ne pas exposer `x-app-rate-limit-count` / `x-method-rate-limit-count` (transmis depuis Riot, `routing.ts:106-114`). Ils révèlent l'usage de la clé de production et la page web n'en a pas besoin.
+- **Toutes les réponses doivent porter l'en-tête :** c'est automatique s'il est ajouté à `CORS_HEADERS` (`handler.ts:57`), qui sert pour `json()`, la réponse `OPTIONS`, le cache R2 et les réponses Riot (`new Headers(CORS_HEADERS)`).
+- **Bénéfice côté sécurité :** aujourd'hui, dans un vrai navigateur, `retryAfterSeconds(null)` vaut 1 s. Le web réessaie donc trois fois à 1 s d'intervalle pendant un blocage Riot, au lieu d'attendre. Une fois l'en-tête exposé, le web attend vraiment, avec un plafond (30 s pour la pause globale, 120 s pour la pause de fond).
+- **`allow-origin: *` : ne pas le resserrer maintenant.** L'authentification se fait par jeton Bearer, sans cookie, et `allow-credentials` est absent. Un site tiers ne peut pas lire le jeton Supabase (stocké dans l'origine de l'app), et un client hors navigateur ignore CORS de toute façon. Une liste d'origines n'apporterait presque rien et casserait les aperçus, `localhost` et les futurs domaines. Si on veut le faire un jour, ce sera un lot à part, pas avec B1.
+
+### B3 — type distinct pour la réserve de fond : **OK, à une précision près**
+
+- **Ne renommer qu'un seul cas :** `reason === 'window'` **et** `priority === 'background'` → par exemple `proxy-background-reserve`. Les deux autres cas restent `proxy-global` : `riot_backoff` (Riot a vraiment répondu 429, tout le monde doit attendre) et `window` pour un appel interactif (la limite commune est vraiment pleine).
+- **Aucun nouvel abus.** Le type ne fait que nommer une décision déjà prise par le worker. Le client connaît déjà sa propre priorité, et le renommage ne lui donne aucun droit de plus.
+- **Le vrai sujet, déjà présent avant ce lot (faible, non bloquant) :** `x-nxm-priority` est un indice du client. Seules la maîtrise et les listes `/ids?startTime` sans `endTime` sont forcées en fond (`routing.ts:100-103`). Un client modifié qui omet l'en-tête sur `/lol/match/v5/matches/{id}` (l'essentiel d'un scout) obtient la priorité interactive, donc la réserve de 30 % et toute sa part par joueur. Ce qui le borne : `USER_LIMITER` compte tous les appels, et la part par joueur (`USER_WINDOW_SHARE` 25 %) s'applique quelle que soit la priorité. Un seul compte ne peut donc prendre que sa part. Il faudrait au moins 4 comptes réels (non anonymes) qui trichent pour vider la fenêtre, et retarder les fins de partie des autres. **Recommandation :** suivre dans les métriques la part `interactive` sur les routes de détail par joueur ; envisager plus tard de compter les détails de parties `interactive` dans un plafond plus bas par joueur. Rien à faire pour B3.
+- **Côté clients :** `riotClient.ts:371` (desktop) et `riotWeb.ts` (web) doivent classer le nouveau type comme une pause « de fond seulement ». Les anciennes versions retombent sur le comportement actuel (`startsWith('proxy-')` → pause globale côté desktop, `blockedUntil` côté web) : pas de régression pour elles.
+- **Tests à ajouter avec le correctif :** un 429 `window` en fond donne le nouveau type ; un 429 `window` interactif et un `riot_backoff` gardent `proxy-global` ; l'en-tête `access-control-expose-headers` est présent sur `json()`, `OPTIONS`, le cache R2 et la réponse Riot.

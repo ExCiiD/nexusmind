@@ -675,8 +675,16 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   scoutMember: (
     memberId: string,
     count?: number,
-    opts?: { roleOnly?: boolean },
+    opts?: { roleOnly?: boolean; scoutId?: string },
   ) => Promise<{ upserted: number; totalMatches?: number; sameRoleCount?: number }>
+  /**
+   * Progressive scout of several members (docs/contracts/scouting-progressive.md): masteries first, one download list for
+   * the whole team, most recent games first. Progress arrives through onScoutProgress; the promise resolves at the end.
+   * Optional: absent on older builds (fall back to scoutMember member by member).
+   */
+  scoutTeam?: (memberIds: string[], opts?: { count?: number; roleOnly?: boolean; scoutId?: string }) => Promise<import('./scoutEngine').ScoutTeamResult>
+  scoutCancel?: (scoutId: string) => Promise<{ ok: true; found: boolean }>
+  onScoutProgress?: (callback: (event: import('./scoutEngine').ScoutEvent) => void) => () => void
   autoFillPool: (
     memberId: string,
     opts?: { matchCount?: number; masteryCount?: number; overwriteTiers?: boolean; roleOnly?: boolean },

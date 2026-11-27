@@ -25,10 +25,10 @@ const KIND_COLOR: Record<BackgroundJobKind, string> = {
   scoutOne: 'border-red-500/60 bg-hextech-dark/95',
 }
 
-export function BackgroundJobsIndicator() {
+export function BackgroundJobsIndicator({ bottomClass = 'bottom-4' }: { bottomClass?: string } = {}) {
   const jobs = useBackgroundJobsStore((s) => s.jobs)
   const cancel = useBackgroundJobsStore((s) => s.cancelJob)
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   if (jobs.length === 0) return null
 
@@ -36,7 +36,7 @@ export function BackgroundJobsIndicator() {
     // Bottom-right, above the toast slot. z-50 to clear the AppLayout
     // headers; pointer-events on inner pills only so the empty wrapper
     // doesn't intercept clicks on whatever's behind it.
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+    <div className={cn('fixed right-4 z-50 flex flex-col gap-2 pointer-events-none', bottomClass)}>
       {jobs.map((job) => {
         const Icon = KIND_ICON[job.kind]
         // Progress can briefly be > total if a loop completes its last
@@ -45,6 +45,7 @@ export function BackgroundJobsIndicator() {
         const done = Math.min(job.done, job.total)
         const pct = job.total > 0 ? Math.round((done / job.total) * 100) : 0
         const elapsed = Math.round((Date.now() - job.startedAt) / 1000)
+        const byGames = job.unit === 'games'
         return (
           <div
             key={job.id}
@@ -61,7 +62,7 @@ export function BackgroundJobsIndicator() {
               </span>
               <button
                 onClick={() => cancel(job.id)}
-                title={t('jobs.cancel', { defaultValue: 'Cancel after current player' })}
+                title={byGames ? t('jobs.cancelScout') : t('jobs.cancel', { defaultValue: 'Cancel after current player' })}
                 disabled={job.cancelled}
                 className="text-hextech-text-dim hover:text-red-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
@@ -71,7 +72,11 @@ export function BackgroundJobsIndicator() {
 
             <div className="flex items-center justify-between text-[10px] text-hextech-text-dim">
               <span className="truncate">
-                {job.currentName
+                {byGames
+                  ? (job.total > 0
+                      ? t('jobs.gamesProgress', { done: done.toLocaleString(i18n.language), total: job.total.toLocaleString(i18n.language) })
+                      : t('jobs.starting', { defaultValue: 'Starting…' }))
+                  : job.currentName
                   ? t('jobs.progress', {
                       defaultValue: '{{name}} · {{done}}/{{total}}',
                       name: job.currentName,
@@ -95,7 +100,7 @@ export function BackgroundJobsIndicator() {
 
             {job.cancelled && (
               <p className="text-[10px] text-amber-300 italic">
-                {t('jobs.cancelling', { defaultValue: 'Stopping after current player…' })}
+                {byGames ? t('jobs.cancellingScout') : t('jobs.cancelling', { defaultValue: 'Stopping after current player…' })}
               </p>
             )}
           </div>

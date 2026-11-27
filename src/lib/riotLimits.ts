@@ -45,6 +45,16 @@ export const RIOT_LIMITS = {
    *  gated by its long-window rate limit either way) — only matters once
    *  a Product key's higher throughput makes queue depth the limiter. */
   MATCH_FETCH_CONCURRENCY: 10,
+
+  // ── What the Ascend proxy lets ONE player do in the background (cloudflare/riot-proxy/wrangler.toml) ──────
+  // Mirror of the worker, so the app paces itself instead of being answered 429 (every 429 still counts against
+  // the player's own per-minute limiter). Change them with the worker's USER_LIMITER_BACKGROUND / USER_WINDOW_SHARE.
+  /** Background calls per minute per player (USER_LIMITER_BACKGROUND: counts every call, cached or not). */
+  PROXY_BACKGROUND_PER_MINUTE: 16,
+  /** Background calls per 2 minutes per player that reach Riot (USER_WINDOW_SHARE 25 % of 95, 80 % of it, less one). */
+  PROXY_BACKGROUND_PER_2_MIN: 18,
+  /** Tries for a call the proxy only asked to slow down (proxy-user*, proxy-global 429): pacing, not failure. */
+  PROXY_PACING_MAX_ATTEMPTS: 12,
 } as const
 
 /** Scout / auto-fill depth picked in the scope dialog. */

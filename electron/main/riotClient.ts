@@ -13,7 +13,7 @@
 // Undici 7.x added a hard dependency on `webidl.util.markAsUncloneable`
 // (Node 23+) and crashed Electron 33 (Node 20); pinning to ^6.21 fixes
 // that, but the try/catch is the actual safety net.
-import { prepareRiotRequest, RiotAuthError } from './riotTransport'
+import { prepareRiotRequest, riotTransportMode, RiotAuthError } from './riotTransport'
 import { currentRiotPriority, PRIORITY_RANK, type RiotPriority } from './riotPriority'
 import { RIOT_LIMITS } from '../../src/lib/riotLimits'
 import { mergeMatchIdsByRecency } from '../../src/lib/scoutingCore'
@@ -156,6 +156,11 @@ class MultiWindowLimiter {
     })
   }
 
+  /** Tests only: forgets the calls counted so far. */
+  reset(): void {
+    for (const w of this.windows) w.used = []
+  }
+
   /** Callers waiting, per priority (P1-3: what the screens can show instead of a spinner). */
   queued(): Record<RiotPriority, number> {
     const out: Record<RiotPriority, number> = { gameEnd: 0, interactive: 0, background: 0 }
@@ -254,6 +259,51 @@ function endpointKeyFromUrl(url: string): string {
   }
 }
 
+/** What one player may send in the background through the Ascend proxy (RIOT_LIMITS mirrors the worker's config). */
+function proxyBackgroundWindows(withTwoMinutes: boolean): Array<{ capacity: number; windowSec: number }> {
+  const perMinute = { capacity: RIOT_LIMITS.PROXY_BACKGROUND_PER_MINUTE, windowSec: 60 }
+  return withTwoMinutes ? [perMinute, { capacity: RIOT_LIMITS.PROXY_BACKGROUND_PER_2_MIN, windowSec: 120 }] : [perMinute]
+}
+const proxyBackgroundLimiter = new MultiWindowLimiter('proxy-background', proxyBackgroundWindows(false))
+
+/**
+ * Set when the proxy asked this player to slow down, so the workers do not each find out with their own 429.
+ * Two deadlines: any pacing 429 (proxy-user-share, proxy-user-background, proxy-background-reserve, proxy-global)
+ * received by a background call only pauses background calls (the proxy keeps a separate budget for the game that
+ * just ended and for open screens); a 429 received by a non-background call pauses everybody.
+ */
+const proxyPause = { background: 0, global: 0 }
+/** A Retry-After longer than this is not waited as one block (the call is retried, or fails, after it). */
+const MAX_PROXY_PAUSE_MS = 120_000
+function proxyPausedUntil(priority: RiotPriority): number {
+  return priority === 'background' ? Math.max(proxyPause.background, proxyPause.global) : proxyPause.global
+}
+async function waitForProxyPause(priority: RiotPriority): Promise<void> {
+  for (let left = proxyPausedUntil(priority) - Date.now(); left > 0; left = proxyPausedUntil(priority) - Date.now()) {
+    await new Promise((r) => setTimeout(r, left))
+  }
+}
+/** When the 2-minute window was last needed: after this long without a "share" 429 the pace goes back to one window. */
+let proxyShareSeenAt = 0
+const PROXY_SHARE_MEMORY_MS = 10 * 60_000
+let proxyTwoWindows = false
+function setProxyWindows(two: boolean): void {
+  if (two === proxyTwoWindows) return
+  proxyTwoWindows = two
+  proxyBackgroundLimiter.configure(proxyBackgroundWindows(two))
+}
+
+/** Tests only: forgets the pauses and the learned pace. */
+export function resetProxyPacingForTests(): void {
+  proxyPause.background = 0
+  proxyPause.global = 0
+  proxyShareSeenAt = 0
+  setProxyWindows(false)
+  proxyBackgroundLimiter.reset()
+  appLimiter.reset()
+  methodLimiters.clear()
+}
+
 /** Tries per call when Riot (or the proxy's budget) answers 429: the first one and two more, then RIOT_RATE_LIMITED. */
 export const RIOT_MAX_ATTEMPTS = 3
 
@@ -283,6 +333,13 @@ async function riotFetch(url: string, allowedFallbackStatus?: number[], attempt 
 
   // Acquire both limiters before sending. Order matters: acquire app
   // first (cheaper to check), then method.
+  // Scouts through the proxy: wait for the proxy's own pauses, and keep to what it lets one player do in the background.
+  const priority = currentRiotPriority()
+  await waitForProxyPause(priority)
+  if (riotTransportMode() === 'proxy' && priority === 'background') {
+    if (proxyTwoWindows && Date.now() - proxyShareSeenAt > PROXY_SHARE_MEMORY_MS) setProxyWindows(false)
+    await proxyBackgroundLimiter.acquire('background')
+  }
   await appLimiter.acquire()
   await methodLimiter.acquire()
 
@@ -304,12 +361,27 @@ async function riotFetch(url: string, allowedFallbackStatus?: number[], attempt 
   if (res.status === 429 || (res.status === 503 && res.headers.get('Retry-After'))) {
     const retryAfter = Math.max(1, parseInt(res.headers.get('Retry-After') || '1', 10) || 1)
     const limitType = res.headers.get('X-Rate-Limit-Type') ?? (res.status === 503 ? 'proxy-budget-unavailable' : 'unknown')
-    if (attempt >= RIOT_MAX_ATTEMPTS) {
+    // The proxy only asking this player to slow down (not Riot's own limit): every worker waits together, and a
+    // long background scout is given many more tries (a 429 here is pacing, the game is not lost).
+    const proxyPacing = riotTransportMode() === 'proxy' && limitType.startsWith('proxy-') && limitType !== 'proxy-budget-unavailable'
+    if (proxyPacing) {
+      const until = Date.now() + Math.min(retryAfter * 1000, MAX_PROXY_PAUSE_MS)
+      // Any pacing 429 received by a BACKGROUND call (own share, proxy-background-reserve, proxy-global) only holds background
+      // work: the game that just ended and the open screens keep their reserve. Non-background calls hold everybody.
+      if (priority === 'background') proxyPause.background = Math.max(proxyPause.background, until)
+      else proxyPause.global = Math.max(proxyPause.global, until)
+      // The 2-minute share was hit: from now on the pace includes it (cached answers do not count there, but we
+      // cannot tell them apart beforehand).
+      if (limitType === 'proxy-user-share') { proxyShareSeenAt = Date.now(); setProxyWindows(true) }
+    }
+    const maxAttempts = proxyPacing && priority === 'background' ? RIOT_LIMITS.PROXY_PACING_MAX_ATTEMPTS : RIOT_MAX_ATTEMPTS
+    if (attempt >= maxAttempts) {
       console.warn(`[riotFetch] ${res.status} (${limitType}) — giving up after ${attempt} tries · ${endpointKey}`)
       throw new RiotRateLimitError(retryAfter, limitType)
     }
-    console.warn(`[riotFetch] ${res.status} (${limitType}) — backing off ${retryAfter}s (try ${attempt}/${RIOT_MAX_ATTEMPTS}) · ${endpointKey}`)
-    await new Promise((r) => setTimeout(r, retryAfter * 1000))
+    console.warn(`[riotFetch] ${res.status} (${limitType}) — backing off ${retryAfter}s (try ${attempt}/${maxAttempts}) · ${endpointKey}`)
+    // Bounded like the shared pause: a huge Retry-After must not hold a call for hours (or overflow setTimeout).
+    await new Promise((r) => setTimeout(r, Math.min(retryAfter * 1000, MAX_PROXY_PAUSE_MS)))
     return riotFetch(url, allowedFallbackStatus, attempt + 1)
   }
 
@@ -613,20 +685,20 @@ export async function getSeasonMatchIds(
   since: Date = getCurrentSeasonStart(),
 ): Promise<string[]> {
   const ts = Math.floor(since.getTime() / 1000)
+  // A queue whose list failed is an ERROR (the first one, a rate limit first): an empty list would pass for "no games"
+  // and a scout cache saved without that queue would never ask for its games again.
+  const failures: unknown[] = []
+  const settle = (queue: string, p: Promise<string[]>) => p.catch((err) => {
+    console.warn(`[getSeasonMatchIds] ${queue} failed:`, err?.message)
+    failures.push(err)
+    return [] as string[]
+  })
   const [solo, flex, clash] = await Promise.all([
-    getMatchIdsInRange(puuid, region, 420, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED).catch((err) => {
-      console.warn('[getSeasonMatchIds] soloq failed:', err?.message)
-      return [] as string[]
-    }),
-    getMatchIdsInRange(puuid, region, 440, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED).catch((err) => {
-      console.warn('[getSeasonMatchIds] flex failed:', err?.message)
-      return [] as string[]
-    }),
-    getMatchIdsInRange(puuid, region, 700, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_CLASH).catch((err) => {
-      console.warn('[getSeasonMatchIds] clash failed:', err?.message)
-      return [] as string[]
-    }),
+    settle('soloq', getMatchIdsInRange(puuid, region, 420, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED)),
+    settle('flex', getMatchIdsInRange(puuid, region, 440, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_RANKED)),
+    settle('clash', getMatchIdsInRange(puuid, region, 700, ts, RIOT_LIMITS.SEASON_LIST_MAX_PAGES_CLASH)),
   ])
+  if (failures.length > 0) throw failures.find((e) => e instanceof RiotRateLimitError || e instanceof RiotAuthError) ?? failures[0]
   return mergeMatchIdsByRecency(mergeMatchIdsByRecency(solo, flex), clash)
 }
 

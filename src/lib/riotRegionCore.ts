@@ -72,9 +72,12 @@ export interface RegionResolution {
   previous: Platform | null
 }
 
+/** Who is asking: a detection made for a background scout is a background call, one made for a screen is not. */
+export interface RegionCallContext { background?: boolean }
+
 export interface RegionResolverDeps {
   /** One account-v1 "active region" call; null when Riot has no answer. Throws on a network or key error. */
-  detect: (puuid: string, platformHint: Platform | null) => Promise<Platform | null>
+  detect: (puuid: string, platformHint: Platform | null, ctx?: RegionCallContext) => Promise<Platform | null>
   now?: () => number
   /** Told when a detection differs from the stored region, so the caller can save it (Auto accounts only). */
   onDetectedChange?: (puuid: string, from: Platform | null, to: Platform) => void
@@ -97,10 +100,10 @@ export function createRegionResolver(deps: RegionResolverDeps) {
     return prev && prev !== platform ? prev : null
   }
 
-  async function detectOnce(puuid: string, hint: Platform | null): Promise<Platform | null> {
+  async function detectOnce(puuid: string, hint: Platform | null, ctx?: RegionCallContext): Promise<Platform | null> {
     const running = inflight.get(puuid)
     if (running) return running
-    const p = deps.detect(puuid, hint)
+    const p = deps.detect(puuid, hint, ctx)
       .then((platform) => { cache.set(puuid, { platform, at: now() }); return platform })
       .catch(() => {
         // A failed detection is cached briefly too, so an outage does not double every Riot call.
@@ -112,13 +115,13 @@ export function createRegionResolver(deps: RegionResolverDeps) {
     return p
   }
 
-  async function resolve(puuid: string, storedRegion: string | null | undefined): Promise<RegionResolution> {
+  async function resolve(puuid: string, storedRegion: string | null | undefined, ctx?: RegionCallContext): Promise<RegionResolution> {
     const stored = normalizePlatform(storedRegion)
     const manual = overrides.get(puuid)
     if (manual) return { platform: manual, source: 'manual', previous: previousFor(puuid, stored, manual) }
     if (!puuid) return { platform: stored ?? 'EUW1', source: 'stored', previous: null }
     const hit = cache.get(puuid)
-    const detected = hit && now() - hit.at < REGION_CACHE_MS ? hit.platform : await detectOnce(puuid, stored)
+    const detected = hit && now() - hit.at < REGION_CACHE_MS ? hit.platform : await detectOnce(puuid, stored, ctx)
     if (!detected) return { platform: stored ?? 'EUW1', source: 'stored', previous: null }
     if (detected !== stored && notified.get(puuid) !== detected) {
       notified.set(puuid, detected)
@@ -133,15 +136,15 @@ export function createRegionResolver(deps: RegionResolverDeps) {
    * account) and, if the server changed, the listing again there. `mergePrevious`: after a transfer, the old
    * server's cluster is read too and merged by recency (match ids only).
    */
-  async function list(puuid: string, storedRegion: string | null | undefined, fetchIds: (platform: Platform) => Promise<string[]>, opts: { mergePrevious?: boolean } = {}): Promise<string[]> {
-    let res = await resolve(puuid, storedRegion)
+  async function list(puuid: string, storedRegion: string | null | undefined, fetchIds: (platform: Platform) => Promise<string[]>, opts: { mergePrevious?: boolean; ctx?: RegionCallContext } = {}): Promise<string[]> {
+    let res = await resolve(puuid, storedRegion, opts.ctx)
     let ids = await fetchIds(res.platform)
     if (ids.length === 0 && res.source !== 'manual') {
       const last = lastEmptyRedetect.get(puuid) ?? -Infinity
       if (now() - last >= REDETECT_AFTER_EMPTY_MS) {
         lastEmptyRedetect.set(puuid, now())
         cache.delete(puuid)
-        const again = await resolve(puuid, storedRegion)
+        const again = await resolve(puuid, storedRegion, opts.ctx)
         if (again.platform !== res.platform) {
           res = again
           ids = await fetchIds(res.platform)
