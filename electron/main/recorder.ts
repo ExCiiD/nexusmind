@@ -47,7 +47,7 @@ function resolveFfmpegBinary(): { path: string; source: 'bundled' | 'ffmpeg-stat
 
 function probeFfmpegVersion(binPath: string): string | null {
   try {
-    const res = spawnSync(binPath, ['-version'], { encoding: 'utf-8', timeout: 5000 })
+    const res = spawnSync(binPath, ['-version'], { encoding: 'utf-8', timeout: 5000, windowsHide: true })
     const first = (res.stdout || res.stderr || '').split('\n')[0] || ''
     const match = first.match(/ffmpeg version (\S+)/)
     return match ? match[1] : null
@@ -483,7 +483,7 @@ export async function generateThumbnail(
       '-y',
       outputPath,
     ]
-    const proc = spawn(ffmpegBinPath()!, args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    const proc = spawn(ffmpegBinPath()!, args, { stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true })
     proc.stderr?.resume()
     proc.on('exit', (code) => resolve(code === 0 && existsSync(outputPath) ? outputPath : null))
     proc.on('error', () => resolve(null))
@@ -497,7 +497,7 @@ export function probeDuration(filePath: string): Promise<number> {
     let resolved = false
     const done = (val: number) => { if (!resolved) { resolved = true; clearTimeout(timer); resolve(val) } }
     const args = ['-i', filePath, '-hide_banner']
-    const proc = spawn(ffmpegBinPath()!, args, { stdio: ['ignore', 'pipe', 'pipe'] })
+    const proc = spawn(ffmpegBinPath()!, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
     let output = ''
     proc.stderr?.on('data', (d: Buffer) => { output += d.toString() })
     proc.stdout?.on('data', (d: Buffer) => { output += d.toString() })
@@ -620,7 +620,7 @@ export interface ClipOptions {
 function runFfmpeg(args: string[], timeoutMs = 120_000): Promise<{ code: number | null; stderrTail: string }> {
   return new Promise((resolve) => {
     if (!ffmpegBinPath()) { resolve({ code: null, stderrTail: 'ffmpeg binary not found' }); return }
-    const proc = spawn(ffmpegBinPath()!, args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    const proc = spawn(ffmpegBinPath()!, args, { stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true })
     let stderrTail = ''
     proc.stderr?.on('data', (chunk: Buffer) => {
       stderrTail = (stderrTail + chunk.toString('utf8')).slice(-4096)
