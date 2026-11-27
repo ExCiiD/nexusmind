@@ -23,3 +23,6 @@ web/dist/
 
 # Showcase site: bundle of the app modules used by site/build.mjs
 site/.cache/
+
+# Dev database backups made by the app before migrations
+backups/
