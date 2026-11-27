@@ -4,7 +4,7 @@
  * repo's own Electron into site/public/assets/og-<lang>.png.
  *
  * Same ink, same three typefaces, and the one drawing that belongs to the
- * product: the fundamentals fingerprint of the demonstration account.
+ * product: the performance footprint of the demonstration account.
  */
 import { tx } from '../lib/html.mjs'
 import { brandMark } from '../lib/mark.mjs'

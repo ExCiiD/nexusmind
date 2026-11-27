@@ -7,9 +7,9 @@ export default {
   home: '/en/',
   meta: {
     title: 'Ascend — the improvement tool for League of Legends: player, coach, team',
-    description: 'Ascend records your League of Legends games, finds the three moments that cost you the most and tells you what to work on. 45-second micro-review, Mistake Lab, fundamentals fingerprint, coaching and team tools. Free, for Windows.',
+    description: 'Ascend records your League of Legends games, finds the three moments that cost you the most and tells you what to work on. 45-second micro-review, Mistake Lab, performance footprint, coaching and team tools. Free, for Windows.',
     ogTitle: "Ascend — your personal improvement assistant",
-    ogDescription: 'Guided 45-second micro-review, Mistake Lab, fundamentals fingerprint, coaching and team management for League of Legends. Free, for Windows.',
+    ogDescription: 'Guided 45-second micro-review, Mistake Lab, performance footprint, coaching and team management for League of Legends. Free, for Windows.',
     jsonLd: 'Improvement tool for League of Legends: recording, guided micro-review, mistake statistics, coaching and team management.',
   },
   skip: 'Skip to content',
@@ -46,7 +46,7 @@ export default {
     outro: 'The gap reads in win-rate points: the games where the mistake happens against the other analysed games. A mistake can become the objective of your next sessions; Ascend tracks it and tells you whether it recedes.',
   },
   print: {
-    title: 'The fundamentals fingerprint',
+    title: 'The performance footprint',
     intro: 'Nine axes, two windows: your last {{recent}} games and your last {{snapshot}}. The gap between the two shapes is your current form.',
     support: 'Supports get their own axes: vision, fight presence, crowd control, and a fight impact that adds up heals, shields, damage dealt and damage absorbed. An enchanter, a poke mage and an engage support are each judged on their own job. Farm says nothing about their game.',
     assessment: 'The fingerprint completes a self-assessment of {{fundamentals}} fundamentals, in {{families}} families. When your numbers drift from what you declared, Ascend suggests doing it again.',
@@ -124,7 +124,7 @@ export default {
     solo: {
       path: '/en/solo-training',
       title: 'Solo training — Ascend, for League of Legends',
-      description: 'Objective-driven sessions, automatic recording, clips and sharing, a 45-second micro-review in your VOD’s player, statistics, the Mistake Lab and the fundamentals fingerprint: everything Ascend does between two games.',
+      description: 'Objective-driven sessions, automatic recording, clips and sharing, a 45-second micro-review in your VOD’s player, statistics, the Mistake Lab and the performance footprint: everything Ascend does between two games.',
     },
     team: {
       path: '/en/team-environment',
@@ -145,7 +145,7 @@ export default {
   homePage: {
     kicker: 'For League of Legends · Windows 10 and 11 · invite-only beta',
     secondary: 'See solo training',
-    heroAlt: 'The Ascend dashboard: the current session, the objective’s progress, the fundamentals fingerprint and the weekly review.',
+    heroAlt: 'The Ascend dashboard: the current session, the objective’s progress, the performance footprint and the weekly review.',
     solo: {
       kicker: '01 — Solo training',
       title: 'Everything that happens between two games.',
@@ -247,7 +247,7 @@ export default {
           alt: 'The Mistake Lab: ranking by frequency, a mistake in detail and the team rule.',
         },
         {
-          label: 'Fundamentals fingerprint',
+          label: 'Performance footprint',
           title: 'Your current form, on a radar.',
           text: 'Nine axes, two windows: your last {{recent}} games and your last {{snapshot}}. The gap between the two shapes is your current form.',
           points: ['Axes dedicated to supports: vision, presence, crowd control', 'A self-assessment of {{fundamentals}} fundamentals, in {{families}} families', 'Fixed scales: the fingerprint compares you with no one'],

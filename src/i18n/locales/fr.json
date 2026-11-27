@@ -889,12 +889,12 @@
       "now": "Actuel"
     },
     "radar": {
-      "loading": "Calcul de l'empreinte des fondamentaux…",
-      "title": "Empreinte des fondamentaux",
+      "loading": "Calcul de l'empreinte de performance…",
+      "title": "Empreinte de performance",
       "score": "Score : {{score}}/100",
       "recentLabel": "Récent ({{count}} games)",
       "snapshotLabel": "Snapshot ({{count}} games)",
-      "fullBreakdown": "Voir le détail par fondamental",
+      "fullBreakdown": "Voir le détail",
       "modalTitle": "Détail des fondamentaux",
       "supportBadge": "Support",
       "axis": {

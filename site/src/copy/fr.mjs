@@ -10,9 +10,9 @@ export default {
   home: '/',
   meta: {
     title: "Ascend — l'outil de progression pour League of Legends : joueur, coach, équipe",
-    description: "Ascend enregistre tes parties de League of Legends, retrouve les trois moments qui t'ont coûté le plus cher et te dit quoi travailler. Micro-revue en 45 secondes, Labo d'erreurs, empreinte des fondamentaux, outils de coaching et d'équipe. Gratuit, pour Windows.",
+    description: "Ascend enregistre tes parties de League of Legends, retrouve les trois moments qui t'ont coûté le plus cher et te dit quoi travailler. Micro-revue en 45 secondes, Labo d'erreurs, empreinte de performance, outils de coaching et d'équipe. Gratuit, pour Windows.",
     ogTitle: "Ascend — ton assistant personnel de progression",
-    ogDescription: "Micro-revue guidée en 45 secondes, Labo d'erreurs, empreinte des fondamentaux, coaching et gestion d'équipe pour League of Legends. Gratuit, pour Windows.",
+    ogDescription: "Micro-revue guidée en 45 secondes, Labo d'erreurs, empreinte de performance, coaching et gestion d'équipe pour League of Legends. Gratuit, pour Windows.",
     jsonLd: "Outil de progression pour League of Legends : enregistrement, micro-revue guidée, statistiques d'erreurs, coaching et gestion d'équipe.",
   },
   skip: 'Aller au contenu',
@@ -49,7 +49,7 @@ export default {
     outro: "L'écart se lit en points de taux de victoire : les parties où l'erreur arrive, contre les autres parties analysées. Une erreur peut devenir l'objectif de tes prochaines sessions ; Ascend la suit et te dit si elle recule.",
   },
   print: {
-    title: "L'empreinte des fondamentaux",
+    title: "L'empreinte de performance",
     intro: "Neuf axes, deux fenêtres : tes {{recent}} dernières parties et tes {{snapshot}} dernières. L'écart entre les deux tracés, c'est ta forme du moment.",
     support: "Les supports ont leurs propres axes : vision, présence en fight, contrôles, et un impact en fight qui additionne soins, boucliers, dégâts infligés et dégâts absorbés. Un enchanteur, un mage poke et un support engage y sont jugés chacun sur son travail. Le farm ne dit rien de leur partie.",
     assessment: "L'empreinte complète une auto-évaluation de {{fundamentals}} fondamentaux, rangés en {{families}} familles. Quand tes chiffres s'éloignent de ce que tu avais déclaré, Ascend te propose de la refaire.",
@@ -127,7 +127,7 @@ export default {
     solo: {
       path: '/entrainement-solo',
       title: 'Entraînement solo — Ascend, pour League of Legends',
-      description: "Sessions à objectif, enregistrement automatique, clips et partage, micro-revue en 45 secondes dans le lecteur de ta VOD, statistiques, Labo d'erreurs et empreinte des fondamentaux : tout ce qu'Ascend fait entre deux games.",
+      description: "Sessions à objectif, enregistrement automatique, clips et partage, micro-revue en 45 secondes dans le lecteur de ta VOD, statistiques, Labo d'erreurs et empreinte de performance : tout ce qu'Ascend fait entre deux games.",
     },
     team: {
       path: '/environnement-equipe',
@@ -148,7 +148,7 @@ export default {
   homePage: {
     kicker: 'Pour League of Legends · Windows 10 et 11 · bêta sur invitation',
     secondary: "Voir l'entraînement solo",
-    heroAlt: "Le tableau de bord d'Ascend : la session en cours, la progression de l'objectif, l'empreinte des fondamentaux et le bilan de la semaine.",
+    heroAlt: "Le tableau de bord d'Ascend : la session en cours, la progression de l'objectif, l'empreinte de performance et le bilan de la semaine.",
     solo: {
       kicker: '01 — Entraînement solo',
       title: 'Tout ce qui se passe entre deux games.',
@@ -250,7 +250,7 @@ export default {
           alt: "Le Labo d'erreurs : classement par fréquence, détail d'une erreur et règle de l'équipe.",
         },
         {
-          label: 'Empreinte des fondamentaux',
+          label: 'Empreinte de performance',
           title: 'Ta forme du moment, sur un radar.',
           text: "Neuf axes, deux fenêtres : tes {{recent}} dernières parties et tes {{snapshot}} dernières. L'écart entre les deux tracés, c'est ta forme du moment.",
           points: ['Des axes dédiés aux supports : vision, présence, contrôles', 'Une auto-évaluation de {{fundamentals}} fondamentaux, en {{families}} familles', "Des échelles fixes : l'empreinte ne te compare à personne"],

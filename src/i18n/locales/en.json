@@ -889,12 +889,12 @@
       "now": "Now"
     },
     "radar": {
-      "loading": "Computing your fundamentals footprint…",
-      "title": "Fundamentals footprint",
+      "loading": "Computing your performance footprint…",
+      "title": "Performance footprint",
       "score": "Score: {{score}}/100",
       "recentLabel": "Recent ({{count}} games)",
       "snapshotLabel": "Snapshot ({{count}} games)",
-      "fullBreakdown": "Full fundamentals breakdown",
+      "fullBreakdown": "See details",
       "modalTitle": "Detailed fundamentals breakdown",
       "supportBadge": "Support",
       "axis": {

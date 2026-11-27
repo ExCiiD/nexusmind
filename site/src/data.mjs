@@ -137,7 +137,10 @@ export function buildData({ engine, app, copy, lang, locale, tierDefs, iconUnloc
         inspector: {
           family: t(`mistakeLab.family.${r.family}`),
           summary: t('mistakeLab.inspector.summary', { count: r.count, games: r.games, share: r.share }),
-          cost: delta == null ? null : t('mistakeLab.inspector.cost', { with: r.winrateWith, without: r.winrateWithout }),
+          // Same wording rule as the app's Mistake Lab: too few games without the mistake → no comparison.
+          cost: delta == null ? null
+            : r.gamesWithout >= 3 ? t('mistakeLab.inspector.cost', { with: r.winrateWith, withGames: r.gamesWith, without: r.winrateWithout, withoutGames: r.gamesWithout })
+            : t('mistakeLab.inspector.costFew', { with: r.winrateWith, withGames: r.gamesWith, withoutGames: r.gamesWithout }),
           phases: ['early', 'mid', 'late'].map((p) => ({ label: t(`mistakeLab.phase.${p}`), range: t(`mistakeLab.phaseRange.${p}`), count: phases[p], pct: Math.round((phases[p] / maxPhase) * 100) })),
           prescTitle: dom ? t('codex.whenTitle', { phase: t(`mistakeLab.phase.${dom}`) }) : '',
           fiche: entry ? { headline: engine.localize(entry.headline, lang), rule: engine.localize(entry.tacticalRule, lang), drill: engine.localize(entry.drillObjective, lang) } : null,
