@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { CoachVerdictsLab } from '@/components/MicroReview/CoachVerdictsForGame'
-import { AlertTriangle, Play, FlaskConical, Check, Loader2, Search, Crosshair, Tags } from 'lucide-react'
+import { AlertTriangle, Play, FlaskConical, Check, Loader2, Search, Crosshair, Tags, ChevronDown, Trash2 } from 'lucide-react'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { CodexCard } from '@/components/MicroReview/CodexCard'
@@ -23,6 +23,7 @@ import { usePrepareSession } from '@/components/MicroReview/usePrepareSession'
 import { useTeamCodex } from '@/components/MicroReview/useTeamCodex'
 import { codexFor, dominantPhase } from '@/lib/microReview/codex'
 import { useUserStore } from '@/store/useUserStore'
+import { useToast } from '@/hooks/useToast'
 import { cn } from '@/lib/utils'
 import { championLabel } from '@/lib/statsInsights'
 import { EmptyState, SkeletonKpiTiles } from '@/components/ui/data-state'
@@ -35,6 +36,7 @@ import {
   phaseBreakdown,
   buildTrend,
   latestMoments,
+  hasComparison,
   fmtClock,
   FAMILIES,
   FAMILY_COLOR,
@@ -82,6 +84,18 @@ export function MistakeStatsPage() {
   const games = new Set((occ ?? []).map((o) => o.game.id)).size
   const allPhases = phaseBreakdown(occ ?? [])
   const worstPhase = PHASES.reduce((a, b) => (allPhases[b] > allPhases[a] ? b : a), 'early')
+
+  const { toast } = useToast()
+  // Same call as the Record's mistake list (deleteMistake): the mistake is gone from the game, the Lab reloads its figures.
+  const deleteOccurrence = async (o: MistakeOccurrence) => {
+    try {
+      await window.api.deleteMistake(o.id)
+      await occQuery.reload()
+      toast({ title: t('mistakeLab.inspector.deleted') })
+    } catch (err) {
+      toast({ title: t('record.toast.mistakeDeleteFailed'), description: (err as Error)?.message ?? t('record.toast.unknownError'), variant: 'destructive' })
+    }
+  }
 
   const startExperiment = async () => {
     if (!focused) return
@@ -214,7 +228,8 @@ export function MistakeStatsPage() {
                 <Inspector
                   row={focused}
                   occ={(occ ?? []).filter((o) => o.tag.slug === focused.slug)}
-                  moments={latestMoments(occ ?? [], focused.slug)}
+                  moments={latestMoments(occ ?? [], focused.slug, Infinity)}
+                  onDelete={deleteOccurrence}
                   role={role || mainRole}
                   experiment={experiment}
                   onExperiment={startExperiment}
@@ -243,7 +258,7 @@ function Stat({ label, value, sub, color, small }: { label: string; value: strin
 
 function RankRow({ row, max, active, onClick }: { row: RankedMistake; max: number; active: boolean; onClick: () => void }) {
   const { t } = useTranslation()
-  const cost = row.winrateWith != null && row.winrateWithout != null ? row.winrateWith - row.winrateWithout : null
+  const cost = hasComparison(row) ? row.winrateWith! - row.winrateWithout! : null
   return (
     <button onClick={onClick} aria-pressed={active}
       className={cn('grid w-full grid-cols-[minmax(0,11rem)_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors',
@@ -264,7 +279,9 @@ function RankRow({ row, max, active, onClick }: { row: RankedMistake; max: numbe
   )
 }
 
-function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay }: {
+const MOMENTS_COLLAPSED = 3
+
+function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay, onDelete }: {
   row: RankedMistake
   occ: MistakeOccurrence[]
   moments: MistakeOccurrence[]
@@ -272,8 +289,15 @@ function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay
   experiment: 'idle' | 'busy' | 'done' | 'error'
   onExperiment: () => void
   onReplay: (o: MistakeOccurrence) => void
+  onDelete: (o: MistakeOccurrence) => Promise<void>
 }) {
   const { t } = useTranslation()
+  const [showAll, setShowAll] = useState(false)
+  const [confirming, setConfirming] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  // Another mistake picked: back to the short list.
+  useEffect(() => { setShowAll(false); setConfirming(null) }, [row.slug])
+  const shownMoments = showAll ? moments : moments.slice(0, MOMENTS_COLLAPSED)
   const phases = phaseBreakdown(occ)
   const total = Math.max(occ.length, 1)
   const prepare = usePrepareSession()
@@ -289,9 +313,11 @@ function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay
         <p className="mt-1 text-xs text-hextech-text">
           {t('mistakeLab.inspector.summary', { count: row.count, games: row.games, share: row.share })}
         </p>
-        {row.winrateWith != null && row.winrateWithout != null && (
+        {row.winrateWith != null && (
           <p className="mt-2 rounded-lg border border-hextech-border-dim bg-hextech-black/30 px-3 py-2 text-xs text-hextech-text-bright">
-            {t('mistakeLab.inspector.cost', { with: row.winrateWith, without: row.winrateWithout })}
+            {hasComparison(row)
+              ? t('mistakeLab.inspector.cost', { with: row.winrateWith, withGames: row.gamesWith, without: row.winrateWithout, withoutGames: row.gamesWithout })
+              : t('mistakeLab.inspector.costFew', { with: row.winrateWith, withGames: row.gamesWith, withoutGames: row.gamesWithout })}
           </p>
         )}
       </div>
@@ -315,7 +341,7 @@ function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay
         {prescription ? (
           <div className="mt-3">
             {phase && <p className="mb-1.5 text-[11px] text-hextech-text">{t('codex.whenTitle', { phase: t(`mistakeLab.phase.${phase}`) })}</p>}
-            <CodexCard entry={prescription} onPrepare={() => prepare(prescription)} />
+            <CodexCard entry={prescription} collapsible onPrepare={() => prepare(prescription)} />
           </div>
         ) : (
           <p className="mt-3 text-[11px] text-hextech-text-dim">{t('codex.none')}</p>
@@ -325,7 +351,7 @@ function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay
       <div>
         <h3 className="font-mono mb-2 text-[11px] font-semibold uppercase tracking-wider text-hextech-text-dim">{t('mistakeLab.inspector.moments')}</h3>
         <ul className="divide-y divide-hextech-border-dim/50 rounded-lg border border-hextech-border-dim">
-          {moments.map((o) => (
+          {shownMoments.map((o) => (
             <li key={o.id} className="flex items-center gap-3 px-3 py-2">
               <span className="font-mono text-xs font-semibold" style={{ color: row.color }}>{fmtClock(o.gameTimeSec)}</span>
               <span className="min-w-0 flex-1">
@@ -342,9 +368,29 @@ function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay
               ) : (
                 <span className="shrink-0 text-[10px] text-hextech-text-dim">{t('mistakeLab.inspector.noVod')}</span>
               )}
+              {confirming === o.id ? (
+                <span className="flex shrink-0 items-center gap-1">
+                  <Button size="sm" variant="destructive" className="h-8 text-[11px]" disabled={deleting === o.id}
+                    onClick={async () => { setDeleting(o.id); try { await onDelete(o) } finally { setDeleting(null); setConfirming(null) } }}>
+                    {deleting === o.id ? <Loader2 className="h-3 w-3 animate-spin" /> : t('mistakeLab.inspector.deleteConfirm')}
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-8 text-[11px]" onClick={() => setConfirming(null)}>{t('common.cancel')}</Button>
+                </span>
+              ) : (
+                <button type="button" onClick={() => setConfirming(o.id)} title={t('mistakeLab.inspector.delete')} aria-label={t('mistakeLab.inspector.delete')}
+                  className="shrink-0 rounded p-1.5 text-hextech-text-dim hover:bg-hextech-red/10 hover:text-hextech-red focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              )}
             </li>
           ))}
         </ul>
+        {moments.length > MOMENTS_COLLAPSED && (
+          <Button type="button" size="sm" variant="outline" className="mt-2 w-full gap-1.5" aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
+            <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showAll && 'rotate-180')} aria-hidden />
+            {showAll ? t('mistakeLab.inspector.showLess') : t('mistakeLab.inspector.showAll', { count: moments.length })}
+          </Button>
+        )}
       </div>
 
       <div className="rounded-lg border border-hextech-gold/30 bg-gradient-to-r from-hextech-gold/10 to-transparent p-3">

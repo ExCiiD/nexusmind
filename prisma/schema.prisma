@@ -121,6 +121,11 @@ model Session {
   status             String   @default("active")
   aiSummary          String?
   sessionConclusion  String?
+  /// 27/11/2026: started by Ascend itself when a game began with no active session (no objective needed). Closed by the
+  /// idle rule (sessionAutoClose.ts); deleted when it never got a game.
+  autoStarted        Boolean  @default(false)
+  /// The "add an objective" bubble was dismissed for this session.
+  objectivePromptDismissed Boolean @default(false)
   games              Game[]
 
   @@index([userId, status])

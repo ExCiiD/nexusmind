@@ -61,7 +61,17 @@ export interface RankedMistake {
    *  null below 2 games on either side. */
   winrateWith: number | null
   winrateWithout: number | null
+  /** Games each side of the comparison is made of (decisive games with the mistake / analysed games without it). */
+  gamesWith: number
+  gamesWithout: number
 }
+
+/** Below this many analysed games WITHOUT the mistake, the with/without comparison says nothing: the screen qualifies or hides it. */
+export const MIN_GAMES_WITHOUT = 3
+
+/** True when the with/without comparison rests on enough games on both sides. */
+export const hasComparison = (r: Pick<RankedMistake, 'winrateWith' | 'winrateWithout' | 'gamesWithout'>): boolean =>
+  r.winrateWith != null && r.winrateWithout != null && r.gamesWithout >= MIN_GAMES_WITHOUT
 
 const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0)
 
@@ -91,7 +101,7 @@ export function rankMistakes(occ: MistakeOccurrence[]): RankedMistake[] {
       return {
         tagId: o.tag.id, slug: o.tag.slug, label: o.tag.label, family, color: FAMILY_COLOR[family],
         count, share: pct(count, total), games: gameIds.size,
-        winrateWith: wr(withIds), winrateWithout: wr(withoutIds),
+        winrateWith: wr(withIds), winrateWithout: wr(withoutIds), gamesWith: withIds.length, gamesWithout: withoutIds.length,
       }
     })
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))

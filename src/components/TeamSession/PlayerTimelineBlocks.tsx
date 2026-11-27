@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
+import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Highlight, HighlightId, LaneSide, LaneSnap, ObjectiveEvent, ObjectiveLine, PlayerEvent, PlayerExtras, SessionExtras } from '@/lib/playerSessionStatsCore'
@@ -259,6 +260,8 @@ function ObjectiveRow({ line }: { line: ObjectiveLine }) {
   )
 }
 
+const OBJECTIVE_EVENTS_COLLAPSED = 5
+
 export function ObjectivesBlock(ctx: IndivCtx) {
   const { t } = useTranslation()
   const { single, g, tot } = useIndivView(ctx)
@@ -270,6 +273,9 @@ export function ObjectivesBlock(ctx: IndivCtx) {
   }, [single, g, ctx.indiv])
   const rec = useRecordings(events.map((x) => x.gameId), ctx.gameMatchIds)
   const taken = lines?.some((l) => l.ours + l.theirs > 0)
+  // The event list can run to dozens of lines over a session: a few rows by default, a button for the rest.
+  const [showAll, setShowAll] = useState(false)
+  const shown = showAll ? events : events.slice(0, OBJECTIVE_EVENTS_COLLAPSED)
   return (
     <Section title={t('playerSheet.objectivesTitle')}>
       {!lines ? <WhyEmpty text={reason?.text ?? t('playerSheet.noObjectives')} />
@@ -292,8 +298,14 @@ export function ObjectivesBlock(ctx: IndivCtx) {
             {!taken && <p className="text-xs text-hextech-text-dim">{t('playerSheet.objNone')}</p>}
             {events.length > 0 && (
               <ul className="divide-y divide-hextech-border-dim/60" aria-label={t('playerSheet.objEvents')}>
-                {events.map(({ e, gameId, gameIndex }) => <ObjectiveEventRow key={`${gameId}-${e.kind}-${e.atSec}`} e={e} gameIndex={gameIndex} recordingId={rec[gameId]} showGame={!single} />)}
+                {shown.map(({ e, gameId, gameIndex }) => <ObjectiveEventRow key={`${gameId}-${e.kind}-${e.atSec}`} e={e} gameIndex={gameIndex} recordingId={rec[gameId]} showGame={!single} />)}
               </ul>
+            )}
+            {events.length > OBJECTIVE_EVENTS_COLLAPSED && (
+              <Button type="button" size="sm" variant="outline" className="w-full gap-1.5" aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
+                <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showAll && 'rotate-180')} aria-hidden />
+                {showAll ? t('playerSheet.objShowLess') : t('playerSheet.objShowAll', { count: events.length })}
+              </Button>
             )}
           </>
         )}
@@ -369,7 +381,7 @@ export function HighlightsBlock(ctx: IndivCtx) {
 
 type ExtraKey = Exclude<keyof PlayerExtras, 'firstBloodInvolved'> | 'firstBloodShare'
 
-export function ExtrasBlock(ctx: IndivCtx) {
+export function ExtrasBlock(ctx: IndivCtx & { note?: string }) {
   const { t } = useTranslation()
   const { single, g, tot } = useIndivView(ctx)
   const reason = useReason(ctx)
@@ -408,7 +420,7 @@ export function ExtrasBlock(ctx: IndivCtx) {
             ))}
           </dl>
         )}
-      {!single && shown.length > 0 && <p className="text-[11px] text-hextech-text-dim">{t('playerSheet.extrasNote')}</p>}
+      {!single && shown.length > 0 && <p className="text-[11px] text-hextech-text-dim">{ctx.note ?? t('playerSheet.extrasNote')}</p>}
     </Section>
   )
 }

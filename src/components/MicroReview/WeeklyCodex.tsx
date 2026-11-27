@@ -53,7 +53,7 @@ export function WeeklyCodex({ role }: { role: string | null | undefined }) {
           })}
         </span>
       </p>
-      <CodexCard entry={focus.entry} compact onPrepare={() => prepare(focus.entry)} />
+      <CodexCard entry={focus.entry} compact collapsible defaultCollapsed onPrepare={() => prepare(focus.entry)} />
     </div>
   )
 }

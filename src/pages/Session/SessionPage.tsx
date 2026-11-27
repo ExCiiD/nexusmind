@@ -49,7 +49,7 @@ export function SessionPage() {
   const updateSessionStore = useSessionStore((s) => s.updateSession)
   const navigate = useNavigate()
   // § 24.2: the player sheet of the current solo session (?sheet=1, &game=N for one game).
-  const [sheetParams] = useSearchParams()
+  const [sheetParams, setSheetParams] = useSearchParams()
   // AscendCodex "Préparer ma prochaine session": objective + drill pre-filled.
   const prefill = (useLocation().state as SessionPrefillState | null)?.prefill ?? null
   const { toast } = useToast()
@@ -392,6 +392,14 @@ export function SessionPage() {
     setModifyDialogOpen(true)
   }
 
+  // The auto-session bubble sends here with ?modify=1: open the editing of the active session once, then forget the param.
+  useEffect(() => {
+    if (sheetParams.get('modify') !== '1' || !activeSession) return
+    openModifyDialog()
+    setSheetParams((p) => { const n = new URLSearchParams(p); n.delete('modify'); return n }, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetParams, activeSession?.id])
+
   const modifyAddObjective = (id: string) => {
     if (!id || modifyObjectives.includes(id) || modifyObjectives.length >= 3) return
     setModifyObjectives((prev) => [...prev, id])
@@ -452,7 +460,10 @@ export function SessionPage() {
     return (
       <div className="space-y-4 animate-fade-in">
         <div>
-          <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('session.activeTitle')}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-2xl font-bold text-hextech-gold-bright">{t('session.activeTitle')}</h1>
+            {activeSession.autoStarted && <Badge variant="outline" className="gap-1 border-hextech-gold/50 text-hextech-gold" data-testid="auto-session-badge"><Sparkles className="h-3 w-3" aria-hidden />{t('session.autoBadge')}</Badge>}
+          </div>
           <p className="text-sm text-hextech-text mt-1">{t('session.activeLock')}</p>
         </div>
 

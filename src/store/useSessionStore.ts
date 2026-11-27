@@ -13,6 +13,10 @@ interface Session {
   sessionConclusion: string | null
   date: string
   games: Game[]
+  /** Started by itself when the Record began a game (no objective chosen). */
+  autoStarted?: boolean
+  /** Active, no objective nor KPI, bubble not dismissed. */
+  needsObjective?: boolean
 }
 
 interface Game {

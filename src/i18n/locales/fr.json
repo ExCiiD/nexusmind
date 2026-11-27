@@ -231,7 +231,9 @@
       "healAndShield": "Soins et boucliers",
       "objectivesStolen": "Objectifs volés",
       "visionPerMin": "Vision/min"
-    }
+    },
+    "objShowAll": "Tout afficher ({{count}} événements)",
+    "objShowLess": "Réduire"
   },
   "teamSessions": {
     "title": "Sessions d’équipe",
@@ -1104,7 +1106,14 @@
       },
       "resultNote": "Note (facultatif)",
       "missing": "Indique pour chaque objectif s’il a été respecté."
-    }
+    },
+    "autoBubble": {
+      "title": "Session lancée automatiquement",
+      "body": "Ajoute un objectif ou un KPI pour que cette session serve ta progression.",
+      "edit": "Modifier la session",
+      "close": "Fermer"
+    },
+    "autoBadge": "Lancée automatiquement"
   },
   "review": {
     "noSession": {
@@ -4471,6 +4480,13 @@
       "afterLoss": "Après une défaite",
       "streak_one": "Plus longue série de défaites : {{count}} partie.",
       "streak_other": "Plus longue série de défaites : {{count}} parties."
+    },
+    "figures": {
+      "title": "Chiffres de match (timeline)",
+      "basis": "Sur tes {{count}} dernières parties avec timeline : solo kills, first blood, temps mort, dégâts aux objectifs et aux tourelles, vision/min, participation aux objectifs.",
+      "loading": "Calcul des chiffres de match…",
+      "none": "Pas encore de chiffres de timeline : ils apparaissent après une partie enregistrée avec sa timeline en cache.",
+      "note": "Compteurs additionnés sur tes {{count}} dernières parties avec timeline, taux moyennés, plus gros multikill = maximum."
     }
   },
   "appearance": {
@@ -4791,7 +4807,7 @@
       "title": "Classement par fréquence",
       "none": "Aucune erreur de cette famille sur la période.",
       "legend": "Rouge : erreurs qui coûtent des combats ou des objectifs · Ambre : vision et tempo · Bleu : micro. La dernière colonne compare ton taux de victoire avec et sans cette erreur.",
-      "costTitle": "Écart de taux de victoire : parties avec cette erreur vs parties analysées sans"
+      "costTitle": "Écart de taux de victoire : parties avec cette erreur moins parties analysées sans cette erreur (au moins 3 parties sans)"
     },
     "trend": {
       "title": "Évolution",
@@ -4816,7 +4832,7 @@
       "pick": "Choisis une erreur dans le classement.",
       "summary_one": "{{count}} fois sur {{games}} partie · {{share}} % de tes erreurs.",
       "summary_other": "{{count}} fois sur {{games}} parties · {{share}} % de tes erreurs.",
-      "cost": "Tu gagnes {{with}} % des parties où elle arrive, contre {{without}} % des autres parties analysées.",
+      "cost": "Parties avec cette erreur : {{with}} % de victoires ({{withGames}} parties). Parties sans cette erreur : {{without}} % ({{withoutGames}} parties, parmi tes parties analysées).",
       "when": "Quand elle arrive",
       "moments": "Derniers moments",
       "replay": "Revoir",
@@ -4829,7 +4845,13 @@
         "error": "Impossible à mesurer pour cette erreur"
       },
       "garbage_one": "{{count}} occurrence en garbage time (victoire ou défaite déjà jouée) : exclue du calcul avec/sans.",
-      "garbage_other": "{{count}} occurrences en garbage time (victoire ou défaite déjà jouée) : exclues du calcul avec/sans."
+      "garbage_other": "{{count}} occurrences en garbage time (victoire ou défaite déjà jouée) : exclues du calcul avec/sans.",
+      "showAll": "Tout afficher ({{count}} occurrences)",
+      "showLess": "Réduire la liste",
+      "delete": "Supprimer cette erreur",
+      "deleteConfirm": "Supprimer",
+      "deleted": "Erreur supprimée",
+      "costFew": "Parties avec cette erreur : {{with}} % de victoires ({{withGames}} parties). Pas assez de parties analysées sans cette erreur ({{withoutGames}}) pour comparer."
     },
     "win": "V",
     "loss": "D"
@@ -5643,7 +5665,9 @@
     "withFiche": "Fiche Codex dédiée",
     "referenceClips": "Exemple pro (LoL Esports)",
     "closeVideo": "Fermer la vidéo",
-    "openYoutube": "Ouvrir sur YouTube"
+    "openYoutube": "Ouvrir sur YouTube",
+    "collapse": "Replier le conseil",
+    "expand": "Déplier le conseil"
   },
   "objectiveCheck": {
     "title": "Vérification automatique",

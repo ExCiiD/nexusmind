@@ -100,7 +100,7 @@ class MultiWindowLimiter {
    * caller first (end of game, then an open screen, then background work), in arrival order within a level,
    * so a long scout never delays the game that just ended.
    */
-  private waiters: Array<{ rank: number; seq: number; resolve: () => void }> = []
+  private waiters: Array<{ rank: number; seq: number; resolve: (takenAt: number) => void }> = []
   private seq = 0
   private pumping = false
 
@@ -148,12 +148,22 @@ class MultiWindowLimiter {
    * Resolves once a slot is taken for the caller. The HTTP request after this returns can still run in
    * parallel (caller's responsibility), but the slot accounting is atomic.
    */
-  acquire(priority: RiotPriority = currentRiotPriority()): Promise<void> {
-    return new Promise<void>((resolve) => {
+  acquire(priority: RiotPriority = currentRiotPriority()): Promise<number> {
+    return new Promise<number>((resolve) => {
       this.waiters.push({ rank: PRIORITY_RANK[priority], seq: this.seq++, resolve })
       this.waiters.sort((a, b) => a.rank - b.rank || a.seq - b.seq)
       void this.pump()
     })
+  }
+
+  /**
+   * Gives back a slot taken at `takenAt` in the window of `windowSec` seconds: the call did not use what that window
+   * counts (the proxy answered from its game store, or refused the call before counting it).
+   */
+  refund(takenAt: number, windowSec: number): void {
+    const w = this.windows.find((x) => x.windowSec === windowSec)
+    const i = w ? w.used.indexOf(takenAt) : -1
+    if (w && i >= 0) w.used.splice(i, 1)
   }
 
   /** Tests only: forgets the calls counted so far. */
@@ -179,7 +189,7 @@ class MultiWindowLimiter {
         if (w <= 0) {
           for (const win of this.windows) win.used.push(now)
           // The head is read again after every wait: a more urgent caller that arrived meanwhile goes first.
-          this.waiters.shift()!.resolve()
+          this.waiters.shift()!.resolve(now)
           continue
         }
         // Wait the full computed duration (no 1000ms cap) so we don't wake spuriously; the loop re-checks.
@@ -262,9 +272,14 @@ function endpointKeyFromUrl(url: string): string {
 /** What one player may send in the background through the Ascend proxy (RIOT_LIMITS mirrors the worker's config). */
 function proxyBackgroundWindows(withTwoMinutes: boolean): Array<{ capacity: number; windowSec: number }> {
   const perMinute = { capacity: RIOT_LIMITS.PROXY_BACKGROUND_PER_MINUTE, windowSec: 60 }
-  return withTwoMinutes ? [perMinute, { capacity: RIOT_LIMITS.PROXY_BACKGROUND_PER_2_MIN, windowSec: 120 }] : [perMinute]
+  return withTwoMinutes
+    ? [{ capacity: RIOT_LIMITS.PROXY_BACKGROUND_PER_SECOND, windowSec: 1 }, perMinute, { capacity: RIOT_LIMITS.PROXY_BACKGROUND_PER_2_MIN, windowSec: 120 }]
+    : [perMinute]
 }
-const proxyBackgroundLimiter = new MultiWindowLimiter('proxy-background', proxyBackgroundWindows(false))
+// Both windows from the start: the 2-minute one mirrors the proxy's per-player share, which only counts the calls it let
+// through to Riot (answers from its game store and refused calls are given back, see riotFetch), so it costs no speed.
+const proxyBackgroundLimiter = new MultiWindowLimiter('proxy-background', proxyBackgroundWindows(true))
+const SHARE_WINDOW_SEC = 120
 
 /**
  * Set when the proxy asked this player to slow down, so the workers do not each find out with their own 429.
@@ -283,22 +298,10 @@ async function waitForProxyPause(priority: RiotPriority): Promise<void> {
     await new Promise((r) => setTimeout(r, left))
   }
 }
-/** When the 2-minute window was last needed: after this long without a "share" 429 the pace goes back to one window. */
-let proxyShareSeenAt = 0
-const PROXY_SHARE_MEMORY_MS = 10 * 60_000
-let proxyTwoWindows = false
-function setProxyWindows(two: boolean): void {
-  if (two === proxyTwoWindows) return
-  proxyTwoWindows = two
-  proxyBackgroundLimiter.configure(proxyBackgroundWindows(two))
-}
-
 /** Tests only: forgets the pauses and the learned pace. */
 export function resetProxyPacingForTests(): void {
   proxyPause.background = 0
   proxyPause.global = 0
-  proxyShareSeenAt = 0
-  setProxyWindows(false)
   proxyBackgroundLimiter.reset()
   appLimiter.reset()
   methodLimiters.clear()
@@ -324,7 +327,7 @@ export class RiotRateLimitError extends Error {
   }
 }
 
-async function riotFetch(url: string, allowedFallbackStatus?: number[], attempt = 1): Promise<{ data: any; status: number }> {
+async function riotFetch(url: string, allowedFallbackStatus?: number[], attempt = 1, waitedMs = 0): Promise<{ data: any; status: number }> {
   // Proxy (Supabase token) in builds, local dev key only under `npm run dev`.
   const request = await prepareRiotRequest(url)
 
@@ -336,14 +339,14 @@ async function riotFetch(url: string, allowedFallbackStatus?: number[], attempt 
   // Scouts through the proxy: wait for the proxy's own pauses, and keep to what it lets one player do in the background.
   const priority = currentRiotPriority()
   await waitForProxyPause(priority)
-  if (riotTransportMode() === 'proxy' && priority === 'background') {
-    if (proxyTwoWindows && Date.now() - proxyShareSeenAt > PROXY_SHARE_MEMORY_MS) setProxyWindows(false)
-    await proxyBackgroundLimiter.acquire('background')
-  }
+  let shareSlot: number | null = null
+  if (riotTransportMode() === 'proxy' && priority === 'background') shareSlot = await proxyBackgroundLimiter.acquire('background')
   await appLimiter.acquire()
   await methodLimiter.acquire()
 
   const res = await fetch(request.url, { headers: request.headers })
+  // The proxy's share only counts calls that reached Riot: an answer from its game store costs none of it.
+  if (shareSlot != null && res.headers.get('x-nxm-cache') === 'hit') proxyBackgroundLimiter.refund(shareSlot, SHARE_WINDOW_SEC)
 
   // Auto-tune limiters from response headers. Riot returns:
   //   X-App-Rate-Limit: "100:120,1000:600"
@@ -364,25 +367,28 @@ async function riotFetch(url: string, allowedFallbackStatus?: number[], attempt 
     // The proxy only asking this player to slow down (not Riot's own limit): every worker waits together, and a
     // long background scout is given many more tries (a 429 here is pacing, the game is not lost).
     const proxyPacing = riotTransportMode() === 'proxy' && limitType.startsWith('proxy-') && limitType !== 'proxy-budget-unavailable'
+    // The proxy refused this call before counting it in the share: the slot taken for it is given back.
+    if (proxyPacing && shareSlot != null) proxyBackgroundLimiter.refund(shareSlot, SHARE_WINDOW_SEC)
     if (proxyPacing) {
       const until = Date.now() + Math.min(retryAfter * 1000, MAX_PROXY_PAUSE_MS)
       // Any pacing 429 received by a BACKGROUND call (own share, proxy-background-reserve, proxy-global) only holds background
       // work: the game that just ended and the open screens keep their reserve. Non-background calls hold everybody.
       if (priority === 'background') proxyPause.background = Math.max(proxyPause.background, until)
       else proxyPause.global = Math.max(proxyPause.global, until)
-      // The 2-minute share was hit: from now on the pace includes it (cached answers do not count there, but we
-      // cannot tell them apart beforehand).
-      if (limitType === 'proxy-user-share') { proxyShareSeenAt = Date.now(); setProxyWindows(true) }
     }
-    const maxAttempts = proxyPacing && priority === 'background' ? RIOT_LIMITS.PROXY_PACING_MAX_ATTEMPTS : RIOT_MAX_ATTEMPTS
-    if (attempt >= maxAttempts) {
+    // Pacing is not failure: a background call waits as long as needed (bounded in time, not in tries, since a try
+    // only costs one second when the share frees up slot by slot). Anything else keeps RIOT_MAX_ATTEMPTS.
+    const patient = proxyPacing && priority === 'background'
+    const maxAttempts = patient ? Infinity : RIOT_MAX_ATTEMPTS
+    if (attempt >= maxAttempts || (patient && waitedMs >= RIOT_LIMITS.PROXY_PACING_MAX_WAIT_MS)) {
       console.warn(`[riotFetch] ${res.status} (${limitType}) — giving up after ${attempt} tries · ${endpointKey}`)
       throw new RiotRateLimitError(retryAfter, limitType)
     }
-    console.warn(`[riotFetch] ${res.status} (${limitType}) — backing off ${retryAfter}s (try ${attempt}/${maxAttempts}) · ${endpointKey}`)
+    console.warn(`[riotFetch] ${res.status} (${limitType}) — backing off ${retryAfter}s (try ${attempt}${patient ? '' : `/${maxAttempts}`}) · ${endpointKey}`)
     // Bounded like the shared pause: a huge Retry-After must not hold a call for hours (or overflow setTimeout).
-    await new Promise((r) => setTimeout(r, Math.min(retryAfter * 1000, MAX_PROXY_PAUSE_MS)))
-    return riotFetch(url, allowedFallbackStatus, attempt + 1)
+    const waitMs = Math.min(retryAfter * 1000, MAX_PROXY_PAUSE_MS)
+    await new Promise((r) => setTimeout(r, waitMs))
+    return riotFetch(url, allowedFallbackStatus, attempt + 1, waitedMs + waitMs)
   }
 
   if (!res.ok) {

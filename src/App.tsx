@@ -13,6 +13,7 @@ import { DevToolbar } from '@/components/Dev/DevToolbar'
 import { UpdateBanner } from '@/components/UpdateBanner'
 import { Toaster } from '@/components/ui/toaster'
 import { BackgroundJobsIndicator } from '@/components/BackgroundJobsIndicator'
+import { AutoSessionBubble } from '@/components/Session/AutoSessionBubble'
 import { AnnouncementBubbleStack } from '@/components/Announcements/AnnouncementBubbleStack'
 import { SessionCheckinToast } from '@/components/TeamSession/SessionCheckinToast'
 import { TeamSessionBanner } from '@/components/TeamSession/TeamSessionBanner'
@@ -126,6 +127,7 @@ export function App() {
       {user && <PageCacheWarmup />}
       {user && <RealtimeCacheBridge />}
       {user && <AnnouncementBubbleStack />}
+      {user && <AutoSessionBubble />}
       {user && <TeamSessionBanner />}
       {user && <EndOfGamePrompt />}
       {user && <SessionCheckinToast />}

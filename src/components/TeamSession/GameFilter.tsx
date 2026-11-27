@@ -15,7 +15,7 @@ export function GameFilter({ games, value, onPick, right }: {
 }) {
   const { t } = useTranslation()
   return (
-    <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-2 bg-hextech-black/80 px-1 py-2 backdrop-blur">
+    <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-2 border-b border-hextech-border-dim/40 bg-hextech-black px-1 py-2">
       <div role="radiogroup" aria-label={t('teamSessions.detail.gameFilter')} className="inline-flex max-w-full gap-1 overflow-x-auto rounded-md border border-hextech-border-dim bg-hextech-dark p-1">
         {[null, ...games.map((g) => g.index)].map((idx) => {
           const g = idx == null ? null : games.find((x) => x.index === idx)!

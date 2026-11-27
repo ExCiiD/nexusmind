@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { useChampionIconUrl } from '@/hooks/useChampionIconUrl'
 import { wrBar, wrText } from '@/lib/winrate'
 import { useCachedQuery } from '@/hooks/useCachedQuery'
+import { StatsTimelineFigures } from './StatsTimelineFigures'
 import { HISTORY_KEY, fetchHistory } from '@/lib/pageQueries'
 import {
   championPool,
@@ -128,6 +129,8 @@ export function StatsInsightsTab() {
           </p>
         </section>
       </div>
+
+      <StatsTimelineFigures />
     </div>
   )
 }

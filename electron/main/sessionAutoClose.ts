@@ -5,9 +5,10 @@
  */
 
 import { getPrisma } from './database'
-import { endSessionCore } from './ipc/session.ipc'
+import { endSessionCore, deleteSessionCore } from './ipc/session.ipc'
+import { autoCloseAction, hasObjectiveOrKpi, AUTO_SESSION_IDLE_MINUTES } from '../../src/lib/autoSession'
 
-export const IDLE_MINUTES = 45
+export const IDLE_MINUTES = AUTO_SESSION_IDLE_MINUTES
 /** How often the background check runs. */
 const CHECK_INTERVAL_MS = 5 * 60_000
 
@@ -35,12 +36,19 @@ export function buildAutoConclusion(info: Pick<IdleSessionInfo, 'gamesPlayed' | 
   return `Session closed automatically after ${IDLE_MINUTES} minutes of inactivity — ${info.gamesPlayed} game(s) (${info.wins}W-${losses}L).`
 }
 
-/** Closes every active session idle for ≥ 45 minutes. Returns how many it closed. */
-export async function autoCloseIdleSessions(now = Date.now()): Promise<number> {
+/**
+ * Closes every active session idle for ≥ 45 minutes (through endSessionCore, the manual path: XP, badges), and throws
+ * away a session Ascend started by itself that never got a game. Nothing happens while a game is being played.
+ * Returns how many it closed or deleted.
+ */
+export async function autoCloseIdleSessions(now = Date.now(), gameRunning = false): Promise<number> {
   const prisma = getPrisma()
   const sessions = await prisma.session.findMany({
     where: { status: 'active' },
-    select: { id: true, date: true, games: { select: { gameEndAt: true, win: true } } },
+    select: {
+      id: true, date: true, autoStarted: true, objectiveId: true, objectiveIds: true, customObjectives: true, selectedKpiIds: true,
+      games: { select: { gameEndAt: true, win: true } },
+    },
   })
 
   let closed = 0
@@ -52,9 +60,11 @@ export async function autoCloseIdleSessions(now = Date.now()): Promise<number> {
       gamesPlayed: s.games.length,
       wins: s.games.filter((g) => g.win).length,
     }
-    if (!isIdleEnough(info, now)) continue
+    const action = autoCloseAction({ ...info, autoStarted: s.autoStarted, hasObjectiveOrKpi: hasObjectiveOrKpi(s) }, now, gameRunning)
+    if (action === 'keep') continue
     try {
-      await endSessionCore(s.id, undefined, buildAutoConclusion(info))
+      if (action === 'delete') await deleteSessionCore(s.id)
+      else await endSessionCore(s.id, undefined, buildAutoConclusion(info))
       closed++
     } catch (err) {
       console.warn('[session] auto-close failed for', s.id, (err as Error)?.message ?? err)
@@ -63,10 +73,10 @@ export async function autoCloseIdleSessions(now = Date.now()): Promise<number> {
   return closed
 }
 
-/** Runs at startup and then every 5 minutes for the lifetime of the app. */
-export function startSessionAutoClose(): void {
+/** Runs at startup and then every 5 minutes for the lifetime of the app. `gameRunning`: a game is being played now. */
+export function startSessionAutoClose(gameRunning: () => boolean = () => false): void {
   const tick = () => {
-    autoCloseIdleSessions().then((closed) => {
+    autoCloseIdleSessions(Date.now(), gameRunning()).then((closed) => {
       if (closed > 0) console.log(`[session] auto-closed ${closed} idle session(s)`)
     }).catch((err) => console.warn('[session] auto-close tick failed:', (err as Error)?.message ?? err))
   }

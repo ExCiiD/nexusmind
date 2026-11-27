@@ -54,7 +54,11 @@ export const RIOT_LIMITS = {
   /** Background calls per 2 minutes per player that reach Riot (USER_WINDOW_SHARE 25 % of 95, 80 % of it, less one). */
   PROXY_BACKGROUND_PER_2_MIN: 18,
   /** Tries for a call the proxy only asked to slow down (proxy-user*, proxy-global 429): pacing, not failure. */
+  /** What the proxy lets one player send in the same second in the background (floor(18 x 25 %) - 1). */
+  PROXY_BACKGROUND_PER_SECOND: 3,
   PROXY_PACING_MAX_ATTEMPTS: 12,
+  /** A background call asked to slow down by the proxy gives up after waiting this long in all (ms). */
+  PROXY_PACING_MAX_WAIT_MS: 20 * 60_000,
 } as const
 
 /** Scout / auto-fill depth picked in the scope dialog. */

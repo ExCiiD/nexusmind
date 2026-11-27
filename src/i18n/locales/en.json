@@ -231,7 +231,9 @@
       "healAndShield": "Heal and shield",
       "objectivesStolen": "Objectives stolen",
       "visionPerMin": "Vision/min"
-    }
+    },
+    "objShowAll": "Show all ({{count}} events)",
+    "objShowLess": "Show less"
   },
   "teamSessions": {
     "title": "Team sessions",
@@ -1104,7 +1106,14 @@
       },
       "resultNote": "Note (optional)",
       "missing": "Say for each objective whether it was met."
-    }
+    },
+    "autoBubble": {
+      "title": "Session started automatically",
+      "body": "Add an objective or a KPI so this session works toward your progress.",
+      "edit": "Edit the session",
+      "close": "Close"
+    },
+    "autoBadge": "Started automatically"
   },
   "review": {
     "noSession": {
@@ -4471,6 +4480,13 @@
       "afterLoss": "After a loss",
       "streak_one": "Longest losing streak: {{count}} game.",
       "streak_other": "Longest losing streak: {{count}} games."
+    },
+    "figures": {
+      "title": "Match figures (timeline)",
+      "basis": "Over your latest {{count}} games with a timeline: solo kills, first blood, time dead, damage to objectives and turrets, vision/min, objective participation.",
+      "loading": "Computing match figures…",
+      "none": "No timeline figures yet: they appear after a recorded game whose timeline is cached.",
+      "note": "Counts are summed over your latest {{count}} games with a timeline, rates averaged, biggest multikill = maximum."
     }
   },
   "appearance": {
@@ -4791,7 +4807,7 @@
       "title": "Ranked by frequency",
       "none": "No mistakes from this family in the period.",
       "legend": "Red: mistakes that cost fights or objectives · Amber: vision and tempo · Blue: micro. The last column compares your win rate with and without the mistake.",
-      "costTitle": "Win-rate gap: games with this mistake vs analysed games without it"
+      "costTitle": "Win-rate gap: games with this mistake minus analysed games without it (at least 3 games without)"
     },
     "trend": {
       "title": "Trend",
@@ -4816,7 +4832,7 @@
       "pick": "Pick a mistake in the ranking.",
       "summary_one": "{{count}} times over {{games}} game · {{share}}% of your mistakes.",
       "summary_other": "{{count}} times over {{games}} games · {{share}}% of your mistakes.",
-      "cost": "You win {{with}}% of the games where it happens, vs {{without}}% of your other analysed games.",
+      "cost": "Games with this mistake: {{with}}% won ({{withGames}} games). Games without it: {{without}}% ({{withoutGames}} games, among your analysed games).",
       "when": "When it happens",
       "moments": "Latest moments",
       "replay": "Rewatch",
@@ -4829,7 +4845,13 @@
         "error": "Not measurable for this mistake"
       },
       "garbage_one": "{{count}} occurrence in garbage time (game already decided): left out of the with/without ratio.",
-      "garbage_other": "{{count}} occurrences in garbage time (game already decided): left out of the with/without ratio."
+      "garbage_other": "{{count}} occurrences in garbage time (game already decided): left out of the with/without ratio.",
+      "showAll": "Show all ({{count}} occurrences)",
+      "showLess": "Show fewer",
+      "delete": "Delete this mistake",
+      "deleteConfirm": "Delete",
+      "deleted": "Mistake deleted",
+      "costFew": "Games with this mistake: {{with}}% won ({{withGames}} games). Not enough analysed games without it ({{withoutGames}}) to compare."
     },
     "win": "W",
     "loss": "L"
@@ -5643,7 +5665,9 @@
     "withFiche": "Dedicated Codex entry",
     "referenceClips": "Pro example (LoL Esports)",
     "closeVideo": "Close the video",
-    "openYoutube": "Open on YouTube"
+    "openYoutube": "Open on YouTube",
+    "collapse": "Collapse the advice",
+    "expand": "Expand the advice"
   },
   "objectiveCheck": {
     "title": "Automatic check",

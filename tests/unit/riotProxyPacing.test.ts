@@ -55,9 +55,11 @@ describe('proxy pacing', () => {
   it('a gameEnd or interactive call leaves at once during a BACKGROUND pause (audit I1)', async () => {
     vi.useFakeTimers()
     const urls: string[] = []
+    let refused = false
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
       urls.push(url)
-      return url.includes('EUW1_30') ? userShare429() : answer(200, {}, '{}')
+      if (url.includes('EUW1_30') && !refused) { refused = true; return userShare429() }
+      return answer(200, {}, '{}')
     }))
     const bg = withRiotPriority('background', () => getMatch('EUW1_30', 'EUW1')).catch(() => null)
     await vi.advanceTimersByTimeAsync(10) // 429 proxy-user-share: background paused for 5 s

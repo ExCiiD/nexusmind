@@ -332,6 +332,8 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
   /** 20/11: `customObjectives` (written or coach objectives); `objectiveId` is '' when the session has no fundamental. */
   createSession: (data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean; customObjectives?: CustomObjective[] }) => Promise<any>
   getActiveSession: () => Promise<any>
+  /** The bubble "add an objective" was closed: not shown again for this session (getActiveSession().needsObjective turns false). */
+  dismissObjectivePrompt: (id: string) => Promise<{ success: boolean }>
   /**
    * Individual stats of the signed-in player for a solo session (null / absent = the active one), the same PlayerSessionStats[]
    * as teamSessionPlayerStats (docs/contracts/player-session-stats.md § B7): 0 or 1 element, memberId = the local user id.

@@ -9,6 +9,7 @@
  * The same container already held the games found from orphan recordings (recording.ipc.ts), so nothing moves.
  */
 import { getPrisma } from './database'
+import { bumpStreak } from './streak'
 
 export const OFF_SESSION_OBJECTIVE_ID = '__review_only__'
 
@@ -39,7 +40,11 @@ export function isOffSessionSession(session: { objectiveId?: string | null } | n
  */
 export async function sessionForNewGame(userId: string): Promise<{ sessionId: string; inSession: boolean }> {
   const prisma = getPrisma()
-  const active = await prisma.session.findFirst({ where: { userId, status: 'active', NOT: { objectiveId: OFF_SESSION_OBJECTIVE_ID } }, select: { id: true } })
-  if (active) return { sessionId: active.id, inSession: true }
+  const active = await prisma.session.findFirst({ where: { userId, status: 'active', NOT: { objectiveId: OFF_SESSION_OBJECTIVE_ID } }, select: { id: true, autoStarted: true, _count: { select: { games: true } } } })
+  if (active) {
+    // The first game of a session Ascend started by itself: today counts as a day played (an empty one never does).
+    if (active.autoStarted && active._count.games === 0) await bumpStreak(userId).catch(() => {})
+    return { sessionId: active.id, inSession: true }
+  }
   return { sessionId: await getOrCreateOffSessionSession(userId), inSession: false }
 }

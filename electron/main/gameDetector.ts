@@ -143,6 +143,11 @@ export class GameDetector {
     private onGameEnriched?: (info: { gameId: string; matchId: string; win: boolean; queueType: string }) => void,
   ) {}
 
+  /** A game is being played right now (the live client answers). */
+  isInGame(): boolean {
+    return this.wasInGame
+  }
+
   start() {
     if (this.polling) return
     this.polling = true

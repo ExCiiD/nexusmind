@@ -1,26 +1,44 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, CalendarPlus, ExternalLink, PlayCircle, Users, X } from 'lucide-react'
+import { BookOpen, CalendarPlus, ChevronDown, ExternalLink, PlayCircle, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { isOfficialVideo, localize, officialThumbnail, segmentEmbedUrl, type CodexEntry, type VideoExample } from '@/lib/microReview/codex'
 
 /** One AscendCodex prescription: headline, tactical rule, measurable drill, optional 1-click action. */
-export function CodexCard({ entry, onPrepare, compact, className }: {
+export function CodexCard({ entry, onPrepare, compact, className, collapsible, defaultCollapsed }: {
   entry: CodexEntry
   onPrepare?: () => void
   compact?: boolean
   className?: string
+  /** The block can be folded down to its title and headline (dashboard summary, Mistake Lab panel). */
+  collapsible?: boolean
+  defaultCollapsed?: boolean
 }) {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
+  const [open, setOpen] = useState(!(collapsible && defaultCollapsed))
+  const folded = !!collapsible && !open
   return (
     <div className={cn('rounded-xl border border-hextech-cyan/30 bg-gradient-to-br from-hextech-cyan/10 to-transparent p-3.5', className)} data-testid="codex-card">
       <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-hextech-cyan">
         {entry.source === 'team' ? <Users className="h-3 w-3" /> : <BookOpen className="h-3 w-3" />}
         {entry.source === 'team' ? t('codex.team') : t('codex.title')}
+        {collapsible && (
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-label={t(open ? 'codex.collapse' : 'codex.expand')}
+            title={t(open ? 'codex.collapse' : 'codex.expand')}
+            className="ml-auto rounded p-1 text-hextech-cyan/80 hover:bg-hextech-cyan/10 hover:text-hextech-cyan focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} aria-hidden />
+          </button>
+        )}
       </div>
       <p className="mt-1 text-sm font-bold text-hextech-text-bright">{localize(entry.headline, lang)}</p>
+      {!folded && (<>
       <p className={cn('mt-1.5 text-xs leading-relaxed text-hextech-text', compact && 'line-clamp-3')}>{localize(entry.tacticalRule, lang)}</p>
       <div className="mt-2.5 rounded-lg border border-hextech-border-dim bg-hextech-black/30 px-2.5 py-2">
         <div className="text-[10px] font-semibold uppercase tracking-wider text-hextech-text-dim">{t('codex.drill')}</div>
@@ -36,6 +54,7 @@ export function CodexCard({ entry, onPrepare, compact, className }: {
           <CalendarPlus className="h-3.5 w-3.5" />{t('codex.prepare')}
         </Button>
       )}
+      </>)}
     </div>
   )
 }

@@ -35,7 +35,7 @@ import { RECORDER_BACKEND, getActiveRecorder } from './recorderBackend'
 import { resolveMicDeviceName } from './audio'
 import { bringToFront, enterRecordingBackground, leaveRecordingBackground } from './windowFocus'
 import { registerAuthHandlers } from './ipc/auth.ipc'
-import { registerSessionHandlers } from './ipc/session.ipc'
+import { registerSessionHandlers, startAutoSession } from './ipc/session.ipc'
 import { registerReviewHandlers } from './ipc/review.ipc'
 import { registerAssessmentHandlers } from './ipc/assessment.ipc'
 import { registerAnalyticsHandlers } from './ipc/analytics.ipc'
@@ -494,7 +494,7 @@ async function bootstrap() {
     startSyncService()
   }
   // S3: closes a session with no game for 45 min, local-only, no cloud needed.
-  startSessionAutoClose()
+  startSessionAutoClose(() => gameDetector?.isInGame() ?? false)
   // Decision M: old timelines of matches no game refers to (deferred, then daily).
   startMatchCachePurge()
 
@@ -641,6 +641,9 @@ async function bootstrap() {
 
     // onGameStart: fires when live client responds for the first time
     async () => {
+      // 27/11/2026: a game starts with no active session -> one is started for it (no objective), whether the
+      // recording is on or not. Back-to-back games find it active and share it.
+      void startAutoSession().then((r) => { if (r?.created) mainWindow?.webContents.send('session:auto-started', { id: r.id }) })
       try {
         const prisma = getPrisma()
         const user = await prisma.user.findFirst({ where: { isActive: true } })

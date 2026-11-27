@@ -13,6 +13,8 @@ import { saveTimeline } from '../matchStore'
 import { parseStoredTimeline } from '../matchStoreCore'
 import { platformOfMatchId } from '../gameCatchUpCore'
 import { tryUnlockBadge } from '../badgeUnlock'
+import { bumpStreak } from '../streak'
+import { needsObjectivePrompt } from '../../../src/lib/autoSession'
 import { getMatchIds, getMatch, getMatchTimeline, extractPlayerStats } from '../riotClient'
 import { forgetIgnoredMatches, rememberDeletedMatches } from '../ignoredMatches'
 import { pickNewest, PICK_CONCURRENCY, PICK_DEADLINE_MS } from '../matchHistoryPickCore'
@@ -83,6 +85,43 @@ const customObjectiveInput = z.object({
   fundamentalIds: z.array(z.string().max(80)).max(10).optional(),
 }).strict()
 
+/**
+ * A game just started (any queue, whether the recording is on or not): when no session is active, one is created with
+ * no objective, so the games that follow are counted in it. Does nothing when a session is already active (the
+ * player's own, or one started earlier by this function: back-to-back games share it). Never throws.
+ */
+export async function startAutoSession(): Promise<{ id: string; created: boolean } | null> {
+  try {
+    const prisma = getPrisma()
+    const user = await prisma.user.findFirst({ where: { isActive: true } })
+    if (!user) return null
+    const active = await prisma.session.findFirst({ where: { userId: user.id, status: 'active' }, select: { id: true } })
+    if (active) return { id: active.id, created: false }
+    const created = await prisma.session.create({ data: { userId: user.id, objectiveId: '', autoStarted: true } })
+    console.log(`[session] started automatically (${created.id})`)
+    return { id: created.id, created: true }
+  } catch (err) {
+    console.warn('[session] automatic start failed:', (err as Error)?.message ?? err)
+    return null
+  }
+}
+
+/** Deletes a session and what hangs off its games (shared by session:delete and the auto-close of an empty session). */
+export async function deleteSessionCore(id: string): Promise<void> {
+  const prisma = getPrisma()
+  const games = await prisma.game.findMany({ where: { sessionId: id }, select: { id: true, matchId: true } })
+  const gameIds = games.map((g) => g.id)
+  // Deleted on purpose: the start-up catch-up must not bring them back (ignoredMatches.ts).
+  await rememberDeletedMatches(games.map((g) => g.matchId))
+  if (gameIds.length > 0) {
+    await prisma.recording.updateMany({ where: { gameId: { in: gameIds } }, data: { gameId: null } })
+    await prisma.gameDetailedStats.deleteMany({ where: { gameId: { in: gameIds } } })
+    await prisma.review.deleteMany({ where: { gameId: { in: gameIds } } })
+    await prisma.game.deleteMany({ where: { sessionId: id } })
+  }
+  await prisma.session.delete({ where: { id } })
+}
+
 export function registerSessionHandlers() {
   // Individual stats of the signed-in player for a solo session (null = the active one). Local data only, no Riot call.
   validatedHandle('solo-session:player-stats', z.tuple([id.nullable().optional()]), (_e, sessionId) => soloSessionPlayerStats(sessionId ?? null))
@@ -93,11 +132,14 @@ export function registerSessionHandlers() {
     if (!user) throw new Error('No user found')
 
     // Only block active session creation for live sessions; retroactive can always be created
+    let adopted: { id: string } | null = null
     if (!data.isRetroactive) {
       const existing = await prisma.session.findFirst({
         where: { userId: user.id, status: 'active' },
       })
-      if (existing) throw new Error('An active session already exists')
+      // A session Ascend started by itself becomes the player's own: it keeps its games and takes the objectives.
+      if (existing?.autoStarted) adopted = existing
+      else if (existing) throw new Error('An active session already exists')
     }
 
     // 21/11/2026: fundamentals, written objectives, or both; at least one of them.
@@ -108,38 +150,29 @@ export function registerSessionHandlers() {
     assertHasObjective(ids, custom)
     const sessionDate = data.date ? new Date(data.date) : new Date()
 
-    const session = await prisma.session.create({
-      data: {
-        userId: user.id,
+    const sessionFields = {
         objectiveId: ids[0] ?? '',
         objectiveIds: JSON.stringify(ids),
         customObjectives: JSON.stringify(custom),
         selectedKpiIds: JSON.stringify(data.selectedKpiIds ?? []),
         subObjective: data.subObjective,
         customNote: data.customNote,
-        date: sessionDate,
-        // Retroactive sessions are immediately completed
-        status: data.isRetroactive ? 'completed' : 'active',
-      },
-      include: { games: { include: { review: true } } },
-    })
+    }
+    const include = { games: { include: { review: true } } }
+    const session = adopted
+      ? await prisma.session.update({ where: { id: adopted.id }, data: { ...sessionFields, autoStarted: false }, include })
+      : await prisma.session.create({
+        data: {
+          userId: user.id,
+          ...sessionFields,
+          date: sessionDate,
+          // Retroactive sessions are immediately completed
+          status: data.isRetroactive ? 'completed' : 'active',
+        },
+        include,
+      })
 
-    // Update streak
-    const now = new Date()
-    const lastActive = user.lastActiveDate
-    const dayDiff = lastActive
-      ? Math.floor((now.getTime() - lastActive.getTime()) / 86400000)
-      : 0
-
-    const newStreak = dayDiff <= 1 ? user.streakDays + (dayDiff === 1 ? 1 : 0) : 1
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { streakDays: newStreak, lastActiveDate: now },
-    })
-
-    if (newStreak >= 3) await tryUnlockBadge(user.id, 'streak_3')
-    if (newStreak >= 7) await tryUnlockBadge(user.id, 'streak_7')
-    if (newStreak >= 30) await tryUnlockBadge(user.id, 'streak_30')
+    await bumpStreak(user.id)
 
     return session
   })
@@ -193,11 +226,19 @@ export function registerSessionHandlers() {
 
     return {
       ...session,
+      // The bubble "add an objective": an active session with neither objective nor KPI, not dismissed yet.
+      needsObjective: needsObjectivePrompt(session),
       games: session.games.map((g) => ({
         ...g,
         ...resolveAccountInfo(g.matchId),
       })),
     }
+  })
+
+  // The player closed the bubble: not shown again for this session (it comes back with the next one).
+  validatedHandle('session:dismiss-objective-prompt', z.tuple([id]), async (_e, sessionId) => {
+    await getPrisma().session.update({ where: { id: sessionId }, data: { objectivePromptDismissed: true } })
+    return { success: true }
   })
 
   // Beta.16: the picker of "Importer depuis l'historique". The `count` newest games of all accounts, read from the
@@ -446,24 +487,7 @@ export function registerSessionHandlers() {
   )
 
   ipcMain.handle('session:delete', async (_event, id: string) => {
-    const prisma = getPrisma()
-
-    const games = await prisma.game.findMany({
-      where: { sessionId: id },
-      select: { id: true, matchId: true },
-    })
-    const gameIds = games.map((g) => g.id)
-    // Deleted on purpose: the start-up catch-up must not bring them back (ignoredMatches.ts).
-    await rememberDeletedMatches(games.map((g) => g.matchId))
-
-    if (gameIds.length > 0) {
-      await prisma.recording.updateMany({ where: { gameId: { in: gameIds } }, data: { gameId: null } })
-      await prisma.gameDetailedStats.deleteMany({ where: { gameId: { in: gameIds } } })
-      await prisma.review.deleteMany({ where: { gameId: { in: gameIds } } })
-      await prisma.game.deleteMany({ where: { sessionId: id } })
-    }
-
-    await prisma.session.delete({ where: { id } })
+    await deleteSessionCore(id)
     return { success: true }
   })
 
@@ -512,7 +536,7 @@ export function registerSessionHandlers() {
     const prisma = getPrisma()
 
     const updateData: Record<string, unknown> = {}
-    const current = await prisma.session.findUnique({ where: { id }, select: { objectiveId: true, objectiveIds: true, customObjectives: true } })
+    const current = await prisma.session.findUnique({ where: { id }, select: { objectiveId: true, objectiveIds: true, customObjectives: true, autoStarted: true } })
     if (!current) throw new Error('Session not found')
     const nextIds = data.objectiveIds !== undefined ? data.objectiveIds.filter((x) => typeof x === 'string' && x.length > 0) : fundamentalIdsOf(current)
     let nextCustom = parseCustomObjectives(current.customObjectives)
@@ -522,8 +546,8 @@ export function registerSessionHandlers() {
       nextCustom = normalizeCustomObjectives(parsed.data)
       updateData.customObjectives = JSON.stringify(nextCustom)
     }
-    // Still at least one objective of some kind (21/11/2026).
-    assertHasObjective(nextIds, nextCustom)
+    // Still at least one objective of some kind (21/11/2026), except in a session Ascend started by itself.
+    if (!current.autoStarted) assertHasObjective(nextIds, nextCustom)
     if (data.objectiveIds !== undefined) {
       updateData.objectiveId = nextIds[0] ?? ''
       updateData.objectiveIds = JSON.stringify(nextIds)

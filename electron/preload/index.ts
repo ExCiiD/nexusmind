@@ -14,6 +14,8 @@ const api = {
   createSession: (data: { objectiveId: string; objectiveIds?: string[]; selectedKpiIds?: string[]; subObjective?: string; customNote?: string; date?: string; isRetroactive?: boolean }) =>
     ipcRenderer.invoke('session:create', data),
   getActiveSession: () => ipcRenderer.invoke('session:get-active'),
+  /** The bubble "add an objective" was closed: not shown again for this session. */
+  dismissObjectivePrompt: (id: string) => ipcRenderer.invoke('session:dismiss-objective-prompt', id),
   getLastSessionConfig: () => ipcRenderer.invoke('session:get-last-config'),
   getKpiHistory: () => ipcRenderer.invoke('session:get-kpi-history'),
   endSession: (id: string, manualSummary?: string, sessionConclusion?: string, opts?: { completedAssignmentIds?: string[] }) => ipcRenderer.invoke('session:end', id, manualSummary, sessionConclusion, opts),

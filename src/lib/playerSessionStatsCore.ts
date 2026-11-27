@@ -766,7 +766,7 @@ function summarizeEvents(list: PlayerEvent[] | null): EventSummary | null {
   }
 }
 
-function sumObjectives(list: Array<ObjectiveParticipation | null>): ObjectiveLine[] | null {
+export function sumObjectives(list: Array<ObjectiveParticipation | null>): ObjectiveLine[] | null {
   const rows = list.filter((o): o is ObjectiveParticipation => !!o)
   if (rows.length === 0) return null
   return OBJECTIVE_KINDS.map((kind) => {
