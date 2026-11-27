@@ -165,6 +165,7 @@ const api = {
   teamSessionHistoryList: (groupId: string, filters: unknown) => ipcRenderer.invoke('team-session-history:list', groupId, filters),
   teamSessionHistoryDetail: (sessionId: string) => ipcRenderer.invoke('team-session-history:detail', sessionId),
   teamSessionPlayerStats: (sessionId: string, opts?: { enrich?: boolean }) => ipcRenderer.invoke('team-session-history:player-stats', sessionId, opts),
+  teamSessionCollectiveStats: (sessionId: string, opts?: { enrich?: boolean }) => ipcRenderer.invoke('team-session-history:collective-stats', sessionId, opts),
   soloSessionPlayerStats: (sessionId?: string | null) => ipcRenderer.invoke('solo-session:player-stats', sessionId ?? null),
   teamSessionSetObjectiveResult: (sessionId: string, objectiveId: string, gameId: string | null, met: boolean | null) =>
     ipcRenderer.invoke('team-session-history:set-objective-result', sessionId, objectiveId, gameId, met),

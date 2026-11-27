@@ -51,6 +51,8 @@
   --wr-mid: #E8D27A;
   --wr-low: #E3A35B;
   --wr-bad: #F08273;
+  /* Blue side in the collective stats (never redefined per theme; the theme's `blue` is a brown). Red side = --hextech-red. */
+  --side-blue: #6C9BD2;
 }
 
 /* Piltover Blue — cool cyan/blue accent. */

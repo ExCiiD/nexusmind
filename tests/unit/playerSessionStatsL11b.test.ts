@@ -129,8 +129,8 @@ describe('objectives participation', () => {
   it('counts ours / participated / killed / theirs per kind and lists the events', () => {
     const o = buildObjectiveParticipation(tp, 1, 100)!
     expect(o.byKind.map((l) => l.kind)).toEqual(['dragon', 'elder', 'grubs', 'herald', 'baron', 'tower'])
-    expect(o.byKind.find((l) => l.kind === 'grubs')).toEqual({ kind: 'grubs', ours: 2, participated: 2, killed: 1, theirs: 0 })
-    expect(o.byKind.find((l) => l.kind === 'dragon')).toEqual({ kind: 'dragon', ours: 0, participated: 0, killed: 0, theirs: 1 })
+    expect(o.byKind.find((l) => l.kind === 'grubs')).toMatchObject({ kind: 'grubs', ours: 2, participated: 2, killed: 1, theirs: 0, theirsPresent: 0 })
+    expect(o.byKind.find((l) => l.kind === 'dragon')).toMatchObject({ kind: 'dragon', ours: 0, participated: 0, killed: 0, theirs: 1 })
     expect(o.byKind.find((l) => l.kind === 'tower')).toMatchObject({ ours: 1, participated: 1, killed: 0 })
     expect(o.byKind.find((l) => l.kind === 'baron')).toMatchObject({ ours: 1, participated: 0 })
     expect(o.events[2]).toMatchObject({ kind: 'dragon', ours: false, participated: false, subType: 'FIRE', clock: '11:40' })

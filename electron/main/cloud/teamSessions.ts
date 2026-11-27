@@ -11,8 +11,9 @@ import { getPrisma } from '../database'
 import { resolveMediaFile } from '../mediaAccess'
 import { withLocalRecording } from './teamSessionReviews'
 import { attachBaseline, getPlayerSessionStats } from '../../../src/lib/playerSessionStatsCore'
+import { getSessionCollective } from '../../../src/lib/teamCollectiveStatsCore'
 import { localBaseline30d } from '../soloPlayerStats'
-import { teamGameTimelineWithPlayers } from './analyst'
+import { teamGameTimelineWithPlayers, teamGameTimelineLocal } from './analyst'
 import type { NewGroupFundamentalInput, SessionQueueFilter } from '../../../src/lib/teamSessions'
 
 /** The Riot match-v5 route is derived from the matchId's own platform
@@ -71,11 +72,18 @@ export async function teamSessionHistoryDetail(sessionId: string) {
 }
 /** Individual stats (contract § 7). `enrich` reads Riot, one game at a time, in the background; never otherwise. */
 export const teamSessionPlayerStats = async (sessionId: string, opts?: { enrich?: boolean }) => {
-  const stats = await getPlayerSessionStats(getSupabase(), sessionId, opts?.enrich ? teamGameTimelineWithPlayers : undefined)
+  const stats = await getPlayerSessionStats(getSupabase(), sessionId, opts?.enrich ? teamGameTimelineWithPlayers : undefined, teamGameTimelineLocal)
   // The 30-day baseline (the Dashboard's stats) exists on this PC for the signed-in player only (contract § B5).
   const uid = await requireSessionUserId()
   return stats.some((s) => s.memberId === uid) ? attachBaseline(stats, uid, await localBaseline30d().catch(() => null)) : stats
 }
+/**
+ * Collective stats (objectives, gold lead, conversion, setup, deaths, KP, sides). Summaries lacking the per-player block
+ * or the ward events are re-extracted lazily, game by game, from the raw timelines kept on this PC: never from Riot
+ * (a game whose raw timeline is gone just has no setup). `opts` is kept for the callers of the player stats.
+ */
+export const teamSessionCollectiveStats = (sessionId: string, _opts?: { enrich?: boolean }) =>
+  getSessionCollective(getSupabase(), sessionId, teamGameTimelineLocal)
 export const teamSessionSetObjectiveResult = (sessionId: string, objectiveId: string, gameId: string | null, met: boolean | null) =>
   history.setObjectiveResult(getSupabase(), sessionId, objectiveId, gameId, met)
 

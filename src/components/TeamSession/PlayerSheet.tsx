@@ -166,17 +166,17 @@ export function PlayerSheet({ sheet, name, role, teamPlayers, indiv, indivState,
         return (
           <>
             <HighlightsBlock {...ctx} />
-            <div className="grid gap-4 xl:grid-cols-2">
+            {/* One flowing two-column layout (CSS columns): blocks of any height pack without holes or stretched empty frames. Order = importance. */}
+            <div className="gap-4 xl:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
               {!hidden('duel') && <DuelPanel sheet={sheet} name={name} lane={single ? indiv?.games.find((x) => x.gameIndex === sheet.gameIndex)?.laneSummary ?? null : indiv?.total.laneSummary ?? null} />}
               <RadarBlock {...ctx} />
-            </div>
-            <div className="grid gap-4 xl:grid-cols-2">
-              <div className="space-y-4"><IsolationBlock {...ctx} /><EventsBlock {...ctx} /></div>
-              <div className="space-y-4"><LaneDiffBlock {...ctx} /><VsOpponentBlock {...ctx} /><VsTeamBlock {...ctx} /></div>
-            </div>
-            <div className="grid gap-4 xl:grid-cols-2">
+              <LaneDiffBlock {...ctx} />
+              <VsOpponentBlock {...ctx} />
               <ObjectivesBlock {...ctx} />
+              <IsolationBlock {...ctx} />
+              <EventsBlock {...ctx} />
               <ExtrasBlock {...ctx} />
+              <VsTeamBlock {...ctx} />
             </div>
           </>
         )

@@ -11,7 +11,8 @@ import {
 import {
   sourceOf, listTeamObjectivesGames, loadTeamGameTimeline, syncDraftsFromGames, saveDossier, setDossierStatus, refreshDossier,
 } from '../../src/lib/analystCore'
-import { TEAM_TIMELINE_VERSION } from '../../src/lib/teamTimelineCore'
+import { TEAM_TIMELINE_VERSION, hasWardEvents } from '../../src/lib/teamTimelineCore'
+import { getSessionCollective } from '../../src/lib/teamCollectiveStatsCore'
 import type { DraftLogEntry } from '../../src/lib/analyst'
 import type { SharedScoutingEntry } from '../../src/lib/team'
 
@@ -264,6 +265,58 @@ describe('analystCore: objectives', () => {
     const second = await loadTeamGameTimeline(sb, 'g1', riot)
     expect(second).toEqual(first)
     expect(riot.fetchTimeline).toHaveBeenCalledTimes(1)
+  })
+
+  it('ward events: a cached summary without them is re-extracted from the LOCAL raw timeline only, never from Riot', async () => {
+    const t = tables()
+    const rpc = vi.fn((name: string, args: any) => {
+      t.team_session_games.find((g: Row) => g.id === args.p_game)!.timeline_summary = args.p_summary
+      return true
+    })
+    const sb = fakeSb(t, rpc)
+    const first: any = await loadTeamGameTimeline(sb, 'g1', { fetchMatch: vi.fn(), fetchTimeline: async () => timelineOf() })
+    delete first.players.wards // a summary cached before the ward events were kept
+    expect(hasWardEvents(first)).toBe(false)
+    t.team_session_games[0].timeline_summary = first
+
+    const withWards = timelineOf()
+    ;(withWards.info.frames[1].events as any[]).push({ type: 'WARD_PLACED', timestamp: 65_000, creatorId: 2 }, { type: 'WARD_PLACED', timestamp: 66_000, creatorId: 8 })
+    const riot = { fetchMatch: vi.fn(), fetchTimeline: vi.fn(), fetchLocalTimeline: vi.fn(async () => withWards) }
+    const out: any = await loadTeamGameTimeline(sb, 'g1', riot, { withPlayers: true, withWards: true, localOnly: true })
+    expect(hasWardEvents(out)).toBe(true)
+    expect(out.players.wards).toEqual([{ t: 65_000, pid: 2, kind: 'place' }]) // ours only
+    expect(riot.fetchTimeline).not.toHaveBeenCalled()
+    expect(riot.fetchMatch).not.toHaveBeenCalled()
+    // cached now: a second open does not even read the local timeline
+    await loadTeamGameTimeline(sb, 'g1', riot, { withPlayers: true, withWards: true, localOnly: true })
+    expect(riot.fetchLocalTimeline).toHaveBeenCalledTimes(1)
+  })
+
+  it('ward events: raw timeline no longer local = unavailable, no Riot read, summary untouched', async () => {
+    const t = tables()
+    const sb = fakeSb(t)
+    const first: any = await loadTeamGameTimeline(sb, 'g1', { fetchMatch: vi.fn(), fetchTimeline: async () => timelineOf() })
+    delete first.players.wards
+    t.team_session_games[0].timeline_summary = first
+    const riot = { fetchMatch: vi.fn(), fetchTimeline: vi.fn(), fetchLocalTimeline: vi.fn(async () => null) }
+    expect(await loadTeamGameTimeline(sb, 'g1', riot, { withWards: true, localOnly: true })).toEqual({ unavailable: 'no-local-timeline' })
+    expect(riot.fetchTimeline).not.toHaveBeenCalled()
+    expect(t.team_session_games[0].timeline_summary).toBe(first)
+    // a web-like adapter (no local reader) behaves the same
+    expect(await loadTeamGameTimeline(sb, 'g1', { fetchMatch: vi.fn(), fetchTimeline: vi.fn() }, { withWards: true, localOnly: true })).toEqual({ unavailable: 'no-local-timeline' })
+  })
+
+  it('collective stats: only the games lacking ward events are asked for a local re-extraction; a failure leaves them without setup', async () => {
+    const t = tables()
+    t.team_session_games = [t.team_session_games[0]]
+    const sb = fakeSb(t)
+    const enrich = vi.fn(async () => ({ unavailable: 'no-local-timeline' }))
+    const stats = await getSessionCollective(sb, 's1', enrich)
+    expect(enrich).toHaveBeenCalledTimes(1)
+    expect(stats?.games[0].setup).toBeNull()
+    expect(stats?.games).toHaveLength(1)
+    // without a loader (web): nothing is asked
+    expect((await getSessionCollective(sb, 's1'))?.gamesCounted).toBe(1)
   })
 
   it('fetches a missing match and caches it; a Riot failure is reported, not thrown', async () => {

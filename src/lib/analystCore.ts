@@ -10,7 +10,7 @@ import type {
   TeamGameSource, TeamGameTimeline, TeamObjectivesFilters, TeamObjectivesGameRef, TeamTimelineUnavailable,
 } from './analyst'
 import { opponentKeyOf } from './analyst'
-import { extractTeamTimeline, hasCurrentPlayers, isCurrentTimeline, summarizeTeamObjectives } from './teamTimelineCore'
+import { hasWardEvents, hasObjectiveRules, extractTeamTimeline, hasCurrentPlayers, isCurrentTimeline, summarizeTeamObjectives } from './teamTimelineCore'
 import { draftFromMatch, draftOpponentKey } from './draftLogCore'
 import {
   assembleDossierView, DOSSIER_SNAPSHOT_VERSION, duosOf, poolChangeOf, recentFormOf, scoutingFor, type PlayerRankedGame,
@@ -22,6 +22,8 @@ import { getSharedTeam } from './teamCore'
 export interface RiotMatchFetchers {
   fetchMatch: (matchId: string) => Promise<any>
   fetchTimeline: (matchId: string) => Promise<any>
+  /** The raw timeline kept on this machine, or null when it is no longer there. Never reads Riot. Desktop only. */
+  fetchLocalTimeline?: (matchId: string) => Promise<any | null>
 }
 
 export interface RiotPlayerFetchers {
@@ -101,19 +103,22 @@ async function memberRiotIds(sb: SupabaseClient, groupId: string): Promise<strin
  */
 export async function loadTeamGameTimeline(sb: SupabaseClient, gameId: string, riot: RiotMatchFetchers,
   /** withPlayers: also re-extract a cached summary that lacks the per-player block (individual stats), on demand only. */
-  opts: { withPlayers?: boolean } = {},
+  opts: { withPlayers?: boolean; /** also the ward events (collective stats) */ withWards?: boolean; /** only from the raw timeline kept locally: no Riot read at all */ localOnly?: boolean } = {},
 ): Promise<TeamGameTimeline | TeamTimelineUnavailable> {
   const { data: game, error } = await sb.from('team_session_games')
     .select('id, session_id, match_id, match_json, our_team_id, enemy_team_name, timeline_summary').eq('id', gameId).maybeSingle()
   if (error) fail(error, 'game')
   if (!game) throw new Error('NOT_FOUND')
-  if (isCurrentTimeline(game.timeline_summary) && (!opts.withPlayers || hasCurrentPlayers(game.timeline_summary))) return game.timeline_summary
+  if (isCurrentTimeline(game.timeline_summary)
+    && (!opts.withPlayers || hasCurrentPlayers(game.timeline_summary))
+    && (!opts.withWards || (hasWardEvents(game.timeline_summary) && hasObjectiveRules(game.timeline_summary)))) return game.timeline_summary
 
   const { data: session, error: sErr } = await sb.from('team_sessions').select('group_id, calendar_event_id').eq('id', game.session_id).maybeSingle()
   if (sErr) fail(sErr, 'session')
   if (!session) throw new Error('NOT_FOUND')
 
   let match = game.match_json
+  if (opts.localOnly && !match) return { unavailable: 'no-local-timeline' }
   try {
     if (!match) {
       match = await riot.fetchMatch(game.match_id)
@@ -132,7 +137,10 @@ export async function loadTeamGameTimeline(sb: SupabaseClient, gameId: string, r
 
   let timeline: any
   try {
-    timeline = await riot.fetchTimeline(game.match_id)
+    if (opts.localOnly) {
+      timeline = await riot.fetchLocalTimeline?.(game.match_id)
+      if (!timeline) return { unavailable: 'no-local-timeline' }
+    } else timeline = await riot.fetchTimeline(game.match_id)
   } catch (err) {
     return { unavailable: 'riot-error', message: (err as Error)?.message }
   }

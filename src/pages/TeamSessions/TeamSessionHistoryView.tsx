@@ -11,6 +11,7 @@ import { isServerNotReadyError } from '@/lib/matchEventView'
 import { formatClock, orderForGame, parseGameParam, selectGame, summaryLines } from '@/lib/teamSessionHistoryView'
 import { DuelComparisonTable } from '@/components/TeamSession/DuelComparisonTable'
 import { GameFilter } from '@/components/TeamSession/GameFilter'
+import { CollectiveStatsBlock, useCollective } from '@/components/TeamSession/CollectiveStats'
 import { GamesFrieze } from '@/components/analyst/ObjectivesView'
 import type { SynergyPlayerStats } from '@/lib/ipc'
 import type { NameOf } from '@/hooks/useCollab'
@@ -101,6 +102,8 @@ export function TeamSessionHistoryView({ sessionId, calendarEventId, canManage, 
   const navigate = useNavigate()
   useEffect(() => { if (legacyPlayer && detail) navigate(sheetPath(legacyPlayer), { replace: true }) })
   const sel = useMemo(() => (detail ? selectGame(detail, gameIndex) : null), [detail, gameIndex])
+  const collective = useCollective(sessionId, detail?.games.filter((g) => g.stats === 'ready' && g.timeline).length ?? 0)
+  const gameMatchIds = useMemo(() => Object.fromEntries((detail?.games ?? []).map((g) => [g.gameId, g.matchId])), [detail])
   const meetingWithoutData = !!detail && detail.header.kind === 'meeting' && !detail.meeting
   useEffect(() => { if (meetingWithoutData) onNotHistory?.() }, [meetingWithoutData, onNotHistory])
 
@@ -208,6 +211,8 @@ export function TeamSessionHistoryView({ sessionId, calendarEventId, canManage, 
           ) : (
             <>
               <div id="team-panel" role="tabpanel" aria-labelledby="tab-team" className="space-y-4">
+                <CollectiveStatsBlock state={collective.state} gameIndex={gameIndex} onRetry={() => { void collective.reload() }} onExtract={(ids) => { void collective.extract(ids) }} extracting={collective.extracting}
+                  matchIdOf={gameMatchIds} roleOf={(id) => sel.players.find((p) => p.memberId === id)?.role} />
                 {sel.team && <TeamStatsBlock team={sel.team} single={!!sel.game} counted={sel.counted} />}
                 {sel.game?.timeline && <GamesFrieze games={[sel.game.timeline]} pageSize={1} />}
                 {sel.players.length > 0 && <PlayerStatsBlock players={sel.players} duels={sel.duels} whole={!sel.game} sheetPath={sheetPath} />}
@@ -265,11 +270,9 @@ function TeamStatsBlock({ team, single, counted }: { team: TeamTotals; single: b
   const them = (v: string) => t('teamSessions.detail.them', { value: v })
   return (
     <Block title={t('teamSessions.detail.teamStats')} right={!single ? <span className="font-mono text-xs text-hextech-text-dim">{t('teamSessions.detail.gamesCounted', { count: counted })}</span> : undefined}>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
         <StatTile label="K / D / A" our={kda(o)} enemy={them(kda(e))} delta={signed(o.kills - e.kills, String)} deltaGood={o.kills === e.kills ? null : o.kills > e.kills} />
         <StatTile label={t('teamSessions.detail.gold')} our={k(o.gold)} enemy={them(k(e.gold))} delta={signed(o.gold - e.gold)} deltaGood={o.gold === e.gold ? null : o.gold > e.gold} />
-        <StatTile label={t('teamSessions.detail.goldAt15')} our={team.goldDiffAt15 == null ? '—' : signed(team.goldDiffAt15)}
-          deltaGood={team.goldDiffAt15 == null || team.goldDiffAt15 === 0 ? null : team.goldDiffAt15 > 0} />
         <StatTile label={t('teamSessions.detail.damage')} our={k(o.damage)} enemy={them(k(e.damage))} delta={signed(o.damage - e.damage)} deltaGood={o.damage === e.damage ? null : o.damage > e.damage} />
         <StatTile label={t('teamSessions.detail.vision')} our={String(Math.round(o.vision))} enemy={them(String(Math.round(e.vision)))} delta={signed(o.vision - e.vision, (n) => String(Math.round(n)))} deltaGood={o.vision === e.vision ? null : o.vision > e.vision} />
         <StatTile label={t(single ? 'teamSessions.detail.duration' : 'teamSessions.detail.avgDuration')} our={formatClock(team.avgDurationSec) ?? '—'} />

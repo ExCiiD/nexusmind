@@ -84,3 +84,41 @@ vérification d'objectif et assistant.
 ## 5. Chantier en attente
 
 Bilans des roams, des ganks et des quêtes de rôle : **codés le 26/11, désactivés** (`ledgerCore.ts`, `roamLedger.ts`, `gankLedger.ts`, `roleQuest.ts`, `patchOf()` dans `gameClock.ts`, drapeaux `DETECTOR_SPEC.roam` et `gankLedger`). Avancement et activation : [`PLAN_MOTEUR_BILANS.md`](PLAN_MOTEUR_BILANS.md) § 8, seuils en attente (A1b et A1c).
+
+**27/11 — prio avant objectif, crossmap, duo botlane** (règles de l'utilisateur, `REGLES_OBJECTIFS_PRIO_CROSSMAP.md` § 2-4) :
+rapport [`engine-reports/2026-11-27-prio-crossmap-duo.md`](engine-reports/2026-11-27-prio-crossmap-duo.md), en attente
+d'accord. Points à retenir :
+- la prio est un **proxy** (`laneStateAt` dans `ledgerCore.ts`) : plaque/tour prise ou vis-à-vis mort/en base = prouvée ;
+  laner près de la tour adverse = probable ; position avancée = suggérée (chiffres seulement) ;
+- la participation (§ 1, Back-end) doit être **une seule fonction partagée**, réutilisée pour « objectif contesté » ;
+- crossmap = contexte des ledgers roam/gank, pas un 2ᵉ verdict ; duo = champ `fault` sur le verdict des roams du
+  support / de l'ADC ; `absent-objective` et `tempo-hesitation` lisent le verdict crossmap ;
+- 8 tags proposés (`objective-without-prio`, `no-prio-before-objective`, `no-crossmap-trade`, `left-adc-alone`,
+  `overextended-without-support`, et en late game `late-botlane-alone-sidelane`, `late-split-no-pressure`,
+  `late-missed-rejoin`), désactivés jusqu'à ~110 extraits vidéo relus ;
+- **réponses de l'utilisateur intégrées (27/11 soir)** : la dérogation crossmap du 20/11 ne vaut plus que pour le top et
+  l'ADC (pas le mid ni le support) ; prio à l'apparition + avant que l'objectif soit joué (le Labo lit la seconde) ;
+  règles de late game après 20:00 ; sidelane sans prio = erreur possible, plus lourde en équipe ; duo toute la partie,
+  plus lourd avant 14:00 ; critères « ADC forcé d'avancer » = faute du support ;
+- **correction du 27/11** : prio mesurée au **climax** (dernière wave avant l'objectif, ≈ T − 30 s, jamais après la
+  prise). Waves : 0:30 puis toutes les 30 s, 25 s dès 14:00, 20 s dès 30:00 ; sbires 350 en début de partie (26.1),
+  bonus de vitesse des sidelanes jusqu'à 14:00 ; trajet base → milieu estimé ≈ 25 s (≈ 30 s après 14:00), ±5 s, à
+  filmer. Fenêtres : Dragon 4:20-4:45, Larves 7:20-7:45, Héraut 14:25-14:50, Baron 19:25-19:50 ;
+- objectif « à jouer » = **côté le plus avantagé** (`sideEdge` = or + XP du ou des laners du côté, + bonus adversaire
+  absent / prio ; écart ≥ 1 500 et côté ≥ + 500) ; tag `objective-wrong-side` (jungler, issue négative) ; annulé si le
+  jungler a ≥ 1 500 d'or et 1 niveau sur le jungler adverse ; le sidelaner sans prio n'est alors pas en faute. 9 tags ;
+- **concept « jouer autour de la win condition »** (§ 3ter du rapport) : état de partie `winConditionTimeline`
+  (`ledgerCore.ts`), lu par toutes les règles. SoloQ : `fedScore` = ½ écart (or + XP) contre le vis-à-vis + ½ écart à
+  la moyenne de l'équipe ; claire si ≥ 2 000 et ≥ 1 000 sur le 2e, 3 relevés de suite (hystérésis pour les bascules),
+  dès 10:00. Joueur = win condition → « leader », champ `weight` 2 sur ses erreurs auto (Labo, stats, assistant,
+  micro-review), gravité inchangée. Dès 14:00 : `died-far-from-wincon` (seul, > 5 000 d'elle) et `missed-wincon-fight`
+  (chiffres d'abord) ; l'objectif « à jouer » devient celui du côté de la win condition. En équipe : champ structuré du
+  coach > archétype de draft > le plus fed. 11 tags ; 5 questions Q-W1 à Q-W5 ;
+- **réponses W1-W5 (27/11), rapport final** (§ 3ter.6) : support win condition seulement s'il fait des dégâts
+  (`DAMAGE_SUPPORTS` + ≥ 18 % des dégâts de l'équipe, ou ≥ 25 % quel que soit le champion, lu dans `damageStats` des
+  relevés) ; ×2 expliqué dans l'app (`weight` + `weightReason` {kind, since, until, fedScore, écarts, coWinCons} sur
+  chaque occurrence) ; en équipe, le coach / responsable choisit après la game (stockage par partie + RLS, recalcul),
+  repli « auto, à confirmer » = le plus fed ; plusieurs win conditions (« loin » = loin de toutes, fight = d'au moins
+  une) ; win condition adverse (focus par ordre des kills, kills/shutdowns sur elle, morts qu'elle cause via
+  `victimDamageReceived`, ganks sur sa lane ; pas de dégâts par cible hors morts), tag `died-alone-to-enemy-wincon`.
+  12 tags ; effort total ≈ 15,5 j (Back 8,5, Front 3, Graphic 1, Cyber 0,5, calibrage + vidéo 2,5).

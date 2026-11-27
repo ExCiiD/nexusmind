@@ -10,12 +10,16 @@ import type { TeamSessionStatus } from './teamSessions'
 import type { ReviewStatus, TeamSessionFeedback, TeamSessionReview, YoutubeVisibility } from './teamSessionReviews'
 import type { DuelRow } from './teamSessionStatsCore'
 import type { PlayerSessionStats } from './playerSessionStatsCore'
+import type { SessionCollective } from './teamCollectiveStatsCore'
 
 export type {
   PlayerGameStats, PlayerSessionStats, PlayerSessionTotals, RadarAxis, RadarAxisKey, VsOpponent, DiffPoint,
   Baseline30d, EventSummary, Highlight, Highlights, HighlightId, LaneSide, LaneSnap, LaneSummary, MapZone, MinuteDiffs, ObjectiveEvent,
-  ObjectiveKind, ObjectiveLine, ObjectiveParticipation, PlayerEvent, PlayerExtras, SessionExtras, TimelineStatus, UnavailableGame,
+  ObjectiveKind, ObjectiveLine, InvolvementReason, ObjectiveParticipation, PlayerEvent, PlayerExtras, SessionExtras, TimelineStatus, UnavailableGame,
 } from './playerSessionStatsCore'
+// Prio before objectives, crossmap on objectives given up, duo botlane (27/11/2026): figures of a player / of the team (additive).
+export type { RuleCounts, PrioTally, DuoSplit, CrossmapSplit } from './objectiveRuleFigures'
+export type { LaneRead, PrioState, PrioProof, PrioSignal, CrossVerdict, DuoFault, DuoReason, RuleKind } from './microReview/objectiveRules'
 
 export type SessionKind = 'flex' | 'scrim' | 'tournament' | 'meeting' | 'other'
 /** Who a meeting concerns (the slot's attendee scope). */
@@ -223,6 +227,8 @@ export interface TeamSessionHistoryApi {
    * nothing is fetched and those games' timeline figures are null.
    */
   teamSessionPlayerStats?: (sessionId: string, opts?: { enrich?: boolean }) => Promise<PlayerSessionStats[]>
+  /** Collective stats of the session (src/lib/teamCollectiveStatsCore.ts); null when no game has a usable match. Same rights as teamSessionPlayerStats; missing blocks are re-extracted from the local raw timelines only (desktop), never from Riot. */
+  teamSessionCollectiveStats?: (sessionId: string, opts?: { enrich?: boolean }) => Promise<SessionCollective | null>
   teamSessionHistoryList: (groupId: string, filters: TeamSessionHistoryFilters) => Promise<TeamSessionHistoryPage>
   /** Rejects with NOT_FOUND when the session does not exist or is not readable. */
   teamSessionHistoryDetail: (sessionId: string) => Promise<TeamSessionHistoryDetail>

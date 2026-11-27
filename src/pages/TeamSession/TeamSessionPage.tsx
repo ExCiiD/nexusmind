@@ -16,6 +16,7 @@ import { canManageSession } from '@/lib/permissions'
 import { FundamentalPickerDialog } from '@/components/Session/FundamentalPickerDialog'
 import { mergedFundamentalCategories, getAllFundamentalsForGroup } from '@/lib/fundamentals'
 import { TeamSessionHistoryView } from '@/pages/TeamSessions/TeamSessionHistoryView'
+import { CollectiveStatsBlock, useCollective } from '@/components/TeamSession/CollectiveStats'
 import { SessionPrepPanel } from '@/components/TeamSession/SessionPrepPanel'
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
 import { historyApi } from '@/pages/TeamSessions/historyContract'
@@ -516,6 +517,10 @@ export function TeamSessionPage() {
         </div>
       )}
 
+      {!finalMode && event.kind !== 'meeting' && session.status !== 'scheduled' && games.some((g) => g.status === 'fetched') && (
+        <LiveCollective sessionId={session.id} games={games} />
+      )}
+
       {!finalMode && event.kind !== 'meeting' && session.status !== 'scheduled' && games.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-sm font-bold text-hextech-text-bright">
@@ -632,4 +637,12 @@ function FinalReviewView({ sessionId, games, reviews, group, canManage, myUserId
       )}
     </div>
   )
+}
+
+/** Live session: the collective stats appear once a game is fetched and are reloaded after each new game (nothing during a game). */
+function LiveCollective({ sessionId, games }: { sessionId: string; games: TeamSessionGame[] }) {
+  const fetched = games.filter((g) => g.status === 'fetched')
+  const collective = useCollective(sessionId, fetched.map((g) => g.id).join('|'))
+  const matchIdOf = useMemo(() => Object.fromEntries(games.map((g) => [g.id, g.matchId])), [games])
+  return <CollectiveStatsBlock live state={collective.state} gameIndex={null} onRetry={() => { void collective.reload() }} onExtract={(ids) => { void collective.extract(ids) }} extracting={collective.extracting} matchIdOf={matchIdOf} />
 }

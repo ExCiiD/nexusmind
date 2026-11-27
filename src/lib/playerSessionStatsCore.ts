@@ -13,10 +13,12 @@ import type { SynergyPlayerStats } from './synergyStats'
 import type { TeamGameTimeline } from './analyst'
 import { buildDuelRows, buildSideStats, matchParticipantToMember, participantName, type RiotIdMember, type RiotMatchParticipant } from './teamSessionStatsCore'
 import { resolveOurTeamId } from './matchSide'
-import { hasCurrentPlayers, isCurrentTimeline } from './teamTimelineCore'
+import { hasCurrentPlayers, hasObjectiveRules, isCurrentTimeline } from './teamTimelineCore'
 import { fail } from './supabaseErrors'
 import { mergePlayerStats } from './teamSessionHistoryCore'
 import { zoneOf, type Zone } from './microReview/geometry'
+import type { ObjectiveRulesBlock } from './microReview/objectiveRules'
+import { ruleCountsOf, sumRuleCounts, type RuleCounts } from './objectiveRuleFigures'
 
 // ── What the timeline summary keeps per player (compact: one value per minute) ──────────────────────────────────
 
@@ -59,12 +61,23 @@ export interface TimelineObjectiveEvent {
   lane?: 'TOP' | 'MID' | 'BOT'
 }
 
+/** A ward of OUR team: put down (WARD_PLACED) or destroyed by us (WARD_KILL). Optional in the summary (added 27/11/2026, same version). */
+export interface TimelineWardEvent {
+  t: number
+  pid: number
+  kind: 'place' | 'clear'
+}
+
 export interface TimelinePlayers {
   /** Version of the block (teamTimelineCore.PLAYERS_BLOCK_VERSION). Absent = v1 (no levels, CS or objectives). */
   v?: number
   players: TimelinePlayerSeries[]
   kills: TimelineKillEvent[]
   objectives?: TimelineObjectiveEvent[]
+  /** Our team's ward events. Absent in summaries cached before 27/11/2026 (their vision setup is then unknown, not zero). */
+  wards?: TimelineWardEvent[]
+  /** Prio / crossmap / duo reading of the game from our side (objectiveRules.ts). Absent in older summaries: read again from the local raw timeline, never from Riot. */
+  objectiveRules?: ObjectiveRulesBlock
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -209,13 +222,42 @@ export interface PlayerEvent {
 export type ObjectiveKind = 'dragon' | 'elder' | 'grubs' | 'herald' | 'baron' | 'tower'
 export const OBJECTIVE_KINDS: readonly ObjectiveKind[] = ['dragon', 'elder', 'grubs', 'herald', 'baron', 'tower']
 
-export interface ObjectiveLine { kind: ObjectiveKind; ours: number; participated: number; killed: number; theirs: number }
+/**
+ * How the player was part of an objective (REGLES_OBJECTIFS_PRIO_CROSSMAP.md §1, 27/11/2026):
+ * 'kill' / 'assist' = in the objective's kill record; 'nearby' = alive and within OBJECTIVE_NEARBY_DISTANCE of the pit in the
+ * last minute frame before it; 'fight' = in a champion kill (killer, assist or victim) within OBJECTIVE_FIGHT_WINDOW_MS and
+ * OBJECTIVE_FIGHT_DISTANCE of the pit. Priority in that order.
+ */
+export type InvolvementReason = 'kill' | 'assist' | 'nearby' | 'fight'
+export const INVOLVEMENT_REASONS: readonly InvolvementReason[] = ['kill', 'assist', 'nearby', 'fight']
+
+export interface ObjectiveLine {
+  kind: ObjectiveKind
+  /** Objectives taken by OUR team. */
+  ours: number
+  /** ...of which you were part of (any reason). Taken by us without you = ours - participated. */
+  participated: number
+  /** The reasons of those participations (they add up to `participated`). */
+  byReason: Record<InvolvementReason, number>
+  /** Objectives taken by THEM. */
+  theirs: number
+  /** ...of which you were around (nearby / fight). Absent = theirs - theirsPresent. Null for towers (no pit to judge). */
+  theirsPresent: number | null
+  /** @deprecated 27/11: "killed by you" no longer counts (= byReason.kill). Kept until the Front drops the column. */
+  killed: number
+}
 export interface ObjectiveEvent {
   kind: ObjectiveKind
   atSec: number
   clock: string
+  /** Taken by our team (false = by them). */
   ours: boolean
+  /** Ours: you were part of it. Theirs: you were around. Towers: kill / assist only. */
+  involved: boolean
+  reason: InvolvementReason | null
+  /** @deprecated 27/11: = ours && involved. Kept until the Front reads `involved` / `reason`. */
   participated: boolean
+  /** @deprecated 27/11: = reason === 'kill'. */
   killed: boolean
   subType?: string
   lane?: 'TOP' | 'MID' | 'BOT'
@@ -316,6 +358,8 @@ export interface PlayerGameStats {
   deathEvents: PlayerEvent[] | null
   killEvents: PlayerEvent[] | null
   objectives: ObjectiveParticipation | null
+  /** Prio before objectives, crossmap on objectives given up, duo botlane (27/11/2026). Null without the block. */
+  objectiveRules: RuleCounts | null
   laneSummary: LaneSummary | null
   extras: PlayerExtras
   highlights: Highlights
@@ -354,6 +398,8 @@ export interface PlayerSessionTotals {
   laneSummary: LaneSummary | null
   objectives: ObjectiveLine[] | null
   gamesWithObjectives: number
+  /** Sum of the games' figures; null when no game has the block. */
+  objectiveRules: RuleCounts | null
   extras: SessionExtras
   deaths: EventSummary | null
   kills: EventSummary | null
@@ -464,19 +510,58 @@ function eventOf(
   }
 }
 
+/** Where the objective is (map units). The elder is in the dragon pit; the grubs and the herald spawn in the baron pit. Towers: none. */
+export const DRAGON_PIT = { x: 9866, y: 4414 }
+export const BARON_PIT = { x: 5007, y: 10471 }
+export function pitOf(kind: ObjectiveKind): { x: number; y: number } | null {
+  return kind === 'dragon' || kind === 'elder' ? DRAGON_PIT : kind === 'tower' ? null : BARON_PIT
+}
+/**
+ * Within this distance of the pit, in the last minute frame before the kill: "nearby". Tighter than ISOLATION_DISTANCE on
+ * purpose: the top lane's river side is about 2 200 units from the baron pit, and a laner must not count as present.
+ * The frames are a minute apart, so this is a weak signal; the fight criterion (champion kills, with positions) is the strong one.
+ */
+export const OBJECTIVE_NEARBY_DISTANCE = 1800
+/** A champion kill this close in time and in space to the pit: the player "fought" around the objective. */
+export const OBJECTIVE_FIGHT_WINDOW_MS = 20_000
+export const OBJECTIVE_FIGHT_DISTANCE = 3000
+
+/** Why the player was part of this objective (or around it when the enemy took it), null when they were not. */
+export function involvementOf(tp: TimelinePlayers, pid: number, e: TimelineObjectiveEvent, ourTeamId: 100 | 200): InvolvementReason | null {
+  const ours = e.teamId === ourTeamId
+  if (ours && e.killer === pid) return 'kill'
+  if (ours && e.assists.includes(pid)) return 'assist'
+  const pit = pitOf(e.kind)
+  if (!pit) return null
+  const mine = tp.players.find((p) => p.pid === pid)
+  if (mine?.x && mine.y && mine.x.length > 0 && !isDeadAt(pid, e.t, tp.kills)) {
+    const f = Math.min(Math.max(Math.floor(e.t / MINUTE_MS), 0), mine.x.length - 1)
+    if (Math.hypot(mine.x[f] - pit.x, mine.y[f] - pit.y) <= OBJECTIVE_NEARBY_DISTANCE) return 'nearby'
+  }
+  const fought = tp.kills.some((k) =>
+    Math.abs(k.t - e.t) <= OBJECTIVE_FIGHT_WINDOW_MS && (k.killer === pid || k.victim === pid || k.assists.includes(pid))
+    && k.x !== null && k.y !== null && Math.hypot(k.x - pit.x, k.y - pit.y) <= OBJECTIVE_FIGHT_DISTANCE)
+  return fought ? 'fight' : null
+}
+
+const emptyReasons = (): Record<InvolvementReason, number> => ({ kill: 0, assist: 0, nearby: 0, fight: 0 })
+
 export function buildObjectiveParticipation(tp: TimelinePlayers, pid: number, ourTeamId: 100 | 200): ObjectiveParticipation | null {
   if (!tp.objectives) return null
-  const lines = new Map<ObjectiveKind, ObjectiveLine>(OBJECTIVE_KINDS.map((kind) => [kind, { kind, ours: 0, participated: 0, killed: 0, theirs: 0 }]))
+  const lines = new Map<ObjectiveKind, ObjectiveLine>(OBJECTIVE_KINDS.map((kind) => [kind, {
+    kind, ours: 0, participated: 0, byReason: emptyReasons(), theirs: 0, theirsPresent: kind === 'tower' ? null : 0, killed: 0,
+  }]))
   const events: ObjectiveEvent[] = []
   for (const e of tp.objectives) {
     const ours = e.teamId === ourTeamId
-    const killed = ours && e.killer === pid
-    const participated = ours && (killed || e.assists.includes(pid))
+    const reason = involvementOf(tp, pid, e, ourTeamId)
+    const involved = reason !== null
     const line = lines.get(e.kind)!
-    if (ours) { line.ours++; if (participated) line.participated++; if (killed) line.killed++ } else line.theirs++
+    if (ours) { line.ours++; if (reason) { line.participated++; line.byReason[reason]++; if (reason === 'kill') line.killed++ } }
+    else { line.theirs++; if (involved && line.theirsPresent !== null) line.theirsPresent++ }
     const atSec = Math.round(e.t / 1000)
     events.push({
-      kind: e.kind, atSec, clock: clock(atSec), ours, participated, killed, ...(e.subType ? { subType: e.subType } : {}),
+      kind: e.kind, atSec, clock: clock(atSec), ours, involved, reason, participated: ours && involved, killed: reason === 'kill', ...(e.subType ? { subType: e.subType } : {}),
       ...(e.lane ? { lane: e.lane } : {}), vodSeekSec: Math.max(0, atSec - VOD_LEAD_SEC),
     })
   }
@@ -639,6 +724,7 @@ function gameLines(g: PlayerGameInput, gameIndex: number, ctx: LineContext): { l
     let deathsBefore14: number | null = null, isolatedDeaths: number | null = null, isolatedKills: number | null = null
     let deathEvents: PlayerEvent[] | null = null, killEvents: PlayerEvent[] | null = null
     let objectives: ObjectiveParticipation | null = null
+    let objectiveRules: RuleCounts | null = null
     if (tp && typeof part.participantId === 'number') {
       const pid = part.participantId
       const deaths = tp.kills.filter((k) => k.victim === pid)
@@ -655,6 +741,7 @@ function gameLines(g: PlayerGameInput, gameIndex: number, ctx: LineContext): { l
       deathEvents = deaths.map((k) => eventOf(k, 'death', evCtx))
       killEvents = killed.map((k) => eventOf(k, 'kill', evCtx))
       objectives = buildObjectiveParticipation(tp, pid, ourTeamId)
+      objectiveRules = ruleCountsOf(tp.objectiveRules, pid)
     }
 
     const at = (m: number, a: TimelinePlayerSeries | undefined, b: TimelinePlayerSeries | undefined): DiffPoint => ({
@@ -678,7 +765,7 @@ function gameLines(g: PlayerGameInput, gameIndex: number, ctx: LineContext): { l
       radar: buildPlayerRadar(s, opp, durationSec),
       timelineStatus: status,
       diffSeries: opp ? buildDiffSeries(mine, theirsS) : null,
-      deathEvents, killEvents, objectives, laneSummary,
+      deathEvents, killEvents, objectives, objectiveRules, laneSummary,
       extras: extrasOf(part, durationSec),
       highlights: { strengths: [], weaknesses: [] },
     }
@@ -773,7 +860,9 @@ export function sumObjectives(list: Array<ObjectiveParticipation | null>): Objec
     const lines = rows.map((r) => r.byKind.find((l) => l.kind === kind)!)
     return {
       kind, ours: lines.reduce((s, l) => s + l.ours, 0), participated: lines.reduce((s, l) => s + l.participated, 0),
-      killed: lines.reduce((s, l) => s + l.killed, 0), theirs: lines.reduce((s, l) => s + l.theirs, 0),
+      byReason: Object.fromEntries(INVOLVEMENT_REASONS.map((r) => [r, lines.reduce((s, l) => s + l.byReason[r], 0)])) as Record<InvolvementReason, number>,
+      theirs: lines.reduce((s, l) => s + l.theirs, 0), killed: lines.reduce((s, l) => s + l.killed, 0),
+      theirsPresent: lines.some((l) => l.theirsPresent === null) ? null : lines.reduce((s, l) => s + (l.theirsPresent ?? 0), 0),
     }
   })
 }
@@ -812,6 +901,7 @@ function assemble(rows: PlayerGameStats[], unavailable: UnavailableGame[], sourc
       laneSummary: meanLaneSummary(list.map((r) => r.laneSummary)),
       objectives,
       gamesWithObjectives: list.filter((r) => r.objectives).length,
+      objectiveRules: sumRuleCounts(list.map((r) => r.objectiveRules)),
       extras: aggregateExtras(list.map((r) => r.extras)),
       deaths: summarizeEvents(deathEvents),
       kills: summarizeEvents(killEvents),
@@ -937,6 +1027,8 @@ export function attachBaseline(stats: PlayerSessionStats[], userId: string, base
 export async function getPlayerSessionStats(
   sb: SupabaseClient, sessionId: string,
   enrich?: (gameId: string) => Promise<unknown>,
+  /** Re-extracts a game from the raw timeline kept on this machine (no Riot): for the games that have the players block but not the prio / crossmap / duo reading. */
+  enrichLocal?: (gameId: string) => Promise<unknown>,
 ): Promise<PlayerSessionStats[]> {
   const { data: s, error } = await sb.from('team_sessions').select('id, group_id').eq('id', sessionId).maybeSingle()
   if (error) fail(error, 'session')
@@ -948,11 +1040,15 @@ export async function getPlayerSessionStats(
   for (const r of [gameRows, memberRows]) if (r.error) fail(r.error, 'player stats')
   const startOf = (g: any) => Number(g.match_json?.info?.gameStartTimestamp) || Date.parse(g.created_at)
   const rows = [...(gameRows.data ?? [])].sort((a: any, b: any) => startOf(a) - startOf(b))
-  if (enrich) {
+  if (enrich || enrichLocal) {
     for (const g of rows as any[]) {
-      if (!g.match_json || (isCurrentTimeline(g.timeline_summary) && hasCurrentPlayers(g.timeline_summary as TeamGameTimeline))) continue
+      if (!g.match_json) continue
+      const current = isCurrentTimeline(g.timeline_summary) && hasCurrentPlayers(g.timeline_summary as TeamGameTimeline)
+      if (current && hasObjectiveRules(g.timeline_summary as TeamGameTimeline)) continue
+      const run = current ? enrichLocal : enrich
+      if (!run) continue
       try {
-        const fresh = await enrich(g.id)
+        const fresh = await run(g.id)
         if (fresh && typeof fresh === 'object' && !('unavailable' in fresh)) g.timeline_summary = fresh
       } catch { /* this game's timeline figures stay null */ }
     }

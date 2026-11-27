@@ -10,7 +10,8 @@
 import type {
   ObjectiveKind, TeamGameSource, TeamGameTimeline, TeamObjectivesFilters, TeamObjectivesSummary, TeamSide, TeamTimelineEvent,
 } from './analyst'
-import type { TimelineKillEvent, TimelineObjectiveEvent, TimelinePlayerSeries, TimelinePlayers } from './playerSessionStatsCore'
+import { objectiveRules, hasCurrentObjectiveRules } from './microReview/objectiveRules'
+import type { TimelineKillEvent, TimelineObjectiveEvent, TimelinePlayerSeries, TimelinePlayers, TimelineWardEvent } from './playerSessionStatsCore'
 
 /** Bump when the extraction changes: summaries cached with an older version are extracted again. */
 export const TEAM_TIMELINE_VERSION = 1
@@ -122,6 +123,10 @@ export function extractTeamTimeline(match: any, timeline: any, meta: ExtractMeta
   })
 
   const playersBlock = extractTimelinePlayers(frames, (pid) => teamOf(pid), us)
+  if (playersBlock) {
+    // Prio / crossmap / duo (27/11/2026): read from the raw timeline now, since the summary keeps no enemy positions. Never blocks the summary.
+    try { const rules = objectiveRules(match, timeline, us); if (rules) playersBlock.objectiveRules = rules } catch { /* the figures stay unknown */ }
+  }
   const ourTeam = (info.teams ?? []).find((t: any) => t.teamId === us)
   const start = info.gameStartTimestamp ?? info.gameCreation
   return {
@@ -184,7 +189,18 @@ export function extractTimelinePlayers(frames: any[], teamOf: (pid: number) => n
   }
   kills.sort((a, b) => a.t - b.t)
   const objectives = extractObjectiveEvents(frames, teamOf)
-  return { v: PLAYERS_BLOCK_VERSION, players: [...byPid.values()].sort((a, b) => a.pid - b.pid), kills, objectives }
+  const wards = extractWardEvents(frames, (pid) => teamOf(pid) === ourTeamId)
+  return { v: PLAYERS_BLOCK_VERSION, players: [...byPid.values()].sort((a, b) => a.pid - b.pid), kills, objectives, wards }
+}
+
+/** Wards our team put down or destroyed (the vision setup before objectives). `isOurs(pid)`: the player is on our team. */
+export function extractWardEvents(frames: any[], isOurs: (pid: number) => boolean): TimelineWardEvent[] {
+  const out: TimelineWardEvent[] = []
+  for (const frame of frames) for (const e of frame.events ?? []) {
+    if (e.type === 'WARD_PLACED' && typeof e.creatorId === 'number' && e.creatorId > 0 && isOurs(e.creatorId)) out.push({ t: rounded(e.timestamp), pid: e.creatorId, kind: 'place' })
+    else if (e.type === 'WARD_KILL' && typeof e.killerId === 'number' && e.killerId > 0 && isOurs(e.killerId)) out.push({ t: rounded(e.timestamp), pid: e.killerId, kind: 'clear' })
+  }
+  return out.sort((a, b) => a.t - b.t)
 }
 
 /** Every objective taken, with who took it and who assisted (each player's participation). One event per grub / tower. */
@@ -214,6 +230,16 @@ export function extractObjectiveEvents(frames: any[], teamOf: (pid: number) => n
 /** The summary's per-player block exists and is the current version (older ones lack levels, CS and objectives). */
 export function hasCurrentPlayers(v: TeamGameTimeline): boolean {
   return !!v.players && v.players.v === PLAYERS_BLOCK_VERSION
+}
+
+/** The summary has our team's ward events (kept since 27/11/2026; older summaries get them from the local raw timeline, never from Riot). */
+export function hasWardEvents(v: TeamGameTimeline): boolean {
+  return Array.isArray(v.players?.wards)
+}
+
+/** The summary has the prio / crossmap / duo reading of the current version (older summaries get it from the local raw timeline, never from Riot). */
+export function hasObjectiveRules(v: TeamGameTimeline): boolean {
+  return hasCurrentObjectiveRules(v.players?.objectiveRules)
 }
 
 /** A cached summary still valid for this code (else it is extracted again). */

@@ -50,6 +50,7 @@ async function cachedTimeline(matchId: string): Promise<any> {
 const matchFetchers: core.RiotMatchFetchers = {
   fetchMatch: (matchId) => cachedMatch(matchId),
   fetchTimeline: (matchId) => cachedTimeline(matchId),
+  fetchLocalTimeline: (matchId) => readTimeline(getPrisma(), matchId).catch(() => null),
 }
 
 async function championNameById(): Promise<(id: number) => string | null> {
@@ -87,6 +88,12 @@ export const teamObjectivesGameTimeline = (gameId: string) => background(() => c
 
 /** One game's timeline with the per-player block, extracted again when the cached summary lacks it (on demand). */
 export const teamGameTimelineWithPlayers = (gameId: string) => background(() => core.loadTeamGameTimeline(getSupabase(), gameId, matchFetchers, { withPlayers: true }))
+
+/**
+ * One game's summary with the per-player block and the ward events, re-extracted from the raw timeline kept on this PC
+ * when the cached one lacks them. NEVER reads Riot: no local timeline -> { unavailable: 'no-local-timeline' }.
+ */
+export const teamGameTimelineLocal = (gameId: string) => core.loadTeamGameTimeline(getSupabase(), gameId, matchFetchers, { withPlayers: true, withWards: true, localOnly: true })
 
 // § 11
 export const draftLogList = (groupId: string) => core.listDrafts(getSupabase(), groupId)

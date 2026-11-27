@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Highlight, HighlightId, LaneSide, LaneSnap, ObjectiveEvent, ObjectiveLine, PlayerEvent, PlayerExtras, SessionExtras } from '@/lib/playerSessionStatsCore'
@@ -25,7 +25,7 @@ function localHistoryByMatch(): Promise<Map<string, string>> {
  * Recording id of each sheet game (local library), null when the game has no recording on this PC: the button then says why.
  * Team games go through their Riot match id (src/lib/vodResolve.ts), solo games are already local games.
  */
-function useRecordings(gameIds: string[], matchIdOf?: Record<string, string>): Record<string, string | null> {
+export function useRecordings(gameIds: string[], matchIdOf?: Record<string, string>): Record<string, string | null> {
   const key = [...new Set(gameIds)].sort().join('|')
   const [map, setMap] = useState<Record<string, string | null>>({})
   useEffect(() => {
@@ -46,7 +46,7 @@ function useRecordings(gameIds: string[], matchIdOf?: Record<string, string>): R
   return map
 }
 
-function ReviewButton({ recordingId, seekSec, clock, game }: { recordingId: string | null | undefined; seekSec: number; clock: string; game: number }) {
+export function ReviewButton({ recordingId, seekSec, clock, game }: { recordingId: string | null | undefined; seekSec: number; clock: string; game: number }) {
   const { t } = useTranslation()
   const label = t('playerSheet.reviewAria', { clock, n: game })
   if (!recordingId) {
@@ -247,15 +247,27 @@ export function LaneDiffBlock(ctx: IndivCtx) {
 
 /* ── Objectives ── */
 
-function ObjectiveRow({ line }: { line: ObjectiveLine }) {
+function ObjectiveRow({ line, active, onToggle }: { line: ObjectiveLine; active: boolean; onToggle: () => void }) {
   const { t } = useTranslation()
   const pct = participationPct(line)
   return (
-    <tr className="h-8">
-      <th scope="row" className="px-2 text-left font-medium">{t(`playerSheet.obj.${line.kind}`)}</th>
-      <td className="px-2 text-right font-mono tabular-nums text-hextech-text-bright">{line.participated} / {line.ours}{pct != null && <span className="ml-1 text-hextech-text-dim">({pct} %)</span>}</td>
-      <td className="px-2 text-right font-mono tabular-nums">{line.killed}</td>
-      <td className="px-2 text-right font-mono tabular-nums text-hextech-text-dim">{line.theirs}</td>
+    <tr className={cn('h-8', active && 'bg-hextech-gold/10')}>
+      <th scope="row" className="px-1 text-left font-medium">
+        <button type="button" onClick={onToggle} aria-pressed={active} title={t(active ? 'playerSheet.objFilterClear' : 'playerSheet.objFilterHint')}
+          className={cn('w-full rounded px-1 py-1 text-left hover:text-hextech-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold', active && 'text-hextech-gold')}>
+          {t(`playerSheet.obj.${line.kind}`)}
+        </button>
+      </th>
+      <td className="border-l border-hextech-border-dim px-2 text-right font-mono tabular-nums text-hextech-text-bright">{line.participated}{pct != null && <span className="ml-1 text-hextech-text-dim">({pct} %)</span>}</td>
+      <td className="px-2 text-right font-mono tabular-nums">{line.ours - line.participated}</td>
+      {line.theirsPresent == null
+        ? <td colSpan={2} className="border-l border-hextech-border-dim px-2 text-right font-mono tabular-nums text-hextech-text-dim" title={t('playerSheet.objNoPit')}>{line.theirs}<span className="ml-1 text-[10px]">· {t('playerSheet.objNoPitShort')}</span></td>
+        : (
+          <>
+            <td className="border-l border-hextech-border-dim px-2 text-right font-mono tabular-nums text-hextech-text-dim">{line.theirsPresent}</td>
+            <td className="px-2 text-right font-mono tabular-nums text-hextech-text-dim">{line.theirs - line.theirsPresent}</td>
+          </>
+        )}
     </tr>
   )
 }
@@ -275,7 +287,10 @@ export function ObjectivesBlock(ctx: IndivCtx) {
   const taken = lines?.some((l) => l.ours + l.theirs > 0)
   // The event list can run to dozens of lines over a session: a few rows by default, a button for the rest.
   const [showAll, setShowAll] = useState(false)
-  const shown = showAll ? events : events.slice(0, OBJECTIVE_EVENTS_COLLAPSED)
+  // Clicking a row of the table filters the list to that objective; clicking it again (or the chip's ×) clears it.
+  const [kindFilter, setKindFilter] = useState<ObjectiveLine['kind'] | null>(null)
+  const visible = useMemo(() => (kindFilter ? events.filter((x) => x.e.kind === kindFilter) : events), [events, kindFilter])
+  const shown = showAll ? visible : visible.slice(0, OBJECTIVE_EVENTS_COLLAPSED)
   return (
     <Section title={t('playerSheet.objectivesTitle')}>
       {!lines ? <WhyEmpty text={reason?.text ?? t('playerSheet.noObjectives')} />
@@ -285,26 +300,38 @@ export function ObjectivesBlock(ctx: IndivCtx) {
               <table className="w-full text-xs text-hextech-text">
                 <thead className="text-[10px] uppercase tracking-wider text-hextech-text-dim">
                   <tr>
-                    <th scope="col" className="px-2 py-1.5 text-left font-semibold">{t('playerSheet.metric')}</th>
-                    <th scope="col" className="px-2 py-1.5 text-right font-semibold">{t('playerSheet.objPart')}</th>
-                    <th scope="col" className="px-2 py-1.5 text-right font-semibold">{t('playerSheet.objKilled')}</th>
-                    <th scope="col" className="px-2 py-1.5 text-right font-semibold">{t('playerSheet.objTheirs')}</th>
+                    <th scope="col" rowSpan={2} className="px-2 py-1.5 text-left font-semibold">{t('playerSheet.metric')}</th>
+                    <th scope="colgroup" colSpan={2} className="border-l border-hextech-border-dim px-2 py-1 text-center font-semibold text-hextech-green">{t('playerSheet.objOursGroup')}</th>
+                    <th scope="colgroup" colSpan={2} className="border-l border-hextech-border-dim px-2 py-1 text-center font-semibold text-hextech-red">{t('playerSheet.objTheirsGroup')}</th>
+                  </tr>
+                  <tr>
+                    <th scope="col" className="border-l border-hextech-border-dim px-2 py-1 text-right font-semibold">{t('playerSheet.objWithYou')}</th>
+                    <th scope="col" className="px-2 py-1 text-right font-semibold">{t('playerSheet.objWithoutYou')}</th>
+                    <th scope="col" className="border-l border-hextech-border-dim px-2 py-1 text-right font-semibold">{t('playerSheet.objYouAround')}</th>
+                    <th scope="col" className="px-2 py-1 text-right font-semibold">{t('playerSheet.objYouAbsent')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-hextech-border-dim">{lines.map((l) => <ObjectiveRow key={l.kind} line={l} />)}</tbody>
+                <tbody className="divide-y divide-hextech-border-dim">{lines.map((l) => <ObjectiveRow key={l.kind} line={l} active={kindFilter === l.kind} onToggle={() => { setKindFilter((k) => (k === l.kind ? null : l.kind)); setShowAll(false) }} />)}</tbody>
               </table>
             </div>
             {!single && <p className="text-[11px] text-hextech-text-dim">{t('playerSheet.objDenom', { count: tot?.gamesWithObjectives ?? 0 })}</p>}
             {!taken && <p className="text-xs text-hextech-text-dim">{t('playerSheet.objNone')}</p>}
-            {events.length > 0 && (
+            {kindFilter && (
+              <button type="button" onClick={() => setKindFilter(null)} aria-label={t('playerSheet.objFilterClear')}
+                className="inline-flex items-center gap-1 rounded-full border border-hextech-gold/50 bg-hextech-gold/10 px-2.5 py-0.5 text-[11px] text-hextech-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold">
+                {t(`playerSheet.obj.${kindFilter}`)} · {visible.length}<X className="h-3 w-3" aria-hidden />
+              </button>
+            )}
+            {kindFilter && visible.length === 0 && <p className="text-xs text-hextech-text-dim">{t('playerSheet.objFilterNone')}</p>}
+            {visible.length > 0 && (
               <ul className="divide-y divide-hextech-border-dim/60" aria-label={t('playerSheet.objEvents')}>
                 {shown.map(({ e, gameId, gameIndex }) => <ObjectiveEventRow key={`${gameId}-${e.kind}-${e.atSec}`} e={e} gameIndex={gameIndex} recordingId={rec[gameId]} showGame={!single} />)}
               </ul>
             )}
-            {events.length > OBJECTIVE_EVENTS_COLLAPSED && (
+            {visible.length > OBJECTIVE_EVENTS_COLLAPSED && (
               <Button type="button" size="sm" variant="outline" className="w-full gap-1.5" aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
                 <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showAll && 'rotate-180')} aria-hidden />
-                {showAll ? t('playerSheet.objShowLess') : t('playerSheet.objShowAll', { count: events.length })}
+                {showAll ? t('playerSheet.objShowLess') : t('playerSheet.objShowAll', { count: visible.length })}
               </Button>
             )}
           </>
@@ -315,13 +342,17 @@ export function ObjectivesBlock(ctx: IndivCtx) {
 
 function ObjectiveEventRow({ e, gameIndex, recordingId, showGame }: { e: ObjectiveEvent; gameIndex: number; recordingId: string | null | undefined; showGame: boolean }) {
   const { t } = useTranslation()
-  const who = !e.ours ? t('playerSheet.objTheirsTook') : e.killed ? t('playerSheet.objKilledIt') : e.participated ? t('playerSheet.objParticipated') : t('playerSheet.objOursNotIn')
+  const why = e.reason ? ` (${t(`playerSheet.objReason.${e.reason}`)})` : ''
+  const noPit = e.kind === 'tower'
+  const who = e.ours
+    ? (e.involved ? `${t('playerSheet.objOursWith')}${why}` : t('playerSheet.objOursNotIn'))
+    : noPit ? t('playerSheet.objTheirsTook') : e.involved ? `${t('playerSheet.objTheirsAround')}${why}` : t('playerSheet.objTheirsAbsent')
   return (
     <li className="flex min-h-[34px] flex-wrap items-center gap-x-3 gap-y-1 py-1 text-xs">
       <span className="w-12 font-mono tabular-nums text-hextech-text-bright">{e.clock}</span>
       {showGame && <span className="font-mono text-[11px] text-hextech-gold">G{gameIndex}</span>}
       <span className="text-hextech-text">{t(`playerSheet.obj.${e.kind}`)}{e.subType ? ` · ${e.subType}` : ''}{e.lane ? ` · ${e.lane}` : ''}</span>
-      <span className={cn(e.ours && e.participated ? 'text-hextech-green' : 'text-hextech-text-dim')}>{who}</span>
+      <span className={cn(e.ours && e.involved ? 'text-hextech-green' : e.ours ? 'text-hextech-text-dim' : 'text-hextech-red/80')}>{who}</span>
       <span className="ml-auto"><ReviewButton recordingId={recordingId} seekSec={e.vodSeekSec} clock={e.clock} game={gameIndex} /></span>
     </li>
   )

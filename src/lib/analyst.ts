@@ -68,7 +68,7 @@ export interface TeamObjectivesGameRef {
   cached: boolean
 }
 
-export type TeamTimelineUnavailable = { unavailable: 'no-timeline' | 'no-side' | 'riot-error'; message?: string }
+export type TeamTimelineUnavailable = { unavailable: 'no-timeline' | 'no-side' | 'riot-error' | 'no-local-timeline' | 'no-local-timeline'; message?: string }
 
 export interface TeamObjectivesFilters {
   /** ISO dates, inclusive. Absent = no bound. */
