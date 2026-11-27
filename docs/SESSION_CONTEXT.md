@@ -2,7 +2,46 @@
 
 > Généré automatiquement par Agency HUD lors du renouvellement d'une session. Chaque département lit sa section au démarrage d'une session fraîche pour préserver le contexte et la qualité du code sans re-consommer tout l'historique.
 
+## Chief — passation du 27/11/2026 (Claude Code, session local_c8abf60b…, contexte 76 %)
+
+- **État** : main = `ac15d4e` (beta.24 publiée par la passe Antigravity). Site asc3nd.app à jour (captures de l'utilisateur, `riot.txt`, fichier Google). Dossier propre hors docs du workframe.
+- **Nouveau workframe** (27/11) : trois tiers + renouvellement des sessions, voir `TEAM_ROLES.md` et `docs/notes/antigravity/README.md` ; copie générique `D:\DEV\NexusMind\WORKFRAME_CHIEF.md` § 7 bis / 7 ter. MCP `local-llm` vérifié (Ollama, local-fast + local-coder) ; `gemini` CLI 0.68.0.
+- **À faire en premier** : `INBOX.md` (optimiser les requêtes en vitesse, pas en données : scout d'équipe d'abord) ; `REFERENCE.md` § 2 (chantier bilans, page analyste, historique des sessions d'équipe).
+- **Utilisateur** : clé Riot déposée (riot.txt en ligne, App ID personnel à donner pour lier les PUUID) ; vérification Google YouTube préparée (`prod/GOOGLE_YOUTUBE_VERIFICATION.md`), vidéo de démo à tourner ; vérifier sa chaîne YouTube par téléphone (limite 15 min).
+- **Sessions de rôle** : au repos ; à renouveler paresseusement au prochain lot (règle « Renouvellement des sessions »), modèles : Chief/Engine/Cyber Opus, Back/Front/Audit/Graphic Sonnet.
+- **Pièges** : ne rien envoyer aux sessions pendant un build de release ; Antigravity n'écrit que ses rapports.
+
 ## Chief
+*Dernier renouvellement : 2026-11-26 00h29 · 15 messages · Archive complète : `docs/archive/sessions/2026-11-26_00h29_chief.md`*
+**Fichiers touchés :** `D:\DEV\NexusMind\NexusMind\src\lib\playerSheetView.ts`, `D:\DEV\NexusMind\NexusMind\src\components\TeamSession\PlayerTimelineBlocks.tsx`, `D:\DEV\NexusMind\NexusMind\src\components\TeamSession\PlayerSheet.tsx`, `D:\DEV\NexusMind\NexusMind\docs\DESIGN_STATE.md`, `C:\Users\ariso\AppData\Local\Temp\chk\c.cjs`
+
+**Tâches traitées :**
+- reprend. il y'a des choses qui n'ont pas eté terminé ou mal faite.
+- ui, corrige les 2 points (accès solo session terminée + bouton Revoir), vérifie visuellement le rendu (ou capture), et mets à jour les maquettes L11b dans Penpot si elles ne reflèt
+- corrige tous les défauts referencé puis commit push et release la derniere version.
+- corrige tous les défauts referencé puis commit push et release la derniere version.
+- corrige tous les défauts referencé puis commit push et release la derniere version.
+
+### Conclusion (Retour réel · Front-end (229.7s))
+La liste des évènements d'objectifs s'affiche maintenant en entier, y compris la dernière ligne « Baron ». Typecheck, eslint, `check:i18n` et vitest passent. Rien n'est commité ni pushé, et le Back n'est pas touché.
+
+**Correction** (dans `PlayerTimelineBlocks.tsx`)
+- J'ai retiré `max-h-64 overflow-auto` de la liste des évènements d'objectifs : la hauteur est maintenant automatique, il n'y a plus de scroll interne.
+- J'ai fait la même chose pour le tableau « Voir les valeurs par minute » de la courbe d'écarts. Il av…
+
+### Conclusion (Retour réel · Design (264.8s))
+Les trois finitions sont faites : l'export de L11 · B est relancé, les deux repliables sont dessinés ouverts dans une nouvelle frame, et le § 16 bis.6 est mis à jour. Pas de commit.
+
+1. **L11 · B ré-exportée en png.** Les pieds de tuile corrigés y apparaissent : « +2 pts vs 30 j » sur Part des dégâts et « −1 pt vs 30 j » sur KP.
+2. **Repliables ouverts, nouvelle frame « L11 · D »** (page « Sessions d'équipe — historique », x 0, y 14800), exportée en png.
+   - **Valeurs par minute :** tableau Minute · Or, 0′ à 12′ a…
+
+### Conclusion (Chief · Claude Sonnet · Auto (Sonnet · équilibré))
+La version **1.0.0-beta.24** est publiée (pré-release) sur GitHub, avec son installateur, son blockmap et `latest.yml`. Je n'ai pas lancé l'installateur : l'auto-update et le démarrage de l'app packagée ne sont pas testés.
+
+## Défauts corrigés
+- **Liste d'objectifs tronquée :** la hauteur fixe est retirée, la ligne « 27:30 Baron » s'affiche. Le tableau des valeurs par minute (courbe d'écarts) suivait le même schéma et est corrigé. Le Front a relu les captures régénérées. Elles viennent toujours de données de démo, …
+
 *Dernier renouvellement : 2026-11-26 21h27 · 23 messages · Archive complète : `docs/archive/sessions/2026-11-26_21h27_chief.md`*
 **Fichiers touchés :** `D:\DEV\NexusMind\NexusMind\src\lib\playerSessionStatsCore.ts`, `D:\DEV\NexusMind\NexusMind\src\pages\TeamSessions\TeamSessionHistoryView.tsx`, `D:\DEV\NexusMind\NexusMind\src\lib\playerStatsSheetCore.ts`, `D:\DEV\NexusMind\NexusMind\docs\contracts\player-session-stats.md`, `D:\DEV\NexusMind\NexusMind\docs\DESIGN_STATE.md`, `C:\Users\ariso\.claude\projects\D--DEV-NexusMind-NexusMind\memory\feedback_deliver-everything-complete.md`, `D:\DEV\NexusMind\NexusMind\src\lib\teamTimelineCore.ts`, `D:\DEV\NexusMind\NexusMind\src\lib\analystCore.ts`
 
@@ -71,6 +110,39 @@ Les 4 ajouts de l'historique d'équipe sont maquettés dans Penpot en 3 frames, 
   - « L2 · Liste — recherche par adversaire » : recherche « Aegis Gaming » a…
 
 ## Design
+*Dernier renouvellement : 2026-11-26 00h29 · 10 messages · Archive complète : `docs/archive/sessions/2026-11-26_00h29_design.md`*
+**Fichiers touchés :** `D:\DEV\NexusMind\NexusMind\docs\DESIGN_STATE.md`
+
+**Tâches traitées :**
+- Lot L11 — Fiche « Stats individuelles » d'un joueur, deux variantes, avec le même filtre « Toute la session / G1 / G2… ». Contexte : `docs/DESIGN_STATE.md` § 15.2 (page d'une sessi
+- il manque des choses que j'ai demandé dans cette page solo stats.
+- design ne m'a pas fait ce que j'ai demandé exactement, il manque des choses.
+- LOT L11b DESIGN — mettre à jour les maquettes Penpot (page « Sessions d'équipe — historique », frames L11 · A, A2, B, B2, B3, C) pour refléter TOUS les blocs désormais livrés par l
+- L11b DESIGN — finitions. 1) Relance l'export png (export_shape) de la frame « L11 · B » (page « Sessions d'équipe — historique »), non ré-exportée après la dernière retouche des pi
+
+### Conclusion (Design · Claude Sonnet · Auto (Sonnet · Design))
+Je corrige les fiches solo : ce qui manquait était « même fiche » que l'équipe.
+
+**Ce qui n'allait pas.** Tu demandais, pour le solo, la même fiche que pour l'équipe. Dans la maquette solo, j'avais remplacé deux tuiles (Part des dégâts, KP) et changé les lignes du duel. C'était un écart à ta demande, pas un choix de design.
+
+**Corrigé dans Penpot** (page « Sessions d'équipe — historique »). Ce qui est vérifié : les frames A2, B et B2 ont été exportées en png après correction. Les frames C et B3, inchangées, ne l'on…
+
+### Conclusion (Design · Claude Sonnet · Auto (Penpot MCP · Sonnet))
+Les maquettes L11 sont mises à jour avec tous les blocs que le Front a livrés. Pas de commit.
+
+**Checklist** (sauf mention contraire, les blocs sont dans A, A2, B, B2 ; B3, B4 et C ont chacune leur propre contenu) :
+- **Morts avant 14 min :** liste avec horloge, zone, tueur, bouton « Revoir » (désactivé s'il n'y a pas de VOD). ✓
+- **Morts isolées après 14 min :** liste, avec la pastille « POSITION INCONNUE » pour une position inconnue. ✓
+- **Kills isolés :** liste avec le même format. ✓
+- **Écarts or / XP / CS :** …
+
+### Conclusion (Design · Claude Sonnet · Auto (Penpot MCP · Sonnet))
+Les trois finitions sont faites : l'export de L11 · B est relancé, les deux repliables sont dessinés ouverts dans une nouvelle frame, et le § 16 bis.6 est mis à jour. Pas de commit.
+
+1. **L11 · B ré-exportée en png.** Les pieds de tuile corrigés y apparaissent : « +2 pts vs 30 j » sur Part des dégâts et « −1 pt vs 30 j » sur KP.
+2. **Repliables ouverts, nouvelle frame « L11 · D »** (page « Sessions d'équipe — historique », x 0, y 14800), exportée en png.
+   - **Valeurs par minute :** tableau Minute · Or, 0′ à 12′ a…
+
 *Dernier renouvellement : 2026-11-26 19h39 · 8 messages · Archive complète : `docs/archive/sessions/2026-11-26_19h39_design.md`*
 **Tâches traitées :**
 - Lot L2 (Penpot). Lis docs/DECISIONS.md, docs/PLAN_CHIEF.md et docs/DESIGN_STATE.md § 15 (dans D:\DEV\NexusMind\NexusMind). Fais la maquette des 4 ajouts de l'historique d'équipe : 
@@ -99,6 +171,37 @@ Les 4 ajouts de l'historique d'équipe sont maquettés dans Penpot en 3 frames, 
   - « L2 · Liste — recherche par adversaire » : recherche « Aegis Gaming » a…
 
 ## Front-end
+*Dernier renouvellement : 2026-11-26 00h29 · 6 messages · Archive complète : `docs/archive/sessions/2026-11-26_00h29_frontend.md`*
+**Fichiers touchés :** `D:\DEV\NexusMind\NexusMind\src\lib\playerSheetView.ts`, `D:\DEV\NexusMind\NexusMind\src\components\TeamSession\PlayerTimelineBlocks.tsx`, `D:\DEV\NexusMind\NexusMind\src\components\TeamSession\PlayerSheet.tsx`
+
+**Tâches traitées :**
+- LOT L11b FRONT — brancher TOUTES les données Back L11b dans la fiche « Stats indiv joueur ». Le Back est livré et vérifié (typecheck OK, 51 tests verts). Contrat à lire en premier 
+- LOT L11b FRONT — correctifs + vérification visuelle réelle. Contexte : ta livraison précédente (PlayerSheet.tsx, PlayerTimelineBlocks.tsx, playerSheetView.ts, SoloPlayerSheet.tsx) 
+- L11b FRONT — correctif final. Défaut constaté sur la capture docs/audits/l11b-captures/solo-ended-history-whole.png : dans le bloc « Participation aux objectifs » (src/components/T
+
+### Conclusion (Front-end · Claude Sonnet · Auto (Penpot MCP · Sonnet))
+Le Front L11b est branché. Typecheck, eslint, `check:i18n` et vitest passent, mais je n'ai pas ouvert l'écran dans l'application. Je n'ai ni commité ni pushé, et je n'ai touché à aucun fichier Back.
+
+**Vérifié (sorties réelles)**
+- `npm run typecheck` : les 4 projets tsc passent sans erreur.
+- `npx eslint` sur les 7 fichiers touchés : aucune sortie.
+- `npm run check:i18n` : « i18n OK — 4940 keys, en/fr in sync ».
+- `npx vitest run` sur `playerSheetView`, `playerSession*` et `playerStatsSheetCore` : 5 fichiers, 64 t…
+
+### Conclusion (Front-end · Claude Sonnet · Auto (Penpot MCP · Sonnet))
+Les trois points sont faits et vérifiés, mais les captures viennent du harnais avec des données de démo, pas de l'application Electron. Typecheck, eslint, `check:i18n` et vitest passent. Rien n'est commité ni pushé, et le Back n'est pas touché.
+
+**1. Accès solo, session terminée**
+- Le vrai parcours est Historique → onglet Sessions. Il n'y avait aucun récap de fin : `endSession` renvoie vers `/analytics`.
+- J'ai ajouté la page `SoloSessionSheetPage` sur la route `/history/session/:sessionId/stats?game=N`. Elle reli…
+
+### Conclusion (Front-end · Claude Sonnet · Auto (Sonnet · Front-end))
+La liste des évènements d'objectifs s'affiche maintenant en entier, y compris la dernière ligne « Baron ». Typecheck, eslint, `check:i18n` et vitest passent. Rien n'est commité ni pushé, et le Back n'est pas touché.
+
+**Correction** (dans `PlayerTimelineBlocks.tsx`)
+- J'ai retiré `max-h-64 overflow-auto` de la liste des évènements d'objectifs : la hauteur est maintenant automatique, il n'y a plus de scroll interne.
+- J'ai fait la même chose pour le tableau « Voir les valeurs par minute » de la courbe d'écarts. Il av…
+
 *Dernier renouvellement : 2026-11-26 21h27 · 10 messages · Archive complète : `docs/archive/sessions/2026-11-26_21h27_frontend.md`*
 **Fichiers touchés :** `D:\DEV\NexusMind\NexusMind\src\pages\TeamSessions\TeamSessionHistoryView.tsx`
 

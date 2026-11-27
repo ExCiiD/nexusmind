@@ -86,6 +86,45 @@ dépense. Règles :
    sessions : il ne lui écrit que pour une décision, un résultat livré ou un
    blocage, regroupés en un message.
 
+## Trois tiers : Claude, Gemini Pro, LLM local (27/11/2026)
+
+**Principe d'attribution (précisé par l'utilisateur le 27/11 : « pas un workframe "gratuit d'abord" »).** Pour chaque tâche, le Chief choisit l'outil **le plus adéquat**, pas le moins cher : Claude, Gemini Pro ou le LLM local. On n'économise des tokens que **à qualité égale**. Concrètement : Gemini quand il est meilleur ou seul capable (navigateur, web en direct, très gros contexte, regard indépendant) ; le LLM local quand le résultat est aussi bon et vérifiable à coup sûr (résumé factuel cité, brouillon mécanique) ; Claude pour tout le reste, et toujours pour ce qui demande du jugement. Dans le doute : Claude.
+
+Demande de l'utilisateur : garder le mélange Claude / Gemini / LLM local pour économiser les tokens Claude, **sans perdre en qualité**. Règle d'or : **seul Claude décide, écrit le code livré et déclare « fait »**. Gemini et le LLM local fournissent de la matière ; la session Claude qui l'utilise la vérifie (fichiers, checks réels) avant qu'elle ne compte.
+
+| Tier | Outil | Pour | Jamais pour |
+|---|---|---|---|
+| **A. Claude** (Chief + sessions de rôle) | Claude Code | Décisions, plan, architecture, code livré, sécurité, migrations, revues Audit / Cyber, intégration, release. | — |
+| **B. Gemini Pro** | **Antigravity** (piloté par l'utilisateur, en parallèle) ; **`gemini` CLI** en lecture seule (appelé par une session Claude, skills `delegation-core` / `gemini-delegation`) | Navigateur intégré et tests visuels ; **revue QA croisée indépendante** avant release ; veille web, docs, notes de patch Riot ; Domain & Growth (SEO, CRO, copy du site) ; grosses synthèses multi-fichiers qui brûleraient le quota Claude. | Écrire dans des fichiers qu'une session Claude modifie ; décider ; déclarer une tâche faite ; secrets. |
+| **C. LLM local** | MCP `local-llm` (RX 6950 XT, Ollama : `local-fast` qwen3.5 9B, `local-coder` gpt-oss 20B) | `local_repo_brief` : résumer un gros fichier, un log, un diff avant de le charger. `local_complete` : brouillons mécaniques (traductions i18n en masse, boilerplate, messages de commit, variantes de texte), toujours avec `cwd`, `context_files` et un `context_brief` précis. | Architecture, sécurité / RLS / CSP / auth, migrations, debug multi-fichiers, règles du moteur, décisions. |
+
+**Garde-fous qualité.**
+1. Une sortie de B ou C est une **entrée**, pas un résultat : la session Claude relit le passage concerné dans le vrai fichier et lance les vrais checks (`npm run check`, build) avant de l'intégrer.
+2. Un constat de Gemini (QA, SEO, sécurité) passe par Audit ou Cyber, qui le confirme ou le rejette dans le code, avant d'être attribué par le Chief.
+3. Traductions du LLM local : `npm run check:i18n` + relecture des clés de jargon LoL (restent en anglais).
+4. En cas de doute sur une sortie locale : la refaire côté Claude plutôt que de la corriger ligne à ligne.
+
+**Coordination avec Antigravity (même dossier `D:\DEV\NexusMind`).**
+- Antigravity **écrit ses rapports dans `docs/notes/antigravity/`** (un fichier par sujet, daté) et ne modifie pas le code ni les autres docs, sauf lot explicitement confié par le Chief : alors **sur une branche `ag/<sujet>`**, que le Chief relit et fusionne.
+- **Jamais pendant un build de release** (le script refuse un dossier qui change pendant ses vérifications).
+- Le Chief signale à l'utilisateur quand un lot est **prêt pour une revue croisée Gemini** (« lot X prêt pour Antigravity : fichiers…, ce qu'il faut vérifier… ») et lit le rapport quand il arrive.
+
+**Choix du modèle par session** (réglé par le Chief à la création, `set_session_model`) : Chief, Engine et CyberSecurity sur **Opus** (orchestration, moteur, sécurité) ; Back-end, Front-End, Audit et Graphic Design sur **Sonnet** ; une vérification triviale ponctuelle peut passer par un sous-agent **Haiku**.
+
+## Renouvellement des sessions (27/11/2026)
+
+Une session longue relit tout son historique à chaque tour : c'est la plus grosse dépense cachée. Le Chief **propose** le renouvellement (carte de session à cliquer), l'utilisateur décide. Règles :
+
+1. **Quand le proposer** (le Chief choisit le moment, une proposition à la fois) :
+   - juste **après une release** ou un lot terminé et commité (tout le monde au repos, rien en cours) ;
+   - quand le contexte d'une session dépasse **60 %** (`get_usage` sur la session) ;
+   - **après le reset hebdomadaire** du quota, avant de lancer un gros lot ;
+   - quand une session change complètement de domaine.
+   Jamais au milieu d'un lot, ni pendant un build.
+2. **Renouvellement paresseux des rôles** : on ne recrée pas les 6 sessions d'un coup. Quand le Chief doit confier un lot à une session dont le contexte dépasse 60 %, il **démarre une session fraîche du même rôle** avec le lot dans son brief, au lieu d'envoyer un message à l'ancienne ; l'ancienne est archivée une fois sa note de passation écrite.
+3. **Passation** (avant d'archiver) : la session écrit 10 lignes au plus dans `docs/SESSION_CONTEXT.md`, section de son rôle : état, fichiers touchés non commités, prochaine action, pièges. Le brief de la nouvelle session = son rôle (ce document) + `REFERENCE.md` + `DECISIONS.md` + `INBOX.md` + sa section de `SESSION_CONTEXT.md` + le lot.
+4. **Le Chief lui-même** : au-delà de 75 % de contexte, il met à jour sa section de `SESSION_CONTEXT.md` et `REFERENCE.md`, puis propose de passer la main à un nouveau Chief.
+
 ## Règles communes
 
 (Reprises de l'ancien handoff, 26/11.)
