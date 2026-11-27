@@ -142,6 +142,28 @@ if (-not $PublishOnly) {
         exit 1
     }
 }
+# ── 3b. Create the GitHub release first (unless skipping publish) ─────
+# electron-builder uploads the installer and its blockmap in parallel, and
+# each upload creates the release when it does not exist yet: the second
+# create fails with 422 "Published releases must have a valid tag", the
+# build stops, and latest.yml is never uploaded (beta.25 and beta.26), so
+# players get no auto-update. Creating the release here, once, avoids the
+# race: electron-builder then uploads into it (it accepts an existing
+# pre-release published less than 2 hours ago).
+if (-not $NoPublish) {
+    $version = (Get-Content (Join-Path $repoRoot 'package.json') -Raw | ConvertFrom-Json).version
+    $tag = "v$version"
+    gh release view $tag --repo ExCiiD/nexusmind --json tagName 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[release] Creating GitHub release $tag (pre-release) before uploading..." -ForegroundColor Cyan
+        # Pre-release, as `releaseType: prerelease` in electron-builder.yml; change both together at 1.0 GA.
+        gh release create $tag --repo ExCiiD/nexusmind --prerelease --title $version --notes "Ascend $version" --target (git rev-parse HEAD)
+        if ($LASTEXITCODE -ne 0) { Write-Error "Could not create the GitHub release $tag"; exit 1 }
+    } else {
+        Write-Host "[release] GitHub release $tag already exists, uploading into it." -ForegroundColor Cyan
+    }
+}
+
 $publishFlag = if ($NoPublish) { 'never' } else { 'always' }
 Write-Host "[release] Running electron-builder --publish $publishFlag ..." -ForegroundColor Cyan
 npx electron-builder --publish $publishFlag
