@@ -27,7 +27,11 @@ param(
     [switch]$AllowDirty
 )
 
-$ErrorActionPreference = 'Stop'
+# 'Continue', not 'Stop': Windows PowerShell 5.1 turns any line a native program (gh, git,
+# npm, electron-builder) writes to stderr into an error, and 'Stop' made that error kill the
+# script even when the program succeeded ("release not found" from gh, beta.27). Every
+# native call below is judged by its exit code ($LASTEXITCODE) and ends with an explicit exit 1.
+$ErrorActionPreference = 'Continue'
 
 # ── Resolve repo root regardless of where the script is invoked from ──
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -75,15 +79,22 @@ if (-not $PublishOnly) {
         @{ Name = 'i18n';      Args = @('run', 'check:i18n') },
         @{ Name = 'unit tests'; Args = @('run', 'test') }
     )
-    foreach ($check in $checks) {
-        Write-Host ("[release] Check: {0}..." -f $check.Name) -ForegroundColor Cyan
-        & npm @($check.Args)
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error ("Check failed: {0}. Nothing was built." -f $check.Name)
-            exit 1
+    # Same checks as `npm run check`: when it already passed on this exact folder
+    # (scripts/checked-stamp.mjs, same HEAD, diff and untracked files), they are not run twice.
+    & node (Join-Path $repoRoot 'scripts\checked-stamp.mjs') verify
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "[release] Checks skipped: npm run check already passed on this exact code." -ForegroundColor Green
+    } else {
+        foreach ($check in $checks) {
+            Write-Host ("[release] Check: {0}..." -f $check.Name) -ForegroundColor Cyan
+            & npm @($check.Args)
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error ("Check failed: {0}. Nothing was built." -f $check.Name)
+                exit 1
+            }
         }
+        Write-Host "[release] All checks passed." -ForegroundColor Green
     }
-    Write-Host "[release] All checks passed." -ForegroundColor Green
 
     # The bundled ffmpeg.exe ships in every installer: only the pinned binary (#13, S19-04).
     # Same check as `npm run dist` (predist): scripts/check-ffmpeg.mjs, one implementation.
@@ -97,7 +108,7 @@ if (-not $NoPublish) {
     Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue
     Remove-Item Env:GITHUB_TOKEN -ErrorAction SilentlyContinue
 
-    $token = (gh auth token 2>$null).Trim()
+    $token = "$(gh auth token 2>$null)".Trim()
     if (-not $token) {
         Write-Error "gh CLI is not authenticated. Run: gh auth login"
         exit 1
@@ -153,8 +164,10 @@ if (-not $PublishOnly) {
 if (-not $NoPublish) {
     $version = (Get-Content (Join-Path $repoRoot 'package.json') -Raw | ConvertFrom-Json).version
     $tag = "v$version"
+    # "release not found" on stderr is the normal answer for a new version: judged by the exit code.
     gh release view $tag --repo ExCiiD/nexusmind --json tagName 2>$null | Out-Null
-    if ($LASTEXITCODE -ne 0) {
+    $releaseExists = ($LASTEXITCODE -eq 0)
+    if (-not $releaseExists) {
         Write-Host "[release] Creating GitHub release $tag (pre-release) before uploading..." -ForegroundColor Cyan
         # Pre-release, as `releaseType: prerelease` in electron-builder.yml; change both together at 1.0 GA.
         gh release create $tag --repo ExCiiD/nexusmind --prerelease --title $version --notes "Ascend $version" --target (git rev-parse HEAD)

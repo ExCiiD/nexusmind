@@ -24,7 +24,7 @@
     "lint": "eslint .",
     "cutout:pack": "tsx scripts/cutout-pack.ts",
     "check:i18n": "node scripts/check-i18n.mjs",
-    "check": "npm run typecheck && npm run lint && npm run check:i18n && npm test",
+    "check": "npm run typecheck && npm run lint && npm run check:i18n && npm test && node scripts/checked-stamp.mjs write",
     "predist": "node scripts/check-ffmpeg.mjs",
     "dist": "npm run build && electron-builder --publish never",
     "predist:dir": "node scripts/check-ffmpeg.mjs",
