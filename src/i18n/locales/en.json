@@ -632,7 +632,10 @@
       "externalFolder": "External recordings folder",
       "externalFolderDesc": "When linking a replay recorded with another app (OBS, Outplayed…), the file picker will open directly in this folder.",
       "externalNotSet": "Not set — file picker will start at the default location",
-      "clearFolder": "Clear folder"
+      "clearFolder": "Clear folder",
+      "qualityEco": "1080p eco",
+      "qualityEcoBadge": "ECO",
+      "qualityEcoNote": "1080p eco: 3 Mb/s, ≈ 0.45 GB per game instead of 0.9. HUD, minimap and health bars stay sharp; effects slightly softer in teamfights."
     },
     "danger": {
       "range24h": "24h",
@@ -785,6 +788,79 @@
       "warnProgress": "Your personal progression will rest only on your own judgement.",
       "confirm": "Turn on",
       "saveFailed": "The setting couldn’t be saved."
+    },
+    "retention": {
+      "title": "Video retention",
+      "thisPc": "THIS PC",
+      "desc": "Deletes the oldest videos from this PC. Off by default. Stats, reviews and mistakes stay; only the video goes.",
+      "recordings_one": "{{count}} recording",
+      "recordings_other": "{{count}} recordings",
+      "gb": "GB",
+      "onThisPc": "on this PC",
+      "ageBefore": "Delete after",
+      "ageAfter": "days",
+      "ageLabel": "Maximum age in days (7 to 365)",
+      "sizeBefore": "Cap at",
+      "sizeAfter": "GB in total",
+      "sizeLabel": "Maximum size in GB (10 to 2,000)",
+      "oneRule": "At least one rule must stay ticked while the cleanup is on.",
+      "bounds": "Age from 7 to 365 days · size from 10 to 2,000 GB · both can combine · the oldest go first.",
+      "tickOne": "Tick at least one rule.",
+      "previewPending": "With these rules, right now",
+      "previewActive": "On · next cleanup",
+      "protected_one": "protected",
+      "protected_other": "protected",
+      "deletable_one": "deletable",
+      "deletable_other": "deletable",
+      "freed": "freed",
+      "toFree": "to free",
+      "legendProtected": "protected",
+      "legendKept": "kept",
+      "legendRemoved": "deleted",
+      "barLabel": "Protected {{protected}} GB, kept {{kept}} GB, deleted {{removed}} GB",
+      "nothing": "Nothing to delete for now: every video is within the rules or protected.",
+      "capUnreachable": "The cap cannot be reached: the protected videos alone exceed it.",
+      "never": "Never deleted:",
+      "reason": {
+        "clip": "clip",
+        "bookmark": "bookmark",
+        "mistake": "tagged mistake",
+        "review": "review",
+        "recent": "< 2 days",
+        "recording": "recording"
+      },
+      "reasonPlural": {
+        "clip_one": "clip",
+        "clip_other": "clips",
+        "bookmark_one": "bookmark",
+        "bookmark_other": "bookmarks",
+        "mistake_one": "mistake",
+        "mistake_other": "mistakes",
+        "review_one": "review",
+        "review_other": "reviews",
+        "recent_one": "recent",
+        "recent_other": "recent",
+        "recording_one": "recording",
+        "recording_other": "recording"
+      },
+      "nothingBefore": "Nothing is deleted until you confirm.",
+      "activate": "Turn on…",
+      "checked": "Checked at launch and after every game.",
+      "confirmTitle_one": "Delete {{count}} video from this PC?",
+      "confirmTitle_other": "Delete {{count}} videos from this PC?",
+      "confirmDesc": "{{size}} GB freed on {{dir}}. A deleted video cannot be recovered.",
+      "removed": "Deleted",
+      "byAge": "older than {{days}} days",
+      "bySize": "beyond {{gb}} GB",
+      "keptWord": "Kept",
+      "confirmNote": "Stats, reviews, tagged mistakes and notes stay: only the video goes. After that the cleanup runs by itself, at launch and after every game, without asking again.",
+      "confirmAction_one": "Delete {{count}} video",
+      "confirmAction_other": "Delete {{count}} videos",
+      "done_one": "{{count}} video deleted · {{size}} GB freed",
+      "done_other": "{{count}} videos deleted · {{size}} GB freed",
+      "saveFailed": "Setting not saved",
+      "last_one": "Last cleanup on {{date}}: {{count}} video deleted, {{size}} GB freed.",
+      "last_other": "Last cleanup on {{date}}: {{count}} videos deleted, {{size}} GB freed."
     }
   },
   "sidebar": {
@@ -4808,7 +4884,9 @@
       "top": "#1 mistake",
       "topSub": "{{count}} times · {{share}}% of total",
       "phase": "Most affected phase",
-      "phaseSub": "{{share}}% of your mistakes"
+      "phaseSub": "{{share}}% of your mistakes",
+      "fatal": "Fatal",
+      "fatalSub": "of {{total}} mistakes · {{perGame}} per game"
     },
     "families": "Mistake families",
     "family": {
@@ -4869,7 +4947,77 @@
       "costFew": "Games with this mistake: {{with}}% won ({{withGames}} games). Not enough analysed games without it ({{withoutGames}}) to compare."
     },
     "win": "W",
-    "loss": "L"
+    "loss": "L",
+    "tier": {
+      "label": "Tier",
+      "filter": "Filter by tier",
+      "all": "All tiers",
+      "fatalCol": "Fatal mistakes",
+      "name": {
+        "fatal": "Fatal",
+        "critical": "Critical",
+        "medium": "Medium",
+        "trivial": "Trivial"
+      },
+      "chip": {
+        "fatal": "Fatal",
+        "critical": "Critical",
+        "medium": "Medium",
+        "trivial": "Trivial"
+      },
+      "plural": {
+        "fatal_one": "fatal",
+        "fatal_other": "fatal",
+        "critical_one": "critical",
+        "critical_other": "critical",
+        "medium_one": "medium",
+        "medium_other": "medium",
+        "trivial_one": "trivial",
+        "trivial_other": "trivial",
+        "unknown_one": "of unknown tier",
+        "unknown_other": "of unknown tier"
+      },
+      "rule": {
+        "fatal": "team gold gap or snowball",
+        "critical": "lane gap",
+        "medium": "the rest",
+        "trivial": "after a fatal one"
+      },
+      "barCount_one": "{{count}} time",
+      "barCount_other": "{{count}} times",
+      "unknownReason": "Unknown tier · no timeline",
+      "reason": {
+        "teamGap": "{{gold}} team gold in {{minutes}} min",
+        "laneGap": "{{gold}} lane gold in {{minutes}} min",
+        "snowball": "team gap falling for {{minutes}} min",
+        "snowballFromTo": "team gap falling for {{minutes}} min ({{from}} → {{to}})",
+        "afterFatal": "after a fatal one at {{clock}}",
+        "laneSnowball": "lane gap falling for {{minutes}} min",
+        "laneSnowballFromTo": "lane gap falling for {{minutes}} min ({{from}} → {{to}})",
+        "deficit": "lane deficit {{gold}} gold",
+        "precedes": "precedes a {{tier}} mistake at {{clock}}",
+        "garbage": "decided game"
+      },
+      "emptyTier": {
+        "fatal": "No fatal mistake in {{days}} days.",
+        "critical": "No critical mistake in {{days}} days.",
+        "medium": "No medium mistake in {{days}} days.",
+        "trivial": "No trivial mistake in {{days}} days."
+      },
+      "seeAll": "See all tiers",
+      "footPicked": "{{tier}} only: {{n}} of {{total}} mistakes. % = share of the {{lower}} ones. Each bar keeps only the segment of the chosen tier.",
+      "trivialHidden_one": "{{count}} trivial mistake left out of the ranking (“Trivial” filter to see it).",
+      "trivialHidden_other": "{{count}} trivial mistakes left out of the ranking (“Trivial” filter to see them).",
+      "inspectorPicked_one": "{{count}} {{tier}} · {{games}} {{gw}} · “{{name}}” filter on.",
+      "inspectorPicked_other": "{{count}} {{tier}} · {{games}} {{gw}} · “{{name}}” filter on.",
+      "gamesWord_one": "game",
+      "gamesWord_other": "games"
+    },
+    "sort": {
+      "label": "Sort",
+      "frequency": "Frequency",
+      "severity": "Severity"
+    }
   },
   "record": {
     "title": "Record Hub",
@@ -5121,7 +5269,8 @@
         "right": "right",
         "left": "left",
         "hidden": "hidden"
-      }
+      },
+      "backPrev": "Back"
     },
     "select": {
       "group": "Select every recording of this group",

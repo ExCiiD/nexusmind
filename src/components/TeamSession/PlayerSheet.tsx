@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useUrlParam } from '@/hooks/useUrlParam'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -294,13 +294,14 @@ function ThisGamePanel({ sheet, indiv }: { sheet: PlayerStatsSheet; indiv: Playe
 /* ── Whole session: one bar per game ── */
 
 type Metric = 'kda' | 'csPerMin' | 'damagePerMin'
+const METRIC_KEYS: readonly Metric[] = ['kda', 'csPerMin', 'damagePerMin']
 const METRICS: Array<{ key: Metric; label: string; d: number; needs?: Missing }> = [
   { key: 'kda', label: 'KDA', d: 1 }, { key: 'csPerMin', label: 'CS/min', d: 1 }, { key: 'damagePerMin', label: 'DMG/min', d: 0, needs: 'damagePerMin' },
 ]
 
 function GameByGamePanel({ sheet, onPickGame }: { sheet: PlayerStatsSheet; onPickGame: (index: number) => void }) {
   const { t } = useTranslation()
-  const [metric, setMetric] = useState<Metric>('kda')
+  const [metric, setMetric] = useUrlParam<Metric>('metric', 'kda', METRIC_KEYS)
   const metrics = METRICS.filter((m) => !m.needs || !sheet.missing.includes(m.needs))
   const m = metrics.find((x) => x.key === metric) ?? metrics[0]
   const values = sheet.series.map((p) => p[m.key])

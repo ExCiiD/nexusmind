@@ -7,6 +7,9 @@
  * a trend that never renders 90% empty.
  */
 
+import type { MistakeTier, TierReason } from './microReview/mistakeTiers'
+export type { MistakeTier, TierReason }
+
 export interface MistakeOccurrence {
   id: string
   tag: { id: string; slug: string; label: string; category: string; color?: string | null }
@@ -17,6 +20,10 @@ export interface MistakeOccurrence {
   recordingId: string | null
   /** P(win) was < 0.18 or > 0.85 just before: excluded from the win-rate ratios. */
   garbageTime?: boolean
+  /** Tier of this occurrence (docs/design/TIERS_ERREURS_LABO.md): null / absent = unknown (no timeline, the gold gap cannot be computed). */
+  tier?: MistakeTier | null
+  /** Why the tier (null for « medium »). */
+  tierReason?: TierReason | null
   game: { id: string; champion: string; opponentChampion: string | null; win: boolean; gameEndAt: string; duration: number }
 }
 
@@ -64,6 +71,8 @@ export interface RankedMistake {
   /** Games each side of the comparison is made of (decisive games with the mistake / analysed games without it). */
   gamesWith: number
   gamesWithout: number
+  /** The occurrences counted in this row, by tier (what the segmented bar draws). */
+  tiers: TierCounts
 }
 
 /** Below this many analysed games WITHOUT the mistake, the with/without comparison says nothing: the screen qualifies or hides it. */
@@ -80,31 +89,79 @@ const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0)
  *  Garbage-time occurrences count in the totals but not in the win-rate
  *  ratios: a game where the tag only shows up in garbage time sits on
  *  neither side for that tag. */
-export function rankMistakes(occ: MistakeOccurrence[]): RankedMistake[] {
+export function rankMistakes(occ: MistakeOccurrence[], tier: TierFilter = 'all'): RankedMistake[] {
   const games = new Map<string, boolean>()
   for (const o of occ) games.set(o.game.id, o.game.win)
-  const byTag = new Map<string, { o: MistakeOccurrence; count: number; gameIds: Set<string>; decisive: Set<string> }>()
-  for (const o of occ) {
-    const e = byTag.get(o.tag.id) ?? { o, count: 0, gameIds: new Set<string>(), decisive: new Set<string>() }
+  // What the rows count: every tier but the trivial ones by default (Engine report 28/11 § 4), or the one tier picked.
+  const scoped = occ.filter((o) => inTierScope(o, tier))
+  const byTag = new Map<string, { o: MistakeOccurrence; count: number; gameIds: Set<string>; tiers: TierCounts }>()
+  for (const o of scoped) {
+    const e = byTag.get(o.tag.id) ?? { o, count: 0, gameIds: new Set<string>(), tiers: emptyTierCounts() }
     e.count++
     e.gameIds.add(o.game.id)
-    if (!o.garbageTime) e.decisive.add(o.game.id)
+    e.tiers[tierKeyOf(o)]++
     byTag.set(o.tag.id, e)
   }
-  const total = occ.length
+  // The win-rate cost never moves with the tier filter, and leaves out the trivial mistakes (they only happen in games already going badly).
+  const decisiveOf = new Map<string, Set<string>>()
+  const everIds = new Map<string, Set<string>>()
+  for (const o of occ) {
+    const all = everIds.get(o.tag.id) ?? new Set<string>()
+    all.add(o.game.id); everIds.set(o.tag.id, all)
+    if (!o.garbageTime && o.tier !== 'trivial') { const d = decisiveOf.get(o.tag.id) ?? new Set<string>(); d.add(o.game.id); decisiveOf.set(o.tag.id, d) }
+  }
+  const total = scoped.length
   return [...byTag.values()]
-    .map(({ o, count, gameIds, decisive }) => {
-      const withIds = [...decisive]
-      const withoutIds = [...games.keys()].filter((id) => !gameIds.has(id))
+    .map(({ o, count, gameIds, tiers }) => {
+      const withIds = [...(decisiveOf.get(o.tag.id) ?? [])]
+      const everIdsOfTag = everIds.get(o.tag.id) ?? new Set<string>()
+      const withoutIds = [...games.keys()].filter((id) => !everIdsOfTag.has(id))
       const wr = (ids: string[]) => (ids.length >= 2 ? pct(ids.filter((id) => games.get(id)).length, ids.length) : null)
       const family = tagFamily(o.tag.slug, o.tag.category)
       return {
         tagId: o.tag.id, slug: o.tag.slug, label: o.tag.label, family, color: FAMILY_COLOR[family],
         count, share: pct(count, total), games: gameIds.size,
-        winrateWith: wr(withIds), winrateWithout: wr(withoutIds), gamesWith: withIds.length, gamesWithout: withoutIds.length,
+        winrateWith: wr(withIds), winrateWithout: wr(withoutIds), gamesWith: withIds.length, gamesWithout: withoutIds.length, tiers,
       }
     })
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+}
+
+/* ── Tiers (docs/design/TIERS_ERREURS_LABO.md) ── */
+
+export const TIERS: readonly MistakeTier[] = ['fatal', 'critical', 'medium', 'trivial']
+export type TierKey = MistakeTier | 'unknown'
+export type TierFilter = 'all' | MistakeTier
+export type TierCounts = Record<TierKey, number>
+/** Pips of a tier (●●● ●●○ ●○○ ○○○) and the opacity of its bar segment (the trivial one is an outline). */
+export const TIER_PIPS: Record<MistakeTier, number> = { fatal: 3, critical: 2, medium: 1, trivial: 0 }
+export const TIER_OPACITY: Record<MistakeTier, number> = { fatal: 1, critical: 0.6, medium: 0.3, trivial: 0 }
+export const pipsOf = (tier: MistakeTier): string => '●'.repeat(TIER_PIPS[tier]) + '○'.repeat(3 - TIER_PIPS[tier])
+
+export const emptyTierCounts = (): TierCounts => ({ fatal: 0, critical: 0, medium: 0, trivial: 0, unknown: 0 })
+export const tierKeyOf = (o: Pick<MistakeOccurrence, 'tier'>): TierKey => o.tier ?? 'unknown'
+/** « All tiers » leaves the trivial mistakes out of the ranking (visible with their own filter); a picked tier keeps only that tier. */
+export const inTierScope = (o: Pick<MistakeOccurrence, 'tier'>, tier: TierFilter): boolean => (tier === 'all' ? o.tier !== 'trivial' : o.tier === tier)
+
+export function tierCounts(occ: Array<Pick<MistakeOccurrence, 'tier'>>): TierCounts {
+  const c = emptyTierCounts()
+  for (const o of occ) c[tierKeyOf(o)]++
+  return c
+}
+
+/** True when at least one occurrence carries a tier: the tier controls only show then (older data = no tiers). */
+export const hasTiers = (occ: Array<Pick<MistakeOccurrence, 'tier'>>): boolean => occ.some((o) => o.tier != null)
+
+/** Segments of a bar, in the fixed order fatal → critical → medium → trivial → unknown, empty ones left out. */
+export function tierSegments(c: TierCounts): Array<{ tier: TierKey; n: number }> {
+  return ([...TIERS, 'unknown'] as TierKey[]).map((tier) => ({ tier, n: c[tier] })).filter((x) => x.n > 0)
+}
+
+export type RankSort = 'frequency' | 'severity'
+/** By frequency (default), or by gravity: most fatal first, then critical, then medium, then count. */
+export function sortRanking(rows: RankedMistake[], sort: RankSort): RankedMistake[] {
+  if (sort === 'frequency') return rows
+  return [...rows].sort((a, b) => b.tiers.fatal - a.tiers.fatal || b.tiers.critical - a.tiers.critical || b.tiers.medium - a.tiers.medium || b.count - a.count || a.label.localeCompare(b.label))
 }
 
 export type Phase = 'early' | 'mid' | 'late'

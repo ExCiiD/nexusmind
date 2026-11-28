@@ -101,7 +101,7 @@ const TABLES: TableSpec[] = [
   {
     model: 'Recording',
     optionalParents: { gameId: 'Game' },
-    nullify: ['filePath', 'thumbnailPath'],
+    nullify: ['filePath', 'thumbnailPath', 'videoDeletedAt'],
     existing: (r, c) => (r.gameId ? { gameId: mapId(c, 'Game', r.gameId) } : { id: r.id }),
   },
   { model: 'Bookmark', parents: { recordingId: 'Recording' } },

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { rankMistakes, tagFamily, phaseOf, phaseBreakdown, buildTrend, latestMoments, type MistakeOccurrence } from '../../src/lib/mistakeInsights'
+import { rankMistakes, tagFamily, phaseOf, phaseBreakdown, buildTrend, latestMoments, hasTiers, sortRanking, tierCounts, tierSegments, type MistakeOccurrence, type MistakeTier } from '../../src/lib/mistakeInsights'
 
 let n = 0
 function occ(slug: string, gameId: string, win: boolean, day: number, t = 600, category = 'macro'): MistakeOccurrence {
@@ -76,5 +76,43 @@ describe('rankMistakes — garbage time', () => {
     expect(caught.count).toBe(3)
     // g3 (a stomp) sits on neither side: with = g1, g2 (0 %), without = g4, g5 (100 %).
     expect(caught).toMatchObject({ winrateWith: 0, winrateWithout: 100 })
+  })
+})
+
+describe('tiers', () => {
+  const t = (slug: string, gameId: string, win: boolean, tier: MistakeTier | null, day = 1) => ({ ...occ(slug, gameId, win, day), tier })
+  const data = [
+    t('caught-out', 'g1', false, 'fatal'), t('caught-out', 'g2', false, 'critical'), t('caught-out', 'g3', false, 'trivial'), t('caught-out', 'g3', false, null),
+    t('late-back', 'g1', false, 'critical'), t('late-back', 'g2', true, 'critical'), t('late-back', 'g4', true, 'medium'), t('late-back', 'g5', true, 'medium'),
+  ]
+  it('all tiers leaves the trivial ones out of the counts, and keeps the unknown ones', () => {
+    const rows = rankMistakes(data)
+    const co = rows.find((r) => r.slug === 'caught-out')!
+    expect(co.count).toBe(3)
+    expect(co.tiers).toEqual({ fatal: 1, critical: 1, medium: 0, trivial: 0, unknown: 1 })
+    expect(rows.reduce((n, r) => n + r.share, 0)).toBeGreaterThanOrEqual(99)
+  })
+  it('a picked tier keeps only that tier, with the share of that tier, and never the unknown ones', () => {
+    const fatal = rankMistakes(data, 'fatal')
+    expect(fatal.map((r) => [r.slug, r.count, r.share])).toEqual([['caught-out', 1, 100]])
+    expect(rankMistakes(data, 'trivial').map((r) => [r.slug, r.count])).toEqual([['caught-out', 1]])
+    expect(rankMistakes(data, 'medium').map((r) => r.slug)).toEqual(['late-back'])
+  })
+  it('the win-rate cost does not move with the tier filter and leaves the trivial mistakes out', () => {
+    const a = rankMistakes(data).find((r) => r.slug === 'caught-out')!
+    const b = rankMistakes(data, 'fatal').find((r) => r.slug === 'caught-out')!
+    expect([b.winrateWith, b.winrateWithout, b.gamesWith]).toEqual([a.winrateWith, a.winrateWithout, a.gamesWith])
+    expect(a.gamesWith).toBe(3)
+  })
+  it('sorts by gravity: most fatal first, then critical, then count', () => {
+    const rows = rankMistakes(data)
+    expect(rows[0].slug).toBe('late-back')
+    expect(sortRanking(rows, 'frequency')).toBe(rows)
+    expect(sortRanking(rows, 'severity').map((r) => r.slug)).toEqual(['caught-out', 'late-back'])
+  })
+  it('draws the segments fatal → critical → medium → trivial → unknown, and shows tiers only when some are known', () => {
+    expect(tierSegments(tierCounts(data)).map((s) => s.tier)).toEqual(['fatal', 'critical', 'medium', 'trivial', 'unknown'])
+    expect(hasTiers(data)).toBe(true)
+    expect(hasTiers([occ('a', 'g', true, 1)])).toBe(false)
   })
 })

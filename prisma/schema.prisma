@@ -308,6 +308,9 @@ model Recording {
   // Used by the player to align timeline event markers (kills/dragons/etc)
   // with the actual video playback time. Nullable for legacy rows.
   startOffsetSec Float?
+  /// 28/11/2026: the retention purge deleted the video file (filePath/thumbnailPath emptied); the row and everything
+  /// tied to it stay. Machine-local like filePath.
+  videoDeletedAt DateTime?
   createdAt      DateTime @default(now())
   clips          Clip[]
   mistakes       Mistake[]

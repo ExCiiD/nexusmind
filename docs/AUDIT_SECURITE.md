@@ -861,3 +861,47 @@ Source : `docs/notes/antigravity/2026-11-27_qa-scout-progressif.md` (B1, B3), co
 - **Le vrai sujet, déjà présent avant ce lot (faible, non bloquant) :** `x-nxm-priority` est un indice du client. Seules la maîtrise et les listes `/ids?startTime` sans `endTime` sont forcées en fond (`routing.ts:100-103`). Un client modifié qui omet l'en-tête sur `/lol/match/v5/matches/{id}` (l'essentiel d'un scout) obtient la priorité interactive, donc la réserve de 30 % et toute sa part par joueur. Ce qui le borne : `USER_LIMITER` compte tous les appels, et la part par joueur (`USER_WINDOW_SHARE` 25 %) s'applique quelle que soit la priorité. Un seul compte ne peut donc prendre que sa part. Il faudrait au moins 4 comptes réels (non anonymes) qui trichent pour vider la fenêtre, et retarder les fins de partie des autres. **Recommandation :** suivre dans les métriques la part `interactive` sur les routes de détail par joueur ; envisager plus tard de compter les détails de parties `interactive` dans un plafond plus bas par joueur. Rien à faire pour B3.
 - **Côté clients :** `riotClient.ts:371` (desktop) et `riotWeb.ts` (web) doivent classer le nouveau type comme une pause « de fond seulement ». Les anciennes versions retombent sur le comportement actuel (`startsWith('proxy-')` → pause globale côté desktop, `blockedUntil` côté web) : pas de régression pour elles.
 - **Tests à ajouter avec le correctif :** un 429 `window` en fond donne le nouveau type ; un 429 `window` interactif et un `riot_backoff` gardent `proxy-global` ; l'en-tête `access-control-expose-headers` est présent sur `json()`, `OPTIONS`, le cache R2 et la réponse Riot.
+
+---
+
+## 28/11 — Migration `20261128120000_rls_performance` (bilan de santé, projet 3 ; non appliquée, production lue seulement)
+
+**Verdict : OK, deux durcissements recommandés et non bloquants (R1, R2).** La migration donne exactement les mêmes accès qu'aujourd'hui. Elle n'ajoute ni fonction, ni `SECURITY DEFINER`, ni `search_path`, ni `grant`. Application en production seulement avec l'accord de l'utilisateur.
+
+Ce que j'ai fait : relu le générateur `scripts/gen-rls-perf-migration.mjs`, le SQL produit, le rollback et `docs/audits/SUPABASE_RLS_PERF_2026-11-28.md`. Sur la production (`zwubyzrfpelhxjjezvrh`), j'ai fait des lectures seules : `pg_policies` des 36 tables, définitions des fonctions `private.*`, droits d'`anon`, `pg_indexes`. Le test `tests/unit/supabaseRlsPerfMigration.test.ts` passe (5/5).
+
+1. **Équivalence des politiques fusionnées : OK.**
+   - Les 64 politiques « d'origine » du générateur correspondent une à une à `pg_policies` : même nom, même rôle, même commande, même USING et même WITH CHECK, à la mise en forme près. Toutes sont PERMISSIVE, et aucune politique RESTRICTIVE n'existe sur ces tables.
+   - Découpage : SELECT et DELETE reçoivent le USING ; INSERT reçoit le WITH CHECK ; UPDATE reçoit les deux ; le USING sert de WITH CHECK seulement quand il n'y en a pas. C'est la règle de Postgres pour une politique `ALL`.
+   - Les morceaux d'une même commande sont réunis par OU, USING avec USING et WITH CHECK avec WITH CHECK. Postgres faisait déjà exactement cela entre politiques permissives.
+   - Les WITH CHECK plus stricts que le USING sont conservés, donc rien ne s'élargit à l'écriture :
+     - `availability_rules` / `availability_exceptions` : `group_role(group_id, user_id)` ;
+     - `group_sharing` et `scrim_availability` : appartenance au groupe ;
+     - `team_session_player_objectives` : le joueur doit faire partie du groupe.
+   - UPDATE à deux sources :
+     - `tasks_update` = (staff OU assigné) en USING et en CHECK, comme avant ;
+     - même chose pour `vod_review_assignments_update` (staff OU joueur).
+   - Les politiques non touchées restent en place et s'ajoutent toujours par OU, par exemple `sync_records_insert_own` / `update_own`, `team_discussion_read`, `calendar_event_requests_update`, `team_session_feedback_read`.
+   - Aucun nom créé n'existe déjà sur ces tables, et aucun index `*_fk_idx` n'existe en production.
+2. **`TO public` → `TO authenticated` : confirmé, `anon` n'a jamais eu d'accès par ces politiques.**
+   - Neuf politiques étaient `TO public`, sur huit tables : `announcements`, `availability_*`, `calendar_event_attendees`, `calendar_events`, `group_fundamentals`, `team_session_objectives`, `team_session_reviews`.
+   - Leurs conditions passent toutes par `group_role`, `has_group_role` (et donc `is_group_staff`, `can_edit_calendar`, `can_manage_session`), `can_prepare_session` ou `user_id = auth.uid()`. Toutes filtrent `group_members.user_id = p_user`, avec `p_user` qui vaut `auth.uid()` par défaut.
+   - Pour `anon`, `auth.uid()` est NULL : la condition est fausse ou NULL, donc aucune ligne. Aucune n'a de branche `true`, de lien public ou de partage anonyme.
+   - `anon` garde les droits de table par défaut de Supabase, mais la RLS ne lui laissait déjà rien. La migration lui retire simplement ces politiques.
+   - Aucun client n'en dépend : le bot Discord et les Edge Functions (`redeem-invite`, `team-calendar-ics`, `team-report`, `web-handoff`, `delete-account`, `verify-member-puuid`) utilisent la clé `service_role`, qui ignore la RLS. Les liens d'invitation et les pages partagées passent par ces fonctions ou par des tables hors de la migration (`group_invites`, `report_shares`).
+   - Les comptes anonymes de Supabase Auth ont le rôle `authenticated` : rien ne change pour eux non plus.
+3. **Rollback : OK.**
+   - Il supprime les politiques fusionnées et recrée les originales avec leur texte, leurs rôles d'origine (`public` compris) et `as permissive`.
+   - Il remet `auth.uid()` dans les 15 `alter policy` et supprime seulement les 70 nouveaux index, qui n'existaient pas avant.
+4. **`SECURITY DEFINER` / `search_path` : rien d'introduit.** La migration ne fait que des `drop policy`, `create policy`, `alter policy` et `create index`. Les fonctions appelées existent déjà, sont toutes `SECURITY DEFINER` avec `search_path=''`, et ne changent pas.
+
+### Durcissements recommandés (non bloquants, Back-end)
+
+| # | Gravité | Fichier | Scénario | Correctif |
+|---|---|---|---|---|
+| R1 | Faible | `supabase/migrations/20261128120000_rls_performance.sql` (section 1) | Les `drop policy if exists` ne disent rien si un nom a changé en production entre aujourd'hui et l'application. L'ancienne politique resterait alors à côté de la nouvelle : les accès seraient toujours l'union des deux, donc sans perte, mais une modification faite entre-temps échapperait à la revue. | Au début, un bloc `do $$ … $$` qui vérifie la présence des 64 politiques attendues dans `pg_policies` et fait `raise exception` sinon. À défaut, juste avant d'appliquer, relancer la requête `pg_policies` de cette revue et la comparer au générateur. |
+| R2 | Faible | `supabase/rollback/20261128120000_rollback.sql` | Le rollback se lance à la main, et le fichier n'a pas de `begin; … commit;`. S'il s'arrête au milieu, une table peut rester sans ses politiques d'écriture (accès refusé, pas élargi) jusqu'à la fin de la relance. | Mettre le rollback dans `begin; … commit;`, au moins dans le générateur. |
+
+**Après l'application :** relancer les advisors (sécurité et performance) et vérifier que `pg_policies` compte une politique par commande sur les 31 tables.
+
+Note : pendant la revue, j'ai relancé `node scripts/gen-rls-perf-migration.mjs`, qui réécrit les trois fichiers générés. Le générateur est déterministe, le nombre de lignes est identique (551, 415, 88) et le test passe ; je n'ai rien modifié d'autre.

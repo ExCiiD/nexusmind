@@ -24,6 +24,7 @@ import { resolveTag } from './microReview.ipc'
 import { z } from 'zod'
 import { validatedHandle, id } from './validate'
 import { autoDetectMistakes } from '../mistakeAutoDetect'
+import { ensureGameTiers, ensureTiersForGames, tierFields } from '../mistakeTiers'
 import { nextTuning } from '../mistakeTuning'
 import { ensureGameAnalysis } from './microReview.ipc'
 import { isGarbageTime, winProbAt } from '../../../src/lib/microReview/winProbability'
@@ -112,7 +113,8 @@ export function registerMistakeHandlers() {
   // detection does not create it again.
   validatedHandle('mistake:list-detected', z.tuple([id]), async (_e, gameId) => {
     const rows = await getPrisma().mistake.findMany({ where: { gameId, autoDetected: true }, include: { tag: true }, orderBy: { gameTimeSec: 'asc' } })
-    return rows.map((m) => ({ id: m.id, tagSlug: m.tag.slug, tagLabel: m.tag.label, gameTimeSec: m.gameTimeSec, severity: m.severity, note: m.note }))
+    const tiers = await ensureGameTiers(gameId)
+    return rows.map((m) => ({ id: m.id, tagSlug: m.tag.slug, tagLabel: m.tag.label, gameTimeSec: m.gameTimeSec, severity: m.severity, note: m.note, ...tierFields(tiers.get(m.id)) }))
   })
   validatedHandle('mistake:dismiss-detected', z.tuple([id, correctionSchema.optional()]), async (_e, mistakeId, opts) => {
     const m = await getPrisma().mistake.findUnique({ where: { id: mistakeId }, select: { autoDetected: true } })
@@ -134,11 +136,13 @@ export function registerMistakeHandlers() {
 
   ipcMain.handle('mistake:list-by-game', async (_e, gameId: string) => {
     const prisma = getPrisma()
-    return prisma.mistake.findMany({
+    const rows = await prisma.mistake.findMany({
       where: { gameId, ...(await manualOnly()) },
       include: { tag: true },
       orderBy: { gameTimeSec: 'asc' },
     })
+    const tiers = await ensureGameTiers(gameId)
+    return rows.map((m) => ({ ...m, ...tierFields(tiers.get(m.id)) }))
   })
 
   // 21/11/2026: validated. The time the screen sends is kept (never a silent 0:00): an integer within the game, or
@@ -277,8 +281,10 @@ export function registerMistakeHandlers() {
     const reviewed = new Set((await prisma.microReviewAnswer.findMany({
       where: { gameId: { in: gameIds }, mistakeId: { not: null } }, select: { mistakeId: true },
     })).map((a) => a.mistakeId))
+    const tiers = await ensureTiersForGames(gameIds)
     return rows
       .map((m) => ({
+        ...tierFields(tiers.get(m.id)),
         id: m.id,
         tag: { id: m.tag.id, slug: m.tag.slug, label: m.tag.label, category: m.tag.category, color: m.tag.color },
         severity: m.severity,

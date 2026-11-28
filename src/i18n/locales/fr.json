@@ -632,7 +632,10 @@
       "externalFolder": "Dossier des enregistrements externes",
       "externalFolderDesc": "Pour lier un replay enregistré avec une autre app (OBS, Outplayed…), le sélecteur de fichier s’ouvrira directement dans ce dossier.",
       "externalNotSet": "Non défini — le sélecteur de fichier s’ouvrira à l’emplacement par défaut",
-      "clearFolder": "Effacer le dossier"
+      "clearFolder": "Effacer le dossier",
+      "qualityEco": "1080p éco",
+      "qualityEcoBadge": "ÉCO",
+      "qualityEcoNote": "1080p éco : 3 Mb/s, ≈ 0,45 Go par game au lieu de 0,9. HUD, minimap et barres de vie nettes ; effets un peu plus doux en teamfight."
     },
     "danger": {
       "range24h": "24 h",
@@ -785,6 +788,79 @@
       "warnProgress": "Ta progression personnelle reposera uniquement sur ton propre jugement.",
       "confirm": "Activer",
       "saveFailed": "Le réglage n’a pas pu être enregistré."
+    },
+    "retention": {
+      "title": "Conservation des vidéos",
+      "thisPc": "CE PC",
+      "desc": "Supprime les vidéos les plus anciennes de ce PC. Désactivé par défaut. Les stats, reviews et erreurs restent ; seule la vidéo part.",
+      "recordings_one": "{{count}} enregistrement",
+      "recordings_other": "{{count}} enregistrements",
+      "gb": "Go",
+      "onThisPc": "sur ce PC",
+      "ageBefore": "Supprimer après",
+      "ageAfter": "jours",
+      "ageLabel": "Âge maximal en jours (7 à 365)",
+      "sizeBefore": "Limiter à",
+      "sizeAfter": "Go au total",
+      "sizeLabel": "Taille maximale en Go (10 à 2 000)",
+      "oneRule": "Au moins une règle doit rester cochée tant que le nettoyage est actif.",
+      "bounds": "Âge de 7 à 365 jours · taille de 10 à 2 000 Go · les deux peuvent se combiner · les plus anciennes partent d’abord.",
+      "tickOne": "Coche au moins une règle.",
+      "previewPending": "Avec ces règles, maintenant",
+      "previewActive": "Actif · prochain nettoyage",
+      "protected_one": "protégée",
+      "protected_other": "protégées",
+      "deletable_one": "supprimable",
+      "deletable_other": "supprimables",
+      "freed": "libérés",
+      "toFree": "à libérer",
+      "legendProtected": "protégées",
+      "legendKept": "gardées",
+      "legendRemoved": "supprimées",
+      "barLabel": "Protégées {{protected}} Go, gardées {{kept}} Go, supprimées {{removed}} Go",
+      "nothing": "Rien à supprimer pour l’instant : toutes les vidéos sont dans les règles ou protégées.",
+      "capUnreachable": "Le plafond ne peut pas être atteint : les vidéos protégées le dépassent à elles seules.",
+      "never": "Jamais supprimées :",
+      "reason": {
+        "clip": "clip",
+        "bookmark": "bookmark",
+        "mistake": "erreur taguée",
+        "review": "review",
+        "recent": "< 2 jours",
+        "recording": "en cours"
+      },
+      "reasonPlural": {
+        "clip_one": "clip",
+        "clip_other": "clips",
+        "bookmark_one": "bookmark",
+        "bookmark_other": "bookmarks",
+        "mistake_one": "erreur",
+        "mistake_other": "erreurs",
+        "review_one": "review",
+        "review_other": "reviews",
+        "recent_one": "récente",
+        "recent_other": "récentes",
+        "recording_one": "en cours",
+        "recording_other": "en cours"
+      },
+      "nothingBefore": "Rien n’est supprimé avant ta confirmation.",
+      "activate": "Activer…",
+      "checked": "Vérifié au lancement et après chaque game.",
+      "confirmTitle_one": "Supprimer {{count}} vidéo de ce PC ?",
+      "confirmTitle_other": "Supprimer {{count}} vidéos de ce PC ?",
+      "confirmDesc": "{{size}} Go libérés sur {{dir}}. Une vidéo supprimée ne se récupère pas.",
+      "removed": "Supprimées",
+      "byAge": "dont plus de {{days}} jours",
+      "bySize": "dont au-delà de {{gb}} Go",
+      "keptWord": "Gardées",
+      "confirmNote": "Les stats, reviews, erreurs taguées et notes restent : seule la vidéo part. Ensuite le nettoyage se fait seul, au lancement et après chaque game, sans redemander.",
+      "confirmAction_one": "Supprimer {{count}} vidéo",
+      "confirmAction_other": "Supprimer {{count}} vidéos",
+      "done_one": "{{count}} vidéo supprimée · {{size}} Go libérés",
+      "done_other": "{{count}} vidéos supprimées · {{size}} Go libérés",
+      "saveFailed": "Réglage non enregistré",
+      "last_one": "Dernier nettoyage le {{date}} : {{count}} vidéo supprimée, {{size}} Go libérés.",
+      "last_other": "Dernier nettoyage le {{date}} : {{count}} vidéos supprimées, {{size}} Go libérés."
     }
   },
   "sidebar": {
@@ -4808,7 +4884,9 @@
       "top": "Erreur n°1",
       "topSub": "{{count}} fois · {{share}} % du total",
       "phase": "Phase la plus touchée",
-      "phaseSub": "{{share}} % de tes erreurs"
+      "phaseSub": "{{share}} % de tes erreurs",
+      "fatal": "Fatales",
+      "fatalSub": "sur {{total}} erreurs · {{perGame}} par partie"
     },
     "families": "Familles d’erreurs",
     "family": {
@@ -4869,7 +4947,77 @@
       "costFew": "Parties avec cette erreur : {{with}} % de victoires ({{withGames}} parties). Pas assez de parties analysées sans cette erreur ({{withoutGames}}) pour comparer."
     },
     "win": "V",
-    "loss": "D"
+    "loss": "D",
+    "tier": {
+      "label": "Tier",
+      "filter": "Filtrer par tier",
+      "all": "Tous les tiers",
+      "fatalCol": "Erreurs fatales",
+      "name": {
+        "fatal": "Fatale",
+        "critical": "Critique",
+        "medium": "Moyenne",
+        "trivial": "Anodine"
+      },
+      "chip": {
+        "fatal": "Fatales",
+        "critical": "Critiques",
+        "medium": "Moyennes",
+        "trivial": "Anodines"
+      },
+      "plural": {
+        "fatal_one": "fatale",
+        "fatal_other": "fatales",
+        "critical_one": "critique",
+        "critical_other": "critiques",
+        "medium_one": "moyenne",
+        "medium_other": "moyennes",
+        "trivial_one": "anodine",
+        "trivial_other": "anodines",
+        "unknown_one": "de tier inconnu",
+        "unknown_other": "de tier inconnu"
+      },
+      "rule": {
+        "fatal": "écart de gold d’équipe ou snowball",
+        "critical": "écart de lane",
+        "medium": "le reste",
+        "trivial": "après une fatale"
+      },
+      "barCount_one": "{{count}} fois",
+      "barCount_other": "{{count}} fois",
+      "unknownReason": "Tier inconnu · pas de timeline",
+      "reason": {
+        "teamGap": "{{gold}} gold d’équipe en {{minutes}} min",
+        "laneGap": "{{gold}} gold en lane en {{minutes}} min",
+        "snowball": "écart d’équipe qui chute {{minutes}} min",
+        "snowballFromTo": "écart d’équipe qui chute {{minutes}} min ({{from}} → {{to}})",
+        "afterFatal": "après une fatale à {{clock}}",
+        "laneSnowball": "écart de lane qui chute {{minutes}} min",
+        "laneSnowballFromTo": "écart de lane qui chute {{minutes}} min ({{from}} → {{to}})",
+        "deficit": "retard de lane {{gold}} gold",
+        "precedes": "précède une erreur {{tier}} à {{clock}}",
+        "garbage": "fin de partie jouée"
+      },
+      "emptyTier": {
+        "fatal": "Aucune erreur fatale sur {{days}} jours.",
+        "critical": "Aucune erreur critique sur {{days}} jours.",
+        "medium": "Aucune erreur moyenne sur {{days}} jours.",
+        "trivial": "Aucune erreur anodine sur {{days}} jours."
+      },
+      "seeAll": "Voir tous les tiers",
+      "footPicked": "{{tier}} seulement : {{n}} sur {{total}} erreurs. % = part des {{lower}}. Chaque barre ne garde que le segment du tier choisi.",
+      "trivialHidden_one": "{{count}} erreur anodine masquée du classement (filtre « Anodines » pour la voir).",
+      "trivialHidden_other": "{{count}} erreurs anodines masquées du classement (filtre « Anodines » pour les voir).",
+      "inspectorPicked_one": "{{count}} {{tier}} · {{games}} {{gw}} · filtre « {{name}} » actif.",
+      "inspectorPicked_other": "{{count}} {{tier}} · {{games}} {{gw}} · filtre « {{name}} » actif.",
+      "gamesWord_one": "partie",
+      "gamesWord_other": "parties"
+    },
+    "sort": {
+      "label": "Trier",
+      "frequency": "Fréquence",
+      "severity": "Gravité"
+    }
   },
   "record": {
     "title": "Record Hub",
@@ -5121,7 +5269,8 @@
         "right": "à droite",
         "left": "à gauche",
         "hidden": "masqué"
-      }
+      },
+      "backPrev": "Retour"
     },
     "select": {
       "group": "Sélectionner tous les enregistrements du groupe",

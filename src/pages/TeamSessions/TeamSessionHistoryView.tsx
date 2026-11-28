@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, CalendarDays, Check, ChevronDown, ClipboardCopy, ExternalLink, Minus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -103,6 +104,7 @@ export function TeamSessionHistoryView({ sessionId, calendarEventId, canManage, 
   useEffect(() => { if (legacyPlayer && detail) navigate(sheetPath(legacyPlayer), { replace: true }) })
   const sel = useMemo(() => (detail ? selectGame(detail, gameIndex) : null), [detail, gameIndex])
   const collective = useCollective(sessionId, detail?.games.filter((g) => g.stats === 'ready' && g.timeline).length ?? 0)
+  useScrollMemory(detail !== undefined && collective.state.status !== 'loading')
   const gameMatchIds = useMemo(() => Object.fromEntries((detail?.games ?? []).map((g) => [g.gameId, g.matchId])), [detail])
   const meetingWithoutData = !!detail && detail.header.kind === 'meeting' && !detail.meeting
   useEffect(() => { if (meetingWithoutData) onNotHistory?.() }, [meetingWithoutData, onNotHistory])

@@ -131,10 +131,10 @@ function listSnapshots(backupDir: string): Array<{ name: string; mtimeMs: number
   })
 }
 
-/** Deletes the snapshots beyond the 2 newest of each kind (never a `-keep` one). */
+/** Deletes the snapshots beyond the 2 newest of each kind, and a second one past 14 days (never a `-keep` one). */
 export function rotateBackups(backupDir: string): string[] {
   if (!existsSync(backupDir)) return []
-  const { remove } = planBackupRotation(listSnapshots(backupDir), MAX_MIGRATION_BACKUPS)
+  const { remove } = planBackupRotation(listSnapshots(backupDir), MAX_MIGRATION_BACKUPS, Date.now())
   for (const name of remove) {
     try { unlinkSync(join(backupDir, name)) } catch { /* best effort */ }
   }
@@ -149,7 +149,7 @@ export async function compressOldBackups(dbPath: string = resolveDbPath()): Prom
   const backupDir = join(dirname(dbPath), 'backups')
   if (!existsSync(backupDir)) return { compressed: [], removed: [] }
   const removed = rotateBackups(backupDir)
-  const { compress } = planBackupRotation(listSnapshots(backupDir), MAX_MIGRATION_BACKUPS)
+  const { compress } = planBackupRotation(listSnapshots(backupDir), MAX_MIGRATION_BACKUPS, Date.now())
   const compressed: string[] = []
   for (const name of compress) {
     const src = join(backupDir, name)

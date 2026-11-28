@@ -58,14 +58,14 @@ function saveDismissedPaths(paths: Set<string>): void {
   } catch { /* non-fatal */ }
 }
 
-function dismissPath(filePath: string): void {
+export function dismissPath(filePath: string): void {
   const paths = loadDismissedPaths()
   paths.add(filePath)
   saveDismissedPaths(paths)
 }
 
 /** Deletes a recording's or a clip's video file + thumbnail from disk. */
-function deleteMediaFiles(media: { filePath?: string | null; thumbnailPath?: string | null }) {
+export function deleteMediaFiles(media: { filePath?: string | null; thumbnailPath?: string | null }) {
   if (media.filePath && existsSync(media.filePath)) {
     try { unlinkSync(media.filePath) } catch { /* ignore */ }
   }

@@ -66,6 +66,7 @@ import { attachWindow, claimSingleInstance, registerLaunchAtLoginHandlers, start
 const isPrimaryInstance = claimSingleInstance()
 if (!isPrimaryInstance) app.quit()
 import { registerMistakeHandlers } from './ipc/mistakes.ipc'
+import { recheckAutoDoveTowerOnce } from './mistakeAutoDetect'
 import { registerMicroReviewHandlers } from './ipc/microReview.ipc'
 import { registerBookmarkHandlers } from './ipc/bookmarks.ipc'
 import { registerDataHandlers } from './ipc/data.ipc'
@@ -74,6 +75,8 @@ import { isCloudConfigured, getSupabase, retryPendingSecretDeletes } from './clo
 import { listMyLiveSessions, reportSessionGame } from '../../src/lib/teamSessionsCore'
 import { startSessionAutoClose } from './sessionAutoClose'
 import { startMatchCachePurge } from './matchCachePurge'
+import { registerVideoRetentionHandlers, startVideoRetention, scheduleVideoPurgeSoon } from './videoRetention'
+import { removeObsoleteFiles } from './storageCleanup'
 import { registerSyncHandlers } from './ipc/sync.ipc'
 import { registerAssistantHandlers } from './assistant/assistant.ipc'
 import { startSyncService } from './sync/syncService'
@@ -85,8 +88,6 @@ import { registerFeedbackHandlers } from './ipc/feedback.ipc'
 import { registerNotificationsHandlers } from './ipc/notifications.ipc'
 import { registerTeamShareHandlers } from './ipc/teamShare.ipc'
 import { registerLftHandlers } from './ipc/lft.ipc'
-import { registerChampionCutoutHandlers } from './ipc/championCutout.ipc'
-import { recheckAutoDoveTowerOnce } from './mistakeAutoDetect'
 import { registerAnalystHandlers } from './ipc/analyst.ipc'
 import { seedBuiltInMistakeTags } from './seeds/mistakeTags'
 import { isMediaPathAllowed } from './mediaAccess'
@@ -485,7 +486,6 @@ async function bootstrap() {
   registerNotificationsHandlers()
   registerTeamShareHandlers()
   registerLftHandlers()
-  registerChampionCutoutHandlers()
   registerAnalystHandlers()
   registerRealtimeHandlers()
   registerPreferencesHandlers()
@@ -496,8 +496,16 @@ async function bootstrap() {
   }
   // S3: closes a session with no game for 45 min, local-only, no cloud needed.
   startSessionAutoClose(() => gameDetector?.isInGame() ?? false)
-  // Decision M: old timelines of matches no game refers to (deferred, then daily).
-  startMatchCachePurge()
+  // Decision M: old timelines of matches no game refers to (deferred, then daily). Health check 28/11: plus
+  // compression of plain timelines and a VACUUM when worth it, never while a game is recorded.
+  startMatchCachePurge(() => getActiveRecorder().getStatus().isRecording)
+  // Health check 28/11: recordings retention (off until the player sets it), and userData files nothing reads.
+  registerVideoRetentionHandlers()
+  startVideoRetention()
+  setTimeout(() => {
+    const removed = removeObsoleteFiles()
+    if (removed.length) console.log(`[storage] removed obsolete files: ${removed.join(', ')}`)
+  }, 90_000)
 
   // Idempotent — adds new built-in tags on app updates without ever
   // overwriting user-edited ones. Fire-and-forget; if it fails we still
@@ -742,6 +750,8 @@ async function bootstrap() {
       if (!initialStopPath) return
 
       console.log(`[main] Recording stop signal sent → ${initialStopPath}`)
+      // Video retention "after each game" check, once the file is finalised (the new video itself is protected).
+      scheduleVideoPurgeSoon(3 * 60_000)
 
       // Tell the UI to display a "finalizing…" overlay immediately. Otherwise
       // the user reaches the review page with a 0:00 player and no clue why

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -36,6 +37,8 @@ export function PlayerSheetPage() {
   const [extracting, setExtracting] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const setEndedSessionOpen = useSessionNavStore((s) => s.setEndedSessionOpen)
+  // Back from the VOD (« Revoir »): the scroll position comes back once the sheet's figures are there.
+  useScrollMemory(detail !== undefined && factsState !== 'loading')
   useEffect(() => { setEndedSessionOpen(true); return () => setEndedSessionOpen(false) }, [setEndedSessionOpen])
 
   const load = useCallback(async () => {

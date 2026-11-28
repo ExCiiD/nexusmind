@@ -34,7 +34,7 @@ export const SYNC_TABLES: SyncTableSpec[] = [
   { table: 'StatsSnapshot', userColumns: ['userId'] },
   { table: 'Badge', userColumns: ['userId'], naturalKey: ['userId', 'badgeId'] },
   { table: 'ExternalReview', userColumns: ['userId'], localColumns: ['filePath'] },
-  { table: 'Recording', fks: { gameId: 'Game' }, localColumns: ['filePath', 'thumbnailPath'], naturalKey: ['gameId'] },
+  { table: 'Recording', fks: { gameId: 'Game' }, localColumns: ['filePath', 'thumbnailPath', 'videoDeletedAt'], naturalKey: ['gameId'] },
   { table: 'Bookmark', fks: { recordingId: 'Recording' } },
   { table: 'Team', userColumns: ['userId'] },
   { table: 'TeamMember', fks: { teamId: 'Team' } },

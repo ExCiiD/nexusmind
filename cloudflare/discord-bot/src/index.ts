@@ -1,6 +1,7 @@
 import { verifyDiscordRequest } from './verify'
 import { jsonResponse, postChannelMessage, sendDirectMessage } from './discordApi'
 import { adminClient } from './supabaseAdmin'
+import { missingConfig } from './config'
 import {
   handleLinkTeam, handleLinkMe, handleSetChannel, handleCalendar, handleScrims, handleCommonAvailability, handleAvailability,
   type Interaction,
@@ -25,6 +26,11 @@ const InteractionType = { PING: 1, APPLICATION_COMMAND: 2 } as const
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     if (req.method !== 'POST') return new Response('ok')
+    const missing = missingConfig(env)
+    if (missing.length > 0) {
+      console.error('[discord-bot] missing configuration:', missing.join(', '))
+      return new Response('bot not configured', { status: 503 })
+    }
 
     const rawBody = await req.text()
     const ok = await verifyDiscordRequest(req.headers.get('x-signature-ed25519'), req.headers.get('x-signature-timestamp'), rawBody, env.DISCORD_PUBLIC_KEY)
@@ -58,8 +64,20 @@ export default {
    * linked guild's configured channel.
    */
   async scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
+    const missing = missingConfig(env)
+    if (missing.length > 0) {
+      console.error('[discord-bot] scheduled skipped, missing configuration:', missing.join(', '))
+      return
+    }
     const sb = adminClient(env)
-    const guilds = await listGuildsWithNotifyChannel(sb)
+    let guilds: Awaited<ReturnType<typeof listGuildsWithNotifyChannel>>
+    try {
+      guilds = await listGuildsWithNotifyChannel(sb)
+    } catch (err) {
+      // Supabase down or unreachable: the next run (15 min) tries again, nothing is lost (markNotifiedOnce).
+      console.error('[discord-bot] could not list the linked servers', (err as Error)?.message)
+      return
+    }
     const now = new Date()
     const in24h = new Date(now.getTime() + 24 * 3_600_000)
     const weekAhead = new Date(now.getTime() + 7 * 86_400_000)

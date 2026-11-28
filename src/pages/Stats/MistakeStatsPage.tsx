@@ -12,7 +12,9 @@
  * Pure read-side except the explicit "work on it" button.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useScrollMemory } from '@/hooks/useScrollMemory'
+import { LAB_ROLES, LAB_WINDOWS, parseLabParams, patchLabParams, type LabUrlState } from '@/lib/mistakeLabUrl'
 import { useTranslation } from 'react-i18next'
 import { CoachVerdictsLab } from '@/components/MicroReview/CoachVerdictsForGame'
 import { AlertTriangle, Play, FlaskConical, Check, Loader2, Search, Crosshair, Tags, ChevronDown, Trash2 } from 'lucide-react'
@@ -29,6 +31,7 @@ import { championLabel } from '@/lib/statsInsights'
 import { EmptyState, SkeletonKpiTiles } from '@/components/ui/data-state'
 import { useCachedQuery } from '@/hooks/useCachedQuery'
 import { mistakeOccurrencesKey } from '@/lib/pageQueries'
+import { TierBar, TierChips, TierLegend, TierPill, barLabel, tierLine } from './MistakeTierParts'
 import { mistakePlayFromSec } from '@/lib/microReview/playbackWindow'
 import { localizeDetectedNote, type Translate } from '@/lib/detectedMistakeNote'
 import {
@@ -41,14 +44,20 @@ import {
   FAMILIES,
   FAMILY_COLOR,
   PHASES,
+  hasTiers,
+  inTierScope,
+  sortRanking,
+  tagFamily,
+  tierCounts,
+  type RankSort,
+  type TierFilter,
   type MistakeOccurrence,
   type MistakeFamily,
   type RankedMistake,
 } from '@/lib/mistakeInsights'
 
-type WindowDays = 7 | 14 | 30 | 90
-const WINDOWS: WindowDays[] = [7, 14, 30, 90]
-const ROLES = ['', 'TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'] as const
+const WINDOWS = LAB_WINDOWS
+const ROLES = LAB_ROLES
 const panel = 'panel-surface rounded-2xl border border-hextech-border-dim/70 shadow-lg backdrop-blur-sm'
 
 const NO_OCCURRENCES: MistakeOccurrence[] = []
@@ -56,11 +65,20 @@ const NO_OCCURRENCES: MistakeOccurrence[] = []
 export function MistakeStatsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [windowDays, setWindowDays] = useState<WindowDays>(30)
-  const [role, setRole] = useState<string>('')
-  const [champion, setChampion] = useState('')
-  const [family, setFamily] = useState<MistakeFamily | 'all'>('all')
-  const [focus, setFocus] = useState<string | null>(null)
+  // The whole Lab state lives in the URL (period, role, champion, family, tier, sort, selected mistake, expanded list): « Rewatch » → back
+  // restores it exactly. Updates replace the history entry, so the filters never pile up behind the back button.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const lab = useMemo(() => parseLabParams(searchParams), [searchParams])
+  const patch = (p: Partial<LabUrlState>) => setSearchParams((cur) => patchLabParams(cur, p), { replace: true })
+  const { days: windowDays, role, champion, family, tier, sort, focus, showAll: momentsExpanded } = lab
+  const setWindowDays = (days: LabUrlState['days']) => patch({ days })
+  const setRole = (r: string) => patch({ role: r })
+  const setChampion = (c: string) => patch({ champion: c })
+  const setFamily = (f: MistakeFamily | 'all') => patch({ family: f })
+  const setTier = (x: TierFilter) => patch({ tier: x })
+  const setSort = (x: RankSort) => patch({ sort: x })
+  // Another mistake picked: back to the short list of moments.
+  const setFocus = (slug: string | null) => patch({ focus: slug, showAll: false })
   const [experiment, setExperiment] = useState<'idle' | 'busy' | 'done' | 'error'>('idle')
   const mainRole = useUserStore((s) => s.user?.mainRole ?? '')
 
@@ -68,9 +86,16 @@ export function MistakeStatsPage() {
   const filter = { days: windowDays, role: role || null, champion: champion.trim() || null }
   const occQuery = useCachedQuery<MistakeOccurrence[]>(mistakeOccurrencesKey(filter), () => window.api.getMistakeOccurrences(filter))
   const occ: MistakeOccurrence[] | null = occQuery.data ?? (occQuery.error ? NO_OCCURRENCES : null)
+  useScrollMemory(occ !== null)
 
-  const ranking = useMemo(() => rankMistakes(occ ?? []), [occ])
-  const visible = useMemo(() => (family === 'all' ? ranking : ranking.filter((r) => r.family === family)), [ranking, family])
+  const tiersKnown = useMemo(() => hasTiers(occ ?? []), [occ])
+  // Tier scope: « all tiers » leaves the trivial mistakes out, a picked tier keeps only that tier (the filters combine with the family).
+  const activeTier: TierFilter = tiersKnown ? tier : 'all'
+  const ranking = useMemo(() => rankMistakes(occ ?? [], activeTier), [occ, activeTier])
+  const visible = useMemo(() => sortRanking(family === 'all' ? ranking : ranking.filter((r) => r.family === family), tiersKnown ? sort : 'frequency'), [ranking, family, sort, tiersKnown])
+  const scopedOcc = useMemo(() => (occ ?? []).filter((o) => inTierScope(o, activeTier)), [occ, activeTier])
+  const chipCounts = useMemo(() => tierCounts((occ ?? []).filter((o) => family === 'all' || tagFamily(o.tag.slug, o.tag.category) === family)), [occ, family])
+  const fatalTotal = useMemo(() => (occ ?? []).filter((o) => o.tier === 'fatal').length, [occ])
   // Keep the inspector on a tag that exists in the current filter.
   const focused = visible.find((r) => r.slug === focus) ?? visible[0] ?? null
   useEffect(() => { setExperiment('idle') }, [focused?.slug])
@@ -79,7 +104,7 @@ export function MistakeStatsPage() {
     const top = visible.slice(0, 3).map((r) => r.slug)
     return focused && !top.includes(focused.slug) ? [focused.slug, ...top.slice(0, 2)] : top
   }, [visible, focused])
-  const trend = useMemo(() => buildTrend(occ ?? [], trendSlugs), [occ, trendSlugs])
+  const trend = useMemo(() => buildTrend(scopedOcc, trendSlugs), [scopedOcc, trendSlugs])
 
   const games = new Set((occ ?? []).map((o) => o.game.id)).size
   const allPhases = phaseBreakdown(occ ?? [])
@@ -152,9 +177,10 @@ export function MistakeStatsPage() {
       ) : (
         <>
           {/* Summary strip */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className={cn('grid grid-cols-2 gap-3', tiersKnown ? 'lg:grid-cols-5' : 'lg:grid-cols-4')}>
             <Stat label={t('mistakeLab.kpi.total')} value={String(occ.length)} sub={t('mistakeLab.kpi.games', { count: games })} />
             <Stat label={t('mistakeLab.kpi.perGame')} value={(occ.length / Math.max(games, 1)).toFixed(1)} sub={t('mistakeLab.kpi.perGameSub')} />
+            {tiersKnown && <Stat label={t('mistakeLab.kpi.fatal')} value={String(fatalTotal)} sub={t('mistakeLab.kpi.fatalSub', { total: occ.length, perGame: (fatalTotal / Math.max(games, 1)).toFixed(1) })} />}
             <Stat label={t('mistakeLab.kpi.top')} value={ranking[0]?.label ?? '—'} sub={ranking[0] ? t('mistakeLab.kpi.topSub', { count: ranking[0].count, share: ranking[0].share }) : ''} color={ranking[0]?.color} small />
             <Stat label={t('mistakeLab.kpi.phase')} value={t(`mistakeLab.phase.${worstPhase}`)} sub={t('mistakeLab.kpi.phaseSub', { share: Math.round((allPhases[worstPhase] / occ.length) * 100) })} small />
           </div>
@@ -176,18 +202,44 @@ export function MistakeStatsPage() {
                     ))}
                   </div>
                 </div>
+                {tiersKnown && (
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <TierChips value={activeTier} onChange={setTier} counts={chipCounts} showTrivial={chipCounts.trivial > 0 || activeTier === 'trivial'} />
+                    <div className="flex items-center gap-1.5" role="group" aria-label={t('mistakeLab.sort.label')}>
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-hextech-text-dim">{t('mistakeLab.sort.label')}</span>
+                      {(['frequency', 'severity'] as const).map((k) => (
+                        <button key={k} type="button" aria-pressed={sort === k} onClick={() => setSort(k)}
+                          className={cn('rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors', sort === k ? 'border-hextech-gold bg-hextech-gold/15 text-hextech-gold-bright' : 'border-hextech-border-dim text-hextech-text hover:border-hextech-border')}>
+                          {t(`mistakeLab.sort.${k}`)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {visible.length === 0 ? (
-                  <p className="py-6 text-center text-xs text-hextech-text-dim">{t('mistakeLab.ranking.none')}</p>
+                  activeTier !== 'all' ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-hextech-border-dim bg-hextech-black/30 px-3 py-3 text-xs text-hextech-text-dim">
+                      <span>{t(`mistakeLab.tier.emptyTier.${activeTier}`, { days: windowDays })}</span>
+                      <Button size="sm" variant="outline" onClick={() => setTier('all')}>{t('mistakeLab.tier.seeAll')}</Button>
+                    </div>
+                  ) : <p className="py-6 text-center text-xs text-hextech-text-dim">{t('mistakeLab.ranking.none')}</p>
                 ) : (
                   <ol className="space-y-1">
                     {visible.map((r) => (
                       <li key={r.tagId}>
-                        <RankRow row={r} max={visible[0].count} active={focused?.slug === r.slug} onClick={() => setFocus(r.slug)} />
+                        <RankRow row={r} max={Math.max(...visible.map((x) => x.count))} active={focused?.slug === r.slug} onClick={() => setFocus(r.slug)} tiers={tiersKnown} tierPicked={activeTier !== 'all'} />
                       </li>
                     ))}
                   </ol>
                 )}
-                <p className="mt-3 text-[11px] text-hextech-text-dim">{t('mistakeLab.ranking.legend')}</p>
+                {tiersKnown && <div className="mt-3"><TierLegend showTrivial={chipCounts.trivial > 0 || activeTier === 'trivial'} /></div>}
+                {tiersKnown && activeTier !== 'all' && (
+                  <p className="mt-2 text-[11px] text-hextech-text-dim">{t('mistakeLab.tier.footPicked', { tier: ((x) => x.charAt(0).toUpperCase() + x.slice(1))(t(`mistakeLab.tier.plural.${activeTier}`, { count: 2 })), n: scopedOcc.length, total: occ.length, lower: t(`mistakeLab.tier.plural.${activeTier}`, { count: 2 }) })}</p>
+                )}
+                {tiersKnown && activeTier === 'all' && chipCounts.trivial > 0 && (
+                  <p className="mt-2 text-[11px] text-hextech-text-dim">{t('mistakeLab.tier.trivialHidden', { count: chipCounts.trivial })}</p>
+                )}
+                <p className="mt-2 text-[11px] text-hextech-text-dim">{t('mistakeLab.ranking.legend')}</p>
               </section>
 
               <section className={cn(panel, 'p-4')}>
@@ -227,8 +279,12 @@ export function MistakeStatsPage() {
               {focused ? (
                 <Inspector
                   row={focused}
-                  occ={(occ ?? []).filter((o) => o.tag.slug === focused.slug)}
-                  moments={latestMoments(occ ?? [], focused.slug, Infinity)}
+                  occ={scopedOcc.filter((o) => o.tag.slug === focused.slug)}
+                  moments={latestMoments(scopedOcc, focused.slug, Infinity)}
+                  showAll={momentsExpanded}
+                  onShowAll={(v) => patch({ showAll: v })}
+                  tiers={tiersKnown}
+                  tierPicked={activeTier}
                   onDelete={deleteOccurrence}
                   role={role || mainRole}
                   experiment={experiment}
@@ -256,21 +312,29 @@ function Stat({ label, value, sub, color, small }: { label: string; value: strin
   )
 }
 
-function RankRow({ row, max, active, onClick }: { row: RankedMistake; max: number; active: boolean; onClick: () => void }) {
+function RankRow({ row, max, active, onClick, tiers, tierPicked }: { row: RankedMistake; max: number; active: boolean; onClick: () => void; tiers: boolean; tierPicked: boolean }) {
   const { t } = useTranslation()
   const cost = hasComparison(row) ? row.winrateWith! - row.winrateWithout! : null
+  const fatal = row.tiers.fatal
   return (
     <button onClick={onClick} aria-pressed={active}
-      className={cn('grid w-full grid-cols-[minmax(0,11rem)_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors',
+      className={cn('grid w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors', tiers ? 'grid-cols-[minmax(0,11rem)_minmax(0,1fr)_3.5rem_auto]' : 'grid-cols-[minmax(0,11rem)_minmax(0,1fr)_auto]',
         active ? 'bg-hextech-elevated ring-1 ring-hextech-gold/60' : 'hover:bg-hextech-elevated/60')}>
       <span className="flex min-w-0 items-center gap-2">
         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
         <span className="truncate text-xs font-medium text-hextech-text-bright" title={row.label}>{row.label}</span>
       </span>
       <span className="flex min-w-0 items-center gap-2">
-        <span className="h-3 rounded-sm" style={{ width: `${Math.max(4, (row.count / max) * 100)}%`, backgroundColor: row.color, opacity: active ? 1 : 0.75 }} />
+        {tiers
+          ? <TierBar counts={row.tiers} color={row.color} width={(row.count / max) * 0.8} tooltip label={barLabel(row.count, row.tiers, t)} className="shrink-0" />
+          : <span className="h-3 rounded-sm" style={{ width: `${Math.max(4, (row.count / max) * 100)}%`, backgroundColor: row.color, opacity: active ? 1 : 0.75 }} />}
         <span className="shrink-0 font-mono text-[11px] text-hextech-text-bright">{row.count}× <span className="text-hextech-text-dim">· {row.share}%</span></span>
       </span>
+      {tiers && (
+        <span className="text-right font-mono text-[11px] font-bold" style={{ color: row.color }} title={t('mistakeLab.tier.fatalCol')}>
+          {!tierPicked && fatal > 0 ? <>{fatal} <span aria-hidden className="text-[9px] tracking-tight">●●●</span><span className="sr-only">{t('mistakeLab.tier.plural.fatal', { count: fatal })}</span></> : null}
+        </span>
+      )}
       <span className={cn('w-20 text-right font-mono text-[11px]', cost == null ? 'text-hextech-text-dim' : cost < 0 ? 'text-hextech-red' : 'text-hextech-green')}
         title={t('mistakeLab.ranking.costTitle')}>
         {cost == null ? '—' : `${cost > 0 ? '+' : ''}${cost} pts`}
@@ -281,10 +345,14 @@ function RankRow({ row, max, active, onClick }: { row: RankedMistake; max: numbe
 
 const MOMENTS_COLLAPSED = 3
 
-function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay, onDelete }: {
+function Inspector({ row, occ, moments, showAll, onShowAll, tiers, tierPicked, role, experiment, onExperiment, onReplay, onDelete }: {
   row: RankedMistake
+  tiers: boolean
+  tierPicked: TierFilter
   occ: MistakeOccurrence[]
   moments: MistakeOccurrence[]
+  showAll: boolean
+  onShowAll: (v: boolean) => void
   role: string
   experiment: 'idle' | 'busy' | 'done' | 'error'
   onExperiment: () => void
@@ -292,11 +360,10 @@ function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay
   onDelete: (o: MistakeOccurrence) => Promise<void>
 }) {
   const { t } = useTranslation()
-  const [showAll, setShowAll] = useState(false)
   const [confirming, setConfirming] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   // Another mistake picked: back to the short list.
-  useEffect(() => { setShowAll(false); setConfirming(null) }, [row.slug])
+  useEffect(() => { setConfirming(null) }, [row.slug])
   const shownMoments = showAll ? moments : moments.slice(0, MOMENTS_COLLAPSED)
   const phases = phaseBreakdown(occ)
   const total = Math.max(occ.length, 1)
@@ -311,8 +378,16 @@ function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay
         <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: row.color }}>{t(`mistakeLab.family.${row.family}`)}</span>
         <h2 className="mt-0.5 text-lg font-bold text-hextech-text-bright">{row.label}</h2>
         <p className="mt-1 text-xs text-hextech-text">
-          {t('mistakeLab.inspector.summary', { count: row.count, games: row.games, share: row.share })}
+          {tierPicked !== 'all'
+            ? t('mistakeLab.tier.inspectorPicked', { tier: t(`mistakeLab.tier.plural.${tierPicked}`, { count: row.count }), count: row.count, games: row.games, gw: t('mistakeLab.tier.gamesWord', { count: row.games }), name: t(`mistakeLab.tier.chip.${tierPicked}`) })
+            : t('mistakeLab.inspector.summary', { count: row.count, games: row.games, share: row.share })}
         </p>
+        {tiers && (
+          <div className="mt-2">
+            <TierBar counts={row.tiers} color={row.color} height={12} label={barLabel(row.count, row.tiers, t)} />
+            <p className="mt-1.5 font-mono text-[11px] text-hextech-text-dim">{tierLine(row.tiers, t as (k: string, o?: Record<string, unknown>) => string)}</p>
+          </div>
+        )}
         {row.winrateWith != null && (
           <p className="mt-2 rounded-lg border border-hextech-border-dim bg-hextech-black/30 px-3 py-2 text-xs text-hextech-text-bright">
             {hasComparison(row)
@@ -360,6 +435,7 @@ function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay
                   <span className={cn('ml-1.5 text-[10px] font-semibold', o.game.win ? 'text-hextech-green' : 'text-hextech-red')}>{o.game.win ? t('mistakeLab.win') : t('mistakeLab.loss')}</span>
                 </span>
                 <span className="block truncate text-[10px] text-hextech-text-dim">{new Date(o.game.gameEndAt).toLocaleDateString()}{o.note ? ` · ${localizeDetectedNote(o.note, t as Translate)}` : ''}</span>
+                {tiers && <span className="mt-1 block"><TierPill o={o} color={row.color} /></span>}
               </span>
               {o.recordingId ? (
                 <Button size="sm" variant="outline" className="h-8 shrink-0 gap-1 text-[11px]" onClick={() => onReplay(o)}>
@@ -386,7 +462,7 @@ function Inspector({ row, occ, moments, role, experiment, onExperiment, onReplay
           ))}
         </ul>
         {moments.length > MOMENTS_COLLAPSED && (
-          <Button type="button" size="sm" variant="outline" className="mt-2 w-full gap-1.5" aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
+          <Button type="button" size="sm" variant="outline" className="mt-2 w-full gap-1.5" aria-expanded={showAll} onClick={() => onShowAll(!showAll)}>
             <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showAll && 'rotate-180')} aria-hidden />
             {showAll ? t('mistakeLab.inspector.showLess') : t('mistakeLab.inspector.showAll', { count: moments.length })}
           </Button>

@@ -4,6 +4,7 @@ import { teamContextForMatch } from './teamContext'
 import { timelineFromRow } from './matchStore'
 import { canResolvePlayer, detectMistakes, type MistakeCandidate } from './mistakeDetector'
 import { seasonOf } from '../../src/lib/microReview/gameClock'
+import { ensureGameTiers } from './mistakeTiers'
 import { planAutoBookmarks, type AutoBookmarkCandidate } from './mistakeBookmarks'
 import { applySeverityDelta } from './mistakeTuning'
 import { mistakeDuplicateIndex } from './mistakeDedupe'
@@ -81,13 +82,14 @@ export async function autoDetectMistakes(gameId: string, parsed?: ParsedMatch | 
   let created = 0
   let skipped = 0
   const newlyCreated: AutoBookmarkCandidate[] = []
+  const createdIds: string[] = []
   for (const c of candidates) {
     const tag = tagBySlug.get(c.tagSlug)
     if (!tag) { skipped++; continue }
     if (known.has(tag.id, c.gameTimeSec)) { skipped++; continue }
     if (isDismissed(dismissed, c.tagSlug, c.gameTimeSec)) { skipped++; continue }
     const severity = applySeverityDelta(Math.min(3, Math.max(1, c.severity ?? 2)), deltaByTagId.get(tag.id) ?? 0)
-    await prisma.mistake.create({
+    const row = await prisma.mistake.create({
       data: {
         gameId,
         tagId: tag.id,
@@ -98,11 +100,21 @@ export async function autoDetectMistakes(gameId: string, parsed?: ParsedMatch | 
       },
     })
     created++
+    createdIds.push(row.id)
     // A death-dated mistake is bookmarked at the death window (45 s before), 20/11/2026.
     newlyCreated.push({ tagSlug: c.tagSlug, tagLabel: tag.label, gameTimeSec: c.gameTimeSec, severity, deathDated: isDeathDatedMistake({ tagSlug: c.tagSlug, autoDetected: true }) })
     known.add(tag.id, c.gameTimeSec)
   }
   if (created > 0) console.log(`[mistake] auto-detected ${created} mistake(s) for game ${gameId} (${skipped} skipped)`)
+  // 28/11/2026: the automatic bookmark follows the TIER (fatal or critical) instead of the rule's severity 3. A game with no
+  // timeline has no tier: the rule's severity stays the judge.
+  try {
+    const tiers = await ensureGameTiers(gameId)
+    newlyCreated.forEach((cand, i) => {
+      const t = tiers.get(createdIds[i])?.tier
+      if (t) cand.severity = t === 'fatal' || t === 'critical' ? 3 : 1
+    })
+  } catch (err) { console.warn('[mistake] tiers for bookmarks failed:', (err as Error)?.message ?? err) }
   if (newlyCreated.some((c) => c.severity >= 3)) await autoBookmarkSevereMistakes(gameId, game.duration, newlyCreated)
   return { created, skipped, reason: 'ok' }
 }

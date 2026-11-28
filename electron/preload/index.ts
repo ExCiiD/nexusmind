@@ -569,8 +569,12 @@ const api = {
   teamMemberRanks: (teamId: string, opts?: { force?: boolean }) => ipcRenderer.invoke('team:member-ranks', teamId, opts),
   lftExportPng: (req: { markup: string; css: string; width: number; height: number; fileName: string; action: 'save' | 'copy' }) =>
     ipcRenderer.invoke('lft:export-png', req),
-  // Player cards: champion cut out of its loading art (electron/main/championCutout.ts)
-  championCutout: (championKey: string, skin?: number) => ipcRenderer.invoke('champion-cutout:get', championKey, skin),
+  // Recordings retention, Settings › Recording (electron/main/videoRetention.ts)
+  videoRetentionGet: () => ipcRenderer.invoke('video-retention:get'),
+  videoRetentionPreview: (settings: { maxAgeDays?: number | null; maxTotalGb?: number | null }) =>
+    ipcRenderer.invoke('video-retention:preview', settings),
+  videoRetentionSet: (settings: { enabled?: boolean; maxAgeDays?: number | null; maxTotalGb?: number | null }, confirm?: boolean) =>
+    ipcRenderer.invoke('video-retention:set', settings, confirm),
 
   listDrafts: () => ipcRenderer.invoke('draft:list'),
   createDraft: (data: { name: string; vsTeamId?: string | null; bluePicks?: string[][] | string[]; blueBans?: string[][] | string[]; redPicks?: string[][] | string[]; redBans?: string[][] | string[]; myTeamSide?: 'blue' | 'red'; notes?: string }) =>

@@ -31,6 +31,33 @@ import type { WeeklyAwards } from './weeklyAwardsCore'
 /** Weekly MVP / Grinder awards of a team roster (team:weekly-awards); rules in weeklyAwardsCore.ts. */
 export type { AwardKind, AwardHolder, AwardRaceEntry, WeeklyAwards } from './weeklyAwardsCore'
 
+/** Recordings retention (rules: electron/main/videoRetentionCore.ts, which these mirror). */
+export interface VideoRetentionSettings {
+  enabled: boolean
+  maxAgeDays: number | null
+  maxTotalGb: number | null
+  /** ISO date of the player's yes to the first purge; null until then. */
+  confirmedAt: string | null
+}
+/** "Last cleanup on …": lastRunAt / lastRemoved / lastFreedBytes = the last run that deleted at least one video;
+ *  lastCheckAt = the last run at all. A purged recording keeps its row with `videoDeletedAt` set (file gone). */
+export interface VideoRetentionStatus {
+  lastRunAt: string | null
+  lastRemoved: number
+  lastFreedBytes: number
+  lastCheckAt: string | null
+}
+export interface VideoPurgePlan {
+  remove: Array<{ id: string; filePath: string; sizeBytes: number; why: 'age' | 'size' }>
+  removeBytes: number
+  totalBytes: number
+  /** Every recording with a video file on this PC. */
+  totalCount: number
+  /** Protected recordings, with their size (kept by the limits = totalBytes - removeBytes - sum of these). */
+  kept: Array<{ id: string; reason: 'clip' | 'bookmark' | 'mistake' | 'review' | 'recent' | 'recording'; sizeBytes: number }>
+  capUnreachable: boolean
+}
+
 export type GameEventType =
   | 'kill' | 'death' | 'assist'
   | 'dragon' | 'baron' | 'voidgrub' | 'herald'
@@ -707,9 +734,13 @@ export type AscendAPI = CollabApi & FeedbackApi & NotificationsApi & TeamShareAp
    *  the PNG (filePath null when cancelled). Desktop only: the web app has no export. */
   lftExportPng?: (req: { markup: string; css: string; width: number; height: number; fileName: string; action: 'save' | 'copy' }) =>
     Promise<{ copied: true; filePath: string | null }>
-  /** The champion of a loading art cut out of its scene (local BiRefNet model, downloaded once), as a PNG data
-   *  URL; null when there is none to show. Desktop only: the web app keeps the full art. */
-  championCutout?: (championKey: string, skin?: number) => Promise<{ dataUrl: string | null }>
+  /** Recordings retention (electron/main/videoRetentionCore.ts has the rules). Desktop only. */
+  videoRetentionGet?: () => Promise<{ settings: VideoRetentionSettings; plan: VideoPurgePlan; status: VideoRetentionStatus }>
+  /** What a setting would delete now, without saving it (shown before the first confirmation). */
+  videoRetentionPreview?: (settings: { maxAgeDays?: number | null; maxTotalGb?: number | null }) => Promise<VideoPurgePlan>
+  /** Saves the setting; `confirm: true` is the player's yes to the first purge, which then runs at once. */
+  videoRetentionSet?: (settings: { enabled?: boolean; maxAgeDays?: number | null; maxTotalGb?: number | null }, confirm?: boolean) =>
+    Promise<{ settings: VideoRetentionSettings; removed: number; freedBytes: number; status: VideoRetentionStatus }>
 
   listDrafts: () => Promise<DraftPrep[]>
   createDraft: (data: { name: string; vsTeamId?: string | null; bluePicks?: string[][] | string[]; blueBans?: string[][] | string[]; redPicks?: string[][] | string[]; redBans?: string[][] | string[]; myTeamSide?: 'blue' | 'red'; notes?: string }) => Promise<DraftPrep>

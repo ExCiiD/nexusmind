@@ -1,6 +1,8 @@
 /**
- * Champion cut-outs for the player cards (Team → Roster): the pure half of
- * the background removal run in electron/main/championCutout.ts.
+ * Champion cut-outs for the player cards (Team → Roster): the background
+ * removal run by scripts/cutout-pack.ts to build the hosted pack
+ * (`ascend-cutouts`). The app itself no longer runs it nor downloads the
+ * models (health check 28/11/2026, electron/main/storageCleanup.ts).
  *
  * The model is BiRefNet "lite" (Swin-T backbone, general use), MIT licence,
  * weights and ONNX export published by its author on GitHub. It was picked

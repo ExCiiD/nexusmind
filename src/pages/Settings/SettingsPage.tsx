@@ -25,6 +25,7 @@ import { useCachedResource } from '@/hooks/useCachedResource'
 import { ACCOUNTS_KEY } from '@/lib/pageQueries'
 const NO_ACCOUNTS: AccountEntry[] = []
 import { invalidateCached } from '@/lib/queryCache'
+import { VideoRetentionBlock } from '@/components/Settings/VideoRetentionBlock'
 import { SelfJudgementCard } from '@/components/Settings/SelfJudgementCard'
 import { AutoYoutubeUploadSection } from '@/components/Settings/AutoYoutubeUploadSection'
 import { YOUTUBE_TERMS_URL } from '@/components/Recording/YoutubeTermsNote'
@@ -339,8 +340,8 @@ export function SettingsPage() {
           {/* ── Quality ──────────────────────────────────────────────── */}
           <div className="space-y-2 pt-2 border-t border-hextech-border-dim/40">
             <p id="rec-quality" className="text-sm font-medium text-hextech-text-bright">{t('settings.rec.quality')}</p>
-            <div role="group" aria-labelledby="rec-quality" className="grid grid-cols-4 gap-1.5">
-              {(['720p', '1080p', '1440p', 'source'] as const).map((q) => (
+            <div role="group" aria-labelledby="rec-quality" className="grid grid-cols-5 gap-1.5">
+              {(['720p', '1080p-eco', '1080p', '1440p', 'source'] as const).map((q) => (
                 <button
                   type="button"
                   key={q}
@@ -354,13 +355,22 @@ export function SettingsPage() {
                       : 'border-hextech-border-dim text-hextech-text hover:border-hextech-gold/40',
                   )}
                 >
-                  {q === 'source' ? t('settings.rec.source') : q}
+                  {q === 'source' ? t('settings.rec.source') : q === '1080p-eco' ? (
+                    <span className="inline-flex items-center justify-center gap-1.5" aria-label={t('settings.rec.qualityEco')}>
+                      1080p<span aria-hidden className="rounded bg-[#6FA84A]/15 px-1 font-mono text-[9px] font-bold text-[#6FA84A]">{t('settings.rec.qualityEcoBadge')}</span>
+                    </span>
+                  ) : q}
                 </button>
               ))}
             </div>
             <p className="text-[11px] text-hextech-text-dim">
               {t('settings.rec.qualityHint')}
             </p>
+            {user?.recordQuality === '1080p-eco' && (
+              <p role="note" className="rounded-md border border-[#6FA84A]/30 bg-[#6FA84A]/5 px-3 py-2 text-xs text-hextech-text">
+                <b className="mr-1 font-mono text-[10px] text-[#6FA84A]">{t('settings.rec.qualityEcoBadge')}</b>{t('settings.rec.qualityEcoNote')}
+              </p>
+            )}
           </div>
 
           {/* ── FPS ──────────────────────────────────────────────────── */}
@@ -785,6 +795,9 @@ export function SettingsPage() {
           })()}
 
           </div>}
+
+          {/* ── Video retention (desktop only; also when auto-record is off: the videos exist anyway) ── */}
+          <VideoRetentionBlock />
         </CardContent>
       </Card>
 

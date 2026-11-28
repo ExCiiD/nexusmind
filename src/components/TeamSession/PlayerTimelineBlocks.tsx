@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
+import { useUrlParam } from '@/hooks/useUrlParam'
 import { ChevronDown, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -219,7 +220,8 @@ export function LaneDiffBlock(ctx: IndivCtx) {
   const { t } = useTranslation()
   const { single, g, tot } = useIndivView(ctx)
   const reason = useReason(ctx)
-  const [key, setKey] = useState<DiffKey>('gold')
+  // In the URL (?diff=xp): coming back from the VOD restores it.
+  const [key, setKey] = useUrlParam<DiffKey>('diff', 'gold', DIFF_KEYS)
   const series = (single ? g?.diffSeries : tot?.diffSeries) ?? null
   const lane = (single ? g?.laneSummary : tot?.laneSummary) ?? null
   const label = t(`playerSheet.diff.${key}`)
@@ -275,6 +277,7 @@ function ObjectiveRow({ line, active, onToggle }: { line: ObjectiveLine; active:
 }
 
 const OBJECTIVE_EVENTS_COLLAPSED = 5
+const OBJECTIVE_KINDS: ReadonlyArray<ObjectiveLine['kind'] | ''> = ['', 'dragon', 'elder', 'grubs', 'herald', 'baron', 'tower']
 
 export function ObjectivesBlock(ctx: IndivCtx) {
   const { t } = useTranslation()
@@ -288,9 +291,13 @@ export function ObjectivesBlock(ctx: IndivCtx) {
   const rec = useRecordings(events.map((x) => x.gameId), ctx.gameMatchIds)
   const taken = lines?.some((l) => l.ours + l.theirs > 0)
   // The event list can run to dozens of lines over a session: a few rows by default, a button for the rest.
-  const [showAll, setShowAll] = useState(false)
+  const [expanded, setExpanded] = useUrlParam<'0' | '1'>('objAll', '0')
+  const showAll = expanded === '1'
+  const setShowAll = (f: boolean | ((v: boolean) => boolean)) => setExpanded((typeof f === 'function' ? f(showAll) : f) ? '1' : '0')
   // Clicking a row of the table filters the list to that objective; clicking it again (or the chip's ×) clears it.
-  const [kindFilter, setKindFilter] = useState<ObjectiveLine['kind'] | null>(null)
+  const [kindParam, setKindParam] = useUrlParam<ObjectiveLine['kind'] | ''>('obj', '', OBJECTIVE_KINDS)
+  const kindFilter = kindParam === '' ? null : kindParam
+  const setKindFilter = (f: ObjectiveLine['kind'] | null | ((k: ObjectiveLine['kind'] | null) => ObjectiveLine['kind'] | null)) => { const v = typeof f === 'function' ? f(kindFilter) : f; setKindParam(v ?? '') }
   const visible = useMemo(() => (kindFilter ? events.filter((x) => x.e.kind === kindFilter) : events), [events, kindFilter])
   const shown = showAll ? visible : visible.slice(0, OBJECTIVE_EVENTS_COLLAPSED)
   return (

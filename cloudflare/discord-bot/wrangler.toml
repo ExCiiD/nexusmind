@@ -13,6 +13,13 @@ SUPABASE_URL = "https://zwubyzrfpelhxjjezvrh.supabase.co"
 [triggers]
 crons = ["*/15 * * * *"]
 
+# Workers Logs (health check 28/11/2026): the 100 exceptions of 18-19/11 left
+# no message to read. Free plan: 200,000 events/day included, this Worker logs
+# ~100 invocations/day, so no cost.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 # Secrets — set once with `npx wrangler secret put <NAME>`, values come
 # from the Discord Developer Portal (see README.md) and Supabase's project
 # settings (Settings -> API -> service_role key, NOT the anon key):

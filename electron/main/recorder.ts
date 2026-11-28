@@ -106,6 +106,8 @@ export const QUALITY_HEIGHT: Record<string, number> = {
   source: 0,
   '1440p': 1440,
   '1080p': 1080,
+  /** Same picture size as 1080p at half the bitrate (wgcRecorder.ts): ~0.45 GB per game instead of ~0.9 (28/11/2026). */
+  '1080p-eco': 1080,
   '720p': 720,
 }
 

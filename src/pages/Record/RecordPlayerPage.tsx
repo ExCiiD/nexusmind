@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useBackNav } from '@/hooks/useBackNav'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { VideoReviewPlayer } from '@/components/Recording/VideoReviewPlayer'
@@ -74,6 +75,8 @@ export function RecordPlayerPage() {
   const { t } = useTranslation()
   const { recordingId } = useParams<{ recordingId: string }>()
   const navigate = useNavigate()
+  // Back = the page we came from (Mistake Lab, session stats, objective list…); the Record hub when opened directly.
+  const [goBack, cameFromApp] = useBackNav('/record')
   // ?clipId=<id> — when present we play the clip's standalone file
   // instead of the parent recording. Lets clip cards (Record Hub + the
   // bottom clip strip on this page) deep-link straight into the clip.
@@ -459,7 +462,7 @@ export function RecordPlayerPage() {
   if (error || !recording) return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <p className="text-hextech-text-dim">{error ?? t('record.player.notFound')}</p>
-      <Button variant="outline" onClick={() => navigate('/record')}>{t('record.player.back')}</Button>
+      <Button variant="outline" onClick={goBack}>{t(cameFromApp ? 'record.player.backPrev' : 'record.player.back')}</Button>
     </div>
   )
 
@@ -488,8 +491,8 @@ export function RecordPlayerPage() {
     // Fixed-height column — no page scroll possible
     <div ref={rootRef} className="flex flex-col gap-2 animate-fade-in" style={{ height: 'calc(100vh - 3.25rem)', overflow: 'auto' }}>
       {/* Back nav */}
-      <button onClick={() => navigate('/record')} className="flex items-center gap-1.5 text-xs text-hextech-text-dim hover:text-hextech-text transition-colors self-start shrink-0">
-        <ArrowLeft className="h-3.5 w-3.5" />{t('record.player.back')}
+      <button onClick={goBack} className="flex items-center gap-1.5 text-xs text-hextech-text-dim hover:text-hextech-text transition-colors self-start shrink-0">
+        <ArrowLeft className="h-3.5 w-3.5" />{t(cameFromApp ? 'record.player.backPrev' : 'record.player.back')}
       </button>
 
       {/* Meta bar */}

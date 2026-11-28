@@ -122,3 +122,20 @@ d'accord. Points à retenir :
   une) ; win condition adverse (focus par ordre des kills, kills/shutdowns sur elle, morts qu'elle cause via
   `victimDamageReceived`, ganks sur sa lane ; pas de dégâts par cible hors morts), tag `died-alone-to-enemy-wincon`.
   12 tags ; effort total ≈ 15,5 j (Back 8,5, Front 3, Graphic 1, Cyber 0,5, calibrage + vidéo 2,5).
+
+**28/11 — tiers d'erreurs** (décision du 28/11) : rapport [`engine-reports/2026-11-28-tiers-erreurs.md`](engine-reports/2026-11-28-tiers-erreurs.md).
+Tier **mesuré** (pas fixé par la règle) : coût du « sillage » de l'erreur compté par événement (prime + shutdown, farm
+perdue pendant la mort, plaques / tours / objectifs adverses en `goldEq` via `winZ`, moins ce qu'on reprend ; fights
+partagés au prorata) ; fatale ≥ 700 → 1 600 or selon l'heure (45 or/min de 5:00 à 25:00) ou snowball d'équipe (3
+relevés de baisse après une pente plate) ; critique ≥ 500 sur la lane ou snowball de lane ; 4e tier « anodine » après
+sa propre fatale et en garbage time, exclu du coût en winrate. Gravité 1-3 gardée en interne, signets vidéo au tier.
+**Réponses du 28/11 intégrées, rapport final** : or = critère principal, XP à 0,4 or/point dès 5:00, objectif plafonné
+par `min(valeur − crossmap, baisse réelle de la courbe sur 3 relevés)` ; T_fatal 700 → 1 600 (25:00) → 3 000 (35:00),
+T_crit = 0,71 × T_fatal ; chaîne causale (`chainId`) : `unused-gold` = même mort, `late-back` → mort ou moment dans
+90 s sans passage en base, prend fatale/critique, compté une fois ; anodine = sa propre fatale seulement, jusqu'à la
+fin, 4e tier visible ; jungler contre jungler, duo contre duo. Effort ≈ 4 j (Back 2,5, Front 1, Graphic 0,5).
+**Calibrage du 28/11 (§ 8 du rapport)** : fatale OK (6,6 %, 28,6 % de victoires) ; critique ratée (6,9 %, 52 % contre
+62,5 % ; jungler 3,8 %, support 3,1 %, 2,1 % après 20:00). Révision proposée : seuil de lane **absolu** 500 / 650
+(14:00-20:00), **demi-fatale d'équipe après 20:00**, jungler et support au coût d'équipe, snowball de lane limité aux
+erreurs de lane, dès 3:00, cassure de pente × 2, `cs-deficit` critique seulement s'il persiste à 14:00 ; cibles
+révisées (critique 12-20 %, ≥ 12 points sous la base) ; variantes V1-V4 à faire tourner ; 3 points à valider.
