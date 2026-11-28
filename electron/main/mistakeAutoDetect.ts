@@ -1,8 +1,9 @@
 import { getPrisma } from './database'
-import { isDismissed } from './detectedMistakesCore'
+import { isDismissed, staleAutoRows } from './detectedMistakesCore'
 import { teamContextForMatch } from './teamContext'
 import { timelineFromRow } from './matchStore'
-import { detectMistakes, type MistakeCandidate } from './mistakeDetector'
+import { canResolvePlayer, detectMistakes, type MistakeCandidate } from './mistakeDetector'
+import { seasonOf } from '../../src/lib/microReview/gameClock'
 import { planAutoBookmarks, type AutoBookmarkCandidate } from './mistakeBookmarks'
 import { applySeverityDelta } from './mistakeTuning'
 import { mistakeDuplicateIndex } from './mistakeDedupe'
@@ -104,6 +105,57 @@ export async function autoDetectMistakes(gameId: string, parsed?: ParsedMatch | 
   if (created > 0) console.log(`[mistake] auto-detected ${created} mistake(s) for game ${gameId} (${skipped} skipped)`)
   if (newlyCreated.some((c) => c.severity >= 3)) await autoBookmarkSevereMistakes(gameId, game.duration, newlyCreated)
   return { created, skipped, reason: 'ok' }
+}
+
+/**
+ * 28/11/2026: "Dove tower" was flagged on turrets that had already fallen. The detector now ignores them; this removes
+ * the AUTO-detected rows it would no longer create, from the timeline cached on this PC (never Riot). A game whose
+ * timeline is gone, or whose player cannot be found again, keeps its rows. Mistakes tagged or confirmed by the player
+ * (autoDetected = false) are never touched. The deletes are ordinary writes: the sync triggers push them as deletions.
+ */
+export async function recheckAutoDoveTower(): Promise<{ games: number; removed: number }> {
+  const prisma = getPrisma()
+  const rows = await prisma.mistake.findMany({ where: { autoDetected: true, tag: { slug: 'dove-tower' } }, select: { id: true, gameId: true, gameTimeSec: true } })
+  if (!rows.length) return { games: 0, removed: 0 }
+  const user = await prisma.user.findFirst({ where: { isActive: true } })
+  const accounts = user ? await prisma.account.findMany({ where: { userId: user.id } }) : []
+  const puuids = user ? [user.puuid, ...accounts.map((a) => a.puuid)].filter((p) => !!p) : []
+  const byGame = new Map<string, typeof rows>()
+  for (const r of rows) byGame.set(r.gameId, [...(byGame.get(r.gameId) ?? []), r])
+  let removed = 0
+  for (const [gameId, list] of byGame) {
+    try {
+      const game = await prisma.game.findUnique({ where: { id: gameId } })
+      if (!game?.matchId) continue
+      const cache = await prisma.matchCache.findUnique({ where: { matchId: game.matchId } })
+      const timeline = cache ? timelineFromRow(prisma, game.matchId, cache.timelineJson) : null
+      if (!cache?.matchJson || !timeline) continue
+      const match: any = typeof cache.matchJson === 'string' ? JSON.parse(cache.matchJson) : cache.matchJson
+      const selector = { puuids, championName: game.champion, win: game.win }
+      if (seasonOf(match) !== 'current' || !canResolvePlayer(match, selector)) continue
+      const times = detectMistakes(timeline as any, match, selector).filter((c) => c.tagSlug === 'dove-tower').map((c) => c.gameTimeSec)
+      const stale = staleAutoRows(list, times)
+      if (stale.length) { await prisma.mistake.deleteMany({ where: { id: { in: stale.map((s) => s.id) }, autoDetected: true } }); removed += stale.length }
+    } catch (err) {
+      console.warn('[mistake] dove-tower re-check failed for', gameId, (err as Error)?.message ?? err)
+    }
+  }
+  return { games: byGame.size, removed }
+}
+
+const RECHECK_KEY = 'mistake-recheck-dove-tower-2026-11-28'
+/** Once per PC (flag in the local sync bookkeeping table, which is never synced). Never throws. */
+export async function recheckAutoDoveTowerOnce(): Promise<void> {
+  try {
+    const prisma = getPrisma()
+    const done = await prisma.$queryRawUnsafe<Array<{ value: string | null }>>('SELECT value FROM "_sync_state" WHERE key = ?', RECHECK_KEY)
+    if (done.length) return
+    const r = await recheckAutoDoveTower()
+    await prisma.$executeRawUnsafe('INSERT OR REPLACE INTO "_sync_state" (key, value) VALUES (?, ?)', RECHECK_KEY, new Date().toISOString())
+    if (r.removed) console.log(`[mistake] dove-tower re-check: ${r.removed} stale auto-detected row(s) removed over ${r.games} game(s)`)
+  } catch (err) {
+    console.warn('[mistake] dove-tower re-check failed:', (err as Error)?.message ?? err)
+  }
 }
 
 /** The post-game path: never throws, the player did not ask for it. */

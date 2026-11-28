@@ -86,6 +86,7 @@ import { registerNotificationsHandlers } from './ipc/notifications.ipc'
 import { registerTeamShareHandlers } from './ipc/teamShare.ipc'
 import { registerLftHandlers } from './ipc/lft.ipc'
 import { registerChampionCutoutHandlers } from './ipc/championCutout.ipc'
+import { recheckAutoDoveTowerOnce } from './mistakeAutoDetect'
 import { registerAnalystHandlers } from './ipc/analyst.ipc'
 import { seedBuiltInMistakeTags } from './seeds/mistakeTags'
 import { isMediaPathAllowed } from './mediaAccess'
@@ -501,7 +502,7 @@ async function bootstrap() {
   // Idempotent — adds new built-in tags on app updates without ever
   // overwriting user-edited ones. Fire-and-forget; if it fails we still
   // boot the UI (the user can manually add tags).
-  seedBuiltInMistakeTags().catch((err) => console.warn('[seed] mistake tags failed:', err))
+  seedBuiltInMistakeTags().then(() => recheckAutoDoveTowerOnce()).catch((err) => console.warn('[seed] mistake tags failed:', err))
   // Champion pools: entries tiered by the v1 rule move to v2 once, and
   // "new" picks older than two weeks turn into a regular tier. Hand-picked
   // tiers stay (src/lib/threatCore.ts, team.ipc.ts refreshAutoTiers).

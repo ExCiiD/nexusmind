@@ -105,7 +105,9 @@ export function registerCollabHandlers() {
     playerNote: z.string().max(1000).nullable().optional(),
   })]), (_e, axisId, input) => collab.devPlanSetProgress(axisId, input))
 
-  const isoDate = z.string().datetime()
+  // offset: true — Supabase returns timestamptz as "…+00:00", and editing an event sends that value back
+  // (meeting start, 28/11: "Invalid datetime" on calendar:update-event).
+  const isoDate = z.string().datetime({ offset: true })
   const dateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
   const eventKind = z.enum(['tournament', 'team_review', 'one_on_one', 'soloq_block', 'rest', 'other', 'scrim', 'flex', 'meeting', 'warmup_draft'])
   const attendeeScope = z.enum(['whole_team', 'all_players', 'all_staff', 'custom'])

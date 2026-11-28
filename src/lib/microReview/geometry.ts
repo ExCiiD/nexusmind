@@ -141,6 +141,38 @@ export const TURRETS: Record<TeamId, Point[]> = {
   ],
 }
 
+/** Index of a BUILDING_KILL turret in TURRETS[team] (position first, else lane + tower type), or -1. */
+function turretIndexOf(e: { position?: Point; laneType?: string; towerType?: string }, owner: TeamId): number {
+  if (e.position && typeof e.position.x === 'number' && typeof e.position.y === 'number') {
+    let best = -1, bd = 450
+    TURRETS[owner].forEach((p, i) => { const d = dist(p, e.position as Point); if (d < bd) { bd = d; best = i } })
+    if (best >= 0) return best
+  }
+  if (String(e.towerType ?? '').startsWith('NEXUS')) return 9
+  const lane = String(e.laneType ?? '').replace(/_LANE$/, '')
+  const base = lane === 'TOP' ? 0 : lane === 'MID' ? 3 : lane === 'BOT' ? 6 : -1
+  const step = { OUTER_TURRET: 0, INNER_TURRET: 1, BASE_TURRET: 2 }[String(e.towerType ?? '') as 'OUTER_TURRET'] 
+  return base < 0 || step === undefined ? -1 : base + step
+}
+
+/** When each turret fell (ms), keyed "team:index in TURRETS[team]", read from the BUILDING_KILL events of a timeline. */
+export function turretFalls(events: Iterable<any>): Map<string, number> {
+  const fell = new Map<string, number>()
+  for (const e of events) {
+    if (e?.type !== 'BUILDING_KILL' || e.buildingType !== 'TOWER_BUILDING' || typeof e.timestamp !== 'number') continue
+    const owner = e.teamId === 100 ? 100 : e.teamId === 200 ? 200 : null // the team that LOST the tower
+    if (!owner) continue
+    const i = turretIndexOf(e, owner)
+    if (i >= 0 && !fell.has(`${owner}:${i}`)) fell.set(`${owner}:${i}`, e.timestamp)
+  }
+  return fell
+}
+
+/** The turrets of `team` still standing at `ms` (one that fell at or before `ms` is gone). */
+export function standingTurrets(fell: Map<string, number>, team: TeamId, ms: number): Point[] {
+  return TURRETS[team].filter((_, i) => { const t = fell.get(`${team}:${i}`); return t == null || t >= ms })
+}
+
 // ── Base platform (V6) ──────────────────────────────────────────────────
 /** "In base" as the V6 brief draws it: x and y under 2000 for blue, over 12800 for red (fountain and nexus platform). */
 export const BASE_BOX = { blueMax: 2000, redMin: 12800 } as const

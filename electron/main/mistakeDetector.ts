@@ -13,6 +13,7 @@
 import type { PlayerSelector } from './eventExtractor'
 import { detectAdvancedMistakes, type AdvancedTag } from './mistakeRules'
 import { seasonOf } from '../../src/lib/microReview/gameClock'
+import { standingTurrets, turretFalls } from '../../src/lib/microReview/geometry'
 
 export interface MistakeCandidate {
   tagSlug: 'unused-gold' | 'dove-tower' | 'late-back' | 'overstay' | AdvancedTag
@@ -26,44 +27,6 @@ interface ParticipantInfo {
   puuid: string
   championName: string
   teamId: 100 | 200
-}
-
-/**
- * Approximate Summoner's Rift turret coordinates. Pulled from public Riot
- * data and rounded — accurate to ~50 units, which is plenty for a "did the
- * player die <700u of a tower" check. Only outer/inner/inhib turrets are
- * included; nexus turrets are inside the fountain so we never flag those.
- */
-const TURRET_POSITIONS: Record<100 | 200, Array<{ x: number; y: number }>> = {
-  // Blue side towers — turrets that BELONG to team 100 (the player's side
-  // if teamId=100). When the player is on team 100 these are friendly, so
-  // we'd compare against the 200 list and vice versa.
-  100: [
-    // Top lane
-    { x: 981,   y: 10441 }, // outer
-    { x: 1512,  y: 6699 },  // inner
-    { x: 1169,  y: 4287 },  // inhib
-    // Mid lane
-    { x: 5846,  y: 6396 },  // outer
-    { x: 5048,  y: 4812 },  // inner
-    { x: 3651,  y: 3696 },  // inhib
-    // Bot lane
-    { x: 10504, y: 1029 },  // outer
-    { x: 6919,  y: 1483 },  // inner
-    { x: 4281,  y: 1253 },  // inhib
-  ],
-  // Red side towers — symmetric around (~7500, 7500)
-  200: [
-    { x: 14029, y: 4564 },  // top outer
-    { x: 13498, y: 8306 },  // top inner
-    { x: 13841, y: 10719 }, // top inhib
-    { x: 9164,  y: 8609 },  // mid outer
-    { x: 9962,  y: 10193 }, // mid inner
-    { x: 11359, y: 11309 }, // mid inhib
-    { x: 4506,  y: 13976 }, // bot outer
-    { x: 8091,  y: 13522 }, // bot inner
-    { x: 10729, y: 13752 }, // bot inhib
-  ],
 }
 
 /**
@@ -129,6 +92,28 @@ function resolvePlayer(participants: ParticipantInfo[], match: any, selector: Pl
   return null
 }
 
+/** The participant id the selector finds in this match, or null. */
+export function participantIdOf(matchJson: string | object, selector: PlayerSelector): number | null {
+  try {
+    const match: any = typeof matchJson === 'string' ? JSON.parse(matchJson) : matchJson
+    const participants = (match?.info?.participants ?? []) as ParticipantInfo[]
+    return resolvePlayer(participants, match, selector)?.participantId ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Whether the selector finds the player in this match (a re-check must not read "nothing found" from "player not found"). */
+export function canResolvePlayer(matchJson: string | object, selector: PlayerSelector): boolean {
+  try {
+    const match: any = typeof matchJson === 'string' ? JSON.parse(matchJson) : matchJson
+    const participants = (match?.info?.participants ?? []) as ParticipantInfo[]
+    return !!resolvePlayer(participants, match, selector)
+  } catch {
+    return false
+  }
+}
+
 export function detectMistakes(
   timelineJson: string | object,
   matchJson: string | object,
@@ -156,7 +141,8 @@ export function detectMistakes(
   if (!player) return []
   const pid = player.participantId
   const enemyTeamId: 100 | 200 = player.teamId === 100 ? 200 : 100
-  const enemyTurrets = TURRET_POSITIONS[enemyTeamId]
+  // Turrets that already fell are not a tower to dive under (the Mistake Lab flagged deaths at a destroyed turret, 28/11/2026).
+  const fell = turretFalls(((timeline.info.frames ?? []) as any[]).flatMap((f: any) => (f.events ?? []) as any[]))
   const fountain = FOUNTAIN_POSITIONS[player.teamId as 100 | 200]
   const enemyFountain = FOUNTAIN_POSITIONS[enemyTeamId]
 
@@ -272,9 +258,9 @@ export function detectMistakes(
         })
       }
 
-      // dove-tower: died within 700u of an enemy outer/inner/inhib turret.
+      // dove-tower: died within 700u of an enemy turret that was still standing (outer, inner, inhibitor or nexus one).
       if (evPos && typeof evPos.x === 'number' && typeof evPos.y === 'number') {
-        const closest = enemyTurrets.reduce<{ d2: number } | null>((best, t) => {
+        const closest = standingTurrets(fell, enemyTeamId, ts).reduce<{ d2: number } | null>((best, t) => {
           const d = dist2(evPos, t)
           return !best || d < best.d2 ? { d2: d } : best
         }, null)
