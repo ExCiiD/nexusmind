@@ -5,8 +5,9 @@ import type { TeamSessionStatus } from './teamSessions'
 import type {
   HistoryGame, HistoryObjective, HistoryPeriod, MatchFormat, MeetingDetail, MeetingScope, ObjectiveCount, PresenceStatus, ScrimNotes, SessionKind, SideTotals,
   TeamSessionHistoryDetail, TeamSessionHistoryFilters, TeamSessionHistoryPage, TeamSessionHistoryRow,
-  TeamSessionHistorySummary,
+  TeamSessionHistorySummary, TeamSessionDeleteResult,
 } from './teamSessionHistory'
+import { TEAM_SESSION_DELETE_MAX } from './teamSessionHistory'
 import { buildDuelRows, buildSideStats, matchParticipantToMember, participantName, type RiotIdMember, type RiotMatchParticipant } from './teamSessionStatsCore'
 import { resolveOurTeamId } from './matchSide'
 import { isCurrentTimeline } from './teamTimelineCore'
@@ -70,6 +71,15 @@ export function objectiveHeld(session: boolean | null | undefined, byGame: Recor
 /** Who sees every session of the group: owner, coach, analyst, manager, captain (main or extra staff role). */
 export function seesAllSessions(role: string | null | undefined, isCaptain: boolean, staffRoles: readonly string[] = []): boolean {
   return isCaptain || ['owner', 'coach', 'analyst', 'manager'].includes(role ?? '') || staffRoles.some((r) => ['coach', 'analyst', 'manager'].includes(r))
+}
+
+/**
+ * Who may delete the group's team sessions (DECISIONS 28/11): owner, coach, manager, as main role or extra staff role.
+ * Not the captain, not the analyst. Same rule as public.delete_team_sessions (migration 20261128150000).
+ */
+export function canDeleteTeamSessions(role: string | null | undefined, staffRoles: readonly string[] = []): boolean {
+  const allowed = ['owner', 'coach', 'manager']
+  return allowed.includes(role ?? '') || staffRoles.some((r) => allowed.includes(r))
 }
 
 const zeroSide = (): SideTotals => ({ kills: 0, deaths: 0, assists: 0, gold: 0, damage: 0, vision: 0 })
@@ -322,12 +332,14 @@ function slotOf(s: any, live: any | undefined) {
 
 export async function listTeamSessionHistory(sb: SupabaseClient, uid: string, groupId: string, filters: TeamSessionHistoryFilters, now = Date.now()): Promise<TeamSessionHistoryPage> {
   const limit = Math.min(HISTORY_PAGE_MAX, Math.max(1, filters.limit ?? HISTORY_PAGE_SIZE))
-  const empty: TeamSessionHistoryPage = { sessions: [], hasMore: false, summary: summarizeHistory([]) }
+  const none: TeamSessionHistoryPage = { sessions: [], hasMore: false, summary: summarizeHistory([]), canDelete: false }
 
   const { data: members, error: mErr } = await sb.from('group_members').select('user_id, role, is_captain, staff_roles, also_plays, display_name').eq('group_id', groupId)
   if (mErr) fail(mErr, 'members')
   const me = (members ?? []).find((m: any) => m.user_id === uid)
-  if (!me) return empty
+  if (!me) return none
+  const canDelete = canDeleteTeamSessions(me.role, me.staff_roles ?? [])
+  const empty: TeamSessionHistoryPage = { ...none, canDelete }
   const all = seesAllSessions(me.role, !!me.is_captain, me.staff_roles ?? [])
   const memberList: MeetingMember[] = (members ?? []).map((m: any) => ({ userId: m.user_id, role: m.role, staffRoles: m.staff_roles ?? [], alsoPlays: !!m.also_plays }))
 
@@ -421,7 +433,7 @@ export async function listTeamSessionHistory(sb: SupabaseClient, uid: string, gr
   rows.sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))
   const before = filters.before ? Date.parse(filters.before) : Infinity
   const page = rows.filter((r) => Date.parse(r.startsAt) < before)
-  return { sessions: page.slice(0, limit), hasMore: page.length > limit, summary: summarizeHistory(rows) }
+  return { sessions: page.slice(0, limit), hasMore: page.length > limit, summary: summarizeHistory(rows), canDelete }
 }
 
 export async function getTeamSessionHistoryDetail(sb: SupabaseClient, sessionId: string): Promise<TeamSessionHistoryDetail> {
@@ -527,3 +539,30 @@ export async function setObjectiveResult(sb: SupabaseClient, sessionId: string, 
   fail(error, 'objective result')
 }
 
+const DELETE_STATUSES = new Set(['deleted', 'refused', 'not_found'])
+const DELETE_REASONS = new Set(['not_staff', 'not_ended', 'error'])
+
+/**
+ * Deletes team sessions for the whole team (RPC delete_team_sessions, migration 20261128150000): one result per id,
+ * in the order given, duplicates once. The server checks the role and deletes each session on its own; an id the
+ * server did not answer for reads not_found.
+ */
+export async function deleteTeamSessions(sb: SupabaseClient, sessionIds: string[]): Promise<TeamSessionDeleteResult[]> {
+  const ids = [...new Set(sessionIds)]
+  if (ids.length === 0) return []
+  if (ids.length > TEAM_SESSION_DELETE_MAX) throw new Error('TOO_MANY')
+  const { data, error } = await sb.rpc('delete_team_sessions', { p_session_ids: ids })
+  if (error) {
+    if (error.code === 'PGRST202' || error.code === '42883') throw new Error('NOT_AVAILABLE')
+    if (/TOO_MANY/.test(error.message)) throw new Error('TOO_MANY')
+    if (error.code === '42501' || /FORBIDDEN/.test(error.message)) throw new Error('FORBIDDEN')
+    fail(error, 'delete sessions')
+  }
+  const byId = new Map<string, TeamSessionDeleteResult>()
+  for (const r of (data ?? []) as Array<{ session_id: string; status: string; reason: string | null }>) {
+    const status = DELETE_STATUSES.has(r.status) ? (r.status as TeamSessionDeleteResult['status']) : 'refused'
+    const reason = r.reason && DELETE_REASONS.has(r.reason) ? (r.reason as TeamSessionDeleteResult['reason']) : status === 'refused' ? 'error' : undefined
+    byId.set(r.session_id, reason ? { sessionId: r.session_id, status, reason } : { sessionId: r.session_id, status })
+  }
+  return ids.map((id) => byId.get(id) ?? { sessionId: id, status: 'not_found' })
+}

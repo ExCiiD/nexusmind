@@ -169,6 +169,7 @@ const api = {
   soloSessionPlayerStats: (sessionId?: string | null) => ipcRenderer.invoke('solo-session:player-stats', sessionId ?? null),
   teamSessionSetObjectiveResult: (sessionId: string, objectiveId: string, gameId: string | null, met: boolean | null) =>
     ipcRenderer.invoke('team-session-history:set-objective-result', sessionId, objectiveId, gameId, met),
+  teamSessionHistoryDelete: (sessionIds: string[]) => ipcRenderer.invoke('team-session-history:delete', sessionIds),
   sessionPrepGet: (sessionId: string) => ipcRenderer.invoke('session-prep:get', sessionId),
   myNextEvent: () => ipcRenderer.invoke('my-team:next-event'),
   calendarRemindResponses: (eventId: string, userIds?: string[]) => ipcRenderer.invoke('organisation:remind', eventId, userIds),

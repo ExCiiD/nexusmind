@@ -506,6 +506,36 @@
       "seek": "Play the recording from {{time}}",
       "copyTranscript": "Copy the transcript",
       "copied": "Transcript copied"
+    },
+    "delete": {
+      "selectAll": "Select all",
+      "selectRow": "Select {{title}}",
+      "selected_one": "{{count}} selected",
+      "selected_other": "{{count}} selected",
+      "button_one": "Delete {{count}} session",
+      "button_other": "Delete {{count}} sessions",
+      "clear": "Clear selection",
+      "bar": "Selection actions",
+      "confirmTitle_one": "Delete {{count}} team session?",
+      "confirmTitle_other": "Delete {{count}} team sessions?",
+      "confirmDesc": "Deleting applies to the whole team: these sessions disappear for the players too, with their reviews, feedback, attendance and objective verdicts. This cannot be undone.",
+      "keeps": "Each player’s games, stats and videos are kept, and so is the Planning slot.",
+      "sessions": "Sessions to delete",
+      "confirmAction_one": "Delete {{count}} session",
+      "confirmAction_other": "Delete {{count}} sessions",
+      "doneTitle": "{{deleted}} of {{total}} deleted",
+      "doneHint": "The players’ games are kept.",
+      "results": "Result per session",
+      "status": {
+        "deleted": "Deleted",
+        "notFound": "Not found",
+        "refused_not_staff": "Refused: staff only",
+        "refused_not_ended": "Refused: session not finished",
+        "refused_error": "Failed: try again"
+      },
+      "notAvailable": "Deletion is not available on the server yet.",
+      "forbidden": "Sign in to delete sessions.",
+      "failed": "Could not delete right now. Try again."
     }
   },
   "settings": {
@@ -1517,6 +1547,10 @@
     "offSession": {
       "title": "Games outside a session",
       "badge": "Off session"
+    },
+    "autoConclusion": {
+      "idle": "Session closed automatically after {{minutes}} minutes of inactivity — {{games}} game(s) ({{wins}}W-{{losses}}L).",
+      "none": "Session closed automatically after {{minutes}} minutes with no game played."
     }
   },
   "statsAvg": {

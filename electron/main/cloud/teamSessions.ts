@@ -86,6 +86,9 @@ export const teamSessionCollectiveStats = (sessionId: string, _opts?: { enrich?:
   getSessionCollective(getSupabase(), sessionId, teamGameTimelineLocal)
 export const teamSessionSetObjectiveResult = (sessionId: string, objectiveId: string, gameId: string | null, met: boolean | null) =>
   history.setObjectiveResult(getSupabase(), sessionId, objectiveId, gameId, met)
+/** Deleting finished sessions for the whole team (staff only, checked by the server). Nothing local to purge: the
+ *  history is read from the cloud, and the players' own games live in their solo history, untouched. */
+export const teamSessionHistoryDelete = (sessionIds: string[]) => history.deleteTeamSessions(getSupabase(), sessionIds)
 
 // ── Preparing a session ahead (docs/contracts/session-prep.md) ──
 // ── § 18: "Relancer" and the published dossiers (docs/contracts/organisation.md) ──

@@ -306,3 +306,25 @@ session** dont le résumé n'a pas `players` sont ré-extraites une par une (pri
 local desktop d'abord) puis recachées pour tout le groupe : au plus quelques appels, une seule fois par game, jamais en lot sur
 l'historique. Le Front l'appelle d'abord sans `enrich`, puis avec si des games sont `no-players` / `no-timeline`.
 `teamObjectivesGameTimeline` est inchangé (ne ré-extrait pas).
+
+## 8. Suppression de sessions (DECISIONS 28/11, migration `20261128150000_team_session_delete`, non appliquée)
+
+- **Qui** : `page.canDelete` (dans la réponse de `teamSessionHistoryList`) vaut `true` pour le propriétaire, le coach et
+  le manager (rôle principal ou rôle de staff en plus). Pas le capitaine seul, pas l'analyste, pas un joueur. Le Front
+  n'affiche la sélection et le bouton que dans ce cas ; le serveur revérifie (RPC `delete_team_sessions`).
+- **Appel** : `teamSessionHistoryDelete(sessionIds: string[]) → TeamSessionDeleteResult[]`, 1 à
+  `TEAM_SESSION_DELETE_MAX` (100) ids. Une réponse par id, dans l'ordre donné (doublons une fois) :
+  `{ sessionId, status: 'deleted' }`, `{ status: 'refused', reason: 'not_staff' | 'not_ended' | 'error' }` ou
+  `{ status: 'not_found' }` (introuvable, ou session d'un groupe dont on n'est pas membre). Chaque session est supprimée
+  seule : un échec n'annule pas les autres. Rejets : `NOT_AVAILABLE` (avant la migration), `FORBIDDEN` (déconnecté),
+  `TOO_MANY`.
+- **Ce qui part** : la session, ses liens session↔partie (et le match Riot mis en cache), revues, retours des joueurs,
+  présences, objectifs et verdicts, objectifs par joueur, message de prépa, drafts. **Ce qui reste** : les parties, stats
+  et vidéos de chaque joueur (historique solo), le créneau du Planning (et sa fiche scrim), les fichiers d'enregistrement.
+  Seule une session terminée se supprime.
+- **Après** : `invalidateGroupSessions(groupId)` (`src/lib/groupQueries.ts`) pour relire la liste. Rien de local à
+  purger : l'historique est relu depuis le cloud. Les autres membres la voient disparaître à leur prochain chargement
+  (cache de 30 s), et elle ne revient pas : le créneau d'une session supprimée ne recrée plus de session quand on le
+  modifie (`private.team_session_deletions`).
+- **Harnais** : staff par défaut ; `localStorage['harness:asPlayer'] = '1'` → `canDelete: false` et refus `not_staff` ;
+  `window.__deleteFailIds = ['s-kca']` → `refused / error` ; `window.__deleteNotAvailable = true` → `NOT_AVAILABLE`.

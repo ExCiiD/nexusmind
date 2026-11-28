@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CalendarDays, ChevronRight, Filter, Hourglass, Loader2 } from 'lucide-react'
+import { CalendarDays, Check, ChevronRight, Filter, Hourglass, Loader2, Trash2, X } from 'lucide-react'
 import { NoGroupNotice, TeamSectionHeader, useTeamSection } from '@/components/team/TeamSection'
 import { Segmented } from '@/components/analyst/shared'
 import { EmptyState, ErrorState } from '@/components/ui/data-state'
@@ -14,7 +14,8 @@ import { formatPlayed, groupByWeek, type WeekGroup } from '@/lib/teamSessionHist
 import { initialsOf } from '@/lib/playerCard'
 import { historyApi, type HistoryPeriod, type SessionKind, type TeamSessionHistoryPage, type TeamSessionHistoryRow } from './historyContract'
 import { useCachedResource } from '@/hooks/useCachedResource'
-import { groupKey } from '@/lib/groupQueries'
+import { groupKey, invalidateGroupSessions } from '@/lib/groupQueries'
+import { DeleteSessionsDialog, deleteInChunks, type DeleteTarget } from '@/components/TeamSession/DeleteSessionsDialog'
 
 export const SESSION_TYPES = ['all', 'flex', 'scrim', 'tournament', 'meeting'] as const
 export type SessionTypeFilter = (typeof SESSION_TYPES)[number]
@@ -44,6 +45,20 @@ function useHistoryFilters(): [{ type: SessionTypeFilter; period: HistoryPeriod 
 export const sessionHref = (row: Pick<TeamSessionHistoryRow, 'sessionId' | 'calendarEventId' | 'eventDeleted'>): string =>
   row.eventDeleted || !row.calendarEventId ? `/team-sessions/${encodeURIComponent(row.sessionId)}` : `/team-session/${encodeURIComponent(row.calendarEventId)}`
 
+/** Square checkbox of the list's selection (same look as the solo history's). */
+function RowCheckbox({ checked, indeterminate, onChange, label }: { checked: boolean; indeterminate?: boolean; onChange: () => void; label: string }) {
+  return (
+    <button type="button" role="checkbox" aria-checked={indeterminate && !checked ? 'mixed' : checked} aria-label={label} onClick={onChange}
+      className={cn('flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold',
+        checked || indeterminate ? 'border-hextech-gold bg-hextech-gold' : 'border-white/30 bg-black/40 hover:border-hextech-gold/60')}>
+      {indeterminate && !checked && <span aria-hidden className="h-0.5 w-2.5 rounded bg-black" />}
+      {checked && <Check className="h-3 w-3 text-black" aria-hidden />}
+    </button>
+  )
+}
+
+interface Selection { checked: boolean; onToggle: () => void }
+
 const accentOf = (kind: SessionKind) => KIND_STYLE[kind]?.accent ?? KIND_STYLE.other.accent
 
 /**
@@ -52,7 +67,7 @@ const accentOf = (kind: SessionKind) => KIND_STYLE[kind]?.accent ?? KIND_STYLE.o
  * (/team-session/:calendarEventId, § 15.2). Data: teamSessionHistoryList (docs/contracts/team-session-history.md).
  */
 export function TeamSessionsPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const section = useTeamSection()
   const { available, loading, group } = section
   const [filters, setFilters] = useHistoryFilters()
@@ -90,6 +105,30 @@ export function TeamSessionsPage() {
     }
   }
 
+  // Staff only (page.canDelete): the server checks again. Ids that left the list (filter change) drop out of the selection.
+  const canDelete = !!page?.canDelete
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [dialog, setDialog] = useState<DeleteTarget[] | null>(null)
+  const rows = useMemo(() => page?.sessions ?? [], [page])
+  const picked = useMemo(() => rows.filter((r) => selected.has(r.sessionId)), [rows, selected])
+  const toggle = (id: string) => setSelected((cur) => { const n = new Set(cur); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  const allPicked = rows.length > 0 && picked.length === rows.length
+  const toggleAll = () => setSelected(allPicked ? new Set() : new Set(rows.map((r) => r.sessionId)))
+  const selectionOf = (id: string): Selection | undefined => (canDelete ? { checked: selected.has(id), onToggle: () => toggle(id) } : undefined)
+  const openDelete = () => {
+    const day = (iso: string) => new Date(iso).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })
+    setDialog(picked.map((r) => ({ sessionId: r.sessionId, title: r.title, when: day(r.startsAt) })))
+  }
+  const runDelete = (ids: string[]) => deleteInChunks(ids, (chunk) => historyApi().teamSessionHistoryDelete!(chunk))
+  const afterDelete = (deleted: string[]) => {
+    setDialog(null)
+    if (deleted.length === 0) return
+    const gone = new Set(deleted)
+    setSelected((cur) => new Set([...cur].filter((id) => !gone.has(id))))
+    if (groupId) invalidateGroupSessions(groupId)
+    void pageQ.load()
+  }
+
   const weeks = useMemo(() => (page ? groupByWeek(page.sessions, new Date()) : []), [page])
   const s = page?.summary
 
@@ -116,6 +155,12 @@ export function TeamSessionsPage() {
               onChange={(period) => setFilters({ period })}
               options={SESSION_PERIODS.map((id) => ({ id, label: t(`teamSessions.period.${id}`) }))}
             />
+            {state === 'ready' && canDelete && rows.length > 0 && (
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-hextech-text">
+                <RowCheckbox checked={allPicked} indeterminate={picked.length > 0} onChange={toggleAll} label={t('teamSessions.delete.selectAll')} />
+                {t('teamSessions.delete.selectAll')}
+              </label>
+            )}
             {state === 'ready' && s && s.sessions > 0 && (
               <span className="ml-auto font-mono text-xs text-hextech-text-dim">
                 {t('teamSessions.totals', { sessions: s.sessions, games: s.games, wins: s.wins, losses: s.losses })}
@@ -147,7 +192,7 @@ export function TeamSessionsPage() {
             <>
               {filters.type === 'meeting' ? <MeetingTiles summary={s} /> : <SummaryTiles summary={s} />}
               <div className="space-y-5">
-                {weeks.map((w) => <WeekBlock key={w.start.toISOString()} week={w} />)}
+                {weeks.map((w) => <WeekBlock key={w.start.toISOString()} week={w} selectionOf={selectionOf} />)}
               </div>
               {page.hasMore && (
                 <div className="flex justify-center">
@@ -161,6 +206,19 @@ export function TeamSessionsPage() {
           )}
         </>
       )}
+
+      {picked.length > 0 && (
+        <div role="toolbar" aria-label={t('teamSessions.delete.bar')} className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-hextech-border-dim bg-hextech-dark/95 px-4 py-2.5 shadow-2xl backdrop-blur">
+          <span className="text-sm font-medium text-hextech-text-bright">{t('teamSessions.delete.selected', { count: picked.length })}</span>
+          <div className="h-4 w-px bg-hextech-border-dim" />
+          <button onClick={openDelete}
+            className="flex items-center gap-1.5 rounded border border-[#E24C3A]/40 bg-[#E24C3A]/10 px-2.5 py-1.5 text-xs font-medium text-[#E24C3A] transition-colors hover:bg-[#E24C3A]/20">
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />{t('teamSessions.delete.button', { count: picked.length })}
+          </button>
+          <button onClick={() => setSelected(new Set())} aria-label={t('teamSessions.delete.clear')} className="ml-1 text-hextech-text-dim/60 transition-colors hover:text-hextech-text-dim"><X className="h-4 w-4" /></button>
+        </div>
+      )}
+      <DeleteSessionsDialog targets={dialog} run={runDelete} onClose={afterDelete} />
     </div>
   )
 }
@@ -213,7 +271,7 @@ function SummaryTiles({ summary: s }: { summary: TeamSessionHistoryPage['summary
   )
 }
 
-function WeekBlock({ week }: { week: WeekGroup<TeamSessionHistoryRow> }) {
+function WeekBlock({ week, selectionOf }: { week: WeekGroup<TeamSessionHistoryRow>; selectionOf: (id: string) => Selection | undefined }) {
   const { t, i18n } = useTranslation()
   // « 17 – 23 nov. » / « Nov 17 – 23 », the month once when both days share it.
   // formatRange is in every Chromium the app runs on, not yet in this TypeScript lib.
@@ -223,12 +281,12 @@ function WeekBlock({ week }: { week: WeekGroup<TeamSessionHistoryRow> }) {
   return (
     <section aria-label={`${title} · ${range}`}>
       <h2 className="mb-2 font-mono text-[11px] font-semibold uppercase tracking-wider text-hextech-text-dim">{title} · {range}</h2>
-      <ul className="space-y-2">{week.rows.map((r) => (r.kind === 'meeting' && r.meeting ? <MeetingRow key={r.sessionId} row={r} /> : <SessionRow key={r.sessionId} row={r} />))}</ul>
+      <ul className="space-y-2">{week.rows.map((r) => (r.kind === 'meeting' && r.meeting ? <MeetingRow key={r.sessionId} row={r} select={selectionOf(r.sessionId)} /> : <SessionRow key={r.sessionId} row={r} select={selectionOf(r.sessionId)} />))}</ul>
     </section>
   )
 }
 
-function SessionRow({ row }: { row: TeamSessionHistoryRow }) {
+function SessionRow({ row, select }: { row: TeamSessionHistoryRow; select?: Selection }) {
   const { t, i18n } = useTranslation()
   const start = new Date(row.startsAt)
   const time = (d: Date) => d.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
@@ -237,10 +295,11 @@ function SessionRow({ row }: { row: TeamSessionHistoryRow }) {
   const o = row.objectives
   const href = sessionHref(row)
   return (
-    <li>
+    <li className={select ? 'flex items-center gap-2' : undefined}>
+      {select && <RowCheckbox checked={select.checked} onChange={select.onToggle} label={t('teamSessions.delete.selectRow', { title: row.title })} />}
       <Link
         to={href}
-        className="group flex items-center gap-4 rounded-lg border border-hextech-border-dim bg-hextech-dark/40 py-3 pl-4 pr-3 transition-colors hover:border-hextech-border hover:bg-hextech-elevated hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold"
+        className="group flex min-w-0 flex-1 items-center gap-4 rounded-lg border border-hextech-border-dim bg-hextech-dark/40 py-3 pl-4 pr-3 transition-colors hover:border-hextech-border hover:bg-hextech-elevated hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold"
         style={{ borderLeft: `3px solid ${accentOf(row.kind)}` }}
       >
         <div className="min-w-0 flex-1">
@@ -309,7 +368,7 @@ function MeetingTiles({ summary }: { summary: TeamSessionHistoryPage['summary'] 
 const badge = 'rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider'
 
 /** A meeting in the list: the same row, attendance instead of the result, the people concerned instead of the objectives. */
-function MeetingRow({ row }: { row: TeamSessionHistoryRow }) {
+function MeetingRow({ row, select }: { row: TeamSessionHistoryRow; select?: Selection }) {
   const { t, i18n } = useTranslation()
   const m = row.meeting!
   const start = new Date(row.startsAt)
@@ -318,10 +377,11 @@ function MeetingRow({ row }: { row: TeamSessionHistoryRow }) {
   const accent = KIND_STYLE.meeting.accent
   const who = m.scope === 'custom' ? t('teamSessions.meeting.people', { count: m.concerned }) : t(`teamSessions.meeting.scope.${m.scope}`)
   return (
-    <li>
+    <li className={select ? 'flex items-center gap-2' : undefined}>
+      {select && <RowCheckbox checked={select.checked} onChange={select.onToggle} label={t('teamSessions.delete.selectRow', { title: row.title })} />}
       <Link
         to={sessionHref(row)}
-        className="group flex items-center gap-4 rounded-lg border border-hextech-border-dim bg-hextech-dark/40 py-3 pl-4 pr-3 transition-colors hover:border-hextech-border hover:bg-hextech-elevated hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold"
+        className="group flex min-w-0 flex-1 items-center gap-4 rounded-lg border border-hextech-border-dim bg-hextech-dark/40 py-3 pl-4 pr-3 transition-colors hover:border-hextech-border hover:bg-hextech-elevated hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hextech-gold"
         style={{ borderLeft: `3px solid ${accent}` }}
       >
         <div className="min-w-0 flex-1">

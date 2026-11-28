@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useLocalizedFundamental, useLocalizedFundamentals } from '@/lib/constants/useFundamentals'
 import { formatKDA, formatGameTime } from '@/lib/utils'
 import { useTranslation } from 'react-i18next'
+import { localizeConclusion } from '@/lib/autoConclusion'
 import {
   ChevronDown,
   ChevronUp,
@@ -997,13 +998,11 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
                 }}
               />
             </div>
-            {!isOffSession(session) && (
-              <Button variant="outline" size="sm" className="ml-2 h-7 shrink-0 border-hextech-gold/60 px-2 text-xs text-hextech-gold" disabled={session.games.length === 0}
-                title={session.games.length === 0 ? t('playerSheet.noGamesTip') : undefined}
-                onClick={(e) => { e.stopPropagation(); navigate(`/history/session/${encodeURIComponent(session.id)}/stats`) }}>
-                {t('playerSheet.myStats')}
-              </Button>
-            )}
+            <Button variant="outline" size="sm" className="ml-2 h-7 shrink-0 border-hextech-gold/60 px-2 text-xs text-hextech-gold" disabled={session.games.length === 0}
+              title={session.games.length === 0 ? t('playerSheet.noGamesTip') : undefined}
+              onClick={(e) => { e.stopPropagation(); navigate(`/history/session/${encodeURIComponent(session.id)}/stats`) }}>
+              {t('playerSheet.myStats')}
+            </Button>
             {confirmDelete ? (
               // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- event barrier only: stops the click from reaching the clickable row; the buttons inside handle the keyboard.
               <div className="flex items-center gap-1 ml-2 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -1052,7 +1051,7 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
             <div className="flex gap-3 rounded-lg bg-hextech-elevated p-3 mt-4">
               <Brain className="h-4 w-4 text-hextech-cyan shrink-0 mt-0.5" />
               <p className="text-sm text-hextech-text leading-relaxed">
-                {session.sessionConclusion || session.aiSummary}
+                {session.sessionConclusion ? localizeConclusion(session.sessionConclusion, t) : session.aiSummary}
               </p>
             </div>
           )}
@@ -1065,7 +1064,7 @@ function SessionCard({ session, isSelected, onToggleSelect, expanded, onToggle, 
                 index={idx + 1}
                 hasRecording={recordedIds.has(game.id)}
                 onDelete={(id) => onGameDelete(id)}
-                statsPath={isOffSession(session) ? undefined : `/history/session/${encodeURIComponent(session.id)}/stats?game=${soloGameRank(session.games, game.id)}`}
+                statsPath={`/history/session/${encodeURIComponent(session.id)}/stats?game=${soloGameRank(session.games, game.id)}`}
               />
             ))}
           </div>

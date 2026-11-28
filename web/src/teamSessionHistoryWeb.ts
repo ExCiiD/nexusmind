@@ -17,4 +17,5 @@ export const teamSessionHistoryWebApi: TeamSessionHistoryApi = {
   // No raw timeline on the web: the games whose cached summary lacks the ward events have no setup (never a download).
   teamSessionCollectiveStats: (sessionId) => getSessionCollective(sb, sessionId),
   teamSessionSetObjectiveResult: (sessionId, objectiveId, gameId, met) => history.setObjectiveResult(sb, sessionId, objectiveId, gameId, met),
+  teamSessionHistoryDelete: (sessionIds) => history.deleteTeamSessions(sb, sessionIds),
 }

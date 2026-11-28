@@ -61,6 +61,9 @@ export function registerTeamSessionHandlers() {
     (_e, sessionId, opts) => teamSessions.teamSessionCollectiveStats(sessionId, opts))
   validatedHandle('team-session-history:set-objective-result', z.tuple([uuid, objectiveId, uuid.nullable(), z.boolean().nullable()]),
     (_e, sessionId, objective, gameId, met) => teamSessions.teamSessionSetObjectiveResult(sessionId, objective, gameId, met))
+  // Deleting sessions (DECISIONS 28/11): 1 to 100 ids, one result each; the role is checked by delete_team_sessions.
+  validatedHandle('team-session-history:delete', z.tuple([z.array(uuid).min(1).max(100)]),
+    (_e, sessionIds) => teamSessions.teamSessionHistoryDelete(sessionIds))
 
   // Preparing a session ahead (docs/contracts/session-prep.md).
   const playerObjectives = z.object({

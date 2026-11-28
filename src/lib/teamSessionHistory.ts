@@ -112,7 +112,24 @@ export interface TeamSessionHistoryPage {
   hasMore: boolean
   /** Over the whole filtered period, not only this page. */
   summary: TeamSessionHistorySummary
+  /**
+   * The signed-in user may delete this group's sessions (owner, coach or manager, main or extra staff role): show the
+   * selection and the delete button only then. The server checks it again (delete_team_sessions).
+   */
+  canDelete: boolean
 }
+
+/** One session's outcome in teamSessionHistoryDelete. */
+export interface TeamSessionDeleteResult {
+  sessionId: string
+  /** refused: see reason. not_found: no such session, or one of a group the user is not in. */
+  status: 'deleted' | 'refused' | 'not_found'
+  /** not_staff: not owner / coach / manager. not_ended: scheduled or live. error: this session failed, retry it. */
+  reason?: 'not_staff' | 'not_ended' | 'error'
+}
+
+/** Ids per call of teamSessionHistoryDelete (the server's limit). */
+export const TEAM_SESSION_DELETE_MAX = 100
 
 export interface SideTotals { kills: number; deaths: number; assists: number; gold: number; damage: number; vision: number }
 
@@ -237,4 +254,13 @@ export interface TeamSessionHistoryApi {
    * managers only (FORBIDDEN otherwise); NOT_AVAILABLE before migration 20261120110354_team_session_objective_results.
    */
   teamSessionSetObjectiveResult: (sessionId: string, objectiveId: string, gameId: string | null, met: boolean | null) => Promise<void>
+  /**
+   * Deletes finished team sessions for the whole team (DECISIONS 28/11): one call, one result per id in the order
+   * given (duplicates once), each session deleted on its own (one failure does not undo the others). Goes: the session,
+   * its game links, reviews, feedback, attendance, objectives and verdicts, prep notes and drafts. Stays: each player's
+   * games, stats and videos, and the Planning slot. Allowed when page.canDelete. Rejects with NOT_AVAILABLE before
+   * migration 20261128150000_team_session_delete, FORBIDDEN when signed out, TOO_MANY above TEAM_SESSION_DELETE_MAX ids.
+   * Refresh the list afterwards (invalidateCached(groupKey(groupId, 'sessions'))).
+   */
+  teamSessionHistoryDelete: (sessionIds: string[]) => Promise<TeamSessionDeleteResult[]>
 }

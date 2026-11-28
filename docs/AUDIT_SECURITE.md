@@ -905,3 +905,29 @@ Ce que j'ai fait : relu le générateur `scripts/gen-rls-perf-migration.mjs`, le
 **Après l'application :** relancer les advisors (sécurité et performance) et vérifier que `pg_policies` compte une politique par commande sur les 31 tables.
 
 Note : pendant la revue, j'ai relancé `node scripts/gen-rls-perf-migration.mjs`, qui réécrit les trois fichiers générés. Le générateur est déterministe, le nombre de lignes est identique (551, 415, 88) et le test passe ; je n'ai rien modifié d'autre.
+
+## 28/11/2026 — Suppression des sessions d'équipe (migration 20261128150000, non appliquée)
+
+**Verdict : OK, aucun défaut bloquant.** Fichiers revus : `supabase/migrations/20261128150000_team_session_delete.sql`, `supabase/rollback/20261128150000_rollback.sql`, `electron/main/cloud/teamSessions.ts:91`, `electron/main/ipc/teamSession.ipc.ts:64-66`, `electron/preload/index.ts:172`, `src/lib/teamSessionHistory*.ts`, `web/src/teamSessionHistoryWeb.ts:20`, `tests/unit/teamSessionDelete.test.ts` (20/20).
+
+**Exécution réelle en production, annulée.** La migration et les scénarios ont tourné dans un seul bloc `DO` terminé par une exception, ce qui a annulé tout le bloc. Une requête de lecture faite ensuite confirme que la fonction et la table n'existent pas, que les sessions et le rôle de test sont intacts et que le déclencheur n'a pas changé. Résultats :
+- `anon` : 42501, `execute` refusé (droits : `authenticated` et `service_role` seulement).
+- Utilisateur connecté mais non membre : `not_found`, aussi bien pour une session réelle d'un autre groupe que pour un id inventé. On ne peut donc pas découvrir les ids d'une autre équipe.
+- `DELETE` direct par l'API REST, par un non-membre comme par un membre du staff : 0 ligne (`team_sessions` n'a que des politiques SELECT et UPDATE). La table `private.team_session_deletions` est illisible pour `authenticated` (42501).
+- Staff (propriétaire) : la session terminée est supprimée. Une session en cours est refusée (`not_ended`). Les doublons et `null` sont ignorés. Le créneau du Planning reste, son id est noté dans `team_session_deletions`, et modifier ensuite ce créneau ne recrée pas la session.
+- Le même membre repassé joueur (`staff_roles` vide) : refusé (`not_staff`). Avec 101 ids : `TOO_MANY`.
+
+**Points vérifiés en lecture sur la production :**
+- **Élévation de rôle :** un joueur ne peut pas se donner un rôle staff. La politique `members_update_self_profile` ne vérifie que `role`, mais `authenticated` n'a le droit UPDATE que sur 6 colonnes de profil, et `staff_roles` n'en fait pas partie.
+- **Cascades :** seules les 9 tables `team_session_*` dépendent de `team_sessions`, et `team_session_reviews` et `team_session_objective_results` dépendent aussi de `team_session_games`. Aucune autre table ne pointe vers elles (les `session_id` de `vod_review_*` ne les référencent pas). Les parties et statistiques des joueurs (`sync_records`, base locale) et les vidéos ne sont pas touchées.
+- **Fonctions :** les deux fonctions créées sont `security definer` avec `search_path = ''`. Elles appellent `private.group_role` et `private.has_group_role` (définies de la même façon) avec l'id de l'appelant passé explicitement.
+- **Second déclencheur :** `auto_create_team_session` ne réagit qu'aux nouveaux créneaux (INSERT), il ne recrée donc pas une session supprimée.
+
+**Rollback : correct.** Il retire la fonction, remet le corps exact du déclencheur actuel (comparé à la production) puis supprime la table.
+
+**Faibles, non bloquants :**
+- **T1 :** le rollback dit « Run it as one transaction » mais ne contient pas `begin; … commit;`. Même recommandation que R2 du 28/11.
+- **T2 :** `for update` est pris avant le contrôle d'appartenance. Un non-membre peut donc verrouiller un court instant la ligne d'un autre groupe, le temps de son appel (100 ids au plus). Effet négligeable. Pour l'éviter, faire le contrôle d'appartenance avant le verrou.
+- **T3 :** `exception when others` répond `error` sans rien journaliser. Si un incident survient, il faudra le reproduire pour le diagnostiquer.
+
+Non vérifié : l'interface (affichage du bouton selon `canDelete`), et le comportement avec un vrai jeton passé par PostgREST plutôt qu'avec des claims simulées.

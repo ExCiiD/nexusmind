@@ -506,6 +506,36 @@
       "seek": "Lire l’enregistrement à partir de {{time}}",
       "copyTranscript": "Copier la transcription",
       "copied": "Transcription copiée"
+    },
+    "delete": {
+      "selectAll": "Tout sélectionner",
+      "selectRow": "Sélectionner {{title}}",
+      "selected_one": "{{count}} sélectionnée",
+      "selected_other": "{{count}} sélectionnées",
+      "button_one": "Supprimer {{count}} session",
+      "button_other": "Supprimer {{count}} sessions",
+      "clear": "Désélectionner tout",
+      "bar": "Actions sur la sélection",
+      "confirmTitle_one": "Supprimer {{count}} session d’équipe ?",
+      "confirmTitle_other": "Supprimer {{count}} sessions d’équipe ?",
+      "confirmDesc": "La suppression vaut pour toute l’équipe : ces sessions disparaissent aussi chez les joueurs, avec leurs reviews, retours, présences et verdicts d’objectifs. Elle est définitive.",
+      "keeps": "Les parties, stats et vidéos de chaque joueur sont gardées, ainsi que le créneau du Planning.",
+      "sessions": "Sessions à supprimer",
+      "confirmAction_one": "Supprimer {{count}} session",
+      "confirmAction_other": "Supprimer {{count}} sessions",
+      "doneTitle": "{{deleted}} sur {{total}} supprimée(s)",
+      "doneHint": "Les parties des joueurs sont gardées.",
+      "results": "Résultat par session",
+      "status": {
+        "deleted": "Supprimée",
+        "notFound": "Introuvable",
+        "refused_not_staff": "Refusée : réservé au staff",
+        "refused_not_ended": "Refusée : session non terminée",
+        "refused_error": "Échec : à réessayer"
+      },
+      "notAvailable": "La suppression n’est pas encore disponible sur le serveur.",
+      "forbidden": "Connecte-toi pour supprimer des sessions.",
+      "failed": "Suppression impossible pour le moment. Réessaie."
     }
   },
   "settings": {
@@ -1517,6 +1547,10 @@
     "offSession": {
       "title": "Parties hors session",
       "badge": "Hors session"
+    },
+    "autoConclusion": {
+      "idle": "Session clôturée automatiquement après {{minutes}} minutes d’inactivité — {{games}} game(s) ({{wins}}V-{{losses}}D).",
+      "none": "Session clôturée automatiquement après {{minutes}} minutes sans game jouée."
     }
   },
   "statsAvg": {

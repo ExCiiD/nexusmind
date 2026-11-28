@@ -23,3 +23,8 @@ export function invalidateGroupTasks(groupId: string) {
   invalidateCached(groupKey(groupId, 'tasks'))
   invalidateCached(`org:tasks:${groupId}`)
 }
+
+/** After deleting team sessions (teamSessionHistoryDelete): the history list and its summary refetch. */
+export function invalidateGroupSessions(groupId: string) {
+  invalidateCached(groupKey(groupId, 'sessions'))
+}

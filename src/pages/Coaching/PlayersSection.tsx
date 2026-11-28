@@ -16,6 +16,7 @@ import { collabErrorKey, type AssignedObjective, type Group, type PlayerSessionV
 import type { DevPlan } from '@/lib/devPlan'
 import type { StaffNote } from '@/lib/teamOps'
 import type { NameOf } from '@/hooks/useCollab'
+import { localizeConclusion } from '@/lib/autoConclusion'
 import { playsInGroup } from '@/lib/permissions'
 import {
   NOTE_TAGS, composeNote, groupByDay, mainRole, parseNote, playerStatus, reviewStats, topChampions,
@@ -288,7 +289,7 @@ function SessionJournal({ days, label, player, myUserId, nameOf }: {
                 </button>
                 {isOpen && (
                   <div className="space-y-3 border-t border-hextech-border-dim bg-hextech-black/40 p-4">
-                    {day.sessions.map((s) => s.sessionConclusion && <p key={s.id} className="text-sm italic text-hextech-text">« {s.sessionConclusion} »</p>)}
+                    {day.sessions.map((s) => s.sessionConclusion && <p key={s.id} className="text-sm italic text-hextech-text">« {localizeConclusion(s.sessionConclusion, t)} »</p>)}
                     {day.sessions.flatMap((s) => s.games).map((g) => (
                       <div key={g.id} className="space-y-2 rounded-md border border-hextech-border-dim/70 bg-hextech-dark p-3">
                         <div className="flex flex-wrap items-center gap-2.5 text-xs">
